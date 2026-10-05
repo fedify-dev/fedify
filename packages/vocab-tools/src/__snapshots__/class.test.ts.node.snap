@@ -1279,7 +1279,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -19054,7 +19054,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -19539,7 +19539,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -21454,7 +21454,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -26371,7 +26371,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -26887,7 +26887,7 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -27643,7 +27643,7 @@ unit?: string | null;numericalValue?: Decimal | null;}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -28322,7 +28322,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -29838,7 +29838,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -30403,7 +30403,7 @@ canFeature?: InteractionRule | null;canLike?: InteractionRule | null;canReply?: 
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -31495,7 +31495,7 @@ manualApprovals?: (URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -32203,7 +32203,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -33718,7 +33718,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -34179,7 +34179,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -35694,7 +35694,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -36155,7 +36155,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -37669,7 +37669,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -38302,7 +38302,7 @@ urls?: ((URL | Link))[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -40204,7 +40204,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -41713,7 +41713,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -42351,7 +42351,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -49370,7 +49370,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -50409,7 +50409,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -51112,7 +51112,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -52719,7 +52719,7 @@ endpoints?: (URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -53240,7 +53240,7 @@ endpoints?: (URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -53772,7 +53772,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -55151,7 +55151,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -56402,7 +56402,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -57596,7 +57596,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -58371,7 +58371,7 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -59156,7 +59156,7 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -60215,7 +60215,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -61123,7 +61123,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -61558,7 +61558,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -61988,7 +61988,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -62939,7 +62939,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -73161,7 +73161,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -73603,7 +73603,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -74070,7 +74070,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -75758,7 +75758,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -76555,7 +76555,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -76997,7 +76997,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -77432,7 +77432,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -77904,7 +77904,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -79944,7 +79944,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -80373,7 +80373,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -80800,7 +80800,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -81386,7 +81386,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -82607,7 +82607,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -83050,7 +83050,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -83481,7 +83481,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -84432,7 +84432,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -94902,7 +94902,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -96889,7 +96889,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -97298,7 +97298,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -97741,7 +97741,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -98174,7 +98174,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -98603,7 +98603,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -99032,7 +99032,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -99461,7 +99461,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -99888,7 +99888,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -100295,7 +100295,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -100713,7 +100713,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -101182,7 +101182,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -102867,7 +102867,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -104517,7 +104517,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -114730,7 +114730,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -115694,7 +115694,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -125994,7 +125994,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -127145,7 +127145,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -128244,7 +128244,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -131084,7 +131084,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -131513,7 +131513,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -132049,7 +132049,7 @@ relationships?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -134486,7 +134486,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -135437,7 +135437,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -145769,7 +145769,7 @@ contents?: ((string | LanguageString))[];mediaType?: string | null;}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -146459,7 +146459,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -146888,7 +146888,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -147364,7 +147364,7 @@ formerTypes?: ($EntityType)[];deleted?: Temporal.Instant | null;}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -148097,7 +148097,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -148531,7 +148531,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -148963,7 +148963,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -149384,7 +149384,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another
@@ -149825,7 +149825,7 @@ instruments?: (Object | URL)[];}
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another

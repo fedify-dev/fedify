@@ -212,7 +212,7 @@ export async function* generateCloner(
    * Clones this instance, optionally updating it with the given values.
    *
    * This is a shallow copy: property arrays are copied, but nested objects
-   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
    * fetched objects in the instance whose accessor is called.  Hydrating a
    * shared nested object through the clone can affect the original as well,
    * and can change JSON-LD output when either is embedded in another

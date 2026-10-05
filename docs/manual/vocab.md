@@ -835,8 +835,12 @@ const note = await create.getObject();
 const note2 = await create.getObject();
 ~~~~
 
-Hydration caches the fetched object in the instance whose accessor was called.
-All references to that instance see the hydrated property, including references
+When hydration caches a fetched object, it replaces the property's URL in the
+instance whose accessor was called.  An unverified portable claim can be
+returned without replacing that URL or clearing the JSON-LD cache, so a later
+accessor call can fetch it again.
+When the result is cached, all references to that instance see the hydrated
+property, including references
 from a source and its [shallow clone](#immutability) to a shared nested object,
 or from an activity that embeds it.  Hydrating a top-level property of a clone
 does not update the source's property, because their property arrays are
@@ -844,9 +848,10 @@ separate.
 
 Hydration can also affect `toJsonLd()` output, including output from activities
 that embed the hydrated object.  Objects parsed with `fromJsonLd()` may retain
-cached JSON-LD.  Hydration clears the cache only on the instance whose accessor
-fetched the object; parent caches remain intact.  A parent may therefore
-serialize differently on its own and when embedded in another activity.
+cached JSON-LD.  Caching a fetched object clears the JSON-LD cache only on the
+instance whose accessor fetched it; parent caches remain intact.  A parent may
+therefore serialize differently on its own and when embedded in another
+activity.
 
 For example, since the following code does not hydrate the `object` property,
 the JSON-LD representation of the `Create` object has the `object` property
