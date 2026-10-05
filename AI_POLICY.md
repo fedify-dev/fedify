@@ -64,10 +64,10 @@ Assisted-by: AGENT_NAME:MODEL_VERSION
 For example:
 
 ~~~~
-Assisted-by: OpenCode:qwen3.6-plus
-Assisted-by: Claude Code:claude-sonnet-4-6
-Assisted-by: Gemini CLI:gemini-3.1-pro-preview
-Assisted-by: Codex:gpt-5.4
+Assisted-by: OpenCode:qwen3.8-max
+Assisted-by: Claude Code:claude-sonnet-5-5
+Assisted-by: Gemini CLI:gemini-3.8-flash
+Assisted-by: Codex:gpt-6.1-sol
 ~~~~
 
 If multiple AI tools were used, include one `Assisted-by` line per tool.
