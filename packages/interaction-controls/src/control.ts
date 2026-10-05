@@ -872,10 +872,14 @@ function trackLoaders(
         throw error;
       }
       if (remoteDocument == null) {
-        const error = new FetchError(
-          url,
-          "The document loader returned no document.",
-        );
+        const message = "The document loader returned no document.";
+        let error: Error;
+        try {
+          // FetchError's constructor cannot parse portable URLs by itself:
+          error = new FetchError(parseIri(url), message);
+        } catch {
+          error = new Error(`${url}: ${message}`);
+        }
         if (!released) records.set(error, url);
         throw error;
       }

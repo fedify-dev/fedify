@@ -418,6 +418,27 @@ test("verifyRequest() reports failures of portable references without gateways",
   assert.equal(result.failure.transient, true);
 });
 
+test("verifyRequest() reports null loader results for portable references", async () => {
+  const result = await likeInteraction.verifyRequest(context, {
+    request: new LikeRequest({
+      id: requestId,
+      actor,
+      object: new Note({ id: targetId, attribution: author }),
+      instrument: parseIri(portableLikeId),
+    }, { verifyPortableObject: () => Promise.resolve({ verified: false }) }),
+    documentLoader: async (url: string) => {
+      if (url in preloadedContexts) return await documentLoader({})(url);
+      return null as unknown as RemoteDocument;
+    },
+  });
+
+  if (result.verified || result.failure.type !== "notDereferenceable") {
+    assert.fail(`unexpected result: ${String(result.verified)}`);
+  }
+  assert.equal(result.failure.url.protocol, "ap+ef61:");
+  assert.equal(result.failure.transient, false);
+});
+
 test("verification returns failures for unparseable context URLs", async () => {
   const document = {
     "@context": ["https://www.w3.org/ns/activitystreams", "::"],
