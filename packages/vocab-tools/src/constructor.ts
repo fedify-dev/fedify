@@ -179,7 +179,7 @@ export async function* generateConstructor(
           if (Array.isArray(values.${property.pluralName}) &&
               values.${property.pluralName}.every(v => ${typeGuards})) {
             // @ts-ignore: type is checked above.
-            this.${fieldName} = values.${property.pluralName};
+            this.${fieldName} = values.${property.pluralName}.slice();
       `;
       if (!allScalarTypes) {
         yield `
@@ -219,7 +219,8 @@ export async function* generateCloner(
    *
    * @param values The values to update the clone with.
    * @param options The options to use for cloning.
-   * @returns The cloned instance.
+   * @returns The cloned instance with its own property arrays.  Nested objects
+   *          and URLs are shared with this instance.
    */
   ${emitOverride(typeUri, types)} clone(
     values:
@@ -258,7 +259,7 @@ export async function* generateCloner(
     const fieldName = await getFieldName(property.uri);
     const trustFieldName = await getFieldName(property.uri, "#_trust");
     const allScalarTypes = areAllScalarTypes(property.range, types);
-    yield `clone.${fieldName} = this.${fieldName};`;
+    yield `clone.${fieldName} = this.${fieldName}.slice();`;
     if (!allScalarTypes) {
       yield `clone.${trustFieldName} = new Set(this.${trustFieldName});`;
     }
@@ -322,7 +323,7 @@ export async function* generateCloner(
           if (Array.isArray(values.${property.pluralName}) &&
               values.${property.pluralName}.every(v => ${typeGuards})) {
             // @ts-ignore: type is checked above.
-            clone.${fieldName} = values.${property.pluralName};
+            clone.${fieldName} = values.${property.pluralName}.slice();
       `;
       if (!allScalarTypes) {
         yield `

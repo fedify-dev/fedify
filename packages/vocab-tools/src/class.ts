@@ -58,6 +58,7 @@ const RUNTIME_IMPORTS = [
   "isDecimal",
   "isGatewayUrl",
   "LanguageString",
+  "normalizeLanguageTag",
   "parseDecimal",
   "parseGatewayUrl",
   "parseIri",
@@ -325,7 +326,7 @@ function inspectIri(iri: URL): string {
   yield `
 function isValidLanguageTag(language: string): boolean {
   try {
-    new Intl.Locale(language);
+    new Intl.Locale(normalizeLanguageTag(language));
     return true;
   } catch (error) {
     if (error instanceof RangeError) return false;

@@ -17,6 +17,7 @@ import {
   resolveDocumentLoaderTimeout,
   withDocumentLoaderTimeout,
 } from "./docloader.ts";
+import jsonld from "./jsonld.ts";
 import { FetchError } from "./request.ts";
 import { UrlError } from "./url.ts";
 
@@ -477,6 +478,30 @@ test("getDocumentLoader()", async (t) => {
     }
   });
 
+  await t.step("preloaded Mastodon attribution domains", async () => {
+    const context = [
+      "https://www.w3.org/ns/activitystreams",
+      "http://joinmastodon.org/ns",
+    ];
+    const expanded = await jsonld.expand({
+      "@context": context,
+      id: "https://social.example/users/alice",
+      type: "Person",
+      attributionDomains: ["blog.example"],
+    }, { documentLoader: fetchDocumentLoader });
+    deepStrictEqual(expanded, [{
+      "@id": "https://social.example/users/alice",
+      "@type": ["https://www.w3.org/ns/activitystreams#Person"],
+      "http://joinmastodon.org/ns#attributionDomains": [
+        { "@value": "blog.example" },
+      ],
+    }]);
+    const compacted = await jsonld.compact(expanded, context, {
+      documentLoader: fetchDocumentLoader,
+    });
+    deepStrictEqual(compacted.attributionDomains, ["blog.example"]);
+  });
+
   // Controlled Identifiers v1.0 requires JSON-LD processors to treat this
   // context URL as already resolved.  A temporary W3C outage must not prevent
   // an otherwise valid document from being processed.
@@ -552,6 +577,129 @@ test("getDocumentLoader()", async (t) => {
       },
     });
     deepStrictEqual(fetchMock.callHistory.calls(url).length, 0);
+  });
+
+  // A Codeberg Pages outage must not prevent loading or expanding FEP-6757.
+  // See: https://github.com/fedify-dev/fedify/issues/1211
+  fetchMock.get("https://w3id.org/fep/6757", { status: 502 });
+  await t.step("preloaded FEP-6757 context", async () => {
+    const url = "https://w3id.org/fep/6757";
+    deepStrictEqual(await fetchDocumentLoader(url), {
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": {
+          license: {
+            "@id": "http://purl.org/dc/terms/license",
+            "@type": "@id",
+          },
+          preferredLicense: {
+            "@id": "https://w3id.org/fep/6757#preferredLicense",
+            "@type": "@id",
+          },
+        },
+      },
+    });
+    deepStrictEqual(
+      await jsonld.expand({
+        "@context": ["https://www.w3.org/ns/activitystreams", url],
+        type: "Person",
+        license: "https://creativecommons.org/licenses/by/4.0/",
+        preferredLicense: "https://creativecommons.org/licenses/by-nc/4.0/",
+      }, { documentLoader: fetchDocumentLoader }),
+      [{
+        "@type": ["https://www.w3.org/ns/activitystreams#Person"],
+        "http://purl.org/dc/terms/license": [{
+          "@id": "https://creativecommons.org/licenses/by/4.0/",
+        }],
+        "https://w3id.org/fep/6757#preferredLicense": [{
+          "@id": "https://creativecommons.org/licenses/by-nc/4.0/",
+        }],
+      }],
+    );
+    deepStrictEqual(fetchMock.callHistory.calls(url).length, 0);
+  });
+
+  // A Codeberg Pages outage must not prevent expanding translation metadata.
+  // See: https://github.com/fedify-dev/fedify/issues/1214
+  fetchMock.get("https://w3id.org/fep/22cd", { status: 502 });
+  await t.step("preloaded FEP-22cd context", async () => {
+    const url = "https://w3id.org/fep/22cd";
+    const articleId = "https://example.com/articles/1";
+    const translatorId = "https://example.com/users/alice";
+    const revisionId = "https://example.com/articles/1/revisions/1";
+    deepStrictEqual(await fetchDocumentLoader(url), {
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": {
+          "fep-22cd": "https://w3id.org/fep/22cd#",
+          schema: "https://schema.org/",
+          xsd: "http://www.w3.org/2001/XMLSchema#",
+          translations: {
+            "@id": "fep-22cd:translations",
+            "@container": "@set",
+          },
+          Translation: "fep-22cd:Translation",
+          sourceUpdated: {
+            "@id": "fep-22cd:sourceUpdated",
+            "@type": "xsd:dateTime",
+          },
+          translator: {
+            "@id": "schema:translator",
+            "@type": "@id",
+            "@container": "@set",
+          },
+          inLanguage: "schema:inLanguage",
+          translationOfWork: {
+            "@id": "schema:translationOfWork",
+            "@type": "@id",
+          },
+          isBasedOn: { "@id": "schema:isBasedOn", "@type": "@id" },
+        },
+      },
+    });
+    deepStrictEqual(
+      await jsonld.expand({
+        "@context": ["https://www.w3.org/ns/activitystreams", url],
+        id: articleId,
+        type: "Article",
+        contentMap: { en: "Original", ko: "Translation" },
+        translations: [{
+          type: "Translation",
+          inLanguage: "ko",
+          translator: [translatorId],
+          translationOfWork: articleId,
+          sourceUpdated: "2026-09-01T00:00:00Z",
+          isBasedOn: revisionId,
+        }],
+      }, { documentLoader: fetchDocumentLoader }),
+      [{
+        "@id": articleId,
+        "@type": ["https://www.w3.org/ns/activitystreams#Article"],
+        "https://www.w3.org/ns/activitystreams#content": [
+          { "@language": "en", "@value": "Original" },
+          { "@language": "ko", "@value": "Translation" },
+        ],
+        "https://w3id.org/fep/22cd#translations": [{
+          "@type": ["https://w3id.org/fep/22cd#Translation"],
+          "https://schema.org/inLanguage": [{ "@value": "ko" }],
+          "https://schema.org/translator": [{ "@id": translatorId }],
+          "https://schema.org/translationOfWork": [{ "@id": articleId }],
+          "https://w3id.org/fep/22cd#sourceUpdated": [{
+            "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+            "@value": "2026-09-01T00:00:00Z",
+          }],
+          "https://schema.org/isBasedOn": [{ "@id": revisionId }],
+        }],
+      }],
+    );
+    deepStrictEqual(fetchMock.callHistory.calls(url).length, 0);
+    deepStrictEqual(
+      fetchMock.callHistory.calls("https://www.w3.org/ns/activitystreams")
+        .length,
+      0,
+    );
   });
 
   await t.step("deny non-HTTP/HTTPS", async () => {

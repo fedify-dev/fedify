@@ -288,6 +288,15 @@ For these cases, you can register
 `RequestContext`, the parsed activity, and a reason object whose `type` is one
 of `"noSignature"`, `"invalidSignature"`, or `"keyFetchError"`.
 
+For a `"keyFetchError"` without an HTTP response, `reason.result.error`
+contains the failure.  The built-in key cache preserves `FetchError` and
+`UrlError` instances, including `FetchError.url` and `UrlError.reason`, so a
+cached failure can still be classified without parsing its message.  It also
+preserves the immediate cause's name and message, restoring a `DOMException`
+cause as a `DOMException`.  Entries written by older Fedify versions and
+unknown error classes remain generic `Error` instances with their original
+name and message.
+
 If the callback returns a `Response`, Fedify uses it as-is.  If it returns
 nothing (`void`), Fedify falls back to the default `401 Unauthorized`
 response.

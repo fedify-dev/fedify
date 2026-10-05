@@ -47,6 +47,7 @@ export {
   verifyHashlink,
 } from "./digest.ts";
 export { LanguageString } from "./langstr.ts";
+export { normalizeLanguageTag } from "./langtag.ts";
 export {
   fetchPortableMedia,
   type FetchPortableMediaOptions,
