@@ -17,6 +17,7 @@ import {
   notDeepStrictEqual,
   ok,
   rejects,
+  strictEqual,
   throws,
 } from "node:assert/strict";
 import { assertInstanceOf } from "./utils.ts";
@@ -402,6 +403,77 @@ test("Note.fromJsonLd() ignores malformed language tags in nested objects", asyn
   const jsonLd = await note.toJsonLd() as Record<string, unknown>;
   const attachment = jsonLd.attachment as Record<string, unknown>;
   deepStrictEqual(attachment.nameMap, { en: "Valid" });
+});
+
+test("Note.fromJsonLd() normalizes extlang language tags", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    content: "<p>早晨</p>",
+    contentMap: {
+      "zh-YUE": "<p>早晨</p>",
+      "yue": "<p>早晨呀</p>",
+    },
+  };
+  const note = await Note.fromJsonLd(json);
+  // JSON-LD expansion sorts language map keys, so yue comes before zh-yue:
+  deepStrictEqual(note.contents, [
+    "<p>早晨</p>",
+    new LanguageString("<p>早晨呀</p>", "yue"),
+    new LanguageString("<p>早晨</p>", "yue"),
+  ]);
+  deepStrictEqual(
+    note.contents.map((c) => typeof c === "string" ? null : c.locale.baseName),
+    [null, "yue", "yue"],
+  );
+
+  // The unmodified object is serialized from the cached original document:
+  deepStrictEqual(await note.toJsonLd(), json);
+  const compact = await note.toJsonLd({ format: "compact" }) as Record<
+    string,
+    unknown
+  >;
+  deepStrictEqual(compact.contentMap, {
+    yue: ["<p>早晨呀</p>", "<p>早晨</p>"],
+  });
+  const expanded = await note.toJsonLd({ format: "expand" });
+  deepStrictEqual(
+    (expanded as Record<string, unknown>[])[0][
+      "https://www.w3.org/ns/activitystreams#content"
+    ],
+    [
+      { "@value": "<p>早晨</p>" },
+      { "@value": "<p>早晨呀</p>", "@language": "yue" },
+      { "@value": "<p>早晨</p>", "@language": "yue" },
+    ],
+  );
+
+  const expandedNote = await Note.fromJsonLd({
+    "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+    "https://www.w3.org/ns/activitystreams#name": [
+      { "@value": "早晨", "@language": "zh-yue-HK" },
+    ],
+  });
+  deepStrictEqual(expandedNote.names, [new LanguageString("早晨", "yue-HK")]);
+  deepStrictEqual(
+    (expandedNote.names[0] as LanguageString).locale.baseName,
+    "yue-HK",
+  );
+});
+
+test("Note.fromJsonLd() caches original language tags", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    contentMap: { "EN-us": "Hello" },
+  };
+  const note = await Note.fromJsonLd(json);
+  deepStrictEqual(note.contents, [new LanguageString("Hello", "en-US")]);
+  deepStrictEqual(
+    (note.contents[0] as LanguageString).locale.baseName,
+    "en-US",
+  );
+  deepStrictEqual(await note.toJsonLd(), json);
 });
 
 test("Note.toJsonLd()", async () => {
@@ -2008,6 +2080,29 @@ test("Link.fromJsonLd()", async () => {
   );
 });
 
+test("Link.fromJsonLd() normalizes extlang hreflang", async () => {
+  const link = await Link.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Link",
+    href: "https://example.com/yue",
+    hreflang: "zh-YUE",
+  });
+  deepStrictEqual(link.language?.baseName, "yue");
+  const compact = await link.toJsonLd({ format: "compact" }) as Record<
+    string,
+    unknown
+  >;
+  deepStrictEqual(compact.hreflang, "yue");
+
+  await rejects(() =>
+    Link.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Link",
+      href: "https://example.com/en",
+      hreflang: "en-USA",
+    }), RangeError);
+});
+
 test("Person.fromJsonLd() with relative URLs", async () => {
   const json = {
     "@context": [
@@ -2591,6 +2686,216 @@ test("FEP-fe34: Trust tracking in object cloning", () => {
     clonedCreate.objectId,
     new URL("https://example.com/new-note"),
   );
+});
+
+for (const property of ["object", "attachment"] as const) {
+  for (const fetchOriginal of [false, true]) {
+    test(
+      `clone() isolates ${property} dereferencing (${
+        fetchOriginal ? "original" : "clone"
+      } first)`,
+      async () => {
+        const embedded = {
+          id: "https://b.example/notes/1",
+          type: "Note",
+          content: "embedded",
+        };
+        const json = {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "https://a.example/activities/1",
+          type: "Create",
+          [property]: embedded,
+        };
+        const original = await Create.fromJsonLd(json, {
+          contextLoader: mockDocumentLoader,
+        });
+        const copy = original.clone();
+        const fetching = fetchOriginal ? original : copy;
+        const untouched = fetchOriginal ? copy : original;
+        let fetches = 0;
+        // deno-lint-ignore require-await
+        const documentLoader = async (url: string) => {
+          fetches++;
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              ...embedded,
+              content: "fetched",
+            },
+          };
+        };
+        const options = { documentLoader, contextLoader: mockDocumentLoader };
+        const fetched = property === "object"
+          ? await fetching.getObject(options)
+          : (await Array.fromAsync(fetching.getAttachments(options)))[0];
+        assertInstanceOf(fetched, Note);
+        deepStrictEqual(fetched.content, "fetched");
+
+        // Inspect the other instance before it fetches anything itself.
+        const trusted = { crossOrigin: "trust" as const };
+        const preserved = property === "object"
+          ? await untouched.getObject(trusted)
+          : (await Array.fromAsync(untouched.getAttachments(trusted)))[0];
+        assertInstanceOf(preserved, Note);
+        deepStrictEqual(preserved.content, "embedded");
+        const serialized = await original.toJsonLd() as Record<string, unknown>;
+        deepStrictEqual(
+          serialized[property],
+          fetchOriginal ? { ...embedded, content: "fetched" } : embedded,
+        );
+        const accept = new Accept({ object: untouched });
+        const acceptJson = await accept.toJsonLd() as {
+          object: Record<string, unknown>;
+        };
+        const nested = acceptJson.object;
+        deepStrictEqual(nested[property], embedded);
+
+        // Successful lookups and their trust metadata belong to each instance.
+        const cached = property === "object"
+          ? await fetching.getObject(options)
+          : (await Array.fromAsync(fetching.getAttachments(options)))[0];
+        strictEqual(cached, fetched);
+        deepStrictEqual(fetches, 1);
+        const independentlyFetched = property === "object"
+          ? await untouched.getObject(options)
+          : (await Array.fromAsync(untouched.getAttachments(options)))[0];
+        assertInstanceOf(independentlyFetched, Note);
+        deepStrictEqual(independentlyFetched.content, "fetched");
+        deepStrictEqual(fetches, 2);
+        const warmedClone = fetching.clone();
+        strictEqual(
+          property === "object"
+            ? await warmedClone.getObject(options)
+            : (await Array.fromAsync(warmedClone.getAttachments(options)))[0],
+          fetched,
+        );
+        deepStrictEqual(fetches, 2);
+      },
+    );
+  }
+}
+
+for (const clone of [false, true]) {
+  for (const frozen of [false, true]) {
+    test(
+      `${clone ? "clone()" : "constructor"} copies ${
+        frozen ? "frozen" : "mutable"
+      } plural arrays`,
+      async () => {
+        const items = [
+          new URL("https://example.com/object"),
+          new URL("https://example.com/object"),
+        ];
+        const before = items.slice();
+        if (frozen) globalThis.Object.freeze(items);
+        const base = new Collection({});
+        const collection = clone
+          ? base.clone({ items })
+          : new Collection({ items });
+        const sibling = clone
+          ? base.clone({ items })
+          : new Collection({ items });
+        const fetched = await Array.fromAsync(collection.getItems({
+          documentLoader: mockDocumentLoader,
+          contextLoader: mockDocumentLoader,
+        }));
+        deepStrictEqual(fetched.length, 2);
+        deepStrictEqual(fetched.map((item) => item.name), [
+          "Fetched object",
+          "Fetched object",
+        ]);
+        deepStrictEqual(items, before);
+        strictEqual(items[0], before[0]);
+        strictEqual(items[1], before[1]);
+        const siblingJson = await sibling.toJsonLd() as { items: unknown };
+        deepStrictEqual(siblingJson.items, before.map(String));
+        if (!frozen) {
+          items.push(new URL("https://example.com/extra"));
+          deepStrictEqual(collection.itemIds, before);
+          deepStrictEqual(sibling.itemIds, before);
+        }
+      },
+    );
+  }
+}
+
+test("clone() copies scalar arrays without changing sparse inputs", () => {
+  const names = ["original"];
+  const original = new Object({ names });
+  names.push("caller mutation");
+  deepStrictEqual(original.names, ["original"]);
+  const copy = original.clone();
+  copy.names.push("clone mutation");
+  deepStrictEqual(original.names, ["original"]);
+  deepStrictEqual(copy.names, ["original", "clone mutation"]);
+  const replacements = ["replacement"];
+  const replaced = original.clone({ names: replacements });
+  replacements.push("caller mutation");
+  deepStrictEqual(replaced.names, ["replacement"]);
+
+  const sparseNames = new Array<string>(2);
+  sparseNames[1] = "kept";
+  const sparse = new Object({ names: sparseNames });
+  for (
+    const instance of [
+      sparse,
+      sparse.clone(),
+      sparse.clone({ names: sparse.names }),
+    ]
+  ) {
+    deepStrictEqual(instance.names.length, 2);
+    deepStrictEqual(0 in instance.names, false);
+    deepStrictEqual(instance.names[1], "kept");
+  }
+});
+
+test("clone() preserves embedded object identity and trust", async () => {
+  const note = new Note({ id: new URL("https://b.example/note") });
+  const original = new Create({
+    id: new URL("https://a.example/create"),
+    object: note,
+  });
+  // deno-lint-ignore require-await
+  const documentLoader = async () => {
+    throw new Error("Trusted embedded objects must not be fetched.");
+  };
+  for (
+    const instance of [
+      original,
+      original.clone(),
+      original.clone({ objects: [note] }),
+    ]
+  ) {
+    strictEqual(await instance.getObject({ documentLoader }), note);
+    strictEqual(instance.objectId, note.id);
+  }
+});
+
+test("clone() isolates crossOrigin trust when fetching", async () => {
+  const original = new Create({
+    id: new URL("https://a.example/create"),
+    object: new URL("https://b.example/note"),
+  });
+  const copy = original.clone();
+  // deno-lint-ignore require-await
+  const documentLoader = async (url: string) => ({
+    contextUrl: null,
+    documentUrl: url,
+    document: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://other.example/note",
+      type: "Note",
+      content: "cross-origin",
+    },
+  });
+  const options = { documentLoader, contextLoader: mockDocumentLoader };
+  const trusted = await copy.getObject({ ...options, crossOrigin: "trust" });
+  assertInstanceOf(trusted, Note);
+  deepStrictEqual(trusted.content, "cross-origin");
+  deepStrictEqual(await original.getObject(options), null);
+  deepStrictEqual(original.objectId, new URL("https://b.example/note"));
 });
 
 test("FEP-fe34: crossOrigin ignore behavior (default)", async () => {

@@ -1,5 +1,9 @@
 import { CryptographicKey, Multikey } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import {
+  type DocumentLoader,
+  FetchError,
+  UrlError,
+} from "@fedify/vocab-runtime";
 import type { FetchKeyErrorResult, KeyCache } from "../sig/key.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 
@@ -112,8 +116,51 @@ export class KvKeyCache implements KeyCache {
       "errorName" in cached && typeof cached.errorName === "string" &&
       "errorMessage" in cached && typeof cached.errorMessage === "string"
     ) {
-      const error = new Error(cached.errorMessage);
+      let error: Error;
+      if (
+        "errorType" in cached && cached.errorType === "FetchError" &&
+        "errorUrl" in cached && typeof cached.errorUrl === "string" &&
+        URL.canParse(cached.errorUrl)
+      ) {
+        error = new FetchError(cached.errorUrl);
+        // FetchError prefixes its constructor message with the URL.  The
+        // stored message already includes it, so restore it verbatim.
+        error.message = cached.errorMessage;
+      } else if (
+        "errorType" in cached && cached.errorType === "UrlError" &&
+        "errorReason" in cached &&
+        (cached.errorReason === "dns" || cached.errorReason === "disallowed")
+      ) {
+        error = new UrlError(cached.errorMessage, {
+          reason: cached.errorReason,
+        });
+      } else {
+        // Older entries and unknown error classes keep their generic shape.
+        error = new Error(cached.errorMessage);
+      }
       error.name = cached.errorName;
+      if (
+        "errorCause" in cached && cached.errorCause != null &&
+        typeof cached.errorCause === "object" &&
+        "name" in cached.errorCause &&
+        typeof cached.errorCause.name === "string" &&
+        "message" in cached.errorCause &&
+        typeof cached.errorCause.message === "string"
+      ) {
+        if (
+          "isDomException" in cached.errorCause &&
+          cached.errorCause.isDomException === true
+        ) {
+          error.cause = new DOMException(
+            cached.errorCause.message,
+            cached.errorCause.name,
+          );
+        } else {
+          error.cause = Object.assign(new Error(cached.errorCause.message), {
+            name: cached.errorCause.name,
+          });
+        }
+      }
       return { error };
     }
     return undefined;
@@ -140,11 +187,26 @@ export class KvKeyCache implements KeyCache {
       );
       return;
     }
+    const cause = error.error.cause;
     await this.kv.set(
       this.#getFetchErrorKey(keyId),
       {
         errorName: error.error.name,
         errorMessage: error.error.message,
+        ...(error.error instanceof FetchError
+          ? { errorType: "FetchError", errorUrl: error.error.url.href }
+          : error.error instanceof UrlError
+          ? { errorType: "UrlError", errorReason: error.error.reason }
+          : {}),
+        ...(cause instanceof Error || cause instanceof DOMException
+          ? {
+            errorCause: {
+              name: cause.name,
+              message: cause.message,
+              isDomException: cause instanceof DOMException,
+            },
+          }
+          : {}),
       },
       { ttl: this.unavailableKeyTtl },
     );

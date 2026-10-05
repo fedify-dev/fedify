@@ -7,7 +7,9 @@ import activitystreams from "./contexts/activitystreams.json" with {
 };
 import cidV1Context from "./contexts/cid-v1.json" with { type: "json" };
 import didV1 from "./contexts/did-v1.json" with { type: "json" };
+import fep22cd from "./contexts/fep-22cd.json" with { type: "json" };
 import fep5711 from "./contexts/fep-5711.json" with { type: "json" };
+import fep6757 from "./contexts/fep-6757.json" with { type: "json" };
 import fep7aa9 from "./contexts/fep-7aa9.json" with { type: "json" };
 import fepEf61 from "./contexts/fep-ef61.json" with { type: "json" };
 import gotosocial from "./contexts/gotosocial.json" with { type: "json" };
@@ -63,6 +65,20 @@ const preloadedContexts: Record<string, unknown> = {
   // See: https://w3id.org/fep/7aa9
   //      https://github.com/fedify-dev/fedify/issues/1078
   "https://w3id.org/fep/7aa9": fep7aa9,
+
+  // The FEP-6757 context is hosted on Codeberg Pages, whose outages can
+  // prevent documents with license metadata from being parsed.  Resolve it
+  // locally so parsing does not depend on the remote context server.
+  // See: https://w3id.org/fep/6757
+  //      https://github.com/fedify-dev/fedify/issues/1211
+  "https://w3id.org/fep/6757": fep6757,
+
+  // Resolve translation metadata locally even on versions without Translation.
+  // Copied verbatim from the upstream context at the pinned revision below.
+  // See: https://w3id.org/fep/22cd
+  //      https://github.com/fedify-dev/fedify/issues/1214
+  // Source: https://codeberg.org/fediverse/fep/src/commit/7526048b018ccc0a7d05597a8f1eb33518373066/fep/22cd/fep-22cd.jsonld
+  "https://w3id.org/fep/22cd": fep22cd,
 
   // Lemmy's context document is served as application/json without the JSON-LD
   // context Link header.  The default document loader treats that as a regular
