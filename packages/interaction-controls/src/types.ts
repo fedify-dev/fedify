@@ -5,6 +5,7 @@ import type {
   Accept,
   Activity,
   Delete,
+  InteractionRule,
   Object as ASObject,
   Reject,
 } from "@fedify/vocab";
@@ -29,6 +30,7 @@ export interface InteractionControl<
   TInteracting extends ASObject,
   TTarget extends ASObject,
   TImpoliteSource extends ASObject,
+  TRequestValidationOptions extends object = Record<never, never>,
 > {
   readonly name: InteractionName;
   readonly policyProperty: InteractionPolicyProperty;
@@ -36,7 +38,9 @@ export interface InteractionControl<
   readonly authorizationTypeId: URL;
   readonly verifyRequest: <TContextData>(
     context: Context<TContextData>,
-    options: InteractionRequestVerificationOptions<TRequest>,
+    options:
+      & InteractionRequestVerificationOptions<TRequest>
+      & TRequestValidationOptions,
   ) => Promise<
     InteractionRequestVerification<
       TRequest,
@@ -99,6 +103,85 @@ export interface InteractionRequestVerificationOptions<
 > {
   readonly request: TRequest | URL;
   readonly documentLoader?: DocumentLoader;
+
+  /**
+   * The document loader for remote JSON-LD contexts.  Defaults to the
+   * document loader used for objects.
+   * @since 2.5.0
+   */
+  readonly contextLoader?: DocumentLoader;
+
+  /**
+   * The already resolved interaction target, used instead of dereferencing
+   * the request's `object`.  It is used only when the request references its
+   * `object` by ID; otherwise the request fails as it would without this
+   * option.  When it is used, the request itself is left untouched.
+   *
+   * The value is trusted as the resolution of the request's `object`: its ID
+   * does not have to match the reference (e.g., a share wrapper resolved to
+   * the shared post), and no origin or provenance checks are applied to it.
+   * The caller is responsible for those checks.  The target type and target
+   * binding checks still apply.
+   * @since 2.5.0
+   */
+  readonly resolvedInteractionTarget?: ASObject;
+
+  /**
+   * The already resolved interacting object, used instead of dereferencing
+   * the request's `instrument`.  It is used only when the request references
+   * its `instrument` by ID; otherwise the request fails as it would without
+   * this option.  When it is used, the request itself is left untouched.
+   *
+   * The value is trusted as the resolution of the request's `instrument`: its
+   * ID does not have to match the reference (e.g., after a redirect), and no
+   * origin or provenance checks are applied to it.  The caller is responsible
+   * for those checks, such as checking that the instrument comes from the
+   * requester's origin; a matching attribution alone does not authenticate
+   * it.  The instrument type, requester, and target binding checks still
+   * apply.
+   * @since 2.5.0
+   */
+  readonly resolvedInteractingObject?: ASObject;
+}
+
+/**
+ * Options for relaxing how {@link quoteInteraction} validates a quote request.
+ * The defaults apply the strictest checks.
+ * @since 2.5.0
+ */
+export interface QuoteRequestValidationOptions {
+  /**
+   * How the quote post's FEP-044f `quote` and compatible `quoteUrl`
+   * references are checked against the requested target:
+   *
+   *  -  `"strict"` (default): if both are present they must agree, and the
+   *     reference must equal the target.
+   *  -  `"preferQuote"`: `quote` must equal the target if present, otherwise
+   *     `quoteUrl` must; a conflicting `quoteUrl` is ignored.
+   *  -  `"any"`: either `quote` or `quoteUrl` equal to the target suffices,
+   *     even when the two disagree.
+   */
+  readonly quoteReference?: "strict" | "preferQuote" | "any";
+
+  /**
+   * Which `attributedTo` entries of the quote post may match the requester:
+   *
+   *  -  `"first"` (default): the first attribution must be the requester.
+   *  -  `"any"`: any attribution may be the requester.
+   */
+  readonly attribution?: "first" | "any";
+
+  /**
+   * What to do when the quote post has no attribution IRI, i.e., it has no
+   * `attributedTo` at all or only attributions embedded without an `id`:
+   *
+   *  -  `"reject"` (default): fail with `requesterMismatch`.
+   *  -  `"requester"`: treat the quote post as attributed to the requester.
+   *
+   * A present attribution IRI that does not match the requester always
+   * fails.
+   */
+  readonly missingAttribution?: "reject" | "requester";
 }
 
 export type InteractionRequestVerification<
@@ -129,16 +212,33 @@ export type InteractionRequestVerificationFailure =
     readonly type: "notDereferenceable";
     readonly url: URL;
     readonly cause?: unknown;
+    /**
+     * Whether the failure is likely transient, so that verifying again later
+     * could succeed.  Always set by the built-in helpers.
+     * @since 2.5.0
+     */
+    readonly transient?: boolean;
   }
   | {
     readonly category: "unverifiable";
     readonly type: "unauthorizedFetchRequired";
     readonly url: URL;
+    /**
+     * Whether the failure is likely transient.
+     * @since 2.5.0
+     */
+    readonly transient?: boolean;
   }
   | {
     readonly category: "unverifiable";
     readonly type: "invalidJsonLd";
     readonly cause?: unknown;
+    /**
+     * Whether the failure is likely transient.  Always `false` when set by
+     * the built-in helpers.
+     * @since 2.5.0
+     */
+    readonly transient?: boolean;
   }
   | {
     readonly category: "invalid";
@@ -189,6 +289,45 @@ export interface InteractionPolicyEvaluationOptions<
   readonly requester: URL;
   readonly documentLoader?: DocumentLoader;
   readonly matchesApprovalCollection?: MatchesApprovalCollection<TContextData>;
+
+  /**
+   * The rule to evaluate when the subject has no interaction policy, no rule
+   * for this interaction, or a rule without any approval entries.  Without
+   * it, such subjects get the interaction's default decision.
+   * @since 2.5.0
+   */
+  readonly fallbackRule?: InteractionRule;
+
+  /**
+   * The order in which approval entries are matched:
+   *
+   *  -  `"actor"` (default): actors listed explicitly in either
+   *     `automaticApproval` or `manualApproval` first, then the public
+   *     collection and other collections, automatic before manual.  An actor
+   *     listed in `manualApproval` thus gets a manual decision even when
+   *     `automaticApproval` contains the public collection.
+   *  -  `"automatic"`: every `automaticApproval` entry first, then every
+   *     `manualApproval` entry.  If an `automaticApproval` collection cannot
+   *     be checked and no other automatic entry matches, the decision is
+   *     `denied` with an `unverifiableCollection` reason rather than a manual
+   *     decision, since the collection could have granted automatic
+   *     approval.
+   * @since 2.5.0
+   */
+  readonly precedence?: "actor" | "automatic";
+
+  /**
+   * What to do when {@link matchesApprovalCollection} throws:
+   *
+   *  -  `"deny"` (default): skip the collection; if nothing else decides,
+   *     the decision is `denied` with an `unverifiableCollection` reason
+   *     carrying the error as its `cause`.
+   *  -  `"throw"`: rethrow the first error immediately, without calling the
+   *     callback for later collections, so that the caller can retry later
+   *     instead of rejecting the interaction.
+   * @since 2.5.0
+   */
+  readonly collectionErrors?: "deny" | "throw";
 }
 
 export type MatchesApprovalCollection<TContextData> = (
@@ -222,7 +361,15 @@ export type InteractionPolicyDenialReason =
   | { readonly type: "missingPolicy" }
   | { readonly type: "missingRule" }
   | { readonly type: "noMatch" }
-  | { readonly type: "unverifiableCollection"; readonly collection: URL };
+  | {
+    readonly type: "unverifiableCollection";
+    readonly collection: URL;
+    /**
+     * The error thrown while checking the collection.
+     * @since 2.5.0
+     */
+    readonly cause?: unknown;
+  };
 
 export interface InteractionRequestCreationOptions<
   TInteracting extends ASObject,
@@ -257,6 +404,37 @@ export interface InteractionAuthorizationVerificationOptions<
   readonly interactionTarget: TTarget | URL;
   readonly attributedTo?: URL;
   readonly documentLoader?: DocumentLoader;
+
+  /**
+   * The document loader for remote JSON-LD contexts.  Defaults to the
+   * document loader used for objects.
+   * @since 2.5.0
+   */
+  readonly contextLoader?: DocumentLoader;
+
+  /**
+   * The expected ID of the authorization.  When the authorization is given
+   * as an object, its ID must equal this, or verification fails with
+   * `idMismatch`.  When it is given as a URL, the URL must equal this.
+   *
+   * This only checks the identity of the authorization; it does not
+   * establish its authenticity.  An authorization given as an object still
+   * needs {@link verifyAuthenticity}.
+   * @since 2.5.0
+   */
+  readonly authorizationId?: URL;
+
+  /**
+   * Whether to accept an authorization whose ID is on a different origin
+   * than its attributed actor, if {@link verifyAuthenticity} approves it.
+   * This is for authorizations whose authenticity is established by other
+   * means, such as a signed `Accept` from the attributed actor or a locally
+   * stored grant.  Without {@link verifyAuthenticity}, such authorizations
+   * still fail with `originMismatch`.  All other checks still apply.
+   * Defaults to `false`.
+   * @since 2.5.0
+   */
+  readonly allowOffOrigin?: boolean;
   readonly getRevocation?: GetInteractionAuthorizationRevocation<TContextData>;
   readonly verifyAuthenticity?: (
     authorization: TAuthorization,
@@ -285,16 +463,33 @@ export type InteractionAuthorizationVerificationFailure =
     readonly type: "notDereferenceable";
     readonly url: URL;
     readonly cause?: unknown;
+    /**
+     * Whether the failure is likely transient, so that verifying again later
+     * could succeed.  Always set by the built-in helpers.
+     * @since 2.5.0
+     */
+    readonly transient?: boolean;
   }
   | {
     readonly category: "unverifiable";
     readonly type: "unauthorizedFetchRequired";
     readonly url: URL;
+    /**
+     * Whether the failure is likely transient.
+     * @since 2.5.0
+     */
+    readonly transient?: boolean;
   }
   | {
     readonly category: "unverifiable";
     readonly type: "invalidJsonLd";
     readonly cause?: unknown;
+    /**
+     * Whether the failure is likely transient.  Always `false` when set by
+     * the built-in helpers.
+     * @since 2.5.0
+     */
+    readonly transient?: boolean;
   }
   | {
     readonly category: "unauthorized";
@@ -364,21 +559,21 @@ export type InteractionAcceptOptions<
 > =
   | {
     readonly mode: "polite";
-    readonly id: URL;
+    readonly id?: URL;
     readonly actor: URL;
     readonly request: TRequest | URL;
     readonly authorization: TAuthorization | URL;
-    readonly to: URL | readonly URL[];
+    readonly to?: URL | readonly URL[];
     readonly cc?: URL | readonly URL[];
   }
   | {
     readonly mode: "impolite";
-    readonly id: URL;
+    readonly id?: URL;
     readonly actor: URL;
     readonly interactingObject: TInteracting | URL;
     readonly interactionTarget: TTarget | URL;
     readonly authorization: TAuthorization | URL;
-    readonly to: URL | readonly URL[];
+    readonly to?: URL | readonly URL[];
     readonly cc?: URL | readonly URL[];
   };
 
@@ -389,30 +584,40 @@ export type InteractionRejectOptions<
 > =
   | {
     readonly mode: "polite";
-    readonly id: URL;
+    readonly id?: URL;
     readonly actor: URL;
     readonly request: TRequest | URL;
-    readonly to: URL | readonly URL[];
+    readonly to?: URL | readonly URL[];
     readonly cc?: URL | readonly URL[];
   }
   | {
     readonly mode: "impolite";
-    readonly id: URL;
+    readonly id?: URL;
     readonly actor: URL;
     readonly interactingObject: TInteracting | URL;
     readonly interactionTarget: TTarget | URL;
-    readonly to: URL | readonly URL[];
+    readonly to?: URL | readonly URL[];
     readonly cc?: URL | readonly URL[];
   };
 
 export interface InteractionRevocationCreationOptions<
   TAuthorization extends ASObject,
 > {
-  readonly id: URL;
+  readonly id?: URL;
   readonly actor: URL;
   readonly authorization: TAuthorization | URL;
-  readonly to: URL | readonly URL[];
+  readonly to?: URL | readonly URL[];
   readonly cc?: URL | readonly URL[];
+
+  /**
+   * Whether to embed the authorization in the `Delete` activity instead of
+   * referring to it by its ID.  Applies only when the authorization is given
+   * as an object.  The embedded copy contains only the authorization's ID,
+   * attribution, and the IDs of its interacting object and interaction
+   * target, so that the revocation does not leak them.  Defaults to `false`.
+   * @since 2.5.0
+   */
+  readonly embedAuthorization?: boolean;
 }
 
 export interface RecognizedImpoliteInteraction<
