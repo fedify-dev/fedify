@@ -9,6 +9,7 @@ import test from "node:test";
 import { serve } from "srvx";
 import { getContextLoader, getDocumentLoader } from "../../docloader.ts";
 import { buildFleet } from "../actor/fleet.ts";
+import type { Clock } from "../load/clock.ts";
 import { normalizeSuite } from "../scenario/normalize.ts";
 import type { Suite } from "../scenario/types.ts";
 import { spawnSyntheticServer } from "../server/synthetic.ts";
@@ -60,16 +61,17 @@ async function spawnBenchmarkTarget(usernames: string[] = ["alice"]) {
       received++;
     });
 
-  // Record every inbox path that was POSTed to, so a test can confirm that
-  // deliveries were spread across multiple recipients' personal inboxes.
-  const inboxHits = new Set<string>();
+  // Count POSTs per inbox path, so a test can confirm how deliveries were
+  // allocated across multiple recipients' personal inboxes.
+  const inboxHits = new Map<string, number>();
   const server = serve({
     port: 0,
     hostname: "127.0.0.1",
     silent: true,
     fetch: (request: Request) => {
       if (request.method === "POST") {
-        inboxHits.add(new URL(request.url).pathname);
+        const path = new URL(request.url).pathname;
+        inboxHits.set(path, (inboxHits.get(path) ?? 0) + 1);
       }
       return federation.fetch(request, { contextData: undefined });
     },
@@ -80,6 +82,19 @@ async function spawnBenchmarkTarget(usernames: string[] = ["alice"]) {
     receivedCount: () => received,
     inboxHits: () => inboxHits,
     close: () => server.close(true),
+  };
+}
+
+// A clock that jumps straight to each scheduled arrival, so open-loop runs
+// make a fixed number of attempts no matter how slow the deliveries are.
+function createFakeClock(): Clock {
+  let now = 0;
+  return {
+    now: () => now,
+    sleepUntil: (timeMs) => {
+      now = Math.max(now, timeMs);
+      return Promise.resolve();
+    },
   };
 }
 
@@ -142,57 +157,80 @@ test("inboxRunner - signed deliveries verify against a benchmarkMode target", as
   }
 });
 
-test("inboxRunner - reports server metrics scoped past the warm-up", async () => {
-  const target = await spawnBenchmarkTarget();
-  let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
-  try {
-    fleet = await spawnSyntheticServer(
-      await buildFleet([{
-        count: 1,
-        signatureStandards: ["draft-cavage-http-signatures-12"],
-      }]),
-    );
-    const suite: Suite = {
-      version: 1,
-      target: target.url.href,
-      scenarios: [{
-        name: "inbox-warmup",
-        type: "inbox",
-        recipient: new URL("/users/alice", target.url).href,
-        inbox: "shared",
-        load: { concurrency: 2 },
-        // A non-zero warm-up exercises the measured-window baseline snapshot.
-        warmup: "120ms",
-        duration: "400ms",
-      }],
-    };
-    const scenario = normalizeSuite(suite).scenarios[0];
-    const measurement = await inboxRunner.run({
-      scenario,
-      target: target.url,
-      documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
-      contextLoader: await getContextLoader({ allowPrivateAddress: true }),
-      allowPrivateAddress: true,
-      fleet,
-    });
-
-    assert.strictEqual(measurement.requests.successRate, 1);
-    // The measured window verified signatures, so server metrics survive the
-    // baseline diff rather than being cancelled out by warm-up traffic.
-    assert.ok(
-      measurement.server?.signatureVerificationMs != null,
-      "expected windowed server signature-verification metrics",
-    );
-  } finally {
+test(
+  "inboxRunner - reports server metrics scoped past the warm-up",
+  { timeout: 60_000 },
+  async () => {
+    const target = await spawnBenchmarkTarget();
+    let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
     try {
-      await fleet?.close();
-    } finally {
-      await target.close();
-    }
-  }
-});
+      fleet = await spawnSyntheticServer(
+        await buildFleet([{
+          count: 1,
+          signatureStandards: ["draft-cavage-http-signatures-12"],
+        }]),
+      );
+      const suite: Suite = {
+        version: 1,
+        target: target.url.href,
+        scenarios: [{
+          name: "inbox-warmup",
+          type: "inbox",
+          recipient: new URL("/users/alice", target.url).href,
+          inbox: "shared",
+          // 10/s over 400ms schedules exactly four arrivals: two inside the
+          // warm-up (0 and 100ms) and two measured (200 and 300ms), so the
+          // measured-window baseline snapshot is always taken.
+          load: { rate: 10, arrival: "constant", maxInFlight: 2 },
+          warmup: "120ms",
+          duration: "400ms",
+        }],
+      };
+      const scenario = normalizeSuite(suite).scenarios[0];
+      const measurement = await inboxRunner.run({
+        scenario,
+        target: target.url,
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet,
+        clock: createFakeClock(),
+      });
 
-test("inboxRunner - rotates deliveries across multiple recipients", async () => {
+      // Only the two measured deliveries are counted client-side, although all
+      // four, warm-up included, reached the inbox listener.
+      assert.strictEqual(measurement.requests.total, 2);
+      assert.strictEqual(
+        measurement.requests.successRate,
+        1,
+        `expected all deliveries to succeed; errors: ${
+          JSON.stringify(measurement.errors)
+        }`,
+      );
+      assert.strictEqual(target.receivedCount(), 4);
+      // The measured window verified signatures, so server metrics survive the
+      // baseline diff rather than being cancelled out by warm-up traffic.
+      assert.ok(
+        measurement.server?.signatureVerificationMs != null,
+        "expected windowed server signature-verification metrics",
+      );
+    } finally {
+      try {
+        await fleet?.close();
+      } finally {
+        await target.close();
+      }
+    }
+  },
+);
+
+// Recipients are allocated round-robin by signing index, so the run makes a
+// fixed number of attempts rather than however many fit in a real-time window:
+// four constant arrivals under a fake clock, each consuming one allocation
+// index, split exactly two per recipient whatever order they complete in.
+async function assertAllocatesAcrossRecipients(
+  signing: "jit" | "presign",
+): Promise<void> {
   const target = await spawnBenchmarkTarget(["alice", "bob"]);
   let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
   try {
@@ -214,8 +252,11 @@ test("inboxRunner - rotates deliveries across multiple recipients", async () => 
         ],
         // Personal inboxes so each recipient's deliveries hit a distinct path.
         inbox: "personal",
-        load: { concurrency: 2 },
-        duration: "300ms",
+        // 10/s over 400ms schedules exactly four arrivals (0, 100, 200, and
+        // 300ms), which is also the batch size presign signs up front.
+        load: { rate: 10, maxInFlight: 2 },
+        duration: "400ms",
+        signing,
       }],
     };
     const scenario = normalizeSuite(suite).scenarios[0];
@@ -226,8 +267,10 @@ test("inboxRunner - rotates deliveries across multiple recipients", async () => 
       contextLoader: await getContextLoader({ allowPrivateAddress: true }),
       allowPrivateAddress: true,
       fleet,
+      clock: createFakeClock(),
     });
 
+    assert.strictEqual(measurement.requests.total, 4);
     assert.strictEqual(
       measurement.requests.successRate,
       1,
@@ -235,15 +278,10 @@ test("inboxRunner - rotates deliveries across multiple recipients", async () => 
         JSON.stringify(measurement.errors)
       }`,
     );
-    // Both recipients' personal inboxes received deliveries.
-    const hits = target.inboxHits();
-    assert.ok(
-      hits.has("/users/alice/inbox"),
-      `expected alice's inbox to be hit; hits: ${JSON.stringify([...hits])}`,
-    );
-    assert.ok(
-      hits.has("/users/bob/inbox"),
-      `expected bob's inbox to be hit; hits: ${JSON.stringify([...hits])}`,
+    // Each recipient's personal inbox received exactly half of the deliveries.
+    assert.deepStrictEqual(
+      Object.fromEntries(target.inboxHits()),
+      { "/users/alice/inbox": 2, "/users/bob/inbox": 2 },
     );
   } finally {
     try {
@@ -252,7 +290,19 @@ test("inboxRunner - rotates deliveries across multiple recipients", async () => 
       await target.close();
     }
   }
-});
+}
+
+test(
+  "inboxRunner - allocates jit deliveries across multiple recipients",
+  { timeout: 60_000 },
+  () => assertAllocatesAcrossRecipients("jit"),
+);
+
+test(
+  "inboxRunner - allocates presigned deliveries across multiple recipients",
+  { timeout: 60_000 },
+  () => assertAllocatesAcrossRecipients("presign"),
+);
 
 test("inboxRunner.validate - rejects activity options it cannot honor", () => {
   function resolve(activity: Record<string, unknown>) {

@@ -1117,12 +1117,28 @@ runtime strings, so the generated encoder cannot distinguish them reliably
 during JSON-LD serialization and Fedify rejects such schema definitions at code
 generation time.
 
+*Since Fedify 2.5.0*, `@fedify/vocab-runtime` also exports
+`normalizeLanguageTag()`, which replaces a language tag that has an extended
+language subtag (extlang) with its canonical form as described in
+[RFC 5646, Section 4.5], e.g., `zh-YUE` with `yue`.  [`Intl.Locale`] rejects
+extlang tags, so normalize such tags before passing them to it.  Fedify already
+does this when it parses language-tagged strings and language tags:
+
+~~~~ typescript twoslash
+import { normalizeLanguageTag } from "@fedify/vocab-runtime";
+
+normalizeLanguageTag("zh-YUE"); // "yue"
+new Intl.Locale(normalizeLanguageTag("zh-YUE")).language; // "yue"
+normalizeLanguageTag("en-US"); // "en-US" (unchanged)
+~~~~
+
 [`Temporal.Instant`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/Instant
 [`Temporal.Duration`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/Duration
 [`Uint8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array
 [BCP 47]: https://www.rfc-editor.org/info/bcp47
 [`Intl.Locale`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale
 [`CryptoKey`]: https://developer.mozilla.org/en-US/docs/Web/API/CryptoKey
+[RFC 5646, Section 4.5]: https://www.rfc-editor.org/rfc/rfc5646.html#section-4.5
 
 
 Origin-based security model

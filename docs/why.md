@@ -338,6 +338,105 @@ infrastructure:
 
 [SiliconBeest]: https://github.com/SJang1/siliconbeest
 
+### Indiekit: Turning an IndieWeb site into a fediverse account
+
+[Indiekit] is a Micropub server for IndieWeb sites.  Its
+[ActivityPub endpoint plugin][indiekit-endpoint-activitypub], built on Fedify,
+turns the site itself into a fediverse actor that people on Mastodon, Misskey,
+or Pixelfed can find and follow.  Posts published through Micropub go out to
+followers, and incoming follows, likes, boosts, and replies come back to the
+site.
+
+The plugin also implements a Mastodon-compatible client API, so the site's
+owner can read their timeline and reply from Phanpy, Elk, or other Mastodon
+apps.  Its developer runs it on their own site, [rmendes.net], and has
+written about using it day to day.
+
+[Indiekit]: https://getindiekit.com/
+[indiekit-endpoint-activitypub]: https://github.com/rmdes/indiekit-endpoint-activitypub
+[rmendes.net]: https://rmendes.net/
+
+### Vegan Home Cooks: A static recipe site with followers
+
+[Vegan Home Cooks] is a recipe site built with Hugo and served as static
+files.  A static host cannot do content negotiation or accept inbox
+deliveries, so the site gets its fediverse presence from a
+[small Cloudflare Worker][veganhomecooks-fedify] that runs Fedify alongside
+it.  The Worker reads the site's recipe index, turns each new or changed
+recipe into an `Article`, and delivers it to followers through Cloudflare
+Queues.
+
+It is a good example of how little code you need when the goal is narrow:
+one account, one-way publishing, and no changes to the site that people
+actually visit.
+
+[Vegan Home Cooks]: https://veganhomecooks.online/
+[veganhomecooks-fedify]: https://github.com/hamid-veganhomecooks/veganhomecooks-fedify
+
+### rss2.pub: Following any feed from the fediverse
+
+[rss2.pub] is a bridge that turns RSS 2.0 and Atom 1.0 feeds into ActivityPub
+accounts.  Each registered feed becomes an account, and following it from
+Mastodon puts the feed's new entries in your home timeline.  You can register
+a feed from the web UI or by mentioning the bridge's main account.
+
+The bridge started out on [BotKit], Fedify's bot framework, and later moved
+down to Fedify's dispatchers and its PostgreSQL integration.  Its posts list
+the feed's authors as additional `attributedTo` actors, which BotKit's
+abstractions made awkward, and Fedify let the project own that part of the
+model directly while keeping the account URIs it already had.
+
+[rss2.pub]: https://github.com/moreal/rss2.pub
+[BotKit]: https://botkit.fedify.dev/
+
+### Economiverse and Menuverse: Federated marketplaces
+
+[54°Grad Software] is exploring commerce on the fediverse, built on
+[FEP-0837] (Federated Marketplaces).  The `Proposal` vocabulary they rely on
+was added to Fedify in version 2.2.0, and more FEP-0837 types followed in
+version 2.3.0.
+
+[Economiverse] is a proof of concept with two shops and a marketplace that
+follows them; new products added to a shop show up in the marketplace through
+ActivityPub.  [Menuverse] applies the same idea to canteens: each canteen is
+an actor that publishes the day's dishes, with allergens and prices, and a
+marketplace app collects and filters menus from many canteens.  Both are still
+in development, but they show Fedify carrying data that has nothing to do with
+microblogging.
+
+[54°Grad Software]: https://codeberg.org/54GradSoftware
+[FEP-0837]: https://codeberg.org/fediverse/fep/src/branch/main/fep/0837/fep-0837.md
+[Economiverse]: https://codeberg.org/54GradSoftware/economiverse
+[Menuverse]: https://codeberg.org/54GradSoftware/menuverse
+
+### 北雁云依's blog: Replacing a hand-written implementation
+
+[北雁云依] (BeiyanYunyi) had added ActivityPub to their blog by hand two
+years earlier, following tutorials and code borrowed from Wildebeest.  It
+handled follows and little else.  Replies were logged and dropped, and every
+update was sent by re-delivering all posts to all followers with no retry.
+
+In September 2026 they [moved the blog to Fedify][migrate-to-fedify].  Fedify
+took over object serialization, signature verification, and signed delivery,
+and delivery now runs through Cloudflare Queues.  The actor URI, post URIs, and
+signing keys stayed the same, so the blog kept its identity and its
+followers.
+
+[北雁云依]: https://blog.yunyi.beiyan.us/
+[migrate-to-fedify]: https://blog.yunyi.beiyan.us/posts/migrateToFedify
+
+### ActivityPub Fuzzer: Fedify CLI in a research tool
+
+The [ActivityPub Fuzzer] from Harvard's Berkman Klein Center helps developers
+test their servers by emulating messages from known fediverse software, using
+data from the Fediverse Schema Observatory.  The Fuzzer is not built on
+Fedify, but its setup guide recommends
+[`fedify tunnel`](./cli.md#fedify-tunnel-exposing-a-local-http-server-to-the-public-internet)
+for exposing the local Fuzzer over HTTPS, which shows that Fedify's CLI is
+useful well beyond Fedify's own users.
+
+[ActivityPub Fuzzer]: https://github.com/berkmancenter/activitypub-fuzzer
+
 
 Conclusion
 ----------
@@ -368,4 +467,4 @@ Stay flexible
 If you're looking to build a federated application on the ActivityPub protocol,
 Fedify offers a powerful and efficient path to success.
 
-<!-- cSpell: ignore Encyclia ORCID -->
+<!-- cSpell: ignore Encyclia ORCID Indiekit rmendes Phanpy veganhomecooks Economiverse Menuverse Grad Beiyan Yunyi Wildebeest Micropub Berkman -->
