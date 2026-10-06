@@ -517,8 +517,8 @@ async function* getCollectionItems(
   budget: RequestBudget,
   skipIds?: ReadonlySet<string>,
 ): AsyncIterable<APObject | Link> {
-  yield* collection.getItems({
-    documentLoader: async (url) => {
+  const itemOptions = {
+    documentLoader: async (url: string) => {
       return await loadCollectionItemDocument(
         context,
         url,
@@ -527,8 +527,61 @@ async function* getCollectionItems(
         skipIds,
       );
     },
-    crossOrigin: "trust",
-  });
+    crossOrigin: "trust" as const,
+  };
+  const pageOptions = {
+    documentLoader: async (url: string) => {
+      const object = await loadObject(
+        context,
+        new URL(url),
+        options,
+        budget,
+        true,
+      );
+      if (object == null) throw new Error(`Collection page not found: ${url}`);
+      return {
+        contextUrl: null,
+        documentUrl: url,
+        document: await object.toJsonLd(),
+      };
+    },
+    crossOrigin: "trust" as const,
+  };
+  const visitedIds = new Set<string>();
+  const visitedPages = new WeakSet<BackfillCollection>();
+  let current: BackfillCollection | null = collection;
+  while (current != null) {
+    budget.signal?.throwIfAborted();
+    if (visitedPages.has(current)) return;
+    if (current.id != null) {
+      if (visitedIds.has(current.id.href)) return;
+      visitedIds.add(current.id.href);
+    }
+    visitedPages.add(current);
+    yield* current.getItems(itemOptions);
+
+    const page: CollectionPage | OrderedCollectionPage | null =
+      current instanceof CollectionPage ||
+        current instanceof OrderedCollectionPage
+        ? current
+        : null;
+    const pageId: URL | null = page == null ? current.firstId : page.nextId;
+    if (pageId != null && visitedIds.has(pageId.href)) return;
+    try {
+      budget.signal?.throwIfAborted();
+      current = page == null
+        ? await current.getFirst(pageOptions)
+        : await page.getNext(pageOptions);
+    } catch (error) {
+      if (error instanceof MaxRequestsExceeded) throw error;
+      budget.signal?.throwIfAborted();
+      return;
+    }
+    // Remember the requested IRI too, in case the page has a different ID.
+    if (pageId != null && pageId.href !== current?.id?.href) {
+      visitedIds.add(pageId.href);
+    }
+  }
 }
 
 async function getCreateActivityObject(
