@@ -32,7 +32,7 @@ import {
   readBoundedText,
 } from "../utils/body.ts";
 import jsonld from "@fedify/vocab-runtime/jsonld";
-import { getLogger } from "@logtape/logtape";
+import { getLogger, withContext } from "@logtape/logtape";
 import type {
   MeterProvider,
   Span,
@@ -1825,8 +1825,12 @@ export async function handleInbox<TContextData>(
       if (options.recipient != null) {
         span.setAttribute("fedify.inbox.recipient", options.recipient);
       }
+      const spanContext = span.spanContext();
       try {
-        return await handleInboxInternal(request, options, span);
+        return await withContext(
+          { traceId: spanContext.traceId, spanId: spanContext.spanId },
+          () => handleInboxInternal(request, options, span),
+        );
       } catch (e) {
         options.observation!.hasException = true;
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
