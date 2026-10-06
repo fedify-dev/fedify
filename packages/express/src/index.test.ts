@@ -57,7 +57,12 @@ for (const failure of ["contextDataFactory", "federation.fetch"] as const) {
       const responsePromise = fetch(origin, {
         signal: AbortSignal.timeout(5000),
       });
-      await requested.promise;
+      await Promise.race([
+        requested.promise,
+        responsePromise.then(() => {
+          assert.fail("The request completed before the context factory ran.");
+        }),
+      ]);
       assert.equal(fetchCalls, 0);
       if (failure === "contextDataFactory") context.reject(error);
       else context.resolve("context value");
@@ -176,7 +181,12 @@ test("integrateFederation() waits for successful asynchronous context data", asy
     const responsePromise = fetch(origin, {
       signal: AbortSignal.timeout(5000),
     });
-    await requested.promise;
+    await Promise.race([
+      requested.promise,
+      responsePromise.then(() => {
+        assert.fail("The request completed before the context factory ran.");
+      }),
+    ]);
     assert.equal(fetchCalls, 0);
     context.resolve("context value");
     const response = await responsePromise;
