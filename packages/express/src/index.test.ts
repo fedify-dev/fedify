@@ -76,6 +76,53 @@ for (const failure of ["contextDataFactory", "federation.fetch"] as const) {
   });
 }
 
+for (const failure of ["contextDataFactory", "federation.fetch"] as const) {
+  for (const reason of ["route", "router"]) {
+    test(`integrateFederation() forwards a ${reason} rejection from ${failure} to error middleware`, async () => {
+      const errors: unknown[] = [];
+      let fetchCalls = 0;
+      const federation = {
+        fetch() {
+          fetchCalls++;
+          return Promise.reject(reason);
+        },
+      };
+      const app = express();
+      app.use(integrateFederation(
+        federation as never,
+        () =>
+          failure === "contextDataFactory"
+            ? Promise.reject(reason)
+            : Promise.resolve(undefined),
+      ));
+      app.use((_req: express.Request, res: express.Response) => {
+        res.send("unexpected fallthrough");
+      });
+      app.use((
+        error: Error,
+        _req: express.Request,
+        res: express.Response,
+        _next: express.NextFunction,
+      ) => {
+        errors.push(error);
+        res.status(500).send(error.message);
+      });
+
+      await withServer(app, async (origin) => {
+        const response = await fetch(origin, {
+          signal: AbortSignal.timeout(5000),
+        });
+        assert.equal(response.status, 500);
+        assert.equal(await response.text(), reason);
+      });
+      assert.equal(fetchCalls, failure === "contextDataFactory" ? 0 : 1);
+      assert.equal(errors.length, 1);
+      assert.ok(errors[0] instanceof Error);
+      assert.equal(errors[0].message, reason);
+    });
+  }
+}
+
 test("integrateFederation() forwards a rejection without a reason to error middleware", async () => {
   const errors: unknown[] = [];
   let fetchCalls = 0;

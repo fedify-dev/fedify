@@ -74,7 +74,8 @@ export function integrateFederation<TContextData>(
       // Once Fedify has handed the request to Express, do not call next again.
       if (notFound || notAcceptable) throw error;
       next(
-        error || new Error("The federation middleware promise was rejected."),
+        error === "route" || error === "router" ? new Error(error) : error ||
+          new Error("The federation middleware promise was rejected."),
       );
     });
   };
