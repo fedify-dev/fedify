@@ -835,7 +835,23 @@ const note = await create.getObject();
 const note2 = await create.getObject();
 ~~~~
 
-Hydrating the property also affects the JSON-LD representation of the object.
+When hydration caches a fetched object, it replaces the property's URL in the
+instance whose accessor was called.  An unverified portable claim can be
+returned without replacing that URL or clearing the JSON-LD cache, so a later
+accessor call can fetch it again.
+When the result is cached, all references to that instance see the hydrated
+property, including references
+from a source and its [shallow clone](#immutability) to a shared nested object,
+or from an activity that embeds it.  Hydrating a top-level property of a clone
+does not update the source's property, because their property arrays are
+separate.
+
+Hydration can also affect `toJsonLd()` output, including output from activities
+that embed the hydrated object.  Objects parsed with `fromJsonLd()` may retain
+cached JSON-LD.  Caching a fetched object clears the JSON-LD cache only on the
+instance whose accessor fetched it; parent caches remain intact.  A parent may
+therefore serialize differently on its own and when embedded in another
+activity.
 
 For example, since the following code does not hydrate the `object` property,
 the JSON-LD representation of the `Create` object has the `object` property
@@ -904,16 +920,13 @@ attributes are simplified or omitted for readability):
 Immutability
 ------------
 
-Every object in the Activity Vocabulary is represented as an immutable object.
-This means that you cannot change the properties of the object after the object
-is instantiated.  This is for ensuring the consistency of the objects and the
-safety of the objects in the concurrent environment.
+Activity Vocabulary objects are immutable in the sense that you cannot assign
+new property values after construction.  Dereferencing accessors can still
+cache fetched objects through [property hydration](#property-hydration).
 
-In order to change the properties of the object, you need to clone the object
-with the new properties.  Fortunately, the objects have a `clone()` method that
-takes an object with the new properties and returns a new object with the new
-properties.  The following shows an example of changing the `~Object.content`
-property of a `Note` object:
+To replace property values, use `clone()`.  It returns a new instance with the
+given values and leaves the source's property values unchanged.  The following
+example replaces the `~Object.content` property of a `Note` object:
 
 ~~~~ typescript{8-10} twoslash
 import { Note } from "@fedify/vocab";
@@ -929,8 +942,40 @@ const noteInChinese = noteInEnglish.clone({
 });
 ~~~~
 
-Parameters of the `clone()` method share the same type with parameters of
-the constructor.
+The `clone()` method accepts the same property values as the constructor.
+It makes a *shallow copy*: the clone has its own property arrays, but nested
+objects and URLs are shared with the source.  Hydrating a shared nested object
+through either instance changes that nested object for both when their accessors
+return the shared instance.  A parsed source can return a fresh object instead:
+if its cached JSON-LD contains an embedded object with its own `@context`, the
+accessor re-parses that object on each call.  Hydrating that returned object
+does not update the nested instance stored in the source or clone.
+
+If you need to preserve the received representation while resolving properties,
+keep the received JSON-LD document.  To resolve properties in a separate object
+graph, serialize and re-parse the object before hydrating any properties rather
+than using `clone()`:
+
+~~~~ typescript twoslash
+import { Create } from "@fedify/vocab";
+import type { DocumentLoader } from "@fedify/vocab-runtime";
+declare const original: Create;
+declare const documentLoader: DocumentLoader;
+declare const contextLoader: DocumentLoader;
+// ---cut-before---
+const options = { documentLoader, contextLoader };
+const copy = await Create.fromJsonLd(await original.toJsonLd(), options);
+// Resolve properties on copy while keeping original separate:
+const note = await copy.getObject(options);
+if (note != null) await note.getAttribution(options);
+~~~~
+
+This round trip separates nested vocabulary objects; it does not preserve the
+original JSON bytes.  Pass any custom loaders again, as in the example above.
+The copy also does not inherit trust in embedded objects.  Under the
+[origin-based security model](#origin-based-security-model), accessors may fetch
+cross-origin objects again, even if the original already hydrated them.  The
+fetched data may have changed, or the fetch may fail.
 
 
 Looking up remote objects

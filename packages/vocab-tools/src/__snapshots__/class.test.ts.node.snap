@@ -1278,6 +1278,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -19040,6 +19053,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -19511,6 +19537,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -21413,6 +21452,19 @@ instruments?: (Object | URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -26318,6 +26370,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -26820,6 +26885,19 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -27564,6 +27642,19 @@ unit?: string | null;numericalValue?: Decimal | null;}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -28229,6 +28320,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -29733,6 +29837,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -30284,6 +30401,19 @@ canFeature?: InteractionRule | null;canLike?: InteractionRule | null;canReply?: 
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -31364,6 +31494,19 @@ manualApprovals?: (URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -32058,6 +32201,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -33561,6 +33717,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -34008,6 +34177,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -35511,6 +35693,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -35958,6 +36153,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -37460,6 +37668,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -38079,6 +38300,19 @@ urls?: ((URL | Link))[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -39969,6 +40203,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -41465,6 +41712,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -42089,6 +42349,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -49096,6 +49369,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -50122,6 +50408,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -50811,6 +51110,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -52406,6 +52718,19 @@ endpoints?: (URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -52913,6 +53238,19 @@ endpoints?: (URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -53432,6 +53770,19 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -54799,6 +55150,19 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -56037,6 +56401,19 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -57218,6 +57595,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -57979,6 +58369,19 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -58751,6 +59154,19 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -59798,6 +60214,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -60693,6 +61122,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -61115,6 +61557,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -61531,6 +61986,19 @@ instruments?: (Object | URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -62469,6 +62937,19 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -72679,6 +73160,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -73107,6 +73601,19 @@ instruments?: (Object | URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -73561,6 +74068,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -75237,6 +75757,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -76021,6 +76554,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -76450,6 +76996,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -76871,6 +77430,19 @@ instruments?: (Object | URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -77330,6 +77902,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -79358,6 +79943,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -79774,6 +80372,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -80187,6 +80798,19 @@ instruments?: (Object | URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -80760,6 +81384,19 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -81969,6 +82606,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -82399,6 +83049,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -82816,6 +83479,19 @@ instruments?: (Object | URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -83754,6 +84430,19 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -94212,6 +94901,19 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -96186,6 +96888,19 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -96581,6 +97296,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -97012,6 +97740,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -97432,6 +98173,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -97847,6 +98601,19 @@ instruments?: (Object | URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -98264,6 +99031,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -98680,6 +99460,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -99094,6 +99887,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -99487,6 +100293,19 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -99892,6 +100711,19 @@ instruments?: (Object | URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -100348,6 +101180,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -102021,6 +102866,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -103657,6 +104515,19 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -113858,6 +114729,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -114808,6 +115692,19 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -125096,6 +125993,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -126234,6 +127144,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -127319,6 +128242,19 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -130147,6 +131083,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -130562,6 +131511,19 @@ instruments?: (Object | URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -131085,6 +132047,19 @@ relationships?: (Object | URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -133510,6 +134485,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -134447,6 +135435,19 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -144767,6 +145768,19 @@ contents?: ((string | LanguageString))[];mediaType?: string | null;}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -145444,6 +146458,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -145859,6 +146886,19 @@ instruments?: (Object | URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -146322,6 +147362,19 @@ formerTypes?: ($EntityType)[];deleted?: Temporal.Instant | null;}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -147043,6 +148096,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -147464,6 +148530,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -147883,6 +148962,19 @@ instruments?: (Object | URL)[];}
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -148290,6 +149382,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
@@ -148718,6 +149823,19 @@ instruments?: (Object | URL)[];}
 
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors can cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
    *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
