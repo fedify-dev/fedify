@@ -3442,6 +3442,156 @@ test("signObject() preserves FEP-22cd contexts through proof verification", asyn
   assertEquals(verified.translations[0].language?.baseName, "ko");
 });
 
+async function signLicensedNote(
+  license: Record<string, unknown>,
+  context: unknown[] = [],
+): Promise<Record<string, unknown>> {
+  return await signPortableJsonLd({
+    "@context": [...portableContext, ...context],
+    // Fedify formats portable IDs with the ap+ef61: scheme, so these round-trip
+    // without changing the signed bytes:
+    id: `ap+ef61://${portableDid}/objects/licensed`,
+    type: "Note",
+    attributedTo: `ap+ef61://${portableDid}/actor`,
+    content: "A licensed note",
+    ...license,
+  });
+}
+
+const licenseVerifyOptions = {
+  documentLoader() {
+    throw new Error("No document fetch expected");
+  },
+  contextLoader: mockDocumentLoader,
+};
+
+test("verifyObject() keeps FEP-6757 license synonyms of a parsed object", async () => {
+  const license = "https://creativecommons.org/licenses/by/4.0/";
+  const signed = await signLicensedNote(
+    { "schema:license": license },
+    [{ schema: "https://schema.org/" }],
+  );
+  const verified = await verifyObject(Note, signed, licenseVerifyOptions);
+  assertInstanceOf(verified, Note);
+  assertEquals(verified.licenses, [new URL(license)]);
+  // Reading a synonym must not rewrite the proof-covered input:
+  const parsed = await Note.fromJsonLd(signed, licenseVerifyOptions);
+  const json = await parsed.toJsonLd() as Record<string, unknown>;
+  assertEquals(json, signed);
+  assertFalse("license" in json);
+  assertInstanceOf(
+    await verifyObject(Note, json, licenseVerifyOptions),
+    Note,
+  );
+});
+
+test("signObject() signs FEP-6757 licenses", async () => {
+  const license = new URL("https://creativecommons.org/licenses/by/4.0/");
+  const signed = await signObject(
+    new Note({
+      id: parseIri(`ap://${portableDid}/objects/licensed`),
+      attribution: parseIri(`ap://${portableDid}/actor`),
+      content: "A licensed note",
+      licenses: [license],
+    }),
+    ed25519PrivateKey,
+    portableKeyId,
+    { contextLoader: mockDocumentLoader },
+  );
+  const json = await signed.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  assertEquals(json.license, license.href);
+  assert((json["@context"] as unknown[]).includes("https://w3id.org/fep/6757"));
+  const verified = await verifyObject(Note, json, licenseVerifyOptions);
+  assertInstanceOf(verified, Note);
+  assertEquals(verified.licenses, [license]);
+
+  // The signed note embedded in an activity keeps its own representation:
+  const create = await new Create({
+    actor: parseIri(`ap://${portableDid}/actor`),
+    object: signed,
+  }).toJsonLd({ contextLoader: mockDocumentLoader }) as Record<
+    string,
+    unknown
+  >;
+  assertEquals(create.object, json);
+  assertInstanceOf(
+    await verifyObject(Note, create.object, licenseVerifyOptions),
+    Note,
+  );
+
+  // Changing the license invalidates the proof until the note is re-signed:
+  const relicensed = signed.clone({
+    licenses: [new URL("https://creativecommons.org/publicdomain/zero/1.0/")],
+  });
+  assertEquals(
+    await verifyObject(
+      Note,
+      await relicensed.toJsonLd({ contextLoader: mockDocumentLoader }),
+      licenseVerifyOptions,
+    ),
+    null,
+  );
+  const resigned = await signObject(
+    relicensed.clone({ proofs: [] }),
+    ed25519PrivateKey,
+    portableKeyId,
+    { contextLoader: mockDocumentLoader },
+  );
+  assertInstanceOf(
+    await verifyObject(
+      Note,
+      await resigned.toJsonLd({ contextLoader: mockDocumentLoader }),
+      licenseVerifyOptions,
+    ),
+    Note,
+  );
+});
+
+test("verifyObject() and FEP-6757 licenses that cannot be preserved", async () => {
+  const license = "https://creativecommons.org/licenses/by/4.0/";
+  const contexts = ["https://w3id.org/fep/6757"];
+  // A parsed note embedded in a new activity is serialized again, which
+  // writes the canonical license property instead of the synonym:
+  const aliased = await signLicensedNote(
+    { "schema:license": license },
+    [{ schema: "https://schema.org/" }],
+  );
+  const create = await new Create({
+    actor: parseIri(`ap://${portableDid}/actor`),
+    object: await Note.fromJsonLd(aliased, licenseVerifyOptions),
+  }).toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const object = create.object as Record<string, unknown>;
+  assertEquals(object.license, license);
+  assertEquals(
+    await verifyObject(
+      Note,
+      { ...object, "@context": create["@context"] },
+      licenseVerifyOptions,
+    ),
+    null,
+  );
+
+  // A license value that is dropped while parsing makes the parsed object
+  // lose its cached input, so its serialization no longer verifies:
+  const invalid = await signLicensedNote(
+    { license: ["CC-BY-4.0", license] },
+    contexts,
+  );
+  const verified = await verifyObject(Note, invalid, licenseVerifyOptions);
+  assertInstanceOf(verified, Note);
+  assertEquals(verified.licenses, [new URL(license)]);
+  const parsed = await Note.fromJsonLd(invalid, licenseVerifyOptions);
+  const json = await parsed.toJsonLd() as Record<string, unknown>;
+  assertEquals(json.license, license);
+  assertEquals(await verifyObject(Note, json, licenseVerifyOptions), null);
+});
+
 test("verifyObject() rejects a key that claims a forged controller", async () => {
   // Object Integrity Proofs clear an object's attributions with the
   // `controller` the signing key declares about itself, and this path needs

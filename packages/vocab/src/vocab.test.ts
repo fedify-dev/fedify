@@ -5852,6 +5852,9 @@ const sampleValues: Record<string, any> = {
   ]),
   "fedify:langTag": new Intl.Locale("en-Latn-US"),
   "fedify:url": new URL("https://fedify.dev/"),
+  "fedify:absoluteIri": new URL(
+    "https://creativecommons.org/licenses/by/4.0/",
+  ),
   "fedify:gatewayUrl": new URL("https://gateway.example/"),
   "fedify:publicKey": rsaPublicKey.publicKey,
   "fedify:multibaseKey": ed25519PublicKey.publicKey,
@@ -6221,12 +6224,21 @@ for (const typeUri in types) {
         ),
       ),
     ];
-    deepStrictEqual(
-      jsonLd["@context"],
-      extraContexts.length === 0
-        ? type.defaultContext
-        : [...defaultContexts, ...extraContexts],
-    );
+    if (extraContexts.length === 0) {
+      deepStrictEqual(jsonLd["@context"], type.defaultContext);
+    } else {
+      // Extra contexts follow the default ones in the order their terms are
+      // found in the compacted document, not in the property order:
+      const context = jsonLd["@context"] as unknown[];
+      deepStrictEqual(
+        context.slice(0, defaultContexts.length),
+        defaultContexts,
+      );
+      deepStrictEqual(
+        context.slice(defaultContexts.length).toSorted(),
+        extraContexts.toSorted(),
+      );
+    }
     if (type.entity) deepStrictEqual(jsonLd.id, "https://example.com/");
     const restored = await cls.fromJsonLd(jsonLd, {
       documentLoader: mockDocumentLoader,

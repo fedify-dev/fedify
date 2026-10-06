@@ -1,0 +1,12 @@
+{
+  "@context": {
+    "license": {
+      "@id": "http://purl.org/dc/terms/license",
+      "@type": "@id"
+    },
+    "preferredLicense": {
+      "@id": "https://w3id.org/fep/6757#preferredLicense",
+      "@type": "@id"
+    }
+  }
+}

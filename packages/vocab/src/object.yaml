@@ -484,3 +484,33 @@ properties:
     no authority to update the object.
   range:
   - "https://w3id.org/fep/22cd#Translation"
+
+- pluralName: licenses
+  singularName: license
+  compactName: license
+  uri: "http://purl.org/dc/terms/license"
+  extraContext: "https://w3id.org/fep/6757"
+  redundantProperties:
+  - uri: "https://schema.org/license"
+  - uri: "http://creativecommons.org/ns#license"
+  redundantPropertiesWrite: canonical
+  description: |
+    The copyright licenses for this object, as defined by
+    [FEP-6757](https://w3id.org/fep/6757).  Each license is identified by its
+    URI, such as <https://creativecommons.org/licenses/by/4.0/>; license names
+    and SPDX short identifiers are not license URIs.  Multiple values are
+    alternatives that a consumer may choose from; their order has no meaning.
+
+    An empty list means the object carries no license metadata.  Fedify does
+    not synthesize a default license for it; FEP-6757 suggests that consumers
+    treat such content as “all rights reserved,” but that is a consumer policy,
+    not a value of this property.  A license on an actor, activity, or
+    collection covers that object itself, not the objects the actor authored,
+    the activity's object, or the collection's items.  An actor's
+    `preferredLicense` is not a fallback for this property either.
+
+    The `https://schema.org/license` and
+    `http://creativecommons.org/ns#license` properties are read as synonyms
+    when this property is absent, but only this property is written.
+  range:
+  - "fedify:absoluteIri"

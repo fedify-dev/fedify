@@ -12,6 +12,7 @@ import { emitOverride } from "./type.ts";
 
 const XSD_ANY_URI = "http://www.w3.org/2001/XMLSchema#anyURI";
 const FEDIFY_URL = "fedify:url";
+const FEDIFY_ABSOLUTE_IRI = "fedify:absoluteIri";
 const INTERNAL_RUNTIME_IMPORTS = [
   "compactJsonLdCache",
   "createScopedContextLoader",
@@ -255,7 +256,8 @@ function canContainIriValue(
   types: Record<string, TypeSchema>,
 ): boolean {
   return property.range.some((typeUri) =>
-    typeUri === XSD_ANY_URI || typeUri === FEDIFY_URL || types[typeUri]?.entity
+    typeUri === XSD_ANY_URI || typeUri === FEDIFY_URL ||
+    typeUri === FEDIFY_ABSOLUTE_IRI || types[typeUri]?.entity
   );
 }
 
@@ -334,7 +336,45 @@ function isValidLanguageTag(language: string): boolean {
   }
 }
 `;
-  // Contexts are activated by expanded property IRIs left after compaction.
+  if (
+    Object.values(types).some((type) =>
+      type.properties.some((property) =>
+        property.range.includes(FEDIFY_ABSOLUTE_IRI)
+      )
+    )
+  ) {
+    // An absolute IRI may arrive as an IRI node or, when the publisher's
+    // context does not coerce the term, as a string or IRI-typed literal.
+    // It is never resolved against a base IRI.
+    yield `
+function getAbsoluteIriValue(value: unknown): string | undefined {
+  if (value == null || typeof value !== "object") return undefined;
+  const node = value as Record<string, unknown>;
+  if (typeof node["@id"] === "string") {
+    return node["@id"].startsWith("_:") ? undefined : node["@id"];
+  }
+  // A language tag can come from a context's default language, so it does
+  // not make a literal any less of an IRI:
+  if (typeof node["@value"] !== "string") return undefined;
+  const type = node["@type"];
+  return type == null ||
+      type === "http://www.w3.org/2001/XMLSchema#string" ||
+      type === "http://www.w3.org/2001/XMLSchema#anyURI"
+    ? node["@value"]
+    : undefined;
+}
+
+function isAbsoluteIriValue(value: unknown): boolean {
+  const iri = getAbsoluteIriValue(value);
+  return iri != null && canDecodeIri(iri);
+}
+`;
+  }
+  // Contexts are activated by the expanded property IRIs of the values to be
+  // compacted, and by the contexts that already serialized children carry.
+  // They are detected before compaction, because a default context may
+  // define a prefix that would otherwise hide a property IRI behind a compact
+  // IRI such as `dc:license`.
   const extraContexts = Object.fromEntries(
     Object.values(types).flatMap((type) =>
       type.properties.flatMap((property) =>
@@ -349,6 +389,9 @@ function isValidLanguageTag(language: string): boolean {
 const extraPropertyContexts: Readonly<Record<string, string>> =
   ${JSON.stringify(extraContexts)};
 
+const extraContextUrls: readonly string[] =
+  ${JSON.stringify([...new Set(Object.values(extraContexts))])};
+
 function getExtraContexts(document: unknown): string[] {
   const contexts = new Set<string>();
   const pending: unknown[] = [document];
@@ -361,7 +404,16 @@ function getExtraContexts(document: unknown): string[] {
     }
     if ("@value" in value) continue;
     for (const [key, child] of globalThis.Object.entries(value)) {
-      if (key === "@context") continue;
+      if (key === "@context") {
+        for (const context of Array.isArray(child) ? child : [child]) {
+          if (
+            typeof context === "string" && extraContextUrls.includes(context)
+          ) {
+            contexts.add(context);
+          }
+        }
+        continue;
+      }
       if (globalThis.Object.hasOwn(extraPropertyContexts, key)) {
         contexts.add(extraPropertyContexts[key]);
       }

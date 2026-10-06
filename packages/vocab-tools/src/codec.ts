@@ -288,17 +288,33 @@ export async function* generateEncoder(
     }
     let docContext: Parameters<typeof jsonld.compact>[1] = options.context ??
       ${JSON.stringify(type.defaultContext)};
+  `;
+  const hasExtraContexts = Object.values(types).some((t) =>
+    t.properties.some((p) => p.extraContext != null)
+  );
+  if (hasExtraContexts) {
+    yield `
+    if (options.context == null) {
+      const currentContexts = Array.isArray(docContext) ? docContext : [docContext];
+      const additionalContexts = getExtraContexts(values).filter(
+        context => !currentContexts.includes(context)
+      );
+      if (additionalContexts.length > 0) {
+        docContext = [...currentContexts, ...additionalContexts];
+      }
+    }
+    `;
+  }
+  yield `
     let compacted = await jsonld.compact(
       values,
       docContext,
       { documentLoader: options.contextLoader },
     );
   `;
-  if (
-    Object.values(types).some((t) =>
-      t.properties.some((p) => p.extraContext != null)
-    )
-  ) {
+  if (hasExtraContexts) {
+    // A cached child may map a property with its own inline context, which
+    // the scan above cannot recognize; compaction then leaves its full IRI:
     yield `
     if (options.context == null) {
       const currentContexts = Array.isArray(docContext) ? docContext : [docContext];
