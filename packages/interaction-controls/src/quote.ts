@@ -14,7 +14,10 @@ import {
   idsEqual,
   recognized,
 } from "./control.ts";
-import type { InteractionControl } from "./types.ts";
+import type {
+  InteractionControl,
+  QuoteRequestValidationOptions,
+} from "./types.ts";
 
 export type QuotePost = Note | Article | Question | ChatMessage;
 
@@ -31,7 +34,8 @@ export const quoteInteraction: InteractionControl<
   QuoteAuthorization,
   QuotePost,
   ASObject,
-  QuoteImpoliteSource
+  QuoteImpoliteSource,
+  QuoteRequestValidationOptions
 > = createInteractionControl({
   name: "quote",
   policyProperty: "canQuote",
@@ -52,9 +56,17 @@ export const quoteInteraction: InteractionControl<
   ],
   getInteractionTarget: (request, options) =>
     request.getObject(options) as Promise<ASObject | null>,
-  validateRequest: (_request, quote, target, requester) => {
+  validateRequest: (
+    _request,
+    quote,
+    target,
+    requester,
+    options: QuoteRequestValidationOptions,
+  ) => {
     const targetId = getRequiredId(target, "interactionTarget");
+    const quoteReference = options.quoteReference ?? "strict";
     if (
+      quoteReference === "strict" &&
       quote.quoteId != null && quote.quoteUrl != null &&
       !idsEqual(quote.quoteUrl, quote.quoteId)
     ) {
@@ -65,14 +77,26 @@ export const quoteInteraction: InteractionControl<
       };
     }
     const quoteTargetId = getQuoteTargetId(quote);
-    if (!idsEqual(quoteTargetId, targetId)) {
+    const targetMatched = quoteReference === "any"
+      ? idsEqual(quote.quoteId, targetId) || idsEqual(quote.quoteUrl, targetId)
+      : idsEqual(quoteTargetId, targetId);
+    if (!targetMatched) {
       return {
         type: "objectMismatch",
         expected: targetId,
         actual: quoteTargetId ?? undefined,
       };
     }
-    if (!idsEqual(quote.attributionId, requester)) {
+    const attributionIds = quote.attributionIds;
+    if (
+      attributionIds.length < 1 && options.missingAttribution === "requester"
+    ) {
+      return null;
+    }
+    const attributionMatched = options.attribution === "any"
+      ? attributionIds.some((id) => idsEqual(id, requester))
+      : idsEqual(quote.attributionId, requester);
+    if (!attributionMatched) {
       return {
         type: "requesterMismatch",
         expected: requester,

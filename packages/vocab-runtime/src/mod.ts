@@ -70,6 +70,7 @@ export {
   FetchError,
   getUserAgent,
   type GetUserAgentOptions,
+  isTransientFetchError,
   logRequest,
 } from "./request.ts";
 export {
