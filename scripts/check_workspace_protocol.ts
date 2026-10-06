@@ -18,11 +18,9 @@ const DEPENDENCY_FIELDS = [
   "optionalDependencies",
 ] as const;
 
-const projectRoot = resolve(dirname(fromFileUrl(import.meta.url)), "..");
-
-let found = false;
-for await (
-  const entry of walk(projectRoot, {
+/** Walk package manifests without entering temporary codegen locks. */
+export function walkPackageManifests(projectRoot: string) {
+  return walk(projectRoot, {
     includeDirs: false,
     // Match the path separator with a character class so these patterns stay
     // valid on Windows too, where @std/path's SEPARATOR is a backslash and
@@ -31,55 +29,64 @@ for await (
     skip: [
       /(?:^|[/\\])node_modules(?:[/\\]|$)/,
       /(?:^|[/\\])\.git(?:[/\\]|$)/,
+      // Codegen removes its lock on completion, even when generation is skipped.
+      /(?:^|[/\\])\.vocab-codegen\.lock(?:[/\\]|$)/,
     ],
-  })
-) {
-  let manifest: Record<string, unknown>;
-  try {
-    const parsed = JSON.parse(await Deno.readTextFile(entry.path));
-    // A package.json could be `null`, a string, a number, or an array; skip
-    // anything that is not a plain object so the field lookups below are safe.
-    if (
-      parsed === null || typeof parsed !== "object" || Array.isArray(parsed)
-    ) {
-      continue;
-    }
-    manifest = parsed as Record<string, unknown>;
-  } catch {
-    continue;
-  }
-
-  const invalid: string[] = [];
-  for (const field of DEPENDENCY_FIELDS) {
-    const deps = manifest[field];
-    // typeof [] is "object", so exclude arrays explicitly before iterating.
-    if (deps == null || typeof deps !== "object" || Array.isArray(deps)) {
-      continue;
-    }
-    for (
-      const [name, spec] of Object.entries(deps as Record<string, unknown>)
-    ) {
-      if (spec === "workspace:") invalid.push(name);
-    }
-  }
-
-  if (invalid.length > 0) {
-    if (!found) {
-      console.error(
-        "Error: Found invalid workspace: specifiers (missing *, ^, or ~):",
-      );
-      console.error("");
-      found = true;
-    }
-    console.error(`${relative(projectRoot, entry.path)}:`);
-    for (const name of invalid) console.error(`  ${name}`);
-  }
+  });
 }
 
-if (found) {
-  console.error("");
-  console.error("Valid formats: workspace:*, workspace:^, workspace:~");
-  Deno.exit(1);
-}
+if (import.meta.main) {
+  const projectRoot = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 
-console.log("All workspace: specifiers are valid");
+  let found = false;
+  for await (const entry of walkPackageManifests(projectRoot)) {
+    let manifest: Record<string, unknown>;
+    try {
+      const parsed = JSON.parse(await Deno.readTextFile(entry.path));
+      // A package.json could be `null`, a string, a number, or an array; skip
+      // anything that is not a plain object so the field lookups below are safe.
+      if (
+        parsed === null || typeof parsed !== "object" || Array.isArray(parsed)
+      ) {
+        continue;
+      }
+      manifest = parsed as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+
+    const invalid: string[] = [];
+    for (const field of DEPENDENCY_FIELDS) {
+      const deps = manifest[field];
+      // typeof [] is "object", so exclude arrays explicitly before iterating.
+      if (deps == null || typeof deps !== "object" || Array.isArray(deps)) {
+        continue;
+      }
+      for (
+        const [name, spec] of Object.entries(deps as Record<string, unknown>)
+      ) {
+        if (spec === "workspace:") invalid.push(name);
+      }
+    }
+
+    if (invalid.length > 0) {
+      if (!found) {
+        console.error(
+          "Error: Found invalid workspace: specifiers (missing *, ^, or ~):",
+        );
+        console.error("");
+        found = true;
+      }
+      console.error(`${relative(projectRoot, entry.path)}:`);
+      for (const name of invalid) console.error(`  ${name}`);
+    }
+  }
+
+  if (found) {
+    console.error("");
+    console.error("Valid formats: workspace:*, workspace:^, workspace:~");
+    Deno.exit(1);
+  }
+
+  console.log("All workspace: specifiers are valid");
+}
