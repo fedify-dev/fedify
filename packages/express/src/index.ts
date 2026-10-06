@@ -26,9 +26,9 @@ export function integrateFederation<TContextData>(
     const contextDataPromise = contextData instanceof Promise
       ? contextData
       : Promise.resolve(contextData);
+    let notFound = false;
+    let notAcceptable = false;
     contextDataPromise.then(async (contextData) => {
-      let notFound = false;
-      let notAcceptable = false;
       const response = await federation.fetch(request, {
         contextData,
         onNotFound: () => {
@@ -70,6 +70,12 @@ export function integrateFederation<TContextData>(
       res.json = () => res;
       res.removeHeader = () => res;
       res.setHeader = () => res;
+    }).catch((error) => {
+      // Once Fedify has handed the request to Express, do not call next again.
+      if (notFound || notAcceptable) throw error;
+      next(
+        error || new Error("The federation middleware promise was rejected."),
+      );
     });
   };
 }
