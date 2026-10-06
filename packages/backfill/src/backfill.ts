@@ -200,7 +200,9 @@ async function* getContextStrategyItems(
 }> {
   const contextId = note.contextIds[0];
   if (contextId == null) return;
-  const collection = await loadObject(context, contextId, options, budget);
+  const collection = await loadObject(context, contextId, options, budget, {
+    skipLoaderErrors: true,
+  });
   if (!isCollection(collection)) return;
   for await (
     const object of getCollectionItems(
@@ -536,7 +538,7 @@ async function* getCollectionItems(
         new URL(url),
         options,
         budget,
-        true,
+        { throwOnBudgetExceeded: true },
       );
       if (object == null) throw new Error(`Collection page not found: ${url}`);
       return {
@@ -621,7 +623,7 @@ async function loadCollectionItemDocument(
       iri,
       options,
       budget,
-      true,
+      { throwOnBudgetExceeded: true },
     );
   } catch (error) {
     if (error instanceof MaxRequestsExceeded) throw error;
@@ -652,7 +654,13 @@ async function loadObject(
   iri: URL,
   options: BackfillOptions,
   budget: RequestBudget,
-  throwOnBudgetExceeded = false,
+  {
+    throwOnBudgetExceeded = false,
+    skipLoaderErrors = false,
+  }: {
+    throwOnBudgetExceeded?: boolean;
+    skipLoaderErrors?: boolean;
+  } = {},
 ): Promise<APObject | null> {
   budget.signal?.throwIfAborted();
   const cacheKey = iri.href;
@@ -671,13 +679,18 @@ async function loadObject(
   budget.signal?.throwIfAborted();
 
   budget.requestCount++;
-  const document = context.documentLoader(iri, { signal: budget.signal });
-  budget.documents.set(cacheKey, document);
+  let document: Promise<APObject | null> | undefined;
   try {
+    document = context.documentLoader(iri, { signal: budget.signal });
+    budget.documents.set(cacheKey, document);
     return await document;
   } catch (error) {
     if (budget.documents.get(cacheKey) === document) {
       budget.documents.delete(cacheKey);
+    }
+    if (skipLoaderErrors) {
+      budget.signal?.throwIfAborted();
+      return null;
     }
     throw error;
   }

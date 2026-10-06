@@ -153,7 +153,11 @@ An `interval` string requires the global `Temporal` API or a polyfill.
 
 If the seed has no context, or its context resolves to a non-collection,
 context strategies yield nothing.  Loader failures are skipped unless
-traversal is aborted.
+traversal is aborted.  If the context collection cannot be loaded, later
+configured strategies can still run.  Failed loads consume a request, and
+later strategies can use embedded data even when the request budget is
+exhausted.  Configuration errors, such as an invalid `interval`, still
+propagate.
 
 Dereferenced documents are cached in memory for one `backfill()` traversal.
 Applications that need persistent or shared caching can provide it through
