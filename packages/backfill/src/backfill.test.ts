@@ -2028,3 +2028,167 @@ test("embedded pages without IDs follow next without loader calls", async () => 
   );
   deepStrictEqual(items.map((item) => item.id?.href), [a.id?.href, b.id?.href]);
 });
+
+describe("context loader failures", () => {
+  const contextId = new URL("https://example.com/thread");
+  const parent = new Note({ id: new URL("https://example.com/parent") });
+
+  for (const synchronous of [false, true]) {
+    const failure = synchronous ? "synchronous throw" : "promise rejection";
+    const fail = () => {
+      const error = new Error("Context collection unavailable");
+      if (synchronous) throw error;
+      return Promise.reject(error);
+    };
+
+    test(`${failure} allows reply-tree to yield an embedded parent`, async () => {
+      const seed = new Note({ contexts: [contextId], replyTarget: parent });
+      let requests = 0;
+      const items = await collect(
+        {
+          documentLoader: () => {
+            requests++;
+            return fail();
+          },
+        },
+        seed,
+        { strategies: ["context-auto", "reply-tree"], maxRequests: 1 },
+      );
+      deepStrictEqual(items.map((item) => item.object), [parent]);
+      strictEqual(items[0].strategy, "reply-tree");
+      strictEqual(requests, 1);
+    });
+
+    test(`${failure} finishes the default strategy without items`, async () => {
+      const seed = new Note({ contexts: [contextId] });
+      deepStrictEqual(await collect({ documentLoader: fail }, seed), []);
+    });
+
+    test(`${failure} consumes the request budget`, async () => {
+      const seed = new Note({ contexts: [contextId], replyTarget: parent.id });
+      const requests: string[] = [];
+      const items = await collect(
+        {
+          documentLoader: (url) => {
+            requests.push(url.href);
+            if (url.href === contextId.href) return fail();
+            return Promise.resolve(parent);
+          },
+        },
+        seed,
+        { strategies: ["context-auto", "reply-tree"], maxRequests: 1 },
+      );
+      deepStrictEqual(items, []);
+      deepStrictEqual(requests, [contextId.href]);
+    });
+
+    test(`${failure} propagates the cancellation reason`, async () => {
+      const controller = new AbortController();
+      const reason = new Error("Stop backfill");
+      const seed = new Note({ contexts: [contextId], replyTarget: parent });
+      const yielded: unknown[] = [];
+      await rejects(async () => {
+        for await (
+          const item of backfill(
+            {
+              documentLoader: (_url, options) => {
+                strictEqual(options?.signal, controller.signal);
+                controller.abort(reason);
+                return fail();
+              },
+            },
+            seed,
+            {
+              strategies: ["context-auto", "reply-tree"],
+              signal: controller.signal,
+            },
+          )
+        ) yielded.push(item);
+      }, (error) => error === reason);
+      deepStrictEqual(yielded, []);
+    });
+  }
+
+  test("a failed context load is not cached for later reply-tree loads", async () => {
+    const seed = new Note({ contexts: [contextId], replyTarget: contextId });
+    let requests = 0;
+    const items = await collect(
+      {
+        documentLoader: (url) => {
+          strictEqual(url.href, contextId.href);
+          requests++;
+          if (requests === 1) {
+            return Promise.reject(
+              new Error("Temporary failure"),
+            );
+          }
+          return Promise.resolve(parent);
+        },
+      },
+      seed,
+      { strategies: ["context-auto", "reply-tree"], maxRequests: 2 },
+    );
+    deepStrictEqual(items.map((item) => item.object.id?.href), [
+      parent.id?.href,
+    ]);
+    strictEqual(requests, 2);
+  });
+
+  test("an exhausted budget still allows embedded reply-tree data", async () => {
+    const seed = new Note({ contexts: [contextId], replyTarget: parent });
+    const items = await collect(
+      {
+        documentLoader: () => {
+          throw new Error("No requests allowed");
+        },
+      },
+      seed,
+      { strategies: ["context-auto", "reply-tree"], maxRequests: 0 },
+    );
+    deepStrictEqual(items.map((item) => item.object), [parent]);
+  });
+
+  test("interval callback errors propagate before the loader is called", async () => {
+    const reason = new Error("Invalid interval configuration");
+    let requests = 0;
+    const seed = new Note({ contexts: [contextId], replyTarget: parent });
+    await rejects(
+      collect(
+        {
+          documentLoader: () => {
+            requests++;
+            return Promise.resolve(null);
+          },
+        },
+        seed,
+        {
+          strategies: ["context-auto", "reply-tree"],
+          interval: () => {
+            throw reason;
+          },
+        },
+      ),
+      (error) => error === reason,
+    );
+    strictEqual(requests, 0);
+  });
+
+  test("invalid interval strings still propagate", async () => {
+    let requests = 0;
+    const seed = new Note({ contexts: [contextId], replyTarget: parent });
+    await rejects(collect(
+      {
+        documentLoader: () => {
+          requests++;
+          return Promise.resolve(null);
+        },
+      },
+      seed,
+      {
+        strategies: ["context-auto", "reply-tree"],
+        interval: "not a duration",
+      },
+    ));
+    strictEqual(requests, 0);
+  });
+});
