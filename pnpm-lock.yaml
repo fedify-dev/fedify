@@ -225,6 +225,9 @@ importers:
       '@fedify/vocab-runtime':
         specifier: workspace:^
         version: link:../packages/vocab-runtime
+      '@fedify/webfinger':
+        specifier: workspace:^
+        version: link:../packages/webfinger
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.14.4(hono@4.8.3)
@@ -243,6 +246,12 @@ importers:
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
+      '@opentelemetry/context-async-hooks':
+        specifier: 'catalog:'
+        version: 2.5.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core':
+        specifier: 'catalog:'
+        version: 2.5.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/exporter-trace-otlp-proto':
         specifier: 'catalog:'
         version: 0.211.0(@opentelemetry/api@1.9.0)
@@ -995,6 +1004,9 @@ importers:
         specifier: 'catalog:'
         version: 5.1.0
     devDependencies:
+      '@fedify/vocab':
+        specifier: workspace:^
+        version: link:../vocab
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.1
@@ -1392,6 +1404,9 @@ importers:
         specifier: ^1.31.0
         version: 1.39.5
     devDependencies:
+      '@fedify/fixture':
+        specifier: workspace:^
+        version: link:../fixture
       '@fedify/testing':
         specifier: workspace:^
         version: link:../testing
@@ -1433,6 +1448,12 @@ importers:
       '@fedify/fixture':
         specifier: workspace:^
         version: link:../fixture
+      '@fedify/vocab':
+        specifier: workspace:^
+        version: link:../vocab
+      '@fedify/vocab-runtime':
+        specifier: workspace:^
+        version: link:../vocab-runtime
       '@js-temporal/polyfill':
         specifier: 'catalog:'
         version: 0.5.1

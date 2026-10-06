@@ -75,6 +75,7 @@
     "@fedify/fedify": "workspace:^"
   },
   "devDependencies": {
+    "@fedify/fixture": "workspace:^",
     "@fedify/testing": "workspace:^",
     "@std/async": "catalog:",
     "tsdown": "catalog:",
