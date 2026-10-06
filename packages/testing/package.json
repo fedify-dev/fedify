@@ -57,6 +57,8 @@
   },
   "devDependencies": {
     "@fedify/fixture": "workspace:^",
+    "@fedify/vocab": "workspace:^",
+    "@fedify/vocab-runtime": "workspace:^",
     "@js-temporal/polyfill": "catalog:",
     "@std/assert": "catalog:",
     "@std/async": "catalog:",
