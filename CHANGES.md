@@ -45,7 +45,7 @@ To be released.
     [[#896], [#1204] by Jae-Hyuk-Jang\]
 
 [#896]: https://github.com/fedify-dev/fedify/issues/896
-[#1204]: https://github.com/fedify-dev/fedify/issues/1204
+[#1204]: https://github.com/fedify-dev/fedify/pull/1204
 
 ### @fedify/vocab-runtime
 
