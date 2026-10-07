@@ -180,7 +180,8 @@ environments.
 ### Other updates
 
 Refer to the “Adding a new package” section in *CONTRIBUTING.md* and
-perform the required updates.  Record the package addition in *CHANGES.md*.
+perform the required updates.  Record the package addition as a changelog
+fragment under *changes.d/*; never edit *CHANGES.md* by hand.
 
 ### Tests
 
@@ -243,7 +244,7 @@ At a minimum, test the following scenarios (see
 8.  Write tests if possible
 9.  Perform remaining updates per the “Adding a new package” section in
     *CONTRIBUTING.md*
-10. Record changes in *CHANGES.md*
+10. Record changes as a changelog fragment under *changes.d/*
 
 
 Lint, format, and final checks

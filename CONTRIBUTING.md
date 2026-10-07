@@ -610,9 +610,14 @@ Use one trailer for each tool.  Do not use `Co-authored-by` for AI assistance.
 ### Changelog entries
 
 Fedify uses [Sacho] to build *CHANGES.md* from Markdown fragments under
-*changes.d/*.  Do not edit the unreleased part of *CHANGES.md* directly.
-Create a fragment for each user-visible change, selecting the affected package
-and using a topic-based name rather than an issue or pull request number:
+*changes.d/*.  This repository sets `materialize = true`, so Sacho regenerates
+the unreleased region of *CHANGES.md* from the fragments.  A pull request that
+adds or updates a fragment therefore changes *CHANGES.md* as a generated side
+effect, and that is expected.  The fragments remain the source of truth: never
+hand-edit the generated unreleased region of *CHANGES.md*; edit the fragment
+instead and let Sacho refresh the region.  Create a fragment for each
+user-visible change, selecting the affected package and using a topic-based name
+rather than an issue or pull request number:
 
 ~~~~ bash
 sacho add --section @fedify/fedify clearer-errors
