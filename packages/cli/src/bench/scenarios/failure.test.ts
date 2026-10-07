@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { serve } from "srvx";
-import { buildFleet } from "../actor/fleet.ts";
 import { getContextLoader, getDocumentLoader } from "../../docloader.ts";
+import { buildFleet } from "../actor/fleet.ts";
 import type { Clock } from "../load/clock.ts";
 import { normalizeSuite } from "../scenario/normalize.ts";
 import type { Suite } from "../scenario/types.ts";
@@ -27,7 +27,7 @@ for (
         type: "failure",
         fault,
         sender: "alice",
-        load: { concurrency: 1 },
+        load: { rate: 100 },
         duration: "25ms",
         queueDrainTimeout: "1s",
       }],
@@ -62,12 +62,13 @@ for (
         return Promise.resolve(new Response("unexpected", { status: 500 }));
       },
       assertDestinationAllowed: () => {},
+      clock: createTestClock(),
     });
 
-    assert.ok(measurement.requests.total > 0);
+    assert.strictEqual(measurement.requests.total, 3);
     assert.strictEqual(measurement.requests.failed, 0);
     assert.strictEqual(measurement.requests.successRate, 1);
-    assert.ok(triggerCalls > 0);
+    assert.strictEqual(triggerCalls, 3);
     assert.strictEqual(triggerRecipientCount, 1);
   });
 }
@@ -84,7 +85,7 @@ test("failureRunner - uses configured sink base for remote faults", async () => 
       fault: "remote-404",
       sender: "alice",
       sinkBase,
-      load: { concurrency: 1 },
+      load: { rate: 100 },
       duration: "25ms",
       queueDrainTimeout: "1s",
     }],
@@ -118,9 +119,12 @@ test("failureRunner - uses configured sink base for remote faults", async () => 
       return Promise.resolve(new Response("unexpected", { status: 500 }));
     },
     assertDestinationAllowed: () => {},
+    clock: createTestClock(),
   });
 
-  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(measurement.requests.total, 3);
+  assert.strictEqual(measurement.requests.failed, 0);
+  assert.strictEqual(triggerCalls, 3);
   assert.strictEqual(recipientInbox, new URL("/inbox/0", sinkBase).href);
 });
 
@@ -185,7 +189,7 @@ test("failureRunner - shares sink base across remote fault mix", async () => {
       fault: ["remote-404", "remote-410"],
       sender: "alice",
       sinkBase,
-      load: { concurrency: 1 },
+      load: { rate: 100 },
       duration: "25ms",
       queueDrainTimeout: "1s",
     }],
@@ -219,12 +223,17 @@ test("failureRunner - shares sink base across remote fault mix", async () => {
       return Promise.resolve(new Response("unexpected", { status: 500 }));
     },
     assertDestinationAllowed: () => {},
+    clock: createTestClock(),
   });
 
-  assert.ok(measurement.requests.total > 1);
+  assert.strictEqual(measurement.requests.total, 3);
+  assert.strictEqual(measurement.requests.total, triggerCalls);
   assert.strictEqual(measurement.requests.failed, 0);
-  assert.ok(recipientInboxes.includes(new URL("/inbox/0", sinkBase).href));
-  assert.ok(recipientInboxes.includes(new URL("/inbox/1", sinkBase).href));
+  assert.deepStrictEqual(recipientInboxes, [
+    new URL("/inbox/0", sinkBase).href,
+    new URL("/inbox/1", sinkBase).href,
+    new URL("/inbox/0", sinkBase).href,
+  ]);
 });
 
 test("failureRunner.validate - rejects sinkBase for mixed network faults", () => {
@@ -256,7 +265,7 @@ test("failureRunner - detects network-error retries", async () => {
       type: "failure",
       fault: "network-error",
       sender: "alice",
-      load: { concurrency: 1 },
+      load: { rate: 100 },
       duration: "25ms",
       queueDrainTimeout: "50ms",
     }],
@@ -286,12 +295,13 @@ test("failureRunner - detects network-error retries", async () => {
       return Promise.resolve(new Response("unexpected", { status: 500 }));
     },
     assertDestinationAllowed: () => {},
+    clock: createTestClock(),
   });
 
-  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(measurement.requests.total, 3);
   assert.strictEqual(measurement.requests.failed, 0);
   assert.strictEqual(measurement.requests.successRate, 1);
-  assert.ok(triggerCalls > 0);
+  assert.strictEqual(triggerCalls, 3);
 });
 
 test("failureRunner - tolerates transient remote fault stats failures", async () => {
@@ -304,7 +314,7 @@ test("failureRunner - tolerates transient remote fault stats failures", async ()
       type: "failure",
       fault: "remote-404",
       sender: "alice",
-      load: { concurrency: 1 },
+      load: { rate: 100 },
       duration: "25ms",
       queueDrainTimeout: "1s",
     }],
@@ -343,12 +353,15 @@ test("failureRunner - tolerates transient remote fault stats failures", async ()
       return Promise.resolve(new Response("unexpected", { status: 500 }));
     },
     assertDestinationAllowed: () => {},
+    clock: createTestClock(),
   });
 
-  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(measurement.requests.total, 3);
   assert.strictEqual(measurement.requests.failed, 0);
   assert.strictEqual(measurement.requests.successRate, 1);
-  assert.ok(statsCalls >= 3);
+  assert.strictEqual(triggerCalls, 3);
+  // The first send reads a baseline and two polls; later sends need one poll.
+  assert.strictEqual(statsCalls, 7);
 });
 
 test("failureRunner - uses abortable remote fault poll sleeps", async () => {
@@ -502,14 +515,6 @@ test("failureRunner - discovers inbound failure inboxes once", async () => {
         duration: "30ms",
       }],
     }).scenarios[0];
-    let now = 0;
-    const clock: Clock = {
-      now: () => now,
-      sleepUntil: (timeMs) => {
-        now = Math.max(now, timeMs);
-        return Promise.resolve();
-      },
-    };
     let malformedSignatureRequests = 0;
     let signedDateRequests = 0;
     const measurement = await failureRunner.run({
@@ -542,7 +547,7 @@ test("failureRunner - discovers inbound failure inboxes once", async () => {
         return new Response("not found", { status: 404 });
       },
       assertDestinationAllowed: () => {},
-      clock,
+      clock: createTestClock(),
     });
 
     assert.strictEqual(measurement.requests.total, 3);
@@ -595,7 +600,7 @@ test("failureRunner - treats inbound 5xx as target failures", async () => {
         type: "failure",
         fault: "invalid-signature",
         recipient: new URL("/users/alice", target).href,
-        load: { concurrency: 1 },
+        load: { rate: 100 },
         duration: "50ms",
       }],
     }).scenarios[0];
@@ -616,11 +621,15 @@ test("failureRunner - treats inbound 5xx as target failures", async () => {
         return Promise.resolve(new Response("not found", { status: 404 }));
       },
       assertDestinationAllowed: () => {},
+      clock: createTestClock(),
     });
 
-    assert.ok(measurement.requests.total > 0);
+    assert.strictEqual(measurement.requests.total, 5);
+    assert.strictEqual(measurement.requests.failed, 5);
     assert.strictEqual(measurement.requests.successRate, 0);
-    assert.ok(measurement.errors.some((e) => e.status === 500));
+    assert.strictEqual(measurement.errors.length, 1);
+    assert.strictEqual(measurement.errors[0].status, 500);
+    assert.strictEqual(measurement.errors[0].count, 5);
   } finally {
     try {
       await fleet?.close();
@@ -666,7 +675,7 @@ test("failureRunner - treats unexpected inbound 4xx as target failures", async (
         type: "failure",
         fault: "invalid-signature",
         recipient: new URL("/users/alice", target).href,
-        load: { concurrency: 1 },
+        load: { rate: 100 },
         duration: "50ms",
       }],
     }).scenarios[0];
@@ -687,11 +696,15 @@ test("failureRunner - treats unexpected inbound 4xx as target failures", async (
         return Promise.resolve(new Response("not found", { status: 404 }));
       },
       assertDestinationAllowed: () => {},
+      clock: createTestClock(),
     });
 
-    assert.ok(measurement.requests.total > 0);
+    assert.strictEqual(measurement.requests.total, 5);
+    assert.strictEqual(measurement.requests.failed, 5);
     assert.strictEqual(measurement.requests.successRate, 0);
-    assert.ok(measurement.errors.some((e) => e.status === 404));
+    assert.strictEqual(measurement.errors.length, 1);
+    assert.strictEqual(measurement.errors[0].status, 404);
+    assert.strictEqual(measurement.errors[0].count, 5);
   } finally {
     try {
       await fleet?.close();
@@ -700,6 +713,18 @@ test("failureRunner - treats unexpected inbound 4xx as target failures", async (
     }
   }
 });
+
+// Advance only on scheduled sleeps, so host scheduling cannot expire a load window.
+function createTestClock(): Clock {
+  let now = 0;
+  return {
+    now: () => now,
+    sleepUntil: (timeMs) => {
+      now = Math.max(now, timeMs);
+      return Promise.resolve();
+    },
+  };
+}
 
 function json(body: unknown): Response {
   return new Response(JSON.stringify(body), {
