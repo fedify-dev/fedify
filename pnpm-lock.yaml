@@ -372,6 +372,9 @@ importers:
       mermaid:
         specifier: ^11.4.1
         version: 11.7.0
+      mysql2:
+        specifier: 'catalog:'
+        version: 3.22.2(@types/node@22.19.1)
       postgres:
         specifier: 'catalog:'
         version: 3.4.7
@@ -22535,7 +22538,6 @@ snapshots:
       lru.min: 1.1.4
       named-placeholders: 1.1.6
       sql-escaper: 1.3.3
-    optional: true
 
   mysql2@3.22.2(@types/node@24.3.0):
     dependencies:
