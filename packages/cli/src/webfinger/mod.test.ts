@@ -136,7 +136,10 @@ test("Test lookupSingleWebFinger", async (): Promise<void> => {
   try {
     const results = await Array.fromAsync(
       RESOURCES,
-      (resource) => lookupSingleWebFinger({ resource }),
+      // HTTP responses are mocked, so skip the SSRF guard's external DNS lookup.
+      // TODO: Use allowPrivateAddresses when merging into 2.4-maintenance or later.
+      (resource) =>
+        lookupSingleWebFinger({ resource, allowPrivateAddress: true }),
     );
 
     const aliases = results.map((w) => w?.aliases?.[0]);
