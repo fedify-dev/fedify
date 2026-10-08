@@ -108,6 +108,14 @@ To be released.
 [#1206]: https://github.com/fedify-dev/fedify/issues/1206
 [#1245]: https://github.com/fedify-dev/fedify/pull/1245
 
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue` so it retries initialization after a
+    transient failure.  Later enqueue and listen calls work on the same
+    instance.  [[#1268]]
+
+[#1268]: https://github.com/fedify-dev/fedify/issues/1268
+
 ### @fedify/vocab
 
  -  Added vocabulary support for the [FEP-6757] draft, which marks

@@ -479,10 +479,19 @@ export class PostgresMessageQueue implements MessageQueue {
 
   /**
    * Initializes the message queue table if it does not already exist.
+   *
+   * Concurrent callers share one in-flight attempt.  A rejected attempt is
+   * dropped so a later call can retry after a transient failure.
    */
-  initialize(): Promise<void> {
-    if (this.#initialized) return Promise.resolve();
-    return (this.#initPromise ??= this.#doInitialize());
+  async initialize(): Promise<void> {
+    if (this.#initialized) return;
+    this.#initPromise ??= this.#doInitialize();
+    try {
+      await this.#initPromise;
+    } catch (error) {
+      this.#initPromise = undefined;
+      throw error;
+    }
   }
 
   async #doInitialize(): Promise<void> {

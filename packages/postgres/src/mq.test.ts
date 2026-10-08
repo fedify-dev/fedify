@@ -215,6 +215,102 @@ test("PostgresMessageQueue drains an active poll before UNLISTEN", async () => {
   deepStrictEqual(unlistenCalls, 1);
 });
 
+// A rejected initialize() used to stay cached on the instance.  One transient
+// PostgreSQL failure (SQLSTATE 57014, statement timeout) then made every later
+// enqueue() and listen() fail until the application built a new queue.
+// Concurrent callers must still share the in-flight attempt, and a non-race
+// error must fail that attempt on its first statement.
+//
+// See: https://github.com/fedify-dev/fedify/issues/1268
+test(
+  "PostgresMessageQueue initialize retries after a transient failure",
+  async () => {
+    const timeout = Object.assign(new Error("statement timeout"), {
+      code: "57014",
+    });
+    let taggedCalls = 0;
+    const sql = Object.assign(
+      (first: TemplateStringsArray | string): unknown => {
+        // postgres.js uses the same function as an identifier helper:
+        // sql(tableName) is called with a string, not a template array.
+        if (!Array.isArray(first)) return first;
+        taggedCalls++;
+        if (taggedCalls === 1) return Promise.reject(timeout);
+        return Promise.resolve([{ test: '{"foo":1}' }]);
+      },
+      { json: (value: unknown) => value },
+    ) as unknown as postgres.Sql;
+    const mq = new PostgresMessageQueue(sql);
+
+    await rejects(mq.initialize(), (error: unknown) => error === timeout);
+    deepStrictEqual(
+      taggedCalls,
+      1,
+      "a non-race statement timeout should fail the attempt on the first statement",
+    );
+
+    await mq.initialize();
+    const callsAfterSuccess = taggedCalls;
+    deepStrictEqual(
+      callsAfterSuccess > 1,
+      true,
+      "a later initialize() should issue new SQL",
+    );
+
+    await mq.initialize();
+    deepStrictEqual(
+      taggedCalls,
+      callsAfterSuccess,
+      "a successful initialize() should issue no further SQL",
+    );
+  },
+);
+
+test(
+  "PostgresMessageQueue initialize shares one attempt across concurrent callers",
+  async () => {
+    const timeout = Object.assign(new Error("statement timeout"), {
+      code: "57014",
+    });
+    let taggedCalls = 0;
+    const sql = Object.assign(
+      (first: TemplateStringsArray | string): unknown => {
+        if (!Array.isArray(first)) return first;
+        taggedCalls++;
+        if (taggedCalls === 1) return Promise.reject(timeout);
+        return Promise.resolve([{ test: '{"foo":1}' }]);
+      },
+      { json: (value: unknown) => value },
+    ) as unknown as postgres.Sql;
+    const mq = new PostgresMessageQueue(sql);
+
+    const settled = Promise.allSettled([
+      mq.initialize(),
+      mq.initialize(),
+    ]);
+    deepStrictEqual(
+      taggedCalls,
+      1,
+      "concurrent initialize() calls should share one in-flight attempt",
+    );
+    const results = await settled;
+    deepStrictEqual(taggedCalls, 1);
+    deepStrictEqual(
+      results.map((result) =>
+        result.status === "rejected" ? result.reason : result.status
+      ),
+      [timeout, timeout],
+    );
+
+    await mq.initialize();
+    deepStrictEqual(
+      taggedCalls > 1,
+      true,
+      "a call made after the shared attempt settled should start a new one",
+    );
+  },
+);
+
 // Regression test for advisory lock not being fully released after processing
 // a message with an ordering key.  This test verifies that after processing
 // a message through PostgresMessageQueue.listen(), the advisory lock is fully
