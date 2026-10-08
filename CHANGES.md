@@ -10,6 +10,11 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Changed compound portable-object verification to check each map's proof
+    policy before resolving its key or verifying its signature, avoiding work
+    for maps that will be rejected.  Policy-rejected maps now appear in
+    `onRequestFinished` verification reports with their policy failure and no
+    signature checks.  [[#1177], [#1264]]
  -  Fixed log entries emitted during an individual outbound activity delivery
     or inbound activity processing carrying the enclosing HTTP request's or
     queue worker's `traceId`/`spanId` instead of the delivery or processing
@@ -21,7 +26,9 @@ To be released.
     [[#1030], [#1205] by Yujin Jung\]
 
 [#1030]: https://github.com/fedify-dev/fedify/issues/1030
+[#1177]: https://github.com/fedify-dev/fedify/issues/1177
 [#1205]: https://github.com/fedify-dev/fedify/pull/1205
+[#1264]: https://github.com/fedify-dev/fedify/pull/1264
 
 ### @fedify/cli
 

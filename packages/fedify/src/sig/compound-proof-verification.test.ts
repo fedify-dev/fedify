@@ -1179,3 +1179,208 @@ test("compound proof observation does not throw for malformed subject IDs", asyn
   assertEquals(evidence.attempts[0].subject.id, null);
   assertEquals(evidence.attempts[0].subject.pointer, "");
 });
+
+test("compound portable policy rejects actor gateways before key work", async () => {
+  const { verificationObservation } = await import("./verification.ts");
+  for (
+    const gateways of [undefined, [], ["https://gw.example/path"], [
+      "https://gw.example",
+    ]]
+  ) {
+    const inner = await secureRawDocument(
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1",
+        ],
+        id: vector.documents.innerUnsecuredDocument.id,
+        type: "Person",
+        inbox: "https://inner.example/inbox",
+        outbox: "https://inner.example/outbox",
+        ...(gateways === undefined ? {} : { gateways }),
+      },
+      vector.keys.inner.testPrivateKeyJwk,
+      vector.keys.inner.verificationMethod,
+    );
+    const outer = await secureRawDocument(
+      {
+        ...vector.documents.outerUnsecuredDocument,
+        object: inner,
+      },
+      vector.keys.outer.testPrivateKeyJwk,
+      vector.keys.outer.verificationMethod,
+    );
+    const reads: string[] = [];
+    const evidence = {
+      attempts: [] as import("./verification.ts").InboxVerificationAttempt[],
+    };
+    const result = await verifyCompoundPortableObjectProofs(outer, limits, {
+      ...options,
+      keyCache: {
+        get(id) {
+          reads.push(id.href);
+          return Promise.resolve(undefined);
+        },
+        async set() {},
+      },
+      [verificationObservation]: evidence,
+    });
+    assert(result.status === "ok");
+    const valid = gateways?.[0] === "https://gw.example";
+    assertEquals(result.verified, valid);
+    assertEquals(
+      reads.sort(),
+      (valid
+        ? [
+          vector.keys.inner.verificationMethod,
+          vector.keys.outer.verificationMethod,
+        ]
+        : [vector.keys.outer.verificationMethod]).sort(),
+    );
+    assertEquals(result.proofs.map((p) => [p.path, p.verified]), [[
+      "/object",
+      valid,
+    ], ["", true]]);
+    assertEquals(result.snapshot, outer);
+    assert(Object.isFrozen(result.snapshot));
+    assert(Object.isFrozen(result.proofs));
+    assert(Object.isFrozen(result.portableObjects));
+    const child = result.portableObjects[0];
+    if (!valid) {
+      assert(!child.verified);
+      assertEquals(child.reason.type, "invalidGateways");
+      assertEquals(result.proofs[0], {
+        path: "/object",
+        id: vector.documents.innerUnsecuredDocument.id,
+        depth: 1,
+        verified: false,
+        reason: { type: "invalidProof" },
+      });
+      const attempt = evidence.attempts.find((a) =>
+        a.subject.pointer === "/object"
+      );
+      assert(attempt?.status === "rejected");
+      assertEquals(attempt.reason, {
+        type: "proofPolicy",
+        reason: { type: "invalidGateways" },
+      });
+      assertEquals(attempt.checks, []);
+    }
+  }
+});
+
+test("compound portable policy skips doomed proofs without pruning parents", async () => {
+  const context = createInlineProofContext();
+  const scoped = createInlineProofContext();
+  scoped.proof = {
+    "@id": "https://w3id.org/security#proof",
+    "@context": { assertionMethod: "https://w3id.org/security#authentication" },
+  };
+  const cases = [
+    {
+      id: vector.documents.outerUnsecuredDocument.id,
+      type: "Note",
+      method: vector.keys.inner.verificationMethod,
+      context,
+      reason: "verificationMethodMismatch",
+    },
+    {
+      id: vector.documents.innerUnsecuredDocument.id,
+      type: "Note",
+      method: "https://attacker.example/key",
+      context,
+      reason: "unsupportedVerificationMethod",
+    },
+    {
+      id: "ap://did%ZZkey/objects/1",
+      type: "Note",
+      method: vector.keys.inner.verificationMethod,
+      context,
+      reason: "invalidPortableObject",
+    },
+    {
+      id: vector.documents.innerUnsecuredDocument.id,
+      type: "Link",
+      method: vector.keys.inner.verificationMethod,
+      context: {
+        ...context,
+        Link: "https://www.w3.org/ns/activitystreams#Link",
+        href: {
+          "@id": "https://www.w3.org/ns/activitystreams#href",
+          "@type": "@id",
+        },
+      },
+      extra: { href: "https://example.com/resource" },
+      reason: "unsupportedObjectType",
+    },
+    {
+      id: vector.documents.innerUnsecuredDocument.id,
+      type: "Note",
+      method: vector.keys.inner.verificationMethod,
+      context: scoped,
+      reason: "invalidProof",
+    },
+    {
+      id: vector.documents.innerUnsecuredDocument.id,
+      type: "Note",
+      method: vector.keys.inner.verificationMethod,
+      context,
+      extra: { "@id": "https://example.com/ordinary" },
+      reason: "notPortableObject",
+    },
+  ];
+  for (const candidate of cases) {
+    const child = await secureRawDocument(
+      {
+        "@context": candidate.context,
+        id: candidate.id,
+        type: candidate.type,
+        ...candidate.extra,
+        content: "Rejected attachment",
+      },
+      vector.keys.inner.testPrivateKeyJwk,
+      candidate.method,
+    );
+    if (candidate.context === scoped) delete asRecord(child.proof)["@context"];
+    // This ordinary HTTPS parent still has to verify its complete raw input.
+    const parent: Record<string, unknown> = {
+      ...vector.documents.outerUnsecuredDocument,
+      id: "https://social.example/activities/1",
+      attachment: [child],
+    };
+    delete parent.object;
+    const outer = await secureRawDocument(
+      parent,
+      vector.keys.outer.testPrivateKeyJwk,
+      vector.keys.outer.verificationMethod,
+    );
+    const reads: string[] = [];
+    let loads = 0;
+    const result = await verifyCompoundPortableObjectProofs(outer, limits, {
+      ...options,
+      documentLoader() {
+        loads++;
+        throw new TypeError("unexpected key fetch");
+      },
+      keyCache: {
+        get(id) {
+          reads.push(id.href);
+          return Promise.resolve(undefined);
+        },
+        async set() {},
+      },
+    });
+    assert(result.status === "ok");
+    assertEquals(result.verified, false);
+    assertEquals(reads, [vector.keys.outer.verificationMethod]);
+    assertEquals(loads, 0);
+    assertEquals(result.proofs.map((p) => [p.path, p.verified]), [[
+      "/attachment/0",
+      false,
+    ], ["", true]]);
+    const [rejected] = result.portableObjects;
+    assert(!rejected.verified);
+    assertEquals(rejected.reason.type, candidate.reason);
+    assertEquals(rejected.path, "/attachment/0");
+  }
+});
