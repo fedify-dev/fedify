@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { deepStrictEqual } from "node:assert/strict";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
@@ -8,20 +8,20 @@ import {
 } from "./test/lookup.ts";
 
 test("parseLookupCase() parses the last four path segments", () => {
-  assertEquals(
+  deepStrictEqual(
     parseLookupCase(join("/tmp", "cases", "hono", "deno", "denokv", "redis")),
     ["hono", "deno", "denokv", "redis"],
   );
 });
 
 test("matchesLookupCasePattern() supports wildcards", () => {
-  assertEquals(
+  deepStrictEqual(
     matchesLookupCasePattern(["solidstart", "deno", "postgres", "redis"])(
       ["solidstart", "deno", "*", "*"],
     ),
     true,
   );
-  assertEquals(
+  deepStrictEqual(
     matchesLookupCasePattern(["solidstart", "npm", "postgres", "redis"])(
       ["solidstart", "deno", "*", "*"],
     ),
@@ -37,7 +37,7 @@ test("isTestable() excludes banned lookup cases only", () => {
     join("/tmp", "hyd", "hono", "deno", "denokv", "denokv"),
   ];
 
-  assertEquals(
+  deepStrictEqual(
     dirs.filter(isTestable),
     [
       join("/tmp", "hyd", "solidstart", "npm", "postgres", "redis"),
