@@ -25,6 +25,8 @@ To be released.
 
 ### @fedify/cli
 
+ -  Changed debug logs for suppressed recursive lookup errors to preserve the
+    original error as a cause alongside the failed target.  [[#901], [#1265]]
  -  Changed the `fedify nodeinfo` favicon selector to pick a usable bitmap
     icon more often.  It now skips SVG icons declared with
     `type="image/svg+xml"`, not just those with a `.svg` URL, and it considers
@@ -33,7 +35,9 @@ To be released.
     [[#893], [#1187] by Lee Jeongmin\]
 
 [#893]: https://github.com/fedify-dev/fedify/issues/893
+[#901]: https://github.com/fedify-dev/fedify/issues/901
 [#1187]: https://github.com/fedify-dev/fedify/pull/1187
+[#1265]: https://github.com/fedify-dev/fedify/pull/1265
 
 ### @fedify/debugger
 

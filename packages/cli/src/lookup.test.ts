@@ -17,6 +17,7 @@ import { getContextLoader } from "./docloader.ts";
 import { runCli } from "./runner.ts";
 import {
   authorizedFetchOption,
+  classifyRecursiveLookupFailure,
   collectAsyncItems,
   collectRecursiveObjects,
   getLookupFailureHint,
@@ -24,6 +25,7 @@ import {
   getRecursiveTargetId,
   isDocumentLoaderTimeoutError,
   lookupCommand,
+  printRecursiveLookupFailure,
   RecursiveLookupError,
   runLookup,
   shouldPrintLookupFailureHint,
@@ -777,6 +779,237 @@ test("getRecursiveTargetId - returns null for unknown recurse property", () => {
   );
 });
 
+const recursiveFailureOptions = {
+  allowPrivateAddress: false,
+  authorizedFetch: false,
+};
+
+function privateContextError(url: string): Error {
+  return Object.assign(
+    new Error(`Could not retrieve a valid JSON-LD object. URL: "${url}"`),
+    { name: "jsonld.InvalidUrl", details: { url } },
+  );
+}
+
+test("classifyRecursiveLookupFailure - preserves target and timeout presentation", () => {
+  const target = "https://example.com/parent";
+  const timeout = new TimeoutError("timed out");
+  const cases = [
+    // Raw fallback is also supported when no recursive target was retained.
+    { error: timeout, target: undefined, presentation: "generic" },
+    {
+      error: new RecursiveLookupError(target, undefined, { cause: timeout }),
+      target,
+      presentation: "generic",
+    },
+    {
+      error: new RecursiveLookupError(target, {
+        error: timeout,
+        source: "object",
+      }),
+      target,
+      presentation: "target",
+    },
+    {
+      error: new RecursiveLookupError(target, {
+        error: timeout,
+        source: "context",
+      }, { cause: privateContextError("http://localhost/context") }),
+      target,
+      presentation: "target",
+    },
+  ];
+  for (const { error, target, presentation } of cases) {
+    const failure = classifyRecursiveLookupFailure(
+      error,
+      recursiveFailureOptions,
+    );
+    assert.equal(failure.kind, "timeout");
+    assert.equal(failure.target, target);
+    assert.equal(failure.presentation, presentation);
+    assert.equal(failure.suppressible, true);
+    assert.deepEqual(failure.hint, { type: "none" });
+    assert.equal(
+      failure.error,
+      presentation === "generic" && error.cause != null ? error.cause : error,
+    );
+  }
+});
+
+test("classifyRecursiveLookupFailure - distinguishes private targets and contexts", () => {
+  const target = "http://localhost/parent";
+  const contextUrl = "http://127.0.0.1/context";
+  const contextError = privateContextError(contextUrl);
+  const recorded = { error: contextError, source: "context" as const };
+  const wrapped = new RecursiveLookupError(target, recorded);
+  const blocked = classifyRecursiveLookupFailure(
+    wrapped,
+    recursiveFailureOptions,
+  );
+  assert.equal(blocked.kind, "context");
+  assert.deepEqual(blocked.hint, { type: "private-address" });
+  const allowed = classifyRecursiveLookupFailure(wrapped, {
+    ...recursiveFailureOptions,
+    allowPrivateAddress: true,
+  });
+  assert.equal(allowed.kind, "context");
+  assert.deepEqual(allowed.hint, {
+    type: "private-context",
+    url: new URL(contextUrl),
+  });
+  // The actual jsonld path retains the loader error but throws its wrapper.
+  const raw = new RecursiveLookupError(target, {
+    error: new UrlError("Invalid or private address", { reason: "disallowed" }),
+    source: "context",
+  }, { cause: contextError });
+  const failure = classifyRecursiveLookupFailure(raw, recursiveFailureOptions);
+  assert.equal(failure.target, target);
+  assert.equal(failure.source, "context");
+  assert.equal(failure.kind, "context");
+  assert.equal(failure.presentation, "generic");
+  assert.equal(failure.error, contextError);
+  assert.equal(failure.suppressible, true);
+  assert.deepEqual(failure.hint, allowed.hint);
+
+  const http = new FetchError(target, `HTTP 500: ${target}`);
+  const allowedHttp = classifyRecursiveLookupFailure(
+    new RecursiveLookupError(target, { error: http, source: "object" }),
+    { ...recursiveFailureOptions, allowPrivateAddress: true },
+  );
+  assert.equal(allowedHttp.kind, "fetch-or-parse");
+  assert.deepEqual(allowedHttp.hint, {
+    type: "diagnostic",
+    message: `HTTP 500 from ${target}.`,
+  });
+  const privateAddress = classifyRecursiveLookupFailure(
+    new RecursiveLookupError("https://example.com/parent", {
+      error: new UrlError("Invalid or private address"),
+      source: "object",
+    }),
+    recursiveFailureOptions,
+  );
+  assert.equal(privateAddress.kind, "private-address");
+  assert.deepEqual(privateAddress.hint, {
+    type: "diagnostic",
+    message: "Invalid or private address",
+  });
+});
+
+test("classifyRecursiveLookupFailure - preserves recorded and raw DNS hints", () => {
+  const target = "https://example.com/parent";
+  const error = new UrlError("Invalid or private address", { reason: "dns" });
+  for (const authorizedFetch of [false, true]) {
+    const options = { ...recursiveFailureOptions, authorizedFetch };
+    const raw = classifyRecursiveLookupFailure(
+      new RecursiveLookupError(target, { error, source: "object" }, {
+        cause: error,
+      }),
+      options,
+    );
+    assert.equal(raw.kind, "fetch-or-parse");
+    assert.equal(raw.presentation, "generic");
+    assert.deepEqual(raw.hint, { type: "dns" });
+    const recorded = classifyRecursiveLookupFailure(
+      new RecursiveLookupError(target, { error, source: "object" }),
+      options,
+    );
+    assert.equal(recorded.kind, "fetch-or-parse");
+    assert.deepEqual(recorded.hint, {
+      type: "diagnostic",
+      message:
+        "Could not resolve the host in the URL.  Check the URL and your network connection.",
+    });
+  }
+});
+
+test("classifyRecursiveLookupFailure - retains context, HTTP and portable diagnostics", () => {
+  const target = "https://example.com/parent";
+  for (const status of [401, 403, 404]) {
+    const error = new FetchError(target, `HTTP ${status}: ${target}`);
+    for (const source of ["object", "context"] as const) {
+      for (const authorizedFetch of [false, true]) {
+        const failure = classifyRecursiveLookupFailure(
+          new RecursiveLookupError(target, { error, source }),
+          { ...recursiveFailureOptions, authorizedFetch },
+        );
+        assert.equal(
+          failure.kind,
+          source === "context" ? "context" : "fetch-or-parse",
+        );
+        assert.equal(failure.source, source);
+        assert.equal(failure.suppressible, true);
+        assert.deepEqual(failure.hint, {
+          type: "diagnostic",
+          message: `HTTP ${status} from ${target}.` +
+            (source === "object" && !authorizedFetch
+              ? "  It may be a private object.  Try with -a/--authorized-fetch."
+              : ""),
+        });
+      }
+    }
+  }
+  const parse = new SyntaxError("Unexpected token");
+  const context = classifyRecursiveLookupFailure(
+    new RecursiveLookupError(target, { error: parse, source: "context" }, {
+      cause: new Error("JSON-LD processing failed"),
+    }),
+    recursiveFailureOptions,
+  );
+  assert.equal(context.kind, "context");
+  assert.equal(context.presentation, "generic");
+  assert.deepEqual(context.hint, { type: "authorized-fetch" });
+  const portable = classifyRecursiveLookupFailure(
+    new RecursiveLookupError(target, {
+      error: undefined,
+      source: "portable",
+      id: "ap://did:key:example/parent",
+      problem: "no-gateway",
+    }),
+    recursiveFailureOptions,
+  );
+  assert.equal(portable.kind, "fetch-or-parse");
+  assert.equal(portable.source, "portable");
+  assert.equal(portable.suppressible, true);
+  assert.deepEqual(portable.hint, {
+    type: "diagnostic",
+    message:
+      "The portable ID ap://did:key:example/parent has no @gateway location hints.  Use the --gateway option to look it up.",
+  });
+});
+
+test("classifyRecursiveLookupFailure - preserves unknown and authenticated hints", () => {
+  const target = "https://example.com/parent";
+  for (const authorizedFetch of [false, true]) {
+    const options = { ...recursiveFailureOptions, authorizedFetch };
+    // No evidence means a null result, not proof of an HTTP 404.
+    const missing = classifyRecursiveLookupFailure(
+      new RecursiveLookupError(target),
+      options,
+    );
+    assert.equal(missing.kind, "not-found");
+    assert.equal(missing.suppressible, true);
+    assert.deepEqual(missing.hint, {
+      type: authorizedFetch ? "none" : "authorized-fetch",
+    });
+    const raw = classifyRecursiveLookupFailure(
+      new RecursiveLookupError(target, undefined, { cause: "parse failed" }),
+      options,
+    );
+    assert.equal(raw.kind, "fetch-or-parse");
+    assert.equal(raw.error, "parse failed");
+    assert.equal(raw.target, target);
+    assert.deepEqual(raw.hint, {
+      type: authorizedFetch ? "suppress-errors" : "authorized-fetch",
+    });
+  }
+  const undefinedCause = classifyRecursiveLookupFailure(
+    new RecursiveLookupError(target, undefined, { cause: undefined }),
+    recursiveFailureOptions,
+  );
+  assert.equal(undefinedCause.presentation, "target");
+  assert.equal(undefinedCause.kind, "not-found");
+});
+
 test("getLookupFailureHint - suggests private-address for UrlError", () => {
   assert.equal(
     getLookupFailureHint(
@@ -1168,6 +1401,97 @@ async function captureStderr<T>(
   }
 }
 
+test("printRecursiveLookupFailure - preserves timeout targets and authenticated hints", async () => {
+  const target = "https://lookup.test/parent";
+  const timeout = new TimeoutError("timed out");
+  for (const recorded of [false, true]) {
+    const failure = classifyRecursiveLookupFailure(
+      new RecursiveLookupError(
+        target,
+        recorded ? { error: timeout, source: "object" } : undefined,
+        { cause: timeout },
+      ),
+      recursiveFailureOptions,
+    );
+    const headlines: string[] = [];
+    const { stderr } = await captureStderr(() => {
+      printRecursiveLookupFailure(failure, {
+        fail: (headline) => {
+          headlines.push(headline);
+        },
+      }, 0.2);
+      return Promise.resolve();
+    });
+    assert.equal(headlines.length, 1);
+    assert.match(headlines[0], /Request timed out after 0\.2 seconds/);
+    if (recorded) assert.match(headlines[0], /for: .*lookup\.test\/parent/);
+    else assert.equal(headlines[0], "Request timed out after 0.2 seconds.");
+    assert.match(stderr, /--timeout/);
+  }
+  const failure = classifyRecursiveLookupFailure(
+    new RecursiveLookupError(target, undefined, {
+      cause: new Error("parse failed"),
+    }),
+    { ...recursiveFailureOptions, authorizedFetch: true },
+  );
+  const headlines: string[] = [];
+  const { stderr } = await captureStderr(() => {
+    printRecursiveLookupFailure(failure, {
+      fail: (headline) => {
+        headlines.push(headline);
+      },
+    });
+    return Promise.resolve();
+  });
+  assert.deepEqual(headlines, ["Failed to recursively fetch object."]);
+  assert.match(stderr, /--suppress-errors/);
+  assert.doesNotMatch(stderr, /--authorized-fetch/);
+});
+
+test("runLookup - reports recorded recursive timeouts with the target", async () => {
+  const testDir = getTestOutputDir("runlookup_recursive_timeout");
+  const testFile = `${testDir}/out.jsonl`;
+  await mkdir(testDir, { recursive: true });
+  try {
+    const rootUrl = "https://lookup.test/root";
+    const target = "https://lookup.test/parent";
+    const root = new Note({
+      id: new URL(rootUrl),
+      replyTarget: new URL(target),
+    });
+    const { result: exitCode, stderr } = await captureStderr(() =>
+      runLookupAndCaptureExitCode(
+        createLookupRunCommand({
+          urls: [rootUrl],
+          recurse: "replyTarget",
+          recurseDepth: 20,
+          timeout: 0.2,
+          output: testFile,
+        }),
+        {
+          lookupObject: (url) => {
+            if (String(url) === rootUrl) return Promise.resolve(root);
+            throw new TimeoutError("timed out");
+          },
+        },
+      )
+    );
+    assert.equal(exitCode, 1);
+    assert.match(
+      stderr,
+      /Request timed out after 0\.2 seconds for: .*lookup\.test\/parent/,
+    );
+    assert.match(stderr, /--timeout/);
+    assert.doesNotMatch(stderr, /--authorized-fetch/);
+    assert.deepEqual(
+      extractIdsFromRawOutput(await readFile(testFile, "utf8")),
+      [rootUrl],
+    );
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
+
 test("runLookup - prints DNS guidance for a thrown recursive lookup failure", async () => {
   const testDir = "./test_output_runlookup_recursive_dns";
   await mkdir(testDir, { recursive: true });
@@ -1428,6 +1752,43 @@ test("runLookup - keeps recursive private contexts blocked", async () => {
     );
   } finally {
     await rm(testDir, { recursive: true });
+  }
+});
+
+test("runLookup - suppresses private context failures in either presentation order", async () => {
+  for (const reverse of [false, true]) {
+    const testDir = getTestOutputDir(
+      `runlookup_private_context_suppressed_${reverse}`,
+    );
+    const testFile = `${testDir}/out.jsonl`;
+    await mkdir(testDir, { recursive: true });
+    try {
+      await withRecursiveLookupServer(
+        { replyContextPath: "/contexts/reply" },
+        async ({ rootUrl, requestedPaths }) => {
+          const { result: exitCode, stderr } = await captureStderr(() =>
+            runLookupAndCaptureExitCode(createLookupRunCommand({
+              urls: [rootUrl.href],
+              recurse: "replyTarget",
+              recurseDepth: 20,
+              allowPrivateAddress: true,
+              suppressErrors: true,
+              reverse,
+              output: testFile,
+            }))
+          );
+          assert.equal(exitCode, 0);
+          assert.deepEqual(requestedPaths, ["/notes/1", "/notes/0"]);
+          assert.doesNotMatch(stderr, /always blocked|--authorized-fetch/);
+          assert.deepEqual(
+            extractIdsFromRawOutput(await readFile(testFile, "utf8")),
+            [rootUrl.href],
+          );
+        },
+      );
+    } finally {
+      await rm(testDir, { recursive: true });
+    }
   }
 });
 
