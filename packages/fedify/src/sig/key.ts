@@ -5,7 +5,12 @@ import {
   type Multikey,
   Object,
 } from "@fedify/vocab";
-import { type DocumentLoader, getDocumentLoader } from "@fedify/vocab-runtime";
+import {
+  type DocumentLoader,
+  FetchError,
+  getDocumentLoader,
+  UrlError,
+} from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
   SpanKind,
@@ -14,6 +19,82 @@ import {
   type TracerProvider,
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
+
+/** Classifies decoding failures without hiding unexpected loader errors. */
+function classifyKeyJsonLdError(
+  error: unknown,
+  seen = new Set<unknown>(),
+): "invalid" | "fetch" | null {
+  if (!(error instanceof Error) || !error.name.startsWith("jsonld.")) {
+    return null;
+  }
+  if (seen.has(error)) throw error;
+  seen.add(error);
+  const details = (error as Error & {
+    details?: { code?: unknown; cause?: unknown; url?: unknown };
+  }).details;
+  if (typeof details?.code !== "string") return null;
+  if (
+    details.code !== "loading remote context failed" ||
+    (!("cause" in details) && !("cause" in error))
+  ) return "invalid";
+
+  // jsonld wraps both loader errors and JSON.parse failures in InvalidUrl.
+  // A bad context body is invalid data; a failed fetch is a lookup failure.
+  const cause = "cause" in details ? details.cause : error.cause;
+  const nestedFailure = classifyKeyJsonLdError(cause, seen);
+  if (nestedFailure != null) return nestedFailure;
+  if (cause instanceof SyntaxError) return "invalid";
+  if (cause instanceof FetchError || cause instanceof UrlError) return "fetch";
+  if (
+    cause instanceof Error &&
+    ["AbortError", "TimeoutError", "NetworkError"].includes(cause.name)
+  ) return "fetch";
+  if (cause instanceof TypeError) {
+    // The context loader can reject a malformed URL before any fetch occurs.
+    // Match the same URL errors as the LD-signature context-loading boundary.
+    const urlCode = (cause as TypeError & { code?: unknown }).code;
+    if (cause.name === "InvalidContextReferenceError") return "invalid";
+    if (
+      urlCode === "ERR_INVALID_URL" ||
+      cause.message === "Invalid URL string." ||
+      /^Invalid URL(?::|$)/.test(cause.message) ||
+      / cannot be parsed as a URL\.?$/.test(cause.message)
+    ) {
+      // A valid reference can still fail in a loader's URL handling.  Like
+      // wrapContextLoaderForJsonLd(), keep that a fetch failure rather than
+      // attributing it to malformed remote data.
+      return typeof details.url === "string" &&
+          /^[A-Za-z][A-Za-z0-9+.-]*:/.test(details.url) &&
+          !URL.canParse(details.url)
+        ? "invalid"
+        : "fetch";
+    }
+    const networkCause = cause.cause as { code?: unknown } | undefined;
+    const code = (cause as TypeError & { code?: unknown }).code ??
+      networkCause?.code;
+    if (
+      typeof code === "string" && [
+          "ECONNREFUSED",
+          "ECONNRESET",
+          "ECONNABORTED",
+          "ETIMEDOUT",
+          "EHOSTUNREACH",
+          "ENETUNREACH",
+          "ENOTFOUND",
+          "EAI_AGAIN",
+          "UND_ERR_CONNECT_TIMEOUT",
+          "UND_ERR_HEADERS_TIMEOUT",
+          "UND_ERR_BODY_TIMEOUT",
+          "UND_ERR_SOCKET",
+        ].includes(code) ||
+      /^(fetch failed|Failed to fetch|error sending request|error reading a body from connection|Unable to connect|ConnectionRefused|Network connection lost|The socket connection was closed unexpectedly)/
+        .test(cause.message)
+    ) return "fetch";
+  }
+  // Keep the original error and stack for application/loader programming bugs.
+  throw cause;
+}
 
 /**
  * Checks if the given key is valid and supported.  No-op if the key is valid,
@@ -245,10 +326,11 @@ export async function fetchActorDocument(
       baseUrl: documentUrl,
     });
   } catch (error) {
-    if (!(error instanceof TypeError)) throw error;
+    const failure = classifyKeyJsonLdError(error);
+    if (failure == null && !(error instanceof TypeError)) throw error;
     logger.debug(
-      "The document served at {documentUrl} is not a valid object: {error}",
-      { documentUrl: documentUrl.href, error },
+      "Failed to decode the actor document at {documentUrl}: {error}",
+      { documentUrl: documentUrl.href, failure: failure ?? "invalid", error },
     );
     return null;
   }
@@ -458,6 +540,15 @@ async function fetchKeyInternal<T extends CryptographicKey | Multikey>(
       tracerProvider,
     });
   } catch (e) {
+    const failure = classifyKeyJsonLdError(e);
+    if (failure != null) {
+      logger.debug(
+        "Failed to decode key {keyId}: {error}",
+        { keyId, failure, error: e },
+      );
+      await keyCache?.set(cacheKey, null);
+      return { key: null, cached: false };
+    }
     if (!(e instanceof TypeError)) throw e;
     try {
       object = await cls.fromJsonLd(document, {
@@ -466,10 +557,11 @@ async function fetchKeyInternal<T extends CryptographicKey | Multikey>(
         tracerProvider,
       });
     } catch (e) {
-      if (e instanceof TypeError) {
+      const failure = classifyKeyJsonLdError(e);
+      if (failure != null || e instanceof TypeError) {
         logger.debug(
-          "Failed to verify; key {keyId} returned an invalid object.",
-          { keyId },
+          "Failed to decode key {keyId}: {error}",
+          { keyId, failure: failure ?? "invalid", error: e },
         );
         await keyCache?.set(cacheKey, null);
         return { key: null, cached: false };
