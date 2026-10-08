@@ -39,6 +39,16 @@ To be released.
 [#1244]: https://github.com/fedify-dev/fedify/issues/1244
 [#1261]: https://github.com/fedify-dev/fedify/pull/1261
 
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue` remaining unusable after a transient
+    initialization failure.  Later calls now retry initialization, so the same
+    queue instance can recover when the database becomes available again.
+    [[#1268], [#1271]]
+
+[#1268]: https://github.com/fedify-dev/fedify/issues/1268
+[#1271]: https://github.com/fedify-dev/fedify/pull/1271
+
 
 Version 2.0.31
 --------------
