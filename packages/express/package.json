@@ -1,6 +1,6 @@
 {
   "name": "@fedify/express",
-  "version": "2.3.12",
+  "version": "2.3.13",
   "description": "Integrate Fedify with Express",
   "keywords": [
     "Fedify",
