@@ -1,6 +1,6 @@
 {
   "name": "@fedify/nuxt",
-  "version": "2.4.2",
+  "version": "2.4.3",
   "description": "Integrate Fedify with Nuxt",
   "keywords": [
     "Fedify",

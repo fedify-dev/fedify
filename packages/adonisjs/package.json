@@ -1,6 +1,6 @@
 {
   "name": "@fedify/adonisjs",
-  "version": "2.4.2",
+  "version": "2.4.3",
   "description": "Integration package for Fedify with AdonisJS",
   "keywords": [
     "Fedify",
