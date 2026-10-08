@@ -103,7 +103,7 @@ catalogs:
       specifier: jsr:^1.0.6
       version: 1.1.0
     '@sveltejs/kit':
-      specifier: ^2.0.0
+      specifier: ^2.0.0 || ^3.0.0
       version: 2.36.2
     '@types/amqplib':
       specifier: ^0.10.8
@@ -39912,7 +39912,7 @@ snapshots:
       '@poppinss/colors': 4.1.6
       '@poppinss/dumper': 0.6.5
       '@speed-highlight/core': 1.2.15
-      cookie: 1.0.2
+      cookie: 1.1.1
       youch-core: 0.3.3
 
   youch@4.1.1:

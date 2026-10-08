@@ -8,6 +8,20 @@ Version 2.4.2
 
 To be released.
 
+### @fedify/init
+
+ -  Migrated the initialization template script to SvelteKit version 3, by
+    replacing the `$lib` syntax to `#lib`. [[#1222], [#1224] by Jungmin Yoon\]
+
+[#1222]: https://github.com/fedify-dev/fedify/issues/1222
+[#1224]: https://github.com/fedify-dev/fedify/issues/1224
+
+### @fedify/sveltekit
+
+ -  Fixed the hook types returned by `fedifyHook()` to support both SvelteKit 2
+    and 3, so SvelteKit 3 applications can type-check the integration.
+    [[#1222], [#1224]]
+
 
 Version 2.4.1
 -------------
