@@ -134,9 +134,230 @@ async function withServer(
   try {
     await callback(`http://127.0.0.1:${port}`);
   } finally {
+    server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 }
+
+for (const failure of ["contextDataFactory", "federation.fetch"] as const) {
+  test(`integrateFederation() forwards a rejected ${failure} to error middleware`, async () => {
+    const error = new Error(`${failure} failed`);
+    const context = Promise.withResolvers<string>();
+    const requested = Promise.withResolvers<void>();
+    let fetchCalls = 0;
+    const errors: unknown[] = [];
+    const federation = {
+      fetch(_request: Request, options: { contextData: string }) {
+        fetchCalls++;
+        assert.equal(options.contextData, "context value");
+        return Promise.reject(error);
+      },
+    };
+    const app = express();
+    app.use(integrateFederation(federation as never, () => {
+      requested.resolve();
+      return context.promise;
+    }));
+    app.use((
+      error: Error,
+      _req: express.Request,
+      res: express.Response,
+      _next: express.NextFunction,
+    ) => {
+      errors.push(error);
+      res.status(500).send(error.message);
+    });
+
+    await withServer(app, async (origin) => {
+      const responsePromise = fetch(origin, {
+        signal: AbortSignal.timeout(5000),
+      });
+      await Promise.race([
+        requested.promise,
+        responsePromise.then(() => {
+          assert.fail("The request completed before the context factory ran.");
+        }),
+      ]);
+      assert.equal(fetchCalls, 0);
+      if (failure === "contextDataFactory") context.reject(error);
+      else context.resolve("context value");
+      const response = await responsePromise;
+      assert.equal(response.status, 500);
+      assert.equal(await response.text(), error.message);
+    });
+    assert.equal(fetchCalls, failure === "contextDataFactory" ? 0 : 1);
+    assert.equal(errors.length, 1);
+    assert.strictEqual(errors[0], error);
+  });
+}
+
+for (const failure of ["contextDataFactory", "federation.fetch"] as const) {
+  for (const reason of ["route", "router"]) {
+    test(`integrateFederation() forwards a ${reason} rejection from ${failure} to error middleware`, async () => {
+      const errors: unknown[] = [];
+      let fetchCalls = 0;
+      const federation = {
+        fetch() {
+          fetchCalls++;
+          return Promise.reject(reason);
+        },
+      };
+      const app = express();
+      app.use(integrateFederation(
+        federation as never,
+        () =>
+          failure === "contextDataFactory"
+            ? Promise.reject(reason)
+            : Promise.resolve(undefined),
+      ));
+      app.use((_req: express.Request, res: express.Response) => {
+        res.send("unexpected fallthrough");
+      });
+      app.use((
+        error: Error,
+        _req: express.Request,
+        res: express.Response,
+        _next: express.NextFunction,
+      ) => {
+        errors.push(error);
+        res.status(500).send(error.message);
+      });
+
+      await withServer(app, async (origin) => {
+        const response = await fetch(origin, {
+          signal: AbortSignal.timeout(5000),
+        });
+        assert.equal(response.status, 500);
+        assert.equal(await response.text(), reason);
+      });
+      assert.equal(fetchCalls, failure === "contextDataFactory" ? 0 : 1);
+      assert.equal(errors.length, 1);
+      assert.ok(errors[0] instanceof Error);
+      assert.equal(errors[0].message, reason);
+    });
+  }
+}
+
+test("integrateFederation() forwards a rejection without a reason to error middleware", async () => {
+  const errors: unknown[] = [];
+  let fetchCalls = 0;
+  const federation = {
+    fetch() {
+      fetchCalls++;
+      return Promise.resolve(new Response("ok"));
+    },
+  };
+  const app = express();
+  app.use(integrateFederation(
+    federation as never,
+    () => Promise.reject(),
+  ));
+  app.use((_req: express.Request, res: express.Response) => {
+    res.status(200).send("unexpected fallthrough");
+  });
+  app.use((
+    error: Error,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction,
+  ) => {
+    errors.push(error);
+    res.status(500).send(error.message);
+  });
+
+  await withServer(app, async (origin) => {
+    const response = await fetch(origin, {
+      signal: AbortSignal.timeout(5000),
+    });
+    assert.equal(response.status, 500);
+    assert.ok((await response.text()).length > 0);
+  });
+  assert.equal(fetchCalls, 0);
+  assert.equal(errors.length, 1);
+  assert.ok(errors[0] instanceof Error);
+});
+
+test("integrateFederation() leaves synchronous factory errors to Express", async () => {
+  const error = new Error("context failed");
+  const errors: unknown[] = [];
+  let fetchCalls = 0;
+  const federation = {
+    fetch() {
+      fetchCalls++;
+      return Promise.resolve(new Response("ok"));
+    },
+  };
+  const app = express();
+  app.use(integrateFederation(federation as never, () => {
+    throw error;
+  }));
+  app.use((
+    error: Error,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction,
+  ) => {
+    errors.push(error);
+    res.status(500).send(error.message);
+  });
+
+  await withServer(app, async (origin) => {
+    const response = await fetch(origin, {
+      signal: AbortSignal.timeout(5000),
+    });
+    assert.equal(response.status, 500);
+    assert.equal(await response.text(), error.message);
+  });
+  assert.equal(fetchCalls, 0);
+  assert.equal(errors.length, 1);
+  assert.strictEqual(errors[0], error);
+});
+
+test("integrateFederation() waits for successful asynchronous context data", async () => {
+  const context = Promise.withResolvers<string>();
+  const requested = Promise.withResolvers<void>();
+  let fetchCalls = 0;
+  const errors: unknown[] = [];
+  const federation = {
+    fetch(_request: Request, options: { contextData: string }) {
+      fetchCalls++;
+      return Promise.resolve(new Response(options.contextData));
+    },
+  };
+  const app = express();
+  app.use(integrateFederation(federation as never, () => {
+    requested.resolve();
+    return context.promise;
+  }));
+  app.use((
+    error: Error,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction,
+  ) => {
+    errors.push(error);
+    res.status(500).send(error.message);
+  });
+
+  await withServer(app, async (origin) => {
+    const responsePromise = fetch(origin, {
+      signal: AbortSignal.timeout(5000),
+    });
+    await Promise.race([
+      requested.promise,
+      responsePromise.then(() => {
+        assert.fail("The request completed before the context factory ran.");
+      }),
+    ]);
+    assert.equal(fetchCalls, 0);
+    context.resolve("context value");
+    const response = await responsePromise;
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), "context value");
+  });
+  assert.equal(fetchCalls, 1);
+  assert.deepEqual(errors, []);
+});
 
 // Sends the body only after a delay, so that the request reaches Fedify
 // before any of its body has arrived:
