@@ -4,13 +4,21 @@ import {
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
-import { CryptographicKey, Multikey } from "@fedify/vocab";
+import { CryptographicKey, Multikey, Person } from "@fedify/vocab";
 import {
   type DocumentLoader,
   exportDidKey,
   FetchError,
+  getDocumentLoader,
+  UrlError,
 } from "@fedify/vocab-runtime";
-import { assert, assertEquals, assertRejects, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertRejects,
+  assertStrictEquals,
+  assertThrows,
+} from "@std/assert";
 import {
   ed25519Multikey,
   ed25519PublicKey,
@@ -19,10 +27,12 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
+import { wrapContextLoaderForJsonLd } from "./ld.ts";
 import {
   exportJwk,
   fetchKey,
   fetchKeyDetailed,
+  type FetchKeyErrorResult,
   type FetchKeyOptions,
   generateCryptoKeyPair,
   importJwk,
@@ -944,6 +954,329 @@ test("fetchKey() returns null for a malformed actor publicKey", async () => {
     cached: true,
   });
 });
+
+// Exercise the JSON-LD boundary before key iteration, including the separate
+// owner document fetched for a standalone key.
+for (const cls of [CryptographicKey, Multikey]) {
+  for (const location of ["actor", "key", "owner"] as const) {
+    test(`fetchKey() handles JSON-LD context failures in ${cls.name} ${location} documents`, async (t) => {
+      const actorId = new URL("https://example.com/context-actor");
+      const keyId = new URL(`${actorId.href}#key`);
+      const key = cls === CryptographicKey
+        ? rsaPublicKey1.clone({ id: keyId, owner: actorId })
+        : ed25519Multikey.clone({ id: keyId, controller: actorId });
+      const actor = new Person({
+        id: actorId,
+        ...(key instanceof CryptographicKey
+          ? { publicKeys: [key] }
+          : { assertionMethods: [key] }),
+      });
+      const actorDocument = await actor.toJsonLd({
+        contextLoader: mockDocumentLoader,
+      }) as Record<string, unknown>;
+      const keyDocument = await key.toJsonLd({
+        contextLoader: mockDocumentLoader,
+      }) as Record<string, unknown>;
+      const contextUrl = `https://example.com/context/${cls.name}/${location}`;
+      const transportErrors = [
+        new TypeError("fetch failed"),
+        new TypeError("error reading a body from connection"),
+        globalThis.Object.assign(
+          new TypeError("The socket connection was closed unexpectedly."),
+          { code: "ECONNRESET" },
+        ),
+        globalThis.Object.assign(new TypeError("Network request failed"), {
+          code: "ECONNRESET",
+        }),
+        new TypeError("Network request failed", {
+          cause: globalThis.Object.assign(new Error("connection refused"), {
+            code: "ECONNREFUSED",
+          }),
+        }),
+        new FetchError(contextUrl, "HTTP 503"),
+        new FetchError(
+          contextUrl,
+          "HTTP 503",
+          new Response("unavailable", { status: 503 }),
+        ),
+        new UrlError("DNS lookup failed", { reason: "dns" }),
+        globalThis.Object.assign(new Error("request aborted"), {
+          name: "AbortError",
+        }),
+      ];
+      const programmingErrors = [
+        new Error("loader bug"),
+        new ReferenceError("loader bug"),
+        new TypeError("loader bug"),
+        "loader bug",
+        null,
+        undefined,
+      ];
+      const cases: (
+        | { kind: "inline" }
+        | { kind: "remote"; document: unknown }
+        | { kind: "url"; wrapped: boolean }
+        | { kind: "wrapped"; error: Error }
+        | {
+          kind: "transport" | "programming";
+          error: unknown;
+          fallback?: boolean;
+        }
+      )[] = [
+        { kind: "inline" },
+        { kind: "url", wrapped: false },
+        { kind: "url", wrapped: true },
+        { kind: "wrapped", error: new TypeError("Invalid URL string.") },
+        { kind: "remote", document: 123 },
+        { kind: "remote", document: "not JSON" },
+        { kind: "remote", document: { "@context": contextUrl } },
+        ...transportErrors.map((error) => ({
+          kind: "transport" as const,
+          error,
+        })),
+        ...programmingErrors.map((error) => ({
+          kind: "programming" as const,
+          error,
+        })),
+        ...(location === "key"
+          ? [
+            {
+              kind: "transport" as const,
+              error: new TypeError("fetch failed"),
+              fallback: true,
+            },
+            {
+              kind: "programming" as const,
+              error: new ReferenceError("fallback bug"),
+              fallback: true,
+            },
+          ]
+          : []),
+      ];
+      for (const scenario of cases) {
+        const description = "error" in scenario
+          ? scenario.error instanceof Error
+            ? `${scenario.error.name}: ${scenario.error.message}`
+            : String(scenario.error)
+          : "document" in scenario
+          ? JSON.stringify(scenario.document)
+          : "invalid type mapping";
+        await t.step(
+          `${scenario.kind}: ${description}${
+            "fallback" in scenario ? " (fallback)" : ""
+          }`,
+          async () => {
+            const cache: Record<string, CryptographicKey | Multikey | null> =
+              {};
+            let fetchError: FetchKeyErrorResult | undefined = {
+              error: new Error("stale fetch error"),
+            };
+            const [meterProvider, recorder] = createTestMeterProvider();
+            let recovered = false;
+            let contextLoads = 0;
+            const options: FetchKeyOptions & {
+              keyCache: KeyCache & {
+                getFetchError(): Promise<
+                  FetchKeyErrorResult | undefined
+                >;
+                setFetchError(
+                  id: URL,
+                  error: FetchKeyErrorResult | null,
+                ): Promise<void>;
+              };
+            } = {
+              meterProvider,
+              documentLoader(resource) {
+                const document = structuredClone(
+                  resource === keyId.href && location !== "actor"
+                    ? keyDocument
+                    : actorDocument,
+                );
+                if (
+                  location === "actor" ||
+                  (location === "key" && resource === keyId.href) ||
+                  (location === "owner" && resource === actorId.href)
+                ) {
+                  const context = scenario.kind === "inline"
+                    ? {
+                      broken: {
+                        "@id": "https://example.com/ns#broken",
+                        "@type": "not-an-absolute-iri",
+                      },
+                    }
+                    : scenario.kind === "url"
+                    ? "http://["
+                    : contextUrl;
+                  document["@context"] = [document["@context"], context].flat();
+                }
+                return Promise.resolve({
+                  contextUrl: null,
+                  documentUrl: resource,
+                  document,
+                });
+              },
+              async contextLoader(resource) {
+                if (scenario.kind === "url" && resource === "http://[") {
+                  const loader = getDocumentLoader();
+                  return await (scenario.wrapped
+                    ? wrapContextLoaderForJsonLd(loader)
+                    : loader)(resource);
+                }
+                if (scenario.kind === "wrapped" && resource === contextUrl) {
+                  return await wrapContextLoaderForJsonLd(() =>
+                    Promise.reject(scenario.error)
+                  )(resource);
+                }
+                if (resource !== contextUrl) {
+                  return await mockDocumentLoader(resource);
+                }
+                contextLoads++;
+                if (
+                  !recovered && "error" in scenario &&
+                  (!("fallback" in scenario) || contextLoads > 1)
+                ) throw scenario.error;
+                return {
+                  contextUrl: null,
+                  documentUrl: resource,
+                  document: !recovered && "document" in scenario
+                    ? scenario.document
+                    : { "@context": {} },
+                };
+              },
+              keyCache: {
+                get: (id) => Promise.resolve(cache[id.href]),
+                set(id, value) {
+                  cache[id.href] = value;
+                  return Promise.resolve();
+                },
+                getFetchError: () => Promise.resolve(fetchError),
+                setFetchError(
+                  _id: URL,
+                  error: FetchKeyErrorResult | null,
+                ) {
+                  fetchError = error ?? undefined;
+                  return Promise.resolve();
+                },
+              },
+            };
+            const lookup = () =>
+              fetchKey<CryptographicKey | Multikey>(keyId, cls, options);
+            if (scenario.kind === "programming" && "error" in scenario) {
+              assertStrictEquals(await assertRejects(lookup), scenario.error);
+              assertEquals(cache, {});
+              assertStrictEquals(
+                await assertRejects(() =>
+                  fetchKeyDetailed<CryptographicKey | Multikey>(
+                    keyId,
+                    cls,
+                    options,
+                  )
+                ),
+                scenario.error,
+              );
+              assertEquals(cache, {});
+              return;
+            }
+            assertEquals(await lookup(), { key: null, cached: false });
+            if (scenario.kind === "transport") {
+              const counter = recorder.getMeasurement("activitypub.key.lookup");
+              const duration = recorder.getMeasurement(
+                "activitypub.key.lookup.duration",
+              );
+              const status = scenario.error instanceof FetchError
+                ? scenario.error.response?.status
+                : undefined;
+              const expected = status != null
+                ? "error"
+                : scenario.error instanceof TypeError ||
+                    scenario.error instanceof FetchError ||
+                    (scenario.error instanceof Error &&
+                      scenario.error.name === "AbortError")
+                ? "network_error"
+                : "error";
+              assertEquals(
+                counter?.attributes["activitypub.lookup.result"],
+                expected,
+              );
+              assertEquals(
+                duration?.attributes["activitypub.lookup.result"],
+                expected,
+              );
+              assertEquals(
+                counter?.attributes["http.response.status_code"],
+                status,
+              );
+            }
+            assertEquals(cache, { [keyId.href]: null });
+            const detailed = await fetchKeyDetailed<
+              CryptographicKey | Multikey
+            >(keyId, cls, options);
+            assertEquals(detailed.cached, true);
+            if (scenario.kind === "transport" || scenario.kind === "wrapped") {
+              assert(detailed.fetchError != null);
+              if (
+                scenario.error instanceof FetchError &&
+                scenario.error.response != null
+              ) {
+                assert("status" in detailed.fetchError);
+                assertEquals(detailed.fetchError.status, 503);
+                assertEquals(
+                  await detailed.fetchError.response.text(),
+                  "unavailable",
+                );
+              } else {
+                assert("error" in detailed.fetchError);
+                assertStrictEquals(detailed.fetchError.error, scenario.error);
+              }
+            } else {
+              assertEquals(detailed.fetchError, undefined);
+            }
+            const previousLoads = contextLoads;
+            assertEquals(await lookup(), { key: null, cached: true });
+            assertEquals(contextLoads, previousLoads);
+            delete cache[keyId.href];
+            fetchError = undefined;
+            const fresh = await fetchKeyDetailed<CryptographicKey | Multikey>(
+              keyId,
+              cls,
+              options,
+            );
+            assertEquals(fresh.cached, false);
+            assertEquals(fresh.key, null);
+            if (scenario.kind === "transport" || scenario.kind === "wrapped") {
+              assert(fresh.fetchError != null);
+              if (
+                scenario.error instanceof FetchError &&
+                scenario.error.response != null
+              ) {
+                assert("status" in fresh.fetchError);
+                assertEquals(fresh.fetchError.status, 503);
+                assertEquals(
+                  await fresh.fetchError.response.text(),
+                  "unavailable",
+                );
+              } else {
+                assert("error" in fresh.fetchError);
+                assertStrictEquals(fresh.fetchError.error, scenario.error);
+              }
+            } else {
+              assertEquals(fresh.fetchError, undefined);
+            }
+            if (scenario.kind === "transport") {
+              // An expired negative cache entry must allow the loader to recover.
+              delete cache[keyId.href];
+              recovered = true;
+              const result = await lookup();
+              assertEquals(result.cached, false);
+              assertEquals(result.key?.id, keyId);
+              assert(result.key?.publicKey != null);
+            }
+          },
+        );
+      }
+    });
+  }
+}
 
 test("fetchKey() rejects a key whose owner does not link back", async () => {
   // Both sides of the `owner` claim are written by the same host, so the

@@ -176,6 +176,88 @@ To be released.
 [#1215]: https://github.com/fedify-dev/fedify/pull/1215
 
 
+Version 2.4.2
+-------------
+
+Released on October 9, 2026.
+
+### @fedify/fedify
+
+ -  Fixed signature verification throwing an exception when a remote actor
+    supplied a malformed JSON-LD context or its context could not be fetched.
+    These requesters are now treated as unverifiable.
+    [[#1267], [#1270]]
+
+[#1267]: https://github.com/fedify-dev/fedify/issues/1267
+[#1270]: https://github.com/fedify-dev/fedify/pull/1270
+
+### @fedify/backfill
+
+ -  Fixed conversation backfill skipping posts in paginated context and replies
+    collections.  Backfill now follows the first and subsequent pages while
+    respecting traversal limits, and retains posts already found if a page
+    cannot be loaded.
+    [[#1248], [#1256] by Jiwon Kwon\]
+ -  Fixed conversation backfill stopping when the context collection loader
+    failed.  Failed context loads are now skipped so later configured strategies
+    can still find accessible posts.  Cancellation and interval configuration
+    errors continue to propagate.
+    [[#1249], [#1258] by Jiwon Kwon\]
+
+[#1248]: https://github.com/fedify-dev/fedify/issues/1248
+[#1249]: https://github.com/fedify-dev/fedify/issues/1249
+[#1256]: https://github.com/fedify-dev/fedify/pull/1256
+[#1258]: https://github.com/fedify-dev/fedify/pull/1258
+
+### @fedify/cfworkers
+
+ -  Fixed npm refusing to install `@fedify/cfworkers` alongside
+    `@cloudflare/workers-types` 5.x, which recent versions of Wrangler
+    require, unless `--legacy-peer-deps` or an override was used.  The peer
+    dependency on `@cloudflare/workers-types` now accepts both 4.x and 5.x,
+    so you can drop such workarounds.
+    [[#1255], [#1260]]
+
+[#1255]: https://github.com/fedify-dev/fedify/issues/1255
+[#1260]: https://github.com/fedify-dev/fedify/pull/1260
+
+### @fedify/express
+
+ -  Fixed asynchronous `contextDataFactory` and `federation.fetch()` failures
+    being left as unhandled rejections in the Express integration.  Errors
+    that occur before Fedify passes the request to the next middleware now
+    reach Express error-handling middleware, so applications can send their
+    usual error response.
+    [[#1244], [#1261]]
+
+[#1244]: https://github.com/fedify-dev/fedify/issues/1244
+[#1261]: https://github.com/fedify-dev/fedify/pull/1261
+
+### @fedify/init
+
+ -  Migrated the initialization template script to SvelteKit version 3, by
+    replacing the `$lib` syntax to `#lib`. [[#1222], [#1224] by Jungmin Yoon\]
+
+[#1222]: https://github.com/fedify-dev/fedify/issues/1222
+[#1224]: https://github.com/fedify-dev/fedify/issues/1224
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue` remaining unusable after a transient
+    initialization failure.  Later calls now retry initialization, so the same
+    queue instance can recover when the database becomes available again.
+    [[#1268], [#1271]]
+
+[#1268]: https://github.com/fedify-dev/fedify/issues/1268
+[#1271]: https://github.com/fedify-dev/fedify/pull/1271
+
+### @fedify/sveltekit
+
+ -  Fixed the hook types returned by `fedifyHook()` to support both SvelteKit 2
+    and 3, so SvelteKit 3 applications can type-check the integration.
+    [[#1222], [#1224]]
+
+
 Version 2.4.1
 -------------
 
@@ -1567,6 +1649,55 @@ Released on October 1, 2026.
 [#1035]: https://github.com/fedify-dev/fedify/pull/1035
 
 
+Version 2.3.12
+--------------
+
+Released on October 9, 2026.
+
+### @fedify/fedify
+
+ -  Fixed signature verification throwing an exception when a remote actor
+    supplied a malformed JSON-LD context or its context could not be fetched.
+    These requesters are now treated as unverifiable.
+    [[#1267], [#1270]]
+
+### @fedify/backfill
+
+ -  Fixed conversation backfill skipping posts in paginated context and replies
+    collections.  Backfill now follows the first and subsequent pages while
+    respecting traversal limits, and retains posts already found if a page
+    cannot be loaded.  [[#1248], [#1256] by Jiwon Kwon\]
+ -  Fixed conversation backfill stopping when the context collection loader
+    failed.  Failed context loads are now skipped so later configured strategies
+    can still find accessible posts.  Cancellation and interval configuration
+    errors continue to propagate.  [[#1249], [#1258] by Jiwon Kwon\]
+
+### @fedify/cfworkers
+
+ -  Fixed npm refusing to install `@fedify/cfworkers` alongside
+    `@cloudflare/workers-types` 5.x, which recent versions of Wrangler
+    require, unless `--legacy-peer-deps` or an override was used.  The peer
+    dependency on `@cloudflare/workers-types` now accepts both 4.x and 5.x,
+    so you can drop such workarounds.
+    [[#1255], [#1260]]
+
+### @fedify/express
+
+ -  Fixed asynchronous `contextDataFactory` and `federation.fetch()` failures
+    being left as unhandled rejections in the Express integration.  Errors
+    that occur before Fedify passes the request to the next middleware now
+    reach Express error-handling middleware, so applications can send their
+    usual error response.
+    [[#1244], [#1261]]
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue` remaining unusable after a transient
+    initialization failure.  Later calls now retry initialization, so the same
+    queue instance can recover when the database becomes available again.
+    [[#1268], [#1271]]
+
+
 Version 2.3.11
 --------------
 
@@ -2799,6 +2930,44 @@ Released on June 25, 2026.
 [#756]: https://github.com/fedify-dev/fedify/pull/756
 
 
+Version 2.2.17
+--------------
+
+Released on October 9, 2026.
+
+### @fedify/fedify
+
+ -  Fixed signature verification throwing an exception when a remote actor
+    supplied a malformed JSON-LD context or its context could not be fetched.
+    These requesters are now treated as unverifiable.
+    [[#1267], [#1270]]
+
+### @fedify/cfworkers
+
+ -  Fixed npm refusing to install `@fedify/cfworkers` alongside
+    `@cloudflare/workers-types` 5.x, which recent versions of Wrangler
+    require, unless `--legacy-peer-deps` or an override was used.  The peer
+    dependency on `@cloudflare/workers-types` now accepts both 4.x and 5.x,
+    so you can drop such workarounds.
+    [[#1255], [#1260]]
+
+### @fedify/express
+
+ -  Fixed asynchronous `contextDataFactory` and `federation.fetch()` failures
+    being left as unhandled rejections in the Express integration.  Errors
+    that occur before Fedify passes the request to the next middleware now
+    reach Express error-handling middleware, so applications can send their
+    usual error response.
+    [[#1244], [#1261]]
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue` remaining unusable after a transient
+    initialization failure.  Later calls now retry initialization, so the same
+    queue instance can recover when the database becomes available again.
+    [[#1268], [#1271]]
+
+
 Version 2.2.16
 --------------
 
@@ -3757,6 +3926,44 @@ Released on April 28, 2026.
 [#706]: https://github.com/fedify-dev/fedify/issues/706
 [#715]: https://github.com/fedify-dev/fedify/pull/715
 [#722]: https://github.com/fedify-dev/fedify/pull/722
+
+
+Version 2.1.28
+--------------
+
+Released on October 9, 2026.
+
+### @fedify/fedify
+
+ -  Fixed signature verification throwing an exception when a remote actor
+    supplied a malformed JSON-LD context or its context could not be fetched.
+    These requesters are now treated as unverifiable.
+    [[#1267], [#1270]]
+
+### @fedify/cfworkers
+
+ -  Fixed npm refusing to install `@fedify/cfworkers` alongside
+    `@cloudflare/workers-types` 5.x, which recent versions of Wrangler
+    require, unless `--legacy-peer-deps` or an override was used.  The peer
+    dependency on `@cloudflare/workers-types` now accepts both 4.x and 5.x,
+    so you can drop such workarounds.
+    [[#1255], [#1260]]
+
+### @fedify/express
+
+ -  Fixed asynchronous `contextDataFactory` and `federation.fetch()` failures
+    being left as unhandled rejections in the Express integration.  Errors
+    that occur before Fedify passes the request to the next middleware now
+    reach Express error-handling middleware, so applications can send their
+    usual error response.
+    [[#1244], [#1261]]
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue` remaining unusable after a transient
+    initialization failure.  Later calls now retry initialization, so the same
+    queue instance can recover when the database becomes available again.
+    [[#1268], [#1271]]
 
 
 Version 2.1.27
@@ -4858,6 +5065,41 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.32
+--------------
+
+Released on October 9, 2026.
+
+### @fedify/fedify
+
+ -  Fixed signature verification throwing an exception when a remote actor
+    supplied a malformed JSON-LD context or its context could not be fetched.
+    These requesters are now treated as unverifiable.  [[#1267], [#1270]]
+
+### @fedify/cfworkers
+
+ -  Fixed npm refusing to install `@fedify/cfworkers` alongside
+    `@cloudflare/workers-types` 5.x, which recent versions of Wrangler
+    require, unless `--legacy-peer-deps` or an override was used.  The peer
+    dependency on `@cloudflare/workers-types` now accepts both 4.x and 5.x,
+    so you can drop such workarounds.  [[#1255], [#1260]]
+
+### @fedify/express
+
+ -  Fixed asynchronous `contextDataFactory` and `federation.fetch()` failures
+    being left as unhandled rejections in the Express integration.  Errors
+    that occur before Fedify passes the request to the next middleware now
+    reach Express error-handling middleware, so applications can send their
+    usual error response.  [[#1244], [#1261]]
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue` remaining unusable after a transient
+    initialization failure.  Later calls now retry initialization, so the same
+    queue instance can recover when the database becomes available again.
+    [[#1268], [#1271]]
 
 
 Version 2.0.31

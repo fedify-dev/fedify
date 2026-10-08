@@ -49,10 +49,12 @@
   ],
   "peerDependencies": {
     "@fedify/fedify": "workspace:^",
-    "@cloudflare/workers-types": "catalog:"
+    "@cloudflare/workers-types": "^4.20260511.1 || ^5.0.0"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.8.31",
+    "@cloudflare/workers-types": "catalog:",
+    "semver": "^7.7.2",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "~3.2.0",
@@ -64,6 +66,6 @@
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
-    "test": "tsc -p test/typecheck/tsconfig.json --noEmit && vitest run"
+    "test": "tsc -p test/typecheck/tsconfig.json --noEmit && node --test test/peer-dependencies.check.mjs && vitest run"
   }
 }
