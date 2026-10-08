@@ -2,7 +2,12 @@ import { test } from "@fedify/fixture";
 import { PostgresMessageQueue } from "@fedify/postgres/mq";
 import { getRandomKey, testMessageQueue } from "@fedify/testing";
 import * as temporal from "@js-temporal/polyfill";
-import { deepStrictEqual, rejects } from "node:assert/strict";
+import {
+  deepStrictEqual,
+  notStrictEqual,
+  rejects,
+  strictEqual,
+} from "node:assert/strict";
 import process from "node:process";
 import { test as nodeTest } from "node:test";
 import postgres from "postgres";
@@ -10,6 +15,107 @@ import postgres from "postgres";
 const Temporal = globalThis.Temporal ?? temporal.Temporal;
 
 const dbUrl = process.env.POSTGRES_URL;
+
+// Gate both attempts so concurrent callers cannot accidentally pass by running
+// separate initializations that happen to finish before the assertions.
+for (
+  const { phase, failAt, initialized } of [
+    { phase: "first DDL", failAt: 1, initialized: false },
+    { phase: "partial DDL", failAt: 2, initialized: false },
+    { phase: "JSON probe", failAt: 4, initialized: false },
+    { phase: "JSON probe without DDL", failAt: 1, initialized: true },
+  ]
+) {
+  test(`PostgresMessageQueue.initialize() retries after ${phase} failure`, async () => {
+    const failure = Object.assign(new Error("statement timeout"), {
+      code: "57014",
+    });
+    const failureStarted = Promise.withResolvers<void>();
+    const failedQuery = Promise.withResolvers<{ test: string }[]>();
+    const retryQuery = Promise.withResolvers<{ test: string }[]>();
+    let queries = 0;
+    const statements: string[] = [];
+    const result = [{ test: '{"foo":1}' }];
+    const sql = Object.assign(
+      (strings: TemplateStringsArray | string) => {
+        if (!Array.isArray(strings)) return strings;
+        statements.push(strings.join(""));
+        queries++;
+        if (queries === failAt) {
+          failureStarted.resolve();
+          return failedQuery.promise;
+        }
+        if (queries === failAt + 1) return retryQuery.promise;
+        return Promise.resolve(result);
+      },
+      { json: (value: unknown) => value },
+    ) as unknown as postgres.Sql;
+    const mq = new PostgresMessageQueue(sql, { initialized });
+    const first = mq.initialize();
+    const concurrent = mq.initialize();
+    strictEqual(first, concurrent, "pending callers must share one promise");
+    const outcomes = Promise.allSettled([first, concurrent]);
+    await failureStarted.promise;
+    const expectedStatement = phase === "first DDL"
+      ? "CREATE TABLE"
+      : phase === "partial DDL"
+      ? "ALTER TABLE"
+      : "SELECT";
+    strictEqual(statements.at(-1)?.includes(expectedStatement), true);
+    failedQuery.reject(failure);
+    const rejected = await outcomes;
+    for (const outcome of rejected) {
+      strictEqual(outcome.status, "rejected");
+      if (outcome.status === "rejected") strictEqual(outcome.reason, failure);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    strictEqual(queries, failAt, "a rejection must not automatically retry");
+
+    const retry = mq.initialize();
+    const concurrentRetry = mq.initialize();
+    notStrictEqual(retry, first, "a later call must start a new attempt");
+    strictEqual(retry, concurrentRetry);
+    strictEqual(queries, failAt + 1);
+    retryQuery.resolve(result);
+    await Promise.all([retry, concurrentRetry]);
+    const expectedQueries = failAt + (initialized ? 1 : 4);
+    strictEqual(queries, expectedQueries);
+    await mq.initialize();
+    strictEqual(
+      queries,
+      expectedQueries,
+      "successful initialization is cached",
+    );
+  });
+}
+
+test("PostgresMessageQueue.enqueue() recovers after initialization failure", async () => {
+  const failure = new Error("database unavailable");
+  let queries = 0;
+  let notifications = 0;
+  const sql = Object.assign(
+    (strings: TemplateStringsArray | string) => {
+      if (!Array.isArray(strings)) return strings;
+      queries++;
+      if (queries === 1) return Promise.reject(failure);
+      return Promise.resolve([{ test: '{"foo":1}' }]);
+    },
+    {
+      json: (value: unknown) => value,
+      notify: () => {
+        notifications++;
+        return Promise.resolve();
+      },
+    },
+  ) as unknown as postgres.Sql;
+  const mq = new PostgresMessageQueue(sql);
+  await rejects(mq.enqueue("first"), (error: unknown) => error === failure);
+  strictEqual(queries, 1);
+  strictEqual(notifications, 0);
+  await mq.enqueue("second");
+  strictEqual(queries, 6, "retry runs four initialization queries and INSERT");
+  strictEqual(notifications, 1);
+});
 
 test("PostgresMessageQueue", { ignore: dbUrl == null }, () => {
   if (dbUrl == null) return; // Bun does not support skip option

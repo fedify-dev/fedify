@@ -71,8 +71,18 @@ depends = [
   "check-versions",
   "check:manifest:workspace-protocol",
   "check:fixture-usage",
+  "check:node-modules",
 ]
 run = "sacho check"
+
+[tasks."check:node-modules"]
+description = "Check that Deno leaves pnpm's node_modules directories alone"
+run = '''
+if ! jq -e '.nodeModulesDir == "none"' deno.json > /dev/null; then
+  echo 'Set nodeModulesDir to "none" so Deno preserves pnpm workspace links.'
+  exit 1
+fi
+'''
 
 [tasks."check:fmt"]
 description = "Check code formatting"
@@ -169,6 +179,10 @@ done
 '''
 
 # Testing
+[tasks."test:pack"]
+description = "Check that Deno preserves pnpm links and package packing"
+run = "node scripts/test_pack.mjs"
+
 [tasks."test:deno"]
 description = "Run the test suite using Deno"
 depends = ["prepare"]

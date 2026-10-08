@@ -165,6 +165,7 @@
     "npm:preact@^10.28.2": "10.29.2",
     "npm:preact@^10.29.1": "10.29.2",
     "npm:rollup@^4.55.1": "4.60.1",
+    "npm:semver@^7.7.2": "7.7.4",
     "npm:shiki@^1.6.4": "1.29.2",
     "npm:smol-toml@^1.6.1": "1.6.1",
     "npm:srvx@~0.8.7": "0.8.16",
@@ -5110,6 +5111,7 @@
         "natural-compare",
         "optionator"
       ],
+      "deprecated": true,
       "bin": true
     },
     "esm-env@1.2.2": {
@@ -9560,6 +9562,7 @@
         "packageJson": {
           "dependencies": [
             "npm:@cloudflare/vitest-pool-workers@~0.8.31",
+            "npm:semver@^7.7.2",
             "npm:vitest@3.2",
             "npm:wrangler@^4.21.1"
           ]

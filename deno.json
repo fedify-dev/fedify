@@ -116,7 +116,7 @@
       "packages/vocab-runtime/src/contexts/fep-22cd.json"
     ]
   },
-  "nodeModulesDir": "auto",
+  "nodeModulesDir": "none",
   "tasks": {
     "build": {
       "command": "pnpm --recursive --filter '@fedify/*' --parallel --silent build",
