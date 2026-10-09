@@ -278,6 +278,11 @@ const app = new Hono();
 app.use(federation(fedi, (ctx) => "context data"));  // [!code highlight]
 ~~~~
 
+When Fedify rejects the request's `Accept` header, a matched application route
+owns its response, including the default 404 that results when the route calls
+`next()`.  The 406 fallback applies only when a request passes through generic
+wildcard middleware to Hono's default not-found handler.
+
 [Hono]: https://hono.dev/
 
 

@@ -166,3 +166,54 @@ test("Hono preserves an application replacement of the default 404", async () =>
   assert.equal(response.status, 404);
   assert.equal(await response.text(), "<p>Custom missing</p>");
 });
+
+for (const mode of ["route", "wildcard-route", "all-route", "pass"]) {
+  test(
+    "Hono preserves 404 responses owned by matched routes: " + mode,
+    async () => {
+      const fed = createFederation<void>({ kv: new MemoryKvStore() });
+      fed.setActorDispatcher("/users/{identifier}", () => null);
+      const app = new Hono();
+      app.use("*", federation(fed, () => undefined));
+      if (mode === "wildcard-route") {
+        app.get("*", (ctx) => ctx.text("404 Not Found", 404));
+      } else if (mode === "all-route") {
+        app.all("/users/:identifier", (ctx) => ctx.text("404 Not Found", 404));
+      } else {
+        app.get("/users/:identifier", async (ctx, next) => {
+          if (mode === "pass") await next();
+          else return ctx.text("404 Not Found", 404);
+        });
+      }
+      const response = await app.request("http://localhost/users/alice", {
+        headers: { Accept: "image/png" },
+      });
+      assert.equal(response.status, 404);
+      assert.equal(
+        await response.text(),
+        "404 Not Found",
+      );
+    },
+  );
+}
+
+test("Hono preserves responses when observation cannot be installed", async () => {
+  const fed = createFederation<void>({ kv: new MemoryKvStore() });
+  fed.setActorDispatcher("/users/{identifier}", () => null);
+  const app = new Hono();
+  app.use("*", async (ctx, next) => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(ctx),
+      "res",
+    )!;
+    Object.defineProperty(ctx, "res", { ...descriptor, configurable: false });
+    await next();
+  });
+  app.use("*", federation(fed, () => undefined));
+  const response = await app.request("http://localhost/users/alice", {
+    headers: { Accept: "image/png" },
+  });
+  assert.equal(response.status, 404);
+  assert.equal(await response.text(), "404 Not Found");
+  assert.equal(response.headers.get("Vary"), null);
+});
