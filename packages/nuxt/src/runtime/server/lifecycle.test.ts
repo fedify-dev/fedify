@@ -76,6 +76,8 @@ async function request(
         if (kind.startsWith("renderer")) renderBefore?.({ event });
         setResponseHeader(event, "Vary", "Origin");
         setResponseHeader(event, "ETag", '"old"');
+        setResponseHeader(event, "Content-Digest", "sha-256=:old-event:");
+        setResponseHeader(event, "Digest", "SHA-256=old-event");
         if (kind === "success") return "HTML representation";
         if (kind === "server-error") throw createError({ statusCode: 500 });
         if (kind.endsWith("error")) {
@@ -88,6 +90,8 @@ async function request(
           Vary: "Cookie",
           "Content-Type": "text/html",
           "Content-Length": "12",
+          "Content-Digest": "sha-256=:old-response:",
+          Digest: "SHA-256=old-response",
         });
         headers.append("Set-Cookie", "a=; Max-Age=0; Path=/");
         headers.append(
@@ -134,6 +138,8 @@ for (const kind of ["miss", "renderer-error", "renderer-response"] as const) {
     equal(response.headers.get("content-type"), "text/plain");
     ok(response.headers.get("vary")?.split(/,\s*/).includes("Accept"));
     equal(response.headers.get("etag"), null);
+    equal(response.headers.get("content-digest"), null);
+    equal(response.headers.get("digest"), null);
     if (kind !== "miss") ok(response.headers.get("vary")?.includes("Origin"));
     if (kind === "renderer-response") {
       ok(response.headers.get("vary")?.includes("Cookie"));
@@ -165,6 +171,9 @@ for (
       kind === "success" ? 200 : kind === "server-error" ? 500 : 404,
     );
     equal(errors, kind.endsWith("error") ? 1 : 0);
+    const source = kind === "route-response" ? "old-response" : "old-event";
+    equal(response.headers.get("content-digest"), `sha-256=:${source}:`);
+    equal(response.headers.get("digest"), `SHA-256=${source}`);
   });
 }
 test("Nuxt leaves non-deferred route misses to the error handler", async () => {

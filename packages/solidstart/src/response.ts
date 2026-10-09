@@ -6,6 +6,8 @@ const representationHeaders = [
   "content-length",
   "content-encoding",
   "content-range",
+  "content-digest",
+  "digest",
   "etag",
   "last-modified",
   "content-language",

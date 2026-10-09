@@ -51,6 +51,8 @@ function setNotAcceptable(event: H3Event): void {
       "content-length",
       "content-encoding",
       "content-range",
+      "content-digest",
+      "digest",
       "etag",
       "last-modified",
       "content-language",

@@ -3,7 +3,7 @@ import { deepEqual, equal, ok } from "node:assert/strict";
 import { once } from "node:events";
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { Socket } from "node:net";
-import { interceptNotAcceptable } from "./response.ts";
+import { interceptNotAcceptable, notAcceptableHeaders } from "./response.ts";
 
 for (
   const signature of [
@@ -26,6 +26,8 @@ for (
       response.statusCode = 404;
       response.setHeader("Vary", "Origin");
       response.setHeader("ETag", '"old"');
+      response.setHeader("Content-Digest", "sha-256=:old:");
+      response.setHeader("Digest", "SHA-256=old");
       response.setHeader("Content-Length", "100");
       interceptNotAcceptable(response, () => cleaned++);
       const callback = () => {
@@ -58,6 +60,8 @@ for (
       equal(result.headers.get("vary"), "Origin, Accept");
       equal(result.headers.get("content-type"), "text/plain");
       equal(result.headers.get("etag"), null);
+      equal(result.headers.get("content-digest"), null);
+      equal(result.headers.get("digest"), null);
       await callbackPromise;
       equal(cleaned, 1);
       equal(called, signature === "empty" ? 0 : 1);
@@ -73,6 +77,8 @@ test("interception passes committed headers and successful streams through", asy
   for (const status of [200, 404]) {
     const server = createServer((_request, response) => {
       response.statusCode = status;
+      response.setHeader("Content-Digest", "sha-256=:original:");
+      response.setHeader("Digest", "SHA-256=original");
       interceptNotAcceptable(response, () => {});
       response.writeHead(status, { "Content-Type": "text/html" });
       response.write("first ");
@@ -89,6 +95,8 @@ test("interception passes committed headers and successful streams through", asy
       });
       equal(result.status, status);
       equal(await result.text(), "first second");
+      equal(result.headers.get("content-digest"), "sha-256=:original:");
+      equal(result.headers.get("digest"), "SHA-256=original");
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => error ? reject(error) : resolve())
@@ -155,4 +163,23 @@ test("interception restores the response on aborted request close", () => {
   equal(Object.hasOwn(response, "end"), false);
   equal(cleaned, 1);
   equal(response.listenerCount("close"), 0);
+});
+
+test("replacement headers remove digests from both header sources", () => {
+  const original = new Headers({
+    "Content-Digest": "sha-256=:old-response:",
+    Digest: "SHA-256=old-response",
+    Vary: "Origin",
+  });
+  const eventHeaders = new Headers({
+    "Content-Digest": "sha-256=:old-event:",
+    Digest: "SHA-256=old-event",
+    Vary: "Cookie",
+  });
+  const result = notAcceptableHeaders(original, eventHeaders);
+  for (const name of ["content-digest", "digest"]) {
+    equal(result.get(name), null);
+    equal(eventHeaders.get(name), null);
+  }
+  equal(result.get("vary"), "Origin, Cookie, Accept");
 });
