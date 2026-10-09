@@ -91,15 +91,81 @@ function integrateFetchOptions<THonoContext extends HonoContext>(
     // This kind of trick enables the Fedify and Hono to share the same routes
     // and they do content negotiation depending on `Accept` header:
     async onNotAcceptable(_req: Request): Promise<Response> {
-      await next();
-      if (ctx.res.status !== 404) return ctx.res;
-      return new Response("Not acceptable", {
-        status: 406,
-        headers: {
-          "Content-Type": "text/plain",
-          Vary: "Accept",
-        },
-      });
+      // Hono calls its private not-found handler directly. Observe the
+      // default text response and res assignments without reading any body or
+      // mutating application headers. Body identity is not stable on Bun.
+      const context = ctx as unknown as {
+        text?: (...args: unknown[]) => Response;
+      };
+      const text = context.text;
+      const ownRes = Object.getOwnPropertyDescriptor(ctx, "res");
+      let owner: object | null = ctx;
+      let res = ownRes;
+      while (res == null && (owner = Object.getPrototypeOf(owner)) != null) {
+        res = Object.getOwnPropertyDescriptor(owner, "res");
+      }
+      let defaultResponse: Response | undefined;
+      let defaultNotFound = false;
+      const wrappedText = (...args: unknown[]): Response => {
+        const response = text!.apply(ctx, args);
+        if (args[0] === "404 Not Found" && args[1] === 404) {
+          defaultResponse = response;
+        }
+        return response;
+      };
+      const setRes = (response: Response): void => {
+        res!.set!.call(ctx, response);
+        // A later assignment from application middleware owns its response,
+        // even when Hono copies headers from the previous default 404.
+        defaultNotFound = response === defaultResponse;
+      };
+      const observing = res?.get != null && res.set != null &&
+        ownRes?.configurable !== false && text != null;
+      if (observing) {
+        context.text = wrappedText;
+        Object.defineProperty(ctx, "res", {
+          configurable: true,
+          enumerable: res!.enumerable,
+          get: () => res!.get!.call(ctx),
+          set: setRes,
+        });
+      }
+      try {
+        await next();
+      } finally {
+        if (context.text === wrappedText) context.text = text;
+        if (Object.getOwnPropertyDescriptor(ctx, "res")?.set === setRes) {
+          if (ownRes == null) delete (ctx as Partial<HonoContext>).res;
+          else Object.defineProperty(ctx, "res", ownRes);
+        }
+      }
+      if (ctx.res.status !== 404 || !defaultNotFound) return ctx.res;
+      const vary = ctx.res.headers.get("Vary");
+      // Hono ignores middleware return values once downstream finalized ctx.
+      // Its response setter also copies old headers onto the new response.
+      ctx.res = new Response("Not acceptable", { status: 406 });
+      for (
+        const header of [
+          "Content-Encoding",
+          "Content-Language",
+          "Content-Range",
+          "ETag",
+          "Last-Modified",
+          "Transfer-Encoding",
+          "Content-Length",
+        ]
+      ) ctx.res.headers.delete(header);
+      ctx.res.headers.set("Content-Type", "text/plain; charset=utf-8");
+      const fields = vary?.split(",").map((field) => field.trim()) ?? [];
+      if (
+        !fields.some((field) =>
+          field === "*" || field.toLowerCase() === "accept"
+        )
+      ) {
+        fields.push("Accept");
+      }
+      ctx.res.headers.set("Vary", fields.join(", "));
+      return ctx.res;
     },
   };
 }

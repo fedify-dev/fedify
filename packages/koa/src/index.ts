@@ -74,6 +74,7 @@ export function createMiddleware<TContextData, TKoaContext = any>(
         notAcceptable = true;
         body?.restore();
         await next();
+        setNotAcceptableResponse(ctx);
         return new Response("Not acceptable", {
           status: 406,
           headers: {
@@ -256,4 +257,34 @@ function setResponse(ctx: any, response: Response): void {
       }
     },
   });
+}
+
+// deno-lint-ignore no-explicit-any
+function setNotAcceptableResponse(ctx: any): void {
+  // Downstream middleware has finished. Preserve application responses,
+  // including explicit status-only 404s and raw Node responses. Koa sets
+  // _explicitStatus when an application uses the status setter; its initial
+  // default 404 is assigned directly to the raw response instead.
+  if (
+    ctx.status === 404 && ctx.body === undefined &&
+    ctx.message === "Not Found" &&
+    !ctx.response._explicitStatus && !ctx.headerSent && ctx.writable &&
+    ctx.respond !== false
+  ) {
+    for (
+      const header of [
+        "Content-Encoding",
+        "Content-Language",
+        "Content-Range",
+        "ETag",
+        "Last-Modified",
+        "Transfer-Encoding",
+        "Content-Length",
+      ]
+    ) ctx.remove(header);
+    ctx.status = 406;
+    ctx.body = "Not acceptable";
+    ctx.set("Content-Type", "text/plain; charset=utf-8");
+    ctx.vary("Accept");
+  }
 }
