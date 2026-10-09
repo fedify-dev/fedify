@@ -9499,6 +9499,11 @@
           "jsr:@std/assert@^1.0.13"
         ]
       },
+      "packages/solidstart": {
+        "dependencies": [
+          "npm:h3@^1.15.0"
+        ]
+      },
       "packages/sqlite": {
         "packageJson": {
           "dependencies": [

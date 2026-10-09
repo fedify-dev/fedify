@@ -8,6 +8,27 @@ Version 2.2.18
 
 To be released.
 
+### @fedify/nuxt
+
+ -  Fixed deferred `406 Not Acceptable` responses becoming 404 when no
+    application route or Nuxt page could serve a representation.  Renderer
+    404s are now converted back to 406 before Nitro's error handler runs,
+    so these responses do not reach Nitro's error handler or error hooks.
+    Deliberate 404s from matched server routes are preserved.
+    [[#1278], [#1279]]
+
+[#1278]: https://github.com/fedify-dev/fedify/issues/1278
+[#1279]: https://github.com/fedify-dev/fedify/pull/1279
+
+### @fedify/solidstart
+
+ -  Fixed deferred `406 Not Acceptable` responses becoming 404 when an
+    application returned a `Response` with status 404, returned no response,
+    or threw a 404 error.  Responses with other statuses are preserved.  The
+    406 is restored for buffered 404 responses before headers are sent;
+    responses whose headers have already been sent cannot be changed.  Thrown
+    errors still reach Nitro's error hooks.  [[#1278], [#1279]]
+
 
 Version 2.2.17
 --------------
