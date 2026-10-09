@@ -290,3 +290,25 @@ for (const mode of ["use", "async-use", "two-argument-use", "all"]) {
     },
   );
 }
+
+test("Hono falls back to 406 with only the federation middleware", async () => {
+  const fed = createFederation<void>({ kv: new MemoryKvStore() });
+  fed.setActorDispatcher("/users/{identifier}", () => null);
+  const app = new Hono();
+  // A single matched handler bypasses Hono's compose() middleware pipeline.
+  app.use(federation(fed, () => undefined));
+  const response = await app.request("http://localhost/users/alice", {
+    headers: { Accept: "image/png" },
+  });
+  assert.equal(response.status, 406);
+  assert.equal(await response.text(), "Not acceptable");
+  assert.equal(response.headers.get("Vary"), "Accept");
+  assert.equal(
+    response.headers.get("Content-Type"),
+    "text/plain; charset=utf-8",
+  );
+
+  const missing = await app.request("http://localhost/missing");
+  assert.equal(missing.status, 404);
+  assert.equal(await missing.text(), "404 Not Found");
+});
