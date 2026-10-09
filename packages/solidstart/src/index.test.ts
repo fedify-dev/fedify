@@ -19,6 +19,7 @@ async function pipeline(
   handler: (event: H3Event) => unknown,
   deferred = true,
   web = false,
+  routed = false,
 ): Promise<{ response: Response; errors: number }> {
   // SolidStart ships JSX with extensionless imports; only Bun can load the
   // real wrapper. Keep the import lazy so other runtimes can discover tests.
@@ -47,7 +48,7 @@ async function pipeline(
   const onBeforeResponse = middleware.onBeforeResponse;
   ok(typeof onRequest === "function");
   ok(typeof onBeforeResponse === "function");
-  app.use(defineEventHandler({
+  const wrappedHandler = defineEventHandler({
     // Vinxi pins H3 1.15.3, while this test uses the workspace's H3 1.15.x.
     // Bridge their callback types without replacing SolidStart's wrappers.
     onRequest: (event) =>
@@ -58,8 +59,15 @@ async function pipeline(
         payload,
       ),
     handler,
-  }));
-  app.use(createRouter({ preemptive: true }).handler);
+  });
+  if (routed) {
+    const router = createRouter({ preemptive: true });
+    router.get("/users/alice", wrappedHandler);
+    app.use(router.handler);
+  } else {
+    app.use(wrappedHandler);
+    app.use(createRouter({ preemptive: true }).handler);
+  }
   if (web) {
     return {
       response: await toWebHandler(app)(
@@ -82,7 +90,7 @@ async function pipeline(
     );
     const body = await response.text();
     return {
-      response: new Response(body, {
+      response: new Response(response.body === null ? null : body, {
         status: response.status,
         statusText: response.statusText,
         headers: response.headers,
@@ -186,3 +194,22 @@ test("SolidStart keeps concurrent requests isolated", {
   equal(deferred.response.status, 406);
   equal(ordinary.response.status, 404);
 });
+
+for (const status of [204, 302, 500]) {
+  test(`SolidStart preserves undefined bodies with status ${status}`, {
+    ignore: !("Bun" in globalThis),
+  }, async () => {
+    const { response, errors } = await pipeline(
+      (event) => {
+        setResponseStatus(event, status);
+        return undefined;
+      },
+      true,
+      false,
+      true,
+    );
+    equal(response.status, status);
+    equal(await response.text(), "");
+    equal(errors, 0);
+  });
+}

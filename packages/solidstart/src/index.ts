@@ -109,8 +109,8 @@ export function fedifyMiddleware<TContextData>(
         : undefined;
       const status = body instanceof Response
         ? body.status
-        : body === undefined
-        ? 404 // Falling through reaches Nitro's empty preemptive router.
+        : body === undefined && (event.response.status ?? 200) === 200
+        ? 404 // The default status falls through to Nitro's empty router.
         : error?.statusCode ?? error?.status ?? event.response.status ?? 200;
       if (status !== 404) return;
 
