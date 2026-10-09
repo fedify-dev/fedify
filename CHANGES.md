@@ -42,9 +42,9 @@ To be released.
  -  Fixed federation endpoints returning `404 Not Found` instead of
     `406 Not Acceptable` when the application cannot handle a request with an
     unsupported `Accept` header.  Application responses, including explicit
-    404s, are preserved.  Matched application routes retain their 404 responses,
-    even when they delegate to Hono's default not-found handler.  The fallback
-    includes `Vary: Accept`.
+    404s, are preserved.  Matched application routes and downstream wildcard
+    middleware retain their 404 responses, even when they delegate to Hono's
+    default not-found handler.  The fallback includes `Vary: Accept`.
     [[#1277], [#1280]]
 
 ### @fedify/koa

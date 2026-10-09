@@ -91,15 +91,19 @@ function integrateFetchOptions<THonoContext extends HonoContext>(
     // This kind of trick enables the Fedify and Hono to share the same routes
     // and they do content negotiation depending on `Accept` header:
     async onNotAcceptable(_req: Request): Promise<Response> {
-      const matchedRoutes = (ctx.req as HonoRequest & {
+      const { matchedRoutes, routeIndex } = ctx.req as HonoRequest & {
         matchedRoutes?: { method: string; path: string }[];
-      }).matchedRoutes;
+        routeIndex?: number;
+      };
       // Public route metadata cannot distinguish an intentional default-text
       // 404 from terminal handling after a matched route calls next(). Keep
-      // ownership with application routes, including wildcard endpoints and
-      // concrete ALL routes. Only generic ALL middleware permits a fallback.
+      // ownership with application routes and downstream wildcard middleware.
+      // Even generic ALL middleware can return the same text as Hono's private
+      // not-found handler. A fallback is safe only without downstream handlers.
       if (
-        matchedRoutes?.some((route) =>
+        matchedRoutes == null || routeIndex == null ||
+        matchedRoutes.length > routeIndex + 1 ||
+        matchedRoutes.some((route) =>
           route.method !== "ALL" || !route.path.endsWith("*")
         )
       ) {

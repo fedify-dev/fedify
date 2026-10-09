@@ -22,16 +22,19 @@ for (
       const fed = createFederation<void>({ kv: new MemoryKvStore() });
       fed.setActorDispatcher("/users/{identifier}", () => null);
       const app = new Hono();
-      app.use("*", federation(fed, () => undefined));
-      // Exercise res setter cloning and stale metadata on a default response.
+      // Exercise res setter cloning and stale metadata from upstream middleware.
       app.use("*", async (ctx, next) => {
         ctx.header("Vary", "Origin");
-        await next();
-        if (ctx.res.status === 404 && mode !== "custom-not-found") {
+        if (mode === "unhandled") {
           ctx.header("ETag", '"old"');
           ctx.header("Content-Length", "999");
         }
+        await next();
       });
+      app.use("*", federation(fed, () => undefined));
+      if (mode === "pass") {
+        app.use("*", async (_ctx, next) => await next());
+      }
       if (mode.endsWith("html")) {
         app.get("/users/:identifier", async (ctx) => {
           if (mode === "async-html") {
@@ -59,7 +62,8 @@ for (
         headers: { Accept: "image/png" },
       });
       const expected =
-        mode.startsWith("not-found") || mode === "custom-not-found"
+        mode.startsWith("not-found") || mode === "custom-not-found" ||
+          mode === "pass"
           ? 404
           : mode.endsWith("html")
           ? 200
@@ -76,6 +80,8 @@ for (
             ? "<p>Alice</p>"
             : mode === "custom-not-found"
             ? "<p>Custom missing</p>"
+            : mode === "pass"
+            ? "404 Not Found"
             : expected === 404
             ? "<p>No such user</p>"
             : expected === 500
@@ -248,6 +254,39 @@ for (const mode of ["same-body", "wrapped-stream", "replacement"]) {
         mode === "replacement" ? "<p>Application missing</p>" : "404 Not Found",
       );
       assert.equal(response.headers.get("Vary"), "Origin");
+    },
+  );
+}
+
+for (const mode of ["use", "async-use", "two-argument-use", "all"]) {
+  test(
+    "Hono preserves default-text 404s returned by wildcard handlers: " + mode,
+    async () => {
+      const fed = createFederation<void>({ kv: new MemoryKvStore() });
+      fed.setActorDispatcher("/users/{identifier}", () => null);
+      const app = new Hono();
+      app.use("*", federation(fed, () => undefined));
+      if (mode === "all") {
+        app.all("*", (ctx) => ctx.text("404 Not Found", 404));
+      } else if (mode === "async-use") {
+        app.use("*", async (ctx) => {
+          await Promise.resolve();
+          return ctx.text("404 Not Found", 404);
+        });
+      } else if (mode === "two-argument-use") {
+        app.use(
+          "*",
+          (ctx, _next) => Promise.resolve(ctx.text("404 Not Found", 404)),
+        );
+      } else {
+        app.use("*", (ctx) => Promise.resolve(ctx.text("404 Not Found", 404)));
+      }
+      const response = await app.request("http://localhost/users/alice", {
+        headers: { Accept: "image/png" },
+      });
+      assert.equal(response.status, 404);
+      assert.equal(await response.text(), "404 Not Found");
+      assert.equal(response.headers.get("Vary"), null);
     },
   );
 }
