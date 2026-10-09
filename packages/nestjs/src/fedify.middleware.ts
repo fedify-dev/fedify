@@ -131,47 +131,65 @@ function installNotAcceptableFallback(req: ERequest, res: EResponse): void {
     return json.call(this, body);
   };
   res.json = wrappedJson;
-  const wrapped: typeof res.end = function (
-    this: EResponse,
-    ...args: unknown[]
-  ) {
-    if (this.end === wrapped) this.end = end;
-    if (this.json === wrappedJson) this.json = json;
-    if (
-      !pending || !defaultNotFound || this.headersSent ||
-      this.statusCode !== 404
+  const wrapEnd = (end: typeof res.end): typeof res.end =>
+    function (
+      this: EResponse,
+      ...args: unknown[]
     ) {
+      if (pending) {
+        Object.defineProperty(this, "end", {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: end,
+        });
+        if (this.json === wrappedJson) this.json = json;
+      }
+      if (
+        !pending || !defaultNotFound || this.headersSent ||
+        this.statusCode !== 404
+      ) {
+        pending = false;
+        return end.apply(this, args as Parameters<typeof end>);
+      }
       pending = false;
-      return end.apply(this, args as Parameters<typeof end>);
-    }
-    pending = false;
-    const callback = args.find((arg) => typeof arg === "function") as
-      | (() => void)
-      | undefined;
-    const body = "Not acceptable";
-    this.statusCode = 406;
-    this.statusMessage = "Not Acceptable";
-    for (
-      const header of [
-        "Content-Encoding",
-        "Content-Language",
-        "Content-Range",
-        "ETag",
-        "Last-Modified",
-        "Transfer-Encoding",
-      ]
-    ) this.removeHeader(header);
-    this.setHeader("Content-Type", "text/plain; charset=utf-8");
-    this.setHeader("Content-Length", Buffer.byteLength(body));
-    this.vary("Accept");
-    return end.call(
-      this,
-      req.method === "HEAD" ? undefined : body,
-      "utf8",
-      callback,
-    );
-  };
-  res.end = wrapped;
+      const callback = args.find((arg) => typeof arg === "function") as
+        | (() => void)
+        | undefined;
+      const body = "Not acceptable";
+      this.statusCode = 406;
+      this.statusMessage = "Not Acceptable";
+      for (
+        const header of [
+          "Content-Encoding",
+          "Content-Language",
+          "Content-Range",
+          "ETag",
+          "Last-Modified",
+          "Transfer-Encoding",
+        ]
+      ) this.removeHeader(header);
+      this.setHeader("Content-Type", "text/plain; charset=utf-8");
+      this.setHeader("Content-Length", Buffer.byteLength(body));
+      this.vary("Accept");
+      return end.call(
+        this,
+        req.method === "HEAD" ? undefined : body,
+        "utf8",
+        callback,
+      );
+    };
+  // Run before downstream end wrappers can commit headers, while retaining
+  // their saved-function chain after the response has been classified.
+  let wrappedEnd = wrapEnd(end);
+  Object.defineProperty(res, "end", {
+    configurable: true,
+    enumerable: true,
+    get: () => wrappedEnd,
+    set: (value: typeof res.end) => {
+      wrappedEnd = wrapEnd(value);
+    },
+  });
 }
 
 /** A custom response copying Nest's exact default 404 is indistinguishable. */

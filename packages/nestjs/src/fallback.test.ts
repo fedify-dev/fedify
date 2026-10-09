@@ -16,11 +16,12 @@ import {
 } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import type { AddressInfo } from "node:net";
+import type { Response as ExpressResponse } from "express";
 // Node cannot load legacy decorators directly; exercise the built middleware.
 import { integrateFederation } from "../dist/index.mjs";
 
 for (
-  const mode of [
+  const scenario of [
     "unhandled",
     "async-pass",
     "html",
@@ -29,10 +30,15 @@ for (
     "not-found-json",
     "not-found-error",
     "controller-pass",
+    "wrapped-unhandled",
+    "wrapped-not-found-json",
+    "wrapped-html",
   ]
 ) {
+  const mode = scenario.replace(/^wrapped-/, "");
   test(
-    "NestJS preserves the application's response or falls back to 406: " + mode,
+    "NestJS preserves the application's response or falls back to 406: " +
+      scenario,
     async () => {
       const fed = createFederation<void>({ kv: new MemoryKvStore() });
       fed.setActorDispatcher("/users/{identifier}", () => null);
@@ -81,6 +87,21 @@ for (
             { path: "users/:identifier", method: RequestMethod.GET },
             { path: "users/:identifier", method: RequestMethod.HEAD },
           );
+          if (scenario.startsWith("wrapped-")) {
+            consumer.apply(
+              (_req: unknown, res: ExpressResponse, next: () => void) => {
+                const end = res.end;
+                res.end = function (this: ExpressResponse, ...args: unknown[]) {
+                  this.writeHead(this.statusCode);
+                  return end.apply(this, args as Parameters<typeof end>);
+                } as typeof res.end;
+                next();
+              },
+            ).forRoutes(
+              { path: "users/:identifier", method: RequestMethod.GET },
+              { path: "users/:identifier", method: RequestMethod.HEAD },
+            );
+          }
           if (mode === "async-pass") {
             consumer.apply(
               async (_req: unknown, _res: unknown, next: () => void) => {
