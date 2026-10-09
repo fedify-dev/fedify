@@ -206,3 +206,70 @@ test("express preserves a custom HTML 404 resembling its default page", async ()
     }
   });
 });
+
+for (const mode of ["unhandled", "application-404", "html"]) {
+  test(
+    "express applies fallback before downstream response wrappers: " + mode,
+    async () => {
+      const fed = createFederation<void>({ kv: new MemoryKvStore() });
+      fed.setActorDispatcher("/users/{identifier}", () => null);
+      const app = express().use(integrateFederation(fed, () => undefined));
+      let ends = 0;
+      app.use(
+        (
+          _req: express.Request,
+          res: express.Response,
+          next: express.NextFunction,
+        ) => {
+          const end = res.end;
+          res.end = function (this: express.Response, ...args: unknown[]) {
+            ends++;
+            this.writeHead(this.statusCode);
+            return end.apply(this, args as Parameters<typeof end>);
+          } as typeof res.end;
+          next();
+        },
+      );
+      if (mode !== "unhandled") {
+        app.get(
+          "/users/:identifier",
+          (_req: express.Request, res: express.Response) => {
+            res.status(mode === "application-404" ? 404 : 200).send(
+              "Application response",
+            );
+          },
+        );
+      }
+      await withServer(app, async (origin) => {
+        for (const method of ["GET", "HEAD"]) {
+          const response = await fetch(`${origin}/users/alice`, {
+            method,
+            headers: { Accept: "image/png", "Accept-Encoding": "identity" },
+            signal: AbortSignal.timeout(5000),
+          });
+          assert.equal(
+            response.status,
+            mode === "unhandled" ? 406 : mode === "application-404" ? 404 : 200,
+          );
+          assert.equal(
+            await response.text(),
+            method === "HEAD"
+              ? ""
+              : mode === "unhandled"
+              ? "Not acceptable"
+              : "Application response",
+          );
+          if (mode === "unhandled") {
+            assert.ok(
+              response.headers.get("Vary")?.split(",").some((field) =>
+                field.trim().toLowerCase() === "accept"
+              ),
+            );
+            assert.equal(response.headers.get("Content-Length"), "14");
+          }
+        }
+      });
+      assert.equal(ends, 2);
+    },
+  );
+}

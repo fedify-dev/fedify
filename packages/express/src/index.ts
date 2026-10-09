@@ -265,47 +265,68 @@ function installNotAcceptableFallback(req: ERequest, res: EResponse): void {
     return send.call(this, body);
   };
   res.send = wrappedSend;
-  const wrapped: typeof res.end = function (
-    this: EResponse,
-    ...args: unknown[]
-  ) {
-    if (this.end === wrapped) this.end = end;
-    if (this.send === wrappedSend) this.send = send;
-    if (
-      !pending || applicationResponse || this.headersSent ||
-      this.statusCode !== 404 || !isDefaultNotFound(req, this, args[0])
+  const wrapEnd = (end: typeof res.end): typeof res.end =>
+    function (
+      this: EResponse,
+      ...args: unknown[]
     ) {
+      if (pending) {
+        // Stop observing assignments before entering downstream wrappers. Their
+        // saved end functions still delegate through our now-inactive wrappers.
+        Object.defineProperty(this, "end", {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: end,
+        });
+        if (this.send === wrappedSend) this.send = send;
+      }
+      if (
+        !pending || applicationResponse || this.headersSent ||
+        this.statusCode !== 404 || !isDefaultNotFound(req, this, args[0])
+      ) {
+        pending = false;
+        return end.apply(this, args as Parameters<typeof end>);
+      }
       pending = false;
-      return end.apply(this, args as Parameters<typeof end>);
-    }
-    pending = false;
-    const callback = args.find((arg) => typeof arg === "function") as
-      | (() => void)
-      | undefined;
-    const body = "Not acceptable";
-    this.statusCode = 406;
-    this.statusMessage = "Not Acceptable";
-    for (
-      const header of [
-        "Content-Encoding",
-        "Content-Language",
-        "Content-Range",
-        "ETag",
-        "Last-Modified",
-        "Transfer-Encoding",
-      ]
-    ) this.removeHeader(header);
-    this.setHeader("Content-Type", "text/plain; charset=utf-8");
-    this.setHeader("Content-Length", Buffer.byteLength(body));
-    this.vary("Accept");
-    return end.call(
-      this,
-      req.method === "HEAD" ? undefined : body,
-      "utf8",
-      callback,
-    );
-  };
-  res.end = wrapped;
+      const callback = args.find((arg) => typeof arg === "function") as
+        | (() => void)
+        | undefined;
+      const body = "Not acceptable";
+      this.statusCode = 406;
+      this.statusMessage = "Not Acceptable";
+      for (
+        const header of [
+          "Content-Encoding",
+          "Content-Language",
+          "Content-Range",
+          "ETag",
+          "Last-Modified",
+          "Transfer-Encoding",
+        ]
+      ) this.removeHeader(header);
+      this.setHeader("Content-Type", "text/plain; charset=utf-8");
+      this.setHeader("Content-Length", Buffer.byteLength(body));
+      this.vary("Accept");
+      return end.call(
+        this,
+        req.method === "HEAD" ? undefined : body,
+        "utf8",
+        callback,
+      );
+    };
+  // Middleware such as compression wraps end and commits headers before
+  // invoking the saved function. Wrap each assignment so classification and
+  // replacement happen before the outermost downstream wrapper commits.
+  let wrappedEnd = wrapEnd(end);
+  Object.defineProperty(res, "end", {
+    configurable: true,
+    enumerable: true,
+    get: () => wrappedEnd,
+    set: (value: typeof res.end) => {
+      wrappedEnd = wrapEnd(value);
+    },
+  });
 }
 
 /**
