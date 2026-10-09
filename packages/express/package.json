@@ -55,7 +55,8 @@
     "@types/express": "catalog:",
     "@types/node": "catalog:",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@fedify/fixture": "workspace:*"
   },
   "scripts": {
     "build:self": "tsdown",

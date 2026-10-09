@@ -46,9 +46,10 @@ export function integrateFederation<TContextData>(
           // When the `federation` object finds a request not acceptable
           // type-wise (i.e., a user-agent doesn't want JSON-LD), it will call
           // the `next` function provided by the Express framework to continue
-          // if any route is matched, and otherwise, it will return a 406 Not
+          // if the application can handle it, and otherwise return a 406 Not
           // Acceptable response:
           notAcceptable = true;
+          installNotAcceptableFallback(req, res);
           body?.restore();
           next();
           return new Response("Not acceptable", {
@@ -60,7 +61,7 @@ export function integrateFederation<TContextData>(
           });
         },
       });
-      if (notFound || (notAcceptable && req.route != null)) return;
+      if (notFound || notAcceptable) return;
       await setEResponse(res, response);
       // Prevent the Express framework from sending the response again:
       res.end();
@@ -244,4 +245,134 @@ function setEResponse(res: EResponse, response: Response): Promise<void> {
       reader.read().then(read);
     });
   });
+}
+
+/**
+ * Waits for downstream handling to finish before replacing an unsent 404.
+ * A matched route can still fall through, and next() does not wait for an
+ * asynchronous handler. Already committed responses belong to the application.
+ */
+function installNotAcceptableFallback(req: ERequest, res: EResponse): void {
+  const end = res.end;
+  const send = res.send;
+  let pending = true;
+  let applicationResponse = false;
+  const wrappedSend: typeof res.send = function (
+    this: EResponse,
+    body?: unknown,
+  ) {
+    applicationResponse = true;
+    return send.call(this, body);
+  };
+  res.send = wrappedSend;
+  const wrapEnd = (end: typeof res.end): typeof res.end =>
+    function (
+      this: EResponse,
+      ...args: unknown[]
+    ) {
+      if (pending) {
+        // Stop observing assignments before entering downstream wrappers. Their
+        // saved end functions still delegate through our now-inactive wrappers.
+        Object.defineProperty(this, "end", {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: end,
+        });
+        if (this.send === wrappedSend) this.send = send;
+      }
+      if (
+        !pending || applicationResponse || this.headersSent ||
+        this.statusCode !== 404 || !isDefaultNotFound(req, this, args[0])
+      ) {
+        pending = false;
+        return end.apply(this, args as Parameters<typeof end>);
+      }
+      pending = false;
+      const callback = args.find((arg) => typeof arg === "function") as
+        | (() => void)
+        | undefined;
+      const body = "Not acceptable";
+      this.statusCode = 406;
+      this.statusMessage = "Not Acceptable";
+      for (
+        const header of [
+          "Content-Encoding",
+          "Content-Language",
+          "Content-Range",
+          "ETag",
+          "Last-Modified",
+          "Transfer-Encoding",
+        ]
+      ) this.removeHeader(header);
+      this.setHeader("Content-Type", "text/plain; charset=utf-8");
+      this.setHeader("Content-Length", Buffer.byteLength(body));
+      this.vary("Accept");
+      return end.call(
+        this,
+        req.method === "HEAD" ? undefined : body,
+        "utf8",
+        callback,
+      );
+    };
+  // Middleware such as compression wraps end and commits headers before
+  // invoking the saved function. Wrap each assignment so classification and
+  // replacement happen before the outermost downstream wrapper commits.
+  let wrappedEnd = wrapEnd(end);
+  Object.defineProperty(res, "end", {
+    configurable: true,
+    enumerable: true,
+    get: () => wrappedEnd,
+    set: (value: typeof res.end) => {
+      wrappedEnd = wrapEnd(value);
+    },
+  });
+}
+
+/**
+ * Express offers no public router-exhaustion callback to middleware. Recognize
+ * finalhandler's default page, failing safe when its format changes. An app
+ * response identical to that default page cannot be distinguished from it.
+ */
+function isDefaultNotFound(
+  req: ERequest,
+  res: EResponse,
+  chunk: unknown,
+): boolean {
+  if (
+    res.getHeader("Content-Security-Policy") !== "default-src 'none'" ||
+    res.getHeader("X-Content-Type-Options") !== "nosniff" ||
+    res.getHeader("Content-Type") !== "text/html; charset=utf-8"
+  ) return false;
+  // Match the whole default page, preserving custom HTML with similar
+  // markup. HEAD omits the page, so only its expected length is available.
+  const path = (req.originalUrl ?? req.url).split("?")[0];
+  // Match finalhandler's encodeurl escaping, retaining valid percent escapes.
+  const encodedPath = path
+    .replace(
+      /(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]|[\uD800-\uDBFF]([^\uDC00-\uDFFF]|$)/g,
+      "$1\uFFFD$2",
+    )
+    .replace(
+      /(?:[^\x21\x23-\x3B\x3D\x3F-\x5F\x61-\x7A\x7C\x7E]|%(?:[^0-9A-Fa-f]|[0-9A-Fa-f][^0-9A-Fa-f]|$))+/g,
+      encodeURI,
+    );
+  const message = `Cannot ${req.method} ${encodedPath}`.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[character]!,
+  );
+  const page = '<!DOCTYPE html>\n<html lang="en">\n<head>\n' +
+    '<meta charset="utf-8">\n<title>Error</title>\n</head>\n<body>\n' +
+    `<pre>${message}</pre>\n</body>\n</html>\n`;
+  return req.method === "HEAD"
+    ? chunk == null &&
+      Number(res.getHeader("Content-Length")) === Buffer.byteLength(page)
+    : chunk === page;
 }

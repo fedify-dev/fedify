@@ -49,7 +49,9 @@
     "build:self": "tsdown",
     "build": "pnpm --filter @fedify/elysia... run build:self",
     "prepack": "pnpm build",
-    "prepublish": "pnpm build"
+    "prepublish": "pnpm build",
+    "test": "node --experimental-transform-types --test",
+    "test:bun": "bun test"
   },
   "peerDependencies": {
     "elysia": "^1.3.6",
@@ -58,6 +60,7 @@
   "devDependencies": {
     "bun-types": "^1.2.19",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@fedify/fixture": "workspace:*"
   }
 }

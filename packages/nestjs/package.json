@@ -55,12 +55,18 @@
     "@types/express": "catalog:",
     "@types/node": "catalog:",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@fedify/fixture": "workspace:*",
+    "@nestjs/core": "11.1.4",
+    "@nestjs/platform-express": "11.1.4",
+    "reflect-metadata": "^0.2.2"
   },
   "scripts": {
     "build:self": "tsdown",
     "build": "pnpm --filter @fedify/nestjs... run build:self",
     "prepack": "pnpm build",
-    "prepublish": "pnpm build"
+    "prepublish": "pnpm build",
+    "test": "pnpm build:self && node --experimental-transform-types --test",
+    "test:bun": "pnpm build:self && bun test"
   }
 }
