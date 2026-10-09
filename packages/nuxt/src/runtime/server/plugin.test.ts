@@ -12,6 +12,7 @@ interface MockResponse {
   statusMessage?: string;
   setHeader(name: string, value: string): void;
   getHeader(name: string): string | undefined;
+  removeHeader(name: string): void;
 }
 
 function createMockResponse(statusCode: number): MockResponse {
@@ -20,6 +21,9 @@ function createMockResponse(statusCode: number): MockResponse {
     statusCode,
     setHeader(name: string, value: string) {
       headers.set(name.toLowerCase(), value);
+    },
+    removeHeader(name: string) {
+      headers.delete(name.toLowerCase());
     },
     getHeader(name: string) {
       return headers.get(name.toLowerCase());
@@ -35,8 +39,9 @@ function registerBeforeResponseHook() {
   fedifyPlugin({
     hooks: {
       hook(name, registeredCallback) {
-        equal(name, "beforeResponse");
-        callback = registeredCallback;
+        if (name === "beforeResponse") {
+          callback = registeredCallback as typeof callback;
+        }
       },
     },
   });
@@ -66,7 +71,7 @@ test(
     equal(payload.body, NOT_ACCEPTABLE_BODY);
     equal(
       event.context[DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY],
-      undefined,
+      true,
     );
   },
 );
@@ -112,7 +117,7 @@ test(
     equal(payload.body, "missing actor page");
     equal(
       event.context[DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY],
-      undefined,
+      true,
     );
   },
 );

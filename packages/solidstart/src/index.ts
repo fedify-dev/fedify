@@ -13,6 +13,11 @@
 import type { Federation } from "@fedify/fedify/federation";
 import { createMiddleware } from "@solidjs/start/middleware";
 import type { FetchEvent } from "@solidjs/start/server";
+import {
+  interceptNotAcceptable,
+  NOT_ACCEPTABLE_BODY,
+  notAcceptableHeaders,
+} from "./response.ts";
 
 /**
  * A factory function that creates the context data for the
@@ -62,8 +67,9 @@ export function fedifyMiddleware<TContextData>(
         contextData: await createContextData(event),
         onNotFound: () => new Response("Not Found", { status: 404 }),
         onNotAcceptable: () =>
-          new Response("Not Acceptable", {
+          new Response(NOT_ACCEPTABLE_BODY, {
             status: 406,
+            statusText: "Not Acceptable",
             headers: { "Content-Type": "text/plain", Vary: "Accept" },
           }),
       });
@@ -77,6 +83,9 @@ export function fedifyMiddleware<TContextData>(
       // return the 406:
       if (response.status === 406) {
         notAcceptableResponses.set(event.request, response);
+        interceptNotAcceptable(event.nativeEvent.node.res, () => {
+          notAcceptableResponses.delete(event.request);
+        });
         return;
       }
 
@@ -91,13 +100,32 @@ export function fedifyMiddleware<TContextData>(
     // has no page for this route (404), we return the stored 406 instead.
     // This enables Fedify and SolidStart to share the same routes and do
     // content negotiation depending on the Accept header:
-    onBeforeResponse: (event: FetchEvent) => {
+    onBeforeResponse: (event, payload) => {
       const stored = notAcceptableResponses.get(event.request);
-      if (stored != null) {
-        notAcceptableResponses.delete(event.request);
-        const status = event.response.status ?? 200;
-        if (status === 404) return stored;
-      }
+      if (stored == null || event.nativeEvent.handled) return;
+      const body = payload.body;
+      const error = body instanceof Error
+        ? body as Error & { statusCode?: number; status?: number }
+        : undefined;
+      const status = body instanceof Response
+        ? body.status
+        : body === undefined && (event.response.status ?? 200) === 200
+        ? 404 // The default status falls through to Nitro's empty router.
+        : error?.statusCode ?? error?.status ?? event.response.status ?? 200;
+      if (status !== 404) return;
+
+      const headers = notAcceptableHeaders(
+        body instanceof Response ? body.headers : new Headers(),
+        event.response.headers,
+      );
+      if (body instanceof Response) void body.body?.cancel().catch(() => {});
+      // Returning a Response would make SolidStart send it before H3 sends
+      // the original payload. Replace that payload so there is only one send.
+      payload.body = new Response(stored.body, {
+        status: 406,
+        statusText: "Not Acceptable",
+        headers,
+      });
     },
   });
 }
