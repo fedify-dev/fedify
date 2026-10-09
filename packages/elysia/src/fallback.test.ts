@@ -223,3 +223,40 @@ for (const aot of [true, false]) {
     }
   });
 }
+
+for (const aot of [true, false]) {
+  test(`Elysia does not replay earlier error hooks when the fallback is wrapped (aot=${aot})`, async () => {
+    const fed = createFederation<void>({ kv: new MemoryKvStore() });
+    fed.setActorDispatcher("/users/{identifier}", () => null);
+    let earlierCalls = 0;
+    const app = new Elysia({ aot }).onError(() => {
+      earlierCalls++;
+    }).use(fedify(fed, () => undefined));
+    const hook = app.event.error!.find((hook) =>
+      hook.fn.name === "notAcceptableFallback"
+    )!;
+    const fallback = hook.fn;
+    // Simulate a plugin replacing the registration with a wrapped copy.
+    hook.fn = async (context) => {
+      // Keep context fields visible to Elysia's AOT inference.
+      const { request, code, set, error, store, route } = context;
+      return await fallback({
+        ...context,
+        request,
+        code,
+        set,
+        error,
+        store,
+        route,
+      });
+    };
+    const response = await app.handle(
+      new Request("http://localhost/users/alice", {
+        headers: { Accept: "image/png" },
+      }),
+    );
+    assert.equal(response.status, 406);
+    assert.equal(await response.text(), "Not acceptable");
+    assert.equal(earlierCalls, 1);
+  });
+}

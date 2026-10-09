@@ -81,7 +81,7 @@ export const fedify = <TContextData = unknown>(
         const index = hooks.findIndex((hook) =>
           hook.fn === notAcceptableFallback
         );
-        for (const hook of hooks.slice(index + 1)) {
+        for (const hook of index < 0 ? [] : hooks.slice(index + 1)) {
           const response = await hook.fn(context);
           if (
             activeApp.config.aot === false
