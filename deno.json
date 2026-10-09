@@ -117,16 +117,20 @@
       ]
     },
     "pnpm:build-vocab-runtime": {
-      "command": "pnpm -C packages/vocab-runtime build"
+      "command": "pnpm -C packages/vocab-runtime build",
+      "dependencies": ["install"]
     },
     "pnpm:build-vocab-tools": {
-      "command": "pnpm -C packages/vocab-tools build"
+      "command": "pnpm -C packages/vocab-tools build",
+      "dependencies": ["install"]
     },
     "pnpm:build-fixture": {
-      "command": "pnpm -C packages/fixture build"
+      "command": "pnpm -C packages/fixture build",
+      "dependencies": ["install"]
     },
     "pnpm:build-webfinger": {
-      "command": "pnpm -C packages/webfinger build"
+      "command": "pnpm -C packages/webfinger build",
+      "dependencies": ["install"]
     },
     "pnpm:build-vocab": {
       "command": "pnpm -C packages/vocab build",
