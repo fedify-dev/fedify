@@ -217,3 +217,37 @@ test("Hono preserves responses when observation cannot be installed", async () =
   assert.equal(await response.text(), "404 Not Found");
   assert.equal(response.headers.get("Vary"), null);
 });
+
+for (const mode of ["same-body", "wrapped-stream", "replacement"]) {
+  test(
+    "Hono preserves middleware ownership after response replacement: " + mode,
+    async () => {
+      const fed = createFederation<void>({ kv: new MemoryKvStore() });
+      fed.setActorDispatcher("/users/{identifier}", () => null);
+      const app = new Hono();
+      app.use("*", federation(fed, () => undefined));
+      app.use("*", async (ctx, next) => {
+        await next();
+        if (mode === "replacement") {
+          ctx.res = ctx.html("<p>Application missing</p>", 404);
+        } else {
+          const response = ctx.res;
+          const body = mode === "same-body"
+            ? response.body
+            : response.body!.pipeThrough(new TransformStream());
+          ctx.res = new Response(body, response);
+        }
+        ctx.header("Vary", "Origin");
+      });
+      const response = await app.request("http://localhost/users/alice", {
+        headers: { Accept: "image/png" },
+      });
+      assert.equal(response.status, 404);
+      assert.equal(
+        await response.text(),
+        mode === "replacement" ? "<p>Application missing</p>" : "404 Not Found",
+      );
+      assert.equal(response.headers.get("Vary"), "Origin");
+    },
+  );
+}

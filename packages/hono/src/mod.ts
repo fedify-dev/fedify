@@ -131,7 +131,9 @@ function integrateFetchOptions<THonoContext extends HonoContext>(
       const setRes = (response: Response): void => {
         res!.set!.call(ctx, response);
         // A later assignment from application middleware owns its response,
-        // even when Hono copies headers from the previous default 404.
+        // even when Hono copies headers from the previous default 404. This
+        // includes body wrappers: a transformed stream cannot safely be
+        // distinguished from an application-authored replacement.
         defaultNotFound = response === defaultResponse;
       };
       const observing = res?.get != null && res.set != null &&
