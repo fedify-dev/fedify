@@ -144,6 +144,7 @@ async function deliver(
   authentication: Authentication,
   options: {
     collection?: FeaturedCollection | Person;
+    collectionDocumentUrl?: string;
     request?: Activity;
     queued?: boolean;
     skip?: boolean;
@@ -202,7 +203,7 @@ async function deliver(
       if (!collectionAvailable) throw new Error("Collection unavailable");
       return {
         document: await collection.toJsonLd(),
-        documentUrl: url,
+        documentUrl: options.collectionDocumentUrl ?? url,
         contextUrl: null,
       };
     }
@@ -360,6 +361,21 @@ test("actorless FeatureRequest binds HTTP signer to the reparsed collection owne
   });
   assertEquals(result.response.status, 401);
   assertEquals(result.received, []);
+});
+
+test("actorless FeatureRequest rejects cross-origin collection redirects", async () => {
+  const result = await deliver("http", {
+    collectionDocumentUrl: "https://attacker.example/forged-collection",
+  });
+  assertEquals(result.response.status, 400);
+  assertEquals(result.received, []);
+});
+
+test("actorless FeatureRequest accepts same-origin collection redirects", async () => {
+  const result = await deliver("http", {
+    collectionDocumentUrl: "https://example.com/redirected-collection",
+  });
+  assertEquals(result.response.status, 202);
 });
 
 test("actorless FeatureRequest rejects an instrument changed by queue contexts", async () => {

@@ -54,11 +54,15 @@ export async function resolveFeatureRequestActor<T>(
       });
     } else {
       const document = await captureFailure(context.documentLoader)(id.href);
+      const documentUrl = new URL(document.documentUrl);
+      // A web resource cannot vouch for an ID on another origin, even when
+      // reached through a redirect from the requested collection URL.
+      if (documentUrl.origin !== id.origin) return null;
       collection = await ActivityObject.fromJsonLd(document.document, {
         ...context,
         documentLoader: captureFailure(context.documentLoader),
         contextLoader: captureFailure(context.contextLoader),
-        baseUrl: new URL(document.documentUrl),
+        baseUrl: documentUrl,
       });
     }
   } catch (error) {
