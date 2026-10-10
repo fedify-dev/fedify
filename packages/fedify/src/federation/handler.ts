@@ -2273,28 +2273,53 @@ async function handleInboxInternal<TContextData>(
         ),
       );
     }
-    if (
-      ldSigVerified && !skipSignatureVerification &&
+    const requiresOwnerProof = ldSigVerified && !skipSignatureVerification &&
       (isPortableActivity(activity.clone({ actor: featureRequestActor })) ||
         !hasFeatureRequestSignature(
           observation.verification.attempts,
           featureRequestActor,
           "linkedData",
-        ))
-    ) {
+        ));
+    if (requiresOwnerProof) {
       // A relay's LDS must not hide the owner's proof, and the missing actor
       // must not bypass the portable proof policy. Verify the original
       // document, never the inferred clone.
       try {
-        await verifyObject(Activity, jsonWithoutSig, {
+        const verifiedActivity = await verifyObject(Activity, jsonWithoutSig, {
           ...signatureObservation,
-          contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
+          // Keep parsing and proof verification on the same context snapshot.
+          contextLoader: getNormalizationContextLoader(ctx.contextLoader),
           documentLoader: ctx.documentLoader,
           keyCache,
           meterProvider,
           tracerProvider,
           verifyPortableObject: ctx.verifyPortableObject,
         });
+        if (verifiedActivity != null) {
+          if (
+            !(verifiedActivity instanceof FeatureRequest) ||
+            verifiedActivity.actorIds.length !== 0
+          ) {
+            return await respondInvalidActivity(
+              new TypeError(
+                "Owner proof must verify an actorless FeatureRequest.",
+              ),
+            );
+          }
+          // TODO: Bind shared principals to their verified activity view:
+          // https://github.com/fedify-dev/fedify/issues/1290
+          activity = verifiedActivity;
+          featureRequestActor =
+            await resolveFeatureRequestActor(ctx, verifiedActivity) ??
+              undefined;
+          if (featureRequestActor == null) {
+            return await respondInvalidActivity(
+              new TypeError(
+                "FeatureRequest must reference a collection with one owner.",
+              ),
+            );
+          }
+        }
       } catch (error) {
         if (!isPermanentActivityParseError(error)) throw error;
         return await respondInvalidActivity(error);
@@ -2305,11 +2330,12 @@ async function handleInboxInternal<TContextData>(
       featureRequestActor,
       "objectIntegrity",
     );
-    activityVerified = proofVerified || hasFeatureRequestSignature(
-      observation.verification.attempts,
-      featureRequestActor,
-      "linkedData",
-    );
+    activityVerified = proofVerified ||
+      (!requiresOwnerProof && hasFeatureRequestSignature(
+        observation.verification.attempts,
+        featureRequestActor,
+        "linkedData",
+      ));
     if (!activityVerified && !skipSignatureVerification) {
       // verifyObject() can return an actorless object with zero proofs. A
       // successful parse is not authentication: fall back to HTTP signatures.

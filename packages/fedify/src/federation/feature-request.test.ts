@@ -151,6 +151,8 @@ async function deliver(
     collection?: FeaturedCollection | Person;
     collectionDocumentUrl?: string;
     collectionLoader?: DocumentLoader;
+    relayObject?: URL;
+    relayInstrument?: URL;
     replayedObject?: URL;
     request?: Activity;
     queued?: boolean;
@@ -182,13 +184,17 @@ async function deliver(
           "@context": {
             receiver: new URL(
               ".",
-              !collectionAvailable && options.replayedObject != null
+              contextLoads % 2 === 1 && options.relayObject != null
+                ? options.relayObject
+                : !collectionAvailable && options.replayedObject != null
                 ? options.replayedObject
                 : target,
             ).href,
             featured: new URL(
               ".",
-              !collectionAvailable && options.replayedInstrument != null
+              contextLoads % 2 === 1 && options.relayInstrument != null
+                ? options.relayInstrument
+                : !collectionAvailable && options.replayedInstrument != null
                 ? options.replayedInstrument
                 : contextLoads > 1 && options.reparsedInstrument != null
                 ? options.reparsedInstrument
@@ -210,10 +216,13 @@ async function deliver(
     return await mockDocumentLoader(url);
   };
   const documentLoader = async (url: string) => {
-    if (url === options.reparsedInstrument?.href) {
+    if (
+      url === options.reparsedInstrument?.href ||
+      url === options.relayInstrument?.href
+    ) {
       return {
         document: await new FeaturedCollection({
-          id: options.reparsedInstrument,
+          id: new URL(url),
           attribution: new URL("https://example.com/person3"),
         }).toJsonLd(),
         documentUrl: url,
@@ -243,17 +252,63 @@ async function deliver(
     }
     return await mockDocumentLoader(url);
   };
+  const relayContext = [
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+    "https://w3id.org/fep/7aa9",
+    contextUrl,
+  ];
+  const ownerContextLoader: DocumentLoader = (url) =>
+    url === contextUrl
+      ? Promise.resolve({
+        document: {
+          "@context": {
+            receiver: new URL(".", target).href,
+            featured: new URL(".", collectionId).href,
+          },
+        },
+        documentUrl: url,
+        contextUrl: null,
+      })
+      : mockDocumentLoader(url);
+  const relayContextLoader: DocumentLoader = (url) =>
+    url === contextUrl
+      ? Promise.resolve({
+        document: {
+          "@context": {
+            receiver: new URL(".", options.relayObject ?? target).href,
+            featured:
+              new URL(".", options.relayInstrument ?? collectionId).href,
+          },
+        },
+        documentUrl: url,
+        contextUrl: null,
+      })
+      : mockDocumentLoader(url);
+  const changingRelay = options.relayObject != null ||
+    options.relayInstrument != null;
   const body = authentication === "mixed"
     ? await signJsonLd(
       await (await signObject(
         activity,
         ed25519PrivateKey,
         ed25519Multikey.id!,
-        { contextLoader: mockDocumentLoader },
-      )).toJsonLd(),
+        {
+          contextLoader: changingRelay
+            ? ownerContextLoader
+            : mockDocumentLoader,
+          context: changingRelay ? relayContext : undefined,
+        },
+      )).toJsonLd({
+        format: "compact",
+        contextLoader: changingRelay ? ownerContextLoader : mockDocumentLoader,
+        context: changingRelay ? relayContext : undefined,
+      }),
       rsaPrivateKey2,
       rsaPublicKey2.id!,
-      { contextLoader: mockDocumentLoader },
+      {
+        contextLoader: changingRelay ? relayContextLoader : mockDocumentLoader,
+      },
     )
     : authentication === "ld"
     ? await signJsonLd(
@@ -536,6 +591,37 @@ test("actorless FeatureRequest preserves wrapped remote context failures for ret
     error,
   );
 });
+
+for (const queued of [false, true]) {
+  for (const field of ["object", "instrument"] as const) {
+    test(`actorless FeatureRequest uses the owner's proof view after relay ${field} changes (${queued ? "queued" : "direct"})`, async () => {
+      const result = await deliver("mixed", {
+        queued,
+        ...(field === "object"
+          ? { relayObject: new URL("https://attacker.example/users/bob") }
+          : {
+            relayInstrument: new URL("https://example.com/other-featured/1"),
+          }),
+      });
+      assertEquals(result.response.status, 202);
+      if (queued) await result.replay(true);
+      assertEquals(
+        result.received.map((activity) => activity.objectId),
+        queued ? [target, target] : [target],
+      );
+      assertEquals(
+        result.received.map((activity) => activity.instrumentId),
+        queued ? [collectionId, collectionId] : [collectionId],
+      );
+      assertEquals(
+        result.received.map((activity) => activity.actorId),
+        queued ? [owner, owner] : [owner],
+      );
+      if (queued) assertEquals(result.messages[1].activity, result.body);
+      assertEquals(result.originals[0], result.body);
+    });
+  }
+}
 
 test("actorless FeatureRequest rejects cross-origin collection redirects", async () => {
   const result = await deliver("http", {
