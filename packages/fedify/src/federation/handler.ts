@@ -69,6 +69,7 @@ import {
 } from "../sig/ld.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import {
+  captureFeatureRequestActorPresence,
   hasFeatureRequestSignature,
   resolveFeatureRequestActor,
 } from "./feature-request.ts";
@@ -2123,6 +2124,14 @@ async function handleInboxInternal<TContextData>(
       }
     }
   }
+  let actorPresence = captureFeatureRequestActorPresence(
+    ldSigVerified
+      ? getNormalizationContextLoader(ctx.contextLoader)
+      : wrapContextLoaderForJsonLd(ctx.contextLoader),
+  );
+  let actorPresenceDocument = ldSigVerified
+    ? compactedJsonWithoutSig
+    : jsonWithoutSig;
   let activity: Activity | null = null;
   let activityVerified = false;
   // Whether the activity is authenticated by its Object Integrity Proofs,
@@ -2135,7 +2144,7 @@ async function handleInboxInternal<TContextData>(
         compactedJsonWithoutSig,
         {
           ...ctx,
-          contextLoader: getNormalizationContextLoader(ctx.contextLoader),
+          contextLoader: actorPresence.contextLoader,
         },
       );
     } catch (error) {
@@ -2182,7 +2191,7 @@ async function handleInboxInternal<TContextData>(
     try {
       activity = await verifyObject(Activity, jsonWithoutSig, {
         ...signatureObservation,
-        contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
+        contextLoader: actorPresence.contextLoader,
         documentLoader: ctx.documentLoader,
         keyCache,
         meterProvider,
@@ -2264,6 +2273,13 @@ async function handleInboxInternal<TContextData>(
         attempt.signatures.length > 0,
     ))
   ) {
+    if (await actorPresence.hasActor(actorPresenceDocument)) {
+      return await respondInvalidActivity(
+        new TypeError(
+          "FeatureRequest actor must be absent to infer its owner.",
+        ),
+      );
+    }
     featureRequestActor = await resolveFeatureRequestActor(ctx, activity) ??
       undefined;
     if (featureRequestActor == null) {
@@ -2292,11 +2308,14 @@ async function handleInboxInternal<TContextData>(
       // must not bypass the portable proof policy. Verify the original
       // document, never the inferred clone.
       try {
+        const ownerActorPresence = captureFeatureRequestActorPresence(
+          getNormalizationContextLoader(ctx.contextLoader),
+        );
         const attemptStart = observation.verification.attempts.length;
         const verifiedActivity = await verifyObject(Activity, jsonWithoutSig, {
           ...signatureObservation,
           // Keep parsing and proof verification on the same context snapshot.
-          contextLoader: getNormalizationContextLoader(ctx.contextLoader),
+          contextLoader: ownerActorPresence.contextLoader,
           documentLoader: ctx.documentLoader,
           keyCache,
           meterProvider,
@@ -2306,7 +2325,8 @@ async function handleInboxInternal<TContextData>(
         if (verifiedActivity != null) {
           if (
             !(verifiedActivity instanceof FeatureRequest) ||
-            verifiedActivity.actorIds.length !== 0
+            verifiedActivity.actorIds.length !== 0 ||
+            await ownerActorPresence.hasActor(jsonWithoutSig)
           ) {
             return await respondInvalidActivity(
               new TypeError(
@@ -2317,6 +2337,8 @@ async function handleInboxInternal<TContextData>(
           // TODO: Bind shared principals to their verified activity view:
           // https://github.com/fedify-dev/fedify/issues/1290
           activity = verifiedActivity;
+          actorPresence = ownerActorPresence;
+          actorPresenceDocument = jsonWithoutSig;
           featureRequestProofAttempts = observation.verification.attempts.slice(
             attemptStart,
           );
@@ -2523,12 +2545,16 @@ async function handleInboxInternal<TContextData>(
       }
       httpSigKey = verification.key;
     }
+    actorPresence = captureFeatureRequestActorPresence(
+      wrapContextLoaderForJsonLd(ctx.contextLoader),
+    );
+    actorPresenceDocument = jsonWithoutSig;
     try {
       activity = observation.activity = await Activity.fromJsonLd(
         jsonWithoutSig,
         {
           ...ctx,
-          contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
+          contextLoader: actorPresence.contextLoader,
         },
       );
     } catch (error) {
@@ -2542,6 +2568,13 @@ async function handleInboxInternal<TContextData>(
     featureRequestActor = undefined;
   }
   if (activity instanceof FeatureRequest && activity.actorIds.length === 0) {
+    if (await actorPresence.hasActor(actorPresenceDocument)) {
+      return await respondInvalidActivity(
+        new TypeError(
+          "FeatureRequest actor must be absent to infer its owner.",
+        ),
+      );
+    }
     featureRequestActor ??= await resolveFeatureRequestActor(ctx, activity) ??
       undefined;
     if (featureRequestActor == null) {

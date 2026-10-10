@@ -81,6 +81,36 @@ function isPermanentCollectionError(error: unknown): boolean {
       );
 }
 
+// TODO: Preserve unparsed property presence with the verified view in #1290:
+// https://github.com/fedify-dev/fedify/issues/1290
+export function captureFeatureRequestActorPresence(loader: DocumentLoader) {
+  const contexts = new Map<string, Awaited<ReturnType<DocumentLoader>>>();
+  return {
+    contextLoader: (async (...args) => {
+      const document = await loader(...args);
+      if (!contexts.has(args[0])) {
+        contexts.set(args[0], structuredClone(document));
+      }
+      return document;
+    }) satisfies DocumentLoader,
+    async hasActor(document: unknown): Promise<boolean> {
+      const expanded = await jsonld.expand(document, {
+        documentLoader: (url: string) => {
+          const context = contexts.get(url);
+          if (context == null) {
+            throw new TypeError("Invalid JSON-LD: unrecorded actor context.");
+          }
+          return Promise.resolve(context);
+        },
+        keepFreeFloatingNodes: true,
+      });
+      const actors = expanded[0]
+        ?.["https://www.w3.org/ns/activitystreams#actor"];
+      return Array.isArray(actors) && actors.length > 0;
+    },
+  };
+}
+
 // FIXME: Replace this FeatureRequest-specific authentication bridge with the
 // general inbox principal handling: https://github.com/fedify-dev/fedify/issues/1290
 export async function resolveFeatureRequestActor<T>(

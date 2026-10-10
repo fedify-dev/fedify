@@ -182,6 +182,7 @@ async function deliver(
     relayInstrument?: URL;
     replayedObject?: URL;
     request?: Activity;
+    rawActor?: unknown;
     queued?: boolean;
     skip?: boolean;
     reparsedInstrument?: URL;
@@ -355,7 +356,17 @@ async function deliver(
       : mockDocumentLoader(url);
   const changingRelay = options.relayObject != null ||
     options.relayInstrument != null;
-  const body = authentication === "mixed"
+  const rawActorDocument = options.rawActor === undefined ? null : {
+    ...await activity.toJsonLd() as Record<string, unknown>,
+    actor: options.rawActor,
+  };
+  const body = rawActorDocument != null
+    ? authentication === "ld"
+      ? await signJsonLd(rawActorDocument, rsaPrivateKey3, rsaPublicKey3.id!, {
+        contextLoader: mockDocumentLoader,
+      })
+      : rawActorDocument
+    : authentication === "mixed"
     ? await signJsonLd(
       await (await signObject(
         activity,
@@ -1415,3 +1426,36 @@ test("actorless FeatureRequest rejects Node credential URL construction errors",
     null,
   );
 });
+
+for (const authentication of ["http", "ld", "proof"] as const) {
+  for (const queued of [false, true]) {
+    test(`actorless FeatureRequest rejects an anonymous declared actor with ${authentication} authentication (${queued ? "queued" : "direct"})`, async () => {
+      const result = await deliver(authentication, {
+        queued,
+        request: new FeatureRequest({
+          id: new URL("https://example.com/requests/anonymous-actor"),
+          actor: new Person({ name: "Anonymous actor" }),
+          object: target,
+          instrument: collectionId,
+        }),
+      });
+      assertEquals(result.response.status, 400);
+      assertEquals(result.received, []);
+      assertEquals(result.messages, []);
+    });
+  }
+}
+for (const authentication of ["http", "ld"] as const) {
+  for (
+    const actor of ["_:actor", { name: "Untyped actor" }, {
+      id: "_:actor",
+      type: "Person",
+    }]
+  ) {
+    test(`actorless FeatureRequest rejects declared actor ${JSON.stringify(actor)} with ${authentication} authentication`, async () => {
+      const result = await deliver(authentication, { rawActor: actor });
+      assertEquals(result.response.status, 400);
+      assertEquals(result.received, []);
+    });
+  }
+}
