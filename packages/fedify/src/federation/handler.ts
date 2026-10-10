@@ -2481,6 +2481,11 @@ async function handleInboxInternal<TContextData>(
       if (!isPermanentActivityParseError(error)) throw error;
       return await respondInvalidActivity(error);
     }
+    // A context loader may change the instrument during this second parse.
+    // Resolve its owner again before checking the HTTP signature's key.
+    // TODO: Remove this invalidation with shared inbox principals:
+    // https://github.com/fedify-dev/fedify/issues/1290
+    featureRequestActor = undefined;
   }
   if (activity instanceof FeatureRequest && activity.actorIds.length === 0) {
     featureRequestActor ??= await resolveFeatureRequestActor(ctx, activity) ??

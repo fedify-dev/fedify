@@ -110,6 +110,7 @@ async function deliver(
     request?: Activity;
     queued?: boolean;
     skip?: boolean;
+    reparsedInstrument?: URL;
   } = {},
 ) {
   const collection = options.collection ?? new FeaturedCollection({
@@ -122,8 +123,37 @@ async function deliver(
     instrument: collectionId,
   });
   let collectionAvailable = true;
+  let collectionLookedUp = false;
+  const contextUrl = "https://example.com/changing-context";
+  const contextLoader = async (url: string) => {
+    if (url === contextUrl) {
+      return {
+        document: {
+          "@context": {
+            featured: collectionLookedUp
+              ? new URL(".", options.reparsedInstrument!).href
+              : new URL(".", collectionId).href,
+          },
+        },
+        documentUrl: url,
+        contextUrl: null,
+      };
+    }
+    return await mockDocumentLoader(url);
+  };
   const documentLoader = async (url: string) => {
+    if (url === options.reparsedInstrument?.href) {
+      return {
+        document: await new FeaturedCollection({
+          id: options.reparsedInstrument,
+          attribution: new URL("https://example.com/person3"),
+        }).toJsonLd(),
+        documentUrl: url,
+        contextUrl: null,
+      };
+    }
     if (url === collectionId.href) {
+      collectionLookedUp = true;
       if (!collectionAvailable) throw new Error("Collection unavailable");
       return {
         document: await collection.toJsonLd(),
@@ -173,6 +203,15 @@ async function deliver(
       },
     )).toJsonLd()
     : await activity.toJsonLd();
+  if (options.reparsedInstrument != null) {
+    const document = body as Record<string, unknown>;
+    document["@context"] = [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/fep/7aa9",
+      contextUrl,
+    ];
+    document.instrument = "featured:1";
+  }
   let request = new Request("https://receiver.example/inbox", {
     method: "POST",
     body: JSON.stringify(body),
@@ -196,7 +235,7 @@ async function deliver(
     kv,
     queue,
     documentLoaderFactory: () => documentLoader,
-    contextLoaderFactory: () => mockDocumentLoader,
+    contextLoaderFactory: () => contextLoader,
   });
   const received: Activity[] = [];
   const originals: unknown[] = [];
@@ -220,7 +259,7 @@ async function deliver(
     url: new URL(request.url),
     data: undefined,
     documentLoader,
-    contextLoader: mockDocumentLoader,
+    contextLoader,
   });
   const listeners = new ActivityListenerSet<InboxContext<void>>();
   listeners.add(FeatureRequest, listener);
@@ -266,6 +305,14 @@ async function deliver(
     },
   };
 }
+
+test("actorless FeatureRequest binds HTTP signer to the reparsed collection owner", async () => {
+  const result = await deliver("http", {
+    reparsedInstrument: new URL("https://example.com/other-featured/1"),
+  });
+  assertEquals(result.response.status, 401);
+  assertEquals(result.received, []);
+});
 
 for (const authentication of ["http", "ld", "proof", "mixed"] as const) {
   test(`actorless FeatureRequest accepts ${authentication} authentication`, async () => {
