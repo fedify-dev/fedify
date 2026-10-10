@@ -8,6 +8,7 @@ import {
 import {
   type DocumentLoader,
   FetchError,
+  normalizeLanguageTag,
   UrlError,
 } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
@@ -89,6 +90,32 @@ function expandedPropertyValues(value: unknown): unknown[] {
       "@list" in first && Array.isArray(first["@list"])
     ? first["@list"]
     : value;
+}
+
+// TODO: Replace these parser-specific checks with structured failures in #1290:
+// https://github.com/fedify-dev/fedify/issues/1290
+function hasMalformedCollectionLanguage(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasMalformedCollectionLanguage);
+  if (value == null || typeof value !== "object") return false;
+  const node = value as Record<string, unknown>;
+  if ("@value" in node) return false; // Raw @json extension data is opaque.
+  for (const [key, child] of Object.entries(node)) {
+    if (key === "https://www.w3.org/ns/activitystreams#hreflang") {
+      for (const item of expandedPropertyValues(child)) {
+        if (
+          item == null || typeof item !== "object" || !("@value" in item) ||
+          typeof item["@value"] !== "string" || "@language" in item
+        ) continue;
+        try {
+          new Intl.Locale(normalizeLanguageTag(item["@value"]));
+        } catch (error) {
+          if (error instanceof RangeError) return true;
+          throw error;
+        }
+      }
+    } else if (hasMalformedCollectionLanguage(child)) return true;
+  }
+  return false;
 }
 
 // TODO: Preserve unparsed property presence with the verified view in #1290:
@@ -197,14 +224,15 @@ export async function resolveFeatureRequestActor<T>(
     }
   } catch (error) {
     if (retryableFailure != null) throw retryableFailure.error;
-    // Only a positively identified malformed temporal literal is permanent.
+    // Only positively identified malformed parser literals are permanent.
     // Loader RangeErrors were captured above and must remain retryable.
     if (
       error instanceof RangeError && collectionDocument != null &&
-      await hasMalformedKnownTemporalLiteral(
-        collectionDocument,
-        context.contextLoader,
-      )
+      (hasMalformedCollectionLanguage(expandedCollection) ||
+        await hasMalformedKnownTemporalLiteral(
+          collectionDocument,
+          context.contextLoader,
+        ))
     ) return null;
     // JSON-LD may wrap loader errors. Preserve the original classification
     // rather than treating a malformed remote context as a transient outage.

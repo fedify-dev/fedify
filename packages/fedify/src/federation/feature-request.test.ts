@@ -1555,4 +1555,23 @@ for (const authentication of ["http", "ld", "proof"] as const) {
     assertEquals(result.response.status, 202);
     assertEquals(result.received.length, 1);
   });
+  for (const language of ["not_a_locale", "en-US"]) {
+    test(`actorless FeatureRequest handles collection language ${language} with ${authentication} authentication`, async () => {
+      const document = await new FeaturedCollection({
+        id: collectionId,
+        attribution: owner,
+      }).toJsonLd() as Record<string, unknown>;
+      document.attachment = {
+        type: "Link",
+        href: "https://example.com/link",
+        hreflang: language,
+      };
+      const result = await deliver(authentication, {
+        collectionLoader: (url) =>
+          Promise.resolve({ document, documentUrl: url, contextUrl: null }),
+      });
+      assertEquals(result.response.status, language === "en-US" ? 202 : 400);
+      assertEquals(result.received.length, language === "en-US" ? 1 : 0);
+    });
+  }
 }
