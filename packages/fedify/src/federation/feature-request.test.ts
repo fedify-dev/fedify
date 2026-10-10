@@ -1152,3 +1152,68 @@ for (const authentication of ["http", "ld", "proof"] as const) {
     });
   }
 }
+
+for (const credentials of ["user@", ":pass@", "user:pass@"] as const) {
+  test(`actorless FeatureRequest rejects credential-bearing collection URL ${credentials} before loading`, async () => {
+    let loads = 0;
+    const context = createRequestContext({
+      federation: createFederation<void>({ kv: new MemoryKvStore() }),
+      url: target,
+      data: undefined,
+      documentLoader: () => {
+        loads++;
+        return Promise.reject(
+          new TypeError(
+            "Request cannot be constructed from a URL that includes credentials",
+          ),
+        );
+      },
+      contextLoader: mockDocumentLoader,
+    });
+    assertEquals(
+      await resolveFeatureRequestActor(
+        context,
+        new FeatureRequest({
+          instrument: new URL(`https://${credentials}example.com/featured/1`),
+        }),
+      ),
+      null,
+    );
+    assertEquals(loads, 0);
+  });
+}
+
+test("actorless FeatureRequest rejects credentials before invoking the standard document loader", async () => {
+  const id = new URL("https://user:pass@example.com/featured/1");
+  let fetches = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = () => {
+    fetches++;
+    return Promise.resolve(
+      new Response("{}", {
+        headers: { "Content-Type": "application/activity+json" },
+      }),
+    );
+  };
+  try {
+    const context = createRequestContext({
+      federation: createFederation<void>({ kv: new MemoryKvStore() }),
+      url: target,
+      data: undefined,
+      documentLoader: getDocumentLoader({ allowPrivateAddress: true }),
+      contextLoader: mockDocumentLoader,
+    });
+    assertEquals(
+      await resolveFeatureRequestActor(
+        context,
+        new FeatureRequest({
+          instrument: id,
+        }),
+      ),
+      null,
+    );
+    assertEquals(fetches, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

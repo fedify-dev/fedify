@@ -69,6 +69,7 @@ export async function resolveFeatureRequestActor<T>(
 ): Promise<URL | null> {
   if (request.instrumentIds.length !== 1) return null;
   const id = request.instrumentIds[0];
+  if (id.username !== "" || id.password !== "") return null;
   // ID accessors omit anonymous embedded values. Count the parsed values,
   // without dereferencing them or reinterpreting the original context.
   const expanded = await request.toJsonLd({ format: "expand" }) as Record<
