@@ -22,14 +22,21 @@ export async function resolveFeatureRequestActor<T>(
   const id = request.instrumentIds[0];
   // Never infer ownership from an instrument embedded by the sender.
   // lookupObject() may hide loader failures while trying other locations.
-  // Preserve them if lookup fails so temporary outages remain retryable.
-  let loadFailure: { error: unknown } | undefined;
+  // Preserve retryable failures until a valid collection has been found.
+  let retryableFailure: { error: unknown } | undefined;
   const captureFailure =
     (loader: DocumentLoader): DocumentLoader => async (...args) => {
       try {
         return await loader(...args);
       } catch (error) {
-        loadFailure = { error };
+        const status = error instanceof FetchError
+          ? error.response?.status
+          : null;
+        const permanent =
+          error instanceof UrlError && error.reason === "disallowed" ||
+          status != null && status >= 400 && status < 500 &&
+            status !== 408 && status !== 429;
+        if (!permanent) retryableFailure ??= { error };
         throw error;
       }
     };
@@ -37,19 +44,13 @@ export async function resolveFeatureRequestActor<T>(
     documentLoader: captureFailure(context.documentLoader),
     contextLoader: captureFailure(context.contextLoader),
   });
-  if (collection == null && loadFailure != null) {
-    const error = loadFailure.error;
-    const status = error instanceof FetchError ? error.response?.status : null;
-    const permanent =
-      error instanceof UrlError && error.reason === "disallowed" ||
-      status != null && status >= 400 && status < 500 &&
-        status !== 408 && status !== 429;
-    if (!permanent) throw error;
-  }
   if (
     !(collection instanceof FeaturedCollection) || collection.id == null ||
     !isSameObjectId(collection.id, id) || collection.attributionIds.length !== 1
-  ) return null;
+  ) {
+    if (retryableFailure != null) throw retryableFailure.error;
+    return null;
+  }
   return collection.attributionIds[0];
 }
 
