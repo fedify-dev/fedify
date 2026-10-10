@@ -240,6 +240,10 @@ deno run --allow-read --allow-write scripts/check_versions.ts ...$fix_args ...$s
 description = "Ensure @fedify/fixture is only used in **/*.test.ts files"
 run = "deno run --allow-read scripts/check_fixture_usage.ts"
 
+[tasks."check:changelog-pr-refs"]
+description = "Check that changelog entries added by a pull request reference it"
+run = "deno run --allow-read --allow-run=git scripts/check_changelog_pr_refs.ts"
+
 [tasks."check:workspace-protocol"]
 description = "Check for invalid workspace: specifiers without version (*, ^, ~)"
 run = "deno run --allow-read scripts/check_workspace_protocol.ts"
