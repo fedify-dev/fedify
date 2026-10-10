@@ -171,6 +171,15 @@ export interface InboxMessage {
    * @internal
    */
   readonly ldSignatureVerified?: boolean;
+  // TODO: Replace this field with queue metadata for authenticated principals.
+  // https://github.com/fedify-dev/fedify/issues/1290
+  /**
+   * The collection owner authenticated by the producer for an actorless
+   * FeatureRequest. Workers restore only the parsed actor, preserving the
+   * original signed payload. Queue backends are trusted like the payload.
+   * @internal
+   */
+  readonly featureRequestActor?: string;
   readonly started: string;
   readonly attempt: number;
   readonly identifier: string | null;

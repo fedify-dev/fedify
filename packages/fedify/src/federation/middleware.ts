@@ -12,6 +12,7 @@ import type {
 import {
   Activity,
   CryptographicKey,
+  FeatureRequest,
   getTypeId,
   lookupObject,
   Multikey,
@@ -2563,6 +2564,17 @@ export class FederationImpl<TContextData>
             parseInput,
             parseContext,
           );
+          // TODO: Replace inferred actor restoration with shared principal replay.
+          // https://github.com/fedify-dev/fedify/issues/1290
+          if (
+            activity instanceof FeatureRequest &&
+            activity.actorIds.length === 0 &&
+            message.featureRequestActor != null
+          ) {
+            activity = activity.clone({
+              actor: new URL(message.featureRequestActor),
+            });
+          }
           activityType = getTypeId(activity).href;
           span.setAttribute("activitypub.activity.type", activityType);
           listenerSpan.setAttribute("activitypub.activity.type", activityType);
