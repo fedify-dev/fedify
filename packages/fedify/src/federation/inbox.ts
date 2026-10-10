@@ -59,6 +59,10 @@ export interface RouteActivityParameters<TContextData> {
    * @internal
    */
   ldSignatureVerified?: boolean;
+  // TODO: Replace this field with queue metadata for authenticated principals.
+  // https://github.com/fedify-dev/fedify/issues/1290
+  /** The actor authenticated for an actorless FeatureRequest. @internal */
+  featureRequestActor?: string;
   activity: Activity;
   recipient: string | null;
   inboxListeners?: ActivityListenerSet<InboxContext<TContextData>>;
@@ -110,6 +114,7 @@ export async function routeActivity<TContextData>(
     originalJson,
     normalizedActivity,
     ldSignatureVerified,
+    featureRequestActor,
     activity,
     recipient,
     inboxListeners,
@@ -218,6 +223,7 @@ export async function routeActivity<TContextData>(
           // while preserving the original payload for forwarding.
           ...(normalizedActivity == null ? {} : { normalizedActivity }),
           ...(ldSignatureVerified == null ? {} : { ldSignatureVerified }),
+          ...(featureRequestActor == null ? {} : { featureRequestActor }),
           identifier: recipient,
           attempt: 0,
           started: new Date().toISOString(),

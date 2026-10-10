@@ -1,0 +1,290 @@
+import type { Context } from "./context.ts";
+import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
+import {
+  FeaturedCollection,
+  type FeatureRequest,
+  Object as ActivityObject,
+} from "@fedify/vocab";
+import {
+  type DocumentLoader,
+  FetchError,
+  normalizeLanguageTag,
+  UrlError,
+} from "@fedify/vocab-runtime";
+import jsonld from "@fedify/vocab-runtime/jsonld";
+import { isInvalidUrlTypeError } from "../sig/ld.ts";
+import type { InboxVerificationAttempt } from "../sig/verification.ts";
+import {
+  getPortableDid,
+  isPortableId,
+  isSameObjectId,
+} from "../sig/portable-key-id.ts";
+
+// A loader may report bad remote data as a parser/validation error. Raw
+// TypeErrors also represent fetch failures, so do not classify them by type
+// alone. Keep this consistent with the inbox's known validation errors.
+// TODO: Fold this classification into shared principal resolution:
+// https://github.com/fedify-dev/fedify/issues/1290
+function isPermanentCollectionError(error: unknown): boolean {
+  if (error instanceof SyntaxError || isInvalidUrlTypeError(error)) return true;
+  if (
+    error instanceof TypeError &&
+    /^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:|Invalid FEP-ef61 gateway:)/
+      .test(error.message)
+  ) return true;
+  // Node rejects credential-bearing redirect targets before returning a
+  // remote document. Other runtimes may return one; validate that URL below.
+  if (
+    error instanceof TypeError &&
+    /^Request cannot be constructed from a URL that includes credentials(?::|$)/
+      .test(error.message)
+  ) return true;
+  if (error instanceof Error) {
+    const details = (error as Error & { details?: { code?: unknown } }).details;
+    if (
+      error.name === "jsonld.SyntaxError" &&
+      details?.code !== "loading remote context failed"
+    ) return true;
+    if (
+      error.name === "jsonld.InvalidUrl" &&
+      details?.code === "invalid remote context"
+    ) return true;
+    if (
+      error.name === "jsonld.ContextUrlError" &&
+      (details?.code === "recursive context inclusion" ||
+        details?.code === "context overflow")
+    ) return true;
+  }
+  // This private loader error is identified by its stable name rather than
+  // adding a vocab-runtime export in a patch release.
+  if (error instanceof FetchError && error.name === "BodyTooLargeError") {
+    return true;
+  }
+  // Both built-in loaders use these messages when no document can be
+  // reached. Response-less network failures and timeouts remain retryable.
+  if (error instanceof FetchError && error.response == null) {
+    const prefix = `${error.url.href}: `;
+    const message = error.message.startsWith(prefix)
+      ? error.message.slice(prefix.length)
+      : "";
+    if (
+      /^Redirect loop detected: .+/.test(message) ||
+      /^Too many redirections \(\d+\)$/.test(message)
+    ) return true;
+  }
+  const status = error instanceof FetchError ? error.response?.status : null;
+  return error instanceof UrlError && error.reason === "disallowed" ||
+    status != null && (
+        // A returned 2xx/3xx error means the loader could not use the
+        // document or follow the redirect, rather than a transport failure.
+        status >= 200 && status < 400 ||
+        status >= 400 && status < 500 && status !== 408 && status !== 429
+      );
+}
+
+// Match the generated decoder's single-list-container interpretation.
+function expandedPropertyValues(value: unknown): unknown[] {
+  if (!Array.isArray(value)) return [];
+  const first = value[0];
+  return value.length === 1 && first != null && typeof first === "object" &&
+      "@list" in first && Array.isArray(first["@list"])
+    ? first["@list"]
+    : value;
+}
+
+// TODO: Replace these parser-specific checks with structured failures in #1290:
+// https://github.com/fedify-dev/fedify/issues/1290
+function hasMalformedCollectionLanguage(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasMalformedCollectionLanguage);
+  if (value == null || typeof value !== "object") return false;
+  const node = value as Record<string, unknown>;
+  if ("@value" in node) return false; // Raw @json extension data is opaque.
+  for (const [key, child] of Object.entries(node)) {
+    if (key === "https://www.w3.org/ns/activitystreams#hreflang") {
+      for (const item of expandedPropertyValues(child)) {
+        if (
+          item == null || typeof item !== "object" || !("@value" in item) ||
+          typeof item["@value"] !== "string" || "@language" in item
+        ) continue;
+        try {
+          new Intl.Locale(normalizeLanguageTag(item["@value"]));
+        } catch (error) {
+          if (error instanceof RangeError) return true;
+          throw error;
+        }
+      }
+    } else if (hasMalformedCollectionLanguage(child)) return true;
+  }
+  return false;
+}
+
+// TODO: Preserve unparsed property presence with the verified view in #1290:
+// https://github.com/fedify-dev/fedify/issues/1290
+export function captureFeatureRequestActorPresence(loader: DocumentLoader) {
+  const contexts = new Map<string, Awaited<ReturnType<DocumentLoader>>>();
+  return {
+    contextLoader: (async (...args) => {
+      const document = await loader(...args);
+      if (!contexts.has(args[0])) {
+        contexts.set(args[0], structuredClone(document));
+      }
+      return document;
+    }) satisfies DocumentLoader,
+    async hasActor(document: unknown): Promise<boolean> {
+      const expanded = await jsonld.expand(document, {
+        documentLoader: (url: string) => {
+          const context = contexts.get(url);
+          if (context == null) {
+            throw new TypeError("Invalid JSON-LD: unrecorded actor context.");
+          }
+          return Promise.resolve(context);
+        },
+        keepFreeFloatingNodes: true,
+      });
+      const actors = expanded[0]
+        ?.["https://www.w3.org/ns/activitystreams#actor"];
+      return Array.isArray(actors) && actors.length > 0;
+    },
+  };
+}
+
+// FIXME: Replace this FeatureRequest-specific authentication bridge with the
+// general inbox principal handling: https://github.com/fedify-dev/fedify/issues/1290
+export async function resolveFeatureRequestActor<T>(
+  context: Context<T>,
+  request: FeatureRequest,
+): Promise<URL | null> {
+  if (request.instrumentIds.length !== 1) return null;
+  const id = request.instrumentIds[0];
+  if (id.username !== "" || id.password !== "") return null;
+  if (
+    !isPortableId(id) && id.protocol !== "http:" && id.protocol !== "https:"
+  ) {
+    return null;
+  }
+  // ID accessors omit anonymous embedded values. Count the parsed values,
+  // without dereferencing them or reinterpreting the original context.
+  const expanded = await request.toJsonLd({ format: "expand" }) as Record<
+    string,
+    unknown
+  >[];
+  const instruments = expanded[0]?.[
+    "https://www.w3.org/ns/activitystreams#instrument"
+  ];
+  if (!Array.isArray(instruments) || instruments.length !== 1) return null;
+  // Never infer ownership from an instrument embedded by the sender.
+  // Collection authorization uses the referenced resource, not account
+  // discovery through WebFinger. Portable IDs retain their verified lookup.
+  // Preserve loader failures that parsing or portable lookup may hide.
+  let retryableFailure: { error: unknown } | undefined;
+  let permanentFailure = false;
+  const captureFailure =
+    (loader: DocumentLoader): DocumentLoader => async (...args) => {
+      try {
+        const document = await loader(...args);
+        const documentUrl = new URL(document.documentUrl);
+        if (documentUrl.username !== "" || documentUrl.password !== "") {
+          throw new UrlError("Credential-bearing document URL");
+        }
+        return document;
+      } catch (error) {
+        if (isPermanentCollectionError(error)) permanentFailure = true;
+        else retryableFailure ??= { error };
+        throw error;
+      }
+    };
+  let collection: ActivityObject | null;
+  let collectionDocument: unknown;
+  let expandedCollection: Record<string, unknown>[] | undefined;
+  try {
+    if (isPortableId(id)) {
+      collection = await context.lookupObject(id, {
+        documentLoader: captureFailure(context.documentLoader),
+        contextLoader: captureFailure(context.contextLoader),
+      });
+    } else {
+      const document = await captureFailure(context.documentLoader)(id.href);
+      collectionDocument = document.document;
+      const documentUrl = new URL(document.documentUrl);
+      // A web resource cannot vouch for an ID on another origin, even when
+      // reached through a redirect from the requested collection URL.
+      if (documentUrl.origin !== id.origin) return null;
+      // Preserve values the typed attribution parser may omit. Parse the
+      // same expanded view used for cardinality, without loading contexts twice.
+      expandedCollection = await jsonld.expand(document.document, {
+        documentLoader: captureFailure(context.contextLoader),
+        keepFreeFloatingNodes: true,
+      }) as Record<string, unknown>[];
+      collection = await ActivityObject.fromJsonLd(expandedCollection, {
+        ...context,
+        documentLoader: captureFailure(context.documentLoader),
+        contextLoader: captureFailure(context.contextLoader),
+        baseUrl: documentUrl,
+      });
+    }
+  } catch (error) {
+    if (retryableFailure != null) throw retryableFailure.error;
+    // Only positively identified malformed parser literals are permanent.
+    // Loader RangeErrors were captured above and must remain retryable.
+    if (
+      error instanceof RangeError && collectionDocument != null &&
+      (hasMalformedCollectionLanguage(expandedCollection) ||
+        await hasMalformedKnownTemporalLiteral(
+          collectionDocument,
+          context.contextLoader,
+        ))
+    ) return null;
+    // JSON-LD may wrap loader errors. Preserve the original classification
+    // rather than treating a malformed remote context as a transient outage.
+    if (
+      permanentFailure || isPermanentCollectionError(error) ||
+      error instanceof TypeError
+    ) return null;
+    throw error;
+  }
+  if (
+    !(collection instanceof FeaturedCollection) || collection.id == null ||
+    !isSameObjectId(collection.id, id) || collection.attributionIds.length !== 1
+  ) {
+    if (retryableFailure != null) throw retryableFailure.error;
+    return null;
+  }
+  // As with instrument, ID accessors alone do not establish cardinality.
+  expandedCollection ??= await collection.toJsonLd({
+    format: "expand",
+  }) as Record<string, unknown>[];
+  const attributions = expandedPropertyValues(
+    expandedCollection[0]?.[
+      "https://www.w3.org/ns/activitystreams#attributedTo"
+    ],
+  );
+  if (attributions.length !== 1) return null;
+  return collection.attributionIds[0];
+}
+
+// TODO: Replace this signature observation scan with shared inbox principals.
+// https://github.com/fedify-dev/fedify/issues/1290
+export function hasFeatureRequestSignature(
+  attempts: readonly InboxVerificationAttempt[],
+  actor: URL,
+  mechanism: "linkedData" | "objectIntegrity",
+): boolean {
+  const portable = isPortableId(actor) || /^did:/i.test(actor.href);
+  return attempts.some((attempt) =>
+    attempt.subject.pointer === "" && attempt.mechanism === mechanism &&
+    attempt.status === "verified" && attempt.signatures.some((signature) => {
+      const key = signature.key;
+      const owner = key.type === "cryptographicKey"
+        ? key.ownerId
+        : key.controllerId;
+      if (owner == null) return false;
+      if (!portable) return owner.href === actor.href;
+      // A gateway's web key cannot authenticate a portable actor.  Mirror
+      // the DID binding used by Object Integrity Proof verification.
+      const did = getPortableDid(actor);
+      return mechanism === "objectIntegrity" && did != null && key.id != null &&
+        /^(?:did:|ap(?:\+ef61)?:\/\/)/i.test(key.id.href) &&
+        getPortableDid(owner) === did && getPortableDid(key.id) === did;
+    })
+  );
+}
