@@ -15,6 +15,7 @@ import {
   UrlError,
 } from "@fedify/vocab-runtime";
 import { assert, assertEquals, assertRejects } from "@std/assert";
+import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { signRequest } from "../sig/http.ts";
 import { signJsonLd, verifyJsonLd } from "../sig/ld.ts";
 import { signObject, verifyObject } from "../sig/proof.ts";
@@ -1339,3 +1340,78 @@ for (const anonymousFirst of [false, true]) {
     assertEquals(result.received, []);
   });
 }
+
+for (const authentication of ["http", "ld", "proof"] as const) {
+  for (const authenticatedLoader of [false, true]) {
+    for (const alternate of [false, true]) {
+      for (const loop of [false, true]) {
+        test(`actorless FeatureRequest rejects ${alternate ? "alternate" : "HTTP"} redirect ${loop ? "loops" : "limits"} using ${authenticatedLoader ? "authenticated" : "standard"} loader with ${authentication} authentication`, async () => {
+          let fetches = 0;
+          const originalFetch = globalThis.fetch;
+          globalThis.fetch = () => {
+            fetches++;
+            const next = loop
+              ? alternate && fetches === 1
+                ? `${collectionId.href}/alternate`
+                : collectionId.href
+              : `${collectionId.href}/${fetches}`;
+            return Promise.resolve(
+              alternate
+                ? new Response("<html></html>", {
+                  headers: {
+                    "Content-Type": "text/html",
+                    Link:
+                      `<${next}>; rel="alternate"; type="application/activity+json"`,
+                  },
+                })
+                : new Response(null, {
+                  status: 302,
+                  headers: { Location: next },
+                }),
+            );
+          };
+          try {
+            const collectionLoader = authenticatedLoader
+              ? getAuthenticatedDocumentLoader({
+                keyId: new URL("https://example.com/person2#main-key"),
+                privateKey: rsaPrivateKey2,
+              }, {
+                allowPrivateAddress: true,
+                specDeterminer: {
+                  determineSpec: () => Promise.resolve("rfc9421"),
+                  rememberSpec: () => Promise.resolve(),
+                },
+              })
+              : getDocumentLoader({ allowPrivateAddress: true });
+            const result = await deliver(authentication, { collectionLoader });
+            assertEquals(result.response.status, 400);
+            assertEquals(result.received, []);
+            assertEquals(fetches, loop ? alternate ? 2 : 1 : 21);
+          } finally {
+            globalThis.fetch = originalFetch;
+          }
+        });
+      }
+    }
+  }
+}
+
+test("actorless FeatureRequest preserves response-less collection timeouts for retry", async () => {
+  const error = new FetchError(collectionId, "Document lookup timed out");
+  error.cause = new DOMException("Document lookup timed out", "TimeoutError");
+  assertEquals(
+    await assertRejects(() => lookupFailingCollection(error)),
+    error,
+  );
+});
+
+test("actorless FeatureRequest rejects Node credential URL construction errors", async () => {
+  assertEquals(
+    await lookupFailingCollection(
+      new TypeError(
+        "Request cannot be constructed from a URL that includes credentials: https://user:pass@example.com/redirected",
+      ),
+    ),
+    null,
+  );
+});

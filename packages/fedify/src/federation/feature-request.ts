@@ -59,6 +59,18 @@ function isPermanentCollectionError(error: unknown): boolean {
   if (error instanceof FetchError && error.name === "BodyTooLargeError") {
     return true;
   }
+  // Both built-in loaders use these messages when no document can be
+  // reached. Response-less network failures and timeouts remain retryable.
+  if (error instanceof FetchError && error.response == null) {
+    const prefix = `${error.url.href}: `;
+    const message = error.message.startsWith(prefix)
+      ? error.message.slice(prefix.length)
+      : "";
+    if (
+      /^Redirect loop detected: .+/.test(message) ||
+      /^Too many redirections \(\d+\)$/.test(message)
+    ) return true;
+  }
   const status = error instanceof FetchError ? error.response?.status : null;
   return error instanceof UrlError && error.reason === "disallowed" ||
     status != null && (
