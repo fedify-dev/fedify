@@ -74,7 +74,7 @@ test("actorless FeatureRequest preserves collection lookup failures for retry", 
   );
 });
 
-for (const status of [400, 401, 403, 404, 410, 408, 429, 503]) {
+for (const status of [200, 204, 206, 400, 401, 403, 404, 410, 408, 429, 503]) {
   test(`actorless FeatureRequest classifies collection HTTP ${status}`, async () => {
     const error = new FetchError(
       collectionId,
@@ -1076,3 +1076,54 @@ test("actorless FeatureRequest preserves collection FetchError without a respons
     error,
   );
 });
+
+for (const authentication of ["http", "proof"] as const) {
+  for (const resource of ["collection", "context"] as const) {
+    for (const oversized of [false, true]) {
+      test(`actorless FeatureRequest rejects ${oversized ? "oversized" : "invalid"} HTML ${resource} responses with ${authentication} authentication`, async () => {
+        const document = await new FeaturedCollection({
+          id: collectionId,
+          attribution: owner,
+        }).toJsonLd() as Record<string, unknown>;
+        const contextUrl = "https://example.com/collection-context/html";
+        if (resource === "context") {
+          const contexts = Array.isArray(document["@context"])
+            ? document["@context"]
+            : [document["@context"]];
+          document["@context"] = [...contexts, contextUrl];
+        }
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = (input) => {
+          const url = input instanceof Request ? input.url : String(input);
+          const html = resource === "collection" || url === contextUrl;
+          return Promise.resolve(
+            new Response(
+              html
+                ? "<html><body>No ActivityPub document</body></html>"
+                : JSON.stringify(document),
+              {
+                headers: {
+                  "Content-Type": html
+                    ? "text/html"
+                    : "application/activity+json",
+                  ...(html && oversized
+                    ? { "Content-Length": String(16 * 1024 * 1024 + 1) }
+                    : {}),
+                },
+              },
+            ),
+          );
+        };
+        try {
+          const result = await deliver(authentication, {
+            collectionLoader: getDocumentLoader({ allowPrivateAddress: true }),
+          });
+          assertEquals(result.response.status, 400);
+          assertEquals(result.received, []);
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      });
+    }
+  }
+}

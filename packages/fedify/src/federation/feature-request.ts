@@ -53,8 +53,12 @@ function isPermanentCollectionError(error: unknown): boolean {
   }
   const status = error instanceof FetchError ? error.response?.status : null;
   return error instanceof UrlError && error.reason === "disallowed" ||
-    status != null && status >= 400 && status < 500 && status !== 408 &&
-      status !== 429;
+    status != null && (
+        // Successful responses can still be unusable documents (e.g., HTML
+        // without an ActivityPub alternate), rather than transport failures.
+        status >= 200 && status < 300 ||
+        status >= 400 && status < 500 && status !== 408 && status !== 429
+      );
 }
 
 // FIXME: Replace this FeatureRequest-specific authentication bridge with the
