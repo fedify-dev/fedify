@@ -145,6 +145,7 @@ async function deliver(
   options: {
     collection?: FeaturedCollection | Person;
     collectionDocumentUrl?: string;
+    replayedObject?: URL;
     request?: Activity;
     queued?: boolean;
     skip?: boolean;
@@ -164,13 +165,21 @@ async function deliver(
   });
   let collectionAvailable = true;
   let contextLoads = 0;
+  let replayContextLoads = 0;
   const contextUrl = "https://example.com/changing-context";
   const contextLoader = async (url: string) => {
     if (url === contextUrl) {
       contextLoads++;
+      if (!collectionAvailable) replayContextLoads++;
       return {
         document: {
           "@context": {
+            receiver: new URL(
+              ".",
+              !collectionAvailable && options.replayedObject != null
+                ? options.replayedObject
+                : target,
+            ).href,
             featured: new URL(
               ".",
               !collectionAvailable && options.replayedInstrument != null
@@ -245,12 +254,35 @@ async function deliver(
       ed25519PrivateKey,
       ed25519Multikey.id!,
       {
-        contextLoader: mockDocumentLoader,
+        contextLoader,
+        context:
+          options.replayedInstrument != null || options.replayedObject != null
+            ? [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/data-integrity/v1",
+              "https://w3id.org/fep/7aa9",
+              contextUrl,
+            ]
+            : undefined,
       },
-    )).toJsonLd()
+    )).toJsonLd({
+      format: "compact",
+      contextLoader,
+      context:
+        options.replayedInstrument != null || options.replayedObject != null
+          ? [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/data-integrity/v1",
+            "https://w3id.org/fep/7aa9",
+            contextUrl,
+          ]
+          : undefined,
+    })
     : await activity.toJsonLd();
   if (
-    options.reparsedInstrument != null || options.replayedInstrument != null
+    authentication !== "proof" &&
+    (options.reparsedInstrument != null || options.replayedInstrument != null ||
+      options.replayedObject != null)
   ) {
     const document = body as Record<string, unknown>;
     document["@context"] = [
@@ -260,6 +292,7 @@ async function deliver(
       contextUrl,
     ];
     document.instrument = "featured:1";
+    if (options.replayedObject != null) document.object = "receiver:bob";
   }
   let request = new Request("https://receiver.example/inbox", {
     method: "POST",
@@ -343,6 +376,9 @@ async function deliver(
     originals,
     body,
     messages,
+    get replayContextLoads() {
+      return replayContextLoads;
+    },
     async replay(retry = false) {
       collectionAvailable = false;
       failOnce = retry;
@@ -378,16 +414,39 @@ test("actorless FeatureRequest accepts same-origin collection redirects", async 
   assertEquals(result.response.status, 202);
 });
 
-test("actorless FeatureRequest rejects an instrument changed by queue contexts", async () => {
-  const result = await deliver("http", {
-    queued: true,
-    replayedInstrument: new URL("https://example.com/other-featured/1"),
-  });
-  assertEquals(result.response.status, 202);
-  await result.replay();
-  assertEquals(result.received, []);
-  assertEquals(result.messages[0].activity, result.body);
-});
+for (const authentication of ["http", "proof"] as const) {
+  for (const field of ["instrument", "object"] as const) {
+    test(`actorless FeatureRequest freezes ${authentication} ${field} across changing queue contexts`, async () => {
+      const result = await deliver(authentication, {
+        queued: true,
+        ...(field === "instrument"
+          ? {
+            replayedInstrument: new URL("https://example.com/other-featured/1"),
+          }
+          : { replayedObject: new URL("https://attacker.example/users/bob") }),
+      });
+      assertEquals(result.response.status, 202);
+      await result.replay(true);
+      assertEquals(result.received.map((activity) => activity.instrumentId), [
+        collectionId,
+        collectionId,
+      ]);
+      assertEquals(result.received.map((activity) => activity.objectId), [
+        target,
+        target,
+      ]);
+      assertEquals(result.received.map((activity) => activity.actorId), [
+        owner,
+        owner,
+      ]);
+      assertEquals(result.messages[1].activity, result.body);
+      assertEquals(result.replayContextLoads, 0);
+      if (authentication === "proof") {
+        assert(await result.received[0].getProof() != null);
+      }
+    });
+  }
+}
 
 for (const authentication of ["http", "ld", "proof", "mixed"] as const) {
   test(`actorless FeatureRequest accepts ${authentication} authentication`, async () => {

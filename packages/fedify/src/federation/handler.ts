@@ -2799,6 +2799,17 @@ async function handleInboxInternal<TContextData>(
       ),
     };
   observation.stage = "dispatch";
+  // Freeze the parsed view authenticated above, rather than resolving remote
+  // contexts again in the worker. The inferred actor is not part of this
+  // replay cache; the original signed document is kept separately.
+  // TODO: Replace this snapshot with shared principal replay:
+  // https://github.com/fedify-dev/fedify/issues/1290
+  const featureRequestSnapshot = featureRequestActor == null || queue == null
+    ? undefined
+    : await compactJsonLd(
+      await activity.clone({ actors: [] }).toJsonLd({ format: "compact" }),
+      undefined,
+    );
   const routeResult = await routeActivity({
     context: ctx,
     // Direct handleInbox() consumers may later forward the payload from the
@@ -2818,14 +2829,13 @@ async function handleInboxInternal<TContextData>(
     // backlog messages from older producers can still depend on it, while the
     // raw payload stays preserved separately for forwarding and low-level
     // hooks.
-    normalizedActivity: hasLdSignature && compactedJson !== json
+    normalizedActivity: featureRequestSnapshot != null
+      ? featureRequestSnapshot
+      : hasLdSignature && compactedJson !== json
       ? compactedJson
       : undefined,
     ldSignatureVerified: hasLdSignature ? ldSigVerified : undefined,
     featureRequestActor: featureRequestActor?.href,
-    featureRequestInstrument: featureRequestActor == null
-      ? undefined
-      : activity.instrumentId?.href,
     activity,
     recipient,
     inboxListeners,

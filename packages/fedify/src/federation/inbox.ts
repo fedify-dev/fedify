@@ -63,8 +63,6 @@ export interface RouteActivityParameters<TContextData> {
   // https://github.com/fedify-dev/fedify/issues/1290
   /** The actor authenticated for an actorless FeatureRequest. @internal */
   featureRequestActor?: string;
-  /** The instrument authenticated with the inferred actor. @internal */
-  featureRequestInstrument?: string;
   activity: Activity;
   recipient: string | null;
   inboxListeners?: ActivityListenerSet<InboxContext<TContextData>>;
@@ -117,7 +115,6 @@ export async function routeActivity<TContextData>(
     normalizedActivity,
     ldSignatureVerified,
     featureRequestActor,
-    featureRequestInstrument,
     activity,
     recipient,
     inboxListeners,
@@ -226,10 +223,7 @@ export async function routeActivity<TContextData>(
           // while preserving the original payload for forwarding.
           ...(normalizedActivity == null ? {} : { normalizedActivity }),
           ...(ldSignatureVerified == null ? {} : { ldSignatureVerified }),
-          ...(featureRequestActor == null ? {} : {
-            featureRequestActor,
-            featureRequestInstrument,
-          }),
+          ...(featureRequestActor == null ? {} : { featureRequestActor }),
           identifier: recipient,
           attempt: 0,
           started: new Date().toISOString(),

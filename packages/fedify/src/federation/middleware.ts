@@ -2522,28 +2522,29 @@ export class FederationImpl<TContextData>
             message.ldSignatureVerified === true ||
             message.normalizedActivity != null ||
             (message.ldSignatureVerified == null && hasSignatureField);
-          const parseContext = hasSignatureField
-            ? {
-              ...context,
-              // Verified LDS replay, fallback-authenticated queue items with a
-              // producer-side normalized cache, and legacy queued LDS
-              // messages may still reference Fedify's built-in signature
-              // contexts at the root after we detach the signature object, so
-              // keep the normalization loader shortcut available whenever a
-              // signature block remains.  Authentication provenance lives in
-              // ldSignatureVerified; normalizedActivity is a separate parse
-              // cache that rolling upgrades and stricter worker loaders may
-              // still depend on.
-              contextLoader: getNormalizationContextLoader(
-                context.contextLoader,
-              ),
-            }
-            : {
-              ...context,
-              contextLoader: wrapContextLoaderForJsonLd(
-                context.contextLoader,
-              ),
-            };
+          const parseContext =
+            hasSignatureField || message.featureRequestActor != null
+              ? {
+                ...context,
+                // Verified LDS replay, fallback-authenticated queue items with a
+                // producer-side normalized cache, and legacy queued LDS
+                // messages may still reference Fedify's built-in signature
+                // contexts at the root after we detach the signature object, so
+                // use the fixed normalization contexts for signature blocks and
+                // producer-frozen FeatureRequest snapshots.  Authentication provenance
+                // lives in ldSignatureVerified; normalizedActivity is a separate parse
+                // cache that rolling upgrades and stricter worker loaders may
+                // still depend on.
+                contextLoader: getNormalizationContextLoader(
+                  context.contextLoader,
+                ),
+              }
+              : {
+                ...context,
+                contextLoader: wrapContextLoaderForJsonLd(
+                  context.contextLoader,
+                ),
+              };
           parseContextLoader = parseContext.contextLoader;
           let normalizedActivity: unknown | undefined;
           if (shouldParseFromNormalizedSignedPayload) {
@@ -2570,11 +2571,10 @@ export class FederationImpl<TContextData>
             if (
               !(activity instanceof FeatureRequest) ||
               activity.actorIds.length !== 0 ||
-              activity.instrumentIds.length !== 1 ||
-              activity.instrumentId?.href !== message.featureRequestInstrument
+              message.normalizedActivity == null
             ) {
               throw new TypeError(
-                "FeatureRequest instrument changed after authentication.",
+                "FeatureRequest is missing its authenticated replay snapshot.",
               );
             }
             activity = activity.clone({

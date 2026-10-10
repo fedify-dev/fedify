@@ -155,6 +155,11 @@ export interface InboxMessage {
    * sidecar because generic queue backends do not provide reliable lifecycle
    * guarantees for auxiliary storage across retries and redeliveries.
    *
+   * For an actorless FeatureRequest, this is the producer's self-contained
+   * parsed view without the inferred actor. It freezes the fields
+   * used for authorization, while the original signed payload stays in
+   * {@link activity}.
+   *
    * @internal
    */
   readonly normalizedActivity?: unknown;
@@ -180,14 +185,6 @@ export interface InboxMessage {
    * @internal
    */
   readonly featureRequestActor?: string;
-  /**
-   * The instrument authenticated with the inferred FeatureRequest owner.
-   * Workers must match it before restoring that owner after parsing.
-   * @internal
-   */
-  // TODO: Remove this binding with shared principal replay:
-  // https://github.com/fedify-dev/fedify/issues/1290
-  readonly featureRequestInstrument?: string;
   readonly started: string;
   readonly attempt: number;
   readonly identifier: string | null;
