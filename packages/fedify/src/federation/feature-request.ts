@@ -69,6 +69,16 @@ export async function resolveFeatureRequestActor<T>(
 ): Promise<URL | null> {
   if (request.instrumentIds.length !== 1) return null;
   const id = request.instrumentIds[0];
+  // ID accessors omit anonymous embedded values. Count the parsed values,
+  // without dereferencing them or reinterpreting the original context.
+  const expanded = await request.toJsonLd({ format: "expand" }) as Record<
+    string,
+    unknown
+  >[];
+  const instruments = expanded[0]?.[
+    "https://www.w3.org/ns/activitystreams#instrument"
+  ];
+  if (!Array.isArray(instruments) || instruments.length !== 1) return null;
   // Never infer ownership from an instrument embedded by the sender.
   // Collection authorization uses the referenced resource, not account
   // discovery through WebFinger. Portable IDs retain their verified lookup.

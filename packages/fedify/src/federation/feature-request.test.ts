@@ -4,6 +4,7 @@ import {
   Create,
   FeaturedCollection,
   FeatureRequest,
+  Object as ActivityObject,
   Person,
 } from "@fedify/vocab";
 import {
@@ -1125,5 +1126,29 @@ for (const authentication of ["http", "proof"] as const) {
         }
       });
     }
+  }
+}
+
+for (const authentication of ["http", "ld", "proof"] as const) {
+  for (const anonymousFirst of [false, true]) {
+    test(`actorless FeatureRequest rejects an anonymous instrument ${anonymousFirst ? "before" : "after"} the collection with ${authentication} authentication`, async () => {
+      let lookups = 0;
+      const anonymous = new ActivityObject({ name: "No collection ID" });
+      const result = await deliver(authentication, {
+        request: new FeatureRequest({
+          id: new URL("https://example.com/requests/ambiguous"),
+          object: target,
+          instruments: anonymousFirst
+            ? [anonymous, collectionId]
+            : [collectionId, anonymous],
+        }),
+        onCollectionLookup: () => {
+          lookups++;
+        },
+      });
+      assertEquals(result.response.status, 400);
+      assertEquals(result.received, []);
+      assertEquals(lookups, 0);
+    });
   }
 }
