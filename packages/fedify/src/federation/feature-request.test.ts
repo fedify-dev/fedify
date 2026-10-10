@@ -1459,3 +1459,64 @@ for (const authentication of ["http", "ld"] as const) {
     });
   }
 }
+
+for (const authentication of ["http", "ld", "proof"] as const) {
+  for (
+    const scheme of [
+      "ftp://example.com/collection",
+      "file:///collection",
+    ] as const
+  ) {
+    test(`actorless FeatureRequest rejects unsupported collection URL ${scheme} with ${authentication} authentication`, async () => {
+      let lookups = 0;
+      const instrument = new URL(scheme);
+      const result = await deliver(authentication, {
+        request: new FeatureRequest({
+          id: new URL("https://example.com/requests/unsupported-scheme"),
+          instrument,
+          object: target,
+        }),
+        collectionLookupId: instrument,
+        onCollectionLookup: () => {
+          lookups++;
+        },
+        collectionLoader: getDocumentLoader({ allowPrivateAddress: true }),
+      });
+      assertEquals(result.response.status, 400);
+      assertEquals(result.received, []);
+      assertEquals(lookups, 0);
+    });
+    for (const authenticatedLoader of [false, true]) {
+      test(`actorless FeatureRequest rejects redirect to ${scheme} using ${authenticatedLoader ? "authenticated" : "standard"} loader with ${authentication} authentication`, async () => {
+        let fetches = 0;
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = () => {
+          fetches++;
+          return Promise.resolve(
+            new Response(null, { status: 302, headers: { Location: scheme } }),
+          );
+        };
+        try {
+          const collectionLoader = authenticatedLoader
+            ? getAuthenticatedDocumentLoader({
+              keyId: rsaPublicKey2.id!,
+              privateKey: rsaPrivateKey2,
+            }, {
+              allowPrivateAddress: true,
+              specDeterminer: {
+                determineSpec: () => Promise.resolve("rfc9421"),
+                rememberSpec: () => Promise.resolve(),
+              },
+            })
+            : getDocumentLoader({ allowPrivateAddress: true });
+          const result = await deliver(authentication, { collectionLoader });
+          assertEquals(result.response.status, 400);
+          assertEquals(result.received, []);
+          assertEquals(fetches, 1);
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      });
+    }
+  }
+}

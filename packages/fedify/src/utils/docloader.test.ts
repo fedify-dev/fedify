@@ -844,3 +844,24 @@ test("getAuthenticatedDocumentLoader() times out", async (t) => {
     }
   });
 });
+
+for (const url of ["ftp://example.com/collection", "file:///collection"]) {
+  test(`getAuthenticatedDocumentLoader() rejects ${url} with private addresses allowed before fetching`, async () => {
+    let fetches = 0;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = () => {
+      fetches++;
+      return Promise.reject(new Error("Must not fetch"));
+    };
+    try {
+      const loader = getAuthenticatedDocumentLoader({
+        keyId: new URL("https://example.com/key2"),
+        privateKey: rsaPrivateKey2,
+      }, { allowPrivateAddress: true });
+      await rejects(loader(url), UrlError);
+      deepStrictEqual(fetches, 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+}

@@ -132,6 +132,10 @@ export function getAuthenticatedDocumentLoader(
     url: string,
     options?: DocumentLoaderOptions,
   ): Promise<void> {
+    const protocol = new URL(url).protocol;
+    if (protocol !== "http:" && protocol !== "https:") {
+      throw new UrlError(`Unsupported protocol: ${protocol}`);
+    }
     if (!allowPrivateAddress) {
       try {
         await validatePublicUrl(url);

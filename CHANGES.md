@@ -10,6 +10,10 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Fixed `getAuthenticatedDocumentLoader()` skipping URL scheme validation
+    when `allowPrivateAddress` was enabled.  Unsupported schemes are now
+    rejected before fetching, including redirect and alternate document
+    targets.  [[#1291], [#1292]]
  -  Fixed the inbox rejecting FEP-7aa9 `FeatureRequest` activities without
     an `actor`, allowing applications to receive collection inclusion
     requests from Mastodon.  Requests are accepted only when authenticated
@@ -17,6 +21,14 @@ To be released.
 
 [#1289]: https://github.com/fedify-dev/fedify/issues/1289
 [#1291]: https://github.com/fedify-dev/fedify/pull/1291
+[#1292]: https://github.com/fedify-dev/fedify/issues/1292
+
+### @fedify/vocab-runtime
+
+ -  Fixed `getDocumentLoader()` skipping URL scheme validation when
+    `allowPrivateAddress` was enabled.  Unsupported schemes are now rejected
+    before fetching, including redirect and alternate document targets.
+    [[#1291], [#1292]]
 
 
 Version 2.4.2

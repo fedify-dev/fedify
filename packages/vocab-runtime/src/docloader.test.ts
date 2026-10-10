@@ -1612,3 +1612,23 @@ test("getDocumentLoader() times out a stalled body of such a status", async () =
     await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
   });
 });
+
+for (const url of ["ftp://example.com/collection", "file:///collection"]) {
+  test(`getDocumentLoader() rejects ${url} with private addresses allowed before fetching`, async () => {
+    let fetches = 0;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = () => {
+      fetches++;
+      return Promise.reject(new Error("Must not fetch"));
+    };
+    try {
+      await rejects(
+        getDocumentLoader({ allowPrivateAddress: true })(url),
+        UrlError,
+      );
+      deepStrictEqual(fetches, 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+}
