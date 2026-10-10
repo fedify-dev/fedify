@@ -101,93 +101,42 @@ test("actorless FeatureRequest preserves collection DNS failures for retry", asy
   );
 });
 
-async function lookupFallbackCollection(
-  candidate: FeaturedCollection | Person | Error,
-  outage: Error,
-): Promise<URL | null> {
-  const fallbackUrl = "https://example.com/fallback-collection";
-  const context = createRequestContext({
-    federation: createFederation<void>({ kv: new MemoryKvStore() }),
-    url: target,
-    data: undefined,
-    documentLoader: async (url) => {
-      if (url === collectionId.href) throw outage;
-      assertEquals(url, fallbackUrl);
-      if (candidate instanceof Error) throw candidate;
-      return {
-        document: await candidate.toJsonLd(),
-        documentUrl: url,
-        contextUrl: null,
-      };
-    },
-    contextLoader: mockDocumentLoader,
-  });
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = () =>
-    Promise.resolve(Response.json({
-      subject: collectionId.href,
-      links: [{
-        rel: "self",
-        type: "application/activity+json",
-        href: fallbackUrl,
-      }],
-    }));
-  try {
-    return await resolveFeatureRequestActor(
-      context,
-      new FeatureRequest({ instrument: collectionId }),
+for (const failure of ["503", "network"] as const) {
+  test(`actorless FeatureRequest does not use WebFinger after a collection 404 (${failure})`, async () => {
+    const error = new FetchError(
+      collectionId,
+      "HTTP 404",
+      new Response(null, { status: 404 }),
     );
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-}
-
-for (
-  const [label, candidate] of [
-    [
-      "permanent HTTP failure",
-      new FetchError(
-        collectionId,
-        "HTTP 404",
-        new Response(null, { status: 404 }),
-      ),
-    ],
-    ["wrong type", new Person({ id: collectionId })],
-    [
-      "wrong ID",
-      new FeaturedCollection({
-        id: new URL("https://example.com/wrong"),
-        attribution: owner,
-      }),
-    ],
-    ["missing owner", new FeaturedCollection({ id: collectionId })],
-    [
-      "multiple owners",
-      new FeaturedCollection({
-        id: collectionId,
-        attributions: [owner, target],
-      }),
-    ],
-  ] as const
-) {
-  test(`actorless FeatureRequest preserves an outage after fallback ${label}`, async () => {
-    const outage = new Error("Collection temporarily unavailable");
-    assertEquals(
-      await assertRejects(() => lookupFallbackCollection(candidate, outage)),
-      outage,
-    );
+    const context = createRequestContext({
+      federation: createFederation<void>({ kv: new MemoryKvStore() }),
+      url: target,
+      data: undefined,
+      documentLoader: () => Promise.reject(error),
+      contextLoader: mockDocumentLoader,
+    });
+    let fetches = 0;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = () => {
+      fetches++;
+      return failure === "503"
+        ? Promise.resolve(new Response(null, { status: 503 }))
+        : Promise.reject(new Error("WebFinger unavailable"));
+    };
+    try {
+      assertEquals(
+        await resolveFeatureRequestActor(
+          context,
+          new FeatureRequest({ instrument: collectionId }),
+        ),
+        null,
+      );
+      assertEquals(fetches, 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 }
-
-test("actorless FeatureRequest accepts a valid fallback despite an earlier outage", async () => {
-  assertEquals(
-    await lookupFallbackCollection(
-      new FeaturedCollection({ id: collectionId, attribution: owner }),
-      new Error("Collection temporarily unavailable"),
-    ),
-    owner,
-  );
-});
 
 type Authentication = "http" | "ld" | "proof" | "mixed" | "unsigned";
 

@@ -1,5 +1,9 @@
 import type { Context } from "./context.ts";
-import { FeaturedCollection, type FeatureRequest } from "@fedify/vocab";
+import {
+  FeaturedCollection,
+  type FeatureRequest,
+  Object as ActivityObject,
+} from "@fedify/vocab";
 import {
   type DocumentLoader,
   FetchError,
@@ -21,8 +25,9 @@ export async function resolveFeatureRequestActor<T>(
   if (request.instrumentIds.length !== 1) return null;
   const id = request.instrumentIds[0];
   // Never infer ownership from an instrument embedded by the sender.
-  // lookupObject() may hide loader failures while trying other locations.
-  // Preserve retryable failures until a valid collection has been found.
+  // Collection authorization uses the referenced resource, not account
+  // discovery through WebFinger. Portable IDs retain their verified lookup.
+  // Preserve loader failures that parsing or portable lookup may hide.
   let retryableFailure: { error: unknown } | undefined;
   const captureFailure =
     (loader: DocumentLoader): DocumentLoader => async (...args) => {
@@ -40,10 +45,33 @@ export async function resolveFeatureRequestActor<T>(
         throw error;
       }
     };
-  const collection = await context.lookupObject(id, {
-    documentLoader: captureFailure(context.documentLoader),
-    contextLoader: captureFailure(context.contextLoader),
-  });
+  let collection: ActivityObject | null;
+  try {
+    if (isPortableId(id)) {
+      collection = await context.lookupObject(id, {
+        documentLoader: captureFailure(context.documentLoader),
+        contextLoader: captureFailure(context.contextLoader),
+      });
+    } else {
+      const document = await captureFailure(context.documentLoader)(id.href);
+      collection = await ActivityObject.fromJsonLd(document.document, {
+        ...context,
+        documentLoader: captureFailure(context.documentLoader),
+        contextLoader: captureFailure(context.contextLoader),
+        baseUrl: new URL(document.documentUrl),
+      });
+    }
+  } catch (error) {
+    if (retryableFailure != null) throw retryableFailure.error;
+    const status = error instanceof FetchError ? error.response?.status : null;
+    if (
+      error instanceof TypeError ||
+      error instanceof UrlError && error.reason === "disallowed" ||
+      status != null && status >= 400 && status < 500 &&
+        status !== 408 && status !== 429
+    ) return null;
+    throw error;
+  }
   if (
     !(collection instanceof FeaturedCollection) || collection.id == null ||
     !isSameObjectId(collection.id, id) || collection.attributionIds.length !== 1
