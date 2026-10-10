@@ -31,6 +31,13 @@ function isPermanentCollectionError(error: unknown): boolean {
     /^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:|Invalid FEP-ef61 gateway:)/
       .test(error.message)
   ) return true;
+  // Node rejects credential-bearing redirect targets before returning a
+  // remote document. Other runtimes may return one; validate that URL below.
+  if (
+    error instanceof TypeError &&
+    /^Request cannot be constructed from a URL that includes credentials(?::|$)/
+      .test(error.message)
+  ) return true;
   if (error instanceof Error) {
     const details = (error as Error & { details?: { code?: unknown } }).details;
     if (
@@ -55,9 +62,9 @@ function isPermanentCollectionError(error: unknown): boolean {
   const status = error instanceof FetchError ? error.response?.status : null;
   return error instanceof UrlError && error.reason === "disallowed" ||
     status != null && (
-        // Successful responses can still be unusable documents (e.g., HTML
-        // without an ActivityPub alternate), rather than transport failures.
-        status >= 200 && status < 300 ||
+        // A returned 2xx/3xx error means the loader could not use the
+        // document or follow the redirect, rather than a transport failure.
+        status >= 200 && status < 400 ||
         status >= 400 && status < 500 && status !== 408 && status !== 429
       );
 }
@@ -90,7 +97,12 @@ export async function resolveFeatureRequestActor<T>(
   const captureFailure =
     (loader: DocumentLoader): DocumentLoader => async (...args) => {
       try {
-        return await loader(...args);
+        const document = await loader(...args);
+        const documentUrl = new URL(document.documentUrl);
+        if (documentUrl.username !== "" || documentUrl.password !== "") {
+          throw new UrlError("Credential-bearing document URL");
+        }
+        return document;
       } catch (error) {
         if (isPermanentCollectionError(error)) permanentFailure = true;
         else retryableFailure ??= { error };

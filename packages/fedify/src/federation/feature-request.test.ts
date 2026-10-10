@@ -75,7 +75,27 @@ test("actorless FeatureRequest preserves collection lookup failures for retry", 
   );
 });
 
-for (const status of [200, 204, 206, 400, 401, 403, 404, 410, 408, 429, 503]) {
+for (
+  const status of [
+    200,
+    204,
+    206,
+    300,
+    301,
+    302,
+    304,
+    307,
+    308,
+    400,
+    401,
+    403,
+    404,
+    410,
+    408,
+    429,
+    503,
+  ]
+) {
   test(`actorless FeatureRequest classifies collection HTTP ${status}`, async () => {
     const error = new FetchError(
       collectionId,
@@ -1260,6 +1280,39 @@ for (const authentication of ["http", "ld", "proof"] as const) {
       });
       assertEquals(result.response.status, 400);
       assertEquals(result.received, []);
+    });
+  }
+  for (const redirect of ["missing location", "credentials"] as const) {
+    test(`actorless FeatureRequest rejects collection redirect with ${redirect} with ${authentication} authentication`, async () => {
+      const document = await new FeaturedCollection({
+        id: collectionId,
+        attribution: owner,
+      }).toJsonLd();
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (input) => {
+        const url = input instanceof Request ? input.url : String(input);
+        return Promise.resolve(
+          url === collectionId.href
+            ? new Response(null, {
+              status: 302,
+              headers: redirect === "credentials"
+                ? { Location: "https://user:pass@example.com/redirected" }
+                : {},
+            })
+            : new Response(JSON.stringify(document), {
+              headers: { "Content-Type": "application/activity+json" },
+            }),
+        );
+      };
+      try {
+        const result = await deliver(authentication, {
+          collectionLoader: getDocumentLoader({ allowPrivateAddress: true }),
+        });
+        assertEquals(result.response.status, 400);
+        assertEquals(result.received, []);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
     });
   }
 }
