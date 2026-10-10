@@ -1,4 +1,5 @@
 import type { Context } from "./context.ts";
+import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
 import {
   FeaturedCollection,
   type FeatureRequest,
@@ -39,6 +40,11 @@ function isPermanentCollectionError(error: unknown): boolean {
       error.name === "jsonld.InvalidUrl" &&
       details?.code === "invalid remote context"
     ) return true;
+    if (
+      error.name === "jsonld.ContextUrlError" &&
+      (details?.code === "recursive context inclusion" ||
+        details?.code === "context overflow")
+    ) return true;
   }
   const status = error instanceof FetchError ? error.response?.status : null;
   return error instanceof UrlError && error.reason === "disallowed" ||
@@ -71,6 +77,7 @@ export async function resolveFeatureRequestActor<T>(
       }
     };
   let collection: ActivityObject | null;
+  let collectionDocument: unknown;
   try {
     if (isPortableId(id)) {
       collection = await context.lookupObject(id, {
@@ -79,6 +86,7 @@ export async function resolveFeatureRequestActor<T>(
       });
     } else {
       const document = await captureFailure(context.documentLoader)(id.href);
+      collectionDocument = document.document;
       const documentUrl = new URL(document.documentUrl);
       // A web resource cannot vouch for an ID on another origin, even when
       // reached through a redirect from the requested collection URL.
@@ -92,6 +100,15 @@ export async function resolveFeatureRequestActor<T>(
     }
   } catch (error) {
     if (retryableFailure != null) throw retryableFailure.error;
+    // Only a positively identified malformed temporal literal is permanent.
+    // Loader RangeErrors were captured above and must remain retryable.
+    if (
+      error instanceof RangeError && collectionDocument != null &&
+      await hasMalformedKnownTemporalLiteral(
+        collectionDocument,
+        context.contextLoader,
+      )
+    ) return null;
     // JSON-LD may wrap loader errors. Preserve the original classification
     // rather than treating a malformed remote context as a transient outage.
     if (

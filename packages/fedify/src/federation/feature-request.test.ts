@@ -207,7 +207,7 @@ async function deliver(
       };
     }
     if (
-      (url === "https://example.com/collection-context" ||
+      (url.startsWith("https://example.com/collection-context") ||
         url === "https://[invalid") &&
       options.collectionLoader != null
     ) {
@@ -619,6 +619,101 @@ for (const queued of [false, true]) {
       );
       if (queued) assertEquals(result.messages[1].activity, result.body);
       assertEquals(result.originals[0], result.body);
+    });
+  }
+}
+
+for (const authentication of ["http", "proof"] as const) {
+  for (const field of ["published", "duration"] as const) {
+    test(`actorless FeatureRequest rejects malformed temporal collection ${field} with ${authentication} authentication`, async () => {
+      const document = await new FeaturedCollection({
+        id: collectionId,
+        attribution: owner,
+      }).toJsonLd() as Record<string, unknown>;
+      document[field] = { "@value": "not-a-temporal-value" };
+      const result = await deliver(authentication, {
+        collectionLoader: (url) =>
+          Promise.resolve({ document, documentUrl: url, contextUrl: null }),
+      });
+      assertEquals(result.response.status, 400);
+      assertEquals(result.received, []);
+    });
+  }
+}
+
+test("actorless FeatureRequest preserves collection loader RangeError for retry", async () => {
+  const error = new RangeError("Loader temporarily failed");
+  assertEquals(
+    await assertRejects(() => lookupFailingCollection(error)),
+    error,
+  );
+});
+
+test("actorless FeatureRequest preserves context loader RangeError despite malformed temporal fields", async () => {
+  const error = new RangeError("Context loader temporarily failed");
+  const document = await new FeaturedCollection({
+    id: collectionId,
+    attribution: owner,
+  }).toJsonLd() as Record<string, unknown>;
+  const contexts = Array.isArray(document["@context"])
+    ? document["@context"]
+    : [document["@context"]];
+  document["@context"] = [
+    ...contexts,
+    "https://example.com/collection-context",
+  ];
+  document.published = { "@value": "not-a-date" };
+  assertEquals(
+    await assertRejects(() =>
+      deliver("http", {
+        collectionLoader: (url) =>
+          url === collectionId.href
+            ? Promise.resolve({ document, documentUrl: url, contextUrl: null })
+            : Promise.reject(error),
+      })
+    ),
+    error,
+  );
+});
+
+for (const authentication of ["http", "proof"] as const) {
+  for (
+    const kind of ["recursive context inclusion", "context overflow"] as const
+  ) {
+    test(`actorless FeatureRequest rejects ${kind} with ${authentication} authentication`, async () => {
+      const document = await new FeaturedCollection({
+        id: collectionId,
+        attribution: owner,
+      }).toJsonLd() as Record<string, unknown>;
+      const contexts = Array.isArray(document["@context"])
+        ? document["@context"]
+        : [document["@context"]];
+      const firstContext = "https://example.com/collection-context/0";
+      document["@context"] = [...contexts, firstContext];
+      let loads = 0;
+      const result = await deliver(authentication, {
+        collectionLoader: (url) => {
+          if (url === collectionId.href) {
+            return Promise.resolve({
+              document,
+              documentUrl: url,
+              contextUrl: null,
+            });
+          }
+          loads++;
+          assert(loads <= 20);
+          const nextContext = kind === "recursive context inclusion"
+            ? firstContext
+            : `https://example.com/collection-context/${loads}`;
+          return Promise.resolve({
+            document: { "@context": nextContext },
+            documentUrl: url,
+            contextUrl: null,
+          });
+        },
+      });
+      assertEquals(result.response.status, 400);
+      assertEquals(result.received, []);
     });
   }
 }
