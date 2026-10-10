@@ -1245,3 +1245,44 @@ for (const authentication of ["http", "ld", "proof"] as const) {
     assertEquals(lookups, 0);
   });
 }
+
+for (const authentication of ["http", "ld", "proof"] as const) {
+  for (const anonymousFirst of [false, true]) {
+    test(`actorless FeatureRequest rejects an anonymous attribution ${anonymousFirst ? "before" : "after"} the owner with ${authentication} authentication`, async () => {
+      const anonymous = new Person({ name: "No owner ID" });
+      const result = await deliver(authentication, {
+        collection: new FeaturedCollection({
+          id: collectionId,
+          attributions: anonymousFirst
+            ? [anonymous, owner]
+            : [owner, anonymous],
+        }),
+      });
+      assertEquals(result.response.status, 400);
+      assertEquals(result.received, []);
+    });
+  }
+}
+
+for (const anonymousFirst of [false, true]) {
+  test(`actorless FeatureRequest rejects untyped anonymous attribution ${anonymousFirst ? "before" : "after"} the owner`, async () => {
+    const document = await new FeaturedCollection({
+      id: collectionId,
+      attribution: owner,
+    }).toJsonLd() as Record<string, unknown>;
+    const anonymous = { name: "No owner ID" };
+    document.attributedTo = anonymousFirst
+      ? [anonymous, owner.href]
+      : [owner.href, anonymous];
+    const result = await deliver("http", {
+      collectionLoader: (url) =>
+        Promise.resolve({
+          document,
+          documentUrl: url,
+          contextUrl: null,
+        }),
+    });
+    assertEquals(result.response.status, 400);
+    assertEquals(result.received, []);
+  });
+}

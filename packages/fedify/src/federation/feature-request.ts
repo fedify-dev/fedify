@@ -10,6 +10,7 @@ import {
   FetchError,
   UrlError,
 } from "@fedify/vocab-runtime";
+import jsonld from "@fedify/vocab-runtime/jsonld";
 import { isInvalidUrlTypeError } from "../sig/ld.ts";
 import type { InboxVerificationAttempt } from "../sig/verification.ts";
 import {
@@ -98,6 +99,7 @@ export async function resolveFeatureRequestActor<T>(
     };
   let collection: ActivityObject | null;
   let collectionDocument: unknown;
+  let expandedCollection: Record<string, unknown>[] | undefined;
   try {
     if (isPortableId(id)) {
       collection = await context.lookupObject(id, {
@@ -111,7 +113,13 @@ export async function resolveFeatureRequestActor<T>(
       // A web resource cannot vouch for an ID on another origin, even when
       // reached through a redirect from the requested collection URL.
       if (documentUrl.origin !== id.origin) return null;
-      collection = await ActivityObject.fromJsonLd(document.document, {
+      // Preserve values the typed attribution parser may omit. Parse the
+      // same expanded view used for cardinality, without loading contexts twice.
+      expandedCollection = await jsonld.expand(document.document, {
+        documentLoader: captureFailure(context.contextLoader),
+        keepFreeFloatingNodes: true,
+      }) as Record<string, unknown>[];
+      collection = await ActivityObject.fromJsonLd(expandedCollection, {
         ...context,
         documentLoader: captureFailure(context.documentLoader),
         contextLoader: captureFailure(context.contextLoader),
@@ -144,6 +152,14 @@ export async function resolveFeatureRequestActor<T>(
     if (retryableFailure != null) throw retryableFailure.error;
     return null;
   }
+  // As with instrument, ID accessors alone do not establish cardinality.
+  expandedCollection ??= await collection.toJsonLd({
+    format: "expand",
+  }) as Record<string, unknown>[];
+  const attributions = expandedCollection[0]?.[
+    "https://www.w3.org/ns/activitystreams#attributedTo"
+  ];
+  if (!Array.isArray(attributions) || attributions.length !== 1) return null;
   return collection.attributionIds[0];
 }
 
