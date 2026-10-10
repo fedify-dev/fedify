@@ -46,6 +46,11 @@ function isPermanentCollectionError(error: unknown): boolean {
         details?.code === "context overflow")
     ) return true;
   }
+  // This private loader error is identified by its stable name rather than
+  // adding a vocab-runtime export in a patch release.
+  if (error instanceof FetchError && error.name === "BodyTooLargeError") {
+    return true;
+  }
   const status = error instanceof FetchError ? error.response?.status : null;
   return error instanceof UrlError && error.reason === "disallowed" ||
     status != null && status >= 400 && status < 500 && status !== 408 &&

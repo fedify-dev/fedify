@@ -1045,3 +1045,34 @@ for (const queued of [false, true]) {
   });
 }
 
+for (const authentication of ["http", "proof"] as const) {
+  test(`actorless FeatureRequest rejects oversized collection responses with ${authentication} authentication`, async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(null, {
+          headers: {
+            "Content-Type": "application/activity+json",
+            "Content-Length": String(16 * 1024 * 1024 + 1),
+          },
+        }),
+      );
+    try {
+      const result = await deliver(authentication, {
+        collectionLoader: getDocumentLoader({ allowPrivateAddress: true }),
+      });
+      assertEquals(result.response.status, 400);
+      assertEquals(result.received, []);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+}
+
+test("actorless FeatureRequest preserves collection FetchError without a response for retry", async () => {
+  const error = new FetchError(collectionId, "Connection lost");
+  assertEquals(
+    await assertRejects(() => lookupFailingCollection(error)),
+    error,
+  );
+});
