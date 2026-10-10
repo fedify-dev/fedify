@@ -2566,11 +2566,17 @@ export class FederationImpl<TContextData>
           );
           // TODO: Replace inferred actor restoration with shared principal replay.
           // https://github.com/fedify-dev/fedify/issues/1290
-          if (
-            activity instanceof FeatureRequest &&
-            activity.actorIds.length === 0 &&
-            message.featureRequestActor != null
-          ) {
+          if (message.featureRequestActor != null) {
+            if (
+              !(activity instanceof FeatureRequest) ||
+              activity.actorIds.length !== 0 ||
+              activity.instrumentIds.length !== 1 ||
+              activity.instrumentId?.href !== message.featureRequestInstrument
+            ) {
+              throw new TypeError(
+                "FeatureRequest instrument changed after authentication.",
+              );
+            }
             activity = activity.clone({
               actor: new URL(message.featureRequestActor),
             });

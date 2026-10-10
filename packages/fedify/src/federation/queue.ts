@@ -180,6 +180,14 @@ export interface InboxMessage {
    * @internal
    */
   readonly featureRequestActor?: string;
+  /**
+   * The instrument authenticated with the inferred FeatureRequest owner.
+   * Workers must match it before restoring that owner after parsing.
+   * @internal
+   */
+  // TODO: Remove this binding with shared principal replay:
+  // https://github.com/fedify-dev/fedify/issues/1290
+  readonly featureRequestInstrument?: string;
   readonly started: string;
   readonly attempt: number;
   readonly identifier: string | null;

@@ -199,6 +199,7 @@ async function deliver(
     queued?: boolean;
     skip?: boolean;
     reparsedInstrument?: URL;
+    replayedInstrument?: URL;
   } = {},
 ) {
   const collection = options.collection ?? new FeaturedCollection({
@@ -218,9 +219,14 @@ async function deliver(
       return {
         document: {
           "@context": {
-            featured: collectionLookedUp
-              ? new URL(".", options.reparsedInstrument!).href
-              : new URL(".", collectionId).href,
+            featured: new URL(
+              ".",
+              !collectionAvailable && options.replayedInstrument != null
+                ? options.replayedInstrument
+                : collectionLookedUp && options.reparsedInstrument != null
+                ? options.reparsedInstrument
+                : collectionId,
+            ).href,
           },
         },
         documentUrl: url,
@@ -291,11 +297,14 @@ async function deliver(
       },
     )).toJsonLd()
     : await activity.toJsonLd();
-  if (options.reparsedInstrument != null) {
+  if (
+    options.reparsedInstrument != null || options.replayedInstrument != null
+  ) {
     const document = body as Record<string, unknown>;
     document["@context"] = [
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/fep/7aa9",
+      ...(Array.isArray(document["@context"])
+        ? document["@context"]
+        : [document["@context"]]),
       contextUrl,
     ];
     document.instrument = "featured:1";
@@ -400,6 +409,17 @@ test("actorless FeatureRequest binds HTTP signer to the reparsed collection owne
   });
   assertEquals(result.response.status, 401);
   assertEquals(result.received, []);
+});
+
+test("actorless FeatureRequest rejects an instrument changed by queue contexts", async () => {
+  const result = await deliver("http", {
+    queued: true,
+    replayedInstrument: new URL("https://example.com/other-featured/1"),
+  });
+  assertEquals(result.response.status, 202);
+  await result.replay();
+  assertEquals(result.received, []);
+  assertEquals(result.messages[0].activity, result.body);
 });
 
 for (const authentication of ["http", "ld", "proof", "mixed"] as const) {

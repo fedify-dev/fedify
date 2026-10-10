@@ -2806,6 +2806,9 @@ async function handleInboxInternal<TContextData>(
       : undefined,
     ldSignatureVerified: hasLdSignature ? ldSigVerified : undefined,
     featureRequestActor: featureRequestActor?.href,
+    featureRequestInstrument: featureRequestActor == null
+      ? undefined
+      : activity.instrumentId?.href,
     activity,
     recipient,
     inboxListeners,
