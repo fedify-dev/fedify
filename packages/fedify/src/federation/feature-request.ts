@@ -81,6 +81,16 @@ function isPermanentCollectionError(error: unknown): boolean {
       );
 }
 
+// Match the generated decoder's single-list-container interpretation.
+function expandedPropertyValues(value: unknown): unknown[] {
+  if (!Array.isArray(value)) return [];
+  const first = value[0];
+  return value.length === 1 && first != null && typeof first === "object" &&
+      "@list" in first && Array.isArray(first["@list"])
+    ? first["@list"]
+    : value;
+}
+
 // TODO: Preserve unparsed property presence with the verified view in #1290:
 // https://github.com/fedify-dev/fedify/issues/1290
 export function captureFeatureRequestActorPresence(loader: DocumentLoader) {
@@ -215,10 +225,12 @@ export async function resolveFeatureRequestActor<T>(
   expandedCollection ??= await collection.toJsonLd({
     format: "expand",
   }) as Record<string, unknown>[];
-  const attributions = expandedCollection[0]?.[
-    "https://www.w3.org/ns/activitystreams#attributedTo"
-  ];
-  if (!Array.isArray(attributions) || attributions.length !== 1) return null;
+  const attributions = expandedPropertyValues(
+    expandedCollection[0]?.[
+      "https://www.w3.org/ns/activitystreams#attributedTo"
+    ],
+  );
+  if (attributions.length !== 1) return null;
   return collection.attributionIds[0];
 }
 

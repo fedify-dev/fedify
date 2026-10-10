@@ -1520,3 +1520,39 @@ for (const authentication of ["http", "ld", "proof"] as const) {
     }
   }
 }
+
+for (const authentication of ["http", "ld", "proof"] as const) {
+  for (const anonymousFirst of [false, true]) {
+    test(`actorless FeatureRequest rejects list-wrapped anonymous attribution ${anonymousFirst ? "before" : "after"} the owner with ${authentication} authentication`, async () => {
+      const document = await new FeaturedCollection({
+        id: collectionId,
+        attribution: owner,
+      }).toJsonLd() as Record<string, unknown>;
+      const anonymous = { type: "Person", name: "No owner ID" };
+      document.attributedTo = {
+        "@list": anonymousFirst
+          ? [anonymous, owner.href]
+          : [owner.href, anonymous],
+      };
+      const result = await deliver(authentication, {
+        collectionLoader: (url) =>
+          Promise.resolve({ document, documentUrl: url, contextUrl: null }),
+      });
+      assertEquals(result.response.status, 400);
+      assertEquals(result.received, []);
+    });
+  }
+  test(`actorless FeatureRequest accepts a list-wrapped single owner with ${authentication} authentication`, async () => {
+    const document = await new FeaturedCollection({
+      id: collectionId,
+      attribution: owner,
+    }).toJsonLd() as Record<string, unknown>;
+    document.attributedTo = { "@list": [owner.href] };
+    const result = await deliver(authentication, {
+      collectionLoader: (url) =>
+        Promise.resolve({ document, documentUrl: url, contextUrl: null }),
+    });
+    assertEquals(result.response.status, 202);
+    assertEquals(result.received.length, 1);
+  });
+}
