@@ -152,6 +152,7 @@ async function deliver(
   options: {
     collection?: FeaturedCollection | Person;
     collectionDocumentUrl?: string;
+    collectionLookupId?: URL;
     collectionLoader?: DocumentLoader;
     relayObject?: URL;
     relayContextLoads?: number[];
@@ -255,7 +256,7 @@ async function deliver(
         contextUrl: null,
       };
     }
-    if (url === collectionId.href) {
+    if (url === (options.collectionLookupId ?? collectionId).href) {
       options.onCollectionLookup?.();
       if (options.collectionLoader != null) {
         return await options.collectionLoader(url);
@@ -1217,3 +1218,30 @@ test("actorless FeatureRequest rejects credentials before invoking the standard 
     globalThis.fetch = originalFetch;
   }
 });
+
+for (const authentication of ["http", "ld", "proof"] as const) {
+  test(`actorless FeatureRequest rejects credentials through inbox with ${authentication} authentication`, async () => {
+    const id = new URL("https://user:pass@example.com/featured/1");
+    let lookups = 0;
+    const result = await deliver(authentication, {
+      request: new FeatureRequest({
+        id: new URL("https://example.com/requests/credentials"),
+        object: target,
+        instrument: id,
+      }),
+      collectionLookupId: id,
+      onCollectionLookup: () => {
+        lookups++;
+      },
+      collectionLoader: () =>
+        Promise.reject(
+          new TypeError(
+            "Request cannot be constructed from a URL that includes credentials",
+          ),
+        ),
+    });
+    assertEquals(result.response.status, 400);
+    assertEquals(result.received, []);
+    assertEquals(lookups, 0);
+  });
+}
