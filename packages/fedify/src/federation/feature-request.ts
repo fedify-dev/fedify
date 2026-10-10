@@ -9,12 +9,42 @@ import {
   FetchError,
   UrlError,
 } from "@fedify/vocab-runtime";
+import { isInvalidUrlTypeError } from "../sig/ld.ts";
 import type { InboxVerificationAttempt } from "../sig/verification.ts";
 import {
   getPortableDid,
   isPortableId,
   isSameObjectId,
 } from "../sig/portable-key-id.ts";
+
+// A loader may report bad remote data as a parser/validation error. Raw
+// TypeErrors also represent fetch failures, so do not classify them by type
+// alone. Keep this consistent with the inbox's known validation errors.
+// TODO: Fold this classification into shared principal resolution:
+// https://github.com/fedify-dev/fedify/issues/1290
+function isPermanentCollectionError(error: unknown): boolean {
+  if (error instanceof SyntaxError || isInvalidUrlTypeError(error)) return true;
+  if (
+    error instanceof TypeError &&
+    /^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:|Invalid FEP-ef61 gateway:)/
+      .test(error.message)
+  ) return true;
+  if (error instanceof Error) {
+    const details = (error as Error & { details?: { code?: unknown } }).details;
+    if (
+      error.name === "jsonld.SyntaxError" &&
+      details?.code !== "loading remote context failed"
+    ) return true;
+    if (
+      error.name === "jsonld.InvalidUrl" &&
+      details?.code === "invalid remote context"
+    ) return true;
+  }
+  const status = error instanceof FetchError ? error.response?.status : null;
+  return error instanceof UrlError && error.reason === "disallowed" ||
+    status != null && status >= 400 && status < 500 && status !== 408 &&
+      status !== 429;
+}
 
 // FIXME: Replace this FeatureRequest-specific authentication bridge with the
 // general inbox principal handling: https://github.com/fedify-dev/fedify/issues/1290
@@ -29,19 +59,14 @@ export async function resolveFeatureRequestActor<T>(
   // discovery through WebFinger. Portable IDs retain their verified lookup.
   // Preserve loader failures that parsing or portable lookup may hide.
   let retryableFailure: { error: unknown } | undefined;
+  let permanentFailure = false;
   const captureFailure =
     (loader: DocumentLoader): DocumentLoader => async (...args) => {
       try {
         return await loader(...args);
       } catch (error) {
-        const status = error instanceof FetchError
-          ? error.response?.status
-          : null;
-        const permanent =
-          error instanceof UrlError && error.reason === "disallowed" ||
-          status != null && status >= 400 && status < 500 &&
-            status !== 408 && status !== 429;
-        if (!permanent) retryableFailure ??= { error };
+        if (isPermanentCollectionError(error)) permanentFailure = true;
+        else retryableFailure ??= { error };
         throw error;
       }
     };
@@ -67,12 +92,11 @@ export async function resolveFeatureRequestActor<T>(
     }
   } catch (error) {
     if (retryableFailure != null) throw retryableFailure.error;
-    const status = error instanceof FetchError ? error.response?.status : null;
+    // JSON-LD may wrap loader errors. Preserve the original classification
+    // rather than treating a malformed remote context as a transient outage.
     if (
-      error instanceof TypeError ||
-      error instanceof UrlError && error.reason === "disallowed" ||
-      status != null && status >= 400 && status < 500 &&
-        status !== 408 && status !== 429
+      permanentFailure || isPermanentCollectionError(error) ||
+      error instanceof TypeError
     ) return null;
     throw error;
   }

@@ -6,7 +6,12 @@ import {
   FeatureRequest,
   Person,
 } from "@fedify/vocab";
-import { FetchError, UrlError } from "@fedify/vocab-runtime";
+import {
+  type DocumentLoader,
+  FetchError,
+  getDocumentLoader,
+  UrlError,
+} from "@fedify/vocab-runtime";
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import { signRequest } from "../sig/http.ts";
 import { signJsonLd, verifyJsonLd } from "../sig/ld.ts";
@@ -145,6 +150,7 @@ async function deliver(
   options: {
     collection?: FeaturedCollection | Person;
     collectionDocumentUrl?: string;
+    collectionLoader?: DocumentLoader;
     replayedObject?: URL;
     request?: Activity;
     queued?: boolean;
@@ -194,6 +200,13 @@ async function deliver(
         contextUrl: null,
       };
     }
+    if (
+      (url === "https://example.com/collection-context" ||
+        url === "https://[invalid") &&
+      options.collectionLoader != null
+    ) {
+      return await options.collectionLoader(url);
+    }
     return await mockDocumentLoader(url);
   };
   const documentLoader = async (url: string) => {
@@ -209,6 +222,9 @@ async function deliver(
     }
     if (url === collectionId.href) {
       options.onCollectionLookup?.();
+      if (options.collectionLoader != null) {
+        return await options.collectionLoader(url);
+      }
       if (!collectionAvailable) throw new Error("Collection unavailable");
       return {
         document: await collection.toJsonLd(),
@@ -397,6 +413,128 @@ test("actorless FeatureRequest binds HTTP signer to the reparsed collection owne
   });
   assertEquals(result.response.status, 401);
   assertEquals(result.received, []);
+});
+
+for (const authentication of ["http", "proof"] as const) {
+  for (
+    const malformed of [
+      "collection JSON",
+      "context JSON",
+      "context definition",
+      "context URL",
+    ] as const
+  ) {
+    test(`actorless FeatureRequest rejects malformed ${malformed} with ${authentication} authentication`, async () => {
+      const document = await new FeaturedCollection({
+        id: collectionId,
+        attribution: owner,
+      }).toJsonLd() as Record<string, unknown>;
+      const contexts = Array.isArray(document["@context"])
+        ? document["@context"]
+        : [document["@context"]];
+      if (malformed === "context JSON") {
+        document["@context"] = [
+          ...contexts,
+          "https://example.com/collection-context",
+        ];
+      } else if (malformed === "context definition") {
+        document["@context"] = [...contexts, { broken: 42 }];
+      } else if (malformed === "context URL") {
+        document["@context"] = [...contexts, "https://[invalid"];
+      }
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (input) => {
+        const url = input instanceof Request ? input.url : String(input);
+        return Promise.resolve(
+          new Response(
+            malformed === "collection JSON" ||
+              url === "https://example.com/collection-context"
+              ? "{"
+              : JSON.stringify(document),
+            { headers: { "Content-Type": "application/activity+json" } },
+          ),
+        );
+      };
+      try {
+        const result = await deliver(authentication, {
+          collectionLoader: getDocumentLoader({ allowPrivateAddress: true }),
+        });
+        assertEquals(result.response.status, 400);
+        assertEquals(result.received, []);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+  }
+}
+
+for (
+  const error of [new TypeError("fetch failed"), new TypeError("loader bug")]
+) {
+  test(`actorless FeatureRequest preserves collection TypeError for retry: ${error.message}`, async () => {
+    assertEquals(
+      await assertRejects(() => lookupFailingCollection(error)),
+      error,
+    );
+  });
+}
+
+for (
+  const error of [new TypeError("fetch failed"), new TypeError("loader bug")]
+) {
+  test(`actorless FeatureRequest preserves context TypeError for retry: ${error.message}`, async () => {
+    const document = await new FeaturedCollection({
+      id: collectionId,
+      attribution: owner,
+    }).toJsonLd() as Record<string, unknown>;
+    const contexts = Array.isArray(document["@context"])
+      ? document["@context"]
+      : [document["@context"]];
+    document["@context"] = [
+      ...contexts,
+      "https://example.com/collection-context",
+    ];
+    assertEquals(
+      await assertRejects(() =>
+        deliver("http", {
+          collectionLoader: (url) =>
+            url === collectionId.href
+              ? Promise.resolve({
+                document,
+                documentUrl: url,
+                contextUrl: null,
+              })
+              : Promise.reject(error),
+        })
+      ),
+      error,
+    );
+  });
+}
+
+for (
+  const error of [
+    new TypeError("Invalid JSON-LD: null."),
+    new TypeError("Invalid URL"),
+  ]
+) {
+  test(`actorless FeatureRequest rejects collection validation errors: ${error.message}`, async () => {
+    assertEquals(await lookupFailingCollection(error), null);
+  });
+}
+
+test("actorless FeatureRequest preserves wrapped remote context failures for retry", async () => {
+  const error = Object.assign(
+    new Error("Remote context temporarily unavailable"),
+    {
+      name: "jsonld.SyntaxError",
+      details: { code: "loading remote context failed" },
+    },
+  );
+  assertEquals(
+    await assertRejects(() => lookupFailingCollection(error)),
+    error,
+  );
 });
 
 test("actorless FeatureRequest rejects cross-origin collection redirects", async () => {
