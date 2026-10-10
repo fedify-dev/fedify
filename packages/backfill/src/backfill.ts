@@ -200,7 +200,9 @@ async function* getContextStrategyItems(
 }> {
   const contextId = note.contextIds[0];
   if (contextId == null) return;
-  const collection = await loadObject(context, contextId, options, budget);
+  const collection = await loadObject(context, contextId, options, budget, {
+    skipLoaderErrors: true,
+  });
   if (!isCollection(collection)) return;
   for await (
     const object of getCollectionItems(
@@ -517,8 +519,8 @@ async function* getCollectionItems(
   budget: RequestBudget,
   skipIds?: ReadonlySet<string>,
 ): AsyncIterable<APObject | Link> {
-  yield* collection.getItems({
-    documentLoader: async (url) => {
+  const itemOptions = {
+    documentLoader: async (url: string) => {
       return await loadCollectionItemDocument(
         context,
         url,
@@ -527,8 +529,61 @@ async function* getCollectionItems(
         skipIds,
       );
     },
-    crossOrigin: "trust",
-  });
+    crossOrigin: "trust" as const,
+  };
+  const pageOptions = {
+    documentLoader: async (url: string) => {
+      const object = await loadObject(
+        context,
+        new URL(url),
+        options,
+        budget,
+        { throwOnBudgetExceeded: true },
+      );
+      if (object == null) throw new Error(`Collection page not found: ${url}`);
+      return {
+        contextUrl: null,
+        documentUrl: url,
+        document: await object.toJsonLd(),
+      };
+    },
+    crossOrigin: "trust" as const,
+  };
+  const visitedIds = new Set<string>();
+  const visitedPages = new WeakSet<BackfillCollection>();
+  let current: BackfillCollection | null = collection;
+  while (current != null) {
+    budget.signal?.throwIfAborted();
+    if (visitedPages.has(current)) return;
+    if (current.id != null) {
+      if (visitedIds.has(current.id.href)) return;
+      visitedIds.add(current.id.href);
+    }
+    visitedPages.add(current);
+    yield* current.getItems(itemOptions);
+
+    const page: CollectionPage | OrderedCollectionPage | null =
+      current instanceof CollectionPage ||
+        current instanceof OrderedCollectionPage
+        ? current
+        : null;
+    const pageId: URL | null = page == null ? current.firstId : page.nextId;
+    if (pageId != null && visitedIds.has(pageId.href)) return;
+    try {
+      budget.signal?.throwIfAborted();
+      current = page == null
+        ? await current.getFirst(pageOptions)
+        : await page.getNext(pageOptions);
+    } catch (error) {
+      if (error instanceof MaxRequestsExceeded) throw error;
+      budget.signal?.throwIfAborted();
+      return;
+    }
+    // Remember the requested IRI too, in case the page has a different ID.
+    if (pageId != null && pageId.href !== current?.id?.href) {
+      visitedIds.add(pageId.href);
+    }
+  }
 }
 
 async function getCreateActivityObject(
@@ -568,7 +623,7 @@ async function loadCollectionItemDocument(
       iri,
       options,
       budget,
-      true,
+      { throwOnBudgetExceeded: true },
     );
   } catch (error) {
     if (error instanceof MaxRequestsExceeded) throw error;
@@ -599,7 +654,13 @@ async function loadObject(
   iri: URL,
   options: BackfillOptions,
   budget: RequestBudget,
-  throwOnBudgetExceeded = false,
+  {
+    throwOnBudgetExceeded = false,
+    skipLoaderErrors = false,
+  }: {
+    throwOnBudgetExceeded?: boolean;
+    skipLoaderErrors?: boolean;
+  } = {},
 ): Promise<APObject | null> {
   budget.signal?.throwIfAborted();
   const cacheKey = iri.href;
@@ -618,13 +679,18 @@ async function loadObject(
   budget.signal?.throwIfAborted();
 
   budget.requestCount++;
-  const document = context.documentLoader(iri, { signal: budget.signal });
-  budget.documents.set(cacheKey, document);
+  let document: Promise<APObject | null> | undefined;
   try {
+    document = context.documentLoader(iri, { signal: budget.signal });
+    budget.documents.set(cacheKey, document);
     return await document;
   } catch (error) {
     if (budget.documents.get(cacheKey) === document) {
       budget.documents.delete(cacheKey);
+    }
+    if (skipLoaderErrors) {
+      budget.signal?.throwIfAborted();
+      return null;
     }
     throw error;
   }

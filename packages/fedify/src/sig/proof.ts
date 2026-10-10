@@ -2181,21 +2181,41 @@ async function preparePortableObjectProof(
   };
 }
 
-/**
- * Applies portable-object proof policy to one map-local cryptographic result.
- *
- * @internal
- */
-export async function verifyPortableObjectProofPolicy(
-  jsonLd: unknown,
-  key: Multikey | null,
-  options: VerifyPortableObjectProofOptions = {},
-): Promise<
+type PortableObjectProofPolicyResult =
   | Extract<VerifyPortableObjectProofResult, { verified: false }>
   | {
     readonly verified: true;
     readonly keys: readonly Multikey[];
     readonly objectId: string;
+  };
+
+/**
+ * Policy data for a map whose proof still needs cryptographic verification.
+ *
+ * @internal
+ */
+export interface PreparedPortableObjectProofPolicy {
+  readonly prepared: true;
+  readonly verificationMethod: URL;
+  readonly objectId: string;
+}
+
+/**
+ * Checks portable-object policy without resolving keys or verifying signatures.
+ *
+ * @internal
+ */
+export async function preparePortableObjectProofPolicy(
+  jsonLd: unknown,
+  options: VerifyPortableObjectProofOptions = {},
+): Promise<
+  | PreparedPortableObjectProofPolicy
+  | {
+    readonly prepared: false;
+    readonly result: Extract<
+      VerifyPortableObjectProofResult,
+      { verified: false }
+    >;
   }
 > {
   const policyOptions = {
@@ -2203,7 +2223,7 @@ export async function verifyPortableObjectProofPolicy(
     contextLoader: preloadedOnlyDocumentLoader,
   };
   const prepared = await preparePortableObjectProof(jsonLd, policyOptions);
-  if (!prepared.prepared) return prepared.result;
+  if (!prepared.prepared) return { prepared: false, result: prepared.result };
   const policyProof = prepared.proofs[0];
   const literalProof = isJsonLdNode(jsonLd) && isJsonLdNode(jsonLd.proof)
     ? (await parseRawProofCandidates(
@@ -2215,24 +2235,60 @@ export async function verifyPortableObjectProofPolicy(
     : null;
   const verificationMethod = policyProof?.verificationMethodId;
   if (
-    prepared.proofs.length !== 1 || key == null ||
+    prepared.proofs.length !== 1 ||
     policyProof == null || literalProof == null ||
-    !sameProof(policyProof, literalProof) || verificationMethod == null ||
-    key.id?.href !== verificationMethod.href
+    !sameProof(policyProof, literalProof) || verificationMethod == null
   ) {
     return {
-      verified: false,
-      reason: {
-        type: "invalidProof",
-        proofIndex: prepared.proofs.length > 1 ? 1 : 0,
+      prepared: false,
+      result: {
+        verified: false,
+        reason: {
+          type: "invalidProof",
+          proofIndex: prepared.proofs.length > 1 ? 1 : 0,
+        },
       },
     };
   }
   return {
-    verified: true,
-    keys: [key],
+    prepared: true,
+    verificationMethod,
     objectId: formatIri(prepared.objectId),
   };
+}
+
+/**
+ * Binds prepared portable-object policy to the map-local verified key.
+ *
+ * @internal
+ */
+export function verifyPreparedPortableObjectProofPolicy(
+  prepared: PreparedPortableObjectProofPolicy,
+  key: Multikey | null,
+): PortableObjectProofPolicyResult {
+  if (key == null || key.id?.href !== prepared.verificationMethod.href) {
+    return {
+      verified: false,
+      reason: { type: "invalidProof", proofIndex: 0 },
+    };
+  }
+  return { verified: true, keys: [key], objectId: prepared.objectId };
+}
+
+/**
+ * Applies portable-object proof policy to one map-local cryptographic result.
+ *
+ * @internal
+ */
+export async function verifyPortableObjectProofPolicy(
+  jsonLd: unknown,
+  key: Multikey | null,
+  options: VerifyPortableObjectProofOptions = {},
+): Promise<PortableObjectProofPolicyResult> {
+  const prepared = await preparePortableObjectProofPolicy(jsonLd, options);
+  return prepared.prepared
+    ? verifyPreparedPortableObjectProofPolicy(prepared, key)
+    : prepared.result;
 }
 
 /**

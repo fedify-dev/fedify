@@ -1,5 +1,11 @@
 import type { Context } from "@fedify/fedify";
-import { type DocumentLoader, getFe34Origin } from "@fedify/vocab-runtime";
+import {
+  type DocumentLoader,
+  FetchError,
+  getFe34Origin,
+  isTransientFetchError,
+  parseIri,
+} from "@fedify/vocab-runtime";
 import {
   Accept,
   type Activity,
@@ -22,6 +28,7 @@ import type {
   InteractionPolicyProperty,
   InteractionRejectOptions,
   InteractionRequestVerification,
+  InteractionRequestVerificationFailure,
   InteractionRequestVerificationOptions,
   MatchesApprovalCollection,
   RecognizedImpoliteInteraction,
@@ -49,6 +56,7 @@ interface ControlConfig<
   TInteracting extends ASObject,
   TTarget extends ASObject,
   TImpoliteSource extends ASObject,
+  TRequestValidationOptions extends object = Record<never, never>,
 > {
   readonly name: InteractionName;
   readonly policyProperty: InteractionPolicyProperty;
@@ -76,6 +84,7 @@ interface ControlConfig<
     interactingObject: TInteracting,
     interactionTarget: TTarget,
     requester: URL,
+    options: TRequestValidationOptions,
   ) => RequestValidationFailure | null;
   readonly authorizationAttribution?: "required" | "optional";
   readonly getSelfActor: (subject: TTarget) => URL | null;
@@ -121,6 +130,7 @@ type RuleMatchResult =
   | {
     readonly result: "unverifiableCollection";
     readonly collection: URL;
+    readonly cause: unknown;
   }
   | null;
 
@@ -130,20 +140,23 @@ export function createInteractionControl<
   TInteracting extends ASObject,
   TTarget extends ASObject,
   TImpoliteSource extends ASObject,
+  TRequestValidationOptions extends object = Record<never, never>,
 >(
   config: ControlConfig<
     TRequest,
     TAuthorization,
     TInteracting,
     TTarget,
-    TImpoliteSource
+    TImpoliteSource,
+    TRequestValidationOptions
   >,
 ): InteractionControl<
   TRequest,
   TAuthorization,
   TInteracting,
   TTarget,
-  TImpoliteSource
+  TImpoliteSource,
+  TRequestValidationOptions
 > {
   return {
     name: config.name,
@@ -183,7 +196,10 @@ export function createInteractionControl<
       new Delete({
         id: options.id,
         actor: options.actor,
-        object: getRequiredId(options.authorization, "authorization"),
+        object: options.embedAuthorization &&
+            !(options.authorization instanceof URL)
+          ? createEmbeddedAuthorization(options.authorization, config)
+          : getRequiredId(options.authorization, "authorization"),
         ...audience(options),
       }),
     recognizeImpolite: config.recognizeImpolite,
@@ -241,6 +257,50 @@ export function getRequiredId(value: ASObject | URL, name: string): URL {
   return value.id;
 }
 
+function createEmbeddedAuthorization<
+  TRequest extends Activity,
+  TAuthorization extends ASObject,
+  TInteracting extends ASObject,
+  TTarget extends ASObject,
+  TImpoliteSource extends ASObject,
+  TRequestValidationOptions extends object,
+>(
+  authorization: TAuthorization,
+  config: ControlConfig<
+    TRequest,
+    TAuthorization,
+    TInteracting,
+    TTarget,
+    TImpoliteSource,
+    TRequestValidationOptions
+  >,
+): TAuthorization {
+  const { interactingObjectId, interactionTargetId } = authorization as
+    & ASObject
+    & {
+      readonly interactingObjectId?: URL | null;
+      readonly interactionTargetId?: URL | null;
+    };
+  if (interactingObjectId == null) {
+    throw new TypeError(
+      "The authorization's interactingObject must have an id.",
+    );
+  }
+  if (interactionTargetId == null) {
+    throw new TypeError(
+      "The authorization's interactionTarget must have an id.",
+    );
+  }
+  // Only IDs are copied, so that the revocation does not leak the
+  // interacting object or the interaction target (FEP-044f):
+  return new config.authorizationClass({
+    id: getRequiredId(authorization, "authorization"),
+    attributions: authorization.attributionIds,
+    interactingObject: interactingObjectId,
+    interactionTarget: interactionTargetId,
+  });
+}
+
 function getId(value: ASObject | URL): URL | null {
   return value instanceof URL ? value : value.id;
 }
@@ -262,19 +322,24 @@ async function verifyRequest<
   TInteracting extends ASObject,
   TTarget extends ASObject,
   TImpoliteSource extends ASObject,
+  TRequestValidationOptions extends object,
   TContextData,
 >(
   context: Context<TContextData>,
-  options: InteractionRequestVerificationOptions<TRequest>,
+  options:
+    & InteractionRequestVerificationOptions<TRequest>
+    & TRequestValidationOptions,
   config: ControlConfig<
     TRequest,
     TAuthorization,
     TInteracting,
     TTarget,
-    TImpoliteSource
+    TImpoliteSource,
+    TRequestValidationOptions
   >,
 ): Promise<InteractionRequestVerification<TRequest, TInteracting, TTarget>> {
   const documentLoader = options.documentLoader ?? context.documentLoader;
+  const contextLoader = options.contextLoader ?? documentLoader;
   const expectedRequestId = options.request instanceof URL
     ? options.request
     : null;
@@ -282,6 +347,7 @@ async function verifyRequest<
     options.request,
     config.requestClass,
     documentLoader,
+    contextLoader,
   );
   if (!requestResult.ok) {
     return {
@@ -323,15 +389,26 @@ async function verifyRequest<
       },
     };
   }
-  const dereferenceOptions = {
-    documentLoader,
-    contextLoader: documentLoader,
-    suppressError: true,
-  };
-  const interactionTarget = await config.getInteractionTarget(
-    request,
-    dereferenceOptions,
-  );
+  const targetResult = options.resolvedInteractionTarget != null &&
+      request.objectId != null
+    // The type is checked by isInteractionTarget() below:
+    ? { ok: true as const, value: options.resolvedInteractionTarget as TTarget }
+    : await dereferenceField(
+      request,
+      request.objectId,
+      config.getInteractionTarget,
+      documentLoader,
+      contextLoader,
+    );
+  if (!targetResult.ok) {
+    return {
+      verified: false,
+      request,
+      requestId: request.id,
+      failure: targetResult.failure,
+    };
+  }
+  const interactionTarget = targetResult.value;
   if (interactionTarget == null) {
     return {
       verified: false,
@@ -356,10 +433,29 @@ async function verifyRequest<
       },
     };
   }
-  const interactingObject = await config.getInteractingObject(
-    request,
-    dereferenceOptions,
-  );
+  const interactingResult = options.resolvedInteractingObject != null &&
+      request.instrumentId != null
+    // The type is checked by isInteractingObject() below:
+    ? {
+      ok: true as const,
+      value: options.resolvedInteractingObject as TInteracting,
+    }
+    : await dereferenceField(
+      request,
+      request.instrumentId,
+      config.getInteractingObject,
+      documentLoader,
+      contextLoader,
+    );
+  if (!interactingResult.ok) {
+    return {
+      verified: false,
+      request,
+      requestId: request.id,
+      failure: interactingResult.failure,
+    };
+  }
+  const interactingObject = interactingResult.value;
   if (interactingObject == null) {
     return {
       verified: false,
@@ -417,6 +513,7 @@ async function verifyRequest<
     interactingObject,
     interactionTarget,
     requester,
+    options,
   );
   if (validation != null) {
     return {
@@ -456,6 +553,7 @@ async function verifyAuthorization<
   TInteracting extends ASObject,
   TTarget extends ASObject,
   TImpoliteSource extends ASObject,
+  TRequestValidationOptions extends object,
   TContextData,
 >(
   context: Context<TContextData>,
@@ -470,27 +568,48 @@ async function verifyAuthorization<
     TAuthorization,
     TInteracting,
     TTarget,
-    TImpoliteSource
+    TImpoliteSource,
+    TRequestValidationOptions
   >,
 ): Promise<InteractionAuthorizationVerification<TAuthorization>> {
-  const embeddedAuthorization = !(options.authorization instanceof URL);
-  const expectedAuthorizationId = options.authorization instanceof URL
+  const authorizationUrl = options.authorization instanceof URL
     ? options.authorization
     : null;
+  const embeddedAuthorization = authorizationUrl == null;
+  const expectedAuthorizationId = options.authorizationId ?? authorizationUrl;
+  // An off-origin authorization is acceptable only if the caller vouches for
+  // its authenticity:
+  const checkOrigin = !options.allowOffOrigin ||
+    options.verifyAuthenticity == null;
   const expectedAttribution = options.attributedTo ??
     (!(options.interactionTarget instanceof URL)
       ? config.getSelfActor(options.interactionTarget)
       : null);
-  if (expectedAuthorizationId != null && expectedAttribution == null) {
+  if (
+    authorizationUrl != null && options.authorizationId != null &&
+    !idsEqual(authorizationUrl, options.authorizationId)
+  ) {
     return {
       verified: false,
-      authorizationId: expectedAuthorizationId,
+      authorizationId: authorizationUrl,
+      failure: {
+        category: "unauthorized",
+        type: "idMismatch",
+        expected: options.authorizationId,
+        actual: authorizationUrl,
+      },
+    };
+  }
+  if (authorizationUrl != null && expectedAttribution == null) {
+    return {
+      verified: false,
+      authorizationId: authorizationUrl,
       failure: { category: "unauthorized", type: "missingAttribution" },
     };
   }
-  if (expectedAuthorizationId != null && expectedAttribution != null) {
+  if (checkOrigin && authorizationUrl != null && expectedAttribution != null) {
     const expectedOrigin = getAuthorizationOrigin(expectedAttribution);
-    const actualOrigin = getAuthorizationOrigin(expectedAuthorizationId);
+    const actualOrigin = getAuthorizationOrigin(authorizationUrl);
     if (
       expectedOrigin === "null" ||
       actualOrigin === "null" ||
@@ -498,7 +617,7 @@ async function verifyAuthorization<
     ) {
       return {
         verified: false,
-        authorizationId: expectedAuthorizationId,
+        authorizationId: authorizationUrl,
         failure: {
           category: "unauthorized",
           type: "originMismatch",
@@ -508,10 +627,12 @@ async function verifyAuthorization<
       };
     }
   }
+  const documentLoader = options.documentLoader ?? context.documentLoader;
   const authorizationResult = await materialize(
     options.authorization,
     config.authorizationClass,
-    options.documentLoader ?? context.documentLoader,
+    documentLoader,
+    options.contextLoader ?? documentLoader,
   );
   if (!authorizationResult.ok) {
     return { verified: false, failure: authorizationResult.failure };
@@ -656,9 +777,11 @@ async function verifyAuthorization<
   const expectedOrigin = getAuthorizationOrigin(expectedAttribution);
   const actualOrigin = getAuthorizationOrigin(authorization.id);
   if (
-    expectedOrigin === "null" ||
-    actualOrigin === "null" ||
-    expectedOrigin !== actualOrigin
+    checkOrigin && (
+      expectedOrigin === "null" ||
+      actualOrigin === "null" ||
+      expectedOrigin !== actualOrigin
+    )
   ) {
     return {
       verified: false,
@@ -708,78 +831,221 @@ async function verifyAuthorization<
   return { verified: true, authorization, authorizationId: authorization.id };
 }
 
+type UnverifiableFailure = Extract<
+  InteractionRequestVerificationFailure,
+  {
+    readonly category: "unverifiable";
+    readonly type: "notDereferenceable" | "invalidJsonLd";
+  }
+>;
+
+interface LoaderTracker {
+  readonly documentLoader: DocumentLoader | undefined;
+  readonly contextLoader: DocumentLoader | undefined;
+  readonly records: ReadonlyMap<unknown, string>;
+  readonly release: () => void;
+}
+
+/**
+ * Wraps the loaders for a single dereferencing operation so that errors they
+ * throw can be told apart from other errors afterwards.  Parsed objects keep
+ * the loaders they were given, so the wrappers stop recording and pass calls
+ * through once the operation is released.
+ */
+function trackLoaders(
+  documentLoader: DocumentLoader | undefined,
+  contextLoader: DocumentLoader | undefined,
+): LoaderTracker {
+  const records = new Map<unknown, string>();
+  let released = false;
+  const wrap = (
+    loader: DocumentLoader | undefined,
+  ): DocumentLoader | undefined => {
+    if (loader == null) return undefined;
+    return async (url, options) => {
+      if (released) return await loader(url, options);
+      let remoteDocument;
+      try {
+        remoteDocument = await loader(url, options);
+      } catch (error) {
+        if (!released) records.set(error, url);
+        throw error;
+      }
+      if (remoteDocument == null) {
+        const message = "The document loader returned no document.";
+        let error: Error;
+        try {
+          // FetchError's constructor cannot parse portable URLs by itself:
+          error = new FetchError(parseIri(url), message);
+        } catch {
+          error = new Error(`${url}: ${message}`);
+        }
+        if (!released) records.set(error, url);
+        throw error;
+      }
+      return remoteDocument;
+    };
+  };
+  const wrappedDocumentLoader = wrap(documentLoader);
+  return {
+    documentLoader: wrappedDocumentLoader,
+    contextLoader: contextLoader === documentLoader
+      ? wrappedDocumentLoader
+      : wrap(contextLoader),
+    records,
+    release: () => {
+      released = true;
+      records.clear();
+    },
+  };
+}
+
+const MAX_CAUSE_DEPTH = 8;
+
+function collectCauses(
+  error: unknown,
+  causes: unknown[] = [],
+  depth = 0,
+): unknown[] {
+  if (depth > MAX_CAUSE_DEPTH || causes.includes(error)) return causes;
+  causes.push(error);
+  if (typeof error !== "object" || error == null) return causes;
+  if (error instanceof AggregateError) {
+    for (const e of error.errors) collectCauses(e, causes, depth + 1);
+  }
+  // Loaders may throw anything, even null, so check for the properties
+  // rather than their values:
+  if ("cause" in error) collectCauses(error.cause, causes, depth + 1);
+  // jsonld.js reports a failed remote context load as `details.cause`:
+  const details = (error as { readonly details?: unknown }).details;
+  if (typeof details === "object" && details != null && "cause" in details) {
+    collectCauses(details.cause, causes, depth + 1);
+  }
+  return causes;
+}
+
+/**
+ * Classifies the error thrown by a dereferencing operation.  It is a fetch
+ * failure only if a loader error is among its causes; errors that loaders
+ * threw during attempts the operation recovered from are ignored.
+ */
+function classifyFailure(
+  error: unknown,
+  tracker: LoaderTracker,
+): UnverifiableFailure {
+  const loaderErrors = collectCauses(error).filter((e) =>
+    tracker.records.has(e)
+  );
+  // Loaders may throw anything, even null, so look up indices, not values:
+  const transientIndex = loaderErrors.findIndex(isTransientFetchError);
+  const selected = loaderErrors[transientIndex < 0 ? 0 : transientIndex];
+  const url = loaderErrors.length < 1
+    ? null
+    : getFailedUrl(selected, tracker.records.get(selected)!);
+  // A document referring to a URL that cannot even be parsed is malformed:
+  if (url == null) {
+    return {
+      category: "unverifiable",
+      type: "invalidJsonLd",
+      cause: error,
+      transient: false,
+    };
+  }
+  return {
+    category: "unverifiable",
+    type: "notDereferenceable",
+    url,
+    cause: loaderErrors.length === 1 ? selected : error,
+    transient: transientIndex >= 0,
+  };
+}
+
+function getFailedUrl(error: unknown, requestedUrl: string): URL | null {
+  const url = (error as { readonly url?: unknown } | null)?.url;
+  if (url instanceof URL) return url;
+  for (const candidate of [url, requestedUrl]) {
+    if (typeof candidate !== "string") continue;
+    try {
+      return parseIri(candidate);
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+function notDereferenceable(url: URL): UnverifiableFailure {
+  return {
+    category: "unverifiable",
+    type: "notDereferenceable",
+    url,
+    transient: false,
+  };
+}
+
+/**
+ * Dereferences a field of the request, such as its `object` or `instrument`.
+ * Returns `null` if the request has no such field at all.
+ */
+async function dereferenceField<TRequest extends Activity, T>(
+  request: TRequest,
+  reference: URL | null,
+  dereference: (
+    request: TRequest,
+    options: DereferenceOptions,
+  ) => Promise<T | null>,
+  documentLoader: DocumentLoader | undefined,
+  contextLoader: DocumentLoader | undefined,
+): Promise<
+  | { readonly ok: true; readonly value: T | null }
+  | { readonly ok: false; readonly failure: UnverifiableFailure }
+> {
+  const tracker = trackLoaders(documentLoader, contextLoader);
+  try {
+    const value = await dereference(request, {
+      documentLoader: tracker.documentLoader,
+      contextLoader: tracker.contextLoader,
+      suppressError: false,
+    });
+    if (value != null || reference == null) return { ok: true, value };
+    // Fetch failures throw, so a null result for an existing reference means
+    // the dereferenced document was rejected, e.g., for its origin:
+    return { ok: false, failure: notDereferenceable(reference) };
+  } catch (error) {
+    return { ok: false, failure: classifyFailure(error, tracker) };
+  } finally {
+    tracker.release();
+  }
+}
+
 async function materialize<T extends ASObject>(
   value: T | URL,
   constructor: VocabConstructor<T>,
   documentLoader: DocumentLoader | undefined,
+  contextLoader: DocumentLoader | undefined,
 ): Promise<
   | { readonly ok: true; readonly object: T }
-  | {
-    readonly ok: false;
-    readonly failure:
-      | {
-        readonly category: "unverifiable";
-        readonly type: "notDereferenceable";
-        readonly url: URL;
-        readonly cause?: unknown;
-      }
-      | {
-        readonly category: "unverifiable";
-        readonly type: "invalidJsonLd";
-        readonly cause?: unknown;
-      };
-  }
+  | { readonly ok: false; readonly failure: UnverifiableFailure }
 > {
   if (!(value instanceof URL)) return { ok: true, object: value };
-  const loader = documentLoader;
-  if (loader == null) {
-    return {
-      ok: false,
-      failure: {
-        category: "unverifiable",
-        type: "notDereferenceable",
-        url: value,
-      },
-    };
+  if (documentLoader == null) {
+    return { ok: false, failure: notDereferenceable(value) };
   }
-  let remoteDocument;
+  const tracker = trackLoaders(documentLoader, contextLoader);
   try {
-    remoteDocument = await loader(value.href);
-  } catch (cause) {
-    return {
-      ok: false,
-      failure: {
-        category: "unverifiable",
-        type: "notDereferenceable",
-        url: value,
-        cause,
-      },
-    };
-  }
-  if (remoteDocument == null) {
-    return {
-      ok: false,
-      failure: {
-        category: "unverifiable",
-        type: "notDereferenceable",
-        url: value,
-      },
-    };
-  }
-  try {
+    const remoteDocument = await tracker.documentLoader!(value.href);
     return {
       ok: true,
       object: await constructor.fromJsonLd(remoteDocument.document, {
-        documentLoader: loader,
-        contextLoader: loader,
+        documentLoader: tracker.documentLoader,
+        contextLoader: tracker.contextLoader,
         baseUrl: value,
       }),
     };
-  } catch (cause) {
-    return {
-      ok: false,
-      failure: { category: "unverifiable", type: "invalidJsonLd", cause },
-    };
+  } catch (error) {
+    return { ok: false, failure: classifyFailure(error, tracker) };
+  } finally {
+    tracker.release();
   }
 }
 
@@ -789,6 +1055,7 @@ async function evaluatePolicy<
   TInteracting extends ASObject,
   TTarget extends ASObject,
   TImpoliteSource extends ASObject,
+  TRequestValidationOptions extends object,
   TContextData,
 >(
   context: Context<TContextData>,
@@ -798,7 +1065,8 @@ async function evaluatePolicy<
     TAuthorization,
     TInteracting,
     TTarget,
-    TImpoliteSource
+    TImpoliteSource,
+    TRequestValidationOptions
   >,
 ): Promise<InteractionPolicyDecision> {
   const selfActor = config.getSelfActor(options.subject);
@@ -818,55 +1086,64 @@ async function evaluatePolicy<
     return { result: "automatic", reason: implicitAutomatic };
   }
   const policy = options.subject.interactionPolicy;
-  if (policy == null) return missingPolicyDecision(config);
-  const rule = policy[config.policyProperty] as InteractionRule | null;
-  if (rule == null) return missingRuleDecision(config);
-  const automaticApprovals = rule.automaticApprovals ?? [];
-  const manualApprovals = rule.manualApprovals ?? [];
-  if (automaticApprovals.length < 1 && manualApprovals.length < 1) {
-    return missingRuleDecision(config);
-  }
-  const automatic = await matchRule(
-    automaticApprovals,
-    options.requester,
-    context,
-    options.matchesApprovalCollection,
-    { actorOnly: true },
+  let rule = getApprovalRule(
+    policy?.[config.policyProperty] as InteractionRule | null | undefined,
   );
+  if (rule == null) {
+    rule = getApprovalRule(options.fallbackRule);
+    if (rule == null) {
+      return policy == null
+        ? missingPolicyDecision(config)
+        : missingRuleDecision(config);
+    }
+  }
+  const { automaticApprovals, manualApprovals } = rule;
+  const matchOptions = {
+    requester: options.requester,
+    context,
+    matchesApprovalCollection: options.matchesApprovalCollection,
+    throwCollectionErrors: options.collectionErrors === "throw",
+  };
+  if (options.precedence === "automatic") {
+    const automatic = await matchRule(automaticApprovals, matchOptions);
+    if (automatic?.result === "matched") {
+      return { result: "automatic", reason: automatic.reason };
+    } else if (automatic?.result === "unverifiableCollection") {
+      return deniedUnverifiableCollection(automatic);
+    }
+    const manual = await matchRule(manualApprovals, matchOptions);
+    if (manual?.result === "matched") {
+      return { result: "manual", reason: manual.reason };
+    } else if (manual?.result === "unverifiableCollection") {
+      return deniedUnverifiableCollection(manual);
+    }
+    return { result: "denied", reason: { type: "noMatch" } };
+  }
+  const automatic = await matchRule(automaticApprovals, {
+    ...matchOptions,
+    actorOnly: true,
+  });
   if (automatic?.result === "matched") {
     return { result: "automatic", reason: automatic.reason };
   }
-  const manual = await matchRule(
-    manualApprovals,
-    options.requester,
-    context,
-    options.matchesApprovalCollection,
-    { actorOnly: true },
-  );
+  const manual = await matchRule(manualApprovals, {
+    ...matchOptions,
+    actorOnly: true,
+  });
   if (manual?.result === "matched") {
     return { result: "manual", reason: manual.reason };
   }
-  const broadAutomatic = await matchRule(
-    automaticApprovals,
-    options.requester,
-    context,
-    options.matchesApprovalCollection,
-  );
+  const broadAutomatic = await matchRule(automaticApprovals, matchOptions);
   const unverifiableAutomatic = broadAutomatic?.result ===
       "unverifiableCollection"
-    ? broadAutomatic.collection
+    ? broadAutomatic
     : null;
   if (broadAutomatic?.result === "matched") {
     return { result: "automatic", reason: broadAutomatic.reason };
   }
-  const broadManual = await matchRule(
-    manualApprovals,
-    options.requester,
-    context,
-    options.matchesApprovalCollection,
-  );
+  const broadManual = await matchRule(manualApprovals, matchOptions);
   if (broadManual?.result === "unverifiableCollection") {
-    return deniedUnverifiableCollection(broadManual.collection);
+    return deniedUnverifiableCollection(broadManual);
   } else if (broadManual?.result === "matched") {
     return { result: "manual", reason: broadManual.reason };
   }
@@ -876,12 +1153,28 @@ async function evaluatePolicy<
   return { result: "denied", reason: { type: "noMatch" } };
 }
 
+function getApprovalRule(
+  rule: InteractionRule | null | undefined,
+): {
+  readonly automaticApprovals: readonly URL[];
+  readonly manualApprovals: readonly URL[];
+} | null {
+  if (rule == null) return null;
+  const automaticApprovals = rule.automaticApprovals ?? [];
+  const manualApprovals = rule.manualApprovals ?? [];
+  if (automaticApprovals.length < 1 && manualApprovals.length < 1) {
+    return null;
+  }
+  return { automaticApprovals, manualApprovals };
+}
+
 async function matchImplicitAutomaticActors<
   TRequest extends Activity,
   TAuthorization extends ASObject,
   TInteracting extends ASObject,
   TTarget extends ASObject,
   TImpoliteSource extends ASObject,
+  TRequestValidationOptions extends object,
 >(
   subject: TTarget,
   requester: URL,
@@ -891,7 +1184,8 @@ async function matchImplicitAutomaticActors<
     TAuthorization,
     TInteracting,
     TTarget,
-    TImpoliteSource
+    TImpoliteSource,
+    TRequestValidationOptions
   >,
 ): Promise<InteractionPolicyMatchReason | null> {
   if (config.getImplicitAutomaticActors == null) return null;
@@ -911,13 +1205,15 @@ function missingPolicyDecision<
   TInteracting extends ASObject,
   TTarget extends ASObject,
   TImpoliteSource extends ASObject,
+  TRequestValidationOptions extends object,
 >(
   config: ControlConfig<
     TRequest,
     TAuthorization,
     TInteracting,
     TTarget,
-    TImpoliteSource
+    TImpoliteSource,
+    TRequestValidationOptions
   >,
 ): InteractionPolicyDecision {
   if (config.defaultMissingPolicy === "automatic") {
@@ -935,13 +1231,15 @@ function missingRuleDecision<
   TInteracting extends ASObject,
   TTarget extends ASObject,
   TImpoliteSource extends ASObject,
+  TRequestValidationOptions extends object,
 >(
   config: ControlConfig<
     TRequest,
     TAuthorization,
     TInteracting,
     TTarget,
-    TImpoliteSource
+    TImpoliteSource,
+    TRequestValidationOptions
   >,
 ): InteractionPolicyDecision {
   if (config.defaultMissingPolicy === "automatic") {
@@ -955,13 +1253,17 @@ function missingRuleDecision<
 
 async function matchRule<TContextData>(
   entries: readonly URL[],
-  requester: URL,
-  context: Context<TContextData>,
-  matchesApprovalCollection:
-    | MatchesApprovalCollection<TContextData>
-    | undefined,
-  options: { readonly actorOnly?: boolean } = {},
+  options: {
+    readonly requester: URL;
+    readonly context: Context<TContextData>;
+    readonly matchesApprovalCollection?: MatchesApprovalCollection<
+      TContextData
+    >;
+    readonly throwCollectionErrors: boolean;
+    readonly actorOnly?: boolean;
+  },
 ): Promise<RuleMatchResult> {
+  const { requester, matchesApprovalCollection } = options;
   for (const entry of entries) {
     if (entry.href === requester.href) {
       return { result: "matched", reason: { type: "actor", actor: entry } };
@@ -974,7 +1276,9 @@ async function matchRule<TContextData>(
     }
   }
   if (matchesApprovalCollection != null) {
-    let unverifiableCollection: URL | null = null;
+    let unverifiable:
+      | { readonly collection: URL; readonly cause: unknown }
+      | null = null;
     for (const entry of entries) {
       if (
         entry.href === PUBLIC_COLLECTION.href || entry.href === requester.href
@@ -983,9 +1287,14 @@ async function matchRule<TContextData>(
       }
       let matched;
       try {
-        matched = await matchesApprovalCollection(entry, requester, context);
-      } catch {
-        unverifiableCollection ??= entry;
+        matched = await matchesApprovalCollection(
+          entry,
+          requester,
+          options.context,
+        );
+      } catch (cause) {
+        if (options.throwCollectionErrors) throw cause;
+        unverifiable ??= { collection: entry, cause };
         continue;
       }
       if (matched) {
@@ -995,22 +1304,23 @@ async function matchRule<TContextData>(
         };
       }
     }
-    if (unverifiableCollection != null) {
-      return {
-        result: "unverifiableCollection",
-        collection: unverifiableCollection,
-      };
+    if (unverifiable != null) {
+      return { result: "unverifiableCollection", ...unverifiable };
     }
   }
   return null;
 }
 
 function deniedUnverifiableCollection(
-  collection: URL,
+  failure: { readonly collection: URL; readonly cause: unknown },
 ): InteractionPolicyDecision {
   return {
     result: "denied",
-    reason: { type: "unverifiableCollection", collection },
+    reason: {
+      type: "unverifiableCollection",
+      collection: failure.collection,
+      cause: failure.cause,
+    },
   };
 }
 
@@ -1082,6 +1392,7 @@ export function recognized<
   TInteracting extends ASObject,
   TTarget extends ASObject,
   TImpoliteSource extends ASObject,
+  TRequestValidationOptions extends object,
 >(
   values: {
     readonly requester: URL | null;

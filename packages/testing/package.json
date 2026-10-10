@@ -57,6 +57,8 @@
   },
   "devDependencies": {
     "@fedify/fixture": "workspace:^",
+    "@fedify/vocab": "workspace:^",
+    "@fedify/vocab-runtime": "workspace:^",
     "@standard-schema/spec": "catalog:",
     "@std/assert": "catalog:",
     "@std/async": "catalog:",

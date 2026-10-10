@@ -334,6 +334,25 @@ const scalarTypes: Record<string, ScalarType> = {
     },
     skipUnparsable: true,
   },
+  "fedify:absoluteIri": {
+    name: "URL",
+    typeGuard(v) {
+      return `${v} instanceof URL`;
+    },
+    encoder(v) {
+      return `{ "@id": formatIri(${v}) }`;
+    },
+    compactEncoder(v) {
+      return `formatIri(${v})`;
+    },
+    dataCheck(v) {
+      return `isAbsoluteIriValue(${v})`;
+    },
+    decoder(v) {
+      return `decodeIri(getAbsoluteIriValue(${v})!)`;
+    },
+    skipUnparsable: true,
+  },
   "fedify:gatewayUrl": {
     name: "URL",
     typeGuard(v) {

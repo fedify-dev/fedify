@@ -88,8 +88,8 @@ export class RecursiveLookupError extends Error {
   target: string;
   /** Why the target could not be fetched, if known. */
   failure?: LookupFailure;
-  constructor(target: string, failure?: LookupFailure) {
-    super(`Failed to recursively fetch object: ${target}`);
+  constructor(target: string, failure?: LookupFailure, options?: ErrorOptions) {
+    super(`Failed to recursively fetch object: ${target}`, options);
     this.name = "RecursiveLookupError";
     this.target = target;
     this.failure = failure;
@@ -474,6 +474,192 @@ function printLookupFailureHint(
           optionNames(["-a", "--authorized-fetch"])
         }.`,
       );
+      return;
+  }
+}
+
+/** A follow-up lookup failure, classified without changing loader policy. */
+export interface RecursiveLookupFailure {
+  /** The recursive object target, when the lookup retained it. */
+  readonly target?: string;
+  /**
+   * `not-found` means no object and no recorded evidence, not an HTTP 404.
+   * Context failures retain their source even when classified as timeouts
+   * or private-address rejections.
+   */
+  readonly kind:
+    | "timeout"
+    | "private-address"
+    | "not-found"
+    | "context"
+    | "fetch-or-parse";
+  readonly source?: LookupFailure["source"];
+  /**
+   * Whether suppression can return the already collected prefix. This model
+   * covers follow-up fetches only, never initial lookups or output writes.
+   */
+  readonly suppressible: boolean;
+  /** Preserve generic headlines for errors that previously escaped directly. */
+  readonly presentation: "target" | "generic";
+  /** The error to log, preserving the original generic error when available. */
+  readonly error: unknown;
+  readonly hint:
+    | { readonly type: "private-address" }
+    | { readonly type: "private-context"; readonly url: URL }
+    | { readonly type: "dns" }
+    | { readonly type: "authorized-fetch" }
+    | { readonly type: "suppress-errors" }
+    | { readonly type: "diagnostic"; readonly message: string }
+    | { readonly type: "none" };
+}
+
+function isSuppressibleRecursiveFailure(
+  kind: RecursiveLookupFailure["kind"],
+): boolean {
+  switch (kind) {
+    case "timeout":
+    case "private-address":
+    case "not-found":
+    case "context":
+    case "fetch-or-parse":
+      return true;
+  }
+}
+
+/**
+ * Classifies recursive follow-up failures and selects their existing hints.
+ * @param error The error from collecting a recursive chain.
+ * @param options The policies that affect hints, rather than loader behavior.
+ * @returns A failure that can be rendered without inspecting its error again.
+ */
+export function classifyRecursiveLookupFailure(
+  error: unknown,
+  options: { allowPrivateAddress: boolean; authorizedFetch: boolean },
+): RecursiveLookupFailure {
+  const wrapped = error instanceof RecursiveLookupError ? error : undefined;
+  const failure = wrapped?.failure;
+  const recordedTimeout = failure?.error instanceof TimeoutError;
+  const presentation = wrapped != null &&
+      (wrapped.cause == null || recordedTimeout)
+    ? "target"
+    : "generic";
+  const underlyingError = presentation === "target"
+    ? failure?.error
+    : wrapped?.cause ?? error;
+  const timeout = underlyingError instanceof TimeoutError || recordedTimeout;
+  const privateContextUrl = presentation === "generic" ||
+      failure?.source === "context"
+    ? getPrivateContextUrl(underlyingError)
+    : null;
+  const blockedTarget = presentation === "target" &&
+    !options.allowPrivateAddress && wrapped != null &&
+    isPrivateAddressTarget(wrapped.target);
+
+  let hint: RecursiveLookupFailure["hint"] = { type: "none" };
+  if (!timeout) {
+    if (presentation === "target") {
+      if (blockedTarget) hint = { type: "private-address" };
+      else if (privateContextUrl != null) {
+        hint = { type: "private-context", url: privateContextUrl };
+      } else if (failure != null) {
+        hint = {
+          type: "diagnostic",
+          message: describeLookupFailure(failure, options.authorizedFetch)
+            .message,
+        };
+      } else if (!options.authorizedFetch) {
+        hint = { type: "authorized-fetch" };
+      }
+    } else if (privateContextUrl != null) {
+      hint = { type: "private-context", url: privateContextUrl };
+    } else {
+      const legacyHint = getLookupFailureHint(underlyingError, {
+        recursive: true,
+      });
+      hint = legacyHint === "authorized-fetch"
+        ? { type: options.authorizedFetch ? "suppress-errors" : legacyHint }
+        : { type: legacyHint === "dns" ? "dns" : "private-address" };
+    }
+  }
+
+  const kind: RecursiveLookupFailure["kind"] = timeout
+    ? "timeout"
+    : privateContextUrl != null
+    ? "context"
+    // FetchError messages include their URL; "localhost" in that URL is
+    // not evidence that the loader blocked the address.
+    : blockedTarget ||
+        !(underlyingError instanceof FetchError) &&
+          isPrivateAddressError(underlyingError)
+    ? "private-address"
+    : failure?.source === "context"
+    ? "context"
+    : presentation === "target" && failure == null
+    ? "not-found"
+    : "fetch-or-parse";
+  return {
+    target: wrapped?.target,
+    kind,
+    source: failure?.source,
+    suppressible: isSuppressibleRecursiveFailure(kind),
+    presentation,
+    error: presentation === "generic" ? underlyingError : error,
+    hint,
+  };
+}
+
+/**
+ * Renders a classified recursive failure without reinterpreting its error.
+ * @param failure The classified follow-up failure.
+ * @param spinner The spinner that displays the failure headline.
+ * @param timeoutSeconds The requested timeout, in seconds.
+ * @internal
+ */
+export function printRecursiveLookupFailure(
+  failure: RecursiveLookupFailure,
+  spinner: { fail: (text: string) => void },
+  timeoutSeconds?: number,
+): void {
+  const target = failure.presentation === "target" ? failure.target : undefined;
+  if (failure.kind === "timeout") {
+    handleTimeoutError(spinner, timeoutSeconds, target);
+    return;
+  }
+  spinner.fail(
+    target == null
+      ? "Failed to recursively fetch object."
+      : `Failed to recursively fetch object: ${colors.red(target)}.`,
+  );
+  switch (failure.hint.type) {
+    case "private-address":
+      printRecursivePrivateAddressHint();
+      return;
+    case "private-context":
+      printRecursivePrivateContextHint(failure.hint.url);
+      return;
+    case "dns":
+      printError(
+        message`DNS lookup failed.  Check the hostname and network connectivity.`,
+      );
+      return;
+    case "authorized-fetch":
+      printError(
+        message`It may be a private object.  Try with ${
+          optionNames(["-a", "--authorized-fetch"])
+        }.`,
+      );
+      return;
+    case "suppress-errors":
+      printError(
+        message`Use the ${
+          optionNames(["-S", "--suppress-errors"])
+        } option to suppress partial errors.`,
+      );
+      return;
+    case "diagnostic":
+      printError(message`${text(failure.hint.message)}`);
+      return;
+    case "none":
       return;
   }
 }
@@ -914,13 +1100,13 @@ export async function runLookup(
                 : {}),
             });
             if (result.object != null) return result.object;
-            if (
-              result.thrownError != null &&
-              !(result.failure?.error instanceof TimeoutError)
-            ) {
-              throw result.thrownError;
-            }
-            throw new RecursiveLookupError(target, result.failure);
+            throw new RecursiveLookupError(
+              target,
+              result.failure,
+              result.thrownError == null
+                ? undefined
+                : { cause: result.thrownError },
+            );
           },
           { suppressErrors: command.suppressErrors, visited },
         );
@@ -947,65 +1133,15 @@ export async function runLookup(
             return;
           }
         }
+        const failure = classifyRecursiveLookupFailure(error, {
+          allowPrivateAddress: command.allowPrivateAddress,
+          authorizedFetch: authLoader != null,
+        });
         logger.error(
           "Failed to recursively fetch an object in chain: {error}",
-          {
-            error,
-          },
+          { error: failure.error },
         );
-        if (error instanceof TimeoutError) {
-          handleTimeoutError(spinner, command.timeout);
-        } else if (
-          error instanceof RecursiveLookupError &&
-          error.failure?.error instanceof TimeoutError
-        ) {
-          handleTimeoutError(spinner, command.timeout, error.target);
-        } else if (error instanceof RecursiveLookupError) {
-          spinner.fail(
-            `Failed to recursively fetch object: ${colors.red(error.target)}.`,
-          );
-          const privateContextUrl = error.failure?.source === "context"
-            ? getPrivateContextUrl(error.failure.error)
-            : null;
-          if (
-            !command.allowPrivateAddress &&
-            isPrivateAddressTarget(error.target)
-          ) {
-            printRecursivePrivateAddressHint();
-          } else if (privateContextUrl != null) {
-            printRecursivePrivateContextHint(privateContextUrl);
-          } else if (error.failure != null) {
-            const diagnostic = describeLookupFailure(
-              error.failure,
-              authLoader != null,
-            );
-            printError(message`${text(diagnostic.message)}`);
-          } else if (authLoader == null) {
-            printError(
-              message`It may be a private object.  Try with ${
-                optionNames(["-a", "--authorized-fetch"])
-              }.`,
-            );
-          }
-        } else {
-          spinner.fail("Failed to recursively fetch object.");
-          const privateContextUrl = getPrivateContextUrl(error);
-          if (privateContextUrl != null) {
-            printRecursivePrivateContextHint(privateContextUrl);
-            await finalizeAndExit(1);
-            return;
-          }
-          const hint = getLookupFailureHint(error, { recursive: true });
-          if (shouldSuggestSuppressErrorsForLookupFailure(authLoader, hint)) {
-            printError(
-              message`Use the ${
-                optionNames(["-S", "--suppress-errors"])
-              } option to suppress partial errors.`,
-            );
-          } else {
-            printLookupFailureHint(authLoader, error, { recursive: true });
-          }
-        }
+        printRecursiveLookupFailure(failure, spinner, command.timeout);
         await finalizeAndExit(1);
         return;
       }

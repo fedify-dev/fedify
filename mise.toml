@@ -192,8 +192,18 @@ depends = [
   "check-versions",
   "check:workspace-protocol",
   "check:fixture-usage",
+  "check:node-modules",
 ]
 run = "sacho check"
+
+[tasks."check:node-modules"]
+description = "Check that Deno leaves pnpm's node_modules directories alone"
+run = '''
+if ! jq -e '.nodeModulesDir == "none"' deno.json > /dev/null; then
+  echo 'Set nodeModulesDir to "none" so Deno preserves pnpm workspace links.'
+  exit 1
+fi
+'''
 
 [tasks."check:fmt"]
 description = "Check code formatting"
@@ -265,6 +275,9 @@ for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
 '''
 
 # Testing
+[tasks."test:pack"]
+description = "Check that Deno preserves pnpm links and package packing"
+run = "node scripts/test_pack.mjs"
 
 [tasks."test:deno"]
 wait_for = ["build"]
@@ -296,6 +309,7 @@ depends = [
   "test:node",
   "test:bun",
   "test:astro-compat",
+  "test:sveltekit-compat",
   "test:temporal-polyfill",
 ]
 
@@ -338,6 +352,11 @@ run = "deno run -A examples/test-examples/mod.ts"
 description = "Test @fedify/astro against supported Astro and runtime versions"
 depends = ["build"]
 run = "deno run -A packages/astro/compat/run.ts"
+
+[tasks."test:sveltekit-compat"]
+description = "Check @fedify/sveltekit consumer types against SvelteKit 2 and 3"
+depends = ["build"]
+run = "deno run -A packages/sveltekit/compat/run.ts"
 
 [tasks."test:monitoring"]
 description = "Validate the monitoring example configuration"

@@ -40,7 +40,8 @@ snapshot[`Deno.inspect(Emoji) [auto] 1`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
-  translations: [ Translation {} ]
+  translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ]
 }'
 `;
 
@@ -84,7 +85,8 @@ snapshot[`Deno.inspect(Emoji) [auto] 2`] = `
   likeAuthorization: URL "https://example.com/",
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
-  translations: [ Translation {} ]
+  translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ]
 }'
 `;
 
@@ -128,7 +130,11 @@ snapshot[`Deno.inspect(Emoji) [auto] 3`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
-  translations: [ Translation {}, Translation {} ]
+  translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ]
 }'
 `;
 
@@ -173,6 +179,7 @@ snapshot[`Deno.inspect(ChatMessage) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   quote: Object {},
   quoteUrl: URL "https://fedify.dev/",
   quoteAuthorization: QuoteAuthorization {}
@@ -220,6 +227,7 @@ snapshot[`Deno.inspect(ChatMessage) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   quote: URL "https://example.com/",
   quoteUrl: URL "https://fedify.dev/",
   quoteAuthorization: URL "https://example.com/"
@@ -267,6 +275,10 @@ snapshot[`Deno.inspect(ChatMessage) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   quote: Object {},
   quoteUrl: URL "https://fedify.dev/",
   quoteAuthorization: QuoteAuthorization {}
@@ -314,6 +326,7 @@ snapshot[`Deno.inspect(EmojiReact) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -364,6 +377,7 @@ snapshot[`Deno.inspect(EmojiReact) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -414,6 +428,10 @@ snapshot[`Deno.inspect(EmojiReact) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -494,6 +512,7 @@ snapshot[`Deno.inspect(AnnounceAuthorization) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   interactingObject: Object {},
   interactionTarget: Object {}
 }'
@@ -540,6 +559,7 @@ snapshot[`Deno.inspect(AnnounceAuthorization) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   interactingObject: URL "https://example.com/",
   interactionTarget: URL "https://example.com/"
 }'
@@ -586,6 +606,10 @@ snapshot[`Deno.inspect(AnnounceAuthorization) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   interactingObject: Object {},
   interactionTarget: Object {}
 }'
@@ -632,6 +656,7 @@ snapshot[`Deno.inspect(AnnounceRequest) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -682,6 +707,7 @@ snapshot[`Deno.inspect(AnnounceRequest) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -732,6 +758,10 @@ snapshot[`Deno.inspect(AnnounceRequest) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -839,6 +869,7 @@ snapshot[`Deno.inspect(LikeAuthorization) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   interactingObject: Object {},
   interactionTarget: Object {}
 }'
@@ -885,6 +916,7 @@ snapshot[`Deno.inspect(LikeAuthorization) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   interactingObject: URL "https://example.com/",
   interactionTarget: URL "https://example.com/"
 }'
@@ -931,6 +963,10 @@ snapshot[`Deno.inspect(LikeAuthorization) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   interactingObject: Object {},
   interactionTarget: Object {}
 }'
@@ -977,6 +1013,7 @@ snapshot[`Deno.inspect(LikeRequest) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -1027,6 +1064,7 @@ snapshot[`Deno.inspect(LikeRequest) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -1077,6 +1115,10 @@ snapshot[`Deno.inspect(LikeRequest) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -1127,6 +1169,7 @@ snapshot[`Deno.inspect(ReplyAuthorization) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   interactingObject: Object {},
   interactionTarget: Object {}
 }'
@@ -1173,6 +1216,7 @@ snapshot[`Deno.inspect(ReplyAuthorization) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   interactingObject: URL "https://example.com/",
   interactionTarget: URL "https://example.com/"
 }'
@@ -1219,6 +1263,10 @@ snapshot[`Deno.inspect(ReplyAuthorization) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   interactingObject: Object {},
   interactionTarget: Object {}
 }'
@@ -1265,6 +1313,7 @@ snapshot[`Deno.inspect(ReplyRequest) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -1315,6 +1364,7 @@ snapshot[`Deno.inspect(ReplyRequest) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -1365,6 +1415,10 @@ snapshot[`Deno.inspect(ReplyRequest) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -1415,6 +1469,7 @@ snapshot[`Deno.inspect(QuoteAuthorization) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   interactingObject: Object {},
   interactionTarget: Object {}
 }'
@@ -1461,6 +1516,7 @@ snapshot[`Deno.inspect(QuoteAuthorization) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   interactingObject: URL "https://example.com/",
   interactionTarget: URL "https://example.com/"
 }'
@@ -1507,6 +1563,10 @@ snapshot[`Deno.inspect(QuoteAuthorization) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   interactingObject: Object {},
   interactionTarget: Object {}
 }'
@@ -1553,6 +1613,7 @@ snapshot[`Deno.inspect(QuoteRequest) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -1603,6 +1664,7 @@ snapshot[`Deno.inspect(QuoteRequest) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -1653,6 +1715,10 @@ snapshot[`Deno.inspect(QuoteRequest) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -1772,6 +1838,7 @@ snapshot[`Deno.inspect(FeatureAuthorization) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   interactingObject: Object {},
   interactionTarget: Object {}
 }'
@@ -1818,6 +1885,7 @@ snapshot[`Deno.inspect(FeatureAuthorization) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   interactingObject: URL "https://example.com/",
   interactionTarget: URL "https://example.com/"
 }'
@@ -1864,6 +1932,10 @@ snapshot[`Deno.inspect(FeatureAuthorization) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   interactingObject: Object {},
   interactionTarget: Object {}
 }'
@@ -1910,6 +1982,7 @@ snapshot[`Deno.inspect(FeatureRequest) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -1960,6 +2033,7 @@ snapshot[`Deno.inspect(FeatureRequest) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -2010,6 +2084,10 @@ snapshot[`Deno.inspect(FeatureRequest) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -2060,6 +2138,7 @@ snapshot[`Deno.inspect(FeaturedCollection) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   totalItems: 123,
   current: CollectionPage {},
   first: CollectionPage {},
@@ -2119,6 +2198,7 @@ snapshot[`Deno.inspect(FeaturedCollection) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   totalItems: 123,
   current: URL "https://example.com/",
   first: URL "https://example.com/",
@@ -2178,6 +2258,10 @@ snapshot[`Deno.inspect(FeaturedCollection) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   totalItems: 123,
   current: CollectionPage {},
   first: CollectionPage {},
@@ -2237,6 +2321,7 @@ snapshot[`Deno.inspect(FeaturedItem) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   featuredObject: Object {},
   featureAuthorization: FeatureAuthorization {}
 }'
@@ -2283,6 +2368,7 @@ snapshot[`Deno.inspect(FeaturedItem) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   featuredObject: URL "https://example.com/",
   featureAuthorization: URL "https://example.com/"
 }'
@@ -2329,6 +2415,10 @@ snapshot[`Deno.inspect(FeaturedItem) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   featuredObject: Object {},
   featureAuthorization: FeatureAuthorization {}
 }'
@@ -2543,6 +2633,7 @@ snapshot[`Deno.inspect(Agreement) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   stipulates: Commitment {},
   stipulatesReciprocal: Commitment {}
 }'
@@ -2589,6 +2680,7 @@ snapshot[`Deno.inspect(Agreement) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   stipulates: Commitment {},
   stipulatesReciprocal: Commitment {}
 }'
@@ -2635,6 +2727,10 @@ snapshot[`Deno.inspect(Agreement) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   stipulates: Commitment {},
   stipulatesReciprocal: Commitment {}
 }'
@@ -2738,6 +2834,7 @@ snapshot[`Deno.inspect(Proposal) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   purpose: "hello",
   publishes: Intent {},
   reciprocal: Intent {},
@@ -2786,6 +2883,7 @@ snapshot[`Deno.inspect(Proposal) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   purpose: "hello",
   publishes: Intent {},
   reciprocal: Intent {},
@@ -2834,6 +2932,10 @@ snapshot[`Deno.inspect(Proposal) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   purpose: "hello",
   publishes: Intent {},
   reciprocal: Intent {},
@@ -2882,6 +2984,7 @@ snapshot[`Deno.inspect(Accept) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -2932,6 +3035,7 @@ snapshot[`Deno.inspect(Accept) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -2982,6 +3086,10 @@ snapshot[`Deno.inspect(Accept) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -3032,6 +3140,7 @@ snapshot[`Deno.inspect(Activity) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -3082,6 +3191,7 @@ snapshot[`Deno.inspect(Activity) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -3132,6 +3242,10 @@ snapshot[`Deno.inspect(Activity) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -3182,6 +3296,7 @@ snapshot[`Deno.inspect(Add) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -3232,6 +3347,7 @@ snapshot[`Deno.inspect(Add) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -3282,6 +3398,10 @@ snapshot[`Deno.inspect(Add) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -3332,6 +3452,7 @@ snapshot[`Deno.inspect(Announce) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -3382,6 +3503,7 @@ snapshot[`Deno.inspect(Announce) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -3432,6 +3554,10 @@ snapshot[`Deno.inspect(Announce) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -3482,6 +3608,7 @@ snapshot[`Deno.inspect(Application) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: CryptographicKey {},
   assertionMethod: Multikey {},
@@ -3505,7 +3632,8 @@ snapshot[`Deno.inspect(Application) [auto] 1`] = `
   aliases: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   service: DidService {},
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -3550,6 +3678,7 @@ snapshot[`Deno.inspect(Application) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: URL "https://example.com/",
   assertionMethod: URL "https://example.com/",
@@ -3573,7 +3702,8 @@ snapshot[`Deno.inspect(Application) [auto] 2`] = `
   alias: URL "https://example.com/",
   service: URL "https://example.com/",
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -3618,6 +3748,10 @@ snapshot[`Deno.inspect(Application) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   preferredUsernames: [ "hello", "hello" ],
   publicKeys: [ CryptographicKey {}, CryptographicKey {} ],
   assertionMethods: [ Multikey {}, Multikey {} ],
@@ -3641,7 +3775,8 @@ snapshot[`Deno.inspect(Application) [auto] 3`] = `
   aliases: [ Application {}, Application {} ],
   services: [ DidService {}, DidService {} ],
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -3686,6 +3821,7 @@ snapshot[`Deno.inspect(Arrive) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -3736,6 +3872,7 @@ snapshot[`Deno.inspect(Arrive) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -3786,6 +3923,10 @@ snapshot[`Deno.inspect(Arrive) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -3836,6 +3977,7 @@ snapshot[`Deno.inspect(Article) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   quote: Object {},
   quoteUrl: URL "https://fedify.dev/",
   quoteAuthorization: QuoteAuthorization {}
@@ -3883,6 +4025,7 @@ snapshot[`Deno.inspect(Article) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   quote: URL "https://example.com/",
   quoteUrl: URL "https://fedify.dev/",
   quoteAuthorization: URL "https://example.com/"
@@ -3930,6 +4073,10 @@ snapshot[`Deno.inspect(Article) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   quote: Object {},
   quoteUrl: URL "https://fedify.dev/",
   quoteAuthorization: QuoteAuthorization {}
@@ -3977,6 +4124,7 @@ snapshot[`Deno.inspect(Audio) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -4024,6 +4172,7 @@ snapshot[`Deno.inspect(Audio) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -4071,6 +4220,10 @@ snapshot[`Deno.inspect(Audio) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -4118,6 +4271,7 @@ snapshot[`Deno.inspect(Block) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -4168,6 +4322,7 @@ snapshot[`Deno.inspect(Block) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -4218,6 +4373,10 @@ snapshot[`Deno.inspect(Block) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -4268,6 +4427,7 @@ snapshot[`Deno.inspect(Collection) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   totalItems: 123,
   current: CollectionPage {},
   first: CollectionPage {},
@@ -4325,6 +4485,7 @@ snapshot[`Deno.inspect(Collection) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   totalItems: 123,
   current: URL "https://example.com/",
   first: URL "https://example.com/",
@@ -4382,6 +4543,10 @@ snapshot[`Deno.inspect(Collection) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   totalItems: 123,
   current: CollectionPage {},
   first: CollectionPage {},
@@ -4439,6 +4604,7 @@ snapshot[`Deno.inspect(CollectionPage) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   totalItems: 123,
   current: CollectionPage {},
   first: CollectionPage {},
@@ -4499,6 +4665,7 @@ snapshot[`Deno.inspect(CollectionPage) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   totalItems: 123,
   current: URL "https://example.com/",
   first: URL "https://example.com/",
@@ -4559,6 +4726,10 @@ snapshot[`Deno.inspect(CollectionPage) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   totalItems: 123,
   current: CollectionPage {},
   first: CollectionPage {},
@@ -4619,6 +4790,7 @@ snapshot[`Deno.inspect(Create) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -4669,6 +4841,7 @@ snapshot[`Deno.inspect(Create) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -4719,6 +4892,10 @@ snapshot[`Deno.inspect(Create) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -4769,6 +4946,7 @@ snapshot[`Deno.inspect(Delete) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -4819,6 +4997,7 @@ snapshot[`Deno.inspect(Delete) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -4869,6 +5048,10 @@ snapshot[`Deno.inspect(Delete) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -4919,6 +5102,7 @@ snapshot[`Deno.inspect(Dislike) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -4969,6 +5153,7 @@ snapshot[`Deno.inspect(Dislike) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -5019,6 +5204,10 @@ snapshot[`Deno.inspect(Dislike) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -5069,6 +5258,7 @@ snapshot[`Deno.inspect(Document) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -5116,6 +5306,7 @@ snapshot[`Deno.inspect(Document) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -5163,6 +5354,10 @@ snapshot[`Deno.inspect(Document) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -5248,7 +5443,8 @@ snapshot[`Deno.inspect(Event) [auto] 1`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
-  translations: [ Translation {} ]
+  translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ]
 }'
 `;
 
@@ -5292,7 +5488,8 @@ snapshot[`Deno.inspect(Event) [auto] 2`] = `
   likeAuthorization: URL "https://example.com/",
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
-  translations: [ Translation {} ]
+  translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ]
 }'
 `;
 
@@ -5336,7 +5533,11 @@ snapshot[`Deno.inspect(Event) [auto] 3`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
-  translations: [ Translation {}, Translation {} ]
+  translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ]
 }'
 `;
 
@@ -5381,6 +5582,7 @@ snapshot[`Deno.inspect(Flag) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -5431,6 +5633,7 @@ snapshot[`Deno.inspect(Flag) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -5481,6 +5684,10 @@ snapshot[`Deno.inspect(Flag) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -5531,6 +5738,7 @@ snapshot[`Deno.inspect(Follow) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -5581,6 +5789,7 @@ snapshot[`Deno.inspect(Follow) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -5631,6 +5840,10 @@ snapshot[`Deno.inspect(Follow) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -5681,6 +5894,7 @@ snapshot[`Deno.inspect(Group) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: CryptographicKey {},
   assertionMethod: Multikey {},
@@ -5704,7 +5918,8 @@ snapshot[`Deno.inspect(Group) [auto] 1`] = `
   aliases: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   service: DidService {},
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -5749,6 +5964,7 @@ snapshot[`Deno.inspect(Group) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: URL "https://example.com/",
   assertionMethod: URL "https://example.com/",
@@ -5772,7 +5988,8 @@ snapshot[`Deno.inspect(Group) [auto] 2`] = `
   alias: URL "https://example.com/",
   service: URL "https://example.com/",
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -5817,6 +6034,10 @@ snapshot[`Deno.inspect(Group) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   preferredUsernames: [ "hello", "hello" ],
   publicKeys: [ CryptographicKey {}, CryptographicKey {} ],
   assertionMethods: [ Multikey {}, Multikey {} ],
@@ -5840,7 +6061,8 @@ snapshot[`Deno.inspect(Group) [auto] 3`] = `
   aliases: [ Application {}, Application {} ],
   services: [ DidService {}, DidService {} ],
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -5866,7 +6088,8 @@ snapshot[`Deno.inspect(Hashtag) [auto] 1`] = `
   },
   height: 123,
   width: 123,
-  previews: [ Link {}, Object {} ]
+  previews: [ Link {}, Object {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ]
 }'
 `;
 
@@ -5892,7 +6115,8 @@ snapshot[`Deno.inspect(Hashtag) [auto] 2`] = `
   },
   height: 123,
   width: 123,
-  previews: [ URL "https://example.com/" ]
+  previews: [ URL "https://example.com/" ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ]
 }'
 `;
 
@@ -5918,7 +6142,11 @@ snapshot[`Deno.inspect(Hashtag) [auto] 3`] = `
   },
   height: 123,
   width: 123,
-  previews: [ Link {}, Link {} ]
+  previews: [ Link {}, Link {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ]
 }'
 `;
 
@@ -5963,6 +6191,7 @@ snapshot[`Deno.inspect(Ignore) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -6013,6 +6242,7 @@ snapshot[`Deno.inspect(Ignore) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -6063,6 +6293,10 @@ snapshot[`Deno.inspect(Ignore) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -6113,6 +6347,7 @@ snapshot[`Deno.inspect(Image) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -6160,6 +6395,7 @@ snapshot[`Deno.inspect(Image) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -6207,6 +6443,10 @@ snapshot[`Deno.inspect(Image) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -6254,6 +6494,7 @@ snapshot[`Deno.inspect(IntransitiveActivity) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -6304,6 +6545,7 @@ snapshot[`Deno.inspect(IntransitiveActivity) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -6354,6 +6596,10 @@ snapshot[`Deno.inspect(IntransitiveActivity) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -6404,6 +6650,7 @@ snapshot[`Deno.inspect(Invite) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -6454,6 +6701,7 @@ snapshot[`Deno.inspect(Invite) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -6504,6 +6752,10 @@ snapshot[`Deno.inspect(Invite) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -6554,6 +6806,7 @@ snapshot[`Deno.inspect(Join) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -6604,6 +6857,7 @@ snapshot[`Deno.inspect(Join) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -6654,6 +6908,10 @@ snapshot[`Deno.inspect(Join) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -6704,6 +6962,7 @@ snapshot[`Deno.inspect(Leave) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -6754,6 +7013,7 @@ snapshot[`Deno.inspect(Leave) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -6804,6 +7064,10 @@ snapshot[`Deno.inspect(Leave) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -6854,6 +7118,7 @@ snapshot[`Deno.inspect(Like) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -6904,6 +7169,7 @@ snapshot[`Deno.inspect(Like) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -6954,6 +7220,10 @@ snapshot[`Deno.inspect(Like) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -6985,7 +7255,8 @@ snapshot[`Deno.inspect(Link) [auto] 1`] = `
   },
   height: 123,
   width: 123,
-  previews: [ Link {}, Object {} ]
+  previews: [ Link {}, Object {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ]
 }'
 `;
 
@@ -7011,7 +7282,8 @@ snapshot[`Deno.inspect(Link) [auto] 2`] = `
   },
   height: 123,
   width: 123,
-  previews: [ URL "https://example.com/" ]
+  previews: [ URL "https://example.com/" ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ]
 }'
 `;
 
@@ -7037,7 +7309,11 @@ snapshot[`Deno.inspect(Link) [auto] 3`] = `
   },
   height: 123,
   width: 123,
-  previews: [ Link {}, Link {} ]
+  previews: [ Link {}, Link {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ]
 }'
 `;
 
@@ -7082,6 +7358,7 @@ snapshot[`Deno.inspect(Listen) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -7132,6 +7409,7 @@ snapshot[`Deno.inspect(Listen) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -7182,6 +7460,10 @@ snapshot[`Deno.inspect(Listen) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -7213,7 +7495,8 @@ snapshot[`Deno.inspect(Mention) [auto] 1`] = `
   },
   height: 123,
   width: 123,
-  previews: [ Link {}, Object {} ]
+  previews: [ Link {}, Object {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ]
 }'
 `;
 
@@ -7239,7 +7522,8 @@ snapshot[`Deno.inspect(Mention) [auto] 2`] = `
   },
   height: 123,
   width: 123,
-  previews: [ URL "https://example.com/" ]
+  previews: [ URL "https://example.com/" ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ]
 }'
 `;
 
@@ -7265,7 +7549,11 @@ snapshot[`Deno.inspect(Mention) [auto] 3`] = `
   },
   height: 123,
   width: 123,
-  previews: [ Link {}, Link {} ]
+  previews: [ Link {}, Link {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ]
 }'
 `;
 
@@ -7310,6 +7598,7 @@ snapshot[`Deno.inspect(Move) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -7360,6 +7649,7 @@ snapshot[`Deno.inspect(Move) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -7410,6 +7700,10 @@ snapshot[`Deno.inspect(Move) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -7460,6 +7754,7 @@ snapshot[`Deno.inspect(Note) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   quote: Object {},
   quoteUrl: URL "https://fedify.dev/",
   quoteAuthorization: QuoteAuthorization {}
@@ -7507,6 +7802,7 @@ snapshot[`Deno.inspect(Note) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   quote: URL "https://example.com/",
   quoteUrl: URL "https://fedify.dev/",
   quoteAuthorization: URL "https://example.com/"
@@ -7554,6 +7850,10 @@ snapshot[`Deno.inspect(Note) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   quote: Object {},
   quoteUrl: URL "https://fedify.dev/",
   quoteAuthorization: QuoteAuthorization {}
@@ -7600,7 +7900,8 @@ snapshot[`Deno.inspect(Object) [auto] 1`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
-  translations: [ Translation {} ]
+  translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ]
 }'
 `;
 
@@ -7644,7 +7945,8 @@ snapshot[`Deno.inspect(Object) [auto] 2`] = `
   likeAuthorization: URL "https://example.com/",
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
-  translations: [ Translation {} ]
+  translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ]
 }'
 `;
 
@@ -7688,7 +7990,11 @@ snapshot[`Deno.inspect(Object) [auto] 3`] = `
   likeAuthorization: LikeAuthorization {},
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
-  translations: [ Translation {}, Translation {} ]
+  translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ]
 }'
 `;
 
@@ -7733,6 +8039,7 @@ snapshot[`Deno.inspect(Offer) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -7783,6 +8090,7 @@ snapshot[`Deno.inspect(Offer) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -7833,6 +8141,10 @@ snapshot[`Deno.inspect(Offer) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -7883,6 +8195,7 @@ snapshot[`Deno.inspect(OrderedCollection) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   totalItems: 123,
   current: CollectionPage {},
   first: CollectionPage {},
@@ -7940,6 +8253,7 @@ snapshot[`Deno.inspect(OrderedCollection) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   totalItems: 123,
   current: URL "https://example.com/",
   first: URL "https://example.com/",
@@ -7997,6 +8311,10 @@ snapshot[`Deno.inspect(OrderedCollection) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   totalItems: 123,
   current: CollectionPage {},
   first: CollectionPage {},
@@ -8054,6 +8372,7 @@ snapshot[`Deno.inspect(OrderedCollectionPage) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   totalItems: 123,
   current: CollectionPage {},
   first: CollectionPage {},
@@ -8115,6 +8434,7 @@ snapshot[`Deno.inspect(OrderedCollectionPage) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   totalItems: 123,
   current: URL "https://example.com/",
   first: URL "https://example.com/",
@@ -8176,6 +8496,10 @@ snapshot[`Deno.inspect(OrderedCollectionPage) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   totalItems: 123,
   current: CollectionPage {},
   first: CollectionPage {},
@@ -8237,6 +8561,7 @@ snapshot[`Deno.inspect(Organization) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: CryptographicKey {},
   assertionMethod: Multikey {},
@@ -8260,7 +8585,8 @@ snapshot[`Deno.inspect(Organization) [auto] 1`] = `
   aliases: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   service: DidService {},
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -8305,6 +8631,7 @@ snapshot[`Deno.inspect(Organization) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: URL "https://example.com/",
   assertionMethod: URL "https://example.com/",
@@ -8328,7 +8655,8 @@ snapshot[`Deno.inspect(Organization) [auto] 2`] = `
   alias: URL "https://example.com/",
   service: URL "https://example.com/",
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -8373,6 +8701,10 @@ snapshot[`Deno.inspect(Organization) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   preferredUsernames: [ "hello", "hello" ],
   publicKeys: [ CryptographicKey {}, CryptographicKey {} ],
   assertionMethods: [ Multikey {}, Multikey {} ],
@@ -8396,7 +8728,8 @@ snapshot[`Deno.inspect(Organization) [auto] 3`] = `
   aliases: [ Application {}, Application {} ],
   services: [ DidService {}, DidService {} ],
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -8441,6 +8774,7 @@ snapshot[`Deno.inspect(Page) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -8488,6 +8822,7 @@ snapshot[`Deno.inspect(Page) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -8535,6 +8870,10 @@ snapshot[`Deno.inspect(Page) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -8582,6 +8921,7 @@ snapshot[`Deno.inspect(Person) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: CryptographicKey {},
   assertionMethod: Multikey {},
@@ -8605,7 +8945,8 @@ snapshot[`Deno.inspect(Person) [auto] 1`] = `
   aliases: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   service: DidService {},
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -8650,6 +8991,7 @@ snapshot[`Deno.inspect(Person) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: URL "https://example.com/",
   assertionMethod: URL "https://example.com/",
@@ -8673,7 +9015,8 @@ snapshot[`Deno.inspect(Person) [auto] 2`] = `
   alias: URL "https://example.com/",
   service: URL "https://example.com/",
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -8718,6 +9061,10 @@ snapshot[`Deno.inspect(Person) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   preferredUsernames: [ "hello", "hello" ],
   publicKeys: [ CryptographicKey {}, CryptographicKey {} ],
   assertionMethods: [ Multikey {}, Multikey {} ],
@@ -8741,7 +9088,8 @@ snapshot[`Deno.inspect(Person) [auto] 3`] = `
   aliases: [ Application {}, Application {} ],
   services: [ DidService {}, DidService {} ],
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -8786,6 +9134,7 @@ snapshot[`Deno.inspect(Place) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   accuracy: 12.34,
   altitude: 12.34,
   latitude: 12.34,
@@ -8836,6 +9185,7 @@ snapshot[`Deno.inspect(Place) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   accuracy: 12.34,
   altitude: 12.34,
   latitude: 12.34,
@@ -8886,6 +9236,10 @@ snapshot[`Deno.inspect(Place) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   accuracy: 12.34,
   altitude: 12.34,
   latitude: 12.34,
@@ -8936,6 +9290,7 @@ snapshot[`Deno.inspect(Profile) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   describes: Object {}
 }'
 `;
@@ -8981,6 +9336,7 @@ snapshot[`Deno.inspect(Profile) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   describes: URL "https://example.com/"
 }'
 `;
@@ -9026,6 +9382,10 @@ snapshot[`Deno.inspect(Profile) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   describes: Object {}
 }'
 `;
@@ -9071,6 +9431,7 @@ snapshot[`Deno.inspect(Question) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -9128,6 +9489,7 @@ snapshot[`Deno.inspect(Question) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -9185,6 +9547,10 @@ snapshot[`Deno.inspect(Question) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -9242,6 +9608,7 @@ snapshot[`Deno.inspect(Read) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -9292,6 +9659,7 @@ snapshot[`Deno.inspect(Read) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -9342,6 +9710,10 @@ snapshot[`Deno.inspect(Read) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -9392,6 +9764,7 @@ snapshot[`Deno.inspect(Reject) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -9442,6 +9815,7 @@ snapshot[`Deno.inspect(Reject) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -9492,6 +9866,10 @@ snapshot[`Deno.inspect(Reject) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -9542,6 +9920,7 @@ snapshot[`Deno.inspect(Relationship) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   subject: Object {},
   object: Object {},
   relationship: Object {}
@@ -9589,6 +9968,7 @@ snapshot[`Deno.inspect(Relationship) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   subject: URL "https://example.com/",
   object: URL "https://example.com/",
   relationship: URL "https://example.com/"
@@ -9636,6 +10016,10 @@ snapshot[`Deno.inspect(Relationship) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   subject: Object {},
   objects: [ Object {}, Object {} ],
   relationships: [ Object {}, Object {} ]
@@ -9683,6 +10067,7 @@ snapshot[`Deno.inspect(Remove) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -9733,6 +10118,7 @@ snapshot[`Deno.inspect(Remove) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -9783,6 +10169,10 @@ snapshot[`Deno.inspect(Remove) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -9833,6 +10223,7 @@ snapshot[`Deno.inspect(Service) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: CryptographicKey {},
   assertionMethod: Multikey {},
@@ -9856,7 +10247,8 @@ snapshot[`Deno.inspect(Service) [auto] 1`] = `
   aliases: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   service: DidService {},
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -9901,6 +10293,7 @@ snapshot[`Deno.inspect(Service) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: URL "https://example.com/",
   assertionMethod: URL "https://example.com/",
@@ -9924,7 +10317,8 @@ snapshot[`Deno.inspect(Service) [auto] 2`] = `
   alias: URL "https://example.com/",
   service: URL "https://example.com/",
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -9969,6 +10363,10 @@ snapshot[`Deno.inspect(Service) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   preferredUsernames: [ "hello", "hello" ],
   publicKeys: [ CryptographicKey {}, CryptographicKey {} ],
   assertionMethods: [ Multikey {}, Multikey {} ],
@@ -9992,7 +10390,8 @@ snapshot[`Deno.inspect(Service) [auto] 3`] = `
   aliases: [ Application {}, Application {} ],
   services: [ DidService {}, DidService {} ],
   followedMessage: "hello",
-  cat: true
+  cat: true,
+  preferredLicense: URL "https://creativecommons.org/licenses/by/4.0/"
 }'
 `;
 
@@ -10061,6 +10460,7 @@ snapshot[`Deno.inspect(TentativeAccept) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -10111,6 +10511,7 @@ snapshot[`Deno.inspect(TentativeAccept) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -10161,6 +10562,10 @@ snapshot[`Deno.inspect(TentativeAccept) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -10211,6 +10616,7 @@ snapshot[`Deno.inspect(TentativeReject) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -10261,6 +10667,7 @@ snapshot[`Deno.inspect(TentativeReject) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -10311,6 +10718,10 @@ snapshot[`Deno.inspect(TentativeReject) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -10361,6 +10772,7 @@ snapshot[`Deno.inspect(Tombstone) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   formerType: [class Person extends Object],
   deleted: 2024-03-03T08:30:06.796196096Z
 }'
@@ -10407,6 +10819,7 @@ snapshot[`Deno.inspect(Tombstone) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   formerType: [class Person extends Object],
   deleted: 2024-03-03T08:30:06.796196096Z
 }'
@@ -10453,6 +10866,10 @@ snapshot[`Deno.inspect(Tombstone) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   formerTypes: [ [class Person extends Object], [class Person extends Object] ],
   deleted: 2024-03-03T08:30:06.796196096Z
 }'
@@ -10499,6 +10916,7 @@ snapshot[`Deno.inspect(Travel) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -10549,6 +10967,7 @@ snapshot[`Deno.inspect(Travel) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -10599,6 +11018,10 @@ snapshot[`Deno.inspect(Travel) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -10649,6 +11072,7 @@ snapshot[`Deno.inspect(Undo) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -10699,6 +11123,7 @@ snapshot[`Deno.inspect(Undo) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -10749,6 +11174,10 @@ snapshot[`Deno.inspect(Undo) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -10799,6 +11228,7 @@ snapshot[`Deno.inspect(Update) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -10849,6 +11279,7 @@ snapshot[`Deno.inspect(Update) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -10899,6 +11330,10 @@ snapshot[`Deno.inspect(Update) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],
@@ -10949,6 +11384,7 @@ snapshot[`Deno.inspect(Video) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -10996,6 +11432,7 @@ snapshot[`Deno.inspect(Video) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -11043,6 +11480,10 @@ snapshot[`Deno.inspect(Video) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   width: 123,
   height: 123,
   digestMultibase: "hello"
@@ -11090,6 +11531,7 @@ snapshot[`Deno.inspect(View) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actors: [ Application {}, Group {}, Organization {}, Person {}, Service {} ],
   object: Object {},
   target: Object {},
@@ -11140,6 +11582,7 @@ snapshot[`Deno.inspect(View) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   translations: [ Translation {} ],
+  licenses: [ URL "https://creativecommons.org/licenses/by/4.0/" ],
   actor: URL "https://example.com/",
   object: URL "https://example.com/",
   target: URL "https://example.com/",
@@ -11190,6 +11633,10 @@ snapshot[`Deno.inspect(View) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   translations: [ Translation {}, Translation {} ],
+  licenses: [
+    URL "https://creativecommons.org/licenses/by/4.0/",
+    URL "https://creativecommons.org/licenses/by/4.0/"
+  ],
   actors: [ Application {}, Application {} ],
   objects: [ Object {}, Object {} ],
   targets: [ Object {}, Object {} ],

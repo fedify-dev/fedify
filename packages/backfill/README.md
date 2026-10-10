@@ -65,6 +65,14 @@ for await (
 The seed object itself is not yielded.  If it appears in the discovered
 collection, it is skipped by ID.
 
+Context and `replies` collections support inline items and pagination through
+`first` and successive `next` links.  A collection page used as the starting
+collection also follows `next`.  Pages are loaded as needed, and traversal
+stops on repeated page links.  Pagination does not increase reply-tree depth.
+If a page cannot be loaded, items already yielded are retained and later
+configured strategies can continue unless cancellation or traversal limits
+stop them.
+
 Configured strategies run in order.  They share `maxItems`, `maxRequests`,
 abort state, and object ID deduplication; if two strategies discover the same
 object, the first strategy keeps its `BackfillItem` metadata.
@@ -133,7 +141,7 @@ All configured strategies share the same traversal controls:
  -  `maxItems` limits the number of yielded objects.  Skipped duplicates do
     not count.
  -  `maxRequests` limits calls to `documentLoader`.  Embedded objects and
-    collections do not count.
+    collections, including embedded pages, do not count.
  -  `maxDepth` limits reply-tree traversal and defaults to 10.  It does not
     limit context collection items.
  -  `interval` adds a delay between loader requests.  Its callback receives
@@ -145,7 +153,11 @@ An `interval` string requires the global `Temporal` API or a polyfill.
 
 If the seed has no context, or its context resolves to a non-collection,
 context strategies yield nothing.  Loader failures are skipped unless
-traversal is aborted.
+traversal is aborted.  If the context collection cannot be loaded, later
+configured strategies can still run.  Failed loads consume a request, and
+later strategies can use embedded data even when the request budget is
+exhausted.  Configuration errors, such as an invalid `interval`, still
+propagate.
 
 Dereferenced documents are cached in memory for one `backfill()` traversal.
 Applications that need persistent or shared caching can provide it through

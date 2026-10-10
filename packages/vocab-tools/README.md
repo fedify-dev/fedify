@@ -52,10 +52,20 @@ Conditional contexts and metadata trust
 ---------------------------------------
 
 A property schema can set `extraContext` to a context URL.  The generated
-serializer adds it to its default context when the property's expanded IRI
-appears after compaction, including inside nested objects.  A caller-provided
-context takes precedence.  When populated, such a property uses the JSON-LD
-processor so context container rules, including `@set`, are respected.
+serializer adds it to its default context when the property is populated,
+including inside nested objects, even if the default context already defines a
+prefix that could abbreviate the property's IRI.  A nested object kept in its
+received form is recognized by the context URL or the full property IRI it
+uses.  A caller-provided context takes precedence.  When populated, such a
+property uses the JSON-LD processor so context container rules, including
+`@set`, are respected.
+
+The `fedify:absoluteIri` range is a `URL` written as an IRI reference
+(`@id`).  When reading, it also accepts plain string literals and literals
+typed as `xsd:string` or `xsd:anyURI`, because publishers do not always coerce
+the property's term to an IRI.  The decoder never resolves a value against the
+object's ID or a base URL, so a value must already be absolute after JSON-LD
+expansion; values that are not are skipped.
 
 A type schema can set `trustEmbeddedObjects: false` when its identifier is
 metadata rather than a resource that establishes an origin.  Its own

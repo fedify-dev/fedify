@@ -143,13 +143,14 @@ test("likeInteraction denies failed collection policy checks", async () => {
       canLike: new InteractionRule({ automaticApproval: followers }),
     }),
   });
+  const error = new Error("collection unavailable");
 
   assert.deepEqual(
     await likeInteraction.evaluatePolicy(context, {
       subject: target,
       requester: actor,
       matchesApprovalCollection: () => {
-        throw new Error("collection unavailable");
+        throw error;
       },
     }),
     {
@@ -157,6 +158,7 @@ test("likeInteraction denies failed collection policy checks", async () => {
       reason: {
         type: "unverifiableCollection",
         collection: followers,
+        cause: error,
       },
     },
   );
@@ -659,7 +661,7 @@ test("likeInteraction rejects wrong request instrument types", async () => {
   assert.equal(result.failure.type, "wrongInstrumentType");
 });
 
-test("likeInteraction returns failures for dereferenceable object errors", async () => {
+test("likeInteraction reports object fetch failures as not dereferenceable", async () => {
   const like = new Like({ id: likeId, actor, object: targetId });
   const request = new LikeRequest({
     id: new URL("https://example.com/requests/1"),
@@ -674,10 +676,13 @@ test("likeInteraction returns failures for dereferenceable object errors", async
   });
 
   assert.equal(result.verified, false);
-  assert.equal(result.failure.type, "missingObject");
+  assert.equal(result.failure.type, "notDereferenceable");
+  assert.equal(result.failure.url.href, targetId.href);
+  assert.equal(result.failure.transient, true);
+  assert.equal((result.failure.cause as Error).message, "not dereferenceable");
 });
 
-test("likeInteraction returns failures for dereferenceable instrument errors", async () => {
+test("likeInteraction reports instrument fetch failures as not dereferenceable", async () => {
   const target = new Note({ id: targetId, attribution: author });
   const request = new LikeRequest({
     id: new URL("https://example.com/requests/1"),
@@ -692,7 +697,9 @@ test("likeInteraction returns failures for dereferenceable instrument errors", a
   });
 
   assert.equal(result.verified, false);
-  assert.equal(result.failure.type, "missingInstrument");
+  assert.equal(result.failure.type, "notDereferenceable");
+  assert.equal(result.failure.url.href, likeId.href);
+  assert.equal(result.failure.transient, true);
 });
 
 test("likeInteraction rejects id-less request objects", async () => {

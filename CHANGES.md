@@ -8,8 +8,32 @@ Version 2.5.0
 
 To be released.
 
+### @fedify/fedify
+
+ -  Changed compound portable-object verification to check each map's proof
+    policy before resolving its key or verifying its signature, avoiding work
+    for maps that will be rejected.  Policy-rejected maps now appear in
+    `onRequestFinished` verification reports with their policy failure and no
+    signature checks.  [[#1177], [#1264]]
+ -  Fixed log entries emitted during an individual outbound activity delivery
+    or inbound activity processing carrying the enclosing HTTP request's or
+    queue worker's `traceId`/`spanId` instead of the delivery or processing
+    operation's own.  Warning and error logs now match the `traceId`/`spanId`
+    of the `TraceActivityRecord` that operation produces (as exposed by
+    `@fedify/fedify/otel`), including when the operation runs inside a
+    background queue worker, which makes it possible to correlate a failure
+    log with the specific activity it belongs to.
+    [[#1030], [#1205] by Yujin Jung\]
+
+[#1030]: https://github.com/fedify-dev/fedify/issues/1030
+[#1177]: https://github.com/fedify-dev/fedify/issues/1177
+[#1205]: https://github.com/fedify-dev/fedify/pull/1205
+[#1264]: https://github.com/fedify-dev/fedify/pull/1264
+
 ### @fedify/cli
 
+ -  Changed debug logs for suppressed recursive lookup errors to preserve the
+    original error as a cause alongside the failed target.  [[#901], [#1265]]
  -  Changed the `fedify nodeinfo` favicon selector to pick a usable bitmap
     icon more often.  It now skips SVG icons declared with
     `type="image/svg+xml"`, not just those with a `.svg` URL, and it considers
@@ -18,7 +42,9 @@ To be released.
     [[#893], [#1187] by Lee Jeongmin\]
 
 [#893]: https://github.com/fedify-dev/fedify/issues/893
+[#901]: https://github.com/fedify-dev/fedify/issues/901
 [#1187]: https://github.com/fedify-dev/fedify/pull/1187
+[#1265]: https://github.com/fedify-dev/fedify/pull/1265
 
 ### @fedify/debugger
 
@@ -30,10 +56,94 @@ To be released.
     [[#896], [#1204] by Jae-Hyuk-Jang\]
 
 [#896]: https://github.com/fedify-dev/fedify/issues/896
-[#1204]: https://github.com/fedify-dev/fedify/issues/1204
+[#1204]: https://github.com/fedify-dev/fedify/pull/1204
+
+### @fedify/interaction-controls
+
+ -  Changed the interaction control helpers to tell transient verification
+    failures from rejections, so that inbox listeners can retry instead of
+    rejecting a valid request.  [[#1206], [#1245]]
+
+     -  `verifyRequest()` now reports a failed fetch of the request's `object`
+        or `instrument` as `notDereferenceable` with the failed URL and the
+        loader's error as `cause`, instead of `missingObject` or
+        `missingInstrument`.  Those two failures now mean that the request
+        really lacks the property.
+     -  A remote JSON-LD context that cannot be loaded is now reported as
+        `notDereferenceable` with the context's URL instead of
+        `invalidJsonLd`.
+     -  Added a `transient` property to `unverifiable` failures of
+        `verifyRequest()` and `verifyAuthorization()`.  It is `true` for
+        network errors, timeouts, DNS failures, and HTTP 5xx, 408, and 429
+        responses.
+     -  The `unverifiableCollection` denial reason of `evaluatePolicy()` now
+        has the error thrown by `matchesApprovalCollection` as its `cause`.
+        Added a `collectionErrors` option; pass `"throw"` to let the error
+        propagate instead of denying the interaction.
+
+ -  Added options to the interaction control helpers so that applications
+    with their own compatibility rules can use them without adapters.
+    [[#1206], [#1245]]
+
+     -  Added `fallbackRule` and `precedence` options to `evaluatePolicy()`.
+        `fallbackRule` is evaluated when the subject has no rule for the
+        interaction, and `precedence: "automatic"` matches every
+        `automaticApproval` entry before any `manualApproval` entry.
+     -  Added `resolvedInteractionTarget` and `resolvedInteractingObject`
+        options to `verifyRequest()`, which take already resolved objects
+        instead of dereferencing the request's `object` and `instrument`, and
+        leave the request untouched.
+     -  Added `quoteReference`, `attribution`, and `missingAttribution`
+        options to `quoteInteraction.verifyRequest()` for quote posts whose
+        `quote` and `quoteUrl` disagree, that have several attributions, or
+        that have no attribution.  The new `QuoteRequestValidationOptions`
+        type describes them.
+     -  Added `authorizationId` and `allowOffOrigin` options to
+        `verifyAuthorization()`.  `authorizationId` checks the ID of an
+        authorization given as an object, and `allowOffOrigin` lets
+        `verifyAuthenticity` approve an authorization whose ID is on another
+        origin than its attributed actor.
+     -  Added a `contextLoader` option to `verifyRequest()` and
+        `verifyAuthorization()` for loading remote JSON-LD contexts
+        separately from objects.
+     -  The `id` and `to` options of `createAccept()`, `createReject()`, and
+        `createRevocation()` are now optional.
+     -  Added an `embedAuthorization` option to `createRevocation()`, which
+        embeds the authorization in the `Delete` activity with only the IDs of
+        its interacting object and interaction target.
+
+[#1206]: https://github.com/fedify-dev/fedify/issues/1206
+[#1245]: https://github.com/fedify-dev/fedify/pull/1245
+
+### @fedify/vocab
+
+ -  Added vocabulary support for the [FEP-6757] draft, which marks
+    ActivityPub content with explicit copyright license URIs.
+    [[#1212], [#1241]]
+
+     -  Added `Object.licenses` and `Link.licenses` properties for the
+        alternative licenses of an object or a link.  They write the Dublin
+        Core `license` property and also read the Schema.org and Creative
+        Commons `license` properties when it is absent.  Values that are not
+        absolute URIs, such as license names or SPDX short identifiers, are
+        skipped.
+     -  Added `preferredLicense` property to `Application`, `Group`,
+        `Organization`, `Person`, and `Service` for the license an actor
+        prefers for its new objects.  It is not a fallback for objects without
+        their own license.
+     -  Fedify does not fill in a default license for objects without license
+        metadata and never fetches a license URI.
+
+[FEP-6757]: https://w3id.org/fep/6757
+[#1212]: https://github.com/fedify-dev/fedify/issues/1212
+[#1241]: https://github.com/fedify-dev/fedify/pull/1241
 
 ### @fedify/vocab-runtime
 
+ -  Added `isTransientFetchError()` function, which tells whether an error
+    thrown by a document loader is likely transient, such as a network error,
+    a timeout, a DNS failure, or an HTTP 5xx, 408, or 429 response, so that
+    applications can decide whether to retry.  [[#1206], [#1245]]
  -  Added `normalizeLanguageTag()` function, which replaces a language tag
     that has an extended language subtag (extlang) with its canonical form,
     e.g., `zh-YUE` with `yue`.  `Intl.Locale` rejects extlang tags, so
@@ -51,9 +161,101 @@ To be released.
     only the canonical property while accepting synonyms.  Fixed serialization
     of synonyms without a compact name and validation of synonym definitions.
     [[#1210], [#1215]]
+ -  Added the `fedify:absoluteIri` range for URLs written as IRI references
+    that also accept string literals when read.  Unlike
+    `http://www.w3.org/2001/XMLSchema#anyURI`, it never resolves a value
+    against the object's ID, and skips values that are not absolute instead of
+    failing the whole object.  [[#1212], [#1241]]
+ -  Changed `extraContext` to add its context when the property is populated
+    even if the default context defines a matching prefix, such as `dc` in
+    `https://w3id.org/identity/v1`.  Previously, such a property compacted to
+    a prefixed name like `dc:license` without the extra context.
+    [[#1212], [#1241]]
 
 [#1210]: https://github.com/fedify-dev/fedify/issues/1210
 [#1215]: https://github.com/fedify-dev/fedify/pull/1215
+
+
+Version 2.4.2
+-------------
+
+Released on October 9, 2026.
+
+### @fedify/fedify
+
+ -  Fixed signature verification throwing an exception when a remote actor
+    supplied a malformed JSON-LD context or its context could not be fetched.
+    These requesters are now treated as unverifiable.
+    [[#1267], [#1270]]
+
+[#1267]: https://github.com/fedify-dev/fedify/issues/1267
+[#1270]: https://github.com/fedify-dev/fedify/pull/1270
+
+### @fedify/backfill
+
+ -  Fixed conversation backfill skipping posts in paginated context and replies
+    collections.  Backfill now follows the first and subsequent pages while
+    respecting traversal limits, and retains posts already found if a page
+    cannot be loaded.
+    [[#1248], [#1256] by Jiwon Kwon\]
+ -  Fixed conversation backfill stopping when the context collection loader
+    failed.  Failed context loads are now skipped so later configured strategies
+    can still find accessible posts.  Cancellation and interval configuration
+    errors continue to propagate.
+    [[#1249], [#1258] by Jiwon Kwon\]
+
+[#1248]: https://github.com/fedify-dev/fedify/issues/1248
+[#1249]: https://github.com/fedify-dev/fedify/issues/1249
+[#1256]: https://github.com/fedify-dev/fedify/pull/1256
+[#1258]: https://github.com/fedify-dev/fedify/pull/1258
+
+### @fedify/cfworkers
+
+ -  Fixed npm refusing to install `@fedify/cfworkers` alongside
+    `@cloudflare/workers-types` 5.x, which recent versions of Wrangler
+    require, unless `--legacy-peer-deps` or an override was used.  The peer
+    dependency on `@cloudflare/workers-types` now accepts both 4.x and 5.x,
+    so you can drop such workarounds.
+    [[#1255], [#1260]]
+
+[#1255]: https://github.com/fedify-dev/fedify/issues/1255
+[#1260]: https://github.com/fedify-dev/fedify/pull/1260
+
+### @fedify/express
+
+ -  Fixed asynchronous `contextDataFactory` and `federation.fetch()` failures
+    being left as unhandled rejections in the Express integration.  Errors
+    that occur before Fedify passes the request to the next middleware now
+    reach Express error-handling middleware, so applications can send their
+    usual error response.
+    [[#1244], [#1261]]
+
+[#1244]: https://github.com/fedify-dev/fedify/issues/1244
+[#1261]: https://github.com/fedify-dev/fedify/pull/1261
+
+### @fedify/init
+
+ -  Migrated the initialization template script to SvelteKit version 3, by
+    replacing the `$lib` syntax to `#lib`. [[#1222], [#1224] by Jungmin Yoon\]
+
+[#1222]: https://github.com/fedify-dev/fedify/issues/1222
+[#1224]: https://github.com/fedify-dev/fedify/issues/1224
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue` remaining unusable after a transient
+    initialization failure.  Later calls now retry initialization, so the same
+    queue instance can recover when the database becomes available again.
+    [[#1268], [#1271]]
+
+[#1268]: https://github.com/fedify-dev/fedify/issues/1268
+[#1271]: https://github.com/fedify-dev/fedify/pull/1271
+
+### @fedify/sveltekit
+
+ -  Fixed the hook types returned by `fedifyHook()` to support both SvelteKit 2
+    and 3, so SvelteKit 3 applications can type-check the integration.
+    [[#1222], [#1224]]
 
 
 Version 2.4.1
@@ -106,7 +308,6 @@ Released on October 5, 2026.
     literals and remain arrays when compacted, matching Mastodon's context.
     [[#1233], [#1235]]
 
-[FEP-6757]: https://w3id.org/fep/6757
 [#1211]: https://github.com/fedify-dev/fedify/issues/1211
 [#1216]: https://github.com/fedify-dev/fedify/pull/1216
 [#1233]: https://github.com/fedify-dev/fedify/issues/1233
@@ -1448,6 +1649,55 @@ Released on October 1, 2026.
 [#1035]: https://github.com/fedify-dev/fedify/pull/1035
 
 
+Version 2.3.12
+--------------
+
+Released on October 9, 2026.
+
+### @fedify/fedify
+
+ -  Fixed signature verification throwing an exception when a remote actor
+    supplied a malformed JSON-LD context or its context could not be fetched.
+    These requesters are now treated as unverifiable.
+    [[#1267], [#1270]]
+
+### @fedify/backfill
+
+ -  Fixed conversation backfill skipping posts in paginated context and replies
+    collections.  Backfill now follows the first and subsequent pages while
+    respecting traversal limits, and retains posts already found if a page
+    cannot be loaded.  [[#1248], [#1256] by Jiwon Kwon\]
+ -  Fixed conversation backfill stopping when the context collection loader
+    failed.  Failed context loads are now skipped so later configured strategies
+    can still find accessible posts.  Cancellation and interval configuration
+    errors continue to propagate.  [[#1249], [#1258] by Jiwon Kwon\]
+
+### @fedify/cfworkers
+
+ -  Fixed npm refusing to install `@fedify/cfworkers` alongside
+    `@cloudflare/workers-types` 5.x, which recent versions of Wrangler
+    require, unless `--legacy-peer-deps` or an override was used.  The peer
+    dependency on `@cloudflare/workers-types` now accepts both 4.x and 5.x,
+    so you can drop such workarounds.
+    [[#1255], [#1260]]
+
+### @fedify/express
+
+ -  Fixed asynchronous `contextDataFactory` and `federation.fetch()` failures
+    being left as unhandled rejections in the Express integration.  Errors
+    that occur before Fedify passes the request to the next middleware now
+    reach Express error-handling middleware, so applications can send their
+    usual error response.
+    [[#1244], [#1261]]
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue` remaining unusable after a transient
+    initialization failure.  Later calls now retry initialization, so the same
+    queue instance can recover when the database becomes available again.
+    [[#1268], [#1271]]
+
+
 Version 2.3.11
 --------------
 
@@ -2680,6 +2930,44 @@ Released on June 25, 2026.
 [#756]: https://github.com/fedify-dev/fedify/pull/756
 
 
+Version 2.2.17
+--------------
+
+Released on October 9, 2026.
+
+### @fedify/fedify
+
+ -  Fixed signature verification throwing an exception when a remote actor
+    supplied a malformed JSON-LD context or its context could not be fetched.
+    These requesters are now treated as unverifiable.
+    [[#1267], [#1270]]
+
+### @fedify/cfworkers
+
+ -  Fixed npm refusing to install `@fedify/cfworkers` alongside
+    `@cloudflare/workers-types` 5.x, which recent versions of Wrangler
+    require, unless `--legacy-peer-deps` or an override was used.  The peer
+    dependency on `@cloudflare/workers-types` now accepts both 4.x and 5.x,
+    so you can drop such workarounds.
+    [[#1255], [#1260]]
+
+### @fedify/express
+
+ -  Fixed asynchronous `contextDataFactory` and `federation.fetch()` failures
+    being left as unhandled rejections in the Express integration.  Errors
+    that occur before Fedify passes the request to the next middleware now
+    reach Express error-handling middleware, so applications can send their
+    usual error response.
+    [[#1244], [#1261]]
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue` remaining unusable after a transient
+    initialization failure.  Later calls now retry initialization, so the same
+    queue instance can recover when the database becomes available again.
+    [[#1268], [#1271]]
+
+
 Version 2.2.16
 --------------
 
@@ -3638,6 +3926,44 @@ Released on April 28, 2026.
 [#706]: https://github.com/fedify-dev/fedify/issues/706
 [#715]: https://github.com/fedify-dev/fedify/pull/715
 [#722]: https://github.com/fedify-dev/fedify/pull/722
+
+
+Version 2.1.28
+--------------
+
+Released on October 9, 2026.
+
+### @fedify/fedify
+
+ -  Fixed signature verification throwing an exception when a remote actor
+    supplied a malformed JSON-LD context or its context could not be fetched.
+    These requesters are now treated as unverifiable.
+    [[#1267], [#1270]]
+
+### @fedify/cfworkers
+
+ -  Fixed npm refusing to install `@fedify/cfworkers` alongside
+    `@cloudflare/workers-types` 5.x, which recent versions of Wrangler
+    require, unless `--legacy-peer-deps` or an override was used.  The peer
+    dependency on `@cloudflare/workers-types` now accepts both 4.x and 5.x,
+    so you can drop such workarounds.
+    [[#1255], [#1260]]
+
+### @fedify/express
+
+ -  Fixed asynchronous `contextDataFactory` and `federation.fetch()` failures
+    being left as unhandled rejections in the Express integration.  Errors
+    that occur before Fedify passes the request to the next middleware now
+    reach Express error-handling middleware, so applications can send their
+    usual error response.
+    [[#1244], [#1261]]
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue` remaining unusable after a transient
+    initialization failure.  Later calls now retry initialization, so the same
+    queue instance can recover when the database becomes available again.
+    [[#1268], [#1271]]
 
 
 Version 2.1.27
@@ -4739,6 +5065,41 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.32
+--------------
+
+Released on October 9, 2026.
+
+### @fedify/fedify
+
+ -  Fixed signature verification throwing an exception when a remote actor
+    supplied a malformed JSON-LD context or its context could not be fetched.
+    These requesters are now treated as unverifiable.  [[#1267], [#1270]]
+
+### @fedify/cfworkers
+
+ -  Fixed npm refusing to install `@fedify/cfworkers` alongside
+    `@cloudflare/workers-types` 5.x, which recent versions of Wrangler
+    require, unless `--legacy-peer-deps` or an override was used.  The peer
+    dependency on `@cloudflare/workers-types` now accepts both 4.x and 5.x,
+    so you can drop such workarounds.  [[#1255], [#1260]]
+
+### @fedify/express
+
+ -  Fixed asynchronous `contextDataFactory` and `federation.fetch()` failures
+    being left as unhandled rejections in the Express integration.  Errors
+    that occur before Fedify passes the request to the next middleware now
+    reach Express error-handling middleware, so applications can send their
+    usual error response.  [[#1244], [#1261]]
+
+### @fedify/postgres
+
+ -  Fixed `PostgresMessageQueue` remaining unusable after a transient
+    initialization failure.  Later calls now retry initialization, so the same
+    queue instance can recover when the database becomes available again.
+    [[#1268], [#1271]]
 
 
 Version 2.0.31

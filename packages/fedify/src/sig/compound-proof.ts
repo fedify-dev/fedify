@@ -11,10 +11,13 @@ import {
 } from "./portable-key-id.ts";
 import {
   classifyFep2277CoreType,
+  type PreparedPortableObjectProofPolicy,
+  preparePortableObjectProofPolicy,
   verifyMapLocalProof,
   type VerifyPortableObjectProofFailureReason,
   type VerifyPortableObjectProofOptions,
   verifyPortableObjectProofPolicy,
+  verifyPreparedPortableObjectProofPolicy,
   type VerifyProofOptions,
 } from "./proof.ts";
 
@@ -99,7 +102,10 @@ export type CompoundProofVerificationFailureReason =
     readonly type: "missingContext";
   }
   | {
-    /** The direct proof is malformed, unsupported, or invalid. */
+    /**
+     * The direct proof is malformed, unsupported, invalid, or left unverified
+     * because the portable-object policy rejects its map.
+     */
     readonly type: "invalidProof";
   };
 
@@ -926,6 +932,8 @@ export async function verifyCompoundProofDocuments(
 async function verifyDiscoveredProofDocuments(
   discovered: Extract<CompoundProofDiscoveryResult, { status: "ok" }>,
   options: VerifyProofOptions,
+  rejectedPolicies: ReadonlyMap<string, CompoundPortableObjectFailureReason> =
+    new Map(),
 ): Promise<readonly CompoundProofDocumentVerification[]> {
   const documents = await Promise.all(
     discovered.documents.map(async (document) => {
@@ -964,8 +972,15 @@ async function verifyDiscoveredProofDocuments(
           },
         },
         "objectIntegrity",
-        (observation) =>
-          verifyMapLocalProof(
+        async (observation) => {
+          const reason = rejectedPolicies.get(document.path);
+          if (reason != null) {
+            if (observation.attempt != null) {
+              observation.attempt.reason = { type: "proofPolicy", reason };
+            }
+            return null;
+          }
+          return await verifyMapLocalProof(
             document.securedDocument,
             {
               ...options,
@@ -973,7 +988,8 @@ async function verifyDiscoveredProofDocuments(
                 ? undefined
                 : observation,
             },
-          ),
+          );
+        },
         (key) => key != null,
       );
       return key == null
@@ -1002,33 +1018,71 @@ export async function verifyCompoundPortableObjectProofs(
   const discovered = discoverCompoundProofDocuments(json, limits);
   if (discovered.status !== "ok") return discovered;
 
-  const proofs = await verifyDiscoveredProofDocuments(discovered, options);
+  const collected = collectPortableObjects(discovered.snapshot);
+  const objectByPath = new Map(
+    collected.map((object) => [object.path, object]),
+  );
+  // Unsigned maps under the publicKey or assertionMethod of a portable map
+  // may be the keys of a portable actor, e.g., its gateway keys, whose IDs
+  // are compatible identifiers, or the keys of an FEP-ae97 client, whose IDs
+  // are ap: URIs.  They are decided after their parents:
+  const isKeyCandidate = (object: CompoundPortableObject) =>
+    object.keyOf != null && !Object.hasOwn(object.document, "proof");
+  type PreparedPolicy =
+    | PreparedPortableObjectProofPolicy
+    | {
+      readonly prepared: false;
+      readonly reason: CompoundPortableObjectFailureReason;
+    };
+  const prepareObject = async (
+    object: CompoundPortableObject,
+  ): Promise<PreparedPolicy> => {
+    if (object.depth > 0 && !Object.hasOwn(object.document, "@context")) {
+      return { prepared: false, reason: { type: "missingContext" } };
+    }
+    try {
+      const policy = await preparePortableObjectProofPolicy(
+        object.document,
+        options,
+      );
+      return policy.prepared
+        ? policy
+        : { prepared: false, reason: policy.result.reason };
+    } catch {
+      return { prepared: false, reason: { type: "invalidPortableObject" } };
+    }
+  };
+  // Prepare policy once per ordinary portable map before any key work.
+  const preparedByPath = new Map(
+    await Promise.all(
+      collected.filter((object) => !isKeyCandidate(object)).map(
+        async (object) => [object.path, await prepareObject(object)] as const,
+      ),
+    ),
+  );
+  const rejectedPolicies = new Map(
+    [...preparedByPath].flatMap(([path, prepared]) =>
+      prepared.prepared ? [] : [[path, prepared.reason] as const]
+    ),
+  );
+  const proofs = await verifyDiscoveredProofDocuments(
+    discovered,
+    options,
+    rejectedPolicies,
+  );
   const proofByPath = new Map(proofs.map((proof) => [proof.path, proof]));
   const verifyPortableObject = async (
     object: CompoundPortableObject,
   ): Promise<CompoundPortableObjectVerification> => {
-    const metadata = {
-      path: object.path,
-      id: object.id,
-      depth: object.depth,
-    };
-    if (
-      object.depth > 0 && !Object.hasOwn(object.document, "@context")
-    ) {
-      return Object.freeze({
-        ...metadata,
-        verified: false as const,
-        reason: { type: "missingContext" as const },
-      });
-    }
-    const proof = proofByPath.get(object.path);
-    const key = proof?.verified === true ? proof.key : null;
+    const metadata = { path: object.path, id: object.id, depth: object.depth };
     try {
-      const policy = await verifyPortableObjectProofPolicy(
-        object.document,
-        key,
-        options,
-      );
+      const prepared = preparedByPath.get(object.path) ??
+        await prepareObject(object);
+      const proof = proofByPath.get(object.path);
+      const key = proof?.verified === true ? proof.key : null;
+      const policy = prepared.prepared
+        ? verifyPreparedPortableObjectProofPolicy(prepared, key)
+        : { verified: false as const, reason: prepared.reason };
       return policy.verified
         ? Object.freeze({
           ...metadata,
@@ -1049,16 +1103,6 @@ export async function verifyCompoundPortableObjectProofs(
       });
     }
   };
-  const collected = collectPortableObjects(discovered.snapshot);
-  const objectByPath = new Map(
-    collected.map((object) => [object.path, object]),
-  );
-  // Unsigned maps under the publicKey or assertionMethod of a portable map
-  // may be the keys of a portable actor, e.g., its gateway keys, whose IDs
-  // are compatible identifiers, or the keys of an FEP-ae97 client, whose IDs
-  // are ap: URIs.  They are decided after their parents:
-  const isKeyCandidate = (object: CompoundPortableObject) =>
-    object.keyOf != null && !Object.hasOwn(object.document, "proof");
   const results = new Map<string, CompoundPortableObjectVerification>();
   for (
     const result of await Promise.all(

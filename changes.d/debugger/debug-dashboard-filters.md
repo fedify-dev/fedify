@@ -1,3 +1,8 @@
+---
+links:
+  '#1204': https://github.com/fedify-dev/fedify/pull/1204
+  '#896': https://github.com/fedify-dev/fedify/issues/896
+---
  -  Added filtering controls to the debug dashboard.  The traces list can
     now be narrowed down by activity type, and a trace's log table can be
     narrowed down by category, level, or a free-text search of the message.

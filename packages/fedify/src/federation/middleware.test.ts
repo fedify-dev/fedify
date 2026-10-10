@@ -15,7 +15,12 @@ import {
   Person,
 } from "@fedify/vocab";
 import { FetchError, getDocumentLoader, UrlError } from "@fedify/vocab-runtime";
-import { configure, type LogRecord, reset } from "@logtape/logtape";
+import {
+  configure,
+  type LogRecord,
+  reset,
+  withContext,
+} from "@logtape/logtape";
 import { metrics, SpanStatusCode } from "@opentelemetry/api";
 import {
   DataPointType,
@@ -42,6 +47,7 @@ import {
   strictEqual,
   throws,
 } from "node:assert/strict";
+import { AsyncLocalStorage } from "node:async_hooks";
 import dns from "node:dns/promises";
 import createFixture from "../../../fixture/src/fixtures/example.com/create.json" with {
   type: "json",
@@ -8426,6 +8432,115 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
 
   fetchMock.hardReset();
 });
+
+test(
+  "FederationImpl.processQueuedTask() aligns the LogTape context with " +
+    "the delivery span inside the outbox worker",
+  async () => {
+    await withLogtapeLock(async () => {
+      fetchMock.spyGlobal();
+      fetchMock.post("https://example.com/inbox-queue-failing", {
+        status: 500,
+        body: "Internal Server Error",
+      });
+
+      const records: LogRecord[] = [];
+      await reset();
+      try {
+        await configure({
+          sinks: { buffer: (record: LogRecord) => records.push(record) },
+          filters: {},
+          loggers: [
+            { category: [], sinks: ["buffer"], lowestLevel: "debug" },
+            { category: ["logtape", "meta"], sinks: [] },
+          ],
+          contextLocalStorage: new AsyncLocalStorage(),
+        });
+
+        const [tracerProvider, exporter] = createTestTracerProvider();
+        const queuedMessages: Message[] = [];
+        const queue: MessageQueue = {
+          enqueue(message, _options) {
+            queuedMessages.push(message);
+            return Promise.resolve();
+          },
+          listen(_handler, _options) {
+            return Promise.resolve();
+          },
+        };
+        const federation = new FederationImpl<void>({
+          kv: new MemoryKvStore(),
+          queue,
+          allowPrivateAddress: true,
+          tracerProvider,
+        });
+
+        const message = {
+          type: "outbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          keys: [],
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: "https://example.com/activity/queue-failing",
+            actor: "https://example.com/users/alice",
+            object: { type: "Note", content: "test" },
+          },
+          activityType: "https://www.w3.org/ns/activitystreams#Create",
+          inbox: "https://example.com/inbox-queue-failing",
+          sharedInbox: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          headers: {},
+          traceContext: {},
+        } satisfies OutboxMessage;
+
+        await withContext({ batchId: "outer-batch" }, async () => {
+          await federation.processQueuedTask(undefined, message);
+        });
+
+        assertEquals(queuedMessages.length, 1);
+
+        const deliverySpan = exporter.getSpan("activitypub.send_activity");
+        assert(deliverySpan != null);
+        const deliveryCtx = deliverySpan.spanContext();
+
+        const workerSpan = exporter.getSpan("activitypub.outbox");
+        assert(workerSpan != null);
+        const workerCtx = workerSpan.spanContext();
+
+        assertNotEquals(deliveryCtx.spanId, workerCtx.spanId);
+
+        const deliveryLog = records.find((r) =>
+          String(r.rawMessage).startsWith(
+            "Failed to send activity {activityId} to {inbox} ({status}",
+          )
+        );
+        assert(deliveryLog != null);
+        assertEquals(deliveryLog.properties.spanId, deliveryCtx.spanId);
+        assertEquals(deliveryLog.properties.traceId, deliveryCtx.traceId);
+        assertEquals(deliveryLog.properties.messageId, message.id);
+        assertEquals(deliveryLog.properties.batchId, "outer-batch");
+
+        const retryLog = records.find((r) =>
+          String(r.rawMessage).startsWith(
+            "Failed to send activity {activityId} to {inbox} (attempt",
+          )
+        );
+        assert(retryLog != null);
+        assertEquals(retryLog.properties.spanId, workerCtx.spanId);
+        assertEquals(retryLog.properties.traceId, workerCtx.traceId);
+        assertNotEquals(retryLog.properties.spanId, deliveryCtx.spanId);
+        assertEquals(retryLog.properties.messageId, message.id);
+        assertEquals(retryLog.properties.batchId, "outer-batch");
+      } finally {
+        await reset();
+        fetchMock.hardReset();
+      }
+    });
+  },
+);
 
 test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
   fetchMock.spyGlobal();

@@ -14,7 +14,12 @@ import type {
   Federation,
   FederationFetchOptions,
 } from "@fedify/fedify/federation";
-import type { Handle, RequestEvent } from "@sveltejs/kit";
+import type { RequestEvent } from "@sveltejs/kit";
+import type { sequence } from "@sveltejs/kit/hooks";
+
+// Handle moved from @sveltejs/kit to @sveltejs/kit/hooks in SvelteKit 3.
+// sequence has the same public location in both supported major versions.
+type Handle = ReturnType<typeof sequence>;
 
 /**
  * Create a SvelteKit hook handler to integrate with the {@link Federation}

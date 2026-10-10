@@ -778,6 +778,102 @@ parsing these fields does not verify the credit or authorize an activity.
 
 [FEP-22cd]: https://w3id.org/fep/22cd
 
+### License metadata
+
+`Object.licenses` and `Link.licenses` hold the copyright licenses of a piece of
+content as URIs, and actors have a `preferredLicense` for the new objects they
+create.  Both are defined by [FEP-6757], which recommends a `license` on
+content objects such as `Note`, `Article`, `Image`, `Video`, and `Audio`.
+
+> [!WARNING]
+> This implements [FEP-6757].
+> The proposal may change, and few other implementations read these properties
+> yet.  A license is a claim made by the publisher; Fedify does not enforce it.
+
+Identify a license by its URI, not by its name or SPDX short identifier.
+Prefer the canonical URIs of the [Creative Commons licenses], CC0
+(<https://creativecommons.org/publicdomain/zero/1.0/>), the Public Domain Mark
+(<https://creativecommons.org/publicdomain/mark/1.0/>), or the
+[Rights Statements] such as <https://rightsstatements.org/vocab/InC/1.0/>
+(“in copyright”):
+
+~~~~ typescript twoslash
+import { Image, Note } from "@fedify/vocab";
+
+const note = new Note({
+  id: new URL("https://example.com/notes/1"),
+  content: "Hello, world!",
+  licenses: [new URL("https://creativecommons.org/licenses/by/4.0/")],
+  attachments: [
+    new Image({
+      url: new URL("https://example.com/media/1.jpg"),
+      mediaType: "image/jpeg",
+      licenses: [new URL("https://creativecommons.org/publicdomain/mark/1.0/")],
+    }),
+  ],
+});
+~~~~
+
+Multiple licenses are alternatives that a consumer may choose from, so their
+order has no meaning.  Fedify adds the preloaded `https://w3id.org/fep/6757`
+context when license metadata needs it; objects without it keep their existing
+output.  If you supply an explicit context to
+`toJsonLd({ format: "compact", context: ... })`, include the FEP context to get
+the `license` and `preferredLicense` term names.
+
+When reading, Fedify also accepts the `https://schema.org/license` and
+`http://creativecommons.org/ns#license` properties that the FEP allows as
+alternatives, but only when the object has no `license`; the sets are never
+merged.  The `http://schema.org/license` property is not read, because
+PeerTube uses it for licence descriptions that are not URIs.  It writes only
+`license`.  Values that are not absolute URIs, such as `"CC-BY-4.0"`, are
+skipped.  Fedify never fetches a license URI.
+
+A license applies only to the object that carries it.  A license on an actor
+covers its profile, not the posts it authored; a license on an activity or a
+collection does not cover the activity's object or the collection's items.
+
+#### Missing licenses
+
+An empty `licenses` array means the object carries no license metadata, and
+Fedify does not fill in a default.  [FEP-6757] suggests that consumers treat
+such content as “all rights reserved,” that is, as if its license were
+<https://rightsstatements.org/vocab/InC/1.0/>.  Apply that policy where you
+decide what to do with the content rather than storing it as the object's
+license:
+
+~~~~ typescript twoslash
+import type { Note } from "@fedify/vocab";
+declare const note: Note;
+// ---cut-before---
+const allRightsReserved = new URL("https://rightsstatements.org/vocab/InC/1.0/");
+const licenses = note.licenses.length > 0 ? note.licenses : [allRightsReserved];
+~~~~
+
+#### Preferred license of an actor
+
+`preferredLicense` tells a client which license to select by default when the
+actor creates a new object; the client should still let the user choose
+another:
+
+~~~~ typescript twoslash
+import { Note, Person } from "@fedify/vocab";
+declare const actor: Person;
+// ---cut-before---
+const note = new Note({
+  attribution: actor.id,
+  content: "Hello, world!",
+  licenses: actor.preferredLicense == null ? [] : [actor.preferredLicense],
+});
+~~~~
+
+It is not a fallback: an object without its own `license` is not licensed under
+its author's `preferredLicense`.
+
+[FEP-6757]: https://w3id.org/fep/6757
+[Creative Commons licenses]: https://creativecommons.org/licenses/
+[Rights Statements]: https://rightsstatements.org/page/1.0/
+
 ### `Question`: Polls
 
 The `Question` type is used for polls.  In Mastodon, the question body comes

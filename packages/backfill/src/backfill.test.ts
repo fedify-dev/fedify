@@ -1,7 +1,15 @@
 import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
 import test, { describe } from "node:test";
 import { backfill, type BackfillContext, MaxRequestsExceeded } from "./mod.ts";
-import { Announce, Collection, Create, Note } from "@fedify/vocab";
+import {
+  Announce,
+  Collection,
+  CollectionPage,
+  Create,
+  Note,
+  OrderedCollection,
+  OrderedCollectionPage,
+} from "@fedify/vocab";
 
 async function collect(
   context: BackfillContext,
@@ -1770,5 +1778,417 @@ describe("backfill", () => {
     });
 
     deepStrictEqual(iterations, [0, 1]);
+  });
+});
+
+describe("collection pagination", () => {
+  const iri = (name: string) => new URL(`https://example.com/${name}`);
+
+  for (const ordered of [false, true]) {
+    for (const replies of [false, true]) {
+      for (const embedded of [false, true]) {
+        test(`${ordered ? "ordered" : "unordered"} ${replies ? "replies" : "context"} with ${embedded ? "embedded" : "linked"} pages`, async () => {
+          const CollectionType = ordered ? OrderedCollection : Collection;
+          const PageType = ordered ? OrderedCollectionPage : CollectionPage;
+          const a = new Note({ id: iri("a") });
+          const b = new Note({ id: iri("b") });
+          const second = new PageType({ id: iri("page-2"), items: [b] });
+          const first = new PageType({
+            id: iri("page-1"),
+            items: [a],
+            next: embedded ? second : second.id,
+          });
+          const collection = new CollectionType({
+            id: iri("thread"),
+            first: embedded ? first : first.id,
+          });
+          const seed = new Note({
+            id: iri("seed"),
+            contexts: replies ? [] : [iri("thread")],
+            replies: replies ? collection : null,
+          });
+          const documents = new Map<string, Collection>([
+            [iri("thread").href, collection],
+            [iri("page-1").href, first],
+            [iri("page-2").href, second],
+          ]);
+          const calls: string[] = [];
+          const context: BackfillContext = {
+            documentLoader: (url) => {
+              calls.push(url.href);
+              return Promise.resolve(documents.get(url.href) ?? null);
+            },
+          };
+          const items = await collect(context, seed, {
+            strategies: replies ? ["reply-tree"] : ["context-auto"],
+            maxDepth: 1,
+            maxRequests: embedded ? (replies ? 0 : 1) : 3,
+          });
+          deepStrictEqual(items.map((item) => item.id?.href), [
+            a.id?.href,
+            b.id?.href,
+          ]);
+          deepStrictEqual(
+            items.map((item) => item.depth),
+            replies ? [1, 1] : [0, 0],
+          );
+          strictEqual(
+            calls.length,
+            embedded ? (replies ? 0 : 1) : (replies ? 2 : 3),
+          );
+        });
+      }
+    }
+  }
+
+  test("starting page follows next and stops before loading a repeated page", async () => {
+    const first = new OrderedCollectionPage({
+      id: iri("page-1"),
+      items: [new Note({ id: iri("a") })],
+      next: iri("page-2"),
+    });
+    const second = new OrderedCollectionPage({
+      id: iri("page-2"),
+      items: [new Note({ id: iri("b") })],
+      next: first.id,
+    });
+    const calls: string[] = [];
+    const items = await collect({
+      documentLoader: (url) => {
+        calls.push(url.href);
+        return Promise.resolve(url.href === first.id?.href ? first : second);
+      },
+    }, new Note({ contexts: [first.id!] }));
+    deepStrictEqual(items.map((item) => item.id?.href), [
+      iri("a").href,
+      iri("b").href,
+    ]);
+    deepStrictEqual(calls, [first.id?.href, second.id?.href]);
+  });
+
+  for (const limit of ["maxItems", "maxRequests"] as const) {
+    test(`${limit} stops between pages`, async () => {
+      const first = new CollectionPage({
+        id: iri("page-1"),
+        items: [new Note({ id: iri("a") })],
+        next: iri("page-2"),
+      });
+      const calls: string[] = [];
+      const items = await collect(
+        {
+          documentLoader: (url) => {
+            calls.push(url.href);
+            return Promise.resolve(first);
+          },
+        },
+        new Note({
+          contexts: [first.id!],
+          replies: new Collection({
+            items: [new Note({ id: iri("fallback") })],
+          }),
+        }),
+        { [limit]: 1, strategies: ["context-auto", "reply-tree"] },
+      );
+      deepStrictEqual(items.map((item) => item.id?.href), [iri("a").href]);
+      deepStrictEqual(calls, [first.id?.href]);
+    });
+  }
+
+  for (const failure of ["missing", "throw", "invalid"] as const) {
+    test(`${failure} page retains items and allows the next strategy`, async () => {
+      const seed = new Note({
+        contexts: [iri("thread")],
+        replies: new Collection({ items: [new Note({ id: iri("reply") })] }),
+      });
+      const first = new CollectionPage({
+        items: [new Note({ id: iri("a") })],
+        next: iri("broken"),
+      });
+      const items = await collect(
+        {
+          documentLoader: (url) => {
+            if (url.href === iri("thread").href) {
+              return Promise.resolve(new Collection({ first }));
+            }
+            if (failure === "throw") throw new Error("page failed");
+            return Promise.resolve(failure === "missing" ? null : new Note({}));
+          },
+        },
+        seed,
+        { strategies: ["context-auto", "reply-tree"] },
+      );
+      deepStrictEqual(items.map((item) => item.id?.href), [
+        iri("a").href,
+        iri("reply").href,
+      ]);
+    });
+  }
+
+  test("inline items precede page items", async () => {
+    const items = await collect({
+      documentLoader: () =>
+        Promise.resolve(
+          new Collection({
+            items: [new Note({ id: iri("inline") })],
+            first: new CollectionPage({
+              items: [new Note({ id: iri("paged") })],
+            }),
+          }),
+        ),
+    }, new Note({ contexts: [iri("thread")] }));
+    deepStrictEqual(items.map((item) => item.id?.href), [
+      iri("inline").href,
+      iri("paged").href,
+    ]);
+  });
+
+  test("cancellation during a page load prevents later strategies", async () => {
+    const controller = new AbortController();
+    const reason = new Error("cancelled");
+    const seed = new Note({
+      contexts: [iri("thread")],
+      replies: new Collection({ items: [new Note({ id: iri("fallback") })] }),
+    });
+    await rejects(
+      collect(
+        {
+          documentLoader: (url, options) => {
+            strictEqual(options?.signal, controller.signal);
+            if (url.href === iri("thread").href) {
+              return Promise.resolve(new Collection({ first: iri("page") }));
+            }
+            controller.abort(reason);
+            throw reason;
+          },
+        },
+        seed,
+        {
+          signal: controller.signal,
+          strategies: ["context-auto", "reply-tree"],
+        },
+      ),
+      (error) => error === reason,
+    );
+  });
+});
+
+test("page loads share the cache and interval across strategies", async () => {
+  const iri = (name: string) => new URL(`https://example.com/${name}`);
+  const collection = new Collection({ first: iri("page") });
+  const page = new CollectionPage({ items: [new Note({ id: iri("a") })] });
+  const seed = new Note({
+    contexts: [iri("thread")],
+    replies: new Collection({ first: iri("page") }),
+  });
+  const calls: string[] = [];
+  const intervals: number[] = [];
+  const items = await collect(
+    {
+      documentLoader: (url) => {
+        calls.push(url.href);
+        return Promise.resolve(
+          url.href === iri("thread").href ? collection : page,
+        );
+      },
+    },
+    seed,
+    {
+      strategies: ["context-auto", "reply-tree"],
+      maxRequests: 2,
+      interval: (count) => {
+        intervals.push(count);
+        return { milliseconds: 0 };
+      },
+    },
+  );
+  deepStrictEqual(items.map((item) => item.id?.href), [iri("a").href]);
+  deepStrictEqual(calls, [iri("thread").href, iri("page").href]);
+  deepStrictEqual(intervals, [0, 1]);
+});
+
+test("embedded pages without IDs follow next without loader calls", async () => {
+  const a = new Note({ id: new URL("https://example.com/a") });
+  const b = new Note({ id: new URL("https://example.com/b") });
+  const seed = new Note({
+    replies: new Collection({
+      first: new CollectionPage({
+        items: [a],
+        next: new CollectionPage({ items: [b] }),
+      }),
+    }),
+  });
+  const items = await collect(
+    {
+      documentLoader: () => {
+        throw new Error("embedded pages must not be fetched");
+      },
+    },
+    seed,
+    { strategies: ["reply-tree"], maxRequests: 0, maxDepth: 1 },
+  );
+  deepStrictEqual(items.map((item) => item.id?.href), [a.id?.href, b.id?.href]);
+});
+
+describe("context loader failures", () => {
+  const contextId = new URL("https://example.com/thread");
+  const parent = new Note({ id: new URL("https://example.com/parent") });
+
+  for (const synchronous of [false, true]) {
+    const failure = synchronous ? "synchronous throw" : "promise rejection";
+    const fail = () => {
+      const error = new Error("Context collection unavailable");
+      if (synchronous) throw error;
+      return Promise.reject(error);
+    };
+
+    test(`${failure} allows reply-tree to yield an embedded parent`, async () => {
+      const seed = new Note({ contexts: [contextId], replyTarget: parent });
+      let requests = 0;
+      const items = await collect(
+        {
+          documentLoader: () => {
+            requests++;
+            return fail();
+          },
+        },
+        seed,
+        { strategies: ["context-auto", "reply-tree"], maxRequests: 1 },
+      );
+      deepStrictEqual(items.map((item) => item.object), [parent]);
+      strictEqual(items[0].strategy, "reply-tree");
+      strictEqual(requests, 1);
+    });
+
+    test(`${failure} finishes the default strategy without items`, async () => {
+      const seed = new Note({ contexts: [contextId] });
+      deepStrictEqual(await collect({ documentLoader: fail }, seed), []);
+    });
+
+    test(`${failure} consumes the request budget`, async () => {
+      const seed = new Note({ contexts: [contextId], replyTarget: parent.id });
+      const requests: string[] = [];
+      const items = await collect(
+        {
+          documentLoader: (url) => {
+            requests.push(url.href);
+            if (url.href === contextId.href) return fail();
+            return Promise.resolve(parent);
+          },
+        },
+        seed,
+        { strategies: ["context-auto", "reply-tree"], maxRequests: 1 },
+      );
+      deepStrictEqual(items, []);
+      deepStrictEqual(requests, [contextId.href]);
+    });
+
+    test(`${failure} propagates the cancellation reason`, async () => {
+      const controller = new AbortController();
+      const reason = new Error("Stop backfill");
+      const seed = new Note({ contexts: [contextId], replyTarget: parent });
+      const yielded: unknown[] = [];
+      await rejects(async () => {
+        for await (
+          const item of backfill(
+            {
+              documentLoader: (_url, options) => {
+                strictEqual(options?.signal, controller.signal);
+                controller.abort(reason);
+                return fail();
+              },
+            },
+            seed,
+            {
+              strategies: ["context-auto", "reply-tree"],
+              signal: controller.signal,
+            },
+          )
+        ) yielded.push(item);
+      }, (error) => error === reason);
+      deepStrictEqual(yielded, []);
+    });
+  }
+
+  test("a failed context load is not cached for later reply-tree loads", async () => {
+    const seed = new Note({ contexts: [contextId], replyTarget: contextId });
+    let requests = 0;
+    const items = await collect(
+      {
+        documentLoader: (url) => {
+          strictEqual(url.href, contextId.href);
+          requests++;
+          if (requests === 1) {
+            return Promise.reject(
+              new Error("Temporary failure"),
+            );
+          }
+          return Promise.resolve(parent);
+        },
+      },
+      seed,
+      { strategies: ["context-auto", "reply-tree"], maxRequests: 2 },
+    );
+    deepStrictEqual(items.map((item) => item.object.id?.href), [
+      parent.id?.href,
+    ]);
+    strictEqual(requests, 2);
+  });
+
+  test("an exhausted budget still allows embedded reply-tree data", async () => {
+    const seed = new Note({ contexts: [contextId], replyTarget: parent });
+    const items = await collect(
+      {
+        documentLoader: () => {
+          throw new Error("No requests allowed");
+        },
+      },
+      seed,
+      { strategies: ["context-auto", "reply-tree"], maxRequests: 0 },
+    );
+    deepStrictEqual(items.map((item) => item.object), [parent]);
+  });
+
+  test("interval callback errors propagate before the loader is called", async () => {
+    const reason = new Error("Invalid interval configuration");
+    let requests = 0;
+    const seed = new Note({ contexts: [contextId], replyTarget: parent });
+    await rejects(
+      collect(
+        {
+          documentLoader: () => {
+            requests++;
+            return Promise.resolve(null);
+          },
+        },
+        seed,
+        {
+          strategies: ["context-auto", "reply-tree"],
+          interval: () => {
+            throw reason;
+          },
+        },
+      ),
+      (error) => error === reason,
+    );
+    strictEqual(requests, 0);
+  });
+
+  test("invalid interval strings still propagate", async () => {
+    let requests = 0;
+    const seed = new Note({ contexts: [contextId], replyTarget: parent });
+    await rejects(collect(
+      {
+        documentLoader: () => {
+          requests++;
+          return Promise.resolve(null);
+        },
+      },
+      seed,
+      {
+        strategies: ["context-auto", "reply-tree"],
+        interval: "not a duration",
+      },
+    ));
+    strictEqual(requests, 0);
   });
 });
