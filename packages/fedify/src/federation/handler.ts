@@ -2273,6 +2273,13 @@ async function handleInboxInternal<TContextData>(
         ),
       );
     }
+    // Only the proof attempt that produced the current activity can
+    // authenticate it. The earlier portable attempt discarded its parse.
+    // TODO: Carry this binding in shared inbox principals:
+    // https://github.com/fedify-dev/fedify/issues/1290
+    let featureRequestProofAttempts = ldSigVerified
+      ? []
+      : observation.verification.attempts;
     const requiresOwnerProof = ldSigVerified && !skipSignatureVerification &&
       (isPortableActivity(activity.clone({ actor: featureRequestActor })) ||
         !hasFeatureRequestSignature(
@@ -2285,6 +2292,7 @@ async function handleInboxInternal<TContextData>(
       // must not bypass the portable proof policy. Verify the original
       // document, never the inferred clone.
       try {
+        const attemptStart = observation.verification.attempts.length;
         const verifiedActivity = await verifyObject(Activity, jsonWithoutSig, {
           ...signatureObservation,
           // Keep parsing and proof verification on the same context snapshot.
@@ -2309,6 +2317,9 @@ async function handleInboxInternal<TContextData>(
           // TODO: Bind shared principals to their verified activity view:
           // https://github.com/fedify-dev/fedify/issues/1290
           activity = verifiedActivity;
+          featureRequestProofAttempts = observation.verification.attempts.slice(
+            attemptStart,
+          );
           featureRequestActor =
             await resolveFeatureRequestActor(ctx, verifiedActivity) ??
               undefined;
@@ -2326,7 +2337,7 @@ async function handleInboxInternal<TContextData>(
       }
     }
     proofVerified = hasFeatureRequestSignature(
-      observation.verification.attempts,
+      featureRequestProofAttempts,
       featureRequestActor,
       "objectIntegrity",
     );

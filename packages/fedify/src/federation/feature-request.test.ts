@@ -8,6 +8,7 @@ import {
 } from "@fedify/vocab";
 import {
   type DocumentLoader,
+  exportDidKey,
   FetchError,
   getDocumentLoader,
   UrlError,
@@ -152,6 +153,9 @@ async function deliver(
     collectionDocumentUrl?: string;
     collectionLoader?: DocumentLoader;
     relayObject?: URL;
+    relayContextLoads?: number[];
+    proofKeyId?: URL;
+    uncoveredAttributionAt?: number;
     relayInstrument?: URL;
     replayedObject?: URL;
     request?: Activity;
@@ -182,9 +186,29 @@ async function deliver(
       return {
         document: {
           "@context": {
+            ...(options.proofKeyId != null
+              ? {
+                request: {
+                  "@id": `ap+ef61://${
+                    options.proofKeyId.href.split("#")[0]
+                  }/requests/`,
+                  "@prefix": true,
+                },
+              }
+              : {}),
+            ...(options.proofKeyId != null &&
+                contextLoads === options.uncoveredAttributionAt
+              ? {
+                object: {
+                  "@id": "https://www.w3.org/ns/activitystreams#attributedTo",
+                  "@type": "@id",
+                },
+              }
+              : {}),
             receiver: new URL(
               ".",
-              contextLoads % 2 === 1 && options.relayObject != null
+              (options.relayContextLoads?.includes(contextLoads) ??
+                  contextLoads % 2 === 1) && options.relayObject != null
                 ? options.relayObject
                 : !collectionAvailable && options.replayedObject != null
                 ? options.replayedObject
@@ -192,7 +216,8 @@ async function deliver(
             ).href,
             featured: new URL(
               ".",
-              contextLoads % 2 === 1 && options.relayInstrument != null
+              (options.relayContextLoads?.includes(contextLoads) ??
+                  contextLoads % 2 === 1) && options.relayInstrument != null
                 ? options.relayInstrument
                 : !collectionAvailable && options.replayedInstrument != null
                 ? options.replayedInstrument
@@ -263,6 +288,16 @@ async function deliver(
       ? Promise.resolve({
         document: {
           "@context": {
+            ...(options.proofKeyId != null
+              ? {
+                request: {
+                  "@id": `ap+ef61://${
+                    options.proofKeyId.href.split("#")[0]
+                  }/requests/`,
+                  "@prefix": true,
+                },
+              }
+              : {}),
             receiver: new URL(".", target).href,
             featured: new URL(".", collectionId).href,
           },
@@ -276,6 +311,16 @@ async function deliver(
       ? Promise.resolve({
         document: {
           "@context": {
+            ...(options.proofKeyId != null
+              ? {
+                request: {
+                  "@id": `ap+ef61://${
+                    options.proofKeyId.href.split("#")[0]
+                  }/requests/`,
+                  "@prefix": true,
+                },
+              }
+              : {}),
             receiver: new URL(".", options.relayObject ?? target).href,
             featured:
               new URL(".", options.relayInstrument ?? collectionId).href,
@@ -292,7 +337,7 @@ async function deliver(
       await (await signObject(
         activity,
         ed25519PrivateKey,
-        ed25519Multikey.id!,
+        options.proofKeyId ?? ed25519Multikey.id!,
         {
           contextLoader: changingRelay
             ? ownerContextLoader
@@ -970,3 +1015,33 @@ test("actorless FeatureRequest portable authentication requires the owner's DID 
     ),
   );
 });
+
+for (const queued of [false, true]) {
+  test(`actorless FeatureRequest rejects stale portable proof evidence (${queued ? "queued" : "direct"})`, async () => {
+    const did = await exportDidKey(ed25519Multikey.publicKey!);
+    const result = await deliver("mixed", {
+      queued,
+      proofKeyId: new URL(`${did}#${did.substring("did:key:".length)}`),
+      request: new FeatureRequest({
+        id: new URL(`ap://${encodeURIComponent(did)}/requests/1`),
+        object: target,
+        instrument: collectionId,
+      }),
+      relayObject: new URL("https://attacker.example/users/bob"),
+      // The discarded portable attempt verifies the owner's view; the
+      // authoritative retry adds an uncovered attribution and returns null.
+      // LDS normalization loads once; the discarded portable verification
+      // loads 12 times. The memoized owner-proof retry starts at load 14.
+      relayContextLoads: [1, 14],
+      uncoveredAttributionAt: 14,
+      collection: new FeaturedCollection({
+        id: collectionId,
+        attribution: new URL(`ap://${encodeURIComponent(did)}/actor`),
+      }),
+    });
+    assertEquals(result.response.status, 401);
+    assertEquals(result.received, []);
+    assertEquals(result.messages, []);
+  });
+}
+
