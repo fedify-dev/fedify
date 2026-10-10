@@ -200,6 +200,7 @@ async function deliver(
     skip?: boolean;
     reparsedInstrument?: URL;
     replayedInstrument?: URL;
+    onCollectionLookup?: () => void;
   } = {},
 ) {
   const collection = options.collection ?? new FeaturedCollection({
@@ -212,10 +213,11 @@ async function deliver(
     instrument: collectionId,
   });
   let collectionAvailable = true;
-  let collectionLookedUp = false;
+  let contextLoads = 0;
   const contextUrl = "https://example.com/changing-context";
   const contextLoader = async (url: string) => {
     if (url === contextUrl) {
+      contextLoads++;
       return {
         document: {
           "@context": {
@@ -223,7 +225,7 @@ async function deliver(
               ".",
               !collectionAvailable && options.replayedInstrument != null
                 ? options.replayedInstrument
-                : collectionLookedUp && options.reparsedInstrument != null
+                : contextLoads > 1 && options.reparsedInstrument != null
                 ? options.reparsedInstrument
                 : collectionId,
             ).href,
@@ -247,7 +249,7 @@ async function deliver(
       };
     }
     if (url === collectionId.href) {
-      collectionLookedUp = true;
+      options.onCollectionLookup?.();
       if (!collectionAvailable) throw new Error("Collection unavailable");
       return {
         document: await collection.toJsonLd(),
@@ -477,6 +479,16 @@ for (const authentication of ["http", "ld", "proof", "mixed"] as const) {
     assertEquals(result.messages[1].activity, result.body);
   });
 }
+
+test("actorless FeatureRequest does not fetch a collection before authentication", async () => {
+  let lookups = 0;
+  const result = await deliver("unsigned", {
+    onCollectionLookup: () => lookups++,
+  });
+  assertEquals(result.response.status, 401);
+  assertEquals(lookups, 0);
+  assertEquals(result.received, []);
+});
 
 test("actorless FeatureRequest requires an actual signature, not an empty proof set", async () => {
   const result = await deliver("unsigned");

@@ -2254,7 +2254,16 @@ async function handleInboxInternal<TContextData>(
   // TODO: Replace this type-specific authentication branch with shared inbox
   // principals: https://github.com/fedify-dev/fedify/issues/1290
   let featureRequestActor: URL | undefined;
-  if (activity instanceof FeatureRequest && activity.actorIds.length === 0) {
+  if (
+    activity instanceof FeatureRequest && activity.actorIds.length === 0 &&
+    (skipSignatureVerification || observation.verification.attempts.some(
+      (attempt) =>
+        attempt.subject.pointer === "" && attempt.status === "verified" &&
+        (attempt.mechanism === "linkedData" ||
+          attempt.mechanism === "objectIntegrity") &&
+        attempt.signatures.length > 0,
+    ))
+  ) {
     featureRequestActor = await resolveFeatureRequestActor(ctx, activity) ??
       undefined;
     if (featureRequestActor == null) {
@@ -2306,6 +2315,14 @@ async function handleInboxInternal<TContextData>(
       // successful parse is not authentication: fall back to HTTP signatures.
       activity = null;
     }
+  } else if (
+    activity instanceof FeatureRequest && activity.actorIds.length === 0
+  ) {
+    // An empty proof set only parses the document. Authenticate the HTTP
+    // request before dereferencing its instrument.
+    activity = null;
+    activityVerified = false;
+    proofVerified = false;
   }
   let httpSigKey: CryptographicKey | null = null;
   // Nonce verification is deferred until after actor/key ownership is checked
