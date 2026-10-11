@@ -43,9 +43,10 @@ export function integrateFederation<TContextData>(
           // When the `federation` object finds a request not acceptable
           // type-wise (i.e., a user-agent doesn't want JSON-LD), it will call
           // the `next` function provided by the Express framework to continue
-          // if any route is matched, and otherwise, it will return a 406 Not
+          // if the application can handle it, and otherwise return a 406 Not
           // Acceptable response:
           notAcceptable = true;
+          installNotAcceptableFallback(req, res);
           next();
           return new Response("Not acceptable", {
             status: 406,
@@ -57,7 +58,7 @@ export function integrateFederation<TContextData>(
         },
       });
 
-      if (notFound || (notAcceptable && req.route != null)) return;
+      if (notFound || notAcceptable) return;
       await setEResponse(res, response);
 
       next();
@@ -107,4 +108,102 @@ function setEResponse(res: EResponse, response: Response): Promise<void> {
       reader.read().then(read);
     });
   });
+}
+
+/**
+ * Waits for downstream handling to finish before replacing an unsent 404.
+ * A matched route can still fall through, and next() does not wait for an
+ * asynchronous handler. Already committed responses belong to the application.
+ */
+function installNotAcceptableFallback(req: ERequest, res: EResponse): void {
+  const end = res.end;
+  const json = res.json;
+  let pending = true;
+  let defaultNotFound = false;
+  const wrappedJson: typeof res.json = function (
+    this: EResponse,
+    body?: unknown,
+  ) {
+    // Nest's terminal NotFoundException is sent through the exception filter,
+    // not Express's finalhandler. Observe the object before send() serializes
+    // it (or omits it for HEAD). Custom controller/filter responses stay intact.
+    defaultNotFound = this.statusCode === 404 && isDefaultNotFound(req, body);
+    return json.call(this, body);
+  };
+  res.json = wrappedJson;
+  const wrapEnd = (end: typeof res.end): typeof res.end =>
+    function (
+      this: EResponse,
+      ...args: unknown[]
+    ) {
+      if (pending) {
+        Object.defineProperty(this, "end", {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: end,
+        });
+        if (this.json === wrappedJson) this.json = json;
+      }
+      if (
+        !pending || !defaultNotFound || this.headersSent ||
+        this.statusCode !== 404
+      ) {
+        pending = false;
+        return end.apply(this, args as Parameters<typeof end>);
+      }
+      pending = false;
+      const callback = args.find((arg) => typeof arg === "function") as
+        | (() => void)
+        | undefined;
+      const body = "Not acceptable";
+      this.statusCode = 406;
+      this.statusMessage = "Not Acceptable";
+      for (
+        const header of [
+          "Content-Encoding",
+          "Content-Language",
+          "Content-Range",
+          "ETag",
+          "Last-Modified",
+          "Transfer-Encoding",
+        ]
+      ) this.removeHeader(header);
+      this.setHeader("Content-Type", "text/plain; charset=utf-8");
+      this.setHeader("Content-Length", Buffer.byteLength(body));
+      this.vary("Accept");
+      return end.call(
+        this,
+        req.method === "HEAD" ? undefined : body,
+        "utf8",
+        callback,
+      );
+    };
+  // Run before downstream end wrappers can commit headers, while retaining
+  // their saved-function chain after the response has been classified.
+  let wrappedEnd = wrapEnd(end);
+  Object.defineProperty(res, "end", {
+    configurable: true,
+    enumerable: true,
+    get: () => wrappedEnd,
+    set: (value: typeof res.end) => {
+      wrappedEnd = wrapEnd(value);
+    },
+  });
+}
+
+/** A custom response copying Nest's exact default 404 is indistinguishable. */
+function isDefaultNotFound(req: ERequest, body: unknown): boolean {
+  if (
+    body == null || typeof body !== "object" || Object.keys(body).length !== 3
+  ) {
+    return false;
+  }
+  const error = body as {
+    statusCode?: unknown;
+    error?: unknown;
+    message?: unknown;
+  };
+  return error.statusCode === 404 && error.error === "Not Found" &&
+    error.message === `Cannot ${req.method} ${req.originalUrl}`;
 }

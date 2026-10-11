@@ -24,6 +24,8 @@ import {
   createRequestContext,
 } from "../testing/context.ts";
 import {
+  ed25519Multikey,
+  ed25519PrivateKey,
   rsaPrivateKey3,
   rsaPublicKey2,
   rsaPublicKey3,
@@ -3076,6 +3078,321 @@ test("handleInbox() - authentication bypass vulnerability", async () => {
 
   // If we reach here, the vulnerability is fixed - activities with mismatched
   // signatures are properly rejected before processing
+});
+
+test("handleInbox() rejects cross-origin activity IDs", async () => {
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const kv = new MemoryKvStore();
+  const inboxListeners = new InboxListenerSet<void>();
+  let idempotencyCalls = 0;
+  let listenerCalls = 0;
+  inboxListeners.add(Create, () => {
+    listenerCalls++;
+  });
+  const activity = new Create({
+    id: new URL("https://victim.example/activities/1"),
+    actor: rsaPublicKey3.ownerId!,
+    object: new Note({ content: "Forged" }),
+  });
+  const activityJson = await activity.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  });
+  const proofSigned = await signObject(
+    activity,
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    {
+      contextLoader: mockDocumentLoader,
+      documentLoader: mockDocumentLoader,
+    },
+  );
+  const requests = [
+    await signRequest(
+      new Request("https://local.example/inbox", {
+        method: "POST",
+        body: JSON.stringify(activityJson),
+      }),
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+    ),
+    new Request("https://local.example/inbox", {
+      method: "POST",
+      body: JSON.stringify(
+        await signJsonLd(
+          activityJson,
+          rsaPrivateKey3,
+          rsaPublicKey3.id!,
+          { contextLoader: mockDocumentLoader },
+        ),
+      ),
+    }),
+    new Request("https://local.example/inbox", {
+      method: "POST",
+      body: JSON.stringify(
+        await proofSigned.toJsonLd({
+          format: "compact",
+          contextLoader: mockDocumentLoader,
+        }),
+      ),
+    }),
+    await signRequest(
+      new Request("https://local.example/inbox", {
+        method: "POST",
+        body: JSON.stringify(
+          await new Create({
+            id: new URL("https://example.com/activities/multiple-actors"),
+            actors: [
+              rsaPublicKey3.ownerId!,
+              new URL("https://attacker.example/actor"),
+            ],
+          }).toJsonLd(),
+        ),
+      }),
+      rsaPrivateKey3,
+      rsaPublicKey3.id!,
+    ),
+  ];
+
+  for (const request of requests) {
+    const context = createRequestContext({
+      federation,
+      request,
+      url: new URL(request.url),
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    const response = await handleInbox(request, {
+      recipient: null,
+      context,
+      inboxContextFactory(_activity) {
+        return createInboxContext({ ...context, clone: undefined });
+      },
+      kv,
+      kvPrefixes: {
+        activityIdempotence: ["_fedify", "activityIdempotence"],
+        publicKey: ["_fedify", "publicKey"],
+        acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+      },
+      actorDispatcher: () => null,
+      inboxListeners,
+      idempotencyStrategy() {
+        idempotencyCalls++;
+        return "forged";
+      },
+      onNotFound: () => new Response("Not found", { status: 404 }),
+      signatureTimeWindow: { minutes: 5 },
+      skipSignatureVerification: false,
+    });
+    assertEquals(
+      [response.status, await response.text()],
+      [401, "The activity and its actors do not have the same origin."],
+    );
+  }
+  assertEquals(idempotencyCalls, 0);
+  assertEquals(listenerCalls, 0);
+});
+
+test("handleInbox() preserves the signature-verification opt-out", async () => {
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const activity = new Create({
+    id: new URL("https://victim.example/activities/1"),
+    actor: new URL("https://attacker.example/actor"),
+  });
+  const request = new Request("https://local.example/inbox", {
+    method: "POST",
+    body: JSON.stringify(await activity.toJsonLd()),
+  });
+  const context = createRequestContext({
+    federation,
+    request,
+    url: new URL(request.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+  });
+  let listenerCalls = 0;
+  const inboxListeners = new InboxListenerSet<void>();
+  inboxListeners.add(Create, () => {
+    listenerCalls++;
+  });
+  const response = await handleInbox(request, {
+    recipient: null,
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({ ...context, clone: undefined });
+    },
+    kv: new MemoryKvStore(),
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+    },
+    actorDispatcher: () => null,
+    inboxListeners,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: true,
+  });
+  assertEquals(response.status, 202);
+  assertEquals(listenerCalls, 1);
+});
+
+test("handleInbox() rejects missing actors before idempotency", async () => {
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const unsignedJson = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://remote.example/activities/actorless",
+    type: "Create",
+  };
+  const requests = [
+    new Request("https://local.example/inbox", {
+      method: "POST",
+      body: JSON.stringify(unsignedJson),
+    }),
+    new Request("https://local.example/inbox", {
+      method: "POST",
+      body: JSON.stringify(
+        await signJsonLd(
+          unsignedJson,
+          rsaPrivateKey3,
+          rsaPublicKey3.id!,
+          { contextLoader: mockDocumentLoader },
+        ),
+      ),
+    }),
+  ];
+  let idempotencyCalls = 0;
+  for (const request of requests) {
+    const context = createRequestContext({
+      federation,
+      request,
+      url: new URL(request.url),
+      data: undefined,
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    const response = await handleInbox(request, {
+      recipient: null,
+      context,
+      inboxContextFactory(_activity) {
+        return createInboxContext({ ...context, clone: undefined });
+      },
+      kv: new MemoryKvStore(),
+      kvPrefixes: {
+        activityIdempotence: ["_fedify", "activityIdempotence"],
+        publicKey: ["_fedify", "publicKey"],
+        acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+      },
+      actorDispatcher: () => null,
+      idempotencyStrategy() {
+        idempotencyCalls++;
+        return "actorless";
+      },
+      onNotFound: () => new Response("Not found", { status: 404 }),
+      signatureTimeWindow: { minutes: 5 },
+      skipSignatureVerification: false,
+    });
+    assertEquals(
+      [response.status, await response.text()],
+      [400, "Missing actor."],
+    );
+  }
+  assertEquals(idempotencyCalls, 0);
+});
+
+test("handleInbox() leaves a rejected activity ID available", async () => {
+  const activityId = new URL("https://example.com/activities/genuine");
+  const attackerId = new URL("https://attacker.example/actor");
+  const attackerKeyId = new URL(`${attackerId.href}#main-key`);
+  const attackerKeys = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+  const attackerDocument = await new Person({
+    id: attackerId,
+    publicKey: new CryptographicKey({
+      id: attackerKeyId,
+      owner: attackerId,
+      publicKey: attackerKeys.publicKey,
+    }),
+  }).toJsonLd({ contextLoader: mockDocumentLoader });
+  const documentLoader = (resource: string) =>
+    resource === attackerId.href || resource === attackerKeyId.href
+      ? Promise.resolve({
+        contextUrl: null,
+        documentUrl: resource,
+        document: attackerDocument,
+      })
+      : mockDocumentLoader(resource);
+
+  for (const strategy of ["per-inbox", "global"] as const) {
+    const kv = new MemoryKvStore();
+    const federation = createFederation<void>({ kv });
+    const inboxListeners = new InboxListenerSet<void>();
+    const received: string[] = [];
+    inboxListeners.add(Create, (_ctx, activity) => {
+      received.push(activity.actorId!.href);
+    });
+    const handle = async (request: Request) => {
+      const context = createRequestContext({
+        federation,
+        request,
+        url: new URL(request.url),
+        data: undefined,
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      return await handleInbox(request, {
+        recipient: null,
+        context,
+        inboxContextFactory(_activity) {
+          return createInboxContext({ ...context, clone: undefined });
+        },
+        kv,
+        kvPrefixes: {
+          activityIdempotence: ["_fedify", "activityIdempotence"],
+          publicKey: ["_fedify", "publicKey"],
+          acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+        },
+        actorDispatcher: () => null,
+        inboxListeners,
+        idempotencyStrategy: strategy,
+        onNotFound: () => new Response("Not found", { status: 404 }),
+        signatureTimeWindow: { minutes: 5 },
+        skipSignatureVerification: false,
+      });
+    };
+    const createRequest = async (
+      actor: URL,
+      privateKey: CryptoKey,
+      keyId: URL,
+    ) =>
+      await signRequest(
+        new Request("https://local.example/inbox", {
+          method: "POST",
+          body: JSON.stringify(
+            await new Create({ id: activityId, actor }).toJsonLd(),
+          ),
+        }),
+        privateKey,
+        keyId,
+      );
+
+    const forged = await handle(
+      await createRequest(
+        attackerId,
+        attackerKeys.privateKey,
+        attackerKeyId,
+      ),
+    );
+    const genuine = await handle(
+      await createRequest(
+        rsaPublicKey3.ownerId!,
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+      ),
+    );
+    assertEquals([forged.status, genuine.status], [401, 202]);
+    assertEquals(received, [rsaPublicKey3.ownerId!.href]);
+  }
 });
 
 test("respondWithObjectIfAcceptable", async () => {

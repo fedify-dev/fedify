@@ -41,6 +41,8 @@
     "@logtape/file": "jsr:@logtape/file@^2.0.5",
     "@logtape/logtape": "jsr:@logtape/logtape@^2.0.5",
     "@nestjs/common": "npm:@nestjs/common@^11.0.1",
+    "@nestjs/core": "npm:@nestjs/core@11.1.4",
+    "@nestjs/platform-express": "npm:@nestjs/platform-express@11.1.4",
     "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0",
     "@opentelemetry/context-async-hooks": "npm:@opentelemetry/context-async-hooks@^2.5.0",
     "@opentelemetry/core": "npm:@opentelemetry/core@^2.5.0",
@@ -70,6 +72,7 @@
     "mysql2/promise": "npm:mysql2@^3.18.0/promise",
     "postgres": "npm:postgres@^3.4.7",
     "preact": "npm:preact@10.19.6",
+    "reflect-metadata": "npm:reflect-metadata@^0.2.2",
     "tsdown": "npm:tsdown@^0.21.6"
   },
   "unstable": [
@@ -121,16 +124,20 @@
       ]
     },
     "pnpm:build-vocab-runtime": {
-      "command": "pnpm -C packages/vocab-runtime build"
+      "command": "pnpm -C packages/vocab-runtime build",
+      "dependencies": ["install"]
     },
     "pnpm:build-vocab-tools": {
-      "command": "pnpm -C packages/vocab-tools build"
+      "command": "pnpm -C packages/vocab-tools build",
+      "dependencies": ["install"]
     },
     "pnpm:build-fixture": {
-      "command": "pnpm -C packages/fixture build"
+      "command": "pnpm -C packages/fixture build",
+      "dependencies": ["install"]
     },
     "pnpm:build-webfinger": {
-      "command": "pnpm -C packages/webfinger build"
+      "command": "pnpm -C packages/webfinger build",
+      "dependencies": ["install"]
     },
     "pnpm:build-vocab": {
       "command": "pnpm -C packages/vocab build",
@@ -177,7 +184,9 @@
       "./packages"
     ],
     "exclude": [
-      "./packages/init/src/templates/**"
+      "./packages/init/src/templates/**",
+      "packages/elysia/src/**/*.test.ts",
+      "packages/nestjs/src/**/*.test.ts"
     ]
   }
 }
