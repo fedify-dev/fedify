@@ -1,9 +1,68 @@
 import { test } from "@fedify/fixture";
 import { Activity, Create, Invite, Offer, Update } from "@fedify/vocab";
 import { assertEquals } from "@std/assert/assert-equals";
+import { assertFalse } from "@std/assert/assert-false";
 import { assertThrows } from "@std/assert/assert-throws";
 import type { InboxContext } from "./context.ts";
 import { ActivityListenerSet } from "./activity-listener.ts";
+import { actorsHaveSameOrigin } from "./inbox.ts";
+
+test("actorsHaveSameOrigin()", () => {
+  assertEquals(
+    actorsHaveSameOrigin(
+      new Create({ actor: new URL("https://remote.example/actor") }),
+    ),
+    true,
+  );
+  assertEquals(
+    actorsHaveSameOrigin(
+      new Create({
+        id: new URL("https://remote.example/activity"),
+        actors: [
+          new URL("https://remote.example/actor/1"),
+          new URL("https://remote.example:443/actor/2"),
+        ],
+      }),
+    ),
+    true,
+  );
+
+  for (
+    const actor of [
+      "http://remote.example/actor",
+      "https://sub.remote.example/actor",
+      "https://remote.example:8443/actor",
+    ]
+  ) {
+    assertFalse(
+      actorsHaveSameOrigin(
+        new Create({
+          id: new URL("https://remote.example/activity"),
+          actor: new URL(actor),
+        }),
+      ),
+    );
+  }
+  assertFalse(
+    actorsHaveSameOrigin(
+      new Create({
+        id: new URL("urn:example:activity"),
+        actor: new URL("urn:example:actor"),
+      }),
+    ),
+  );
+  assertFalse(
+    actorsHaveSameOrigin(
+      new Create({
+        id: new URL("https://remote.example/activity"),
+        actors: [
+          new URL("https://remote.example/actor/1"),
+          new URL("https://other.example/actor/2"),
+        ],
+      }),
+    ),
+  );
+});
 
 test("ActivityListenerSet", () => {
   const listeners = new ActivityListenerSet<InboxContext<void>>();

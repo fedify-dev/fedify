@@ -52,7 +52,7 @@ import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 
 const documentLoader = getDocumentLoader();
 import type { Context, GetActorOptions } from "./context.ts";
-import { MemoryKvStore } from "./kv.ts";
+import { type KvKey, type KvStoreSetOptions, MemoryKvStore } from "./kv.ts";
 import {
   ContextImpl,
   createFederation,
@@ -6816,6 +6816,163 @@ test("ContextImpl.routeActivity() marks queued signed activities as non-LDS", as
   const inboxMessage = queuedMessage as InboxMessage;
   assertEquals(inboxMessage.ldSignatureVerified, false);
   assertEquals(inboxMessage.normalizedActivity, undefined);
+});
+
+for (const queued of [false, true]) {
+  test(`ContextImpl.routeActivity() rejects a proof-signed cross-origin ID (queued: ${queued})`, async () => {
+    const messages: Message[] = [];
+    const queue: MessageQueue = {
+      enqueue(message) {
+        messages.push(message as Message);
+        return Promise.resolve();
+      },
+      async listen() {},
+    };
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      documentLoaderFactory: () => mockDocumentLoader,
+      contextLoaderFactory: () => mockDocumentLoader,
+      queue: queued ? { inbox: queue, outbox: queue } : undefined,
+      manuallyStartQueue: true,
+    });
+    let listenerCalls = 0;
+    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      .on(Create, () => {
+        listenerCalls++;
+      });
+    const signed = await signObject(
+      new Create({
+        id: new URL("https://victim.example/activities/1"),
+        actor: ed25519Multikey.controllerId!,
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      {
+        contextLoader: mockDocumentLoader,
+        documentLoader: mockDocumentLoader,
+      },
+    );
+    const ctx = federation.createContext(new URL("https://local.example/"));
+
+    assertFalse(await ctx.routeActivity(null, signed));
+    assertEquals(listenerCalls, 0);
+    assertEquals(messages, []);
+  });
+}
+
+test("ContextImpl.routeActivity() rejects a missing actor before routing", async () => {
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    documentLoaderFactory: () => mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  let listenerCalls = 0;
+  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .on(Create, () => {
+      listenerCalls++;
+    });
+  const ctx = federation.createContext(new URL("https://local.example/"));
+
+  assertFalse(
+    await ctx.routeActivity(
+      null,
+      new Create({ id: new URL("https://remote.example/activities/1") }),
+    ),
+  );
+  assertEquals(listenerCalls, 0);
+});
+
+test("FederationImpl.processQueuedTask() rejects untrusted activity origins before KV access", async () => {
+  class TrackingKvStore extends MemoryKvStore {
+    reads = 0;
+    writes = 0;
+
+    override get<T = unknown>(key: KvKey): Promise<T | undefined> {
+      this.reads++;
+      return super.get<T>(key);
+    }
+
+    override set(
+      key: KvKey,
+      value: unknown,
+      options?: KvStoreSetOptions,
+    ): Promise<void> {
+      this.writes++;
+      return super.set(key, value, options);
+    }
+  }
+
+  for (
+    const activity of [
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: "https://victim.example/activities/1",
+        type: "Create",
+        actor: "https://attacker.example/actor",
+      },
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: "https://victim.example/activities/2",
+        type: "Create",
+      },
+    ]
+  ) {
+    const kv = new TrackingKvStore();
+    const federation = new FederationImpl<void>({ kv });
+    let listenerCalls = 0;
+    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      .on(Create, () => {
+        listenerCalls++;
+      });
+    await federation.processQueuedTask(
+      undefined,
+      {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://local.example",
+        activity,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage,
+    );
+    assertEquals(listenerCalls, 0);
+    assertEquals(kv.reads, 0);
+    assertEquals(kv.writes, 0);
+  }
+
+  const kv = new TrackingKvStore();
+  const federation = new FederationImpl<void>({
+    kv,
+    skipSignatureVerification: true,
+  });
+  let listenerCalls = 0;
+  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .on(Create, () => {
+      listenerCalls++;
+    });
+  await federation.processQueuedTask(
+    undefined,
+    {
+      type: "inbox",
+      id: crypto.randomUUID(),
+      baseUrl: "https://local.example",
+      activity: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: "https://victim.example/activities/opt-out",
+        type: "Create",
+        actor: "https://attacker.example/actor",
+      },
+      started: new Date().toISOString(),
+      attempt: 0,
+      identifier: null,
+      traceContext: {},
+    } satisfies InboxMessage,
+  );
+  assertEquals(listenerCalls, 1);
+  assertEquals(kv.reads, 1);
+  assertEquals(kv.writes, 1);
 });
 
 test("ContextImpl.getCollectionUri()", () => {

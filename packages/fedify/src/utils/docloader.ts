@@ -121,6 +121,10 @@ export function getAuthenticatedDocumentLoader(
   }
 
   async function validateUrl(url: string): Promise<void> {
+    const protocol = new URL(url).protocol;
+    if (protocol !== "http:" && protocol !== "https:") {
+      throw new UrlError(`Unsupported protocol: ${protocol}`);
+    }
     if (!allowPrivateAddress) {
       try {
         await validatePublicUrl(url);

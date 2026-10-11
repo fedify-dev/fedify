@@ -8,6 +8,80 @@ Version 2.2.18
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed `getAuthenticatedDocumentLoader()` skipping URL scheme validation
+    when `allowPrivateAddress` was enabled.  Unsupported schemes such as
+    `ftp:`, `file:`, and `data:` are now rejected with `UrlError` before
+    fetching, including redirect and alternate document targets.
+    HTTP(S) URLs with private addresses remain allowed.
+    [[#1292], [#1293]]
+ -  Fixed inboxes accepting signed activities whose IDs had a different origin
+    from their actors.  Such deliveries now receive `401 Unauthorized` before
+    they can supply trusted embedded objects or reserve the genuine activity's
+    idempotency entry.  Queued and manually routed activities apply the same
+    origin check.  \[[GHSA-4qhx-hhwf-8685]]
+
+[GHSA-4qhx-hhwf-8685]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-4qhx-hhwf-8685
+[#1292]: https://github.com/fedify-dev/fedify/issues/1292
+[#1293]: https://github.com/fedify-dev/fedify/pull/1293
+
+### @fedify/cli
+
+ -  Fixed `fedify webfinger` ignoring `-p`/`--allow-private-address` and the
+    `webfinger.allowPrivateAddress` configuration setting, preventing lookups
+    against local development servers even with an explicit opt-in.  Private
+    addresses remain blocked by default.
+    [[#1274], [#1276]]
+
+[#1274]: https://github.com/fedify-dev/fedify/issues/1274
+[#1276]: https://github.com/fedify-dev/fedify/pull/1276
+
+### @fedify/elysia
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+[#1277]: https://github.com/fedify-dev/fedify/issues/1277
+[#1280]: https://github.com/fedify-dev/fedify/pull/1280
+
+### @fedify/express
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/hono
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  Matched application routes and downstream wildcard
+    middleware retain their 404 responses, even when they delegate to Hono's
+    default not-found handler.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/koa
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/nestjs
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
 ### @fedify/nuxt
 
  -  Fixed deferred `406 Not Acceptable` responses becoming 404 when no
@@ -28,6 +102,15 @@ To be released.
     406 is restored for buffered 404 responses before headers are sent;
     responses whose headers have already been sent cannot be changed.  Thrown
     errors still reach Nitro's error hooks.  [[#1278], [#1279]]
+
+### @fedify/vocab-runtime
+
+ -  Fixed `getDocumentLoader()` skipping URL scheme validation when
+    `allowPrivateAddress` was enabled.  Unsupported schemes such as `ftp:`,
+    `file:`, and `data:` are now rejected with `UrlError` before fetching,
+    including redirect and alternate document targets.  HTTP(S) URLs with
+    private addresses remain allowed.
+    [[#1292], [#1293]]
 
 
 Version 2.2.17
@@ -1169,6 +1252,85 @@ Released on April 28, 2026.
 [#722]: https://github.com/fedify-dev/fedify/pull/722
 
 
+Version 2.1.29
+--------------
+
+Released on October 11, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `getAuthenticatedDocumentLoader()` skipping URL scheme validation
+    when `allowPrivateAddress` was enabled.  Unsupported schemes such as
+    `ftp:`, `file:`, and `data:` are now rejected with `UrlError` before
+    fetching, including redirect and alternate document targets.
+    HTTP(S) URLs with private addresses remain allowed.
+    [[#1292], [#1293]]
+ -  Fixed inboxes accepting signed activities whose IDs had a different origin
+    from their actors.  Such deliveries now receive `401 Unauthorized` before
+    they can supply trusted embedded objects or reserve the genuine activity's
+    idempotency entry.  Queued and manually routed activities apply the same
+    origin check.  \[[GHSA-4qhx-hhwf-8685]]
+
+### @fedify/cli
+
+ -  Fixed `fedify webfinger` ignoring `-p`/`--allow-private-address` and the
+    `webfinger.allowPrivateAddress` configuration setting, preventing lookups
+    against local development servers even with an explicit opt-in.  Private
+    addresses remain blocked by default.
+    [[#1274], [#1276]]
+
+### @fedify/elysia
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/express
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/hono
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  Matched application routes and downstream wildcard
+    middleware retain their 404 responses, even when they delegate to Hono's
+    default not-found handler.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/koa
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/nestjs
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/vocab-runtime
+
+ -  Fixed `getDocumentLoader()` skipping URL scheme validation when
+    `allowPrivateAddress` was enabled.  Unsupported schemes such as `ftp:`,
+    `file:`, and `data:` are now rejected with `UrlError` before fetching,
+    including redirect and alternate document targets.  HTTP(S) URLs with
+    private addresses remain allowed.
+    [[#1292], [#1293]]
+
+
 Version 2.1.28
 --------------
 
@@ -2306,6 +2468,82 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.33
+--------------
+
+Released on October 11, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `getAuthenticatedDocumentLoader()` skipping URL scheme validation
+    when `allowPrivateAddress` was enabled.  Unsupported schemes such as
+    `ftp:`, `file:`, and `data:` are now rejected with `UrlError` before
+    fetching, including redirect and alternate document targets.
+    HTTP(S) URLs with private addresses remain allowed.  [[#1292], [#1293]]
+ -  Fixed inboxes accepting signed activities whose IDs had a different origin
+    from their actors.  Such deliveries now receive `401 Unauthorized` before
+    they can supply trusted embedded objects or reserve the genuine activity's
+    idempotency entry.  Queued and manually routed activities apply the same
+    origin check.  \[[GHSA-4qhx-hhwf-8685]]
+
+### @fedify/cli
+
+ -  Fixed `fedify webfinger` ignoring `-p`/`--allow-private-address` and the
+    `webfinger.allowPrivateAddress` configuration setting, preventing lookups
+    against local development servers even with an explicit opt-in.  Private
+    addresses remain blocked by default.  [[#1274], [#1276]]
+
+### @fedify/elysia
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/express
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/hono
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  Matched application routes and downstream wildcard
+    middleware retain their 404 responses, even when they delegate to Hono's
+    default not-found handler.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/koa
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/nestjs
+
+ -  Fixed federation endpoints returning `404 Not Found` instead of
+    `406 Not Acceptable` when the application cannot handle a request with an
+    unsupported `Accept` header.  Application responses, including explicit
+    404s, are preserved.  The fallback includes `Vary: Accept`.
+    [[#1277], [#1280]]
+
+### @fedify/vocab-runtime
+
+ -  Fixed `getDocumentLoader()` skipping URL scheme validation when
+    `allowPrivateAddress` was enabled.  Unsupported schemes such as `ftp:`,
+    `file:`, and `data:` are now rejected with `UrlError` before fetching,
+    including redirect and alternate document targets.  HTTP(S) URLs with
+    private addresses remain allowed.  [[#1292], [#1293]]
 
 
 Version 2.0.32

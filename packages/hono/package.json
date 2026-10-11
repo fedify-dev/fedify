@@ -54,13 +54,15 @@
   },
   "devDependencies": {
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@fedify/fixture": "workspace:*"
   },
   "scripts": {
     "build:self": "tsdown",
     "build": "pnpm --filter @fedify/hono... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
-    "test": "node --experimental-transform-types --test"
+    "test": "node --experimental-transform-types --test",
+    "test:bun": "bun test"
   }
 }
