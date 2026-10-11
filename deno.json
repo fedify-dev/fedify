@@ -53,6 +53,8 @@
     "@logtape/file": "jsr:@logtape/file@^2.2.0",
     "@logtape/logtape": "jsr:@logtape/logtape@^2.2.0",
     "@nestjs/common": "npm:@nestjs/common@^11.0.1",
+    "@nestjs/core": "npm:@nestjs/core@11.1.4",
+    "@nestjs/platform-express": "npm:@nestjs/platform-express@11.1.4",
     "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.1",
     "@opentelemetry/context-async-hooks": "npm:@opentelemetry/context-async-hooks@^2.7.1",
     "@opentelemetry/core": "npm:@opentelemetry/core@^2.7.1",
@@ -91,6 +93,7 @@
     "mysql2/promise": "npm:mysql2@^3.22.3/promise",
     "postgres": "npm:postgres@^3.4.7",
     "preact": "npm:preact@10.19.6",
+    "reflect-metadata": "npm:reflect-metadata@^0.2.2",
     "temporal-polyfill": "npm:temporal-polyfill@^1.0.1",
     "tsdown": "npm:tsdown@^0.22.0",
     "typescript": "npm:typescript@^6.0.0"
@@ -135,7 +138,9 @@
     ],
     "exclude": [
       "./packages/adonisjs/**",
+      "./packages/elysia/src/fallback.test.ts",
       "./packages/init/src/templates/**",
+      "./packages/nestjs/src/**/*.test.ts",
       "./packages/next/**"
     ]
   }

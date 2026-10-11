@@ -54,7 +54,19 @@ export type InboxAuthentication =
         readonly detail?:
           import("../sig/verification.ts").InboxProofPolicyFailureReason;
       }
-      | { readonly type: "invalidNonce" };
+      | { readonly type: "invalidNonce" }
+      | {
+        /**
+         * The activity's ID does not have the same [FEP-fe34] origin as all
+         * of its actors.
+         *
+         * [FEP-fe34]: https://w3id.org/fep/fe34
+         * @since 2.5.0
+         */
+        readonly type: "activityOriginMismatch";
+        readonly activityId: URL;
+        readonly actorIds: readonly URL[];
+      };
   }
   | { readonly status: "skipped" }
   | { readonly status: "notDetermined" };

@@ -237,7 +237,8 @@ test("handleInbox() preserves ordinary top-level proof behavior", async () => {
         "https://www.w3.org/ns/activitystreams",
         "https://w3id.org/security/data-integrity/v1",
       ],
-      id: "https://example.com/activities/ordinary",
+      // The activity has to be on the same FEP-fe34 origin as its actor:
+      id: `${vector.keys.outer.controller}/activities/ordinary`,
       type: "Create",
       actor: vector.keys.outer.controller,
       object: {
@@ -410,7 +411,8 @@ test("handleInbox() inspects compounds without the Linked Data Signature", async
         "https://www.w3.org/ns/activitystreams",
         "https://w3id.org/security/data-integrity/v1",
       ],
-      id: "https://example.com/activities/ordinary-ld",
+      // The activity has to be on the same FEP-fe34 origin as its actor:
+      id: `${vector.keys.outer.controller}/activities/ordinary-ld`,
       type: "Create",
       actor: vector.keys.outer.controller,
       object: {

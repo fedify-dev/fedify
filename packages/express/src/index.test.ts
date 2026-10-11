@@ -108,7 +108,7 @@ describe("integrateFederation()", () => {
     assert.strictEqual(getBody(), "Hello World");
   });
 
-  test("responds with 406 when onNotAcceptable is used and no route matches", async () => {
+  test("defers to later routes when onNotAcceptable is used", async () => {
     const mockFederation: MockFederation = {
       fetch(_request, options) {
         const { onNotAcceptable } = options as {
@@ -125,10 +125,15 @@ describe("integrateFederation()", () => {
 
     const req = createMockRequest();
     const { response, ended } = createMockResponse();
+    let endedBeforeNext = false;
+    void ended.then(() => endedBeforeNext = true);
 
-    middleware(req, response, () => {});
-    await ended;
-    assert.strictEqual(response.statusCode, 406);
+    // The 406 fallback replaces Express's default 404 only after routing
+    // finishes, which fallback.test.ts covers with a real application:
+    await new Promise<void>((resolve) => middleware(req, response, resolve));
+    await Promise.resolve();
+    assert.strictEqual(endedBeforeNext, false);
+    assert.strictEqual(response.statusCode, 200);
   });
 
   test("forwards the Fedify response status, headers, and streamed body to the Express response", async () => {

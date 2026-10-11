@@ -325,6 +325,39 @@ test("onRequestFinished retains HTTP keys and separates ownership rejection", as
   strictEqual(reports[2].attempts.at(-1)?.status, "verified");
 });
 
+test("onRequestFinished reports an activity ID on another origin than its actor", async () => {
+  const { federation, setters, reports } = setup();
+  let dispatched = false;
+  setters.on(Create, () => {
+    dispatched = true;
+  });
+  const signed = await signRequest(
+    request(await payload("https://other.example/create")),
+    rsaPrivateKey3,
+    new URL("https://example.com/person2#key3"),
+  );
+  strictEqual(
+    (await federation.fetch(signed, { contextData: undefined })).status,
+    401,
+  );
+  strictEqual(dispatched, false);
+  deepStrictEqual(reports[0].authentication, {
+    status: "rejected",
+    reason: {
+      type: "activityOriginMismatch",
+      activityId: new URL("https://other.example/create"),
+      actorIds: [new URL("https://example.com/person2")],
+    },
+  });
+  deepStrictEqual(reports[0].outcome, {
+    type: "response",
+    status: 401,
+    disposition: "rejected",
+    reason: "authentication",
+  });
+  strictEqual(reports[0].attempts.at(-1)?.status, "verified");
+});
+
 test("onRequestFinished retains LDS crypto success before HTTP fallback", async () => {
   const { federation, reports } = setup();
   const body = await signJsonLd(

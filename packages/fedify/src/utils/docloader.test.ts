@@ -155,70 +155,75 @@ test("getAuthenticatedDocumentLoader() validates redirects", async (t) => {
   fetchMock.hardReset();
 });
 
-test("getAuthenticatedDocumentLoader() cancellation", {
-  sanitizeResources: false,
-  sanitizeOps: false,
-}, async (t) => {
+test("getAuthenticatedDocumentLoader() cancellation", async (t) => {
   fetchMock.spyGlobal();
+  try {
+    await t.step("document loader cancellation", async () => {
+      let responseTimer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        fetchMock.get(
+          "https://example.com/slow-object",
+          () =>
+            new Promise((resolve) => {
+              responseTimer = setTimeout(() => {
+                resolve({
+                  status: 200,
+                  headers: { "Content-Type": "application/activity+json" },
+                  body: {
+                    "@context": "https://www.w3.org/ns/activitystreams",
+                    type: "Note",
+                    content: "Slow response",
+                  },
+                });
+              }, 1000);
+            }),
+        );
 
-  await t.step("document loader cancellation", async () => {
-    fetchMock.get(
-      "https://example.com/slow-object",
-      () =>
-        new Promise((resolve) => {
-          setTimeout(() => {
-            resolve({
-              status: 200,
-              headers: { "Content-Type": "application/activity+json" },
-              body: {
-                "@context": "https://www.w3.org/ns/activitystreams",
-                type: "Note",
-                content: "Slow response",
-              },
-            });
-          }, 1000);
-        }),
-    );
+        const loader = getAuthenticatedDocumentLoader({
+          keyId: new URL("https://example.com/key2"),
+          privateKey: rsaPrivateKey2,
+        });
 
-    const loader = getAuthenticatedDocumentLoader({
-      keyId: new URL("https://example.com/key2"),
-      privateKey: rsaPrivateKey2,
+        const controller = new AbortController();
+        const promise = loader("https://example.com/slow-object", {
+          signal: controller.signal,
+        });
+
+        controller.abort();
+
+        await assertRejects(
+          () => promise,
+          Error,
+        );
+
+        await assertRejects(
+          () =>
+            loader("https://example.com/object", { signal: controller.signal }),
+          Error,
+        );
+      } finally {
+        clearTimeout(responseTimer);
+      }
     });
 
-    const controller = new AbortController();
-    const promise = loader("https://example.com/slow-object", {
-      signal: controller.signal,
+    await t.step("immediate cancellation", async () => {
+      const loader = getAuthenticatedDocumentLoader({
+        keyId: new URL("https://example.com/key2"),
+        privateKey: rsaPrivateKey2,
+      });
+
+      const controller = new AbortController();
+      controller.abort();
+
+      await assertRejects(
+        () =>
+          loader("https://example.com/object", { signal: controller.signal }),
+        Error,
+      );
     });
-
-    controller.abort();
-
-    await assertRejects(
-      () => promise,
-      Error,
-    );
-
-    await assertRejects(
-      () => loader("https://example.com/object", { signal: controller.signal }),
-      Error,
-    );
-  });
-
-  await t.step("immediate cancellation", async () => {
-    const loader = getAuthenticatedDocumentLoader({
-      keyId: new URL("https://example.com/key2"),
-      privateKey: rsaPrivateKey2,
-    });
-
-    const controller = new AbortController();
-    controller.abort();
-
-    await assertRejects(
-      () => loader("https://example.com/object", { signal: controller.signal }),
-      Error,
-    );
-  });
-
-  fetchMock.hardReset();
+  } finally {
+    fetchMock.hardReset();
+  }
 });
 
 test("getAuthenticatedDocumentLoader() bounds JSON after redirects", async () => {
@@ -844,3 +849,128 @@ test("getAuthenticatedDocumentLoader() times out", async (t) => {
     }
   });
 });
+
+const unsupportedUrls = [
+  "ftp://example.com/collection",
+  "file:///collection",
+  `data:application/ld+json,${
+    encodeURIComponent(JSON.stringify({ id: "https://example.com/data" }))
+  }`,
+];
+
+function isUnsupportedProtocolError(error: unknown, url: string): boolean {
+  return error instanceof UrlError &&
+    error.message === `Unsupported protocol: ${new URL(url).protocol}` &&
+    error.reason === "disallowed";
+}
+
+async function withFetchStub(
+  respond: (request: Request) => Response,
+  callback: (fetched: Request[]) => Promise<void>,
+): Promise<void> {
+  const fetched: Request[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+    const request = input instanceof Request && init == null
+      ? input
+      : new Request(input, init);
+    fetched.push(request);
+    return Promise.resolve(respond(request));
+  }) as typeof globalThis.fetch;
+  try {
+    await callback(fetched);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+for (const url of unsupportedUrls) {
+  const scheme = new URL(url).protocol;
+  const loader = getAuthenticatedDocumentLoader({
+    keyId: new URL("https://example.com/key2"),
+    privateKey: rsaPrivateKey2,
+  }, { allowPrivateAddress: true });
+
+  test(`getAuthenticatedDocumentLoader() rejects ${scheme} URLs with private addresses allowed before fetching`, async () => {
+    await withFetchStub(() => Response.json({}), async (fetched) => {
+      await rejects(loader(url), (e) => isUnsupportedProtocolError(e, url));
+      deepStrictEqual(fetched, []);
+    });
+  });
+
+  test(`getAuthenticatedDocumentLoader() rejects redirects to ${scheme} URLs with private addresses allowed`, async () => {
+    const start = "https://example.com/redirect-to-unsupported";
+    await withFetchStub(() => Response.redirect(url, 302), async (fetched) => {
+      await rejects(loader(start), (e) => isUnsupportedProtocolError(e, url));
+      deepStrictEqual(fetched.map((r) => r.url), [start]);
+    });
+  });
+
+  for (
+    const firstSpec of ["rfc9421", "draft-cavage-http-signatures-12"] as const
+  ) {
+    test(`getAuthenticatedDocumentLoader() rejects redirects to ${scheme} URLs after signature fallback from ${firstSpec}`, async () => {
+      const start = "https://example.com/fallback-redirect-to-unsupported";
+      const fallbackLoader = getAuthenticatedDocumentLoader({
+        keyId: new URL("https://example.com/key2"),
+        privateKey: rsaPrivateKey2,
+      }, {
+        allowPrivateAddress: true,
+        specDeterminer: {
+          determineSpec: () => firstSpec,
+          rememberSpec: () => {},
+        },
+      });
+      await withFetchStub(
+        (request) =>
+          request.headers.has("Signature-Input") === (firstSpec === "rfc9421")
+            ? new Response("Unauthorized", { status: 401 })
+            : Response.redirect(url, 302),
+        async (fetched) => {
+          await rejects(
+            fallbackLoader(start),
+            (e) => isUnsupportedProtocolError(e, url),
+          );
+          deepStrictEqual(fetched.map((r) => r.url), [start, start]);
+          deepStrictEqual(
+            fetched.map((r) => r.headers.has("Signature-Input")),
+            [firstSpec === "rfc9421", firstSpec !== "rfc9421"],
+          );
+        },
+      );
+    });
+  }
+
+  for (const html of [false, true]) {
+    test(
+      `getAuthenticatedDocumentLoader() rejects ${
+        html ? "HTML" : "Link header"
+      } alternates to ${scheme} URLs with private addresses allowed`,
+      async () => {
+        const start = "https://example.com/alternate-to-unsupported";
+        await withFetchStub(
+          () =>
+            html
+              ? new Response(
+                `<link rel="alternate" type="application/activity+json" href="${url}">`,
+                { headers: { "Content-Type": "text/html" } },
+              )
+              : new Response("", {
+                headers: {
+                  "Content-Type": "text/plain",
+                  Link:
+                    `<${url}>; rel="alternate"; type="application/activity+json"`,
+                },
+              }),
+          async (fetched) => {
+            await rejects(
+              loader(start),
+              (e) => isUnsupportedProtocolError(e, url),
+            );
+            deepStrictEqual(fetched.map((r) => r.url), [start]);
+          },
+        );
+      },
+    );
+  }
+}

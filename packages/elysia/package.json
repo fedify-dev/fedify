@@ -57,6 +57,7 @@
   "devDependencies": {
     "bun-types": "^1.2.19",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@fedify/fixture": "workspace:*"
   }
 }

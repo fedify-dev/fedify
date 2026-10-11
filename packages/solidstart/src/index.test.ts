@@ -8,8 +8,16 @@ function createEvent(request: Request, status?: number): FetchEvent {
   return {
     request,
     locals: {},
-    response: { status },
+    nativeEvent: { handled: false, node: {} },
+    response: { status, headers: new Headers() },
   } as unknown as FetchEvent;
+}
+
+// Runs onBeforeResponse() and returns the payload SolidStart would send.
+function beforeResponse(event: FetchEvent, body?: unknown): unknown {
+  const payload: { body?: unknown } = { body };
+  onBeforeResponse(event, payload);
+  return payload.body;
 }
 
 function createActorFederation() {
@@ -26,7 +34,7 @@ describe("[solidstart] createOnRequestHandler()", () => {
     const event = createEvent(new Request("http://localhost/hello-world"));
 
     strictEqual(await onRequest(event), undefined);
-    strictEqual(onBeforeResponse(createEvent(event.request, 404)), undefined);
+    strictEqual(beforeResponse(createEvent(event.request, 404)), undefined);
   });
 
   test("delegates an unmatched route when federation routes are registered", async () => {
@@ -37,7 +45,7 @@ describe("[solidstart] createOnRequestHandler()", () => {
     const event = createEvent(new Request("http://localhost/hello-world"));
 
     strictEqual(await onRequest(event), undefined);
-    strictEqual(onBeforeResponse(createEvent(event.request, 404)), undefined);
+    strictEqual(beforeResponse(createEvent(event.request, 404)), undefined);
   });
 
   test("delegates a registered route whose actor is not found", async () => {
@@ -52,7 +60,7 @@ describe("[solidstart] createOnRequestHandler()", () => {
     );
 
     strictEqual(await onRequest(event), undefined);
-    strictEqual(onBeforeResponse(createEvent(event.request, 404)), undefined);
+    strictEqual(beforeResponse(createEvent(event.request, 404)), undefined);
   });
 
   test("forwards a handled federation response unchanged", async () => {
@@ -75,35 +83,24 @@ describe("[solidstart] createOnRequestHandler()", () => {
 });
 
 describe("[solidstart] onBeforeResponse()", () => {
-  test("returns no response when no 406 was deferred", () => {
+  test("keeps the payload when no 406 was deferred", () => {
     const event = createEvent(new Request("http://localhost/hello-world"), 404);
 
-    strictEqual(onBeforeResponse(event), undefined);
+    strictEqual(beforeResponse(event), undefined);
   });
 
-  test("returns the deferred 406 when SolidStart returns 404 and consumes it", async () => {
-    const onRequest = createOnRequestHandler(
-      createActorFederation(),
-      () => undefined,
-    );
-    const request = new Request("http://localhost/users/alice", {
-      headers: { Accept: "text/html" },
-    });
-
-    strictEqual(await onRequest(createEvent(request)), undefined);
-    const event = createEvent(request, 404);
-    const response = onBeforeResponse(event);
-
-    ok(response);
-    strictEqual(response.status, 406);
-    strictEqual(response.headers.get("Content-Type"), "text/plain");
-    strictEqual(response.headers.get("Vary"), "Accept");
-    strictEqual(await response.text(), "Not Acceptable");
-    strictEqual(onBeforeResponse(event), undefined);
-  });
-
-  for (const status of [200, 500, undefined]) {
-    test(`preserves the SolidStart response with status ${status} and clears the deferred 406`, async () => {
+  for (
+    const [name, status, body] of [
+      ["a 404 status", 404, undefined],
+      [
+        "a returned 404 response",
+        200,
+        new Response("Not Found", { status: 404 }),
+      ],
+      ["no response", undefined, undefined],
+    ] as const
+  ) {
+    test(`replaces ${name} with the deferred 406`, async () => {
       const onRequest = createOnRequestHandler(
         createActorFederation(),
         () => undefined,
@@ -113,8 +110,28 @@ describe("[solidstart] onBeforeResponse()", () => {
       });
 
       strictEqual(await onRequest(createEvent(request)), undefined);
-      strictEqual(onBeforeResponse(createEvent(request, status)), undefined);
-      strictEqual(onBeforeResponse(createEvent(request, 404)), undefined);
+      const response = beforeResponse(createEvent(request, status), body);
+      ok(response instanceof Response);
+      strictEqual(response.status, 406);
+      strictEqual(response.headers.get("Content-Type"), "text/plain");
+      strictEqual(response.headers.get("Vary"), "Accept");
+      strictEqual(await response.text(), "Not Acceptable");
+    });
+  }
+
+  for (const status of [200, 500]) {
+    test(`preserves the SolidStart response with status ${status}`, async () => {
+      const onRequest = createOnRequestHandler(
+        createActorFederation(),
+        () => undefined,
+      );
+      const request = new Request("http://localhost/users/alice", {
+        headers: { Accept: "text/html" },
+      });
+      const body = new Response("page", { status });
+
+      strictEqual(await onRequest(createEvent(request)), undefined);
+      strictEqual(beforeResponse(createEvent(request, status), body), body);
     });
   }
 
@@ -129,9 +146,9 @@ describe("[solidstart] onBeforeResponse()", () => {
     const secondRequest = new Request(firstRequest);
 
     strictEqual(await onRequest(createEvent(firstRequest)), undefined);
-    strictEqual(onBeforeResponse(createEvent(secondRequest, 404)), undefined);
-    const response = onBeforeResponse(createEvent(firstRequest, 404));
-    ok(response);
+    strictEqual(beforeResponse(createEvent(secondRequest, 404)), undefined);
+    const response = beforeResponse(createEvent(firstRequest, 404));
+    ok(response instanceof Response);
     strictEqual(response.status, 406);
   });
 });

@@ -1612,3 +1612,93 @@ test("getDocumentLoader() times out a stalled body of such a status", async () =
     await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
   });
 });
+
+const unsupportedUrls = [
+  "ftp://example.com/collection",
+  "file:///collection",
+  `data:application/ld+json,${
+    encodeURIComponent(JSON.stringify({ id: "https://example.com/data" }))
+  }`,
+];
+
+function isUnsupportedProtocolError(error: unknown, url: string): boolean {
+  return error instanceof UrlError &&
+    error.message === `Unsupported protocol: ${new URL(url).protocol}` &&
+    error.reason === "disallowed";
+}
+
+async function withFetchStub(
+  respond: (url: string) => Response,
+  callback: (fetched: string[]) => Promise<void>,
+): Promise<void> {
+  const fetched: string[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (input: RequestInfo | URL) => {
+    const url = input instanceof Request ? input.url : String(input);
+    fetched.push(url);
+    return Promise.resolve(respond(url));
+  };
+  try {
+    await callback(fetched);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+for (const url of unsupportedUrls) {
+  const scheme = new URL(url).protocol;
+
+  test(`getDocumentLoader() rejects ${scheme} URLs with private addresses allowed before fetching`, async () => {
+    await withFetchStub(() => Response.json({}), async (fetched) => {
+      await rejects(
+        getDocumentLoader({ allowPrivateAddress: true })(url),
+        (e) => isUnsupportedProtocolError(e, url),
+      );
+      deepStrictEqual(fetched, []);
+    });
+  });
+
+  test(`getDocumentLoader() rejects redirects to ${scheme} URLs with private addresses allowed`, async () => {
+    const start = "https://example.com/redirect-to-unsupported";
+    await withFetchStub(() => Response.redirect(url, 302), async (fetched) => {
+      await rejects(
+        getDocumentLoader({ allowPrivateAddress: true })(start),
+        (e) => isUnsupportedProtocolError(e, url),
+      );
+      deepStrictEqual(fetched, [start]);
+    });
+  });
+
+  for (const html of [false, true]) {
+    test(
+      `getDocumentLoader() rejects ${
+        html ? "HTML" : "Link header"
+      } alternates to ${scheme} URLs with private addresses allowed`,
+      async () => {
+        const start = "https://example.com/alternate-to-unsupported";
+        await withFetchStub(
+          () =>
+            html
+              ? new Response(
+                `<link rel="alternate" type="application/activity+json" href="${url}">`,
+                { headers: { "Content-Type": "text/html" } },
+              )
+              : new Response("", {
+                headers: {
+                  "Content-Type": "text/plain",
+                  Link:
+                    `<${url}>; rel="alternate"; type="application/activity+json"`,
+                },
+              }),
+          async (fetched) => {
+            await rejects(
+              getDocumentLoader({ allowPrivateAddress: true })(start),
+              (e) => isUnsupportedProtocolError(e, url),
+            );
+            deepStrictEqual(fetched, [start]);
+          },
+        );
+      },
+    );
+  }
+}
