@@ -8,6 +8,17 @@ Version 2.0.33
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed `getAuthenticatedDocumentLoader()` skipping URL scheme validation
+    when `allowPrivateAddress` was enabled.  Unsupported schemes such as
+    `ftp:`, `file:`, and `data:` are now rejected with `UrlError` before
+    fetching, including redirect and alternate document targets.
+    HTTP(S) URLs with private addresses remain allowed.  [[#1292], [#1293]]
+
+[#1292]: https://github.com/fedify-dev/fedify/issues/1292
+[#1293]: https://github.com/fedify-dev/fedify/pull/1293
+
 ### @fedify/cli
 
  -  Fixed `fedify webfinger` ignoring `-p`/`--allow-private-address` and the
@@ -62,6 +73,14 @@ To be released.
     unsupported `Accept` header.  Application responses, including explicit
     404s, are preserved.  The fallback includes `Vary: Accept`.
     [[#1277], [#1280]]
+
+### @fedify/vocab-runtime
+
+ -  Fixed `getDocumentLoader()` skipping URL scheme validation when
+    `allowPrivateAddress` was enabled.  Unsupported schemes such as `ftp:`,
+    `file:`, and `data:` are now rejected with `UrlError` before fetching,
+    including redirect and alternate document targets.  HTTP(S) URLs with
+    private addresses remain allowed.  [[#1292], [#1293]]
 
 
 Version 2.0.32
