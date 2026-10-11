@@ -104,7 +104,7 @@ import {
   handleOrderedCollection,
   rawInboxContextFactorySymbol,
 } from "./handler.ts";
-import { routeActivity } from "./inbox.ts";
+import { actorsHaveSameOrigin, routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import type { MessageQueue } from "./mq.ts";
@@ -1072,6 +1072,41 @@ export class FederationImpl<TContextData>
           );
           if (activity.id != null) {
             span.setAttribute("activitypub.activity.id", activity.id.href);
+          }
+          if (activity.actorId == null) {
+            logger.error("Missing actor in queued incoming activity.", {
+              activityId: activity.id?.href,
+              activity: message.activity,
+              recipient: message.identifier,
+            });
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: "Missing actor.",
+            });
+            span.end();
+            return;
+          }
+          if (
+            !this.skipSignatureVerification && activity.id != null &&
+            !actorsHaveSameOrigin(activity)
+          ) {
+            logger.error(
+              "The queued activity ({activityId}) and its actors do not " +
+                "have the same origin.",
+              {
+                activityId: activity.id.href,
+                actorIds: activity.actorIds.map((actor) => actor.href),
+                activity: message.activity,
+                recipient: message.identifier,
+              },
+            );
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: `The activity (${activity.id.href}) and its actors ` +
+                "do not have the same origin.",
+            });
+            span.end();
+            return;
           }
           cacheKey = activity.id == null ? null : [
             ...this.kvPrefixes.activityIdempotence,
@@ -2830,23 +2865,6 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           { recipient, activity: await fetched.toJsonLd({ contextLoader }) },
         );
         return false;
-      } else if (fetched.actorIds.length < 1) {
-        logger.debug(
-          "Fetched activity object is missing an actor; unable to verify.",
-          { recipient, activity: await fetched.toJsonLd({ contextLoader }) },
-        );
-        return false;
-      }
-      const activityId = fetched.id;
-      if (
-        !fetched.actorIds.every((actor) => actor.origin === activityId.origin)
-      ) {
-        logger.debug(
-          "Fetched activity object has actors from different origins; " +
-            "unable to verify.",
-          { recipient, activity: await fetched.toJsonLd({ contextLoader }) },
-        );
-        return false;
       }
       logger.debug(
         "Successfully fetched the remote activity object {activityId}; " +
@@ -2859,6 +2877,20 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         "Object Integrity Proofs are verified.",
         { recipient, activity: json },
       );
+    }
+    if (activity.actorId == null) {
+      logger.debug(
+        "Activity is missing an actor; unable to verify.",
+        { recipient, activity: json },
+      );
+      return false;
+    }
+    if (activity.id != null && !actorsHaveSameOrigin(activity)) {
+      logger.debug(
+        "Activity has actors from different origins; unable to verify.",
+        { recipient, activity: json },
+      );
+      return false;
     }
     const routeResult = await routeActivity({
       context: this,
