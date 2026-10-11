@@ -557,7 +557,11 @@ export function getDocumentLoader(
     visited = new Set<string>(),
   ): Promise<RemoteDocument> {
     options?.signal?.throwIfAborted();
-    const currentUrl = new URL(url).href;
+    const parsedUrl = new URL(url);
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      throw new UrlError(`Unsupported protocol: ${parsedUrl.protocol}`);
+    }
+    const currentUrl = parsedUrl.href;
     if (!skipPreloadedContexts && currentUrl in preloadedContexts) {
       logger.debug("Using preloaded context: {url}.", { url: currentUrl });
       return {
