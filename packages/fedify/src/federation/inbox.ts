@@ -28,6 +28,21 @@ import {
   recordInboxActivity,
 } from "./metrics.ts";
 
+/**
+ * Checks whether an activity's ID and all of its actor IDs have the same
+ * non-opaque origin.  Activities without an ID have no origin to authenticate.
+ *
+ * The caller is responsible for rejecting a missing primary actor ID before
+ * relying on this check.
+ * @internal
+ */
+export function actorsHaveSameOrigin(activity: Activity): boolean {
+  if (activity.id == null) return true;
+  const origin = activity.id.origin;
+  return origin !== "null" &&
+    activity.actorIds.every((actor) => actor.origin === origin);
+}
+
 export interface RouteActivityParameters<TContextData> {
   context: Context<TContextData>;
   json: unknown;
@@ -127,6 +142,13 @@ export async function routeActivity<TContextData>(
 ): Promise<RouteActivityResult> {
   const logger = getLogger(["fedify", "federation", "inbox"]);
 
+  if (activity.actorId == null) {
+    logger.error("Missing actor.", { activity: json });
+    span.setStatus({ code: SpanStatusCode.ERROR, message: "Missing actor." });
+    recordInboxActivity(meterProvider, "rejected", getTypeId(activity).href);
+    return "missingActor";
+  }
+
   // Generate idempotency key based on strategy
   let cacheKey: KvKey | null = null;
   if (activity.id != null) {
@@ -195,12 +217,6 @@ export async function routeActivity<TContextData>(
       );
       return "alreadyProcessed";
     }
-  }
-  if (activity.actorId == null) {
-    logger.error("Missing actor.", { activity: json });
-    span.setStatus({ code: SpanStatusCode.ERROR, message: "Missing actor." });
-    recordInboxActivity(meterProvider, "rejected", getTypeId(activity).href);
-    return "missingActor";
   }
   span.setAttribute("activitypub.actor.id", activity.actorId.href);
   if (queue != null) {

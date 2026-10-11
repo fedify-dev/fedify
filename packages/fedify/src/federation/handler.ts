@@ -76,7 +76,7 @@ import type {
   IdempotencyStrategy,
   InboxChallengePolicy,
 } from "./federation.ts";
-import { routeActivity } from "./inbox.ts";
+import { actorsHaveSameOrigin, routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import {
@@ -1589,6 +1589,40 @@ async function handleInboxInternal<TContextData>(
         kvPrefixes,
       );
     }
+  }
+  if (activity.actorId == null) {
+    logger.error("Missing actor.", { activity: json, recipient });
+    span.setStatus({ code: SpanStatusCode.ERROR, message: "Missing actor." });
+    return new Response("Missing actor.", {
+      status: 400,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+  if (
+    !skipSignatureVerification && activity.id != null &&
+    !actorsHaveSameOrigin(activity)
+  ) {
+    logger.error(
+      "The activity ({activityId}) and its actors do not have the same origin.",
+      {
+        activity: json,
+        recipient,
+        activityId: activity.id.href,
+        actorIds: activity.actorIds.map((actor) => actor.href),
+      },
+    );
+    span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: `The activity (${activity.id.href}) and its actors do not ` +
+        "have the same origin.",
+    });
+    return new Response(
+      "The activity and its actors do not have the same origin.",
+      {
+        status: 401,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      },
+    );
   }
   const routeResult = await routeActivity({
     context: ctx,

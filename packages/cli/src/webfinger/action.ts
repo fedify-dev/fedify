@@ -12,10 +12,15 @@ import { getErrorMessage, NotFoundError } from "./error.ts";
 import { convertUrlIfHandle } from "./lib.ts";
 
 export default async function runWebFinger(
-  { command: _, resources, ...options }: WebFingerCommand,
+  { command: _, resources, allowPrivateAddresses, ...options }:
+    WebFingerCommand,
 ) {
   await Array.fromAsync(
-    resources.map((resource) => ({ resource, ...options })),
+    resources.map((resource) => ({
+      resource,
+      ...options,
+      allowPrivateAddress: allowPrivateAddresses,
+    })),
     spinnerWrapper(lookupSingleWebFinger),
   );
 }
