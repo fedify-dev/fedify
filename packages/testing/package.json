@@ -1,6 +1,6 @@
 {
   "name": "@fedify/testing",
-  "version": "2.3.14",
+  "version": "2.3.15",
   "description": "Testing utilities for Fedify applications",
   "keywords": [
     "fedify",

@@ -1,6 +1,6 @@
 {
   "name": "@fedify/backfill",
-  "version": "2.3.14",
+  "version": "2.3.15",
   "description": "ActivityPub backfill support for Fedify",
   "keywords": [
     "Fedify",
