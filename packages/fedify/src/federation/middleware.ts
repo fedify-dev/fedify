@@ -5403,7 +5403,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   lookupWebFinger(
     resource: URL | string,
-    options: LookupWebFingerOptions = {},
+    options: Omit<LookupWebFingerOptions, "withDiagnostics"> = {},
   ): Promise<ResourceDescriptor | null> {
     return lookupWebFinger(resource, {
       ...options,
