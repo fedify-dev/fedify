@@ -3,6 +3,12 @@
 Fedify changelog
 ================
 
+Version 2.4.5
+-------------
+
+To be released.
+
+
 Version 2.4.4
 -------------
 
