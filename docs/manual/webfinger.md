@@ -393,6 +393,58 @@ The available options are:
 `signal`
 :   An `AbortSignal` for cancelling the request.
 
+`withDiagnostics`
+:   *Since Fedify 2.5.0.*  Whether to return a `WebFingerLookupOutcome`
+    describing why the lookup failed, instead of collapsing every failure
+    into `null`.  Turned off by default.  See
+    [*Diagnosing a failed lookup*](#diagnosing-a-failed-lookup) below.
+
+### Diagnosing a failed lookup
+
+*This option is available since Fedify 2.5.0.*
+
+By default, `lookupWebFinger()` returns `null` for every kind of failure:
+a response saying the resource doesn't exist looks the same as a network
+error or a malformed response.  Pass `withDiagnostics: true` to get back a
+`WebFingerLookupOutcome` instead, which explains why the lookup failed:
+
+~~~~ typescript twoslash
+import { lookupWebFinger } from "@fedify/webfinger";
+
+const outcome = await lookupWebFinger("acct:alice@example.com", {
+  withDiagnostics: true,
+});
+
+if (outcome.resource != null) {
+  console.log("Found:", outcome.resource.subject);
+} else {
+  console.log("Failed:", outcome.result);
+}
+~~~~
+
+The `result` field is one of:
+
+`"found"`
+:   The lookup returned a resource descriptor.
+
+`"not_found"`
+:   The remote responded with `404 Not Found` or `410 Gone`.
+
+`"invalid"`
+:   The remote responded with content Fedify could not parse into a
+    resource descriptor, or the queried resource was malformed.
+
+`"network_error"`
+:   No HTTP response was received, e.g., the URL was rejected as a private
+    address, or the request was aborted.
+
+`"error"`
+:   The remote responded with an unexpected non-2xx HTTP response.
+
+> [!NOTE]
+> `~Context.lookupWebFinger()` does not support `withDiagnostics`; it always
+> returns the resource descriptor or `null`.
+
 > [!TIP]
 > Use `@fedify/webfinger` when you need a lightweight WebFinger client without
 > the full Fedify framework.  If you're already using Fedify, prefer

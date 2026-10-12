@@ -124,10 +124,33 @@ function getMetricResourceScheme(scheme: string): string {
   return WEBFINGER_LOOKUP_SCHEME_WHITELIST.has(scheme) ? scheme : "other";
 }
 
-interface WebFingerLookupOutcome {
+/**
+ * The outcome of a {@link lookupWebFinger} call, returned in place of the
+ * plain {@link ResourceDescriptor} when `options.withDiagnostics` is `true`.
+ * @since 2.5.0
+ */
+export interface WebFingerLookupOutcome {
+  /**
+   * The resource descriptor fetched from the remote WebFinger endpoint, or
+   * `null` if the lookup did not succeed.
+   */
   resource: ResourceDescriptor | null;
+
+  /**
+   * The terminal classification of the lookup.  See
+   * {@link WebFingerLookupResult} for what each value means.
+   */
   result: WebFingerLookupResult;
+
+  /**
+   * The HTTP status code of the final response, if a response was received
+   * from the remote server.
+   */
   statusCode?: number;
+
+  /**
+   * The host of the final URL the lookup attempted to reach.
+   */
   remoteHost?: string;
 }
 
@@ -182,6 +205,16 @@ export interface LookupWebFingerOptions {
    * @since 1.8.0
    */
   signal?: AbortSignal;
+
+  /**
+   * Whether to return a {@link WebFingerLookupOutcome} describing why the
+   * lookup failed, instead of collapsing every failure into `null`.
+   *
+   * Turned off by default, so existing callers keep receiving
+   * `ResourceDescriptor | null` unchanged.
+   * @since 2.5.0
+   */
+  withDiagnostics?: boolean;
 }
 
 /**
@@ -193,8 +226,27 @@ export interface LookupWebFingerOptions {
  */
 export async function lookupWebFinger(
   resource: URL | string,
+  options?: LookupWebFingerOptions & { withDiagnostics?: false },
+): Promise<ResourceDescriptor | null>;
+
+/**
+ * Looks up a WebFinger resource, returning diagnostics that explain why the
+ * lookup failed instead of collapsing every failure into `null`.
+ * @param resource The resource URL to look up.
+ * @param options Extra options for looking up the resource.  Must set
+ *                `withDiagnostics: true`.
+ * @returns The outcome of the lookup.
+ * @since 2.5.0
+ */
+export async function lookupWebFinger(
+  resource: URL | string,
+  options: LookupWebFingerOptions & { withDiagnostics: true },
+): Promise<WebFingerLookupOutcome>;
+
+export async function lookupWebFinger(
+  resource: URL | string,
   options: LookupWebFingerOptions = {},
-): Promise<ResourceDescriptor | null> {
+): Promise<ResourceDescriptor | null | WebFingerLookupOutcome> {
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(
     metadata.name,
@@ -228,7 +280,7 @@ export async function lookupWebFinger(
             ? SpanStatusCode.ERROR
             : SpanStatusCode.OK,
         });
-        return outcome.resource;
+        return options.withDiagnostics ? outcome : outcome.resource;
       } catch (error) {
         span.setStatus({
           code: SpanStatusCode.ERROR,

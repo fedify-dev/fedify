@@ -989,3 +989,95 @@ test("lookupWebFinger() logs DNS failures as such", async (t) => {
     });
   }
 });
+
+test("lookupWebFinger() with withDiagnostics: true", {
+  sanitizeOps: false,
+  sanitizeResources: false,
+}, async (t) => {
+  // No fetch mock is active yet, so this reaches the real (non-existent)
+  // host and fails at the network layer, the same way the "connection
+  // refused" step above does.
+  await t.step("network_error", async () => {
+    const outcome = await lookupWebFinger(
+      "acct:johndoe@fedify-test.internal",
+      { withDiagnostics: true },
+    );
+    deepStrictEqual(outcome.resource, null);
+    deepStrictEqual(outcome.result, "network_error");
+    deepStrictEqual(
+      "statusCode" in outcome,
+      false,
+      "no HTTP response means no status code",
+    );
+  });
+
+  fetchMock.spyGlobal();
+  try {
+    await t.step("found", async () => {
+      fetchMock.removeRoutes();
+      const expected: ResourceDescriptor = {
+        subject: "acct:johndoe@example.com",
+        links: [],
+      };
+      fetchMock.get(
+        "https://example.com/.well-known/webfinger?resource=acct%3Ajohndoe%40example.com",
+        { body: expected },
+      );
+      const outcome = await lookupWebFinger("acct:johndoe@example.com", {
+        withDiagnostics: true,
+      });
+      deepStrictEqual(outcome.resource, expected);
+      deepStrictEqual(outcome.result, "found");
+      deepStrictEqual(outcome.statusCode, 200);
+      deepStrictEqual(outcome.remoteHost, "example.com");
+    });
+
+    await t.step("not_found", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        { status: 404 },
+      );
+      const outcome = await lookupWebFinger("acct:johndoe@example.com", {
+        withDiagnostics: true,
+      });
+      deepStrictEqual(outcome.resource, null);
+      deepStrictEqual(outcome.result, "not_found");
+      deepStrictEqual(outcome.statusCode, 404);
+      deepStrictEqual(outcome.remoteHost, "example.com");
+    });
+
+    await t.step("invalid", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        { body: "not json" },
+      );
+      const outcome = await lookupWebFinger("acct:johndoe@example.com", {
+        withDiagnostics: true,
+      });
+      deepStrictEqual(outcome.resource, null);
+      deepStrictEqual(outcome.result, "invalid");
+      deepStrictEqual(outcome.statusCode, 200);
+      deepStrictEqual(outcome.remoteHost, "example.com");
+    });
+
+    await t.step("error", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        { status: 500 },
+      );
+      const outcome = await lookupWebFinger("acct:johndoe@example.com", {
+        withDiagnostics: true,
+      });
+      deepStrictEqual(outcome.resource, null);
+      deepStrictEqual(outcome.result, "error");
+      deepStrictEqual(outcome.statusCode, 500);
+      deepStrictEqual(outcome.remoteHost, "example.com");
+    });
+  } finally {
+    fetchMock.removeRoutes();
+    fetchMock.hardReset();
+  }
+});
