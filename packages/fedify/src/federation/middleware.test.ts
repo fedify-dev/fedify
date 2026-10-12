@@ -12561,8 +12561,8 @@ test("createFederation() applies publicKeyTtl to cached public keys", async () =
       return await federation.fetch(request, { contextData: undefined });
     };
 
-    // "2" is the key cache generation; see GHSA-q9f8-5hc7-898f.
-    const publicKeyKey: KvKey = ["_fedify", "publicKey", "2", keyId];
+    // "3" is the key cache generation; see GHSA-8863-8468-7hq7.
+    const publicKeyKey: KvKey = ["_fedify", "publicKey", "3", keyId];
 
     // Verifying the first signed delivery fetches the key and caches it with
     // the TTL the application configured rather than the 30-day default.

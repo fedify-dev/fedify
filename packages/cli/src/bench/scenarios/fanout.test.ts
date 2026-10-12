@@ -260,6 +260,16 @@ test("fanoutRunner - waits for observed queue work before drain", async () => {
 test("fanoutRunner - ignores baseline backlog completions while draining", async () => {
   const target = new URL("http://target.test/");
   let triggerCalls = 0;
+  let now = 0;
+  // Keep the 1 ms load window open until the first request starts, even
+  // when the test runner is busy.  Drain polling advances the clock.
+  const clock: Clock = {
+    now: () => now,
+    sleepUntil: (timeMs) => {
+      now = Math.max(now, timeMs);
+      return Promise.resolve();
+    },
+  };
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
@@ -281,6 +291,7 @@ test("fanoutRunner - ignores baseline backlog completions while draining", async
     contextLoader: await getContextLoader({ allowPrivateAddress: true }),
     allowPrivateAddress: true,
     fleet: null,
+    clock,
     fetch: (input) => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/fedify/bench/stats") {
@@ -298,9 +309,10 @@ test("fanoutRunner - ignores baseline backlog completions while draining", async
     },
   });
 
-  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(measurement.requests.total, 1);
+  assert.strictEqual(measurement.requests.failed, 1);
   assert.strictEqual(measurement.requests.successRate, 0);
-  assert.ok(triggerCalls > 0);
+  assert.strictEqual(triggerCalls, 1);
 });
 
 test("fanoutRunner - tolerates transient drain stats failures", async () => {

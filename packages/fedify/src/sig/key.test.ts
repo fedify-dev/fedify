@@ -15,6 +15,7 @@ import {
 import {
   assert,
   assertEquals,
+  assertFalse,
   assertRejects,
   assertStrictEquals,
   assertThrows,
@@ -1516,4 +1517,269 @@ test("fetchKey() records the controller an actor document establishes", async ()
   const { key } = await fetchKey(keyId, Multikey, options);
   assertEquals(key?.controllerId, new URL(actorId));
   assert(key?.publicKey != null);
+});
+
+test("fetchKey() rejects a key whose owner redirects to another actor", async () => {
+  // Alice's actor id on victim.example redirects to Mallory's actor document
+  // on evil.example, which lists Mallory's standalone key.  That key names
+  // Alice as its owner.  The document the owner id leads to has to be
+  // Alice's own, not whatever actor the redirect ends at.
+  // See GHSA-8863-8468-7hq7.
+  const keyId = "https://evil.example/keys/1";
+  const victim = "https://victim.example/users/alice";
+  const mallory = "https://evil.example/users/mallory";
+  const { publicKeyPem } = await rsaPublicKey3.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as { publicKeyPem: string };
+  const cache: Record<string, CryptographicKey | Multikey | null> = {};
+  const options: FetchKeyOptions = {
+    documentLoader(resource) {
+      if (resource === keyId) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            "@context": "https://w3id.org/security/v1",
+            id: keyId,
+            type: "CryptographicKey",
+            owner: victim,
+            publicKeyPem,
+          },
+        });
+      }
+      if (resource === victim || resource === mallory) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: mallory,
+          document: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/v1",
+            ],
+            id: mallory,
+            type: "Person",
+            publicKey: keyId,
+          },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+    keyCache: {
+      get(keyId) {
+        return Promise.resolve(cache[keyId.href]);
+      },
+      set(keyId, key) {
+        cache[keyId.href] = key;
+        return Promise.resolve();
+      },
+    } satisfies KeyCache,
+  };
+  assertEquals(await fetchKey(keyId, CryptographicKey, options), {
+    key: null,
+    cached: false,
+  });
+  // The forged ownership must not survive in the key cache either.
+  assertEquals(cache, { [keyId]: null });
+});
+
+test("fetchKey() rejects a key whose owner resolves to another actor on the same origin", async () => {
+  // No redirect at all: the server at Alice's id serves Bob's document
+  // directly, under Alice's URL.  The origin check alone cannot tell the two
+  // apart, since both actors live on victim.example.
+  // See GHSA-8863-8468-7hq7.
+  const keyId = "https://victim.example/keys/bob";
+  const victim = "https://victim.example/users/alice";
+  const bob = "https://victim.example/users/bob";
+  const { publicKeyPem } = await rsaPublicKey3.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as { publicKeyPem: string };
+  const options: FetchKeyOptions = {
+    documentLoader(resource) {
+      if (resource === keyId) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            "@context": "https://w3id.org/security/v1",
+            id: keyId,
+            type: "CryptographicKey",
+            owner: victim,
+            publicKeyPem,
+          },
+        });
+      }
+      if (resource === victim || resource === bob) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/v1",
+            ],
+            id: bob,
+            type: "Person",
+            publicKey: keyId,
+          },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  assertEquals(await fetchKey(keyId, CryptographicKey, options), {
+    key: null,
+    cached: false,
+  });
+});
+
+test("fetchKey() rejects a Multikey whose controller redirects to another actor", async () => {
+  // The Object Integrity Proofs counterpart: a Multikey whose `controller`
+  // is Alice, while Alice's id leads to Mallory's document, which lists the
+  // key as an `assertionMethod`.  See GHSA-8863-8468-7hq7.
+  const keyId = "https://evil.example/keys/ed25519";
+  const victim = "https://victim.example/users/alice";
+  const mallory = "https://evil.example/users/mallory";
+  const multikeyDocument = await ed25519Multikey.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const options: FetchKeyOptions = {
+    documentLoader(resource) {
+      if (resource === keyId) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: { ...multikeyDocument, id: keyId, controller: victim },
+        });
+      }
+      if (resource === victim || resource === mallory) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: mallory,
+          document: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/v1",
+              "https://w3id.org/security/multikey/v1",
+              "https://w3id.org/security/data-integrity/v1",
+              "https://www.w3.org/ns/did/v1",
+            ],
+            id: mallory,
+            type: "Person",
+            assertionMethod: [keyId],
+          },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  assertEquals(await fetchKey(keyId, Multikey, options), {
+    key: null,
+    cached: false,
+  });
+});
+
+test("fetchKey() accepts an owner whose document URL differs from its id", async () => {
+  // A loader may legitimately end up at a different URL than the one it was
+  // asked for—a content-negotiation redirect to a .json representation, for
+  // instance.  What matters is that the document's `id` is the actor that
+  // was requested, not where the bytes came from.
+  const keyId = "https://victim.example/keys/alice";
+  const alice = "https://victim.example/users/alice";
+  const { publicKeyPem } = await rsaPublicKey3.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as { publicKeyPem: string };
+  const options: FetchKeyOptions = {
+    documentLoader(resource) {
+      if (resource === keyId) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            "@context": "https://w3id.org/security/v1",
+            id: keyId,
+            type: "CryptographicKey",
+            owner: alice,
+            publicKeyPem,
+          },
+        });
+      }
+      if (resource === alice) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: `${alice}.json`,
+          document: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/v1",
+            ],
+            id: alice,
+            type: "Person",
+            publicKey: keyId,
+          },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  const { key, cached } = await fetchKey(keyId, CryptographicKey, options);
+  assertFalse(cached);
+  assertEquals(key?.id, new URL(keyId));
+  assertEquals(key?.ownerId, new URL(alice));
+});
+
+test("fetchKey() rejects an owner reached through a normalization redirect", async () => {
+  // Intended behavior, not an oversight: a server that canonicalizes actor
+  // URLs (here, /users/Alice redirecting to /users/alice) cannot have a key
+  // confirmed through the non-canonical form.  There is no way to tell a
+  // same-account normalization apart from a redirect to another actor, so
+  // keys have to name the canonical id as their owner.
+  // See GHSA-8863-8468-7hq7.
+  const keyId = "https://victim.example/keys/alice";
+  const canonical = "https://victim.example/users/alice";
+  const nonCanonical = "https://victim.example/users/Alice";
+  const { publicKeyPem } = await rsaPublicKey3.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as { publicKeyPem: string };
+  const options: FetchKeyOptions = {
+    documentLoader(resource) {
+      if (resource === keyId) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            "@context": "https://w3id.org/security/v1",
+            id: keyId,
+            type: "CryptographicKey",
+            owner: nonCanonical,
+            publicKeyPem,
+          },
+        });
+      }
+      if (resource === canonical || resource === nonCanonical) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: canonical,
+          document: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/v1",
+            ],
+            id: canonical,
+            type: "Person",
+            publicKey: keyId,
+          },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  assertEquals(await fetchKey(keyId, CryptographicKey, options), {
+    key: null,
+    cached: false,
+  });
 });
