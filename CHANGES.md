@@ -8,6 +8,23 @@ Version 2.0.34
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed `getAuthenticatedDocumentLoader()` accepting URLs with a username
+    or password.  Such URLs now throw `UrlError` before fetching on all
+    runtimes, including redirect and alternate document targets, regardless
+    of `allowPrivateAddress`.  [[#1294], [#1295]]
+
+[#1294]: https://github.com/fedify-dev/fedify/issues/1294
+[#1295]: https://github.com/fedify-dev/fedify/pull/1295
+
+### @fedify/vocab-runtime
+
+ -  Fixed `getDocumentLoader()` accepting URLs with a username or password.
+    Such URLs now throw `UrlError` before fetching on all runtimes, including
+    redirect and alternate document targets, regardless of
+    `allowPrivateAddress`.  [[#1294], [#1295]]
+
 
 Version 2.0.33
 --------------
