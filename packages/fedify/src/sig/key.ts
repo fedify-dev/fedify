@@ -319,16 +319,23 @@ export interface VerifyKeyOwnershipOptions {
 /**
  * Fetches the document that the given actor URI dereferences to, and returns
  * the actor only if the host that served the document is authoritative for
- * the id the document claims.
+ * the id the document claims, and that id is the actor that was asked for.
  *
  * Only the origin that serves an actor id can speak for it.  Without that
  * rule any host could serve a document describing somebody else's actor—and
  * listing its own keys as that actor's.
  *
+ * The returned actor always has exactly the requested `actorId` as its `id`.
+ * A document loader follows redirects and alternate document links, so the
+ * document an actor id leads to may describe a different actor altogether,
+ * on the same origin or on another; accepting it would attribute that other
+ * actor's keys to the requested one.  See GHSA-8863-8468-7hq7.
+ *
  * @param actorId The URI of the actor to fetch.
  * @param options Options for fetching the document.
  * @returns The actor, or `null` if the document cannot be fetched, is not an
- *          actor, or belongs to another origin.
+ *          actor, belongs to another origin, or describes an actor other
+ *          than the requested one.
  * @internal
  */
 export async function fetchActorDocument(
@@ -390,6 +397,22 @@ async function fetchActorDocumentInternal(
         "{actorId}, which belongs to another origin; refusing to treat it " +
         "as that actor's document.",
       { documentUrl: documentUrl.href, actorId: object.id?.href },
+    );
+    return null;
+  }
+  // The origin check settles who may speak for the id the document claims,
+  // but not whether that id is the one that was asked for.  An actor id that
+  // redirects to—or directly serves—another actor's document must not have
+  // that actor's keys attributed to it.  Normalization redirects of the same
+  // account are refused as well: nothing distinguishes them from a redirect
+  // to somebody else, so keys and activities have to name the canonical id.
+  // See GHSA-8863-8468-7hq7.
+  if (object.id.href !== actorId.href) {
+    logger.debug(
+      "The document fetched for the actor {actorId} is the actor " +
+        "{documentActorId} instead; refusing to treat it as the requested " +
+        "actor's document.",
+      { actorId: actorId.href, documentActorId: object.id.href },
     );
     return null;
   }

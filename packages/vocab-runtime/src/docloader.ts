@@ -315,6 +315,11 @@ export function getDocumentLoader(
     if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
       throw new UrlError(`Unsupported protocol: ${parsedUrl.protocol}`);
     }
+    // When merging forward, keep this guard independent of allowPrivateAddress:
+    // private-address opt-in must not permit credentials on any followed URL.
+    if (parsedUrl.username !== "" || parsedUrl.password !== "") {
+      throw new UrlError("URLs with credentials are not allowed");
+    }
     const currentUrl = parsedUrl.href;
     if (!skipPreloadedContexts && currentUrl in preloadedContexts) {
       logger.debug("Using preloaded context: {url}.", { url: currentUrl });

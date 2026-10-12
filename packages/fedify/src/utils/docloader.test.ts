@@ -654,6 +654,129 @@ const unsupportedUrls = [
   }`,
 ];
 
+function isCredentialUrlError(error: unknown): boolean {
+  return error instanceof UrlError && error.reason === "disallowed" &&
+    error.message === "URLs with credentials are not allowed";
+}
+
+test("getAuthenticatedDocumentLoader() rejects URLs with credentials", async (t) => {
+  const identity = {
+    keyId: new URL("https://example.com/key2"),
+    privateKey: rsaPrivateKey2,
+  };
+  const start = "https://8.8.8.8/start";
+  const target = "https://user:pass@8.8.8.8/document";
+  for (const allowPrivateAddress of [false, true]) {
+    const loader = getAuthenticatedDocumentLoader(identity, {
+      allowPrivateAddress,
+    });
+    for (const path of ["direct", "redirect", "Link", "HTML"]) {
+      await t.step(
+        `${path}, allowPrivateAddress=${allowPrivateAddress}`,
+        async () => {
+          await withFetchStub(
+            (request) => {
+              if (request.url !== start) return Response.json({});
+              if (path === "redirect") return Response.redirect(target, 302);
+              if (path === "HTML") {
+                return new Response(
+                  `<link rel="alternate" type="application/activity+json" href="${target}">`,
+                  { headers: { "Content-Type": "text/html" } },
+                );
+              }
+              return new Response("", {
+                headers: {
+                  "Content-Type": "text/plain",
+                  Link:
+                    `<${target}>; rel="alternate"; type="application/activity+json"`,
+                },
+              });
+            },
+            async (fetched) => {
+              await rejects(
+                loader(path === "direct" ? target : start),
+                isCredentialUrlError,
+              );
+              deepStrictEqual(
+                fetched.map((r) => r.url),
+                path === "direct" ? [] : [start],
+              );
+            },
+          );
+        },
+      );
+    }
+    for (
+      const url of [
+        "https://user@8.8.8.8/document",
+        "https://:pass@8.8.8.8/document",
+        "https://%75ser:p%40ss@8.8.8.8/document",
+        "http://user:pass@8.8.8.8/document",
+      ]
+    ) {
+      await t.step(
+        `${url}, allowPrivateAddress=${allowPrivateAddress}`,
+        async () => {
+          await withFetchStub(() => Response.json({}), async (fetched) => {
+            await rejects(loader(url), isCredentialUrlError);
+            deepStrictEqual(fetched, []);
+          });
+        },
+      );
+    }
+    for (
+      const url of [
+        "https://:@8.8.8.8/document",
+        "https://8.8.8.8/@user?q=@pass",
+      ]
+    ) {
+      await t.step(
+        `allows ${url}, allowPrivateAddress=${allowPrivateAddress}`,
+        async () => {
+          await withFetchStub(
+            () => Response.json({ done: true }),
+            async (fetched) => {
+              const document = await loader(url);
+              deepStrictEqual(document.document, { done: true });
+              deepStrictEqual(fetched.map((r) => r.url), [new URL(url).href]);
+            },
+          );
+        },
+      );
+    }
+  }
+  for (
+    const firstSpec of ["rfc9421", "draft-cavage-http-signatures-12"] as const
+  ) {
+    await t.step(`redirect after fallback from ${firstSpec}`, async () => {
+      const loader = getAuthenticatedDocumentLoader(identity, {
+        allowPrivateAddress: true,
+        specDeterminer: {
+          determineSpec: () => firstSpec,
+          rememberSpec: () => {},
+        },
+      });
+      await withFetchStub(
+        (request) =>
+          request.url !== start
+            ? Response.json({})
+            : request.headers.has("Signature-Input") ===
+                (firstSpec === "rfc9421")
+            ? new Response(null, { status: 401 })
+            : Response.redirect(target, 302),
+        async (fetched) => {
+          await rejects(loader(start), isCredentialUrlError);
+          deepStrictEqual(fetched.map((r) => r.url), [start, start]);
+          deepStrictEqual(
+            fetched.map((r) => r.headers.has("Signature-Input")),
+            [firstSpec === "rfc9421", firstSpec !== "rfc9421"],
+          );
+        },
+      );
+    });
+  }
+});
+
 function isUnsupportedProtocolError(error: unknown, url: string): boolean {
   return error instanceof UrlError &&
     error.message === `Unsupported protocol: ${new URL(url).protocol}` &&
