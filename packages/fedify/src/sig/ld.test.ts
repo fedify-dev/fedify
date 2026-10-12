@@ -1521,3 +1521,63 @@ test("verifyJsonLd() rejects a key that claims a forged owner", async () => {
     }),
   );
 });
+
+test("verifyJsonLd() rejects a key whose owner redirects to another actor", async () => {
+  // Alice's actor id redirects to Mallory's document, which lists Mallory's
+  // key; the key names Alice as its owner.  An activity by Alice signed with
+  // Mallory's key must not verify.  See GHSA-8863-8468-7hq7.
+  const keyId = new URL("https://evil.example/keys/1");
+  const victim = "https://victim.example/users/alice";
+  const mallory = "https://evil.example/users/mallory";
+  const { publicKeyPem } = await rsaPublicKey3.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as { publicKeyPem: string };
+  const signed = await signJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://victim.example/activities/forged",
+      type: "Create",
+      actor: victim,
+      object: { type: "Note", content: "forged" },
+    },
+    rsaPrivateKey3,
+    keyId,
+    { contextLoader: mockDocumentLoader },
+  );
+  const options = {
+    documentLoader(resource: string) {
+      if (resource === keyId.href) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            "@context": "https://w3id.org/security/v1",
+            id: keyId.href,
+            type: "CryptographicKey",
+            owner: victim,
+            publicKeyPem,
+          },
+        });
+      }
+      if (resource === victim || resource === mallory) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: mallory,
+          document: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/v1",
+            ],
+            id: mallory,
+            type: "Person",
+            publicKey: keyId.href,
+          },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  assertEquals(await verifySignature(signed, options), null);
+  assertFalse(await verifyJsonLd(signed, options));
+});

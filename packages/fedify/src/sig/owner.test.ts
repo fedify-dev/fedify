@@ -261,3 +261,79 @@ test("doesActorOwnKey() matches a key that leaves its id implicit", async () => 
     ),
   );
 });
+
+test("doesActorOwnKey() rejects an actor ID that redirects to the key's owner", async () => {
+  // Alice's actor id on victim.example redirects to Mallory's document on
+  // evil.example.  Mallory's key honestly names Mallory as its owner, so the
+  // owner check fails to match Alice—and the fallback that fetches Alice's
+  // document must not accept Mallory's document in its place.
+  // See GHSA-8863-8468-7hq7.
+  const keyId = "https://evil.example/keys/1";
+  const victim = "https://victim.example/users/alice";
+  const mallory = "https://evil.example/users/mallory";
+  const { publicKeyPem } = await rsaPublicKey1.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as { publicKeyPem: string };
+  const serveKeyOwnedBy = (owner: string) => ({
+    documentLoader(resource: string) {
+      if (resource === keyId) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            "@context": "https://w3id.org/security/v1",
+            id: keyId,
+            type: "CryptographicKey",
+            owner,
+            publicKeyPem,
+          },
+        });
+      }
+      if (resource === victim || resource === mallory) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: mallory,
+          document: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/v1",
+            ],
+            id: mallory,
+            type: "Person",
+            publicKey: keyId,
+          },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  });
+  const activity = new Create({ actor: new URL(victim) });
+
+  // The actor_fetch path: the key is Mallory's, and says so.
+  const mallorysKey = new CryptographicKey({
+    id: new URL(keyId),
+    owner: new URL(mallory),
+    publicKey: rsaPublicKey1.publicKey!,
+  });
+  assertFalse(
+    await doesActorOwnKey(activity, mallorysKey, serveKeyOwnedBy(mallory)),
+  );
+
+  // The key_owner path: the key names Alice, whose id leads to Mallory.
+  const forgedKey = new CryptographicKey({
+    id: new URL(keyId),
+    owner: new URL(victim),
+    publicKey: rsaPublicKey1.publicKey!,
+  });
+  assertFalse(
+    await doesActorOwnKey(activity, forgedKey, serveKeyOwnedBy(victim)),
+  );
+
+  // Fetching the key by id goes through the same ownership check, so the
+  // forged owner never becomes the key's owner either.
+  assertEquals(
+    await getKeyOwner(new URL(keyId), serveKeyOwnedBy(victim)),
+    null,
+  );
+});
