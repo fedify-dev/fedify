@@ -115,9 +115,15 @@ export function getAuthenticatedDocumentLoader(
   }
 
   async function validateUrl(url: string): Promise<void> {
-    const protocol = new URL(url).protocol;
+    const parsedUrl = new URL(url);
+    const protocol = parsedUrl.protocol;
     if (protocol !== "http:" && protocol !== "https:") {
       throw new UrlError(`Unsupported protocol: ${protocol}`);
+    }
+    // When merging forward, keep this guard independent of allowPrivateAddress:
+    // private-address opt-in must not permit credentials on any followed URL.
+    if (parsedUrl.username !== "" || parsedUrl.password !== "") {
+      throw new UrlError("URLs with credentials are not allowed");
     }
     if (!allowPrivateAddress) {
       try {
