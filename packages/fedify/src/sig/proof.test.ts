@@ -20,6 +20,7 @@ import {
   encodeMultibase,
   exportDidKey,
   exportMultibaseKey,
+  FetchError,
   formatIri,
   importMultibaseKey,
   parseIri,
@@ -52,6 +53,7 @@ import {
   signObject,
   verifyMapLocalProof,
   verifyObject,
+  verifyObjectDetailed,
   type VerifyObjectOptions,
   verifyPortableObjectProof,
   verifyProof,
@@ -3939,4 +3941,73 @@ test("verifyObject() rejects a key whose controller redirects to another actor",
     contextLoader: mockDocumentLoader,
   };
   assertEquals(await verifyObject(Create, jsonLd, options), null);
+});
+
+test("verifyObjectDetailed() tells who signed the proofs", async () => {
+  const keyId = new URL("https://example.com/person2#key4");
+  const actor = new URL("https://example.com/person2");
+  const signed = await signObject(
+    new Create({
+      id: new URL("https://example.com/activities/detailed"),
+      actor,
+      object: new Note({ content: "Hello" }),
+    }),
+    ed25519PrivateKey,
+    keyId,
+    { contextLoader: mockDocumentLoader },
+  );
+  const json = await signed.toJsonLd({ contextLoader: mockDocumentLoader });
+  const options = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  const result = await verifyObjectDetailed(Create, json, options);
+  assertEquals(result.status, "verified");
+  assertEquals(
+    result.status === "verified"
+      ? result.signers.map((s) => [s.kind, s.id.href, s.keyId.href])
+      : [],
+    [["actor", actor.href, keyId.href]],
+  );
+
+  // An object without actors and attributions verifies without any proof,
+  // but then nobody signed it:
+  const unsigned = await verifyObjectDetailed(Note, {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://example.com/notes/unsigned",
+    type: "Note",
+  }, options);
+  assertEquals(unsigned.status, "verified");
+  assertEquals(unsigned.status === "verified" ? unsigned.signers : null, []);
+
+  // A key that cannot be fetched for now makes the result unavailable, not
+  // invalid:
+  const unavailable = await verifyObjectDetailed(Create, json, {
+    ...options,
+    documentLoader: (url) =>
+      url.startsWith("https://example.com/person2")
+        ? Promise.reject(
+          new FetchError(
+            url,
+            "Unavailable",
+            new Response(null, {
+              status: 503,
+            }),
+          ),
+        )
+        : mockDocumentLoader(url),
+  });
+  assertEquals(unavailable.status, "unavailable");
+
+  const gone = await verifyObjectDetailed(Create, json, {
+    ...options,
+    documentLoader: (url) =>
+      url.startsWith("https://example.com/person2")
+        ? Promise.reject(
+          new FetchError(url, "Gone", new Response(null, { status: 410 })),
+        )
+        : mockDocumentLoader(url),
+  });
+  assertEquals(gone.status, "invalid");
+  assertEquals(await verifyObject(Create, json, options) != null, true);
 });

@@ -66,6 +66,14 @@ export type InboxAuthentication =
         readonly type: "activityOriginMismatch";
         readonly activityId: URL;
         readonly actorIds: readonly URL[];
+      }
+      | {
+        /**
+         * The activity declares no actor, and no principal was authenticated
+         * for it, although its listener allows activities without an actor.
+         * @since 2.5.0
+         */
+        readonly type: "noAuthenticatedPrincipal";
       };
   }
   | { readonly status: "skipped" }

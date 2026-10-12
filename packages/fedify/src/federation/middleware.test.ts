@@ -11871,7 +11871,9 @@ test("FederationImpl.processQueuedTask() rejects untrusted activity origins befo
     } satisfies InboxMessage,
   );
   assertEquals(listenerCalls, 1);
-  assertEquals(kv.reads, 1);
+  // The idempotency key, and the key that workers of older versions of Fedify
+  // recorded:
+  assertEquals(kv.reads, 2);
   assertEquals(kv.writes, 1);
 });
 

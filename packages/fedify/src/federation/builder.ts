@@ -25,7 +25,10 @@ import {
   getPortableDid,
   isPortableId,
 } from "../sig/portable-key-id.ts";
-import { ActivityListenerSet } from "./activity-listener.ts";
+import {
+  ActivityListenerSet,
+  type InboxListenerOptions,
+} from "./activity-listener.ts";
 import type {
   ActorAliasMapper,
   ActorDispatcher,
@@ -1335,8 +1338,13 @@ export class FederationBuilderImpl<TContextData>
         // deno-lint-ignore no-explicit-any
         type: new (...args: any[]) => TActivity,
         listener: InboxListener<TContextData, TActivity>,
+        options?: InboxListenerOptions,
       ): InboxListenerSetters<TContextData> {
-        listeners.add(type, listener as InboxListener<TContextData, Activity>);
+        listeners.add(
+          type,
+          listener as InboxListener<TContextData, Activity>,
+          options,
+        );
         return setters;
       },
       onError: (

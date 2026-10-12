@@ -116,12 +116,12 @@ test("ActivityListenerSet", () => {
   assertEquals(listeners.dispatch(activity), null);
   assertEquals(
     listeners.dispatchWithClass(offer),
-    { class: Offer, listener: listenOffer },
+    { class: Offer, listener: listenOffer, options: {} },
   );
   assertEquals(listeners.dispatch(offer), listenOffer);
   assertEquals(
     listeners.dispatchWithClass(invite),
-    { class: Offer, listener: listenOffer },
+    { class: Offer, listener: listenOffer, options: {} },
   );
   assertEquals(listeners.dispatch(invite), listenOffer);
   assertEquals(listeners.dispatch(create), null);
@@ -133,17 +133,17 @@ test("ActivityListenerSet", () => {
   assertEquals(listeners.dispatch(offer), listenOffer);
   assertEquals(
     listeners.dispatchWithClass(offer),
-    { class: Offer, listener: listenOffer },
+    { class: Offer, listener: listenOffer, options: {} },
   );
   assertEquals(listeners.dispatch(invite), listenOffer);
   assertEquals(
     listeners.dispatchWithClass(invite),
-    { class: Offer, listener: listenOffer },
+    { class: Offer, listener: listenOffer, options: {} },
   );
   assertEquals(listeners.dispatch(create), listenCreate);
   assertEquals(
     listeners.dispatchWithClass(create),
-    { class: Create, listener: listenCreate },
+    { class: Create, listener: listenCreate, options: {} },
   );
   assertEquals(listeners.dispatch(update), null);
 
@@ -152,27 +152,27 @@ test("ActivityListenerSet", () => {
   assertEquals(listeners.dispatch(activity), listenActivity);
   assertEquals(
     listeners.dispatchWithClass(activity),
-    { class: Activity, listener: listenActivity },
+    { class: Activity, listener: listenActivity, options: {} },
   );
   assertEquals(listeners.dispatch(offer), listenOffer);
   assertEquals(
     listeners.dispatchWithClass(offer),
-    { class: Offer, listener: listenOffer },
+    { class: Offer, listener: listenOffer, options: {} },
   );
   assertEquals(listeners.dispatch(invite), listenOffer);
   assertEquals(
     listeners.dispatchWithClass(invite),
-    { class: Offer, listener: listenOffer },
+    { class: Offer, listener: listenOffer, options: {} },
   );
   assertEquals(listeners.dispatch(create), listenCreate);
   assertEquals(
     listeners.dispatchWithClass(create),
-    { class: Create, listener: listenCreate },
+    { class: Create, listener: listenCreate, options: {} },
   );
   assertEquals(listeners.dispatch(update), listenActivity);
   assertEquals(
     listeners.dispatchWithClass(update),
-    { class: Activity, listener: listenActivity },
+    { class: Activity, listener: listenActivity, options: {} },
   );
 
   assertThrows(

@@ -83,7 +83,9 @@ Pros
 :   Persistent, scalable, easy to set up, native retry with exponential backoff.
 
 Cons
-:   Only available in Deno runtime.
+:   Only available in Deno runtime.  Deno KV limits a message to 64 KiB, so an
+    incoming activity too large for it is processed immediately instead of
+    being enqueued (since Fedify 2.5.0).
 
 ~~~~ typescript
 import { createFederation } from "@fedify/fedify";
@@ -920,6 +922,20 @@ native retry mechanisms (like exponential backoff, dead-letter queues, etc.),
 you can set the `nativeRetrial` property to `true` to indicate this.
 When this property is `true`, Fedify will skip its own retry logic and rely
 on your backend to handle retries, avoiding duplicate retry mechanisms.
+
+### Declare `~MessageQueue.maxMessageSize` (optional)
+
+*This API is available since Fedify 2.5.0.*
+
+If your backend cannot hold messages larger than a certain size, set the
+`maxMessageSize` property to that size in bytes.  Fedify compares it with
+a conservative estimate of a message's serialized size: the length of its JSON
+serialization encoded in UTF-8, plus 8 bytes for each JSON value in it, plus
+what encoding strings beyond Latin-1 as UTF-16 adds, so that it also bounds
+binary serialization formats.  When an incoming activity would
+make a larger inbox message, Fedify processes it right away instead of
+enqueueing it, as if there were no inbox queue, so that the activity is not
+lost.  Leave it unset if your backend has no practical limit.
 
 ### Implement `~MessageQueue.getDepth()` method (optional)
 

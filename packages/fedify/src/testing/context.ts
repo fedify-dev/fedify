@@ -14,6 +14,7 @@ import type {
 } from "../federation/context.ts";
 import { isInAudience } from "../federation/audience.ts";
 import type { Federation } from "../federation/federation.ts";
+import { getEmptyAuthenticationEvidence } from "../federation/inbox-authentication.ts";
 
 export function createContext<TContextData>(
   values: Partial<Context<TContextData>> & {
@@ -198,6 +199,7 @@ export function createInboxContext<TContextData>(
     ...createContext(args),
     clone: args.clone ?? ((data) => createInboxContext({ ...args, data })),
     recipient: args.recipient ?? null,
+    authentication: args.authentication ?? getEmptyAuthenticationEvidence(),
     forwardActivity: args.forwardActivity ??
       ((_forwarder, _recipients, _options) => {
         throw new Error("Not implemented");

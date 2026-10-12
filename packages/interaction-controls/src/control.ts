@@ -1,11 +1,11 @@
-import type { Context } from "@fedify/fedify";
+import { type Context, isActorAuthenticated } from "@fedify/fedify";
 import {
   type DocumentLoader,
-  FetchError,
+  getDocumentLoader,
   getFe34Origin,
-  isTransientFetchError,
   parseIri,
 } from "@fedify/vocab-runtime";
+import jsonld from "@fedify/vocab-runtime/jsonld";
 import {
   Accept,
   type Activity,
@@ -33,6 +33,22 @@ import type {
   MatchesApprovalCollection,
   RecognizedImpoliteInteraction,
 } from "./types.ts";
+import {
+  classifyFailure,
+  notDereferenceable,
+  trackLoaders,
+  type UnverifiableFailure,
+} from "./loaders.ts";
+import { resolveAuthoritativeObject } from "./collection.ts";
+import {
+  getPropertyValues,
+  getRootNode,
+  hasCredentials,
+  hasType,
+  isPortableClaim,
+  resolveNodeId,
+  sameId,
+} from "./evidence.ts";
 
 type VocabConstructor<T extends ASObject> = {
   readonly typeId: URL;
@@ -102,6 +118,14 @@ interface ControlConfig<
     subject: TTarget,
     options: DereferenceOptions,
   ) => AsyncIterable<URL> | Iterable<URL>;
+  /**
+   * Whether the interacting object is always fetched from its ID and its
+   * owner taken from that document, the request being bound to the
+   * interpretation Fedify authenticated.  The requester of a request without
+   * an actor is then the owner, who must have been authenticated.  The first
+   * of {@link interactingObjectTypes} is the type the object must have.
+   */
+  readonly authoritativeInteractingObject?: boolean;
 }
 
 export interface DereferenceOptions {
@@ -389,6 +413,62 @@ async function verifyRequest<
       },
     };
   }
+  // Evidence that authenticated nothing and kept no interpretation, e.g., for
+  // an activity queued by an older version of Fedify, is no evidence at all:
+  const authentication = options.authentication == null ||
+      (!options.authentication.verified &&
+        options.authentication.expandedActivity.length < 1)
+    ? undefined
+    : options.authentication;
+  if (config.authoritativeInteractingObject) {
+    const evidence = authentication != null
+      ? {
+        expanded: authentication.expandedActivity,
+        baseUrl: authentication.baseUrl,
+      }
+      : requestResult.evidence;
+    if (authentication == null && expectedRequestId != null) {
+      if (evidence == null) {
+        return {
+          verified: false,
+          request,
+          requestId: request.id,
+          failure: {
+            category: "unauthorized",
+            type: "unauthenticatedRequester",
+          },
+        };
+      }
+    }
+    const bindingFailure = bindRequest(
+      request,
+      evidence,
+      config.requestClass.typeId,
+    );
+    if (bindingFailure != null) {
+      return {
+        verified: false,
+        request,
+        requestId: request.id,
+        failure: bindingFailure,
+      };
+    }
+    if (
+      authentication != null && request.actorId != null &&
+      !isActorAuthenticated(authentication, request.actorId)
+    ) {
+      return {
+        verified: false,
+        request,
+        requestId: request.id,
+        failure: {
+          category: "unauthorized",
+          type: "unauthenticatedRequester",
+          requester: request.actorId,
+        },
+      };
+    }
+  }
   const targetResult = options.resolvedInteractionTarget != null &&
       request.objectId != null
     // The type is checked by isInteractionTarget() below:
@@ -433,8 +513,29 @@ async function verifyRequest<
       },
     };
   }
-  const interactingResult = options.resolvedInteractingObject != null &&
+  let owner: URL | undefined;
+  const interactingResult = config.authoritativeInteractingObject &&
       request.instrumentId != null
+    ? await (async () => {
+      const resolution = await resolveAuthoritativeObject(
+        request.instrumentId!,
+        {
+          documentLoader,
+          contextLoader,
+          verifyPortableObject: context.verifyPortableObject,
+          typeId: config.interactingObjectTypes![0],
+          isObject: (object): object is TInteracting =>
+            config.isInteractingObject?.(object) ?? true,
+        },
+      );
+      if (!resolution.ok) {
+        return { ok: false as const, failure: resolution.failure };
+      }
+      owner = resolution.owner;
+      return { ok: true as const, value: resolution.object };
+    })()
+    : options.resolvedInteractingObject != null &&
+        request.instrumentId != null
     // The type is checked by isInteractingObject() below:
     ? {
       ok: true as const,
@@ -480,8 +581,30 @@ async function verifyRequest<
       },
     };
   }
+  if (
+    config.authoritativeInteractingObject && request.actorId == null &&
+    (owner == null || authentication == null ||
+      !isActorAuthenticated(authentication, owner))
+  ) {
+    // Without an actor, the requester is the owner of the interacting object,
+    // as its own document names it, and only if the owner was authenticated:
+    return {
+      verified: false,
+      request,
+      requestId: request.id,
+      failure: authentication == null
+        ? { category: "invalid", type: "missingActor" }
+        : {
+          category: "unauthorized",
+          type: "unauthenticatedRequester",
+          ...(owner == null ? {} : { requester: owner }),
+        },
+    };
+  }
   const requester = request.actorId ??
-    config.getRequester?.(request, interactingObject, interactionTarget);
+    (config.authoritativeInteractingObject
+      ? owner
+      : config.getRequester?.(request, interactingObject, interactionTarget));
   if (requester == null) {
     return {
       verified: false,
@@ -831,158 +954,6 @@ async function verifyAuthorization<
   return { verified: true, authorization, authorizationId: authorization.id };
 }
 
-type UnverifiableFailure = Extract<
-  InteractionRequestVerificationFailure,
-  {
-    readonly category: "unverifiable";
-    readonly type: "notDereferenceable" | "invalidJsonLd";
-  }
->;
-
-interface LoaderTracker {
-  readonly documentLoader: DocumentLoader | undefined;
-  readonly contextLoader: DocumentLoader | undefined;
-  readonly records: ReadonlyMap<unknown, string>;
-  readonly release: () => void;
-}
-
-/**
- * Wraps the loaders for a single dereferencing operation so that errors they
- * throw can be told apart from other errors afterwards.  Parsed objects keep
- * the loaders they were given, so the wrappers stop recording and pass calls
- * through once the operation is released.
- */
-function trackLoaders(
-  documentLoader: DocumentLoader | undefined,
-  contextLoader: DocumentLoader | undefined,
-): LoaderTracker {
-  const records = new Map<unknown, string>();
-  let released = false;
-  const wrap = (
-    loader: DocumentLoader | undefined,
-  ): DocumentLoader | undefined => {
-    if (loader == null) return undefined;
-    return async (url, options) => {
-      if (released) return await loader(url, options);
-      let remoteDocument;
-      try {
-        remoteDocument = await loader(url, options);
-      } catch (error) {
-        if (!released) records.set(error, url);
-        throw error;
-      }
-      if (remoteDocument == null) {
-        const message = "The document loader returned no document.";
-        let error: Error;
-        try {
-          // FetchError's constructor cannot parse portable URLs by itself:
-          error = new FetchError(parseIri(url), message);
-        } catch {
-          error = new Error(`${url}: ${message}`);
-        }
-        if (!released) records.set(error, url);
-        throw error;
-      }
-      return remoteDocument;
-    };
-  };
-  const wrappedDocumentLoader = wrap(documentLoader);
-  return {
-    documentLoader: wrappedDocumentLoader,
-    contextLoader: contextLoader === documentLoader
-      ? wrappedDocumentLoader
-      : wrap(contextLoader),
-    records,
-    release: () => {
-      released = true;
-      records.clear();
-    },
-  };
-}
-
-const MAX_CAUSE_DEPTH = 8;
-
-function collectCauses(
-  error: unknown,
-  causes: unknown[] = [],
-  depth = 0,
-): unknown[] {
-  if (depth > MAX_CAUSE_DEPTH || causes.includes(error)) return causes;
-  causes.push(error);
-  if (typeof error !== "object" || error == null) return causes;
-  if (error instanceof AggregateError) {
-    for (const e of error.errors) collectCauses(e, causes, depth + 1);
-  }
-  // Loaders may throw anything, even null, so check for the properties
-  // rather than their values:
-  if ("cause" in error) collectCauses(error.cause, causes, depth + 1);
-  // jsonld.js reports a failed remote context load as `details.cause`:
-  const details = (error as { readonly details?: unknown }).details;
-  if (typeof details === "object" && details != null && "cause" in details) {
-    collectCauses(details.cause, causes, depth + 1);
-  }
-  return causes;
-}
-
-/**
- * Classifies the error thrown by a dereferencing operation.  It is a fetch
- * failure only if a loader error is among its causes; errors that loaders
- * threw during attempts the operation recovered from are ignored.
- */
-function classifyFailure(
-  error: unknown,
-  tracker: LoaderTracker,
-): UnverifiableFailure {
-  const loaderErrors = collectCauses(error).filter((e) =>
-    tracker.records.has(e)
-  );
-  // Loaders may throw anything, even null, so look up indices, not values:
-  const transientIndex = loaderErrors.findIndex(isTransientFetchError);
-  const selected = loaderErrors[transientIndex < 0 ? 0 : transientIndex];
-  const url = loaderErrors.length < 1
-    ? null
-    : getFailedUrl(selected, tracker.records.get(selected)!);
-  // A document referring to a URL that cannot even be parsed is malformed:
-  if (url == null) {
-    return {
-      category: "unverifiable",
-      type: "invalidJsonLd",
-      cause: error,
-      transient: false,
-    };
-  }
-  return {
-    category: "unverifiable",
-    type: "notDereferenceable",
-    url,
-    cause: loaderErrors.length === 1 ? selected : error,
-    transient: transientIndex >= 0,
-  };
-}
-
-function getFailedUrl(error: unknown, requestedUrl: string): URL | null {
-  const url = (error as { readonly url?: unknown } | null)?.url;
-  if (url instanceof URL) return url;
-  for (const candidate of [url, requestedUrl]) {
-    if (typeof candidate !== "string") continue;
-    try {
-      return parseIri(candidate);
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-
-function notDereferenceable(url: URL): UnverifiableFailure {
-  return {
-    category: "unverifiable",
-    type: "notDereferenceable",
-    url,
-    transient: false,
-  };
-}
-
 /**
  * Dereferences a field of the request, such as its `object` or `instrument`.
  * Returns `null` if the request has no such field at all.
@@ -1018,35 +989,188 @@ async function dereferenceField<TRequest extends Activity, T>(
   }
 }
 
+/**
+ * The interpretation of a request that authorization may rely on: its
+ * expanded form, and the base URL it was decoded with.
+ */
+interface RequestEvidence {
+  readonly expanded: readonly unknown[];
+  readonly baseUrl: URL | null;
+}
+
 async function materialize<T extends ASObject>(
   value: T | URL,
   constructor: VocabConstructor<T>,
   documentLoader: DocumentLoader | undefined,
   contextLoader: DocumentLoader | undefined,
 ): Promise<
-  | { readonly ok: true; readonly object: T }
+  | {
+    readonly ok: true;
+    readonly object: T;
+    /**
+     * The fetched request's interpretation, if the request was fetched from
+     * the web origin that speaks for it and its actors.
+     */
+    readonly evidence: RequestEvidence | null;
+  }
   | { readonly ok: false; readonly failure: UnverifiableFailure }
 > {
-  if (!(value instanceof URL)) return { ok: true, object: value };
+  if (!(value instanceof URL)) {
+    return { ok: true, object: value, evidence: null };
+  }
   if (documentLoader == null) {
     return { ok: false, failure: notDereferenceable(value) };
   }
   const tracker = trackLoaders(documentLoader, contextLoader);
   try {
     const remoteDocument = await tracker.documentLoader!(value.href);
-    return {
-      ok: true,
-      object: await constructor.fromJsonLd(remoteDocument.document, {
-        documentLoader: tracker.documentLoader,
-        contextLoader: tracker.contextLoader,
-        baseUrl: value,
-      }),
-    };
+    // The request is parsed and expanded with the same context documents:
+    const memoizedContextLoader = memoizeLoader(
+      tracker.contextLoader ?? getDocumentLoader(),
+    );
+    const object = await constructor.fromJsonLd(remoteDocument.document, {
+      documentLoader: tracker.documentLoader,
+      contextLoader: memoizedContextLoader,
+      baseUrl: value,
+    });
+    let evidence: RequestEvidence | null = null;
+    let documentUrl: URL | null;
+    try {
+      documentUrl = parseIri(remoteDocument.documentUrl);
+    } catch {
+      documentUrl = null;
+    }
+    // Only the web origin of an ordinary ID speaks for the request and its
+    // actors; FEP-ef61 portable objects are never authenticated by where
+    // they were fetched from:
+    if (
+      documentUrl != null && !isPortableClaim(value) &&
+      !isPortableClaim(documentUrl) && !hasCredentials(documentUrl) &&
+      documentUrl.origin === value.origin
+    ) {
+      const expanded = await jsonld.expand(
+        // deno-lint-ignore no-explicit-any
+        remoteDocument.document as any,
+        // deno-lint-ignore no-explicit-any
+        { documentLoader: memoizedContextLoader } as any,
+      );
+      const root = getRootNode(expanded);
+      const rootId = root == null ? null : resolveNodeId(root, value);
+      const actors = root == null
+        ? []
+        : getPropertyValues(root, AS_ACTOR).map((actor) =>
+          resolveNodeId(actor, value)
+        );
+      if (
+        rootId != null && !isPortableClaim(rootId) &&
+        rootId.href === value.href &&
+        actors.every((actor) =>
+          actor != null && !isPortableClaim(actor) &&
+          actor.origin === value.origin
+        )
+      ) {
+        evidence = { expanded, baseUrl: value };
+      }
+    }
+    return { ok: true, object, evidence };
   } catch (error) {
     return { ok: false, failure: classifyFailure(error, tracker) };
   } finally {
     tracker.release();
   }
+}
+
+function memoizeLoader(loader: DocumentLoader): DocumentLoader {
+  const cache = new Map<string, ReturnType<DocumentLoader>>();
+  return async (url, options) => {
+    let promise = cache.get(url);
+    if (promise == null) {
+      promise = loader(url, options);
+      cache.set(url, promise);
+    }
+    return structuredClone(await promise);
+  };
+}
+
+const AS_ACTOR = "https://www.w3.org/ns/activitystreams#actor";
+const AS_OBJECT = "https://www.w3.org/ns/activitystreams#object";
+const AS_INSTRUMENT = "https://www.w3.org/ns/activitystreams#instrument";
+
+/**
+ * Checks that a request has exactly the type, ID, actors, `object`, and
+ * `instrument` that its authenticated interpretation has, counting every
+ * value, including those typed parsing drops.
+ * @returns The failure, or `null` if the request is bound to the evidence.
+ */
+function bindRequest(
+  request: Activity,
+  evidence: RequestEvidence | null,
+  typeId: URL,
+): InteractionRequestVerificationFailure | null {
+  if (evidence == null) {
+    // Nothing tells which values typed parsing dropped, so only an actor that
+    // Fedify authenticated before parsing makes the request acceptable:
+    if (request.actorIds.length < 1) {
+      return { category: "invalid", type: "missingActor" };
+    }
+    if (
+      request.objectIds.length !== 1 ||
+      !sameId(request.objectIds[0], request.objectId)
+    ) {
+      return {
+        category: "invalid",
+        type: "ambiguousRequest",
+        property: "object",
+      };
+    }
+    if (
+      request.instrumentIds.length !== 1 ||
+      !sameId(request.instrumentIds[0], request.instrumentId)
+    ) {
+      return {
+        category: "invalid",
+        type: "ambiguousRequest",
+        property: "instrument",
+      };
+    }
+    return null;
+  }
+  const root = getRootNode(evidence.expanded);
+  if (root == null) {
+    return { category: "invalid", type: "ambiguousRequest", property: "id" };
+  }
+  if (!hasType(root, typeId.href)) {
+    return { category: "invalid", type: "ambiguousRequest", property: "type" };
+  }
+  const rootId = resolveNodeId(root, evidence.baseUrl);
+  if (rootId == null || !sameId(rootId, request.id)) {
+    return { category: "invalid", type: "ambiguousRequest", property: "id" };
+  }
+  // The decoder resolves references against the given base URL, or against
+  // the object's own ID:
+  const base = evidence.baseUrl ?? rootId;
+  const actors = getPropertyValues(root, AS_ACTOR);
+  if (
+    actors.length !== request.actorIds.length ||
+    !actors.every((actor, i) =>
+      sameId(resolveNodeId(actor, base), request.actorIds[i])
+    )
+  ) {
+    return { category: "invalid", type: "ambiguousRequest", property: "actor" };
+  }
+  for (
+    const [iri, property, missing, id] of [
+      [AS_OBJECT, "object", "missingObject", request.objectId],
+      [AS_INSTRUMENT, "instrument", "missingInstrument", request.instrumentId],
+    ] as const
+  ) {
+    const values = getPropertyValues(root, iri);
+    if (values.length < 1) return { category: "invalid", type: missing };
+    if (values.length !== 1 || !sameId(resolveNodeId(values[0], base), id)) {
+      return { category: "invalid", type: "ambiguousRequest", property };
+    }
+  }
+  return null;
 }
 
 async function evaluatePolicy<

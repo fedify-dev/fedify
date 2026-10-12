@@ -24,6 +24,7 @@ import type { GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
 import type { GetKeyOwnerOptions } from "../sig/owner.ts";
 import type { ConstructorWithTypeId, Federation } from "./federation.ts";
+import type { InboxAuthenticationEvidence } from "./inbox-authentication.ts";
 import type { SenderKeyPair } from "./send.ts";
 import type { TaskDefinition, TaskEnqueueOptions } from "./tasks/mod.ts";
 
@@ -1491,6 +1492,18 @@ export interface InboxContext<TContextData> extends Context<TContextData> {
    * @since 1.2.0
    */
   readonly recipient: string | null;
+
+  /**
+   * Who Fedify authenticated for the incoming activity, independently of its
+   * declared `actor`, and the interpretation of the activity that was
+   * authenticated.  It is preserved through the inbox queue and its retries.
+   *
+   * Use it with {@link isActorAuthenticated} to authorize requests that do
+   * not declare an `actor`, which reach a listener only if it is registered
+   * with the `allowActorless` option.
+   * @since 2.5.0
+   */
+  readonly authentication: InboxAuthenticationEvidence;
 
   /**
    * Creates a new context with the same properties as this one,

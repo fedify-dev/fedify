@@ -273,6 +273,65 @@ verification and pass the clone to `createAccept()` or `createReject()`.
 The clone keeps the request's vocabulary values and references, though not
 necessarily its exact original JSON-LD representation.
 
+### Feature requests
+
+*This behavior is available since Fedify 2.5.0.*
+
+`featureInteraction.verifyRequest()` never trusts the `FeaturedCollection` that
+a request embeds, nor one passed as `resolvedInteractingObject`.  It always
+fetches the collection from its ID: an ordinary collection has to be served from
+the origin of its ID, and an [FEP-ef61] portable collection has to satisfy the
+portable object policy.  The collection's owner is the only `attributedTo` value
+of that document; a collection with several attribution values, including
+anonymous ones, is rejected.  The owner has to be the requester.
+
+Mastodon sends `FeatureRequest` activities without an `actor`.  The requester
+of such a request is the owner of the collection, who must have been
+authenticated by Fedify, so pass the [authentication evidence] of the inbox
+listener as the `authentication` option.  The listener has to be registered
+with the `allowActorless` option to receive such requests at all:
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+import { featureInteraction } from "@fedify/interaction-controls";
+import { FeatureRequest } from "@fedify/vocab";
+declare const federation: Federation<void>;
+// ---cut-before---
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(FeatureRequest, async (ctx, request) => {
+    const verification = await featureInteraction.verifyRequest(ctx, {
+      request,
+      authentication: ctx.authentication,
+    });
+    if (!verification.verified) {
+      if (
+        verification.failure.category === "unverifiable" &&
+        verification.failure.transient
+      ) {
+        // Throw so that the inbox queue retries the request later:
+        throw new Error("The collection cannot be fetched for now.");
+      }
+      return;
+    }
+    // ...
+  }, { allowActorless: true });
+~~~~
+
+With `authentication`, the helper also checks that the request it verifies is
+the one Fedify authenticated, counting every `actor`, `object`, and
+`instrument` value, including those typed parsing drops: a request with more
+than one `object` or `instrument` is rejected as `ambiguousRequest`.  A request
+that declares an actor is accepted only if that actor was authenticated.
+Without `authentication`, a request without an actor is rejected as
+`missingActor`, and the value counts are checked on the parsed request only.
+When the request is given as a URL, it is fetched, and its actors are
+authenticated by the web origin it is served from, as long as neither the
+request nor its actors are portable.
+
+[FEP-ef61]: https://w3id.org/fep/ef61
+[authentication evidence]: ./inbox.md#authenticated-principals
+
 ### Already resolved objects
 
 *This API is available since Fedify 2.5.0.*
@@ -306,7 +365,8 @@ where it came from, so make sure it is trustworthy, e.g., that the instrument
 was fetched from the requester's origin.  The helper still checks its type,
 its requester, and that it refers to the target.  Resolved objects are used
 only when the request has the corresponding reference; they never fill in
-a missing `object` or `instrument`.
+a missing `object` or `instrument`.  `featureInteraction` ignores
+`resolvedInteractingObject`; see [*Feature requests*](#feature-requests).
 
 ### Relaxing quote request validation
 

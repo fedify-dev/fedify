@@ -126,6 +126,19 @@ export interface MessageQueue {
   readonly atomicEnqueueMany?: boolean;
 
   /**
+   * The largest message, in bytes, that the backend can hold.  Fedify compares
+   * it with a conservative estimate of a message's serialized size: the
+   * length of its JSON serialization encoded in UTF-8, plus 8 bytes for each
+   * JSON value in it, plus what encoding strings beyond Latin-1 as UTF-16
+   * adds, which also bounds binary serialization formats.  When an
+   * incoming activity would make a larger inbox message, Fedify processes the
+   * activity right away instead of enqueueing it, as if there were no inbox
+   * queue.  When omitted, messages are enqueued regardless of their size.
+   * @since 2.5.0
+   */
+  readonly maxMessageSize?: number;
+
+  /**
    * Enqueues a message in the queue.
    * @param message The message to enqueue.
    * @param options Additional options for enqueuing the message.
@@ -422,6 +435,11 @@ export class ParallelMessageQueue implements MessageQueue {
    * @since 2.4.0
    */
   readonly atomicEnqueueMany?: boolean;
+  /**
+   * Inherits the message size limit from the wrapped queue.
+   * @since 2.5.0
+   */
+  readonly maxMessageSize?: number;
   readonly getDepth?: () => Promise<MessageQueueDepth>;
 
   /**
@@ -456,6 +474,7 @@ export class ParallelMessageQueue implements MessageQueue {
     this.workers = workers;
     this.nativeRetrial = queue.nativeRetrial;
     this.nativeDeduplication = queue.nativeDeduplication;
+    this.maxMessageSize = queue.maxMessageSize;
     this.atomicEnqueueMany = queue.enqueueMany == null
       ? false
       : queue.atomicEnqueueMany;
