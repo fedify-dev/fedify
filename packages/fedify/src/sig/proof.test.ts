@@ -715,3 +715,72 @@ test("verifyObject() rejects a key that claims a forged controller", async () =>
     null,
   );
 });
+
+test("verifyObject() rejects a key whose controller redirects to another actor", async () => {
+  // Alice's actor id redirects to Mallory's document, which lists Mallory's
+  // Multikey as an assertionMethod; the Multikey names Alice as its
+  // controller.  An object attributed to Alice and proven with Mallory's key
+  // must not verify.  See GHSA-8863-8468-7hq7.
+  const keyId = new URL("https://evil.example/keys/ed25519");
+  const victim = "https://victim.example/users/alice";
+  const mallory = "https://evil.example/users/mallory";
+  const multikeyDocument = await ed25519Multikey.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const signOptions = {
+    format: "compact" as const,
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  };
+  const signed = await signObject(
+    new Create({
+      id: new URL("https://victim.example/activities/forged"),
+      actor: new URL(victim),
+      object: new Note({
+        id: new URL("https://victim.example/notes/forged"),
+        attribution: new URL(victim),
+        content: "forged",
+      }),
+    }),
+    ed25519PrivateKey,
+    keyId,
+    signOptions,
+  );
+  const jsonLd = await signed.toJsonLd(signOptions);
+  const options = {
+    documentLoader(resource: string) {
+      if (resource === keyId.href) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: { ...multikeyDocument, id: keyId.href, controller: victim },
+        });
+      }
+      if (resource === victim || resource === mallory) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: mallory,
+          document: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/v1",
+              "https://w3id.org/security/multikey/v1",
+              "https://w3id.org/security/data-integrity/v1",
+              "https://www.w3.org/ns/did/v1",
+            ],
+            id: mallory,
+            type: "Person",
+            assertionMethod: [keyId.href],
+          },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  assertEquals(await verifyObject(Create, jsonLd, options), null);
+});

@@ -13,7 +13,12 @@ import type { KvKey, KvStore } from "./kv.ts";
 // behind under their own key id.  Entries live under this segment so that
 // upgrading retires the whole previous generation, whatever prefix the
 // application configured.  See GHSA-q9f8-5hc7-898f.
-const KEY_CACHE_GENERATION = "2";
+//
+// Generation 3: generation 2 verified ownership against whatever actor
+// document the owner's id led to, without checking that it was the owner's
+// own, so a redirect to another actor could leave a forged owner behind.
+// See GHSA-8863-8468-7hq7.
+const KEY_CACHE_GENERATION = "3";
 
 export interface KvKeyCacheOptions {
   documentLoader?: DocumentLoader;
