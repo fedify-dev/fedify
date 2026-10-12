@@ -22,6 +22,7 @@ import {
   NotFoundError,
   PortableActorError,
   UnlinkedPortableActorError,
+  WebFingerLookupError,
 } from "./error.ts";
 import { convertUrlIfHandle } from "./lib.ts";
 
@@ -96,11 +97,15 @@ export async function lookupSingleWebFinger(
   options: LookupSingleWebFingerOptions,
 ): Promise<ResourceDescriptor> {
   const url = convertUrlIfHandle(options.resource);
-  const webFinger = await lookupWebFinger(
-    url,
-    getLookupWebFingerOptions(options),
-  ) ?? new NotFoundError(options.resource).throw();
-  return webFinger;
+  const outcome = await lookupWebFinger(url, {
+    ...getLookupWebFingerOptions(options),
+    withDiagnostics: true,
+  });
+  return outcome.resource ?? (
+    outcome.result === "not_found"
+      ? new NotFoundError(options.resource).throw()
+      : new WebFingerLookupError(options.resource, outcome.result).throw()
+  );
 }
 
 /**
@@ -119,6 +124,9 @@ export async function lookupSingleWebFinger(
  * @throws {PortableActorError} If the actor cannot be looked up, or does
  *                              not have a WebFinger address.
  * @throws {NotFoundError} If the WebFinger address is not found.
+ * @throws {WebFingerLookupError} If the WebFinger lookup failed for another
+ *                                reason, such as a network failure or a
+ *                                malformed response.
  */
 export async function lookupPortableWebFinger(
   options: LookupSingleWebFingerOptions,
@@ -168,10 +176,15 @@ export async function lookupPortableWebFinger(
     );
   }
   const address = `acct:${username}@${gateway.host}`;
-  const descriptor = await lookupWebFinger(
-    address,
-    getLookupWebFingerOptions(options),
-  ) ?? new NotFoundError(address).throw();
+  const outcome = await lookupWebFinger(address, {
+    ...getLookupWebFingerOptions(options),
+    withDiagnostics: true,
+  });
+  const descriptor = outcome.resource ?? (
+    outcome.result === "not_found"
+      ? new NotFoundError(address).throw()
+      : new WebFingerLookupError(address, outcome.result).throw()
+  );
   return { descriptor, address, actorId: actor.id };
 }
 

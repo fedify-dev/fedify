@@ -182,6 +182,18 @@ To be released.
 [#1210]: https://github.com/fedify-dev/fedify/issues/1210
 [#1215]: https://github.com/fedify-dev/fedify/pull/1215
 
+### @fedify/webfinger
+
+ -  Added a `withDiagnostics` option to `lookupWebFinger()`.  When turned on,
+    the function returns an object describing why the lookup failed—a
+    network error, a malformed response, or the resource genuinely not
+    existing—instead of returning `null` for every failure.
+    `Context.lookupWebFinger()` does not support this option.
+    [[#897], [#1296]]
+
+[#897]: https://github.com/fedify-dev/fedify/issues/897
+[#1296]: https://github.com/fedify-dev/fedify/pull/1296
+
 
 Version 2.4.4
 -------------
