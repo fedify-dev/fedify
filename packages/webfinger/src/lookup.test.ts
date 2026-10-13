@@ -1084,6 +1084,26 @@ test("lookupWebFinger() with withDiagnostics: true", {
       },
     );
 
+    await t.step(
+      "invalid: a JSON array body is not a resource descriptor",
+      async () => {
+        // typeof [] === "object" and [] !== null, so the null-only guard
+        // above does not catch an array body; it needs its own check.
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "begin:https://example.com/.well-known/webfinger?",
+          { body: "[]" },
+        );
+        const outcome = await lookupWebFinger("acct:johndoe@example.com", {
+          withDiagnostics: true,
+        });
+        deepStrictEqual(outcome.resource, null);
+        deepStrictEqual(outcome.result, "invalid");
+        deepStrictEqual(outcome.statusCode, 200);
+        deepStrictEqual(outcome.remoteHost, "example.com");
+      },
+    );
+
     await t.step("error", async () => {
       fetchMock.removeRoutes();
       fetchMock.get(

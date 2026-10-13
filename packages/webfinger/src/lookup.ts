@@ -501,7 +501,9 @@ async function lookupWebFingerInternal(
       // A body that parses to anything other than a JSON object—such as
       // a literal `null`, a number, or an array—is not a resource
       // descriptor, even though JSON.parse() accepts it without error.
-      if (typeof parsed !== "object" || parsed === null) {
+      if (
+        typeof parsed !== "object" || parsed === null || Array.isArray(parsed)
+      ) {
         return {
           resource: null,
           result: "invalid",
