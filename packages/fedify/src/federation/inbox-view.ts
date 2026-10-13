@@ -131,7 +131,10 @@ export function createContextSnapshot(
           // delivery must not succeed later with another document.
           promise = Promise.resolve(effective(url, options)).then(
             (response) => {
-              const cloned = structuredClone(response);
+              // A `tag` would let jsonld.js cache the context across
+              // operations without asking this loader again, which would
+              // keep it out of the snapshot:
+              const cloned = normalizeResponse(structuredClone(response));
               recorded.set(key, {
                 policy,
                 url: normalizedUrl,
@@ -494,12 +497,21 @@ export async function buildVerifiedActivityView(
   view: SerializedVerifiedActivityView;
   expanded: Record<string, unknown>[];
 }> {
+  // Only the responses this interpretation uses are kept, not those that
+  // other steps of the delivery loaded, e.g., for key documents:
+  const loader = snapshot.loader(source.policy);
+  const used = new Set<string>();
   const expanded = await expandDocument(
     source.document,
-    snapshot.loader(source.policy),
+    markEffectiveContextLoader((url, options) => {
+      used.add(normalizeUrl(url));
+      return loader(url, options);
+    }, source.policy),
   );
   const contexts = await serializeContextSnapshot(
-    snapshot.entries().filter((entry) => entry.policy === source.policy),
+    snapshot.entries().filter((entry) =>
+      entry.policy === source.policy && used.has(entry.url)
+    ),
   );
   return {
     view: {

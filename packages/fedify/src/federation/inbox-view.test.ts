@@ -318,3 +318,63 @@ test("restoreVerifiedActivityView() survives changes to unused bundled terms", a
   });
   assertEquals(restored.expanded, expanded);
 });
+
+test("buildVerifiedActivityView() keeps only the contexts it uses", async () => {
+  const { loader } = createMutableLoader();
+  const snapshot = createContextSnapshot(loader);
+  // Another step of the delivery, e.g., parsing a key document, loads
+  // a context through the same snapshot:
+  await snapshot.loader("standard")("https://w3id.org/security/v1");
+  const { view } = await buildVerifiedActivityView(snapshot, {
+    policy: "standard",
+    source: "activity",
+    document: {
+      "@context": [AS, CUSTOM],
+      id: "https://example.com/activities/1",
+      type: "Create",
+      tgt: "https://example.com/notes/1",
+    },
+    baseUrl: null,
+  });
+  assertEquals(
+    view.contexts.map((entry) => entry.url).sort(),
+    [
+      CUSTOM,
+      AS,
+    ].sort(),
+  );
+});
+
+test("createContextSnapshot() keeps contexts out of jsonld.js's shared cache", async () => {
+  let loads = 0;
+  const document = {
+    "@context": [AS, "https://remote.example/contexts/static"],
+    id: "https://example.com/activities/static",
+    type: "Create",
+  };
+  const tagging: DocumentLoader = (url, options) => {
+    if (url !== "https://remote.example/contexts/static") {
+      return getDocumentLoader()(url, options);
+    }
+    loads++;
+    // A response tagged "static" is cached by jsonld.js across operations:
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: { "@context": { x: "https://example.com/x" } },
+      tag: "static",
+    } as Awaited<ReturnType<DocumentLoader>>);
+  };
+  for (let i = 0; i < 2; i++) {
+    const { view } = await buildVerifiedActivityView(
+      createContextSnapshot(tagging),
+      { policy: "standard", source: "activity", document, baseUrl: null },
+    );
+    assert(
+      view.contexts.some((entry) =>
+        entry.url === "https://remote.example/contexts/static"
+      ),
+    );
+  }
+  assertEquals(loads, 2);
+});
