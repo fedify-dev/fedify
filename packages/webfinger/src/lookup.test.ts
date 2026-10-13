@@ -1062,6 +1062,28 @@ test("lookupWebFinger() with withDiagnostics: true", {
       deepStrictEqual(outcome.remoteHost, "example.com");
     });
 
+    await t.step(
+      "invalid: a literal JSON null body is not a resource descriptor",
+      async () => {
+        // JSON.parse("null") succeeds and yields the JS value `null`.
+        // Regression test for a server that returns 200 with a literal
+        // `null` body instead of an object: this must not be classified
+        // as "found" with a null resource.
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "begin:https://example.com/.well-known/webfinger?",
+          { body: "null" },
+        );
+        const outcome = await lookupWebFinger("acct:johndoe@example.com", {
+          withDiagnostics: true,
+        });
+        deepStrictEqual(outcome.resource, null);
+        deepStrictEqual(outcome.result, "invalid");
+        deepStrictEqual(outcome.statusCode, 200);
+        deepStrictEqual(outcome.remoteHost, "example.com");
+      },
+    );
+
     await t.step("error", async () => {
       fetchMock.removeRoutes();
       fetchMock.get(

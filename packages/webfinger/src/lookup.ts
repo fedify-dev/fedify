@@ -495,11 +495,22 @@ async function lookupWebFingerInternal(
       };
     }
     try {
-      const parsed = JSON.parse(
+      const parsed: unknown = JSON.parse(
         await readBoundedText(response, MAX_BODY_SIZE, url),
-      ) as ResourceDescriptor;
+      );
+      // A body that parses to anything other than a JSON object—such as
+      // a literal `null`, a number, or an array—is not a resource
+      // descriptor, even though JSON.parse() accepts it without error.
+      if (typeof parsed !== "object" || parsed === null) {
+        return {
+          resource: null,
+          result: "invalid",
+          statusCode: response.status,
+          remoteHost,
+        };
+      }
       return {
-        resource: parsed,
+        resource: parsed as ResourceDescriptor,
         result: "found",
         statusCode: response.status,
         remoteHost,
