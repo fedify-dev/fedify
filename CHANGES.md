@@ -47,11 +47,17 @@ To be released.
     every declared size instead of only the first, so an icon offering a large
     size is no longer discarded because its smallest size is too small.
     [[#893], [#1187] by Lee Jeongmin\]
+ -  Changed the `fedify webfinger` command's error message when a lookup
+    fails.  It now explains why—resource not found, a network error, a
+    malformed response, or an unexpected server error—instead of always
+    reporting the resource as not found.  [[#897], [#1296]]
 
 [#893]: https://github.com/fedify-dev/fedify/issues/893
+[#897]: https://github.com/fedify-dev/fedify/issues/897
 [#901]: https://github.com/fedify-dev/fedify/issues/901
 [#1187]: https://github.com/fedify-dev/fedify/pull/1187
 [#1265]: https://github.com/fedify-dev/fedify/pull/1265
+[#1296]: https://github.com/fedify-dev/fedify/pull/1296
 
 ### @fedify/debugger
 
@@ -190,9 +196,6 @@ To be released.
     existing—instead of returning `null` for every failure.
     `Context.lookupWebFinger()` does not support this option.
     [[#897], [#1296]]
-
-[#897]: https://github.com/fedify-dev/fedify/issues/897
-[#1296]: https://github.com/fedify-dev/fedify/pull/1296
 
 
 Version 2.4.4
