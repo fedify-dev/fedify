@@ -721,7 +721,7 @@ export interface Context<TContextData> {
    */
   lookupWebFinger(
     resource: URL | string,
-    options?: Omit<LookupWebFingerOptions, "withDiagnostics">,
+    options?: LookupWebFingerOptions,
   ): Promise<ResourceDescriptor | null>;
 
   /**

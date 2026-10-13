@@ -6,7 +6,7 @@ import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok } from "node:assert/strict";
 import dns from "node:dns/promises";
 import type { ResourceDescriptor } from "./jrd.ts";
-import { lookupWebFinger } from "./lookup.ts";
+import { lookupWebFinger, type LookupWebFingerOptions } from "./lookup.ts";
 
 test({
   name: "lookupWebFinger()",
@@ -1081,3 +1081,33 @@ test("lookupWebFinger() with withDiagnostics: true", {
     fetchMock.hardReset();
   }
 });
+
+test(
+  "lookupWebFinger() accepts a plain LookupWebFingerOptions-typed variable",
+  async () => {
+    // Regression test: a variable typed as `LookupWebFingerOptions`, built
+    // separately from the call site and never mentioning `withDiagnostics`,
+    // must still match the default overload.  This is a type-level
+    // concern; the point of this test is that the file compiles at all.
+    fetchMock.spyGlobal();
+    try {
+      const expected: ResourceDescriptor = {
+        subject: "acct:johndoe@example.com",
+        links: [],
+      };
+      fetchMock.get(
+        "https://example.com/.well-known/webfinger?resource=acct%3Ajohndoe%40example.com",
+        { body: expected },
+      );
+      const options: LookupWebFingerOptions = { userAgent: "test-agent" };
+      const result = await lookupWebFinger(
+        "acct:johndoe@example.com",
+        options,
+      );
+      deepStrictEqual(result, expected);
+    } finally {
+      fetchMock.removeRoutes();
+      fetchMock.hardReset();
+    }
+  },
+);

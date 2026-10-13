@@ -5403,7 +5403,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   lookupWebFinger(
     resource: URL | string,
-    options: Omit<LookupWebFingerOptions, "withDiagnostics"> = {},
+    options: LookupWebFingerOptions = {},
   ): Promise<ResourceDescriptor | null> {
     return lookupWebFinger(resource, {
       ...options,
@@ -5416,6 +5416,13 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       // fallback.  The metric helper is opt-in by design.
       meterProvider: options.meterProvider ?? this.federation._meterProvider,
       allowPrivateAddress: this.federation.allowPrivateAddress,
+      // `options` may structurally contain `withDiagnostics: true` even
+      // though its declared type does not name that field (e.g., a value
+      // typed as `LookupWebFingerOptions & { withDiagnostics: true }`
+      // assigned to a variable before being passed in).  Force it to
+      // `false` last, after the spread, so this method's return type
+      // always matches its declared `ResourceDescriptor | null`.
+      withDiagnostics: false,
     });
   }
 

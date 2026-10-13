@@ -205,16 +205,6 @@ export interface LookupWebFingerOptions {
    * @since 1.8.0
    */
   signal?: AbortSignal;
-
-  /**
-   * Whether to return a {@link WebFingerLookupOutcome} describing why the
-   * lookup failed, instead of collapsing every failure into `null`.
-   *
-   * Turned off by default, so existing callers keep receiving
-   * `ResourceDescriptor | null` unchanged.
-   * @since 2.5.0
-   */
-  withDiagnostics?: boolean;
 }
 
 /**
@@ -226,7 +216,15 @@ export interface LookupWebFingerOptions {
  */
 export async function lookupWebFinger(
   resource: URL | string,
-  options?: LookupWebFingerOptions & { withDiagnostics?: false },
+  options?: LookupWebFingerOptions & {
+    /**
+     * Whether to return a {@link WebFingerLookupOutcome} describing why
+     * the lookup failed, instead of collapsing every failure into `null`.
+     * Turned off by default.
+     * @since 2.5.0
+     */
+    withDiagnostics?: false;
+  },
 ): Promise<ResourceDescriptor | null>;
 
 /**
@@ -240,12 +238,19 @@ export async function lookupWebFinger(
  */
 export async function lookupWebFinger(
   resource: URL | string,
-  options: LookupWebFingerOptions & { withDiagnostics: true },
+  options: LookupWebFingerOptions & {
+    /**
+     * Returns a {@link WebFingerLookupOutcome} instead of a plain
+     * {@link ResourceDescriptor}.
+     * @since 2.5.0
+     */
+    withDiagnostics: true;
+  },
 ): Promise<WebFingerLookupOutcome>;
 
 export async function lookupWebFinger(
   resource: URL | string,
-  options: LookupWebFingerOptions = {},
+  options: LookupWebFingerOptions & { withDiagnostics?: boolean } = {},
 ): Promise<ResourceDescriptor | null | WebFingerLookupOutcome> {
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(
