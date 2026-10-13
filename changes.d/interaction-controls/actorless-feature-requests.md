@@ -22,3 +22,5 @@ links:
     `missingActor`.  New failure types `credentialsInUrl`,
     `invalidInteractingObject`, `ambiguousRequest`, and
     `unauthenticatedRequester` describe the new checks.  [[#1290], [#1299]]
+
+[FEP-7aa9]: https://w3id.org/fep/7aa9

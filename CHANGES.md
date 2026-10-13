@@ -21,7 +21,7 @@ To be released.
     `InboxAuthenticationEvidence` types describe the evidence.
     [[#1290], [#1299]]
  -  Added the `allowActorless` option to `InboxListenerSetters.on()`, so that
-    activities declaring no `actor` at all, such as the \[FEP-7aa9\]
+    activities declaring no `actor` at all, such as the [FEP-7aa9]
     `FeatureRequest` activities Mastodon sends, can reach a listener.  Such an
     activity is dispatched only if Fedify authenticated a principal for it and
     its `id` has the same origin as that principal; the listener must authorize
@@ -67,6 +67,7 @@ To be released.
     log with the specific activity it belongs to.
     [[#1030], [#1205] by Yujin Jung\]
 
+[FEP-7aa9]: https://w3id.org/fep/7aa9
 [GHSA-4qhx-hhwf-8685]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-4qhx-hhwf-8685
 [#1030]: https://github.com/fedify-dev/fedify/issues/1030
 [#1177]: https://github.com/fedify-dev/fedify/issues/1177
@@ -164,7 +165,7 @@ To be released.
         embeds the authorization in the `Delete` activity with only the IDs of
         its interacting object and interaction target.
 
- -  `featureInteraction.verifyRequest()` can now verify the \[FEP-7aa9\]
+ -  `featureInteraction.verifyRequest()` can now verify the [FEP-7aa9]
     `FeatureRequest` activities Mastodon sends without an `actor`.  Pass the
     inbox listener's `InboxContext.authentication` as the new `authentication`
     option; the requester is then the owner of the featured collection, who
@@ -1273,7 +1274,6 @@ Released on October 1, 2026.
 
 [GoToSocial interaction controls]: https://docs.gotosocial.org/en/v0.21.1/federation/interaction_controls/
 [FEP-044f]: https://w3id.org/fep/044f
-[FEP-7aa9]: https://w3id.org/fep/7aa9
 [#811]: https://github.com/fedify-dev/fedify/issues/811
 [#929]: https://github.com/fedify-dev/fedify/pull/929
 

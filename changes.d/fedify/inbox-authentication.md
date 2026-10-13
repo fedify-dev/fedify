@@ -44,3 +44,5 @@ links:
     `idempotency` strategy, as direct processing already did, instead of always
     deduplicating them per origin.  Activities recorded by workers of older
     versions are still recognized.  [[#1290], [#1299]]
+
+[FEP-7aa9]: https://w3id.org/fep/7aa9
