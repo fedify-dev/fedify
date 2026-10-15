@@ -50,7 +50,7 @@ To be released.
  -  Changed the `fedify webfinger` command's error message when a lookup
     fails.  It now explains why—resource not found, a network error, a
     malformed response, or an unexpected server error—instead of always
-    reporting the resource as not found.  [[#897], [#1296]]
+    reporting the resource as not found.  [[#897], [#1296] by Jae-Hyuk-Jang\]
 
 [#893]: https://github.com/fedify-dev/fedify/issues/893
 [#897]: https://github.com/fedify-dev/fedify/issues/897
@@ -195,7 +195,7 @@ To be released.
     network error, a malformed response, an unexpected server error, or the
     resource genuinely not existing—instead of returning `null` for every
     failure.  `Context.lookupWebFinger()` does not support this option.
-    [[#897], [#1296]]
+    [[#897], [#1296] by Jae-Hyuk-Jang\]
 
 
 Version 2.4.4

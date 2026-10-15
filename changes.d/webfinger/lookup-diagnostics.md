@@ -8,4 +8,4 @@ links:
     network error, a malformed response, an unexpected server error, or the
     resource genuinely not existing—instead of returning `null` for every
     failure.  `Context.lookupWebFinger()` does not support this option.
-    [[#897], [#1296]]
+    [[#897], [#1296] by Jae-Hyuk-Jang]
