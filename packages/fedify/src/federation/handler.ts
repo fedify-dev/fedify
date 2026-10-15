@@ -3012,6 +3012,7 @@ async function handleInboxInternal<TContextData>(
       baseUrl: null,
     }),
     verifiedView: view.view,
+    replayable: view.replayable,
     actorless,
     activity,
     recipient,

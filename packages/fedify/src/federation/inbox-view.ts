@@ -496,6 +496,15 @@ export async function buildVerifiedActivityView(
 ): Promise<{
   view: SerializedVerifiedActivityView;
   expanded: Record<string, unknown>[];
+  /**
+   * Whether the view has every remote context the interpretation refers
+   * to, so that a queue worker in another process can replay it.  It is
+   * `false` when jsonld.js took a context from its cache shared across
+   * operations without asking the loader, which happens to contexts that
+   * a loader tagged `"static"`; the view then cannot tell which document
+   * the interpretation used.
+   */
+  replayable: boolean;
 }> {
   // Only the responses this interpretation uses are kept, not those that
   // other steps of the delivery loaded, e.g., for key documents:
@@ -508,12 +517,28 @@ export async function buildVerifiedActivityView(
       return loader(url, options);
     }, source.policy),
   );
-  const contexts = await serializeContextSnapshot(
-    snapshot.entries().filter((entry) =>
-      entry.policy === source.policy && used.has(entry.url)
-    ),
+  const entries = snapshot.entries().filter((entry) =>
+    entry.policy === source.policy && used.has(entry.url)
   );
+  const contexts = await serializeContextSnapshot(entries);
+  // Every context the document and the recorded contexts refer to has to be
+  // one the expansion actually asked for:
+  const references = new Set<string>();
+  collectContextReferences(
+    source.document,
+    source.baseUrl?.href,
+    references,
+  );
+  for (const entry of entries) {
+    collectContextReferences(
+      entry.response.document,
+      entry.response.documentUrl,
+      references,
+    );
+  }
+  const replayable = [...references].every((url) => used.has(url));
   return {
+    replayable,
     view: {
       version: 1,
       policy: source.policy,
@@ -524,6 +549,50 @@ export async function buildVerifiedActivityView(
     },
     expanded,
   };
+}
+
+/**
+ * Collects the remote context references of a JSON-LD document or context
+ * document: every IRI given as a value of `@context` at any depth, including
+ * scoped contexts of term definitions, and of `@import`.
+ * @param value The document.
+ * @param base The URL to resolve relative references against.
+ * @param references The set to add the normalized references to.
+ */
+function collectContextReferences(
+  value: unknown,
+  base: string | undefined,
+  references: Set<string>,
+): void {
+  const add = (reference: string) => {
+    let url = reference;
+    if (base != null && URL.canParse(reference, base)) {
+      url = new URL(reference, base).href;
+    }
+    references.add(normalizeUrl(url));
+  };
+  const collectContext = (context: unknown): void => {
+    if (typeof context === "string") {
+      add(context);
+    } else if (Array.isArray(context)) {
+      for (const item of context) collectContext(item);
+    } else if (context != null && typeof context === "object") {
+      const imported = (context as Record<string, unknown>)["@import"];
+      if (typeof imported === "string") add(imported);
+      walk(context);
+    }
+  };
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item);
+    } else if (node != null && typeof node === "object") {
+      for (const [key, item] of Object.entries(node)) {
+        if (key === "@context") collectContext(item);
+        else walk(item);
+      }
+    }
+  };
+  walk(value);
 }
 
 /**

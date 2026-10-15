@@ -294,6 +294,13 @@ export interface RouteActivityParameters<TContextData> {
    */
   verifiedView?: SerializedVerifiedActivityView;
   /**
+   * Whether a queue worker can replay {@link verifiedView}.  When it is
+   * `false`, the activity is processed right away instead of being queued,
+   * as if there were no queue.
+   * @internal
+   */
+  replayable?: boolean;
+  /**
    * Whether the activity declares no actor and has been admitted for
    * a listener that allows such activities.
    * @internal
@@ -342,6 +349,7 @@ export async function routeActivity<TContextData>(
     ldSignatureVerified,
     authentication,
     verifiedView,
+    replayable,
     actorless,
     activity,
     recipient,
@@ -438,7 +446,17 @@ export async function routeActivity<TContextData>(
       traceContext: carrier,
     } satisfies InboxMessage;
     const maxMessageSize = queue.maxMessageSize;
-    if (
+    if (replayable === false) {
+      // A worker could not interpret the activity the way it was
+      // authenticated, so it is processed while that interpretation is at
+      // hand:
+      logger.warn(
+        "The incoming activity {activityId} uses a JSON-LD context that " +
+          "cannot be kept for the queue; processing it immediately instead.",
+        { activityId: activity.id?.href, recipient },
+      );
+      message = undefined;
+    } else if (
       maxMessageSize != null &&
       estimateQueuedMessageSize(message) >
         maxMessageSize - QUEUED_MESSAGE_HEADROOM

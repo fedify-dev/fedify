@@ -37,8 +37,10 @@ To be released.
     in queued inbox messages.  Queue workers and their retries no longer load
     remote JSON-LD contexts again for such messages, so a remote context that
     changes in the meantime cannot make a listener see an activity other than
-    the one that was authenticated.  Messages queued by older versions are
-    processed as before.  [[#1290], [#1299]]
+    the one that was authenticated.  An activity using a context that cannot
+    be kept this way, such as one a custom context loader marks as `static`,
+    is processed right away instead of being queued.  Messages queued by
+    older versions are processed as before.  [[#1290], [#1299]]
  -  Added the `MessageQueue.maxMessageSize` property.  When an incoming
     activity would make an inbox message larger than the queue can hold, it is
     now processed right away instead of being enqueued.  [[#1290], [#1299]]

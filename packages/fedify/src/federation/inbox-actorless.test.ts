@@ -24,6 +24,7 @@ import {
   isActorAuthenticated,
 } from "./inbox-authentication.ts";
 import { MemoryKvStore } from "./kv.ts";
+import { expandDocument } from "./inbox-view.ts";
 import { createFederation, type InboxContextImpl } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message } from "./queue.ts";
@@ -732,3 +733,37 @@ for (const queued of [false, true]) {
     );
   });
 }
+
+test("Activities whose contexts cannot be kept are processed immediately", async () => {
+  const queue = new CapturingQueue();
+  const { federation, received } = setup({ queue });
+  const cached = "https://remote.example/contexts/static-shared";
+  // Some other code expanded a document with a loader that tags this context
+  // "static", so jsonld.js keeps it in a cache shared across operations, and
+  // the inbox never asks its loader for it:
+  await expandDocument(
+    { "@context": cached, "z": "z" },
+    (url, options) =>
+      url === cached
+        ? Promise.resolve({
+          contextUrl: null,
+          documentUrl: url,
+          document: { "@context": { z: "https://example.com/z" } },
+          tag: "static",
+        } as RemoteDocument)
+        : mockDocumentLoader(url, options),
+  );
+  const document = featureRequestDocument({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/fep/7aa9",
+      cached,
+    ],
+  });
+  const response = await federation.fetch(await postSigned(document), {
+    contextData: undefined,
+  });
+  assertEquals(response.status, 202);
+  assertEquals(queue.messages, []);
+  assertEquals(received.length, 1);
+});

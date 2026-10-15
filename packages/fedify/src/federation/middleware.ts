@@ -6298,6 +6298,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         baseUrl: viewSource.baseUrl,
       }),
       verifiedView: view.view,
+      replayable: view.replayable,
       activity,
       recipient,
       inboxListeners: this.federation.inboxListeners,

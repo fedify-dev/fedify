@@ -4,7 +4,7 @@ import {
   getDocumentLoader,
   preloadedContexts,
 } from "@fedify/vocab-runtime";
-import { assert, assertEquals, assertRejects } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertRejects } from "@std/assert";
 import {
   buildVerifiedActivityView,
   ContextSnapshotMissError,
@@ -377,4 +377,47 @@ test("createContextSnapshot() keeps contexts out of jsonld.js's shared cache", a
     );
   }
   assertEquals(loads, 2);
+});
+
+test("buildVerifiedActivityView() tells contexts it could not record", async () => {
+  const cached = "https://remote.example/contexts/shared-cache";
+  const preloaded = getDocumentLoader();
+  // Some other code expands a document with a loader that tags a context
+  // "static", so jsonld.js keeps it in a cache shared across operations:
+  await expandDocument(
+    { "@context": cached, "y": "z" },
+    (url, options) =>
+      url === cached
+        ? Promise.resolve({
+          contextUrl: null,
+          documentUrl: url,
+          document: { "@context": { y: "https://example.com/y" } },
+          tag: "static",
+        } as Awaited<ReturnType<DocumentLoader>>)
+        : preloaded(url, options),
+  );
+  const build = (document: unknown) =>
+    buildVerifiedActivityView(createContextSnapshot(preloaded), {
+      policy: "standard",
+      source: "activity",
+      document,
+      baseUrl: null,
+    });
+  // The expansion takes the context from that cache without asking the
+  // snapshot, so a worker in another process could not replay it:
+  const { replayable, view } = await build({
+    "@context": [AS, cached],
+    id: "https://example.com/activities/cached",
+    type: "Create",
+  });
+  assertEquals(replayable, false);
+  assertFalse(view.contexts.some((entry) => entry.url === cached));
+  assertEquals(
+    (await build({
+      "@context": AS,
+      id: "https://example.com/activities/plain",
+      type: "Create",
+    })).replayable,
+    true,
+  );
 });
