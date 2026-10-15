@@ -441,6 +441,13 @@ The `result` field is one of:
 `"error"`
 :   The remote responded with an unexpected non-2xx HTTP response.
 
+`withDiagnostics: true` classifies the failures listed above into a
+`WebFingerLookupOutcome`, but it does not turn every failure into one.
+An error `lookupWebFinger()` does not recognize—for example, one while
+reading the response body—still rejects the returned promise, so
+callers must keep handling a rejected promise even with this option
+turned on.
+
 > [!NOTE]
 > `~Context.lookupWebFinger()` does not support `withDiagnostics`; it always
 > returns the resource descriptor or `null`.
