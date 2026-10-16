@@ -7,7 +7,7 @@ import type {
 } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode, TraceFlags } from "@opentelemetry/api";
 import type { ReadableSpan, TimedEvent } from "@opentelemetry/sdk-trace-base";
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import {
   type KvKey,
   type KvStore,
@@ -122,6 +122,36 @@ function createActivitySentEvent(options: {
   };
 }
 
+function createActivitySendFailedEvent(options: {
+  inboxUrl: string;
+  activityId?: string;
+  activityType?: string;
+  actorId?: string;
+  failureKind: "http" | "transport" | "policy";
+  statusCode?: number;
+  time?: HrTime;
+}): TimedEvent {
+  const attributes: Attributes = {
+    "activitypub.inbox.url": options.inboxUrl,
+    "activitypub.activity.id": options.activityId ?? "",
+    "activitypub.delivery.failure_kind": options.failureKind,
+  };
+  if (options.activityType != null) {
+    attributes["activitypub.activity.type"] = options.activityType;
+  }
+  if (options.actorId != null) {
+    attributes["activitypub.actor.id"] = options.actorId;
+  }
+  if (options.statusCode != null) {
+    attributes["http.response.status_code"] = options.statusCode;
+  }
+  return {
+    name: "activitypub.activity.send_failed",
+    time: options.time ?? [1700000000, 500000000] as HrTime,
+    attributes,
+  };
+}
+
 test("FedifySpanExporter", async (t) => {
   await t.step("constructor accepts KvStore with list()", () => {
     const kv = new MemoryKvStore();
@@ -222,6 +252,155 @@ test("FedifySpanExporter", async (t) => {
       assertEquals(activities[0].actorId, actorId);
       assertEquals(activities[0].activityJson, undefined);
       assertEquals(activities[0].inboxUrl, inboxUrl);
+      assertEquals(activities[0].outcome, "success");
+      assertEquals(activities[0].failureKind, undefined);
+    },
+  );
+
+  await t.step(
+    "export() stores a failed outbound delivery attempt from span event",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+
+      const traceId = "trace-failed-http";
+      const spanId = "span-failed-http";
+      const inboxUrl = "https://example.com/users/alice/inbox";
+      const activityId = "https://myserver.com/activities/failed";
+      const activityType = "https://www.w3.org/ns/activitystreams#Create";
+
+      const span = createMockSpan({
+        traceId,
+        spanId,
+        name: "activitypub.send_activity",
+        events: [
+          createActivitySendFailedEvent({
+            inboxUrl,
+            activityId,
+            activityType,
+            failureKind: "http",
+            statusCode: 500,
+          }),
+        ],
+      });
+
+      await new Promise<void>((resolve) => {
+        exporter.export([span], (result) => {
+          assertEquals(result.code, 0);
+          resolve();
+        });
+      });
+
+      const activities = await exporter.getActivitiesByTraceId(traceId);
+      assertEquals(activities.length, 1);
+      assertEquals(activities[0].direction, "outbound");
+      assertEquals(activities[0].activityId, activityId);
+      assertEquals(activities[0].inboxUrl, inboxUrl);
+      assertEquals(activities[0].outcome, "failed");
+      assertEquals(activities[0].failureKind, "http");
+      assertEquals(activities[0].statusCode, 500);
+
+      const summaries = await exporter.getRecentTraces();
+      const summary = summaries.find((s) => s.traceId === traceId);
+      assert(summary != null, "an always-failing trace must still be listed");
+      assertEquals(summary.activityCount, 1);
+    },
+  );
+
+  await t.step(
+    "export() keeps distinct records for repeated attempts at the same " +
+      "activity and inbox, and activityCount reflects every attempt",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+
+      const traceId = "trace-retry-then-success";
+      const inboxUrl = "https://example.com/users/alice/inbox";
+      const activityId = "https://myserver.com/activities/retry";
+      const activityType = "https://www.w3.org/ns/activitystreams#Create";
+
+      const failedAttempt1 = createMockSpan({
+        traceId,
+        spanId: "span-attempt-1",
+        name: "activitypub.send_activity",
+        events: [
+          createActivitySendFailedEvent({
+            inboxUrl,
+            activityId,
+            activityType,
+            failureKind: "transport",
+          }),
+        ],
+      });
+      const failedAttempt2 = createMockSpan({
+        traceId,
+        spanId: "span-attempt-2",
+        name: "activitypub.send_activity",
+        events: [
+          createActivitySendFailedEvent({
+            inboxUrl,
+            activityId,
+            activityType,
+            failureKind: "http",
+            statusCode: 503,
+          }),
+        ],
+      });
+      const succeededAttempt = createMockSpan({
+        traceId,
+        spanId: "span-attempt-3",
+        name: "activitypub.send_activity",
+        events: [
+          createActivitySentEvent({ inboxUrl, activityId, activityType }),
+        ],
+      });
+
+      for (const span of [failedAttempt1, failedAttempt2, succeededAttempt]) {
+        await new Promise<void>((resolve) => {
+          exporter.export([span], () => resolve());
+        });
+      }
+
+      const activities = await exporter.getActivitiesByTraceId(traceId);
+      assertEquals(activities.length, 3);
+      const bySpanId = new Map(activities.map((a) => [a.spanId, a]));
+      assertEquals(bySpanId.get("span-attempt-1")?.outcome, "failed");
+      assertEquals(bySpanId.get("span-attempt-1")?.failureKind, "transport");
+      assertEquals(bySpanId.get("span-attempt-2")?.outcome, "failed");
+      assertEquals(bySpanId.get("span-attempt-2")?.failureKind, "http");
+      assertEquals(bySpanId.get("span-attempt-2")?.statusCode, 503);
+      assertEquals(bySpanId.get("span-attempt-3")?.outcome, "success");
+
+      const summaries = await exporter.getRecentTraces();
+      const summary = summaries.find((s) => s.traceId === traceId);
+      assert(summary != null);
+      assertEquals(summary.activityCount, 3);
+    },
+  );
+
+  await t.step(
+    "getActivitiesByTraceId() treats a pre-existing record without an " +
+      "outcome field as a successful legacy delivery",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+
+      const traceId = "trace-legacy-record";
+      const legacyRecord = {
+        traceId,
+        spanId: "span-legacy",
+        direction: "outbound",
+        activityType: "https://www.w3.org/ns/activitystreams#Create",
+        activityId: "https://myserver.com/activities/legacy",
+        inboxUrl: "https://example.com/users/alice/inbox",
+        timestamp: new Date(0).toISOString(),
+      };
+      await kv.set(["fedify", "traces", traceId, "span-legacy"], legacyRecord);
+
+      const activities = await exporter.getActivitiesByTraceId(traceId);
+      assertEquals(activities.length, 1);
+      assertEquals(activities[0].outcome, undefined);
+      assertEquals(activities[0].failureKind, undefined);
     },
   );
 

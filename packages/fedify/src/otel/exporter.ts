@@ -11,6 +11,26 @@ import type { KvKey, KvStore, KvStoreSetOptions } from "../federation/kv.ts";
 export type ActivityDirection = "inbound" | "outbound";
 
 /**
+ * The outcome of an outbound delivery attempt.
+ *
+ * @since 2.5.0
+ */
+export type DeliveryOutcome = "success" | "failed";
+
+/**
+ * The kind of failure for a failed outbound delivery attempt.
+ *
+ *  -  `"http"`: The inbox responded with a non-2xx HTTP status.
+ *  -  `"transport"`: The request could not be sent at all, e.g., a DNS
+ *     resolution failure or a network error.
+ *  -  `"policy"`: The destination was refused by Fedify's own
+ *     private-address policy before a request was made.
+ *
+ * @since 2.5.0
+ */
+export type DeliveryFailureKind = "http" | "transport" | "policy";
+
+/**
  * Signature verification details for an inbound activity.
  *
  * @since 1.10.0
@@ -115,6 +135,33 @@ export interface TraceActivityRecord {
    * The target inbox URL (for outbound activities).
    */
   readonly inboxUrl?: string;
+
+  /**
+   * The outcome of an outbound delivery attempt (for outbound activities).
+   *
+   * Absent on records persisted before this field was introduced.  Such
+   * a record is always for a successful delivery, since a failed outbound
+   * delivery attempt used to leave no record at all.
+   *
+   * @since 2.5.0
+   */
+  readonly outcome?: DeliveryOutcome;
+
+  /**
+   * The kind of failure for a failed outbound delivery attempt (for
+   * outbound activities).  Only set when {@link outcome} is `"failed"`.
+   *
+   * @since 2.5.0
+   */
+  readonly failureKind?: DeliveryFailureKind;
+
+  /**
+   * The HTTP status code returned by the inbox, for a failed outbound
+   * delivery attempt whose {@link failureKind} is `"http"`.
+   *
+   * @since 2.5.0
+   */
+  readonly statusCode?: number;
 }
 
 /**
@@ -303,6 +350,16 @@ export class FedifySpanExporter implements SpanExporter {
           traceId,
           spanId,
           parentSpanId,
+          "success",
+        );
+        if (record != null) records.push(record);
+      } else if (event.name === "activitypub.activity.send_failed") {
+        const record = this.#extractOutboundRecord(
+          event,
+          traceId,
+          spanId,
+          parentSpanId,
+          "failed",
         );
         if (record != null) records.push(record);
       }
@@ -401,7 +458,8 @@ export class FedifySpanExporter implements SpanExporter {
     event: ReadableSpan["events"][number],
     traceId: string,
     spanId: string,
-    parentSpanId?: string,
+    parentSpanId: string | undefined,
+    outcome: DeliveryOutcome,
   ): TraceActivityRecord | null {
     const attrs = event.attributes;
     if (attrs == null) return null;
@@ -434,6 +492,8 @@ export class FedifySpanExporter implements SpanExporter {
     const explicitActivityId = attrs["activitypub.activity.id"];
     const explicitActivityType = attrs["activitypub.activity.type"];
     const explicitActorId = attrs["activitypub.actor.id"];
+    const failureKind = attrs["activitypub.delivery.failure_kind"];
+    const statusCode = attrs["http.response.status_code"];
 
     return {
       traceId,
@@ -456,6 +516,11 @@ export class FedifySpanExporter implements SpanExporter {
         event.time[0] * 1000 + event.time[1] / 1e6,
       ).toISOString(),
       inboxUrl: typeof inboxUrl === "string" ? inboxUrl : undefined,
+      outcome,
+      ...(outcome === "failed" && typeof failureKind === "string"
+        ? { failureKind: failureKind as DeliveryFailureKind }
+        : {}),
+      ...(typeof statusCode === "number" ? { statusCode } : {}),
     };
   }
 
