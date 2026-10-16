@@ -1335,6 +1335,44 @@ Each `TraceActivityRecord` contains:
      -  `ldSignaturesVerified`: Whether Linked Data Signatures were verified
  -  `timestamp`: ISO 8601 timestamp
  -  `inboxUrl`: The target inbox URL (for outbound activities)
+ -  `outcome` (optional): The outcome of an outbound delivery attempt,
+    `"success"` or `"failed"` (for outbound activities).  Absent on records
+    persisted before this field was introduced; such a record is always for
+    a successful delivery, since a failed delivery attempt used to leave no
+    record at all
+ -  `failureKind` (optional): The kind of failure for a failed outbound
+    delivery attempt, one of `"http"`, `"transport"`, or `"policy"`.  Only
+    set when `outcome` is `"failed"`
+ -  `statusCode` (optional): The HTTP status code returned by the inbox.
+    Only set when `failureKind` is `"http"`
+
+### Outbound delivery attempts
+
+*This behavior is available since Fedify 2.5.0.*
+
+Every call to `sendActivity()` persists one `TraceActivityRecord`, whether
+the delivery succeeds or fails, under the delivery operation's own `traceId`
+and `spanId`.  A delivery that fails after every retry therefore still has
+a record, and its `traceId` matches the `traceId` LogTape attaches to the
+error logs that operation emits, so a failed delivery's logs and record can
+be correlated directly.
+
+Each retry performed by the queue worker calls `sendActivity()` again,
+producing its own span and its own record, even when it targets the same
+activity and inbox as an earlier attempt.  Records are never merged or
+overwritten across attempts.  Because `~FedifySpanExporter.getRecentTraces()`
+summarizes every record stored for a trace, `activityCount` in a
+`TraceSummary` counts every attempt, not just the distinct activities in the
+trace; a delivery that fails twice before succeeding raises the count for
+its trace by three.  A trace whose every delivery attempt fails is still
+listed by `getRecentTraces()`, since each failed attempt leaves its own
+record.
+
+The queue worker's own retry, abandonment, and circuit-breaker events are
+recorded on the worker's own `activitypub.outbox` span, not on a
+`TraceActivityRecord`.  They keep the worker's own `spanId`, which differs
+from the `spanId` of the delivery attempt it retries, even though both
+belong to the same trace.
 
 ### Configuration options
 

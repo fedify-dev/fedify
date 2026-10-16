@@ -572,6 +572,154 @@ test("sendActivity() records OpenTelemetry span events", async (t) => {
     exporter.clear();
     fetchMock.hardReset();
   });
+
+  await t.step("failed send (HTTP error response)", async () => {
+    try {
+      fetchMock.spyGlobal();
+      fetchMock.post("https://example.com/inbox-send-failed-http", {
+        status: 500,
+        body: "Internal Server Error",
+      });
+
+      const activity = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: "https://example.com/activity/send-failed-http",
+        actor: "https://example.com/person",
+      };
+
+      await assertRejects(
+        () =>
+          sendActivity({
+            activity,
+            activityId: "https://example.com/activity/send-failed-http",
+            activityType: "https://www.w3.org/ns/activitystreams#Create",
+            keys: [{
+              keyId: new URL("https://example.com/person#key"),
+              privateKey: rsaPrivateKey2,
+            }],
+            inbox: new URL("https://example.com/inbox-send-failed-http"),
+            tracerProvider,
+          }),
+        SendActivityError,
+      );
+
+      // No "activitypub.activity.sent" event is recorded for a failed send.
+      assertEquals(
+        exporter.getEvents(
+          "activitypub.send_activity",
+          "activitypub.activity.sent",
+        ).length,
+        0,
+      );
+
+      const events = exporter.getEvents(
+        "activitypub.send_activity",
+        "activitypub.activity.send_failed",
+      );
+      assertEquals(events.length, 1);
+      const event = events[0];
+      assert(event.attributes != null);
+      assertEquals(
+        event.attributes["activitypub.inbox.url"],
+        "https://example.com/inbox-send-failed-http",
+      );
+      assertEquals(
+        event.attributes["activitypub.activity.id"],
+        "https://example.com/activity/send-failed-http",
+      );
+      assertEquals(
+        event.attributes["activitypub.delivery.failure_kind"],
+        "http",
+      );
+      assertEquals(event.attributes["http.response.status_code"], 500);
+    } finally {
+      exporter.clear();
+      fetchMock.hardReset();
+    }
+  });
+
+  await t.step("failed send (transport error)", async () => {
+    try {
+      fetchMock.spyGlobal();
+      fetchMock.post("https://example.com/inbox-send-failed-transport", () => {
+        throw new TypeError("network error");
+      });
+
+      const activity = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: "https://example.com/activity/send-failed-transport",
+        actor: "https://example.com/person",
+      };
+
+      await assertRejects(
+        () =>
+          sendActivity({
+            activity,
+            activityId: "https://example.com/activity/send-failed-transport",
+            keys: [],
+            inbox: new URL("https://example.com/inbox-send-failed-transport"),
+            tracerProvider,
+          }),
+        FetchError,
+      );
+
+      const events = exporter.getEvents(
+        "activitypub.send_activity",
+        "activitypub.activity.send_failed",
+      );
+      assertEquals(events.length, 1);
+      assertEquals(
+        events[0].attributes?.["activitypub.delivery.failure_kind"],
+        "transport",
+      );
+      assertEquals(
+        events[0].attributes?.["http.response.status_code"],
+        undefined,
+      );
+    } finally {
+      exporter.clear();
+      fetchMock.hardReset();
+    }
+  });
+
+  await t.step("failed send (private-address policy rejection)", async () => {
+    try {
+      fetchMock.spyGlobal();
+      const activity = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: "https://example.com/activity/send-failed-policy",
+        actor: "https://example.com/person",
+      };
+
+      await assertRejects(
+        () =>
+          sendActivity({
+            activity,
+            activityId: "https://example.com/activity/send-failed-policy",
+            keys: [],
+            inbox: new URL("http://127.0.0.1/inbox-send-failed-policy"),
+            tracerProvider,
+          }),
+        UrlError,
+      );
+
+      const events = exporter.getEvents(
+        "activitypub.send_activity",
+        "activitypub.activity.send_failed",
+      );
+      assertEquals(events.length, 1);
+      assertEquals(
+        events[0].attributes?.["activitypub.delivery.failure_kind"],
+        "policy",
+      );
+    } finally {
+      exporter.clear();
+      fetchMock.hardReset();
+    }
+  });
 });
 
 function createActivity(id: string) {
@@ -678,8 +826,9 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
     );
 
     await t.step(
-      "a failed delivery's error log matches its own span, and the outer " +
-        "context is restored once the rejection propagates",
+      "a failed delivery's error log matches its own span and the " +
+        "resulting TraceActivityRecord, and the outer context is " +
+        "restored once the rejection propagates",
       async () => {
         try {
           fetchMock.post("https://example.com/inbox-failing", {
@@ -713,10 +862,15 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
           await new Promise<void>((resolve) => {
             fedifyExporter.export([span], () => resolve());
           });
-          assertEquals(
-            await fedifyExporter.getActivitiesByTraceId(traceId),
-            [],
+          const [record] = await fedifyExporter.getActivitiesByTraceId(
+            traceId,
           );
+          assert(record != null);
+          assertEquals(record.direction, "outbound");
+          assertEquals(record.spanId, spanId);
+          assertEquals(record.outcome, "failed");
+          assertEquals(record.failureKind, "http");
+          assertEquals(record.statusCode, 500);
 
           const failureLog = records.find((r) =>
             String(r.rawMessage).startsWith(

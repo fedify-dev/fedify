@@ -430,6 +430,29 @@ async function sendActivityInternal(
   const federationMetrics = getFederationMetrics(meterProvider);
   const started = performance.now();
   let deliverySuccess = false;
+  const eventAttributes: Attributes = {
+    "activitypub.inbox.url": inbox.href,
+    "activitypub.activity.id": activityId ?? "",
+  };
+  if (activityType != null) {
+    eventAttributes["activitypub.activity.type"] = activityType;
+  }
+  const actorId = getActivityActorId(activity);
+  if (actorId != null) {
+    eventAttributes["activitypub.actor.id"] = actorId;
+  }
+  function recordSendFailure(
+    kind: "transport" | "http" | "policy",
+    statusCode?: number,
+  ): void {
+    span.addEvent("activitypub.activity.send_failed", {
+      ...eventAttributes,
+      "activitypub.delivery.failure_kind": kind,
+      ...(statusCode == null
+        ? {}
+        : { "http.response.status_code": statusCode }),
+    });
+  }
   async function validateUrl(url: string): Promise<void> {
     if (!allowPrivateAddress) {
       try {
@@ -461,6 +484,9 @@ async function sendActivityInternal(
         false,
         activityType,
       );
+      recordSendFailure("transport");
+    } else {
+      recordSendFailure("policy");
     }
     throw error;
   }
@@ -530,6 +556,7 @@ async function sendActivityInternal(
       false,
       activityType,
     );
+    recordSendFailure(failure instanceof UrlError ? "policy" : "transport");
     throw failure;
   }
   try {
@@ -554,6 +581,7 @@ async function sendActivityInternal(
           error,
         },
       );
+      recordSendFailure("http", response.status);
       throw new SendActivityError(
         inbox,
         response.status,
@@ -565,19 +593,6 @@ async function sendActivityInternal(
     }
 
     deliverySuccess = true;
-
-    // Record the sent activity with delivery details
-    const eventAttributes: Attributes = {
-      "activitypub.inbox.url": inbox.href,
-      "activitypub.activity.id": activityId ?? "",
-    };
-    if (activityType != null) {
-      eventAttributes["activitypub.activity.type"] = activityType;
-    }
-    const actorId = getActivityActorId(activity);
-    if (actorId != null) {
-      eventAttributes["activitypub.actor.id"] = actorId;
-    }
     span.addEvent("activitypub.activity.sent", eventAttributes);
   } finally {
     federationMetrics.recordDelivery(
