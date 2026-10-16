@@ -23,7 +23,14 @@ import {
   reset,
   withContext,
 } from "@logtape/logtape";
-import { metrics, propagation, SpanStatusCode } from "@opentelemetry/api";
+import {
+  type Context as OtelContext,
+  context as otelContext,
+  metrics,
+  propagation,
+  ROOT_CONTEXT,
+  SpanStatusCode,
+} from "@opentelemetry/api";
 import { W3CTraceContextPropagator } from "@opentelemetry/core";
 import {
   DataPointType,
@@ -8758,6 +8765,33 @@ test(
   },
 );
 
+class TestAsyncContextManager {
+  #storage = new AsyncLocalStorage<OtelContext>();
+  active(): OtelContext {
+    return this.#storage.getStore() ?? ROOT_CONTEXT;
+  }
+  with<A extends unknown[], F extends (...args: A) => ReturnType<F>>(
+    ctx: OtelContext,
+    fn: F,
+    thisArg?: ThisParameterType<F>,
+    ...args: A
+  ): ReturnType<F> {
+    return this.#storage.run(
+      ctx,
+      () => fn.apply(thisArg, args),
+    );
+  }
+  bind<T>(_ctx: OtelContext, target: T): T {
+    return target;
+  }
+  enable(): this {
+    return this;
+  }
+  disable(): this {
+    return this;
+  }
+}
+
 test(
   "FederationImpl.processQueuedTask() persists a TraceActivityRecord " +
     "for each outbound delivery attempt, matching the delivery's own logs",
@@ -8773,6 +8807,7 @@ test(
 
     await withLogtapeLock(async () => {
       propagation.setGlobalPropagator(new W3CTraceContextPropagator());
+      otelContext.setGlobalContextManager(new TestAsyncContextManager());
       fetchMock.spyGlobal();
       fetchMock.post("https://example.com/inbox-record-failing", {
         status: 500,
@@ -8845,7 +8880,9 @@ test(
         const deliverySpan = exporter.getSpan("activitypub.send_activity");
         assert(deliverySpan != null);
         const deliveryCtx = deliverySpan.spanContext();
+        assertEquals(deliveryCtx.traceId, workerCtx.traceId);
         assertNotEquals(deliveryCtx.spanId, workerCtx.spanId);
+        assertEquals(deliverySpan.parentSpanContext?.spanId, workerCtx.spanId);
 
         const kv = new MemoryKvStore();
         const fedifyExporter = new FedifySpanExporter(kv);
@@ -8893,6 +8930,119 @@ test(
       } finally {
         await reset();
         fetchMock.hardReset();
+        otelContext.disable();
+        propagation.disable();
+      }
+    });
+  },
+);
+
+test(
+  "FederationImpl.processQueuedTask() persists one distinct record per " +
+    "attempt across a real retry sequence, with a consistent TraceSummary",
+  async () => {
+    const traceId = "1af7651916cd43dd8448eb211c80319c";
+    const parentSpanId = "c7ad6b7169203331";
+    const traceContext = {
+      traceparent: `00-${traceId}-${parentSpanId}-01`,
+    };
+
+    await withLogtapeLock(async () => {
+      propagation.setGlobalPropagator(new W3CTraceContextPropagator());
+      otelContext.setGlobalContextManager(new TestAsyncContextManager());
+      fetchMock.spyGlobal();
+      let attemptsSeen = 0;
+      fetchMock.post("https://example.com/inbox-retry-sequence", () => {
+        attemptsSeen++;
+        return attemptsSeen < 3
+          ? { status: 500, body: "Internal Server Error" }
+          : { status: 202 };
+      });
+
+      try {
+        const [tracerProvider, exporter] = createTestTracerProvider();
+        const queuedMessages: Message[] = [];
+        const queue: MessageQueue = {
+          enqueue(message, _options) {
+            queuedMessages.push(message);
+            return Promise.resolve();
+          },
+          listen(_handler, _options) {
+            return Promise.resolve();
+          },
+        };
+        const federation = new FederationImpl<void>({
+          kv: new MemoryKvStore(),
+          queue,
+          allowPrivateAddress: true,
+          tracerProvider,
+        });
+
+        const baseMessage = {
+          type: "outbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          keys: [],
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: "https://example.com/activity/retry-sequence",
+            actor: "https://example.com/users/alice",
+            object: { type: "Note", content: "test" },
+          },
+          activityType: "https://www.w3.org/ns/activitystreams#Create",
+          inbox: "https://example.com/inbox-retry-sequence",
+          sharedInbox: false,
+          started: new Date().toISOString(),
+          headers: {},
+          traceContext,
+        } satisfies Omit<OutboxMessage, "attempt">;
+
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await federation.processQueuedTask(
+            undefined,
+            {
+              ...baseMessage,
+              attempt,
+            } satisfies OutboxMessage,
+          );
+        }
+        assertEquals(queuedMessages.length, 2);
+
+        const deliverySpans = exporter.getSpans("activitypub.send_activity");
+        assertEquals(deliverySpans.length, 3);
+        const spanIds = new Set(
+          deliverySpans.map((s) => s.spanContext().spanId),
+        );
+        assertEquals(spanIds.size, 3);
+        for (const span of deliverySpans) {
+          assertEquals(span.spanContext().traceId, traceId);
+        }
+
+        const kv = new MemoryKvStore();
+        const fedifyExporter = new FedifySpanExporter(kv);
+        await new Promise<void>((resolve) => {
+          fedifyExporter.export(deliverySpans, () => resolve());
+        });
+
+        const activities = await fedifyExporter.getActivitiesByTraceId(
+          traceId,
+        );
+        assertEquals(activities.length, 3);
+        assertEquals(new Set(activities.map((a) => a.spanId)).size, 3);
+        const outcomes = activities
+          .slice()
+          .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+          .map((a) => a.outcome);
+        assertEquals(outcomes, ["failed", "failed", "success"]);
+
+        const summaries = await fedifyExporter.getRecentTraces();
+        const summary = summaries.find((s) => s.traceId === traceId);
+        assert(summary != null);
+        assertEquals(summary.activityCount, 3);
+      } finally {
+        fetchMock.hardReset();
+        otelContext.disable();
         propagation.disable();
       }
     });
@@ -9069,6 +9219,63 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       Temporal.Duration.from({ hours: 1 }),
     );
   });
+
+  await t.step(
+    "a held message that skips sendActivity() leaves no delivery record",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://open-no-record.example/inbox", () => {
+        return { status: 500, body: "server error" };
+      });
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const { federation, queued } = setup(
+        { failureThreshold: 1, recoveryDelay: { hours: 1 } },
+        { tracerProvider },
+      );
+      const orderingKey = "https://example.com/object/open-no-record";
+
+      await federation.processQueuedTask(
+        undefined,
+        createOutboxMessage("https://open-no-record.example/inbox", {
+          orderingKey,
+        }),
+      );
+      const held = queued[0].message as OutboxMessage;
+      queued.length = 0;
+      await federation.processQueuedTask(
+        undefined,
+        createOutboxMessage("https://open-no-record.example/inbox", {
+          circuitHeld: true,
+          circuitHeldSince: held.circuitHeldSince,
+          orderingKey,
+        }),
+      );
+
+      const deliverySpans = exporter.getSpans("activitypub.send_activity");
+      assertEquals(deliverySpans.length, 1);
+      const workerSpans = exporter.getSpans("activitypub.outbox");
+      assertEquals(workerSpans.length, 2);
+
+      const kv = new MemoryKvStore();
+      const fedifyExporter = new FedifySpanExporter(kv);
+      await new Promise<void>((resolve) => {
+        fedifyExporter.export(
+          [...deliverySpans, ...workerSpans],
+          () => resolve(),
+        );
+      });
+      const traceIds = new Set(
+        [...deliverySpans, ...workerSpans].map((s) => s.spanContext().traceId),
+      );
+      let totalRecords = 0;
+      for (const traceId of traceIds) {
+        totalRecords +=
+          (await fedifyExporter.getActivitiesByTraceId(traceId)).length;
+      }
+      assertEquals(totalRecords, 1);
+    },
+  );
 
   await t.step("circuit keys include non-default ports", async () => {
     fetchMock.hardReset();
