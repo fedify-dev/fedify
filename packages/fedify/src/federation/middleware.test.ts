@@ -23,7 +23,8 @@ import {
   reset,
   withContext,
 } from "@logtape/logtape";
-import { metrics, SpanStatusCode } from "@opentelemetry/api";
+import { metrics, propagation, SpanStatusCode } from "@opentelemetry/api";
+import { W3CTraceContextPropagator } from "@opentelemetry/core";
 import {
   DataPointType,
   MeterProvider,
@@ -103,6 +104,7 @@ import {
   KvSpecDeterminer,
 } from "./middleware.ts";
 import { markCircuitBreakerLegacySweepDone } from "./circuit-breaker-test-utils.ts";
+import { FedifySpanExporter } from "../otel/exporter.ts";
 import type {
   MessageQueue,
   MessageQueueEnqueueOptions,
@@ -8751,6 +8753,147 @@ test(
       } finally {
         await reset();
         fetchMock.hardReset();
+      }
+    });
+  },
+);
+
+test(
+  "FederationImpl.processQueuedTask() persists a TraceActivityRecord " +
+    "for each outbound delivery attempt, matching the delivery's own logs",
+  async () => {
+    const traceId = "0af7651916cd43dd8448eb211c80319c";
+    const parentSpanId = "b7ad6b7169203331";
+    // A real W3C propagator is required to extract the parent trace from
+    // the message's traceContext, the same way a real queue backend
+    // carries it; the default global propagator is a no-op.
+    const traceContext = {
+      traceparent: `00-${traceId}-${parentSpanId}-01`,
+    };
+
+    await withLogtapeLock(async () => {
+      propagation.setGlobalPropagator(new W3CTraceContextPropagator());
+      fetchMock.spyGlobal();
+      fetchMock.post("https://example.com/inbox-record-failing", {
+        status: 500,
+        body: "Internal Server Error",
+      });
+
+      const records: LogRecord[] = [];
+      await reset();
+      try {
+        await configure({
+          sinks: { buffer: (record: LogRecord) => records.push(record) },
+          filters: {},
+          loggers: [
+            { category: [], sinks: ["buffer"], lowestLevel: "debug" },
+            { category: ["logtape", "meta"], sinks: [] },
+          ],
+          contextLocalStorage: new AsyncLocalStorage(),
+        });
+
+        const [tracerProvider, exporter] = createTestTracerProvider();
+        const queuedMessages: Message[] = [];
+        const queue: MessageQueue = {
+          enqueue(message, _options) {
+            queuedMessages.push(message);
+            return Promise.resolve();
+          },
+          listen(_handler, _options) {
+            return Promise.resolve();
+          },
+        };
+        const federation = new FederationImpl<void>({
+          kv: new MemoryKvStore(),
+          queue,
+          allowPrivateAddress: true,
+          tracerProvider,
+        });
+
+        const message = {
+          type: "outbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          keys: [],
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: "https://example.com/activity/record-failing",
+            actor: "https://example.com/users/alice",
+            object: { type: "Note", content: "test" },
+          },
+          activityType: "https://www.w3.org/ns/activitystreams#Create",
+          inbox: "https://example.com/inbox-record-failing",
+          sharedInbox: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          headers: {},
+          traceContext,
+        } satisfies OutboxMessage;
+
+        await federation.processQueuedTask(undefined, message);
+        assertEquals(queuedMessages.length, 1);
+
+        // The worker's own CONSUMER span extracts the fixed parent trace
+        // directly from the message, regardless of the delivery span.
+        const workerSpan = exporter.getSpan("activitypub.outbox");
+        assert(workerSpan != null);
+        const workerCtx = workerSpan.spanContext();
+        assertEquals(workerCtx.traceId, traceId);
+        assertEquals(workerSpan.parentSpanContext?.spanId, parentSpanId);
+
+        const deliverySpan = exporter.getSpan("activitypub.send_activity");
+        assert(deliverySpan != null);
+        const deliveryCtx = deliverySpan.spanContext();
+        assertNotEquals(deliveryCtx.spanId, workerCtx.spanId);
+
+        const kv = new MemoryKvStore();
+        const fedifyExporter = new FedifySpanExporter(kv);
+        await new Promise<void>((resolve) => {
+          fedifyExporter.export(
+            [deliverySpan, workerSpan],
+            () => resolve(),
+          );
+        });
+        const records_ = await fedifyExporter.getActivitiesByTraceId(
+          deliveryCtx.traceId,
+        );
+        // Exactly one record exists, for the delivery attempt itself; the
+        // worker's own span, which never calls sendActivity() directly,
+        // produces none.
+        assertEquals(records_.length, 1);
+        const [record] = records_;
+        assertEquals(record.spanId, deliveryCtx.spanId);
+        assertEquals(record.direction, "outbound");
+        assertEquals(record.outcome, "failed");
+        assertEquals(record.failureKind, "http");
+        assertEquals(record.statusCode, 500);
+
+        const deliveryLog = records.find((r) =>
+          String(r.rawMessage).startsWith(
+            "Failed to send activity {activityId} to {inbox} ({status}",
+          )
+        );
+        assert(deliveryLog != null);
+        assertEquals(deliveryLog.properties.traceId, record.traceId);
+        assertEquals(deliveryLog.properties.spanId, record.spanId);
+
+        // The worker's own retry-decision log, logged after the delivery
+        // span already ended, keeps the worker's own span ID rather than
+        // being attributed to the delivery attempt.
+        const retryLog = records.find((r) =>
+          String(r.rawMessage).startsWith(
+            "Failed to send activity {activityId} to {inbox} (attempt",
+          )
+        );
+        assert(retryLog != null);
+        assertEquals(retryLog.properties.traceId, workerCtx.traceId);
+        assertEquals(retryLog.properties.spanId, workerCtx.spanId);
+        assertNotEquals(retryLog.properties.spanId, record.spanId);
+      } finally {
+        await reset();
+        fetchMock.hardReset();
+        propagation.disable();
       }
     });
   },
