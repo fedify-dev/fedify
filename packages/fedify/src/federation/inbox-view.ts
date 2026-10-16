@@ -530,11 +530,17 @@ export async function buildVerifiedActivityView(
     references,
   );
   for (const entry of entries) {
-    collectContextReferences(
-      entry.response.document,
-      entry.response.documentUrl,
-      references,
-    );
+    // jsonld.js resolves a context document's references against the URL it
+    // asked for, and appends the context its `Link` header gives:
+    const { contextUrl, document } = entry.response;
+    collectContextReferences(document, entry.url, references);
+    if (contextUrl != null) {
+      collectContextReferences(
+        { "@context": contextUrl },
+        entry.url,
+        references,
+      );
+    }
   }
   const replayable = [...references].every((url) => used.has(url));
   return {

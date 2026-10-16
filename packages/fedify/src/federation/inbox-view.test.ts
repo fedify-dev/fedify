@@ -421,3 +421,47 @@ test("buildVerifiedActivityView() tells contexts it could not record", async () 
     true,
   );
 });
+
+test("buildVerifiedActivityView() tells contexts linked from a context", async () => {
+  const cached = "https://remote.example/contexts/linked-shared-cache";
+  const linking = "https://remote.example/contexts/linking";
+  const preloaded = getDocumentLoader();
+  await expandDocument(
+    { "@context": cached, "w": "z" },
+    (url, options) =>
+      url === cached
+        ? Promise.resolve({
+          contextUrl: null,
+          documentUrl: url,
+          document: { "@context": { w: "https://example.com/w" } },
+          tag: "static",
+        } as Awaited<ReturnType<DocumentLoader>>)
+        : preloaded(url, options),
+  );
+  // The snapshot serves a context whose Link header names the cached one,
+  // which jsonld.js appends to it and takes from its shared cache:
+  const { replayable, view } = await buildVerifiedActivityView(
+    createContextSnapshot((url, options) =>
+      url === linking
+        ? Promise.resolve({
+          contextUrl: cached,
+          documentUrl: url,
+          document: { "@context": { v: "https://example.com/v" } },
+        })
+        : preloaded(url, options)
+    ),
+    {
+      policy: "standard",
+      source: "activity",
+      document: {
+        "@context": [AS, linking],
+        id: "https://example.com/activities/linked",
+        type: "Create",
+      },
+      baseUrl: null,
+    },
+  );
+  assert(view.contexts.some((entry) => entry.url === linking));
+  assertFalse(view.contexts.some((entry) => entry.url === cached));
+  assertEquals(replayable, false);
+});
