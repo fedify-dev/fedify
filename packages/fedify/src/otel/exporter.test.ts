@@ -404,6 +404,43 @@ test("FedifySpanExporter", async (t) => {
     },
   );
 
+  await t.step(
+    "export() exporting the same span twice does not inflate activityCount",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+
+      const traceId = "trace-double-export";
+      const spanId = "span-double-export";
+      const span = createMockSpan({
+        traceId,
+        spanId,
+        name: "activitypub.send_activity",
+        events: [
+          createActivitySentEvent({
+            inboxUrl: "https://example.com/inbox",
+            activityId: "https://myserver.com/activities/double",
+          }),
+        ],
+      });
+
+      await new Promise<void>((resolve) => {
+        exporter.export([span], () => resolve());
+      });
+      await new Promise<void>((resolve) => {
+        exporter.export([span], () => resolve());
+      });
+
+      const activities = await exporter.getActivitiesByTraceId(traceId);
+      assertEquals(activities.length, 1);
+
+      const summaries = await exporter.getRecentTraces();
+      const summary = summaries.find((s) => s.traceId === traceId);
+      assert(summary != null);
+      assertEquals(summary.activityCount, 1);
+    },
+  );
+
   await t.step("export() ignores spans without activity events", async () => {
     const kv = new MemoryKvStore();
     const exporter = new FedifySpanExporter(kv);

@@ -534,10 +534,11 @@ export class FedifySpanExporter implements SpanExporter {
       record.traceId,
       record.spanId,
     ] as KvKey;
+    const alreadyStored = await this.#kv.get(key) != null;
     await this.#kv.set(key, record, options);
-
-    // Also store trace summary for getRecentTraces()
-    await this.#updateTraceSummary(record, options);
+    if (!alreadyStored) {
+      await this.#updateTraceSummary(record, options);
+    }
   }
 
   async #setWithCasRetry<T>(
