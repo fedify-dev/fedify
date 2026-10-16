@@ -36,6 +36,7 @@ import {
 import { matchesActor } from "./utils.ts";
 import { linksToActor, lookupPortableWebFinger } from "./webfinger/action.ts";
 import { webFingerCommand } from "./webfinger/command.ts";
+import { WebFingerLookupError } from "./webfinger/error.ts";
 
 const keyPair = await crypto.subtle.generateKey("Ed25519", true, [
   "sign",
@@ -893,6 +894,35 @@ test("lookupPortableWebFinger() uses the first gateway of the actor", async () =
         allowPrivateAddresses: true,
       }),
       /no @gateway location hints/,
+    );
+  } finally {
+    fetchMock.unmockGlobal();
+    fetchMock.removeRoutes();
+    await gateway.close();
+  }
+});
+
+test("lookupPortableWebFinger() preserves WebFinger diagnostics", async () => {
+  const gateway = await startGateway();
+  fetchMock.spyGlobal();
+  const resource = `ap://${did}/actor?@gateway=${
+    encodeURIComponent(gateway.url.origin)
+  }`;
+  fetchMock.get(`begin:https://${gateway.url.host}/.well-known/webfinger`, {
+    status: 500,
+  });
+  try {
+    await serveFixtures(gateway);
+    await assert.rejects(
+      lookupPortableWebFinger({
+        resource,
+        allowPrivateAddresses: true,
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof WebFingerLookupError);
+        assert.equal(error.result, "error");
+        return true;
+      },
     );
   } finally {
     fetchMock.unmockGlobal();

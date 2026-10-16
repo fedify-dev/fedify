@@ -16,6 +16,7 @@ import {
   Person,
 } from "@fedify/vocab";
 import { FetchError, getDocumentLoader, UrlError } from "@fedify/vocab-runtime";
+import type { LookupWebFingerOptions } from "@fedify/webfinger";
 import {
   configure,
   type LogRecord,
@@ -12805,6 +12806,41 @@ test("ContextImpl.enqueueTask()", async (t) => {
       ok(decoded.note instanceof Note);
       strictEqual(decoded.note.content?.toString(), "greeting");
       strictEqual(decoded.title, "greeting");
+    },
+  );
+});
+
+test("ContextImpl.lookupWebFinger()", async (t) => {
+  await t.step(
+    "always returns a plain ResourceDescriptor or null, even if " +
+      "options structurally contains withDiagnostics",
+    async () => {
+      fetchMock.spyGlobal();
+      try {
+        const expected = { subject: "acct:alice@example.com", links: [] };
+        fetchMock.get(
+          "https://example.com/.well-known/webfinger?resource=acct%3Aalice%40example.com",
+          { body: expected },
+        );
+        const federation = createFederation<void>(mockOptions());
+        const ctx = federation.createContext(
+          new URL("https://example.com/"),
+          undefined,
+        );
+        // `Context.lookupWebFinger()`'s declared options type does not
+        // name `withDiagnostics`, but nothing stops a caller from
+        // assigning a value that structurally has it to a variable typed
+        // as `LookupWebFingerOptions` and passing that in.  This
+        // simulates that bypass of the type-level check.
+        const sneaky = { withDiagnostics: true } as LookupWebFingerOptions;
+        const result = await ctx.lookupWebFinger(
+          "acct:alice@example.com",
+          sneaky,
+        );
+        deepStrictEqual(result, expected);
+      } finally {
+        fetchMock.hardReset();
+      }
     },
   );
 });

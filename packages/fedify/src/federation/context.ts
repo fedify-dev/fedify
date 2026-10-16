@@ -710,7 +710,9 @@ export interface Context<TContextData> {
    * Looks up a WebFinger resource.
    *
    * It's almost the same as the {@link lookupWebFinger} function, but it uses
-   * the context's configuration by default.
+   * the context's configuration by default.  Unlike {@link lookupWebFinger},
+   * it does not support the `withDiagnostics` option; it always returns the
+   * resource descriptor or `null`.
    *
    * @param resource The resource URL to look up.
    * @param options Extra options for looking up the resource.

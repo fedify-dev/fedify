@@ -124,10 +124,33 @@ function getMetricResourceScheme(scheme: string): string {
   return WEBFINGER_LOOKUP_SCHEME_WHITELIST.has(scheme) ? scheme : "other";
 }
 
-interface WebFingerLookupOutcome {
+/**
+ * The outcome of a {@link lookupWebFinger} call, returned in place of the
+ * plain {@link ResourceDescriptor} when `options.withDiagnostics` is `true`.
+ * @since 2.5.0
+ */
+export interface WebFingerLookupOutcome {
+  /**
+   * The resource descriptor fetched from the remote WebFinger endpoint, or
+   * `null` if the lookup did not succeed.
+   */
   resource: ResourceDescriptor | null;
+
+  /**
+   * The terminal classification of the lookup.  See
+   * {@link WebFingerLookupResult} for what each value means.
+   */
   result: WebFingerLookupResult;
+
+  /**
+   * The HTTP status code of the final response, if a response was received
+   * from the remote server.
+   */
   statusCode?: number;
+
+  /**
+   * The host of the final URL the lookup attempted to reach.
+   */
   remoteHost?: string;
 }
 
@@ -193,8 +216,42 @@ export interface LookupWebFingerOptions {
  */
 export async function lookupWebFinger(
   resource: URL | string,
-  options: LookupWebFingerOptions = {},
-): Promise<ResourceDescriptor | null> {
+  options?: LookupWebFingerOptions & {
+    /**
+     * Whether to return a {@link WebFingerLookupOutcome} describing why
+     * the lookup failed, instead of collapsing every failure into `null`.
+     * Turned off by default.
+     * @since 2.5.0
+     */
+    withDiagnostics?: false;
+  },
+): Promise<ResourceDescriptor | null>;
+
+/**
+ * Looks up a WebFinger resource, returning diagnostics that explain why the
+ * lookup failed instead of collapsing every failure into `null`.
+ * @param resource The resource URL to look up.
+ * @param options Extra options for looking up the resource.  Must set
+ *                `withDiagnostics: true`.
+ * @returns The outcome of the lookup.
+ * @since 2.5.0
+ */
+export async function lookupWebFinger(
+  resource: URL | string,
+  options: LookupWebFingerOptions & {
+    /**
+     * Returns a {@link WebFingerLookupOutcome} instead of a plain
+     * {@link ResourceDescriptor}.
+     * @since 2.5.0
+     */
+    withDiagnostics: true;
+  },
+): Promise<WebFingerLookupOutcome>;
+
+export async function lookupWebFinger(
+  resource: URL | string,
+  options: LookupWebFingerOptions & { withDiagnostics?: boolean } = {},
+): Promise<ResourceDescriptor | null | WebFingerLookupOutcome> {
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(
     metadata.name,
@@ -228,7 +285,7 @@ export async function lookupWebFinger(
             ? SpanStatusCode.ERROR
             : SpanStatusCode.OK,
         });
-        return outcome.resource;
+        return options.withDiagnostics ? outcome : outcome.resource;
       } catch (error) {
         span.setStatus({
           code: SpanStatusCode.ERROR,
@@ -438,11 +495,24 @@ async function lookupWebFingerInternal(
       };
     }
     try {
-      const parsed = JSON.parse(
+      const parsed: unknown = JSON.parse(
         await readBoundedText(response, MAX_BODY_SIZE, url),
-      ) as ResourceDescriptor;
+      );
+      // A body that parses to anything other than a JSON object—such as
+      // a literal `null`, a number, or an array—is not a resource
+      // descriptor, even though JSON.parse() accepts it without error.
+      if (
+        typeof parsed !== "object" || parsed === null || Array.isArray(parsed)
+      ) {
+        return {
+          resource: null,
+          result: "invalid",
+          statusCode: response.status,
+          remoteHost,
+        };
+      }
       return {
-        resource: parsed,
+        resource: parsed as ResourceDescriptor,
         result: "found",
         statusCode: response.status,
         remoteHost,

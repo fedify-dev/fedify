@@ -1,4 +1,5 @@
 import { type Message, message } from "@optique/core";
+import type { WebFingerLookupResult } from "@fedify/webfinger";
 
 /**
  * Generates a user-friendly error message based on the type of error
@@ -16,6 +17,12 @@ export const getErrorMessage = (resource: string, error: unknown): Message =>
     ? message`${error.address} does not link back to the portable actor ${error.actorId}, so it is not verified to be the actor's WebFinger address:`
     : error instanceof NotFoundError
     ? message`Resource not found: ${error.resource}`
+    : error instanceof WebFingerLookupError
+    ? error.result === "network_error"
+      ? message`Failed to look up WebFinger for ${error.resource}: a network error occurred.`
+      : error.result === "invalid"
+      ? message`Failed to look up WebFinger for ${error.resource}: the server returned a response Fedify could not understand.`
+      : message`Failed to look up WebFinger for ${error.resource}: the server returned an unexpected error.`
     : error instanceof Error
     ? message`Failed to look up WebFinger for ${resource}: ${error.message}`
     : message`Failed to look up WebFinger for ${resource}: ${String(error)}`;
@@ -44,6 +51,26 @@ export class NotFoundError extends Error {
   constructor(public resource: string) {
     super(`Resource not found: ${resource}`);
     this.name = "NotFoundError";
+  }
+  throw(): never {
+    throw this;
+  }
+}
+
+/**
+ * Custom error class for a WebFinger lookup that failed for a reason other
+ * than the resource simply not existing, such as a network failure, a
+ * server error, or a response Fedify could not parse.
+ * @param resource The resource that could not be looked up.
+ * @param result Why the lookup failed.
+ * @extends {Error}
+ */
+export class WebFingerLookupError extends Error {
+  constructor(public resource: string, public result: WebFingerLookupResult) {
+    super(
+      `Failed to look up WebFinger for ${resource}: result was "${result}".`,
+    );
+    this.name = "WebFingerLookupError";
   }
   throw(): never {
     throw this;

@@ -1,3 +1,4 @@
+import { formatMessage } from "@optique/core/message";
 import { parse } from "@optique/core/parser";
 import { run } from "@optique/run";
 import assert from "node:assert/strict";
@@ -6,6 +7,11 @@ import test from "node:test";
 import { type Config, configContext } from "../config.ts";
 import runWebFinger, { lookupSingleWebFinger } from "./action.ts";
 import { webFingerCommand } from "./command.ts";
+import {
+  getErrorMessage,
+  NotFoundError,
+  WebFingerLookupError,
+} from "./error.ts";
 
 const COMMAND = "webfinger";
 const USER_AGENT = "MyUserAgent/1.0";
@@ -232,6 +238,86 @@ test("Test lookupSingleWebFinger", async (): Promise<void> => {
 
     const aliases = results.map((w) => w?.aliases?.[0]);
     assert.deepEqual(aliases, ALIASES);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+// ----------------------------------------------------------------------
+// FIX FOR ISSUE #897 – DIFFERENTIATE WHY A WEBFINGER LOOKUP FAILED
+// ----------------------------------------------------------------------
+
+for (
+  const { name, response, expectedResult, expectedText } of [
+    {
+      name: "404 is still reported as not found",
+      response: () => new Response(null, { status: 404 }),
+      expectedResult: null,
+      expectedText: 'Resource not found: "acct:alice@example.com"',
+    },
+    {
+      name: "a server error is distinguished from not found",
+      response: () => new Response(null, { status: 500 }),
+      expectedResult: "error",
+      expectedText: "the server returned an unexpected error",
+    },
+    {
+      name: "a malformed response is distinguished from not found",
+      response: () => new Response("not json", { status: 200 }),
+      expectedResult: "invalid",
+      expectedText:
+        "the server returned a response Fedify could not understand",
+    },
+  ] satisfies {
+    name: string;
+    response: () => Response;
+    expectedResult: "error" | "invalid" | null;
+    expectedText: string;
+  }[]
+) {
+  test(`Test lookupSingleWebFinger - ${name}`, async () => {
+    const resource = "acct:alice@example.com";
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = () => Promise.resolve(response());
+    try {
+      await assert.rejects(
+        () => lookupSingleWebFinger({ resource, allowPrivateAddresses: true }),
+        (error: unknown) => {
+          if (expectedResult == null) {
+            assert.ok(error instanceof NotFoundError);
+          } else {
+            assert.ok(error instanceof WebFingerLookupError);
+            assert.strictEqual(error.result, expectedResult);
+          }
+          const text = formatMessage(getErrorMessage(resource, error));
+          assert.ok(text.includes(expectedText), text);
+          return true;
+        },
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+}
+
+test("Test lookupSingleWebFinger - a network failure is distinguished from not found", async () => {
+  const resource = "acct:alice@example.com";
+  const originalFetch = globalThis.fetch;
+  // Mocked lookups skip DNS by passing allowPrivateAddresses, same as the
+  // upstream fix for issue #1273 (0bece1f8e): a real DNS lookup for a public
+  // hostname should not be part of a unit test.
+  globalThis.fetch = () => Promise.reject(new TypeError("network down"));
+  try {
+    await assert.rejects(
+      () => lookupSingleWebFinger({ resource, allowPrivateAddresses: true }),
+      (error: unknown) => {
+        assert.ok(error instanceof WebFingerLookupError);
+        assert.strictEqual(error.result, "network_error");
+        const text = formatMessage(getErrorMessage(resource, error));
+        assert.ok(text.includes("a network error occurred"), text);
+        return true;
+      },
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

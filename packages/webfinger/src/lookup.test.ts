@@ -6,7 +6,7 @@ import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok } from "node:assert/strict";
 import dns from "node:dns/promises";
 import type { ResourceDescriptor } from "./jrd.ts";
-import { lookupWebFinger } from "./lookup.ts";
+import { lookupWebFinger, type LookupWebFingerOptions } from "./lookup.ts";
 
 test({
   name: "lookupWebFinger()",
@@ -989,3 +989,167 @@ test("lookupWebFinger() logs DNS failures as such", async (t) => {
     });
   }
 });
+
+test("lookupWebFinger() with withDiagnostics: true", {
+  sanitizeOps: false,
+  sanitizeResources: false,
+}, async (t) => {
+  // No fetch mock is active yet, so this reaches the real (non-existent)
+  // host and fails at the network layer, the same way the "connection
+  // refused" step above does.
+  await t.step("network_error", async () => {
+    const outcome = await lookupWebFinger(
+      "acct:johndoe@fedify-test.internal",
+      { withDiagnostics: true },
+    );
+    deepStrictEqual(outcome.resource, null);
+    deepStrictEqual(outcome.result, "network_error");
+    deepStrictEqual(
+      "statusCode" in outcome,
+      false,
+      "no HTTP response means no status code",
+    );
+  });
+
+  fetchMock.spyGlobal();
+  try {
+    await t.step("found", async () => {
+      fetchMock.removeRoutes();
+      const expected: ResourceDescriptor = {
+        subject: "acct:johndoe@example.com",
+        links: [],
+      };
+      fetchMock.get(
+        "https://example.com/.well-known/webfinger?resource=acct%3Ajohndoe%40example.com",
+        { body: expected },
+      );
+      const outcome = await lookupWebFinger("acct:johndoe@example.com", {
+        withDiagnostics: true,
+      });
+      deepStrictEqual(outcome.resource, expected);
+      deepStrictEqual(outcome.result, "found");
+      deepStrictEqual(outcome.statusCode, 200);
+      deepStrictEqual(outcome.remoteHost, "example.com");
+    });
+
+    await t.step("not_found", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        { status: 404 },
+      );
+      const outcome = await lookupWebFinger("acct:johndoe@example.com", {
+        withDiagnostics: true,
+      });
+      deepStrictEqual(outcome.resource, null);
+      deepStrictEqual(outcome.result, "not_found");
+      deepStrictEqual(outcome.statusCode, 404);
+      deepStrictEqual(outcome.remoteHost, "example.com");
+    });
+
+    await t.step("invalid", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        { body: "not json" },
+      );
+      const outcome = await lookupWebFinger("acct:johndoe@example.com", {
+        withDiagnostics: true,
+      });
+      deepStrictEqual(outcome.resource, null);
+      deepStrictEqual(outcome.result, "invalid");
+      deepStrictEqual(outcome.statusCode, 200);
+      deepStrictEqual(outcome.remoteHost, "example.com");
+    });
+
+    await t.step(
+      "invalid: a literal JSON null body is not a resource descriptor",
+      async () => {
+        // JSON.parse("null") succeeds and yields the JS value `null`.
+        // Regression test for a server that returns 200 with a literal
+        // `null` body instead of an object: this must not be classified
+        // as "found" with a null resource.
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "begin:https://example.com/.well-known/webfinger?",
+          { body: "null" },
+        );
+        const outcome = await lookupWebFinger("acct:johndoe@example.com", {
+          withDiagnostics: true,
+        });
+        deepStrictEqual(outcome.resource, null);
+        deepStrictEqual(outcome.result, "invalid");
+        deepStrictEqual(outcome.statusCode, 200);
+        deepStrictEqual(outcome.remoteHost, "example.com");
+      },
+    );
+
+    await t.step(
+      "invalid: a JSON array body is not a resource descriptor",
+      async () => {
+        // typeof [] === "object" and [] !== null, so the null-only guard
+        // above does not catch an array body; it needs its own check.
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "begin:https://example.com/.well-known/webfinger?",
+          { body: "[]" },
+        );
+        const outcome = await lookupWebFinger("acct:johndoe@example.com", {
+          withDiagnostics: true,
+        });
+        deepStrictEqual(outcome.resource, null);
+        deepStrictEqual(outcome.result, "invalid");
+        deepStrictEqual(outcome.statusCode, 200);
+        deepStrictEqual(outcome.remoteHost, "example.com");
+      },
+    );
+
+    await t.step("error", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "begin:https://example.com/.well-known/webfinger?",
+        { status: 500 },
+      );
+      const outcome = await lookupWebFinger("acct:johndoe@example.com", {
+        withDiagnostics: true,
+      });
+      deepStrictEqual(outcome.resource, null);
+      deepStrictEqual(outcome.result, "error");
+      deepStrictEqual(outcome.statusCode, 500);
+      deepStrictEqual(outcome.remoteHost, "example.com");
+    });
+  } finally {
+    fetchMock.removeRoutes();
+    fetchMock.hardReset();
+  }
+});
+
+test(
+  "lookupWebFinger() accepts a plain LookupWebFingerOptions-typed variable",
+  async () => {
+    // Regression test: a variable typed as `LookupWebFingerOptions`, built
+    // separately from the call site and never mentioning `withDiagnostics`,
+    // must still match the default overload.  This is a type-level
+    // concern; the point of this test is that the file compiles at all.
+    fetchMock.spyGlobal();
+    try {
+      const expected: ResourceDescriptor = {
+        subject: "acct:johndoe@example.com",
+        links: [],
+      };
+      fetchMock.get(
+        "https://example.com/.well-known/webfinger?resource=acct%3Ajohndoe%40example.com",
+        { body: expected },
+      );
+      const options: LookupWebFingerOptions = { userAgent: "test-agent" };
+      const result = await lookupWebFinger(
+        "acct:johndoe@example.com",
+        options,
+      );
+      deepStrictEqual(result, expected);
+    } finally {
+      fetchMock.removeRoutes();
+      fetchMock.hardReset();
+    }
+  },
+);
