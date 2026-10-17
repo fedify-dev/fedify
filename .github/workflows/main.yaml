@@ -302,6 +302,8 @@ jobs:
     - uses: ./.github/actions/setup-mise
     - uses: ./.github/actions/cache-docs
     - run: pnpm run build
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       working-directory: ${{ github.workspace }}/docs/
     - uses: actions/upload-artifact@v7
       with:
@@ -524,6 +526,7 @@ jobs:
         fi
       env:
         SHORT_VERSION: ${{ needs.determine-version.outputs.short_version }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PLAUSIBLE_DOMAIN: ${{ secrets.PLAUSIBLE_DOMAIN }}
         STABLE_DOCS_URL: ${{ vars.STABLE_DOCS_URL }}
         UNSTABLE_DOCS_URL: ${{ vars.UNSTABLE_DOCS_URL }}

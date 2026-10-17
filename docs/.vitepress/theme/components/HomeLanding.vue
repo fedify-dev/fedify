@@ -3,6 +3,8 @@
 // (`layout: HomeLanding` + `isHome: true` in docs/index.md).  Built as a real
 // narrative landing page rather than the default hero + emoji-feature grid.
 import { computed, ref, type Component } from "vue";
+import { withBase } from "vitepress";
+import TeamMembers from "./TeamMembers.vue";
 import {
   Activity,
   BadgeCheck,
@@ -1008,6 +1010,17 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       </div>
     </section>
 
+    <section class="lp-section lp-section-alt" aria-labelledby="home-team-heading">
+      <div class="wrap">
+        <div class="lp-section-head">
+          <h2 id="home-team-heading" class="lp-h2">The people behind Fedify</h2>
+          <p class="lp-team-description">An open source project, built and maintained by people in the fediverse.</p>
+        </div>
+        <TeamMembers compact />
+        <a class="lp-team-link" :href="withBase('/team')">Meet the team and contributors <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
+
     <!-- ======================= FINAL CTA ============================ -->
     <section class="lp-cta-band">
       <div class="wrap">
@@ -1082,6 +1095,10 @@ federation.<span class="c-fn">setActorDispatcher</span>(
 </template>
 
 <style scoped>
+.lp-team-description { color: var(--vp-c-text-2); margin-top: 16px; line-height: 1.75; }
+.lp-team-link { display: inline-block; margin-top: 32px; color: var(--vp-c-brand-1); font-weight: 500; }
+.lp-team-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+
 /* The custom layout zeroes VPContent's home padding (see brand.css); the hero
    owns the nav offset so spacing is consistent across breakpoints. */
 .lp {
