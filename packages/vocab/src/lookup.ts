@@ -13,7 +13,9 @@ import {
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
 import {
+  acceptCandidate,
   createSnapshotContextLoader,
+  type DereferenceObserver,
   dereferencePortableIri,
   getPortableGatewayCandidates,
   getPortableResponseClaim,
@@ -123,6 +125,38 @@ const logger = getLogger(["fedify", "vocab", "lookup"]);
  *
  * @since 0.2.0
  */
+/**
+ * The key of the {@link LookupObjectOptions} property that observes how
+ * {@link lookupObject} selects the object it returns.
+ *
+ * @internal Technically exported for other Fedify packages, but not part of
+ * the public API contract.  This is not considered public API for Semantic
+ * Versioning decisions.
+ */
+export const lookupObserver: unique symbol = Symbol.for(
+  "@fedify/vocab/lookupObserver",
+);
+
+/**
+ * Observes how {@link lookupObject} selects the object it returns: each
+ * candidate is offered to {@link DereferenceObserver.accept} at the boundary
+ * that would otherwise return it, both for ordinary documents and for
+ * FEP-ef61 portable objects, and each failure that does not propagate is
+ * reported to {@link DereferenceObserver.failed}.  The observer is not passed
+ * on to the returned object.
+ *
+ * @internal Technically exported for other Fedify packages, but not part of
+ * the public API contract.  This is not considered public API for Semantic
+ * Versioning decisions.
+ */
+export interface LookupObserver extends DereferenceObserver<Object> {
+  /**
+   * Whether to fall back to WebFinger when an HTTP(S) URL cannot be fetched.
+   * Defaults to `true`.
+   */
+  readonly webFinger?: boolean;
+}
+
 export interface LookupObjectOptions {
   /**
    * The document loader for loading remote JSON-LD documents.
@@ -226,6 +260,12 @@ export interface LookupObjectOptions {
    * @since 2.4.0
    */
   verifyPortableObject?: PortableObjectVerifier;
+
+  /**
+   * See {@link LookupObserver}.
+   * @internal
+   */
+  [lookupObserver]?: LookupObserver;
 }
 
 /**
@@ -395,7 +435,11 @@ async function lookupObjectInternal(
       });
     } catch (error) {
       logger.debug("Failed to fetch remote document:\n{error}", { error });
+      options[lookupObserver]?.failed?.({ operation: "fetch", error });
     }
+  }
+  if (remoteDoc == null && options[lookupObserver]?.webFinger === false) {
+    return null;
   }
   if (remoteDoc == null) {
     const jrd = await lookupWebFinger(identifier, {
@@ -467,12 +511,13 @@ async function lookupObjectInternal(
   if (remoteDoc == null) return null;
   // With verifyPortableObject, the document may turn out to be a portable
   // object, which has to be verified with the same context documents:
-  const snapshot = options.verifyPortableObject == null
-    ? null
-    : createSnapshotContextLoader(
-      options.contextLoader ??
-        getDocumentLoader({ userAgent: options.userAgent }),
-    );
+  const snapshot =
+    options.verifyPortableObject == null && options[lookupObserver] == null
+      ? null
+      : createSnapshotContextLoader(
+        options.contextLoader ??
+          getDocumentLoader({ userAgent: options.userAgent }),
+      );
   try {
     let object: Object;
     let documentUrl: URL;
@@ -486,6 +531,7 @@ async function lookupObjectInternal(
         baseUrl: documentUrl,
       });
     } catch (error) {
+      options[lookupObserver]?.failed?.({ operation: "parse", error });
       if (error instanceof TypeError) {
         logger.debug(
           "Failed to parse JSON-LD document: {error}\n{document}",
@@ -495,7 +541,7 @@ async function lookupObjectInternal(
       }
       throw error;
     }
-    if (snapshot != null) {
+    if (options.verifyPortableObject != null && snapshot != null) {
       // A document whose final URL or @id stands for a portable object is
       // verified as one instead of being trusted because of its origin:
       const claim = getPortableResponseClaim(remoteDoc.documentUrl, object.id);
@@ -540,6 +586,19 @@ async function lookupObjectInternal(
           'implications, set the crossOrigin option to "trust".',
         { ...remoteDoc, objectId: object.id.href },
       );
+      options[lookupObserver]?.failed?.({ operation: "origin" });
+      return null;
+    }
+    if (
+      !await acceptCandidate(options[lookupObserver], {
+        document: remoteDoc.document,
+        documentUrl: remoteDoc.documentUrl,
+        baseUrl: documentUrl,
+        contextLoader: snapshot?.loader ?? options.contextLoader ??
+          getDocumentLoader({ userAgent: options.userAgent }),
+        object,
+      })
+    ) {
       return null;
     }
     return object;
@@ -728,6 +787,7 @@ async function dereference(
       verifyPortableObject: options.verifyPortableObject,
       crossOrigin: options.crossOrigin === "throw" ? "throw" : "ignore",
       signal: options.signal,
+      observer: options[lookupObserver],
       parse: (document, { contextLoader, baseUrl }) =>
         Object.fromJsonLd(document, {
           documentLoader,

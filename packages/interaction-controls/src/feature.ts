@@ -11,7 +11,8 @@ import {
   Person,
   Service,
 } from "@fedify/vocab";
-import { createInteractionControl, idsEqual } from "./control.ts";
+import { createInteractionControl } from "./control.ts";
+import { sameId } from "./evidence.ts";
 import type { InteractionControl } from "./types.ts";
 
 export const featureInteraction: InteractionControl<
@@ -40,9 +41,13 @@ export const featureInteraction: InteractionControl<
     Person.typeId,
     Service.typeId,
   ],
-  getRequester: (_request, collection) => collection.attributionId,
+  // Mastodon sends FeatureRequest activities without an actor, whose
+  // requester is the authenticated owner of the collection, as the
+  // collection's own document names it; a collection embedded in the request
+  // is never trusted:
+  authoritativeInteractingObject: true,
   validateRequest: (_request, collection, _target, requester) => {
-    if (!idsEqual(collection.attributionId, requester)) {
+    if (!sameId(collection.attributionId, requester)) {
       return {
         type: "requesterMismatch",
         expected: requester,

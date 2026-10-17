@@ -6,7 +6,15 @@ import {
 } from "@fedify/fixture";
 import fetchMock from "fetch-mock";
 import { deepStrictEqual, equal, ok, rejects } from "node:assert/strict";
-import { lookupObject, traverseCollection } from "./lookup.ts";
+import type {
+  DocumentLoader,
+  PortableObjectVerifier,
+} from "@fedify/vocab-runtime";
+import type {
+  DereferenceCandidate,
+  DereferenceFailure,
+} from "@fedify/vocab-runtime/internal/portable-dereference";
+import { lookupObject, lookupObserver, traverseCollection } from "./lookup.ts";
 import { assertInstanceOf } from "./utils.ts";
 import { Collection, Note, Object, Person } from "./vocab.ts";
 
@@ -1051,3 +1059,118 @@ test("lookupObject() records activitypub.object.lookup counter", {
 });
 
 // cSpell: ignore gildong
+
+const OBSERVER_DID = "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3";
+
+test("lookupObject() offers each candidate to the observer", async () => {
+  const note = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://example.com/notes/1",
+    type: "Note",
+    content: "Hello",
+  };
+  const fetched: string[] = [];
+  const documentLoader: DocumentLoader = (url) => {
+    fetched.push(url);
+    if (url === "https://example.com/notes/1") {
+      return Promise.resolve({
+        contextUrl: null,
+        document: note,
+        documentUrl: "https://example.com/notes/1?redirected",
+      });
+    }
+    return Promise.reject(new Error(`Not found: ${url}`));
+  };
+  const candidates: DereferenceCandidate<Object>[] = [];
+  const failures: DereferenceFailure[] = [];
+  const accepted = await lookupObject("https://example.com/notes/1", {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    [lookupObserver]: {
+      accept: (candidate) => {
+        candidates.push(candidate);
+        return Promise.resolve(true);
+      },
+      failed: (failure) => failures.push(failure),
+    },
+  });
+  ok(accepted instanceof Note);
+  equal(candidates.length, 1);
+  deepStrictEqual(candidates[0].document, note);
+  equal(candidates[0].documentUrl, "https://example.com/notes/1?redirected");
+  equal(candidates[0].baseUrl.href, "https://example.com/notes/1?redirected");
+  equal(candidates[0].object, accepted);
+  deepStrictEqual(failures, []);
+
+  // A refused candidate is not returned, and neither is an observer error:
+  for (
+    const accept of [
+      () => Promise.resolve(false),
+      () => Promise.reject(new Error("Oops")),
+    ]
+  ) {
+    const refusals: DereferenceFailure[] = [];
+    equal(
+      await lookupObject("https://example.com/notes/1", {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        [lookupObserver]: { accept, failed: (f) => refusals.push(f) },
+      }),
+      null,
+    );
+    deepStrictEqual(refusals.map((f) => f.operation), ["accept"]);
+  }
+
+  // Without WebFinger, a URL that cannot be fetched is not looked up further:
+  fetched.length = 0;
+  const missing: DereferenceFailure[] = [];
+  equal(
+    await lookupObject("https://example.com/notes/2", {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      [lookupObserver]: { webFinger: false, failed: (f) => missing.push(f) },
+    }),
+    null,
+  );
+  deepStrictEqual(fetched, ["https://example.com/notes/2"]);
+  deepStrictEqual(missing.map((f) => f.operation), ["fetch"]);
+});
+
+test("lookupObject() keeps looking after the observer refuses a portable candidate", async () => {
+  const id = `ap://${OBSERVER_DID}/notes/1`;
+  const gateways = ["https://gw1.example", "https://gw2.example"];
+  const documentLoader: DocumentLoader = (url) =>
+    Promise.resolve({
+      contextUrl: null,
+      document: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id,
+        type: "Note",
+        content: url.startsWith("https://gw1.example/") ? "first" : "second",
+      },
+      documentUrl: url,
+    });
+  const verifier: PortableObjectVerifier = () =>
+    Promise.resolve({ verified: true });
+  const offered: string[] = [];
+  const failures: DereferenceFailure[] = [];
+  const object = await lookupObject(id, {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    gateways,
+    verifyPortableObject: verifier,
+    [lookupObserver]: {
+      accept: (candidate) => {
+        offered.push(candidate.documentUrl);
+        return Promise.resolve(offered.length > 1);
+      },
+      failed: (failure) => failures.push(failure),
+    },
+  });
+  ok(object instanceof Note);
+  equal(object.content, "second");
+  equal(offered.length, 2);
+  ok(offered[0].startsWith("https://gw1.example/"));
+  ok(offered[1].startsWith("https://gw2.example/"));
+  deepStrictEqual(failures.map((f) => f.operation), ["accept"]);
+});

@@ -705,6 +705,61 @@ export interface DereferencePortableIriOptions<T> {
     options: { contextLoader: DocumentLoader; baseUrl: URL },
   ) => Promise<T>;
   span?: Span;
+  /**
+   * Observes each candidate document, and may refuse a candidate that was
+   * otherwise acceptable, in which case the next gateway is tried.
+   */
+  observer?: DereferenceObserver<T>;
+}
+
+/**
+ * A candidate document that a lookup or a dereference was about to return.
+ *
+ * @internal Not part of the public API contract.
+ */
+export interface DereferenceCandidate<T> {
+  /** The document as it was retrieved. */
+  readonly document: unknown;
+  /** The URL the document was finally retrieved from. */
+  readonly documentUrl: string;
+  /** The `baseUrl` option the document was parsed with. */
+  readonly baseUrl: URL;
+  /**
+   * The context loader the document was parsed with.  It keeps serving the
+   * same context documents until the {@link DereferenceObserver.accept}
+   * call settles.
+   */
+  readonly contextLoader: DocumentLoader;
+  /** The parsed object. */
+  readonly object: T;
+}
+
+/**
+ * Observes the candidates and the swallowed failures of a lookup or
+ * a dereference.
+ *
+ * @internal Not part of the public API contract.
+ */
+export interface DereferenceObserver<T> {
+  /**
+   * Called for each candidate whose parse succeeded, right before it would be
+   * returned.  If it resolves to `false`, the candidate is refused, and the
+   * next one is tried.  An error it throws is treated as a refusal, and is
+   * reported to {@link failed}.
+   */
+  accept?(candidate: DereferenceCandidate<T>): Promise<boolean>;
+  /** Called for each failure that does not propagate by itself. */
+  failed?(failure: DereferenceFailure): void;
+}
+
+/**
+ * A failure observed by {@link DereferenceObserver.failed}.
+ *
+ * @internal Not part of the public API contract.
+ */
+export interface DereferenceFailure {
+  readonly operation: "fetch" | "verify" | "parse" | "origin" | "accept";
+  readonly error?: unknown;
 }
 
 /**
@@ -724,6 +779,34 @@ export class PortableObjectRejectedError extends Error {
 type Attempt =
   | { readonly type: "rejected"; readonly source: string }
   | { readonly type: "error"; readonly error: unknown };
+
+/**
+ * Asks an observer whether to accept a candidate.  A refusal, including an
+ * error thrown by the observer, is reported to the observer as an `accept`
+ * failure.
+ * @returns `true` if there is no observer, or it accepted the candidate.
+ * @internal Not part of the public API contract.
+ */
+export async function acceptCandidate<T>(
+  observer: DereferenceObserver<T> | undefined,
+  candidate: DereferenceCandidate<T>,
+): Promise<boolean> {
+  if (observer?.accept == null) return true;
+  let accepted: boolean;
+  try {
+    accepted = await observer.accept(candidate);
+  } catch (error) {
+    observer.failed?.({ operation: "accept", error });
+    return false;
+  }
+  if (!accepted) observer.failed?.({ operation: "accept" });
+  return accepted;
+}
+
+/** Wraps an error that has already been reported to the observer. */
+class ObservedFailure {
+  constructor(readonly error: unknown) {}
+}
 
 class PortableObjectRejection {
   constructor(
@@ -852,6 +935,7 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
           requestUrl,
           error,
         });
+        options.observer?.failed?.({ operation: "fetch", error });
         attempts.push({ type: "error", error });
         continue;
       }
@@ -887,11 +971,29 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
             { result },
           );
         }
-        const object = await options.parse(document, {
-          contextLoader,
-          baseUrl: url,
-        });
+        let object: T;
+        try {
+          object = await options.parse(document, {
+            contextLoader,
+            baseUrl: url,
+          });
+        } catch (error) {
+          options.observer?.failed?.({ operation: "parse", error });
+          throw new ObservedFailure(error);
+        }
         signal?.throwIfAborted();
+        if (
+          !await acceptCandidate(options.observer, {
+            document,
+            documentUrl: remoteDocument.documentUrl,
+            baseUrl: url,
+            contextLoader,
+            object,
+          })
+        ) {
+          attempts.push({ type: "rejected", source: requestUrl });
+          continue;
+        }
         if (object != null && typeof object === "object") {
           provenances.set(object, {
             acceptance: result.unsecured === true ? "unsecured" : "verified",
@@ -913,15 +1015,23 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
               "because " + error.message,
             { ...error.values, url: lookupUrl, requestUrl },
           );
+          options.observer?.failed?.({
+            operation: "verify",
+            error: error.values.error,
+          });
           attempts.push({ type: "rejected", source: requestUrl });
           continue;
+        }
+        const cause = error instanceof ObservedFailure ? error.error : error;
+        if (!(error instanceof ObservedFailure)) {
+          options.observer?.failed?.({ operation: "verify", error });
         }
         logger.debug("Failed to parse {url} from {requestUrl}: {error}", {
           url: lookupUrl,
           requestUrl,
-          error,
+          error: cause,
         });
-        attempts.push({ type: "error", error });
+        attempts.push({ type: "error", error: cause });
       }
     }
   } finally {

@@ -468,6 +468,10 @@ async function fetchActorDocumentInternal(
       "Failed to fetch the actor {actorId}: {error}",
       { actorId: actorId.href, error },
     );
+    // While a key is being fetched, an owner that cannot be fetched is
+    // reported as a failure to fetch the key, so that a temporary outage of
+    // the owner's server is not mistaken for a key nobody owns:
+    if (propagateContextFetchErrors) throw new KeyContextFetchError(error);
     return null;
   }
   let object: Object;

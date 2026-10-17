@@ -312,6 +312,21 @@ async function isSignedByAudience(
 }
 
 /**
+ * The authentication evidence of a mock inbox context that is not given one:
+ * nothing is authenticated.
+ */
+const EMPTY_AUTHENTICATION: InboxContext<unknown>["authentication"] = globalThis
+  .Object
+  .freeze({
+    verified: false,
+    requestSigners: globalThis.Object.freeze([]),
+    documentSigners: globalThis.Object.freeze([]),
+    originAuthenticated: globalThis.Object.freeze([]),
+    expandedActivity: globalThis.Object.freeze([]),
+    baseUrl: null,
+  });
+
+/**
  * Test-specific InboxContext type alias.
  * This indirection helps avoid JSR type analyzer issues.
  * @since 1.9.1
@@ -348,6 +363,7 @@ function createInboxContext<TContextData>(
     ...createContext(args),
     clone: args.clone ?? ((data) => createInboxContext({ ...args, data })),
     recipient: args.recipient ?? null,
+    authentication: args.authentication ?? EMPTY_AUTHENTICATION,
     forwardActivity,
   };
 }

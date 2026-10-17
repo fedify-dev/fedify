@@ -4021,11 +4021,33 @@ test(
         sourceContextLoader,
       ),
       ldSignatureVerified: false,
+      verifiedView: inboxMessage.verifiedView,
+      authentication: {
+        verified: true,
+        requestSigners: [{
+          kind: "actor",
+          id: "https://example.com/person2",
+          mechanism: "httpSignatures",
+          keyId: "https://example.com/person2#key3",
+        }],
+        documentSigners: [],
+        originAuthenticated: [],
+      },
       started: inboxMessage.started,
       attempt: 0,
       identifier: "someone",
       traceContext: inboxMessage.traceContext,
     });
+    // The HTTP-authenticated interpretation is the raw payload's, replayed
+    // with the remote context recorded while the request was handled:
+    assertEquals(inboxMessage.verifiedView?.policy, "standard");
+    assertEquals(inboxMessage.verifiedView?.source, "activity");
+    assert(
+      inboxMessage.verifiedView?.contexts.some((entry) =>
+        entry.url === "https://remote.example/contexts/ext" &&
+        "response" in entry
+      ),
+    );
   },
 );
 

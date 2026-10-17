@@ -63,9 +63,9 @@ import {
   InvalidContextReferenceError,
   isClearlyMalformedContextReference,
   isInvalidUrlTypeError,
-  verifyCompactJsonLd,
-  wrapContextLoaderForJsonLd,
+  verifyCompactJsonLdDetailed,
 } from "../sig/ld.ts";
+import { getVerifiedKeyOwnerEvidence } from "../sig/key-owner-evidence.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import {
   getCanonicalPortableId,
@@ -82,7 +82,9 @@ import {
 } from "./compatible-id-warning.ts";
 import {
   InvalidPortableObjectIdError,
+  type ProofSigner,
   verifyObject,
+  verifyObjectDetailed,
   verifyPortableObjectProof,
   type VerifyPortableObjectProofResult,
   verifyPortableObjectProofWithRoot,
@@ -121,9 +123,24 @@ import type {
 } from "./federation.ts";
 import {
   actorsHaveSameOrigin,
+  checkActorlessActivity,
+  type InboxContextFactory,
   routeActivity,
   type RouteActivityResult,
 } from "./inbox.ts";
+import {
+  createAuthenticationEvidence,
+  type InboxPrincipal,
+} from "./inbox-authentication.ts";
+import {
+  buildVerifiedActivityView,
+  type ContextSnapshot,
+  createContextSnapshot,
+  deepFreeze,
+  expandDocument,
+  getActorPresence,
+  type VerifiedActivityViewSource,
+} from "./inbox-view.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import {
@@ -1721,12 +1738,7 @@ export interface InboxHandlerParameters<TContextData> {
   inboxRequestFinishedHandler?: InboxRequestFinishedHandler<TContextData>;
   recipient: string | null;
   context: RequestContext<TContextData>;
-  inboxContextFactory(
-    recipient: string | null,
-    activity: unknown,
-    activityId: string | undefined,
-    activityType: string,
-  ): InboxContext<TContextData>;
+  inboxContextFactory: InboxContextFactory<TContextData>;
   kv: KvStore;
   kvPrefixes: {
     activityIdempotence: KvKey;
@@ -1830,16 +1842,21 @@ export async function handleInbox<TContextData>(
         span.setAttribute("fedify.inbox.recipient", options.recipient);
       }
       const spanContext = span.spanContext();
+      // Every JSON-LD processing step of this delivery sees the same remote
+      // context responses, so that verification and dispatch cannot observe
+      // different interpretations of the activity:
+      const snapshot = createContextSnapshot(options.context.contextLoader);
       try {
         return await withContext(
           { traceId: spanContext.traceId, spanId: spanContext.spanId },
-          () => handleInboxInternal(request, options, span),
+          () => handleInboxInternal(request, options, span, snapshot),
         );
       } catch (e) {
         options.observation!.hasException = true;
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
         throw e;
       } finally {
+        snapshot.release();
         options.observation!.project(span);
         span.end();
       }
@@ -1853,12 +1870,14 @@ export async function handleInbox<TContextData>(
  * @param request The HTTP request.
  * @param options The parameters for handling the inbox.
  * @param span The OpenTelemetry span for tracing.
+ * @param snapshot The context snapshot of the delivery.
  * @returns A promise that resolves to an HTTP response.
  */
 async function handleInboxInternal<TContextData>(
   request: Request,
   parameters: InboxHandlerParameters<TContextData>,
   span: Span,
+  snapshot: ContextSnapshot,
 ): Promise<Response> {
   const {
     recipient,
@@ -1976,6 +1995,8 @@ async function handleInboxInternal<TContextData>(
     tracerProvider,
     keyTtl: publicKeyTtl,
   });
+  const standardLoader = snapshot.loader("standard");
+  const normalizationLoader = snapshot.loader("normalization");
   const jsonWithoutSig = detachSignature(json);
   const hasLdSignature = hasSignature(json);
   const canAttemptAlternateAuthAfterLdSignatureFailure =
@@ -2010,9 +2031,10 @@ async function handleInboxInternal<TContextData>(
   let compactedJson = json;
   let compactedJsonWithoutSig = jsonWithoutSig;
   let ldSigVerified = false;
+  let ldSigKey: CryptographicKey | null = null;
   if (hasLdSignature) {
     try {
-      compactedJson = await compactJsonLd(json, ctx.contextLoader);
+      compactedJson = await compactJsonLd(json, normalizationLoader);
     } catch (error) {
       if (isInvalidJsonLdError(error)) {
         logger.error("Failed to parse JSON-LD:\n{error}", { recipient, error });
@@ -2049,20 +2071,22 @@ async function handleInboxInternal<TContextData>(
     if (compactedJson !== json) {
       compactedJsonWithoutSig = detachSignature(compactedJson);
       try {
-        ldSigVerified = await verifyCompactJsonLd(compactedJson, {
+        const ldResult = await verifyCompactJsonLdDetailed(compactedJson, {
           ...signatureObservation,
-          contextLoader: ctx.contextLoader,
+          contextLoader: normalizationLoader,
           documentLoader: ctx.documentLoader,
           keyCache,
           meterProvider,
           tracerProvider,
         });
+        ldSigVerified = ldResult.verified;
+        ldSigKey = ldResult.key;
       } catch (error) {
         if (
           error instanceof RangeError &&
           await hasMalformedKnownTemporalLiteral(
             compactedJsonWithoutSig,
-            ctx.contextLoader,
+            normalizationLoader,
           )
         ) {
           return await respondInvalidActivity(error);
@@ -2085,7 +2109,7 @@ async function handleInboxInternal<TContextData>(
         if (!skipSignatureVerification) {
           try {
             await Object.fromJsonLd(compactedJson, {
-              contextLoader: getNormalizationContextLoader(ctx.contextLoader),
+              contextLoader: normalizationLoader,
               documentLoader: ctx.documentLoader,
               tracerProvider,
             });
@@ -2094,7 +2118,7 @@ async function handleInboxInternal<TContextData>(
               parseError instanceof RangeError &&
               await hasMalformedKnownTemporalLiteral(
                 compactedJsonWithoutSig,
-                ctx.contextLoader,
+                normalizationLoader,
               )
             ) {
               return await respondInvalidActivity(parseError);
@@ -2131,22 +2155,63 @@ async function handleInboxInternal<TContextData>(
   // Whether the activity is authenticated by its Object Integrity Proofs,
   // as opposed to Linked Data Signatures or HTTP Signatures:
   let proofVerified = false;
+  // The principals authenticated for the activity, and which document the
+  // dispatched activity was parsed from:
+  let documentSigners: InboxPrincipal[] = [];
+  let requestSigners: InboxPrincipal[] = [];
+  let viewSource: VerifiedActivityViewSource | undefined;
+  const rawViewSource: VerifiedActivityViewSource = {
+    policy: "standard",
+    source: "activity",
+    document: jsonWithoutSig,
+    baseUrl: null,
+  };
+  // Whether an activity, parsed from the given document, declares no actor
+  // at all and would be dispatched to a listener that allows that:
+  const isActorlessCandidate = async (
+    candidate: Activity,
+    source: VerifiedActivityViewSource,
+  ): Promise<boolean> => {
+    if (skipSignatureVerification) return false;
+    if (
+      inboxListeners?.dispatchWithClass(candidate)?.options.allowActorless !==
+        true
+    ) {
+      return false;
+    }
+    try {
+      const expanded = await expandDocument(
+        source.document,
+        snapshot.loader(source.policy),
+      );
+      return getActorPresence(expanded) === "absent";
+    } catch {
+      return false;
+    }
+  };
+  const verifyProofs = (contextLoader = standardLoader) =>
+    verifyObjectDetailed(Activity, jsonWithoutSig, {
+      ...signatureObservation,
+      contextLoader,
+      documentLoader: ctx.documentLoader,
+      keyCache,
+      meterProvider,
+      tracerProvider,
+      verifyPortableObject: ctx.verifyPortableObject,
+    });
   if (ldSigVerified) {
     logger.debug("Linked Data Signatures are verified.", { recipient, json });
     try {
       activity = observation.activity = await Activity.fromJsonLd(
         compactedJsonWithoutSig,
-        {
-          ...ctx,
-          contextLoader: getNormalizationContextLoader(ctx.contextLoader),
-        },
+        { ...ctx, contextLoader: normalizationLoader },
       );
     } catch (error) {
       if (
         error instanceof RangeError &&
         await hasMalformedKnownTemporalLiteral(
           compactedJsonWithoutSig,
-          ctx.contextLoader,
+          normalizationLoader,
         )
       ) {
         return await respondInvalidActivity(error);
@@ -2155,6 +2220,46 @@ async function handleInboxInternal<TContextData>(
       return await respondInvalidActivity(error);
     }
     activityVerified = true;
+    viewSource = {
+      policy: "normalization",
+      source: "normalizedActivity",
+      document: compactedJsonWithoutSig,
+      baseUrl: null,
+    };
+    if (ldSigKey?.ownerId != null) {
+      documentSigners = [{
+        kind: "actor",
+        id: ldSigKey.ownerId,
+        mechanism: "linkedDataSignatures",
+        keyId: ldSigKey.id,
+      }];
+    }
+    // The proof may be under any JSON-LD alias of the `proof` property, so
+    // the proofs are verified whenever the activity has no actor:
+    if (await isActorlessCandidate(activity, viewSource)) {
+      // An activity without an actor may be relayed with a Linked Data
+      // Signature of the relay, while its Object Integrity Proof is made by
+      // its author, so the proof is preferred.  A proof that cannot be
+      // verified for now must not be superseded by the relay's signature:
+      let result: Awaited<ReturnType<typeof verifyProofs>> | null = null;
+      try {
+        result = await verifyProofs();
+      } catch (error) {
+        if (!isPermanentActivityParseError(error)) throw error;
+        logger.debug(
+          "Failed to verify the Object Integrity Proofs of the activity " +
+            "without an actor:\n{error}",
+          { recipient, error },
+        );
+      }
+      if (result?.status === "unavailable") throw result.error;
+      if (result?.status === "verified" && result.signers.length > 0) {
+        activity = observation.activity = result.object;
+        documentSigners = toProofPrincipals(result.signers);
+        viewSource = rawViewSource;
+        proofVerified = true;
+      }
+    }
     if (!skipSignatureVerification && isPortableActivity(activity)) {
       // A Linked Data Signature never authenticates a portable actor's
       // activity, nor a portable activity; only an Object Integrity Proof
@@ -2162,7 +2267,7 @@ async function handleInboxInternal<TContextData>(
       try {
         proofVerified = await verifyObject(Activity, jsonWithoutSig, {
           ...signatureObservation,
-          contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
+          contextLoader: standardLoader,
           documentLoader: ctx.documentLoader,
           keyCache,
           meterProvider,
@@ -2182,23 +2287,14 @@ async function handleInboxInternal<TContextData>(
       "Linked Data Signatures are not verified.",
       { recipient, json },
     );
+    let proofResult: Awaited<ReturnType<typeof verifyProofs>>;
     try {
-      activity = await verifyObject(Activity, jsonWithoutSig, {
-        ...signatureObservation,
-        contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
-        documentLoader: ctx.documentLoader,
-        keyCache,
-        meterProvider,
-        tracerProvider,
-        verifyPortableObject: ctx.verifyPortableObject,
-      });
+      proofResult = await verifyProofs();
     } catch (error) {
       if (
         error instanceof RangeError &&
-        await hasMalformedKnownTemporalLiteral(
-          jsonWithoutSig,
-          ctx.contextLoader,
-        )
+        // The diagnosis inspects the document the way the failed parse did:
+        await hasMalformedKnownTemporalLiteral(jsonWithoutSig, standardLoader)
       ) {
         // A deferred LDS loader failure is still retriable, but it must not
         // hide a payload that this boundary can already prove is permanently
@@ -2239,6 +2335,36 @@ async function handleInboxInternal<TContextData>(
         status: 400,
         headers: { "Content-Type": "text/plain; charset=utf-8" },
       });
+    }
+    if (proofResult.status === "verified") {
+      if (
+        proofResult.signers.length < 1 &&
+        await isActorlessCandidate(proofResult.object, rawViewSource)
+      ) {
+        // Without an actor, there is nothing for the proofs to cover, so
+        // a successful verification of zero proofs authenticates nobody:
+        activity = null;
+      } else {
+        activity = proofResult.object;
+        documentSigners = toProofPrincipals(proofResult.signers);
+        viewSource = rawViewSource;
+      }
+    } else if (proofResult.status === "unavailable") {
+      let parsed: Activity | null = null;
+      try {
+        parsed = await Activity.fromJsonLd(jsonWithoutSig, {
+          ...ctx,
+          contextLoader: standardLoader,
+        });
+      } catch {
+        // The activity will be parsed again below.
+      }
+      if (parsed != null && await isActorlessCandidate(parsed, rawViewSource)) {
+        // The proof of an activity without an actor may be its only
+        // authentication, so a key that cannot be fetched for now must not
+        // be superseded by another mechanism:
+        throw proofResult.error;
+      }
     }
     if (activity == null) {
       logger.debug(
@@ -2419,17 +2545,40 @@ async function handleInboxInternal<TContextData>(
     try {
       activity = observation.activity = await Activity.fromJsonLd(
         jsonWithoutSig,
-        {
-          ...ctx,
-          contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
-        },
+        { ...ctx, contextLoader: standardLoader },
       );
     } catch (error) {
       if (!isPermanentActivityParseError(error)) throw error;
       return await respondInvalidActivity(error);
     }
+    viewSource = rawViewSource;
   }
   observation.activity = activity;
+  let view: Awaited<ReturnType<typeof buildVerifiedActivityView>>;
+  try {
+    view = await buildVerifiedActivityView(
+      snapshot,
+      viewSource ?? rawViewSource,
+    );
+  } catch (error) {
+    if (!isPermanentActivityParseError(error)) throw error;
+    return await respondInvalidActivity(error);
+  }
+  // An activity that declares no actor at all reaches only a listener that
+  // allows that, and only if a principal is authenticated for it.  Values
+  // that ID accessors or typed parsing drop, such as anonymous actors, still
+  // count as a declared actor:
+  const actorless = !skipSignatureVerification &&
+    getActorPresence(view.expanded) === "absent" &&
+    inboxListeners?.dispatchWithClass(activity)?.options.allowActorless ===
+      true;
+  span.setAttribute("activitypub.activity.actorless", actorless);
+  if (actorless && httpSigKey != null) {
+    // The key's owner was confirmed by its own document when the key was
+    // fetched, so no other actor document needs to be fetched:
+    const principal = getHttpKeyPrincipal(httpSigKey);
+    if (principal != null) requestSigners = [principal];
+  }
   observation.stage = "policy";
   observation.result = { disposition: "rejected", reason: "authentication" };
   if (activity.id != null) {
@@ -2504,7 +2653,7 @@ async function handleInboxInternal<TContextData>(
           jsonWithoutSig,
           {
             [verificationObservation]: verification,
-            contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
+            contextLoader: standardLoader,
             documentLoader: ctx.documentLoader,
             keyCache,
             meterProvider,
@@ -2557,7 +2706,8 @@ async function handleInboxInternal<TContextData>(
     }
   }
   if (
-    httpSigKey != null && !await doesActorOwnKey(activity, httpSigKey, ctx)
+    httpSigKey != null && !actorless &&
+    !await doesActorOwnKey(activity, httpSigKey, ctx)
   ) {
     if (deferredLdSignatureError != null) throw deferredLdSignatureError;
     observation.authentication = {
@@ -2591,6 +2741,82 @@ async function handleInboxInternal<TContextData>(
       status: 401,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
+  }
+  if (httpSigKey != null && !actorless && activity.actorId != null) {
+    requestSigners = [{
+      kind: "actor",
+      id: activity.actorId,
+      mechanism: "httpSignatures",
+      keyId: httpSigKey.id,
+    }];
+  }
+  if (actorless) {
+    const check = checkActorlessActivity(activity, {
+      verified: true,
+      requestSigners,
+      documentSigners,
+      originAuthenticated: [],
+      expandedActivity: [],
+      baseUrl: null,
+    });
+    if (check.status === "noAuthenticatedPrincipal") {
+      if (deferredLdSignatureError != null) throw deferredLdSignatureError;
+      observation.authentication = {
+        status: "rejected",
+        reason: { type: "noAuthenticatedPrincipal" },
+      };
+      logger.error(
+        "The activity {activityId} declares no actor, and no principal is " +
+          "authenticated for it.",
+        { activity: json, recipient, activityId: activity.id?.href },
+      );
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: "No principal is authenticated for the activity.",
+      });
+      return new Response(
+        "No principal is authenticated for the activity.",
+        {
+          status: 401,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        },
+      );
+    } else if (check.status === "activityOriginMismatch") {
+      // Without an actor, the activity's ID has to have the same FEP-fe34
+      // origin as a principal that authenticated it; otherwise a signer
+      // could deliver an activity under another server's ID:
+      if (deferredLdSignatureError != null) throw deferredLdSignatureError;
+      observation.authentication = {
+        status: "rejected",
+        reason: {
+          type: "activityOriginMismatch",
+          activityId: new URL(activity.id!.href),
+          actorIds: check.principals.map((principal) => principal.id),
+        },
+      };
+      logger.error(
+        "The activity ({activityId}) does not have the same origin as the " +
+          "principals that authenticated it.",
+        {
+          activity: json,
+          recipient,
+          activityId: activity.id?.href,
+          principals: check.principals.map((principal) => principal.id.href),
+        },
+      );
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: `The activity (${activity.id?.href}) does not have the ` +
+          "same origin as the principals that authenticated it.",
+      });
+      return new Response(
+        "The activity and its signers do not have the same origin.",
+        {
+          status: 401,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        },
+      );
+    }
   }
   if (!skipSignatureVerification) {
     // A Linked Data Signature is made after the Object Integrity Proofs, so
@@ -2698,7 +2924,7 @@ async function handleInboxInternal<TContextData>(
     }
   }
   if (
-    !skipSignatureVerification && activity.id != null &&
+    !skipSignatureVerification && !actorless && activity.id != null &&
     !actorsHaveSameOrigin(activity)
   ) {
     // The activity's ID has to have the same origin as its actors, as
@@ -2745,7 +2971,7 @@ async function handleInboxInternal<TContextData>(
       ),
     };
   observation.stage = "dispatch";
-  if (activity.actorId == null) {
+  if (!actorless && activity.actorId == null) {
     observation.result = { disposition: "rejected", reason: "missingActor" };
     logger.error("Missing actor.", { activity: json, recipient });
     span.setStatus({ code: SpanStatusCode.ERROR, message: "Missing actor." });
@@ -2777,6 +3003,17 @@ async function handleInboxInternal<TContextData>(
       ? compactedJson
       : undefined,
     ldSignatureVerified: hasLdSignature ? ldSigVerified : undefined,
+    authentication: createAuthenticationEvidence({
+      verified: !skipSignatureVerification,
+      requestSigners,
+      documentSigners,
+      originAuthenticated: [],
+      expandedActivity: deepFreeze(view.expanded),
+      baseUrl: null,
+    }),
+    verifiedView: view.view,
+    replayable: view.replayable,
+    actorless,
     activity,
     recipient,
     inboxListeners,
@@ -4030,6 +4267,48 @@ const MIN_COMPONENTS = [
   "@target-uri",
   "@authority",
 ];
+
+/**
+ * Turns the signers of verified Object Integrity Proofs into principals.
+ */
+function toProofPrincipals(
+  signers: readonly ProofSigner[],
+): InboxPrincipal[] {
+  return signers.map((signer) => ({
+    kind: signer.kind,
+    id: signer.id,
+    mechanism: "objectIntegrityProofs",
+    keyId: signer.keyId,
+  }));
+}
+
+/**
+ * Gets the principal of an HTTP Signature key, whose owner was confirmed by
+ * the owner's own document, or by the signed document of a portable actor,
+ * when the key was fetched.
+ */
+function getHttpKeyPrincipal(key: CryptographicKey): InboxPrincipal | null {
+  const evidence = getVerifiedKeyOwnerEvidence(key);
+  if (evidence != null) {
+    try {
+      return {
+        kind: "actor",
+        id: parseIri(evidence.ownerId),
+        mechanism: "httpSignatures",
+        keyId: key.id,
+      };
+    } catch {
+      return null;
+    }
+  }
+  if (key.ownerId == null || isPortableId(key.ownerId)) return null;
+  return {
+    kind: "actor",
+    id: key.ownerId,
+    mechanism: "httpSignatures",
+    keyId: key.id,
+  };
+}
 
 /**
  * Checks whether an HTTP Signature key is a key of an FEP-ef61 portable

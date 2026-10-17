@@ -163,6 +163,13 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
   readonly nativeRetrial = true;
 
   /**
+   * Deno KV limits a serialized value to 64 KiB.  This leaves room for the
+   * envelope this adapter wraps around each message.
+   * @since 2.5.0
+   */
+  readonly maxMessageSize = 63 * 1024;
+
+  /**
    * Constructs a new {@link DenoKvMessageQueue} adapter with the given Deno KV
    * store.
    * @param kv The Deno KV store to use.

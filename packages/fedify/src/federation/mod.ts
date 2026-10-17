@@ -3,6 +3,7 @@
  *
  * @module
  */
+export type { InboxListenerOptions } from "./activity-listener.ts";
 export { createFederationBuilder } from "./builder.ts";
 export * from "./callback.ts";
 export * from "./circuit-breaker.ts";
@@ -14,6 +15,12 @@ export {
   respondWithObjectIfAcceptable,
   type RespondWithObjectOptions,
 } from "./handler.ts";
+export {
+  type InboxAuthenticationEvidence,
+  type InboxPrincipal,
+  isActorAuthenticated,
+  type IsActorAuthenticatedOptions,
+} from "./inbox-authentication.ts";
 export * from "./inbox-report.ts";
 export * from "./kv.ts";
 export {

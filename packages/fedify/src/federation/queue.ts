@@ -1,3 +1,6 @@
+import type { SerializedInboxAuthentication } from "./inbox-authentication.ts";
+import type { SerializedVerifiedActivityView } from "./inbox-view.ts";
+
 export interface SenderKeyJwkPair {
   readonly keyId: string;
   readonly privateKey: JsonWebKey;
@@ -171,6 +174,21 @@ export interface InboxMessage {
    * @internal
    */
   readonly ldSignatureVerified?: boolean;
+  /**
+   * The interpretation of the activity that Fedify authenticated, i.e., which
+   * document it was parsed from and every JSON-LD context response the parse
+   * used, so that the worker and its retries dispatch the very same
+   * interpretation without loading contexts again.  Absent in messages queued
+   * by older Fedify versions.
+   * @internal
+   */
+  readonly verifiedView?: SerializedVerifiedActivityView;
+  /**
+   * Who Fedify authenticated for the activity.  Absent in messages queued by
+   * older Fedify versions.
+   * @internal
+   */
+  readonly authentication?: SerializedInboxAuthentication;
   readonly started: string;
   readonly attempt: number;
   readonly identifier: string | null;

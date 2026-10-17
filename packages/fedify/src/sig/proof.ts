@@ -1,4 +1,5 @@
 import {
+  type InboxSignatureCheck,
   observeAttempt,
   observeCheck,
   triedKey,
@@ -19,6 +20,7 @@ import {
   fromCompatibleEf61Id,
   getDocumentLoader,
   getFe34Origin,
+  isTransientFetchError,
   parseGatewayUrl,
   parseIri,
   type PortableObjectVerifier,
@@ -52,6 +54,7 @@ import {
 import {
   bypassKeyCacheReads,
   fetchKey,
+  type FetchKeyErrorResult,
   type FetchKeyResult,
   type KeyCache,
   validateCryptoKey,
@@ -1651,6 +1654,16 @@ async function verifyProofInternal(
       "Failed to get the key (verificationMethod) for the proof:\n{proof}",
       { proof, keyId: proof.verificationMethodId.href, error },
     );
+    const check = options[verificationObservation]?.check;
+    if (check != null && check.reason == null) {
+      check.reason = {
+        type: "keyFetchError",
+        keyId: new URL(proof.verificationMethodId.href),
+        result: {
+          error: error instanceof Error ? error : new Error(String(error)),
+        },
+      };
+    }
     return null;
   }
   const publicKey = fetchedKey.key;
@@ -2496,6 +2509,95 @@ export async function verifyObject<T extends Object>(
   jsonLd: unknown,
   options: VerifyObjectOptions = {},
 ): Promise<T | null> {
+  const result = await verifyObjectDetailed(cls, jsonLd, options);
+  return result.status === "verified" ? result.object : null;
+}
+
+/**
+ * A key that verified one of the Object Integrity Proofs of an object,
+ * together with whom it authenticates.
+ * @internal
+ */
+export interface ProofSigner {
+  /**
+   * `"actor"`: `id` is the key's controller, an actor.
+   * `"portableAuthority"`: `id` is a DID, which authenticates the FEP-ef61
+   * portable objects of that DID only.
+   */
+  readonly kind: "actor" | "portableAuthority";
+  readonly id: URL;
+  readonly keyId: URL;
+}
+
+/**
+ * The result of {@link verifyObjectDetailed}.
+ * @internal
+ */
+export type VerifyObjectDetailedResult<T> =
+  | {
+    readonly status: "verified";
+    readonly object: T;
+    /** The signers of the verified proofs; empty if there were none. */
+    readonly signers: readonly ProofSigner[];
+  }
+  | { readonly status: "invalid" }
+  | {
+    /** A proof's key could not be obtained for a retryable reason. */
+    readonly status: "unavailable";
+    readonly error: unknown;
+  };
+
+/**
+ * Same as {@link verifyObject}, but also tells who signed the verified proofs,
+ * and whether a failure was caused by a key that could not be obtained for
+ * a retryable reason.
+ * @param cls The class of the object to verify.
+ * @param jsonLd The JSON-LD object to verify.
+ * @param options Additional options.
+ * @returns The result.
+ * @throws {TypeError} If the object is invalid or unsupported.
+ * @internal
+ */
+export async function verifyObjectDetailed<T extends Object>(
+  // deno-lint-ignore no-explicit-any
+  cls: (new (...args: any[]) => T) & {
+    fromJsonLd(jsonLd: unknown, options: VerifyObjectOptions): Promise<T>;
+  },
+  jsonLd: unknown,
+  options: VerifyObjectOptions = {},
+): Promise<VerifyObjectDetailedResult<T>> {
+  const classify = (
+    result: { object: T; signers: ProofSigner[] } | null,
+    checks: readonly InboxSignatureCheck[],
+  ): VerifyObjectDetailedResult<T> => {
+    if (result != null) {
+      return {
+        status: "verified",
+        object: result.object,
+        signers: result.signers,
+      };
+    }
+    for (const check of checks) {
+      if (check.status === "error" && isTransientFetchError(check.error)) {
+        return { status: "unavailable", error: check.error };
+      }
+      if (
+        check.status === "rejected" && check.reason.type === "keyFetchError" &&
+        isRetryableKeyFetchError(check.reason.result)
+      ) {
+        return {
+          status: "unavailable",
+          error: "error" in check.reason.result
+            ? check.reason.result.error
+            : new Error(
+              `Fetching key ${check.reason.keyId.href} failed with ` +
+                `${check.reason.result.status}.`,
+            ),
+        };
+      }
+    }
+    return { status: "invalid" };
+  };
   if (options[verificationObservation]?.attempt == null) {
     const observedOptions = {
       ...options,
@@ -2512,11 +2614,11 @@ export async function verifyObject<T extends Object>(
             observedOptions,
             "objectIntegrity",
             async (observation) => {
-              const object = await verifyObject(cls, jsonLd, {
+              const result = await verifyObjectCore(cls, jsonLd, {
                 ...options,
                 [verificationObservation]: observation,
               });
-              if (object == null) {
+              if (result == null) {
                 span.setStatus({ code: SpanStatusCode.ERROR });
                 span.setAttribute(
                   "activitypub.verification.failure_reason",
@@ -2524,9 +2626,9 @@ export async function verifyObject<T extends Object>(
                     "signatureVerificationFailed",
                 );
               }
-              return object;
+              return classify(result, observation.attempt?.checks ?? []);
             },
-            (value) => value != null,
+            (value) => value.status === "verified",
           );
         } catch (error) {
           span.setStatus({
@@ -2540,6 +2642,26 @@ export async function verifyObject<T extends Object>(
       },
     );
   }
+  const checks = options[verificationObservation]!.attempt!.checks;
+  const before = checks.length;
+  const result = await verifyObjectCore(cls, jsonLd, options);
+  return classify(result, checks.slice(before));
+}
+
+function isRetryableKeyFetchError(result: FetchKeyErrorResult): boolean {
+  if ("error" in result) return isTransientFetchError(result.error);
+  return result.status >= 500 || result.status === 408 ||
+    result.status === 429;
+}
+
+async function verifyObjectCore<T extends Object>(
+  // deno-lint-ignore no-explicit-any
+  cls: (new (...args: any[]) => T) & {
+    fromJsonLd(jsonLd: unknown, options: VerifyObjectOptions): Promise<T>;
+  },
+  jsonLd: unknown,
+  options: VerifyObjectOptions,
+): Promise<{ object: T; signers: ProofSigner[] } | null> {
   const observation = options[verificationObservation];
   const logger = getLogger(["fedify", "sig", "proof"]);
   const object = await cls.fromJsonLd(jsonLd, options);
@@ -2550,6 +2672,7 @@ export async function verifyObject<T extends Object>(
   const defaultDocumentLoader = getDocumentLoader();
   const proofContextLoader = options.contextLoader ?? defaultDocumentLoader;
   const attributions = new Set(object.attributionIds.map((uri) => uri.href));
+  const signers: ProofSigner[] = [];
   if (object instanceof Activity) {
     for (const uri of object.actorIds) attributions.add(uri.href);
   }
@@ -2676,6 +2799,19 @@ export async function verifyObject<T extends Object>(
       key.controllerId,
       proof.verificationMethodId,
     );
+    const signer = getAuthenticatedController(
+      key.controllerId,
+      proof.verificationMethodId,
+    );
+    if (
+      signer != null &&
+      !signers.some((s) =>
+        s.kind === signer.kind && s.id.href === signer.id.href &&
+        s.keyId.href === proof.verificationMethodId!.href
+      )
+    ) {
+      signers.push({ ...signer, keyId: proof.verificationMethodId });
+    }
   }
   if (acceptedPortableProofs < loadedPortableProofs) {
     logger.debug("Some portable proof references could not be dereferenced.");
@@ -2697,7 +2833,43 @@ export async function verifyObject<T extends Object>(
     );
     return null;
   }
-  return object;
+  return { object, signers };
+}
+
+/**
+ * Tells whom a key that verified an Object Integrity Proof authenticates.
+ * @param key The key, i.e., the proof's verification method.
+ * @returns The signer, or `null` if the key authenticates nobody.
+ * @internal
+ */
+export function getProofSigner(key: Multikey): ProofSigner | null {
+  if (key.id == null || key.controllerId == null) return null;
+  const signer = getAuthenticatedController(key.controllerId, key.id);
+  return signer == null ? null : { ...signer, keyId: key.id };
+}
+
+/**
+ * Tells whom a verified proof authenticates: the key's controller if it is an
+ * ordinary actor, or the DID of a portable controller if the verification
+ * method belongs to the same DID.
+ */
+function getAuthenticatedController(
+  controllerId: URL,
+  verificationMethodId: URL,
+): { readonly kind: "actor" | "portableAuthority"; readonly id: URL } | null {
+  if (
+    !hasCryptographicOrigin(controllerId.href) && !isPortableId(controllerId)
+  ) {
+    return { kind: "actor", id: controllerId };
+  }
+  const did = getPortableDid(controllerId);
+  if (
+    did == null || !hasCryptographicOrigin(verificationMethodId.href) ||
+    getPortableDid(verificationMethodId) !== did || !URL.canParse(did)
+  ) {
+    return null;
+  }
+  return { kind: "portableAuthority", id: new URL(did) };
 }
 
 function deleteAuthenticatedAttribution(

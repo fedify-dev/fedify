@@ -14,10 +14,12 @@ import {
   CryptographicKey,
   getTypeId,
   lookupObject,
+  lookupObserver,
   Multikey,
   Tombstone,
   traverseCollection,
 } from "@fedify/vocab";
+import type { DereferenceCandidate } from "@fedify/vocab-runtime/internal/portable-dereference";
 import type {
   AuthenticatedDocumentLoaderFactory,
   DocumentLoader,
@@ -91,11 +93,19 @@ import {
   getCanonicalPortableId,
   getGatewayKeyBase,
   hasPortableActor,
+  isPortableId,
   isPortableKeyId,
   isSameObjectId,
 } from "../sig/portable-key-id.ts";
-import { verifyPortableObject } from "../sig/portable-collection.ts";
-import { hasProofLike, verifyObject } from "../sig/proof.ts";
+import {
+  verifyPortableObject,
+  type VerifyPortableObjectResult,
+} from "../sig/portable-collection.ts";
+import {
+  getProofSigner,
+  hasProofLike,
+  verifyObjectDetailed,
+} from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
 import { isInAudience } from "./audience.ts";
@@ -156,7 +166,34 @@ import {
   type PortableInboxDelivery,
   rawInboxContextFactorySymbol,
 } from "./handler.ts";
-import { actorsHaveSameOrigin, routeActivity } from "./inbox.ts";
+import {
+  actorsHaveSameOrigin,
+  getInboxIdempotencyKey,
+  type InboxContextMetadata,
+  isActorlessActivityAuthenticated,
+  isInboxActivityProcessed,
+  routeActivity,
+} from "./inbox.ts";
+import {
+  createAuthenticationEvidence,
+  deserializeAuthentication,
+  getEmptyAuthenticationEvidence,
+  type InboxAuthenticationEvidence,
+  type InboxPrincipal,
+} from "./inbox-authentication.ts";
+import {
+  buildVerifiedActivityView,
+  type ContextSnapshot,
+  ContextSnapshotMissError,
+  createContextSnapshot,
+  createReleasableLoader,
+  deepFreeze,
+  getActorPresence,
+  parseSerializedVerifiedActivityView,
+  type RestoredVerifiedActivityView,
+  restoreVerifiedActivityView,
+  type VerifiedActivityViewSource,
+} from "./inbox-view.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import {
@@ -2515,54 +2552,180 @@ export class FederationImpl<TContextData>
           | undefined;
         let parseInput: unknown = undefined;
         let parseContextLoader = context.contextLoader;
-        try {
-          const hasSignatureField = hasSignature(message.activity);
-          const shouldParseFromNormalizedSignedPayload =
-            message.ldSignatureVerified === true ||
-            message.normalizedActivity != null ||
-            (message.ldSignatureVerified == null && hasSignatureField);
-          const parseContext = hasSignatureField
-            ? {
-              ...context,
-              // Verified LDS replay, fallback-authenticated queue items with a
-              // producer-side normalized cache, and legacy queued LDS
-              // messages may still reference Fedify's built-in signature
-              // contexts at the root after we detach the signature object, so
-              // keep the normalization loader shortcut available whenever a
-              // signature block remains.  Authentication provenance lives in
-              // ldSignatureVerified; normalizedActivity is a separate parse
-              // cache that rolling upgrades and stricter worker loaders may
-              // still depend on.
-              contextLoader: getNormalizationContextLoader(
-                context.contextLoader,
-              ),
-            }
-            : {
-              ...context,
-              contextLoader: wrapContextLoaderForJsonLd(
-                context.contextLoader,
-              ),
-            };
-          parseContextLoader = parseContext.contextLoader;
-          let normalizedActivity: unknown | undefined;
-          if (shouldParseFromNormalizedSignedPayload) {
-            normalizedActivity = message.normalizedActivity ??
-              await compactJsonLd(message.activity, context.contextLoader);
-            // Queue backends are trusted in the normal deployment model, but a
-            // cached normalized payload should still satisfy the same JSON-LD
-            // safety invariants as a freshly compacted one before the worker
-            // strips the signature block and parses it.
-            assertSafeJsonLd(normalizedActivity);
-          }
-          parseInput = shouldParseFromNormalizedSignedPayload
-            ? detachSignature(normalizedActivity)
-            : hasSignatureField
-            ? detachSignature(message.activity)
-            : message.activity;
-          activity = await Activity.fromJsonLd(
-            parseInput,
-            parseContext,
+        let authentication: InboxAuthenticationEvidence =
+          getEmptyAuthenticationEvidence();
+        let actorPresence: "absent" | "present" = "present";
+        if (message.verifiedView !== undefined) {
+          // The interpretation that was authenticated is replayed exactly,
+          // without loading any context; a message whose interpretation
+          // cannot be replayed is never processed any other way:
+          const view = parseSerializedVerifiedActivityView(
+            message.verifiedView,
           );
+          let restored: RestoredVerifiedActivityView | undefined;
+          let restoredAuthentication: InboxAuthenticationEvidence | null = null;
+          let failure: unknown;
+          if (view == null) {
+            failure = new TypeError(
+              "The queued activity has a malformed verified view.",
+            );
+          } else {
+            try {
+              // A queued normalized payload has to satisfy the same JSON-LD
+              // safety invariants as a freshly compacted one:
+              if (view.source === "normalizedActivity") {
+                assertSafeJsonLd(message.normalizedActivity);
+              }
+              restored = await restoreVerifiedActivityView(view, message);
+            } catch (error) {
+              if (
+                !(error instanceof ContextSnapshotMissError) &&
+                !isPermanentInboxParseError(error)
+              ) {
+                await handleRetriableFailure(error);
+                return;
+              }
+              failure = error;
+            }
+          }
+          if (restored != null) {
+            const expandedActivity = deepFreeze(restored.expanded);
+            restoredAuthentication = message.authentication === undefined
+              ? createAuthenticationEvidence({
+                ...getEmptyAuthenticationEvidence(),
+                expandedActivity,
+                baseUrl: restored.baseUrl,
+              })
+              : deserializeAuthentication(
+                message.authentication,
+                expandedActivity,
+                restored.baseUrl,
+              );
+            if (restoredAuthentication == null) {
+              failure = new TypeError(
+                "The queued activity has malformed authentication evidence.",
+              );
+            }
+          }
+          if (
+            failure != null || restored == null ||
+            restoredAuthentication == null
+          ) {
+            await reportInboxError(failure);
+            logger.error(
+              "Failed to replay the queued incoming activity:\n{error}",
+              {
+                error: failure,
+                trial: message.attempt,
+                activity: message.activity,
+                recipient: message.identifier,
+              },
+            );
+            listenerSpan.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: String(failure),
+            });
+            listenerSpan.end();
+            return;
+          }
+          authentication = restoredAuthentication;
+          actorPresence = getActorPresence(restored.expanded);
+          const policy = view!.policy;
+          const replayLoader = createReleasableLoader(
+            restored.loader,
+            policy === "normalization"
+              ? getNormalizationContextLoader(context.contextLoader)
+              : wrapContextLoaderForJsonLd(context.contextLoader),
+            policy,
+          );
+          parseInput = restored.document;
+          parseContextLoader = restored.loader;
+          try {
+            activity = await Activity.fromJsonLd(restored.document, {
+              ...context,
+              contextLoader: replayLoader.loader,
+              ...(restored.baseUrl == null
+                ? {}
+                : { baseUrl: restored.baseUrl }),
+            });
+          } catch (error) {
+            if (isPermanentInboxParseError(error)) {
+              await reportInboxError(error);
+              logger.error(
+                "Failed to parse the queued incoming activity:\n{error}",
+                {
+                  error,
+                  trial: message.attempt,
+                  activity: message.activity,
+                  recipient: message.identifier,
+                },
+              );
+              listenerSpan.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: String(error),
+              });
+              listenerSpan.end();
+              return;
+            }
+            await handleRetriableFailure(error);
+            return;
+          } finally {
+            // Later dereferences from the activity load contexts as usual:
+            replayLoader.release();
+          }
+        }
+        try {
+          // Messages without a verified view, e.g., those queued by older
+          // versions of Fedify, are parsed as they used to be:
+          if (activity == null) {
+            const hasSignatureField = hasSignature(message.activity);
+            const shouldParseFromNormalizedSignedPayload =
+              message.ldSignatureVerified === true ||
+              message.normalizedActivity != null ||
+              (message.ldSignatureVerified == null && hasSignatureField);
+            const parseContext = hasSignatureField
+              ? {
+                ...context,
+                // Verified LDS replay, fallback-authenticated queue items with a
+                // producer-side normalized cache, and legacy queued LDS
+                // messages may still reference Fedify's built-in signature
+                // contexts at the root after we detach the signature object, so
+                // keep the normalization loader shortcut available whenever a
+                // signature block remains.  Authentication provenance lives in
+                // ldSignatureVerified; normalizedActivity is a separate parse
+                // cache that rolling upgrades and stricter worker loaders may
+                // still depend on.
+                contextLoader: getNormalizationContextLoader(
+                  context.contextLoader,
+                ),
+              }
+              : {
+                ...context,
+                contextLoader: wrapContextLoaderForJsonLd(
+                  context.contextLoader,
+                ),
+              };
+            parseContextLoader = parseContext.contextLoader;
+            let normalizedActivity: unknown | undefined;
+            if (shouldParseFromNormalizedSignedPayload) {
+              normalizedActivity = message.normalizedActivity ??
+                await compactJsonLd(message.activity, context.contextLoader);
+              // Queue backends are trusted in the normal deployment model, but a
+              // cached normalized payload should still satisfy the same JSON-LD
+              // safety invariants as a freshly compacted one before the worker
+              // strips the signature block and parses it.
+              assertSafeJsonLd(normalizedActivity);
+            }
+            parseInput = shouldParseFromNormalizedSignedPayload
+              ? detachSignature(normalizedActivity)
+              : hasSignatureField
+              ? detachSignature(message.activity)
+              : message.activity;
+            activity = await Activity.fromJsonLd(
+              parseInput,
+              parseContext,
+            );
+          }
           activityType = getTypeId(activity).href;
           span.setAttribute("activitypub.activity.type", activityType);
           listenerSpan.setAttribute("activitypub.activity.type", activityType);
@@ -2574,7 +2737,15 @@ export class FederationImpl<TContextData>
               activity.id.href,
             );
           }
-          if (activity.actorId == null) {
+          // An activity without an actor is processed only if its listener
+          // still allows that, and a principal authenticated it under the
+          // same rules as when it was received:
+          const actorless = actorPresence === "absent" &&
+            !this.skipSignatureVerification && authentication.verified &&
+            this.inboxListeners?.dispatchWithClass(activity)?.options
+                .allowActorless === true &&
+            isActorlessActivityAuthenticated(activity, authentication);
+          if (activity.actorId == null && !actorless) {
             logger.error("Missing actor in queued incoming activity.", {
               activityId: activity.id?.href,
               activity: message.activity,
@@ -2589,8 +2760,8 @@ export class FederationImpl<TContextData>
             return;
           }
           if (
-            !this.skipSignatureVerification && activity.id != null &&
-            !actorsHaveSameOrigin(activity)
+            !this.skipSignatureVerification && !actorless &&
+            activity.id != null && !actorsHaveSameOrigin(activity)
           ) {
             logger.error(
               "The queued activity ({activityId}) and its actors do not " +
@@ -2611,14 +2782,32 @@ export class FederationImpl<TContextData>
             listenerSpan.end();
             return;
           }
-          cacheKey = activity.id == null ? null : [
-            ...this.kvPrefixes.activityIdempotence,
+          const parsedActivity = activity;
+          const parsedActivityType = activityType;
+          cacheKey = await getInboxIdempotencyKey(
+            this.idempotencyStrategy,
+            () =>
+              context.toInboxContext(
+                message.identifier,
+                message.activity,
+                parsedActivity.id?.href,
+                parsedActivityType,
+                { authentication },
+              ),
+            activity,
             context.origin,
-            activity.id.href,
-          ] satisfies KvKey;
-          if (cacheKey != null) {
-            const cached = await this.kv.get(cacheKey);
-            if (cached === true) {
+            message.identifier,
+            this.kvPrefixes.activityIdempotence,
+          );
+          {
+            const cached = await isInboxActivityProcessed(
+              this.kv,
+              cacheKey,
+              activity,
+              context.origin,
+              this.kvPrefixes.activityIdempotence,
+            );
+            if (cached) {
               logger.debug(
                 "Activity {activityId} has already been processed.",
                 {
@@ -2723,6 +2912,7 @@ export class FederationImpl<TContextData>
                 message.activity,
                 activity.id?.href,
                 activityType,
+                { authentication },
               ),
               activity,
             );
@@ -4763,6 +4953,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activity: unknown,
     activityId: string | undefined,
     activityType: string,
+    metadata?: InboxContextMetadata,
   ): InboxContextImpl<TContextData> {
     return new InboxContextImpl(recipient, activity, activityId, activityType, {
       url: this.url,
@@ -4772,7 +4963,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       contextLoader: this.contextLoader,
       invokedFromActorKeyPairsDispatcher:
         this.invokedFromActorKeyPairsDispatcher,
-    });
+    }, metadata?.authentication);
   }
 
   toOutboxContext(
@@ -5870,8 +6061,33 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     options: RouteActivityOptions | undefined = {},
     span: Span,
   ): Promise<boolean> {
+    // Every JSON-LD processing step sees the same remote context responses,
+    // which are kept for queue workers, as for activities delivered to inboxes:
+    const snapshot = createContextSnapshot(
+      options.contextLoader ?? this.contextLoader,
+    );
+    try {
+      return await this.#routeActivityWithSnapshot(
+        recipient,
+        activity,
+        options,
+        span,
+        snapshot,
+      );
+    } finally {
+      snapshot.release();
+    }
+  }
+
+  async #routeActivityWithSnapshot(
+    recipient: string | null,
+    activity: Activity,
+    options: RouteActivityOptions,
+    span: Span,
+    snapshot: ContextSnapshot,
+  ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "inbox"]);
-    const contextLoader = options.contextLoader ?? this.contextLoader;
+    const contextLoader = snapshot.loader("standard");
     let json = await activity.toJsonLd({ contextLoader });
     const keyCache = new KvKeyCache(
       this.federation.kv,
@@ -5883,9 +6099,18 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         keyTtl: this.federation.publicKeyTtl,
       },
     );
-    const verified = await verifyObject(
+    let documentSigners: InboxPrincipal[] = [];
+    let originAuthenticated: InboxPrincipal[] = [];
+    let viewSource: VerifiedActivityViewSource;
+    let fetchedView:
+      | Awaited<ReturnType<typeof buildVerifiedActivityView>>
+      | undefined;
+    // A Linked Data Signature is made after the Object Integrity Proofs, so
+    // the proofs are verified without it, as for inbox deliveries:
+    const document = detachSignature(json);
+    const verified = await verifyObjectDetailed(
       Activity,
-      json,
+      document,
       {
         contextLoader,
         documentLoader: options.documentLoader ?? this.documentLoader,
@@ -5894,7 +6119,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         keyCache,
       },
     );
-    if (verified == null) {
+    if (verified.status !== "verified") {
       logger.debug(
         "Object Integrity Proofs are not verified.",
         { recipient, activity: json },
@@ -5906,8 +6131,46 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         );
         return false;
       }
-      const fetched = await this.lookupObject(activity.id, options);
-      if (fetched == null) {
+      // The fetched document is taken from the boundary that returns the
+      // object, so that the dispatched activity and the kept interpretation
+      // are the same:
+      let candidate: DereferenceCandidate<Object> | undefined;
+      let candidateView:
+        | Awaited<ReturnType<typeof buildVerifiedActivityView>>
+        | undefined;
+      const verifications = new WeakMap<object, unknown>();
+      const fetched = await this.lookupObject(activity.id, {
+        ...options,
+        contextLoader,
+        verifyPortableObject: async (document, verifierOptions) => {
+          const result = await this.verifyPortableObject(
+            document,
+            verifierOptions,
+          );
+          if (document != null && typeof document === "object") {
+            verifications.set(document, result);
+          }
+          return result;
+        },
+        [lookupObserver]: {
+          accept: async (accepted) => {
+            // The interpretation is taken with the context documents the
+            // candidate was parsed with, while they are still served:
+            candidate = accepted;
+            candidateView = await buildVerifiedActivityView(
+              createContextSnapshot(accepted.contextLoader),
+              {
+                policy: "standard",
+                source: "activity",
+                document: detachSignature(accepted.document),
+                baseUrl: accepted.baseUrl,
+              },
+            );
+            return true;
+          },
+        },
+      });
+      if (fetched == null || candidate == null || candidateView == null) {
         logger.debug(
           "Failed to fetch the remote activity object {activityId}.",
           { recipient, activity: json, activityId: activity.id.href },
@@ -5956,12 +6219,57 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           "ignore the original activity and use the fetched one, which is trustworthy.",
       );
       activity = fetched;
-      json = await fetched.toJsonLd({ contextLoader });
+      json = candidate.document;
+      fetchedView = candidateView;
+      viewSource = {
+        policy: "standard",
+        source: "activity",
+        document: detachSignature(candidate.document),
+        baseUrl: candidate.baseUrl,
+      };
+      if (isPortableId(fetched.id)) {
+        // A portable activity is authenticated by its proofs, which the
+        // portable object policy verified, never by where it was fetched:
+        const result = verifications.get(candidate.document as object) as
+          | VerifyPortableObjectResult
+          | undefined;
+        if (result?.verified === true && result.method === "proof") {
+          documentSigners = result.keys.flatMap((key) => {
+            const signer = getProofSigner(key);
+            return signer == null ? [] : [{
+              kind: signer.kind,
+              id: signer.id,
+              mechanism: "objectIntegrityProofs" as const,
+              keyId: signer.keyId,
+            }];
+          });
+        }
+      } else {
+        originAuthenticated = fetched.actorIds.map((actorId) => ({
+          kind: "actor" as const,
+          id: actorId,
+          mechanism: "origin" as const,
+          keyId: null,
+        }));
+      }
     } else {
       logger.debug(
         "Object Integrity Proofs are verified.",
         { recipient, activity: json },
       );
+      activity = verified.object;
+      documentSigners = verified.signers.map((signer) => ({
+        kind: signer.kind,
+        id: signer.id,
+        mechanism: "objectIntegrityProofs" as const,
+        keyId: signer.keyId,
+      }));
+      viewSource = {
+        policy: "standard",
+        source: "activity",
+        document,
+        baseUrl: null,
+      };
     }
     if (activity.actorId == null) {
       logger.debug(
@@ -5977,6 +6285,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       );
       return false;
     }
+    const view = fetchedView ??
+      await buildVerifiedActivityView(snapshot, viewSource);
     const routeResult = await routeActivity({
       context: this,
       json,
@@ -5986,6 +6296,16 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       // the worker does not mistake a preserved signature field for verified
       // LDS replay.
       ldSignatureVerified: false,
+      authentication: createAuthenticationEvidence({
+        verified: true,
+        requestSigners: [],
+        documentSigners,
+        originAuthenticated,
+        expandedActivity: deepFreeze(view.expanded),
+        baseUrl: viewSource.baseUrl,
+      }),
+      verifiedView: view.view,
+      replayable: view.replayable,
       activity,
       recipient,
       inboxListeners: this.federation.inboxListeners,
@@ -6633,6 +6953,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
   readonly activity: unknown;
   readonly activityId?: string;
   readonly activityType: string;
+  readonly authentication: InboxAuthenticationEvidence;
 
   constructor(
     recipient: string | null,
@@ -6640,12 +6961,14 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
     activityId: string | undefined,
     activityType: string,
     options: ContextOptions<TContextData>,
+    authentication?: InboxAuthenticationEvidence,
   ) {
     super(options);
     this.recipient = recipient;
     this.activity = activity;
     this.activityId = activityId;
     this.activityType = activityType;
+    this.authentication = authentication ?? getEmptyAuthenticationEvidence();
   }
 
   override clone(data: TContextData): InboxContext<TContextData> {
@@ -6663,6 +6986,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
         invokedFromActorKeyPairsDispatcher:
           this.invokedFromActorKeyPairsDispatcher,
       },
+      this.authentication,
     );
   }
 

@@ -158,10 +158,47 @@ function createMemoizedDocumentLoader(documentLoader: DocumentLoader) {
   };
 }
 
+/**
+ * How a context loader marked by {@link markEffectiveContextLoader} already
+ * resolves contexts.
+ * @internal
+ */
+export type EffectiveContextLoaderPolicy = "standard" | "normalization";
+
+const effectiveContextLoaderPolicies = new WeakMap<
+  DocumentLoader,
+  EffectiveContextLoaderPolicy
+>();
+
+/**
+ * Marks a context loader as the *effective* loader of a policy, i.e., one
+ * that already applies what {@link wrapContextLoaderForJsonLd} (`"standard"`)
+ * or {@link getNormalizationContextLoader} (`"normalization"`) would add.
+ * Those functions return a marked loader as is instead of wrapping it again,
+ * so that a caller can observe every response a parse actually uses,
+ * including Fedify's own baseline contexts.
+ * @param loader The effective context loader.
+ * @param policy The policy the loader already applies.
+ * @returns The given loader.
+ * @internal
+ */
+export function markEffectiveContextLoader(
+  loader: DocumentLoader,
+  policy: EffectiveContextLoaderPolicy,
+): DocumentLoader {
+  effectiveContextLoaderPolicies.set(loader, policy);
+  return loader;
+}
+
 /** @internal */
 export function wrapContextLoaderForJsonLd(
   contextLoader: DocumentLoader | undefined,
 ): DocumentLoader {
+  if (
+    contextLoader != null && effectiveContextLoaderPolicies.has(contextLoader)
+  ) {
+    return contextLoader;
+  }
   const loader = contextLoader ?? builtInContextLoader;
   return async (url, options) => {
     try {
@@ -184,6 +221,12 @@ export function wrapContextLoaderForJsonLd(
 export function getNormalizationContextLoader(
   contextLoader: DocumentLoader | undefined,
 ): DocumentLoader {
+  if (
+    contextLoader != null &&
+    effectiveContextLoaderPolicies.get(contextLoader) === "normalization"
+  ) {
+    return contextLoader;
+  }
   const loader = wrapContextLoaderForJsonLd(contextLoader);
   return createMemoizedDocumentLoader(async (url, options) => {
     // Normalized LDS documents are compacted against Fedify's built-in context.
@@ -1117,7 +1160,7 @@ export async function verifyJsonLd(
   jsonLd: unknown,
   options: VerifyJsonLdOptions = {},
 ): Promise<boolean> {
-  return await verifyJsonLdInternal(jsonLd, options, true);
+  return (await verifyJsonLdInternal(jsonLd, options, true)).verified;
 }
 
 /** @internal */
@@ -1125,6 +1168,29 @@ export async function verifyCompactJsonLd(
   jsonLd: unknown,
   options: VerifyJsonLdOptions = {},
 ): Promise<boolean> {
+  return (await verifyJsonLdInternal(jsonLd, options, false)).verified;
+}
+
+/**
+ * The result of {@link verifyCompactJsonLdDetailed}.
+ * @internal
+ */
+export type VerifyJsonLdDetailedResult =
+  | { readonly verified: true; readonly key: CryptographicKey }
+  | { readonly verified: false; readonly key: null };
+
+/**
+ * Same as {@link verifyCompactJsonLd}, but also returns the key that verified
+ * the signature, whose `owner` {@link fetchKey} has confirmed.
+ * @param jsonLd The compacted JSON-LD document to verify.
+ * @param options Options for verifying the JSON-LD document.
+ * @returns The result.
+ * @internal
+ */
+export async function verifyCompactJsonLdDetailed(
+  jsonLd: unknown,
+  options: VerifyJsonLdOptions = {},
+): Promise<VerifyJsonLdDetailedResult> {
   return await verifyJsonLdInternal(jsonLd, options, false);
 }
 
@@ -1132,7 +1198,7 @@ async function verifyJsonLdInternal(
   jsonLd: unknown,
   options: VerifyJsonLdOptions,
   compact: boolean,
-): Promise<boolean> {
+): Promise<VerifyJsonLdDetailedResult> {
   if (
     options[verificationObservation]?.attempt == null
   ) {
@@ -1148,7 +1214,7 @@ async function verifyJsonLdInternal(
           ...options,
           [verificationObservation]: observation,
         }, compact),
-      (value) => value,
+      (value) => value.verified,
     );
   }
   const observation = options[verificationObservation];
@@ -1156,7 +1222,7 @@ async function verifyJsonLdInternal(
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   return await tracer.startActiveSpan(
     "ld_signatures.verify",
-    async (span) => {
+    async (span): Promise<VerifyJsonLdDetailedResult> => {
       const start = performance.now();
       let verified = false;
       let threw = false;
@@ -1213,14 +1279,14 @@ async function verifyJsonLdInternal(
           if (observation?.attempt != null && !hasLdSignatureProperty(jsonLd)) {
             observation.attempt.reason = { type: "noSignature" };
           }
-          return false;
+          return { verified: false, key: null };
         }
         if (key.ownerId == null) {
           if (observation?.attempt != null) {
             observation.attempt.reason = { type: "missingOwner" };
           }
           logger.debug("Key {keyId} has no owner.", { keyId: key.id?.href });
-          return false;
+          return { verified: false, key: null };
         }
         attributions.delete(key.ownerId.href);
         if (attributions.size > 0) {
@@ -1235,10 +1301,10 @@ async function verifyJsonLdInternal(
               "Signatures: {attributions}.",
             { attributions: [...attributions] },
           );
-          return false;
+          return { verified: false, key: null };
         }
         verified = true;
-        return true;
+        return { verified: true, key };
       } catch (error) {
         threw = true;
         span.setStatus({

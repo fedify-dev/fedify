@@ -402,6 +402,121 @@ multiple inbox listeners for different activity types.
 [shared inbox]: https://www.w3.org/TR/activitypub/#shared-inbox-delivery
 
 
+Authenticated principals
+------------------------
+
+*This API is available since Fedify 2.5.0.*
+
+Before an activity reaches an inbox listener, Fedify authenticates it with HTTP
+Signatures, Linked Data Signatures, or Object Integrity Proofs.  The parties it
+authenticated, called *principals*, are available to the listener as
+`InboxContext.authentication`, independently of the activity's declared
+`actor`:
+
+`requestSigners`
+:   The actors whose keys signed the HTTP request, i.e., the server that
+    delivered the activity, which may have forwarded it on behalf of
+    another actor.  It is empty when the activity document was authenticated
+    by its own signatures, so that the HTTP Signatures did not need to be
+    verified.
+
+`documentSigners`
+:   The actors whose keys made the verified Linked Data Signature or Object
+    Integrity Proofs of the activity document.  When there are several
+    proofs, all of their signers are listed.  A proof by the DID of an
+    [FEP-ef61] portable actor is listed as a `portableAuthority` principal,
+    which authenticates the portable actors of that DID.
+
+`originAuthenticated`
+:   Only for activities routed by `Context.routeActivity()`: the actors
+    authenticated because the activity was fetched again from their own web
+    origin.
+
+`expandedActivity`
+:   The activity as Fedify interpreted it while authenticating it, in expanded
+    JSON-LD.  Typed vocabulary objects omit some values, such as blank node
+    references and values they cannot decode, so check this when your
+    authorization has to count every value of a property.
+
+Use `isActorAuthenticated()` to check whether a specific actor was
+authenticated.  It considers the document signers if there are any, otherwise
+the request signers, and compares [FEP-ef61] portable actor IDs canonically:
+
+~~~~ typescript twoslash
+import { type Federation, isActorAuthenticated } from "@fedify/fedify";
+import { Undo } from "@fedify/vocab";
+declare const federation: Federation<void>;
+declare function undoFollow(follower: URL, follow: URL): Promise<void>;
+// ---cut-before---
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Undo, async (ctx, undo) => {
+    if (undo.actorId == null || undo.objectId == null) return;
+    // Always true for an activity that declares an actor, which Fedify
+    // authenticates before calling the listener:
+    if (!isActorAuthenticated(ctx.authentication, undo.actorId)) return;
+    await undoFollow(undo.actorId, undo.objectId);
+  });
+~~~~
+
+A valid signature alone does not authorize anything: whoever signed an activity
+can name anyone else's objects in it, so compare the authenticated principal
+with the owner of what the activity acts on.  The evidence, including the
+interpretation of the activity, is kept as it was when the activity was
+received, even when the activity is processed later by a [message
+queue](./mq.md) and its retries.
+
+### Activities without an actor
+
+Some protocols identify the requester without an `actor`.  For example,
+Mastodon sends [FEP-7aa9] `FeatureRequest` activities, which ask an actor for
+consent to be featured in a collection, without one.  By default, Fedify
+responds to such an activity with `400 Bad Request` before any listener runs.
+
+To receive activities without an actor, register the listener with the
+`allowActorless` option.  Such an activity then reaches the listener only if
+Fedify authenticated at least one principal for it, and its `id`, if any, has
+the same origin as that principal.  The listener must authorize the request
+itself.  For `FeatureRequest`, `featureInteraction.verifyRequest()` from
+[`@fedify/interaction-controls`](./interaction-controls.md) does that: it
+fetches the featured collection from its ID and checks that its owner is the
+authenticated requester:
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+import { featureInteraction } from "@fedify/interaction-controls";
+import { FeatureRequest } from "@fedify/vocab";
+declare const federation: Federation<void>;
+// ---cut-before---
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(FeatureRequest, async (ctx, request) => {
+    const verification = await featureInteraction.verifyRequest(ctx, {
+      request,
+      authentication: ctx.authentication,
+    });
+    if (!verification.verified) return;
+    // verification.requester is the owner of the collection, who signed
+    // the request:
+    console.log(verification.requester.href);
+  }, { allowActorless: true });
+~~~~
+
+An activity that declares an `actor` is never affected by this option: its
+actor must be authenticated as usual.  An `actor` that ID accessors cannot
+read, such as an anonymous or blank node actor, still counts as a declared
+actor, so such an activity is rejected rather than treated as having no actor.
+
+> [!WARNING]
+> Do not set `allowActorless` for a listener that relies on the activity's
+> actor, such as one for `Undo` or `Delete`, unless the listener checks
+> `InboxContext.authentication` itself.  Otherwise, any authenticated server
+> could act on objects that the listener only matches by the activity's
+> `object`.
+
+[FEP-7aa9]: https://w3id.org/fep/7aa9
+
+
 Determining the recipient of an activity
 ----------------------------------------
 

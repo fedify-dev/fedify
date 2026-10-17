@@ -1,3 +1,4 @@
+import type { InboxListenerOptions } from "./activity-listener.ts";
 import type { InboxRequestFinishedHandler } from "./inbox-report.ts";
 import type {
   Activity,
@@ -1693,14 +1694,31 @@ export interface InboxListenerSetters<TContextData> {
   /**
    * Registers a listener for a specific incoming activity type.
    *
+   * @example
+   * ``` typescript
+   * federation
+   *   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+   *   // Mastodon sends FeatureRequest activities without an actor:
+   *   .on(FeatureRequest, async (ctx, request) => {
+   *     const verification = await featureInteraction.verifyRequest(ctx, {
+   *       request,
+   *       authentication: ctx.authentication,
+   *     });
+   *     // ...
+   *   }, { allowActorless: true });
+   * ```
+   *
    * @param type A subclass of {@link Activity} to listen to.
    * @param listener A callback to handle an incoming activity.
+   * @param options Options for the listener.  See
+   *                {@link InboxListenerOptions}.  (Since 2.5.0.)
    * @returns The setters object so that settings can be chained.
    */
   on<TActivity extends Activity>(
     // deno-lint-ignore no-explicit-any
     type: new (...args: any[]) => TActivity,
     listener: InboxListener<TContextData, TActivity>,
+    options?: InboxListenerOptions,
   ): InboxListenerSetters<TContextData>;
 
   /**

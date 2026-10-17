@@ -1,3 +1,4 @@
+import { estimateQueuedMessageSize } from "./inbox.ts";
 import { test } from "@fedify/fixture";
 import {
   assert,
@@ -444,6 +445,35 @@ test("MessageQueue.nativeRetrial", async (t) => {
         await globalThis.Deno.openKv(":memory:"),
       );
       assert(mq.nativeRetrial);
+      // Deno KV limits a serialized value to 64 KiB:
+      assert(mq.maxMessageSize < 64 * 1024);
+      // Any message whose estimated size fits the limit can be enqueued,
+      // however its serialization expands small values:
+      for (
+        const item of [
+          [],
+          {},
+          0.1,
+          "",
+          "é",
+          "한",
+          "x".repeat(100),
+          true,
+          // A long string that is serialized as UTF-16 because of a single
+          // character beyond Latin-1:
+          "a".repeat(1000) + "한",
+        ]
+      ) {
+        const items: unknown[] = [];
+        const message = () => ({ type: "inbox", payload: { items } });
+        while (
+          estimateQueuedMessageSize(message()) < mq.maxMessageSize - 64
+        ) {
+          items.push(item);
+        }
+        items.pop();
+        await mq.enqueue(message());
+      }
       await disposeMessageQueue(mq);
     });
   }
@@ -760,3 +790,23 @@ async function waitFor(
     }
   }
 }
+
+test("ParallelMessageQueue inherits maxMessageSize", () => {
+  class BoundedQueue implements MessageQueue {
+    readonly maxMessageSize = 1024;
+    enqueue(): Promise<void> {
+      return Promise.resolve();
+    }
+    listen(): Promise<void> {
+      return Promise.resolve();
+    }
+  }
+  assertEquals(
+    new ParallelMessageQueue(new BoundedQueue(), 2).maxMessageSize,
+    1024,
+  );
+  assertEquals(
+    new ParallelMessageQueue(new InProcessMessageQueue(), 2).maxMessageSize,
+    undefined,
+  );
+});

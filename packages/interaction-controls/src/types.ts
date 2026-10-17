@@ -1,4 +1,4 @@
-import type { Context } from "@fedify/fedify";
+import type { Context, InboxAuthenticationEvidence } from "@fedify/fedify";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import type { Temporal } from "temporal-polyfill";
 import type {
@@ -142,6 +142,24 @@ export interface InteractionRequestVerificationOptions<
    * @since 2.5.0
    */
   readonly resolvedInteractingObject?: ASObject;
+
+  /**
+   * Who Fedify authenticated for the request, normally
+   * {@link InboxContext.authentication} of the inbox listener that received
+   * it.
+   *
+   * It is required to verify a request that declares no `actor`, such as
+   * a [FEP-7aa9] `FeatureRequest` sent by Mastodon: the requester is then the
+   * owner of the interacting object, who must have been authenticated.  For
+   * a request that declares an actor, the actor must have been
+   * authenticated, and the request must have exactly one `object` and one
+   * `instrument` value, which are checked on the interpretation Fedify
+   * authenticated, including values typed parsing drops.
+   *
+   * [FEP-7aa9]: https://w3id.org/fep/7aa9
+   * @since 2.5.0
+   */
+  readonly authentication?: InboxAuthenticationEvidence;
 }
 
 /**
@@ -279,6 +297,57 @@ export type InteractionRequestVerificationFailure =
     readonly type: "requesterMismatch";
     readonly expected: URL;
     readonly actual?: URL;
+  }
+  | {
+    /**
+     * The URL of the interacting object has a username or a password.
+     * @since 2.5.0
+     */
+    readonly category: "invalid";
+    readonly type: "credentialsInUrl";
+    readonly url: URL;
+  }
+  | {
+    /**
+     * The document of the interacting object, fetched from its ID, is not
+     * acceptable:
+     *
+     *  -  `"credentials"`: it was served from a URL with credentials.
+     *  -  `"id"`: its ID does not match the requested one.
+     *  -  `"type"`: it is not of the expected type.
+     *  -  `"attribution"`: it does not have exactly one `attributedTo` value
+     *     that identifies an actor.
+     *  -  `"decoding"`: it cannot be decoded, e.g., it has a malformed date.
+     * @since 2.5.0
+     */
+    readonly category: "invalid";
+    readonly type: "invalidInteractingObject";
+    readonly reason: "credentials" | "id" | "type" | "attribution" | "decoding";
+    readonly cause?: unknown;
+  }
+  | {
+    /**
+     * The request, as Fedify authenticated it, does not unambiguously have
+     * the given property: it has another type or ID than the request being
+     * verified, its `actor` values differ, or it does not have exactly one
+     * `object` or `instrument` value.
+     * @since 2.5.0
+     */
+    readonly category: "invalid";
+    readonly type: "ambiguousRequest";
+    readonly property: "type" | "id" | "actor" | "object" | "instrument";
+  }
+  | {
+    /**
+     * The requester was not authenticated: the request's actor, or for
+     * a request without an actor, the owner of its interacting object, is not
+     * among the principals of the given authentication evidence, or no
+     * evidence is available.
+     * @since 2.5.0
+     */
+    readonly category: "unauthorized";
+    readonly type: "unauthenticatedRequester";
+    readonly requester?: URL;
   };
 
 export interface InteractionPolicyEvaluationOptions<
