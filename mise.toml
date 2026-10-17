@@ -193,6 +193,7 @@ depends = [
   "check:workspace-protocol",
   "check:fixture-usage",
   "check:node-modules",
+  "test:docs-contributors",
 ]
 run = "sacho check"
 
@@ -397,6 +398,10 @@ run = "pnpm -C docs dev"
 [tasks."docs:build"]
 description = "Build the documentation for production"
 run = "pnpm -C docs build"
+
+[tasks."test:docs-contributors"]
+description = "Test the team page contributor loading and filtering"
+run = "node --experimental-strip-types --test docs/.vitepress/contributors.test.mts"
 
 [tasks."docs:preview"]
 description = "Preview the built documentation"
