@@ -371,6 +371,45 @@ const otelPoints: { icon: Component; term: string; desc: string }[] = [
   },
 ];
 
+// Application-defined jobs use the same queue infrastructure as federation.
+const taskPoints: { icon: Component; term: string; desc: string }[] = [
+  {
+    icon: Braces,
+    term: "Typed and validated",
+    desc:
+      'a <a href="https://standardschema.dev/" target="_blank" rel="noopener noreferrer">Standard Schema</a>, such as one from Zod or Valibot, checks payloads at enqueue time and again on the worker.',
+  },
+  {
+    icon: RotateCw,
+    term: "Delays and retries",
+    desc:
+      "postpone jobs and retry failed ones under a configurable policy.",
+  },
+  {
+    icon: DatabaseZap,
+    term: "Your existing queue",
+    desc:
+      "reuse the outbox queue, or give tasks a queue and worker of their own.",
+  },
+];
+
+const taskCode = `<span class="c-kw">import</span> { z } <span class="c-kw">from</span> <span class="c-st">"zod"</span>;
+
+<span class="c-kw">const</span> sendDigest = federation.<span class="c-fn">defineTask</span>(<span class="c-st">"sendDigest"</span>, {
+  schema: z.<span class="c-fn">object</span>({
+    userId: z.<span class="c-fn">string</span>(),
+    since: z.<span class="c-fn">date</span>(),
+  }),
+  handler: <span class="c-kw">async</span> (_ctx, data) => {
+    <span class="c-kw">await</span> <span class="c-fn">sendDigestEmail</span>(data.userId, data.since);
+  },
+});
+
+<span class="c-kw">await</span> ctx.<span class="c-fn">enqueueTask</span>(sendDigest, {
+  userId: <span class="c-st">"alice"</span>,
+  since: <span class="c-kw">new</span> <span class="c-ty">Date</span>(),
+}, { delay: { minutes: <span class="c-ty">30</span> } });`;
+
 // A mock trace waterfall (real Fedify span names) for the observability visual.
 const traceSpans: { label: string; depth: number; start: number; width: number }[] = [
   { label: "activitypub.inbox", depth: 0, start: 0, width: 100 },
@@ -857,8 +896,45 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       </div>
     </section>
 
+    <!-- ===================== BACKGROUND TASKS ====================== -->
+    <section class="lp-section" aria-labelledby="home-tasks-heading">
+      <div class="wrap lp-code-grid">
+        <div>
+          <p class="lp-kicker">Background tasks</p>
+          <h2 id="home-tasks-heading" class="lp-h2">
+            Run your app's jobs in the background
+          </h2>
+          <p class="lp-body">
+            Send digest emails, rebuild timelines, or fetch link previews using
+            the same queue infrastructure that delivers your activities. Define
+            a task once, then enqueue it from any federation context.
+          </p>
+          <ul class="lp-checklist">
+            <li v-for="p in taskPoints" :key="p.term">
+              <span class="lp-check-ic" aria-hidden="true">
+                <component :is="p.icon" :size="18" :stroke-width="1.9" />
+              </span>
+              <span class="lp-check-text">
+                <span class="lp-check-term">{{ p.term }}</span>
+                <span class="lp-check-desc" v-html="p.desc" />
+              </span>
+            </li>
+          </ul>
+          <a class="lp-textlink" href="/manual/tasks">
+            Background tasks guide →
+          </a>
+        </div>
+        <div class="lp-code-window">
+          <div class="lp-code-bar" aria-hidden="true">
+            <span class="lp-code-file">tasks.ts</span>
+          </div>
+          <pre class="lp-code"><code v-html="taskCode" /></pre>
+        </div>
+      </div>
+    </section>
+
     <!-- ======================== FRAMEWORKS ========================= -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap">
         <div class="lp-section-head">
           <p class="lp-kicker">Works with your stack</p>
@@ -917,7 +993,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ===================== YOUR DATA / STORAGE ==================== -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap lp-narrow">
         <p class="lp-kicker">Your data, your schema</p>
         <h2 class="lp-h2">Fedify never owns your data model</h2>
@@ -935,7 +1011,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ========================= INTEROP ============================ -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap lp-interop">
         <p class="lp-kicker">Plays well with others</p>
         <h2 class="lp-h2">Interoperates with the software people already use</h2>
@@ -960,7 +1036,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ============================ CLI ============================= -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap lp-cli">
         <div class="lp-cli-copy">
           <p class="lp-kicker">Developer tooling</p>
@@ -998,7 +1074,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ====================== OBSERVABILITY ========================= -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap lp-otel">
         <div class="lp-otel-copy">
           <p class="lp-kicker">Built for production</p>
@@ -1050,7 +1126,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ====================== ACTIVITYPUB API ====================== -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap lp-c2s">
         <div class="lp-c2s-copy">
           <p class="lp-kicker">ActivityPub API</p>
@@ -1083,7 +1159,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       </div>
     </section>
 
-    <section class="lp-section" aria-labelledby="home-team-heading">
+    <section class="lp-section lp-section-alt" aria-labelledby="home-team-heading">
       <div class="wrap">
         <div class="lp-section-head">
           <h2 id="home-team-heading" class="lp-h2">The people behind Fedify</h2>
