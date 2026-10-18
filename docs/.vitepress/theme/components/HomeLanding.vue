@@ -376,6 +376,12 @@ const brokers: { name: string; url: string; svg: string }[] = [
     svg:
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m8.213.063l8.879 12.136l-8.67 11.739h2.476l8.665-11.735l-8.89-12.14Zm4.728 0l9.02 11.992l-9.018 11.883h2.496L24 12.656v-1.199L15.434.063ZM7.178 2.02L.01 11.398l-.01 1.2l7.203 9.644l1.238-1.676l-6.396-8.556l6.361-8.313Z"/></svg>',
   },
+  {
+    name: "Netlify Async Workloads",
+    url: "/manual/mq#netlifymessagequeue-netlify-functions-only",
+    svg:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.49 19.04h-.23L5.13 17.9v-.23l1.73-1.71h1.2l.15.15v1.2L6.5 19.04ZM5.13 6.31V6.1l1.13-1.13h.23L8.2 6.68v1.2l-.15.15h-1.2L5.13 6.31Zm9.96 9.09h-1.65l-.14-.13v-3.83c0-.68-.27-1.2-1.1-1.23-.42 0-.9 0-1.43.02l-.07.08v4.96l-.14.14H8.9l-.13-.14V8.73l.13-.14h3.7a2.6 2.6 0 0 1 2.61 2.6v4.08l-.13.14Zm-8.37-2.44H.14L0 12.82v-1.64l.14-.14h6.58l.14.14v1.64l-.14.14Zm17.14 0h-6.58l-.14-.14v-1.64l.14-.14h6.58l.14.14v1.64l-.14.14ZM11.05 6.55V1.64l.14-.14h1.65l.14.14v4.9l-.14.14h-1.65l-.14-.13Zm0 15.81v-4.9l.14-.14h1.65l.14.13v4.91l-.14.14h-1.65l-.14-.14Z"/></svg>',
+  },
 ];
 
 // Observability highlights for the OpenTelemetry section.
@@ -943,11 +949,16 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ===================== RELIABLE DELIVERY ====================== -->
-    <section class="lp-section lp-section-alt">
+    <section
+      class="lp-section lp-section-alt"
+      aria-labelledby="home-delivery-heading"
+    >
       <div class="wrap">
         <div class="lp-section-head">
           <p class="lp-kicker">Reliable at scale</p>
-          <h2 class="lp-h2">Reliable delivery, even to huge audiences</h2>
+          <h2 class="lp-h2" id="home-delivery-heading">
+            Reliable delivery, even to huge audiences
+          </h2>
           <p class="lp-body">
             Outgoing activities go through a message queue, so a flaky recipient
             never costs you a post. For large audiences, a two-stage fan-out
@@ -977,6 +988,14 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           </li>
           <li class="lp-logo-more">and more</li>
         </ul>
+        <p class="lp-brokers-note">
+          On <a href="/manual/deploy#netlify-functions">Netlify Functions</a>,
+          Fedify
+          <a
+            href="/manual/mq#netlifymessagequeue-netlify-functions-only"
+          >processes queued deliveries</a> through Async Workloads events,
+          without a long-running queue worker.
+        </p>
       </div>
     </section>
 
@@ -1138,18 +1157,31 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ===================== YOUR DATA / STORAGE ==================== -->
-    <section class="lp-section lp-section-alt">
+    <section
+      class="lp-section lp-section-alt lp-storage"
+      aria-labelledby="home-storage-heading"
+    >
       <div class="wrap lp-narrow">
         <p class="lp-kicker">Your data, your schema</p>
-        <h2 class="lp-h2">Fedify never owns your data model</h2>
+        <h2 class="lp-h2" id="home-storage-heading">
+          Fedify never owns your data model
+        </h2>
         <p class="lp-body">
           Your actors, posts, and followers live in your own database, in
           whatever schema you already have. Fedify reads them through dispatcher
           callbacks you write, so the data model stays yours. For its own
           internal state, a cache and some federation bookkeeping, it relies on a
-          pluggable <code>KvStore</code>: keep it in memory while you develop, or
-          back it with Redis, PostgreSQL, MySQL, SQLite, Deno KV, or Cloudflare
-          Workers KV.
+          pluggable <code>KvStore</code>: keep it
+          <a href="/manual/kv#memorykvstore">in memory</a> while you develop, or
+          back it with <a href="/manual/kv#rediskvstore">Redis</a>,
+          <a href="/manual/kv#postgreskvstore">PostgreSQL</a>,
+          <a href="/manual/kv#mysqlkvstore">MySQL</a>,
+          <a href="/manual/kv#sqlitekvstore">SQLite</a>,
+          <a href="/manual/kv#denokvstore-deno-only">Deno KV</a>,
+          <a href="/manual/kv#netlifyblobskvstore">Netlify Blobs</a>, or
+          <a
+            href="/manual/kv#workerskvstore-cloudflare-workers-only"
+          >Cloudflare Workers KV</a>.
         </p>
         <a class="lp-textlink" href="/manual/kv">Key–value store guide →</a>
       </div>
@@ -1871,6 +1903,8 @@ a.lp-stack-name::after {
 /* ------------------------ Portable objects --------------------- */
 .lp-portable .lp-body a,
 .lp-interactions .lp-body a,
+.lp-storage .lp-body a,
+.lp-brokers-note a,
 .lp-portable .lp-kicker a {
   color: var(--vp-c-brand-1);
   text-decoration: underline;
@@ -1878,6 +1912,8 @@ a.lp-stack-name::after {
 }
 .lp-portable .lp-body a:hover,
 .lp-interactions .lp-body a:hover,
+.lp-storage .lp-body a:hover,
+.lp-brokers-note a:hover,
 .lp-portable .lp-kicker a:hover {
   color: var(--vp-c-brand-2);
 }
@@ -2093,6 +2129,14 @@ a.lp-stack-name::after {
   text-transform: uppercase;
   color: var(--vp-c-text-2);
   opacity: 0.7;
+}
+.lp-brokers-note {
+  max-width: 680px;
+  margin: 1.5rem auto 0;
+  text-align: center;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--vp-c-text-2);
 }
 
 /* --------------------------- Observability --------------------- */
