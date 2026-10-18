@@ -518,14 +518,15 @@ const cliCommands: { cmd: string; url: string; desc: string }[] = [
 ];
 
 // A mock terminal session showing `fedify inbox` (rendered with v-html).
-const cliTerminal = `<span class="t-p">$</span> fedify inbox
+const cliTerminal = `<span class="t-p">$</span> fedify inbox --tunnel-service fedify.com.es \\
+    --follow @john@activitypub.academy
 
-<span class="t-ok">✔</span> Ephemeral server up: <span class="t-url">https://f9285cf4.lhr.life/</span>
+<span class="t-ok">✔</span> Ephemeral server up: <span class="t-url">https://f9285cf4974c86ab.fedify.com.es/</span>
 <span class="t-ok">✔</span> Sent follow to <span class="t-at">@john@activitypub.academy</span>
 
-  <span class="t-k">Actor handle</span>   i@f9285cf4.lhr.life
-  <span class="t-k">Actor inbox</span>    https://f9285cf4.lhr.life/i/inbox
-  <span class="t-k">Shared inbox</span>   https://f9285cf4.lhr.life/inbox
+  <span class="t-k">Actor handle</span>   i@f9285cf4974c86ab.fedify.com.es
+  <span class="t-k">Actor inbox</span>    https://f9285cf4974c86ab.fedify.com.es/i/inbox
+  <span class="t-k">Shared inbox</span>   https://f9285cf4974c86ab.fedify.com.es/inbox
 
 <span class="t-rx">▸ Received</span> <span class="t-at">Follow</span>  POST /i/inbox  <span class="t-ok">202</span>`;
 
@@ -535,24 +536,24 @@ const vocabPoints: { icon: Component; term: string; desc: string }[] = [
     icon: BadgeCheck,
     term: "Standard-compliant output",
     desc:
-      "build an object and toJsonLd() emits valid, interoperable JSON-LD.",
+      "Build an object and toJsonLd() emits valid, interoperable JSON-LD.",
   },
   {
     icon: Shapes,
     term: "One shape to read",
-    desc: "every equivalent JSON-LD form normalizes to the same typed value.",
+    desc: "Every equivalent JSON-LD form normalizes to the same typed value.",
   },
   {
     icon: ExternalLink,
     term: "References, dereferenced",
     desc:
-      "<code>getActor()</code> and <code>getObject()</code> accessors fetch and hydrate remote objects on demand.",
+      "Use <code>getActor()</code> and <code>getObject()</code> to fetch and hydrate remote objects on demand.",
   },
   {
     icon: ShieldCheck,
     term: "Secure by default",
     desc:
-      'an origin-based security model (<a href="https://w3id.org/fep/fe34" target="_blank" rel="noopener noreferrer">FEP-fe34</a>) re-fetches cross-origin objects to prevent spoofing.',
+      'An <a href="/manual/vocab#origin-based-security-model">origin-based security model</a> (<a href="https://w3id.org/fep/fe34" target="_blank" rel="noopener noreferrer">FEP-fe34</a>) re-fetches cross-origin embedded objects with IDs. <a href="https://w3id.org/fep/ef61" target="_blank" rel="noopener noreferrer">Portable IDs</a> use cryptographic origins derived from their <a href="https://www.w3.org/TR/did-core/" target="_blank" rel="noopener noreferrer">DIDs</a>.',
   },
 ];
 
@@ -842,11 +843,16 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ====================== VOCABULARY ============================ -->
-    <section class="lp-section lp-section-alt">
+    <section
+      class="lp-section lp-section-alt"
+      aria-labelledby="home-vocabulary-heading"
+    >
       <div class="wrap lp-vocab">
         <div class="lp-vocab-copy">
           <p class="lp-kicker">Type-safe vocabulary</p>
-          <h2 class="lp-h2">Type-safe objects, no JSON-LD headaches</h2>
+          <h2 class="lp-h2" id="home-vocabulary-heading">
+            Type-safe objects, no JSON-LD headaches
+          </h2>
           <p class="lp-body">
             Fedify models the whole Activity Vocabulary as immutable, type-safe
             objects, backed by a real JSON-LD processor and exposed as a fully
