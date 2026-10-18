@@ -17,6 +17,35 @@ to *http://localhost:5173/* to view the docs.
 [VitePress]: https://vitepress.dev/
 
 
+Team page data
+--------------
+
+The maintainer profiles in *.vitepress/team.mts* are maintained by hand.
+The contribution years record each person's first contribution, rather than
+their appointment as a maintainer.  The profile images under *public/team/*
+come from Hong Minhee's website and the [DrFed website source][drfed-team].
+
+The *team.data.ts* loader fetches all pages of GitHub contributors at build
+time. Set `GITHUB_TOKEN` in the build environment to authenticate these
+requests; the token stays in the build process and is never sent to the
+browser. If GitHub is unavailable, the loader uses
+*.vitepress/data/contributors.json*. Refresh that fallback snapshot with the
+`id`, `login`, and `type` fields from every page of the repository's
+contributors API when needed.
+
+After hydration, the team page refreshes the list without authentication and
+caches successful results in browser storage for one hour.  Failed requests
+leave the existing list visible.  Both paths use the filtering in
+*.vitepress/contributors.mts*, which excludes maintainers, bot accounts, and
+explicitly listed AI agent account IDs.  Add agent IDs there rather than
+matching names that might belong to people.
+
+Run `mise run test:docs-contributors` to check pagination, filtering, and
+failure handling.
+
+[drfed-team]: https://github.com/fedify-dev/drfed.org/tree/main/src/assets/team
+
+
 VitePress documentation conventions
 -----------------------------------
 

@@ -57,3 +57,39 @@
 .VPContent.is-home {
   padding-top: 0;
 }
+
+/* Keep the expanded navigation, including Team, in the existing mobile menu
+   until there is enough room for the desktop links. */
+@media (768px <= width < 1024px) {
+  .VPNav .VPNavBar .VPNavBarMenu,
+  .VPNav .VPNavBar .VPNavBarExtra {
+    display: none;
+  }
+
+  .VPNav .VPNavBar .VPNavBarHamburger {
+    display: flex;
+  }
+
+  .VPNav .VPNavScreen {
+    display: block;
+  }
+}
+
+/* Sidebar pages reserve more space for the site title. Keep their navigation
+   compact until the links and social icons fit alongside that column. */
+@media (960px <= width < 1440px) {
+  .VPNav .VPNavBar.has-sidebar .VPNavBarMenu,
+  .VPNav .VPNavBar.has-sidebar .VPNavBarExtra,
+  .VPNav .VPNavBar.has-sidebar .VPNavBarAppearance,
+  .VPNav .VPNavBar.has-sidebar .VPNavBarSocialLinks {
+    display: none;
+  }
+
+  .VPNav .VPNavBar.has-sidebar .VPNavBarHamburger {
+    display: flex;
+  }
+
+  .VPNav .VPNavBar.has-sidebar ~ .VPNavScreen {
+    display: block;
+  }
+}
