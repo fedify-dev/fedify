@@ -373,30 +373,46 @@ const brokers: { name: string; url: string; svg: string }[] = [
 ];
 
 // Observability highlights for the OpenTelemetry section.
-const otelPoints: { icon: Component; term: string; desc: string }[] = [
+const otelPoints: {
+  icon: Component;
+  term: string;
+  desc: string;
+  link?: string;
+}[] = [
   {
     icon: Activity,
     term: "Distributed traces",
     desc:
-      "every step is a span: HTTP, inbox, outbox, fan-out, signatures, and WebFinger.",
+      "Every step is a span: HTTP, inbox, outbox, fan-out, signatures, and WebFinger.",
+    link: "/manual/opentelemetry#instrumented-spans",
   },
   {
     icon: Gauge,
     term: "Rich metrics",
     desc:
-      "counters and histograms for delivery, queue depth, signature verification, and more.",
+      "Counters and histograms for delivery, queue depth, signature verification, and more.",
+    link: "/manual/opentelemetry#instrumented-metrics",
   },
   {
     icon: Plug,
     term: "Any OTLP backend",
     desc:
-      "ship to Grafana, Jaeger, Sentry, or Deno's built-in OpenTelemetry.",
+      "Ship to Grafana, Jaeger, Sentry, or Deno's built-in OpenTelemetry.",
+    link: "/manual/opentelemetry#setting-up-opentelemetry",
   },
   {
     icon: ScrollText,
     term: "Structured logs too",
     desc:
-      "traceable JSON logging via LogTape, correlated by request and message IDs.",
+      "Traceable JSON logging via LogTape, correlated by request and message IDs.",
+    link: "/manual/log#tracing",
+  },
+  {
+    icon: ShieldCheck,
+    term: "Inbox request reports",
+    desc:
+      "Inspect signature and proof checks, keys used, authentication decisions, and request outcomes for accepted and rejected deliveries with onRequestFinished(), independently of trace sampling.",
+    link: "/manual/inbox#observing-inbox-requests",
   },
 ];
 
@@ -1194,11 +1210,13 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ====================== OBSERVABILITY ========================= -->
-    <section class="lp-section">
+    <section class="lp-section" aria-labelledby="home-observability-heading">
       <div class="wrap lp-otel">
         <div class="lp-otel-copy">
           <p class="lp-kicker">Built for production</p>
-          <h2 class="lp-h2">See exactly what your server is doing</h2>
+          <h2 class="lp-h2" id="home-observability-heading">
+            See exactly what your server is doing
+          </h2>
           <p class="lp-body">
             Fedify is instrumented with OpenTelemetry out of the box, so the
             whole federation lifecycle shows up as traces and metrics in the
@@ -1210,7 +1228,10 @@ federation.<span class="c-fn">setActorDispatcher</span>(
                 <component :is="p.icon" :size="18" :stroke-width="1.9" />
               </span>
               <span class="lp-otel-text">
-                <span class="lp-otel-term">{{ p.term }}</span>
+                <span class="lp-otel-term">
+                  <a v-if="p.link" :href="p.link">{{ p.term }}</a>
+                  <template v-else>{{ p.term }}</template>
+                </span>
                 <span class="lp-otel-desc">{{ p.desc }}</span>
               </span>
             </li>
@@ -2120,6 +2141,13 @@ a.lp-stack-name::after {
   display: block;
   font-weight: 600;
   color: var(--vp-c-text-1);
+}
+.lp-otel-term a {
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+}
+.lp-otel-term a:hover {
+  text-decoration: underline;
 }
 .lp-otel-desc,
 .lp-check-desc {
