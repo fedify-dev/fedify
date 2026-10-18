@@ -118,6 +118,12 @@ const stack: {
     icon: BadgeCheck,
   },
   {
+    name: "Portable objects",
+    spec: "FEP-ef61",
+    link: "/manual/portable",
+    icon: Share2,
+  },
+  {
     name: "Linked Data Signatures",
     link: "/manual/send#linked-data-signatures",
     icon: Link2,
@@ -746,8 +752,75 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       </div>
     </section>
 
+    <!-- ====================== PORTABLE OBJECTS ====================== -->
+    <section class="lp-section" aria-labelledby="home-portable-heading">
+      <div class="wrap lp-portable">
+        <div>
+          <p class="lp-kicker">
+            Portable objects ·
+            <a
+              href="https://w3id.org/fep/ef61"
+              target="_blank"
+              rel="noopener noreferrer"
+            >FEP-ef61</a>
+          </p>
+          <h2 id="home-portable-heading" class="lp-h2">
+            An identity beyond a single server
+          </h2>
+          <p class="lp-body">
+            Give actors and posts IDs based on a
+            <a
+              href="https://www.w3.org/TR/did-core/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >decentralized identifier (DID)</a>, independent of any server's domain. Fedify can serve these
+            objects through gateways, sign and deliver their activities, and
+            verify portable objects from other servers.
+          </p>
+          <p class="lp-body">
+            <a href="/manual/send#object-integrity-proofs">Object Integrity
+              Proofs</a> authenticate the objects themselves, wherever
+            they are hosted. Your application manages storage and synchronization
+            between gateways.
+          </p>
+          <a class="lp-textlink" href="/manual/portable">
+            Portable objects guide →
+          </a>
+        </div>
+        <div
+          class="lp-portable-diagram"
+          role="img"
+          aria-label="One portable actor has a DID-based ID and can be served by two gateways. Its Object Integrity Proof authenticates it independently of either server."
+        >
+          <div class="lp-portable-identity">
+            <span class="lp-portable-label">One portable identity</span>
+            <code>ap+ef61://did:key:z6Mk…/actor</code>
+            <span class="lp-portable-proof">
+              <BadgeCheck :size="16" aria-hidden="true" />
+              Signed with the DID's key
+            </span>
+          </div>
+          <div class="lp-portable-branches" aria-hidden="true">
+            <span></span><span></span>
+          </div>
+          <div class="lp-portable-gateways">
+            <div class="lp-portable-gateway">
+              <Server :size="22" aria-hidden="true" />
+              <span>Gateway A</span>
+              <span class="lp-portable-label">Same signed actor</span>
+            </div>
+            <div class="lp-portable-gateway">
+              <Server :size="22" aria-hidden="true" />
+              <span>Gateway B</span>
+              <span class="lp-portable-label">Same signed actor</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== RELIABLE DELIVERY ====================== -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap">
         <div class="lp-section-head">
           <p class="lp-kicker">Reliable at scale</p>
@@ -785,7 +858,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ======================== FRAMEWORKS ========================= -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap">
         <div class="lp-section-head">
           <p class="lp-kicker">Works with your stack</p>
@@ -844,7 +917,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ===================== YOUR DATA / STORAGE ==================== -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap lp-narrow">
         <p class="lp-kicker">Your data, your schema</p>
         <h2 class="lp-h2">Fedify never owns your data model</h2>
@@ -862,7 +935,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ========================= INTEROP ============================ -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap lp-interop">
         <p class="lp-kicker">Plays well with others</p>
         <h2 class="lp-h2">Interoperates with the software people already use</h2>
@@ -887,7 +960,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ============================ CLI ============================= -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap lp-cli">
         <div class="lp-cli-copy">
           <p class="lp-kicker">Developer tooling</p>
@@ -925,7 +998,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ====================== OBSERVABILITY ========================= -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap lp-otel">
         <div class="lp-otel-copy">
           <p class="lp-kicker">Built for production</p>
@@ -977,7 +1050,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ====================== ACTIVITYPUB API ====================== -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap lp-c2s">
         <div class="lp-c2s-copy">
           <p class="lp-kicker">ActivityPub API</p>
@@ -1010,7 +1083,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       </div>
     </section>
 
-    <section class="lp-section lp-section-alt" aria-labelledby="home-team-heading">
+    <section class="lp-section" aria-labelledby="home-team-heading">
       <div class="wrap">
         <div class="lp-section-head">
           <h2 id="home-team-heading" class="lp-h2">The people behind Fedify</h2>
@@ -1490,6 +1563,7 @@ a.lp-stack-name::after {
 
 /* ------------------------- Code showcase ----------------------- */
 .lp-code-grid,
+.lp-portable,
 .lp-c2s {
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
@@ -1546,6 +1620,102 @@ a.lp-stack-name::after {
 .lp-code :deep(.c-ty) { color: #fcd34d; }
 .lp-code :deep(.c-fn) { color: #93c5fd; }
 .lp-code :deep(.c-cm) { color: #64748b; font-style: italic; }
+
+/* ------------------------ Portable objects --------------------- */
+.lp-portable .lp-body a,
+.lp-portable .lp-kicker a {
+  color: var(--vp-c-brand-1);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+.lp-portable .lp-body a:hover,
+.lp-portable .lp-kicker a:hover {
+  color: var(--vp-c-brand-2);
+}
+.lp-portable-diagram {
+  min-width: 0;
+  padding: 2rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 14px;
+  background: var(--vp-c-bg-soft);
+}
+.lp-portable-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1.5rem 1rem;
+  border: 1px solid var(--vp-c-brand-1);
+  border-radius: 12px;
+  background: var(--vp-c-bg);
+  text-align: center;
+}
+.lp-portable-label {
+  font-size: 0.78rem;
+  color: var(--vp-c-text-2);
+}
+.lp-portable-identity code {
+  font-family: var(--vp-font-family-mono);
+  font-size: clamp(0.75rem, 1.2vw, 0.95rem);
+  color: var(--vp-c-text-1);
+  overflow-wrap: anywhere;
+}
+.lp-portable-proof {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--vp-c-brand-1);
+}
+.lp-portable-branches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 3rem;
+  margin-inline: 25%;
+}
+.lp-portable-branches span {
+  border-top: 1px solid var(--vp-c-brand-1);
+  margin-top: 1.5rem;
+}
+.lp-portable-branches span:first-child {
+  border-left: 1px solid var(--vp-c-brand-1);
+  position: relative;
+}
+.lp-portable-branches span:first-child::before {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: 100%;
+  height: 1.5rem;
+  border-right: 1px solid var(--vp-c-brand-1);
+}
+.lp-portable-branches span:last-child {
+  border-right: 1px solid var(--vp-c-brand-1);
+}
+.lp-portable-gateways {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.lp-portable-gateway {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.2rem 0.5rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+  text-align: center;
+}
+.lp-portable-gateway > svg {
+  color: var(--vp-c-brand-1);
+}
+.lp-portable-gateway .lp-portable-label {
+  font-weight: 400;
+}
 
 /* ----------------------- Framework section --------------------- */
 .lp-byo {
@@ -2068,6 +2238,7 @@ a.lp-stack-name::after {
   .lp-otel,
   .lp-cli,
   .lp-vocab,
+  .lp-portable,
   .lp-c2s {
     grid-template-columns: 1fr;
   }
