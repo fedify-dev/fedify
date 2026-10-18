@@ -1175,6 +1175,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           <a href="/manual/kv#memorykvstore">in memory</a> while you develop, or
           back it with <a href="/manual/kv#rediskvstore">Redis</a>,
           <a href="/manual/kv#postgreskvstore">PostgreSQL</a>,
+          <a href="/manual/kv#pglitekvstore">PGlite</a>,
           <a href="/manual/kv#mysqlkvstore">MySQL</a>,
           <a href="/manual/kv#sqlitekvstore">SQLite</a>,
           <a href="/manual/kv#denokvstore-deno-only">Deno KV</a>,
