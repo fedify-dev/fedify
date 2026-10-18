@@ -490,7 +490,7 @@ const cliCommands: { cmd: string; url: string; desc: string }[] = [
     cmd: "fedify lookup --authorized-fetch",
     url: "/cli#a-authorized-fetch-authorized-fetch",
     desc:
-      "Inspect any actor or object, even the authorized-fetch-only ones.",
+      'Inspect actors and objects, including portable IDs. Choose gateways with <a href="/cli#gateway-gateways-of-portable-objects"><code>--gateway</code></a> and set a timeout for each request with <a href="/cli#t-timeout-request-timeout"><code>--timeout</code></a>.',
   },
   {
     cmd: "fedify inbox",
@@ -507,7 +507,8 @@ const cliCommands: { cmd: string; url: string; desc: string }[] = [
   {
     cmd: "fedify init",
     url: "/cli#fedify-init-initializing-a-fedify-project",
-    desc: "Scaffold a ready-to-run project in seconds.",
+    desc:
+      "Scaffold a project with a smoke test that starts the app and resolves a local actor.",
   },
   {
     cmd: "fedify nodeinfo",
@@ -1214,30 +1215,34 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ============================ CLI ============================= -->
-    <section class="lp-section lp-section-alt">
+    <section
+      class="lp-section lp-section-alt"
+      aria-labelledby="home-tooling-heading"
+    >
       <div class="wrap lp-cli">
         <div class="lp-cli-copy">
           <p class="lp-kicker">Developer tooling</p>
-          <h2 class="lp-h2">A toolchain for building and debugging</h2>
+          <h2 class="lp-h2" id="home-tooling-heading">
+            A toolchain for building and debugging
+          </h2>
           <p class="lp-body">
-            The <code>fedify</code> command-line tool turns the fiddly parts of
-            ActivityPub development into one-liners, from inspecting remote
-            objects to watching exactly what your own server sends. Alongside it,
-            <a
-              href="https://jsr.io/@fedify/lint"
-              target="_blank"
-              rel="noopener noreferrer"
-            ><code>@fedify/lint</code></a> catches common federation mistakes as
-            you write, and
+            Use the <code>fedify</code> CLI to inspect remote objects and test
+            what your server sends.
             <a href="/manual/debug"><code>@fedify/debugger</code></a> adds a live
             dashboard of inbox and outbox activity.
+          </p>
+          <p class="lp-body">
+            <a href="/manual/lint"><code>@fedify/lint</code></a> checks actor
+            properties and media upload setup. In ESLint and Oxlint, it can also flag
+            <a href="/manual/lint#outbox-listener-delivery-not-awaited">unhandled
+              outbox delivery promises</a>.
           </p>
           <ul class="lp-cli-list">
             <li v-for="c in cliCommands" :key="c.cmd">
               <a class="lp-cli-link" :href="c.url">
                 <code class="lp-cli-cmd">{{ c.cmd }}</code>
               </a>
-              <span class="lp-cli-desc">{{ c.desc }}</span>
+              <span class="lp-cli-desc" v-html="c.desc" />
             </li>
           </ul>
           <a class="lp-textlink" href="/cli">Explore the CLI →</a>
@@ -1905,6 +1910,8 @@ a.lp-stack-name::after {
 .lp-portable .lp-body a,
 .lp-interactions .lp-body a,
 .lp-storage .lp-body a,
+.lp-cli-copy .lp-body a,
+.lp-cli-desc :deep(a),
 .lp-brokers-note a,
 .lp-portable .lp-kicker a {
   color: var(--vp-c-brand-1);
@@ -1914,6 +1921,8 @@ a.lp-stack-name::after {
 .lp-portable .lp-body a:hover,
 .lp-interactions .lp-body a:hover,
 .lp-storage .lp-body a:hover,
+.lp-cli-copy .lp-body a:hover,
+.lp-cli-desc :deep(a:hover),
 .lp-brokers-note a:hover,
 .lp-portable .lp-kicker a:hover {
   color: var(--vp-c-brand-2);
