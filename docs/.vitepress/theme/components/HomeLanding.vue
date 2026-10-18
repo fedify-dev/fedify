@@ -93,6 +93,11 @@ const stack: {
   { name: "ActivityPub", link: "/manual/federation", logo: activityPubLogo },
   { name: "Activity Streams 2.0", link: "/manual/vocab", icon: Braces },
   {
+    name: "ActivityPub Media Upload",
+    link: "/manual/media-upload",
+    icon: FilePen,
+  },
+  {
     name: "HTTP Signatures",
     spec: "draft-cavage-http-signatures-12",
     link: "/manual/send#http-signatures",
@@ -122,6 +127,30 @@ const stack: {
     spec: "FEP-ef61",
     link: "/manual/portable",
     icon: Share2,
+  },
+  {
+    name: "Consent-respecting quotes",
+    spec: "FEP-044f",
+    link: "/manual/interaction-controls#supported-interactions",
+    icon: BadgeCheck,
+  },
+  {
+    name: "Featured collections",
+    spec: "FEP-7aa9",
+    link: "/manual/interaction-controls#supported-interactions",
+    icon: Shapes,
+  },
+  {
+    name: "Origin-based security",
+    spec: "FEP-fe34",
+    link: "/manual/vocab#origin-based-security-model",
+    icon: ShieldCheck,
+  },
+  {
+    name: "Followers collection sync",
+    spec: "FEP-8fcf",
+    link: "/manual/send#followers-collection-synchronization",
+    icon: RotateCw,
   },
   {
     name: "Linked Data Signatures",
@@ -713,6 +742,32 @@ federation.<span class="c-fn">setActorDispatcher</span>(
             keeping them right as they evolve. Fedify implements them so you
             don't have to, and exposes them through one coherent, typed API.
           </p>
+          <dl class="lp-why-benefits">
+            <div>
+              <dt>Work across servers</dt>
+              <dd>
+                Fedify negotiates HTTP signature formats and handles discovery
+                through WebFinger and NodeInfo.
+              </dd>
+            </div>
+            <div>
+              <dt>Build on trust and consent</dt>
+              <dd>
+                Check object origins and integrity proofs, and use interaction
+                helpers in your app to request and verify consent for quotes and
+                recommendations.
+              </dd>
+            </div>
+            <div>
+              <dt>Keep identity across gateways</dt>
+              <dd>
+                Portable object IDs contain a
+                <a href="https://www.w3.org/TR/did-core/">DID</a> instead of a
+                host. Their integrity proofs can be verified without trusting
+                the hosting gateway.
+              </dd>
+            </div>
+          </dl>
           <a class="lp-textlink" href="/why">See the full rationale →</a>
         </div>
         <ul class="lp-stack" aria-label="Standards implemented by Fedify">
@@ -1621,19 +1676,40 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   gap: 3rem;
   align-items: center;
 }
+.lp-why-benefits {
+  margin: 1.75rem 0;
+  display: grid;
+  gap: 1.4rem;
+}
+.lp-why-benefits dt {
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+}
+.lp-why-benefits dd {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--vp-c-text-2);
+}
+.lp-why-benefits a {
+  color: var(--vp-c-brand-1);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .lp-stack {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.6rem;
+  gap: 0.45rem;
 }
 .lp-stack li {
   position: relative;
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  padding: 0.8rem 1.1rem;
+  padding: 0.55rem 0.9rem;
   border-radius: 12px;
   background: var(--vp-c-bg);
   border: 1px solid var(--vp-c-divider);
@@ -1683,8 +1759,8 @@ a.lp-stack-name::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex: none;
   border-radius: 10px;
   color: var(--vp-c-brand-1);
@@ -2452,8 +2528,7 @@ a.lp-stack-name::after {
   .lp-hero {
     padding-top: calc(var(--vp-nav-height) + 2rem);
   }
-  /* Keep each spec name on one line; let the formal id stay inline and wrap to
-     a second line only when it genuinely doesn't fit.  Tighten the chip, gaps,
+  /* Let spec names and formal ids wrap when they don't fit. Tighten the chip, gaps,
      and row-gap so single-line rows stay compact and any wrapped row doesn't
      look bulky. */
   .lp-stack li {
@@ -2462,7 +2537,7 @@ a.lp-stack-name::after {
     padding: 0.65rem 0.85rem;
   }
   .lp-stack-name {
-    white-space: nowrap;
+    min-width: 0;
   }
   .lp-stack-icon {
     width: 30px;
@@ -2474,6 +2549,9 @@ a.lp-stack-name::after {
   }
   .lp-stack-spec {
     font-size: 0.68rem;
+  }
+  .lp-stack-go {
+    display: none;
   }
 }
 </style>
