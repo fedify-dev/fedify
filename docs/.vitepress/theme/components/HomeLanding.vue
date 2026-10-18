@@ -410,6 +410,13 @@ const taskCode = `<span class="c-kw">import</span> { z } <span class="c-kw">from
   since: <span class="c-kw">new</span> <span class="c-ty">Date</span>(),
 }, { delay: { minutes: <span class="c-ty">30</span> } });`;
 
+// Policy evaluation reports a decision for the application to act on.
+const interactionDecisions = [
+  { result: "automatic", desc: "Eligible for automatic approval." },
+  { result: "manual", desc: "Needs the owner's approval." },
+  { result: "denied", desc: "Not allowed by the policy." },
+];
+
 // A mock trace waterfall (real Fedify span names) for the observability visual.
 const traceSpans: { label: string; depth: number; start: number; width: number }[] = [
   { label: "activitypub.inbox", depth: 0, start: 0, width: 100 },
@@ -933,8 +940,66 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       </div>
     </section>
 
+    <!-- ==================== INTERACTION CONTROLS =================== -->
+    <section
+      class="lp-section lp-section-alt"
+      aria-labelledby="home-interactions-heading"
+    >
+      <div class="wrap lp-code-grid lp-interactions">
+        <div>
+          <p class="lp-kicker">Interaction controls</p>
+          <h2 id="home-interactions-heading" class="lp-h2">
+            Build interactions around consent
+          </h2>
+          <p class="lp-body">
+            Use <code>@fedify/interaction-controls</code> for likes, replies,
+            boosts, quotes, and featuring actors in recommendation collections.
+            Typed helpers evaluate policies and create and verify interaction
+            requests and authorizations.
+          </p>
+          <p class="lp-body">
+            The helpers support
+            <a
+              href="https://docs.gotosocial.org/en/stable/federation/interaction_controls/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >GoToSocial interaction controls</a>,
+            <a
+              class="lp-spec-link"
+              href="https://w3id.org/fep/044f"
+              target="_blank"
+              rel="noopener noreferrer"
+            >FEP-044f</a>
+            quote authorization, and
+            <a
+              class="lp-spec-link"
+              href="https://w3id.org/fep/7aa9"
+              target="_blank"
+              rel="noopener noreferrer"
+            >FEP-7aa9</a>
+            featured recommendation collections. Your application handles
+            delivery, storage, and moderation.
+          </p>
+          <a class="lp-textlink" href="/manual/interaction-controls">
+            Interaction controls guide →
+          </a>
+        </div>
+        <div class="lp-trace">
+          <div class="lp-trace-bar">
+            <span class="lp-trace-title">evaluatePolicy()</span>
+          </div>
+          <dl class="lp-policy-decisions" aria-label="Possible policy decisions">
+            <div v-for="decision in interactionDecisions" :key="decision.result">
+              <dt><code>{{ decision.result }}</code></dt>
+              <dd>{{ decision.desc }}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
     <!-- ======================== FRAMEWORKS ========================= -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap">
         <div class="lp-section-head">
           <p class="lp-kicker">Works with your stack</p>
@@ -993,7 +1058,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ===================== YOUR DATA / STORAGE ==================== -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap lp-narrow">
         <p class="lp-kicker">Your data, your schema</p>
         <h2 class="lp-h2">Fedify never owns your data model</h2>
@@ -1011,7 +1076,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ========================= INTEROP ============================ -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap lp-interop">
         <p class="lp-kicker">Plays well with others</p>
         <h2 class="lp-h2">Interoperates with the software people already use</h2>
@@ -1036,7 +1101,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ============================ CLI ============================= -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap lp-cli">
         <div class="lp-cli-copy">
           <p class="lp-kicker">Developer tooling</p>
@@ -1074,7 +1139,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ====================== OBSERVABILITY ========================= -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap lp-otel">
         <div class="lp-otel-copy">
           <p class="lp-kicker">Built for production</p>
@@ -1126,7 +1191,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ====================== ACTIVITYPUB API ====================== -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap lp-c2s">
         <div class="lp-c2s-copy">
           <p class="lp-kicker">ActivityPub API</p>
@@ -1159,7 +1224,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       </div>
     </section>
 
-    <section class="lp-section lp-section-alt" aria-labelledby="home-team-heading">
+    <section class="lp-section" aria-labelledby="home-team-heading">
       <div class="wrap">
         <div class="lp-section-head">
           <h2 id="home-team-heading" class="lp-h2">The people behind Fedify</h2>
@@ -1699,12 +1764,14 @@ a.lp-stack-name::after {
 
 /* ------------------------ Portable objects --------------------- */
 .lp-portable .lp-body a,
+.lp-interactions .lp-body a,
 .lp-portable .lp-kicker a {
   color: var(--vp-c-brand-1);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 .lp-portable .lp-body a:hover,
+.lp-interactions .lp-body a:hover,
 .lp-portable .lp-kicker a:hover {
   color: var(--vp-c-brand-2);
 }
@@ -1791,6 +1858,39 @@ a.lp-stack-name::after {
 }
 .lp-portable-gateway .lp-portable-label {
   font-weight: 400;
+}
+
+/* ---------------------- Interaction controls ------------------- */
+.lp-interactions .lp-spec-link {
+  white-space: nowrap;
+}
+.lp-interactions .lp-body code {
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+.lp-policy-decisions {
+  margin: 0;
+  padding: 0 1.5rem;
+}
+.lp-policy-decisions > div {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 1.5rem 0;
+}
+.lp-policy-decisions > div + div {
+  border-top: 1px solid var(--vp-c-divider);
+}
+.lp-policy-decisions dt code {
+  font-size: 0.85rem;
+  color: var(--vp-c-brand-1);
+}
+.lp-policy-decisions dd {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--vp-c-text-2);
 }
 
 /* ----------------------- Framework section --------------------- */
