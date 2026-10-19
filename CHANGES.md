@@ -8,6 +8,17 @@ Version 2.0.35
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed repeated HTTP signature verification and signing-key owner lookups
+    when a request context was checked concurrently with the same document
+    and context loaders.  Results of `null`, including failed lookups, are
+    now reused for those loaders within the request; checks that reject can
+    still be retried.  [[#1313], [#1315]]
+
+[#1313]: https://github.com/fedify-dev/fedify/issues/1313
+[#1315]: https://github.com/fedify-dev/fedify/pull/1315
+
 ### @fedify/postgres
 
  -  `PostgresKvStore` no longer scans the entire table for expired entries
