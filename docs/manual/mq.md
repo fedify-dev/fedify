@@ -194,6 +194,11 @@ it uses a table for maintaining the queue, and [`LISTEN`]/[`NOTIFY`] for
 real-time message delivery.  It's suitable for production use if you
 already rely on PostgreSQL in your application.
 
+The `handlerTimeout` option defaults to 60 seconds; set it to `{ seconds: 0 }`
+to disable it.  See
+[Handler timeouts and application cleanup](#handler-timeouts-and-application-cleanup)
+for what this limit covers.
+
 Best for
 :   Production use, a system that already uses PostgreSQL.
 
@@ -357,6 +362,11 @@ and MySQL advisory locks (`GET_LOCK`/`RELEASE_LOCK`).
 > interval, messages may take up to 1 second to be picked up.  You can
 > lower the `pollInterval` option to reduce this latency at the cost of
 > additional database load.
+
+The `handlerTimeout` option defaults to 60 seconds; set it to `{ seconds: 0 }`
+to disable it.  See
+[Handler timeouts and application cleanup](#handler-timeouts-and-application-cleanup)
+for what this limit covers.
 
 Best for
 :   Production use in systems that already use MySQL or MariaDB.
@@ -988,6 +998,125 @@ const federation = createFederation<void>({
 > accordingly—or use a dedicated pool for the queue.  See the
 > [*`PostgresMessageQueue`* section](#postgresmessagequeue) for details.
 
+`ParallelMessageQueue` starts a detached worker and returns from the wrapped
+queue's handler before that worker completes.  The wrapped queue's
+`handlerTimeout` therefore does not reliably bound the worker's execution.
+For backends that serialize ordering keys internally, returning from that
+callback lets another message with the same key run while the worker may
+still be active.
+A worker failure cannot reject a backend callback that has already returned,
+so native backend retries cannot be relied on for detached worker failures.
+Wrapping a queue does not cancel stuck handlers or prevent resource exhaustion.
+See
+[Handler timeouts and application cleanup](#handler-timeouts-and-application-cleanup).
+
+
+Handler timeouts and application cleanup
+----------------------------------------
+
+`PostgresMessageQueue` and `MysqlMessageQueue` have a `handlerTimeout` option
+that defaults to 60 seconds.  Set it to `{ seconds: 0 }` to disable the timeout,
+which is not recommended in production.  No other bundled backend provides
+this handler timeout.
+
+This is a limit on how long the queue waits, not on how long the handler runs.
+When it expires, the queue logs an error and stops waiting.  The handler can
+still finish a remote request, keep an application transaction open, or write
+to the database later.  When the message has an ordering key, the queue's
+cleanup releases its own advisory lock and connection.  It does not release a
+separate connection or transaction held by your application.  Releasing the
+lock also lets a later message with the same key run while the old handler is
+still active, so their side effects can overlap.
+
+Timeout expiry alone does not invoke a Fedify inbox error handler or a custom
+task's `onError`, and does not guarantee a retry of the dequeued message.
+Those paths run only if the handler itself throws or otherwise reaches their
+error handling, which may still happen after the timeout.  The queue timeout
+does not inject an exception into the handler.
+
+The [built-in document loader timeout](./context.md#timeouts) is a separate
+limit.  Since Fedify 2.4.0, it defaults to 10 seconds per call, shared across
+redirects, alternate links, retries, and response body reads.  Separate loader
+calls and recursive persistence do not automatically share an overall budget.
+A fetch timeout is not a database statement timeout.
+
+### Sharing an application budget
+
+Create one application-owned budget for a bounded unit of work, and reuse it
+throughout recursive calls.  This example walks at most 20 objects and four
+levels of reply targets, with an illustrative 30-second overall budget.
+Adjust these bounds to your workload.  The wrapped loader combines the
+budget with each caller's signal.  Pass it to every vocabulary accessor that
+fetches remote data:
+
+~~~~ typescript twoslash
+import type { DocumentLoader } from "@fedify/vocab-runtime";
+import { Object as ActivityObject } from "@fedify/vocab";
+
+async function visitReplies(
+  root: ActivityObject,
+  documentLoader: DocumentLoader,
+  contextLoader: DocumentLoader,
+): Promise<void> {
+  const budget = new AbortController();
+  const timer = setTimeout(() => budget.abort(new Error("Work budget expired")), 30_000);
+  const withBudget = (loader: DocumentLoader): DocumentLoader => async (url, options) => {
+    const call = new AbortController();
+    const caller = options?.signal;
+    const abortBudget = () => call.abort(budget.signal.reason);
+    const abortCaller = () => call.abort(caller?.reason);
+    budget.signal.addEventListener("abort", abortBudget, { once: true });
+    caller?.addEventListener("abort", abortCaller, { once: true });
+    try {
+      if (budget.signal.aborted) abortBudget();
+      else if (caller?.aborted) abortCaller();
+      call.signal.throwIfAborted();
+      return await loader(url, { ...options, signal: call.signal });
+    } finally {
+      budget.signal.removeEventListener("abort", abortBudget);
+      caller?.removeEventListener("abort", abortCaller);
+    }
+  };
+
+  const boundedLoader = withBudget(documentLoader);
+  const boundedContextLoader = withBudget(contextLoader);
+  let remaining = 19; // The root counts as the first object.
+  async function visit(object: ActivityObject, depth: number): Promise<void> {
+    budget.signal.throwIfAborted();
+    if (remaining <= 0 || depth >= 4) return;
+    for await (const reply of object.getReplyTargets({
+      documentLoader: boundedLoader,
+      contextLoader: boundedContextLoader,
+      suppressError: false,
+    })) {
+      budget.signal.throwIfAborted();
+      remaining--;
+      if (reply instanceof ActivityObject) await visit(reply, depth + 1);
+      if (remaining <= 0) break;
+    }
+  }
+
+  try {
+    await visit(root, 0);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+~~~~
+
+The timer and signal listeners are cleaned up explicitly.  Both document
+fetches and implicit remote JSON-LD context fetches share the same budget.
+For persistence, pass the budget to operations that support cancellation and
+check it before starting further work.  Release application connections in
+`finally`, and use your transaction API to commit or roll back transactions.
+Configure database statement timeouts separately where needed.
+
+Cancellation is cooperative: the operation or database driver must support it.
+An abort signal cannot forcibly stop unsupported operations, roll back
+completed writes, or replace transaction cleanup.  Fedify currently supplies
+no task execution signal; custom tasks must create and propagate their own
+budget too.
+
 
 Separating message processing from the main process
 ---------------------------------------------------
@@ -1257,10 +1386,13 @@ The following implementations support ordering keys:
 > When using `ParallelMessageQueue`, the ordering guarantee is preserved
 > only if the underlying queue delivers messages in wrapper format with the
 > ordering key embedded (currently `DenoKvMessageQueue` and
-> `WorkersMessageQueue`).  For other implementations, ordering is handled
-> internally by the queue itself, not by `ParallelMessageQueue`.
-> Messages with the same ordering key will never be processed concurrently,
-> ensuring sequential processing within each key.
+> `WorkersMessageQueue`).  For backends that serialize ordering keys internally,
+> serialization ends when the callback returns, before the detached worker
+> finishes.
+> With PostgreSQL and MySQL, a timed-out handler can continue after its
+> ordering lock is released.  Its side effects may overlap with the next
+> handler for that key.  See
+> [Handler timeouts and application cleanup](#handler-timeouts-and-application-cleanup).
 
 [^1]: `AmqpMessageQueue` requires the [`rabbitmq_consistent_hash_exchange`]
       plugin to be enabled on the RabbitMQ server.  This is a Tier 1 plugin that
