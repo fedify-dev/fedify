@@ -103,9 +103,14 @@ export interface PostgresMessageQueueOptions {
 
   /**
    * The maximum time to wait for a message handler to complete before
-   * considering it hung.  When a handler exceeds this timeout, it is
-   * treated as an error and the poll loop moves on to the next message,
-   * preventing a single hung handler from permanently blocking the queue.
+   * the queue moves on.  This is a soft timeout: the queue logs a timeout
+   * error and stops waiting, but cannot cancel the handler.  The handler
+   * continues running and may still produce side effects.
+   *
+   * The ordered-key path releases its advisory lock and reserved connection
+   * through its cleanup path.  This does not release connections or
+   * transactions held by application code.  A subsequent handler for the
+   * same key may run while the timed-out handler is still active.
    *
    * Set to zero to disable the timeout (not recommended in production).
    *

@@ -184,6 +184,14 @@ const sendDigest = federation.defineTask("sendDigest", {
 });
 ~~~~
 
+A queue's `handlerTimeout` only stops the queue from waiting; expiry alone
+does not invoke `onError` or guarantee a retry.  Fedify does not supply a task
+execution signal.  Create an application-owned budget and clean up your own
+connections and transactions as described in
+[Handler timeouts and application cleanup](./mq.md#handler-timeouts-and-application-cleanup).
+With `ParallelMessageQueue`, detached worker failures also cannot reliably
+trigger native backend retries after the backend callback has returned.
+
 Two failure cases are *dropped without retry*, because retrying cannot help:
 a message whose `taskName` has no registered handler (logged as a warning),
 and a payload that cannot be decoded or fails dequeue-time validation

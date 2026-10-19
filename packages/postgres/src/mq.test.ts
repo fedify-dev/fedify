@@ -1334,9 +1334,9 @@ nodeTest(
 // pending promise and also never execute, permanently halting all message
 // processing.
 //
-// This test verifies that with handlerTimeout configured, a hung handler is
-// aborted after the timeout, allowing the poll loop to recover and process
-// subsequent messages.
+// This test verifies that with handlerTimeout configured, the queue stops
+// waiting for a hung handler, allowing the poll loop to recover and process
+// subsequent messages.  The timeout does not terminate the handler.
 //
 // See: https://github.com/fedify-dev/fedify/issues/595
 nodeTest(
