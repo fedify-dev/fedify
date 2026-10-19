@@ -173,6 +173,13 @@ done
 description = "Check that Deno preserves pnpm links and package packing"
 run = "node scripts/test_pack.mjs"
 
+[tasks."test:testing:pack"]
+description = "Check @fedify/testing tarballs in isolated Node.js and Bun consumers"
+run = """
+pnpm --filter @fedify/testing build
+node scripts/test_testing_pack.mjs
+"""
+
 [tasks."test:deno"]
 description = "Run the test suite using Deno"
 depends = ["prepare"]
