@@ -4,8 +4,9 @@ links:
   '#1314': https://github.com/fedify-dev/fedify/pull/1314
 ---
  -  `PostgresKvStore` no longer scans the entire table for expired entries
-    after every write.  Cleanup now runs in batches of up to 1,000 rows,
-    with a delay between attempts that shortens after a full batch.  Store
+    after every write.  Cleanup now deletes up to 1,000 rows per batch,
+    including across partitioned or inherited tables, with a delay between
+    attempts that shortens after a full batch.  Store
     instances sharing a table do not sweep it concurrently. With a pooled
     client, writes no longer wait for cleanup, and a cleanup failure no longer
     fails the write. Caller-owned transactions and reserved connections still

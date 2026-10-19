@@ -710,3 +710,112 @@ test(
     }
   },
 );
+
+for (const layout of ["partitioned", "inherited"] as const) {
+  test(
+    `PostgresKvStore bounds expiry across ${layout} tables with overlapping CTIDs`,
+    {
+      ignore: !dbUrl,
+    },
+    async () => {
+      if (!dbUrl) return;
+      const time = clock();
+      const sql = postgres(dbUrl);
+      const tableName = `fedify_kv_children_${
+        crypto.randomUUID().replaceAll("-", "")
+      }`;
+      const children = [`${tableName}_a`, `${tableName}_b`];
+      const observed = observe(sql);
+      const store = new PostgresKvStore(observed.sql, {
+        tableName,
+        initialized: true,
+      });
+      try {
+        if (layout === "partitioned") {
+          await sql`CREATE TABLE ${sql(tableName)} (
+          key text[], value jsonb NOT NULL, created timestamptz, ttl interval
+        ) PARTITION BY RANGE (created)`;
+          await sql`CREATE TABLE ${sql(children[0])} PARTITION OF ${
+            sql(tableName)
+          }
+          FOR VALUES FROM (MINVALUE) TO ('2000-01-01')`;
+          await sql`CREATE TABLE ${sql(children[1])} PARTITION OF ${
+            sql(tableName)
+          }
+          FOR VALUES FROM ('2000-01-01') TO (MAXVALUE)`;
+        } else {
+          await sql`CREATE TABLE ${sql(tableName)} (
+          key text[], value jsonb NOT NULL, created timestamptz, ttl interval
+        )`;
+          for (const child of children) {
+            await sql`CREATE TABLE ${sql(child)} () INHERITS (${
+              sql(tableName)
+            })`;
+          }
+        }
+        for (const [i, child] of children.entries()) {
+          await sql`INSERT INTO ${sql(child)} (key, value, created, ttl)
+          SELECT ARRAY[n::text], '1'::jsonb, ${
+            i ? "2001-01-01" : "1999-01-01"
+          }::timestamptz,
+            INTERVAL '1 day' FROM generate_series(1, 1500) n`;
+        }
+        const [overlap] = await sql`SELECT count(*)::int AS count
+        FROM ${sql(children[0])} a JOIN ${
+          sql(children[1])
+        } b ON a.ctid = b.ctid`;
+        assert.equal(
+          overlap.count,
+          1500,
+          "child tables must share physical tuple IDs",
+        );
+        for (const expected of [2000, 1000, 0]) {
+          await store.delete(["missing"]);
+          await observed.complete();
+          const [remaining] = await sql`SELECT count(*)::int AS count FROM ${
+            sql(tableName)
+          }`;
+          assert.equal(
+            remaining.count,
+            expected,
+            "each sweep deletes exactly one batch across all children",
+          );
+          time.advance(2100);
+        }
+        // The parent relation, rather than whichever child has rows first,
+        // identifies the shared lock, even after one child has been drained.
+        await sql`INSERT INTO ${sql(children[1])} (key, value, created, ttl)
+        VALUES (ARRAY['locked'], '1', '2001-01-01', INTERVAL '1 day')`;
+        time.advance(121_000);
+        await sql.begin(async (transaction) => {
+          const tx = transaction as unknown as postgres.Sql;
+          await tx`SELECT pg_advisory_xact_lock(
+          (hashtext('fedify.postgres.kv.expire')::bigint << 32) |
+          ${tableName}::regclass::oid::bigint
+        )`;
+          await store.delete(["missing"]);
+          await observed.complete();
+          const [retained] = await sql`SELECT count(*)::int AS count FROM ${
+            sql(tableName)
+          }`;
+          assert.equal(
+            retained.count,
+            1,
+            "a parent lock must gate all child scans",
+          );
+        });
+        time.advance(121_000);
+        await store.delete(["missing"]);
+        await observed.complete();
+        const [cleaned] = await sql`SELECT count(*)::int AS count FROM ${
+          sql(tableName)
+        }`;
+        assert.equal(cleaned.count, 0);
+      } finally {
+        await sql`DROP TABLE IF EXISTS ${sql(tableName)} CASCADE`;
+        await sql.end();
+        time.restore();
+      }
+    },
+  );
+}

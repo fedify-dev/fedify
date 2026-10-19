@@ -109,24 +109,29 @@ export class PostgresKvStore implements KvStore {
   }
 
   async #sweep(): Promise<number> {
-    // Resolve the physical table through the driver's identifier transform.
+    // Resolve the logical table through its row type so partitions and
+    // inheritance children share one lock, respecting identifier transforms.
     // The bigint lock namespace is separate from the queue's two-int locks.
-    // A scalar lock check gates the expiry scan; ARRAY keeps deletion on a TID
-    // lookup instead of a join that may scan the entire table a second time.
+    // CTIDs overlap across child tables, so check tableoid too.  Keep the CTID
+    // array to allow TID lookups instead of a second full-table join scan.
     const [result] = await this.#sql<{ count: number }[]>`
       WITH sweep_lock AS MATERIALIZED (
         SELECT pg_try_advisory_xact_lock(
           (hashtext('fedify.postgres.kv.expire')::bigint << 32) |
-          (SELECT tableoid::bigint FROM ${this.#sql(this.#tableName)} LIMIT 1)
+          (SELECT typrelid::bigint FROM pg_catalog.pg_type
+           WHERE oid = pg_typeof(NULL::${this.#sql(this.#tableName)})::oid)
         ) AS acquired
+      ), candidates AS MATERIALIZED (
+        SELECT tableoid AS relation, ctid AS tid
+        FROM ${this.#sql(this.#tableName)}
+        WHERE (SELECT acquired FROM sweep_lock)
+          AND ttl IS NOT NULL AND created + ttl < statement_timestamp()
+        LIMIT ${expiryBatchSize} FOR UPDATE SKIP LOCKED
       ), deleted AS (
         DELETE FROM ${this.#sql(this.#tableName)}
-        WHERE ctid = ANY(ARRAY(
-          SELECT ctid FROM ${this.#sql(this.#tableName)}
-          WHERE (SELECT acquired FROM sweep_lock)
-            AND ttl IS NOT NULL AND created + ttl < statement_timestamp()
-          LIMIT ${expiryBatchSize} FOR UPDATE SKIP LOCKED
-        )) AND ttl IS NOT NULL AND created + ttl < statement_timestamp()
+        WHERE ctid = ANY(ARRAY(SELECT tid FROM candidates))
+          AND (tableoid, ctid) IN (SELECT relation, tid FROM candidates)
+          AND ttl IS NOT NULL AND created + ttl < statement_timestamp()
         RETURNING 1
       )
       SELECT count(*)::int AS count FROM deleted;
