@@ -449,44 +449,45 @@ test("PostgresKvStore expiry respects transformed table identifiers", {
   }
 });
 
-test("PostgresKvStore transaction mutations await shared cleanup and preserve errors", async () => {
-  const time = clock();
-  const gate = Promise.withResolvers<void>();
-  const recording = recordingSql(() => gate.promise);
-  // postgres.js identifies its transaction-scoped clients with this method.
-  // It must not be called: adding a savepoint could encompass other tx writes.
-  Object.assign(recording.sql, {
-    savepoint() {
-      throw new Error("unexpected savepoint");
-    },
-  });
-  const store = new PostgresKvStore(recording.sql, { initialized: true });
-  const mutations: Promise<void>[] = [];
-  let outcomes: Promise<PromiseSettledResult<void>[]> | undefined;
-  try {
-    await store.initialize();
-    mutations.push(store.set(["first"], true), store.delete(["second"]));
-    let settled = false;
-    outcomes = Promise.allSettled(mutations).then((result) => {
-      settled = true;
-      return result;
+for (const method of ["savepoint", "release"] as const) {
+  test(`PostgresKvStore ${method} clients await shared cleanup and preserve errors`, async () => {
+    const time = clock();
+    const gate = Promise.withResolvers<void>();
+    const recording = recordingSql(() => gate.promise);
+    // Detect caller ownership without invoking savepoint() or release().
+    Object.assign(recording.sql, {
+      [method]() {
+        throw new Error(`unexpected ${method}`);
+      },
     });
-    await delay(0);
-    assert.equal(recording.sweeps, 1);
-    assert.equal(settled, false, "transaction work must wait for cleanup");
-    const failure = new Error("transaction cleanup failed");
-    gate.reject(failure);
-    for (const result of await outcomes) {
-      assert.equal(result.status, "rejected");
-      if (result.status === "rejected") assert.equal(result.reason, failure);
+    const store = new PostgresKvStore(recording.sql, { initialized: true });
+    const mutations: Promise<void>[] = [];
+    let outcomes: Promise<PromiseSettledResult<void>[]> | undefined;
+    try {
+      await store.initialize();
+      mutations.push(store.set(["first"], true), store.delete(["second"]));
+      let settled = false;
+      outcomes = Promise.allSettled(mutations).then((result) => {
+        settled = true;
+        return result;
+      });
+      await delay(0);
+      assert.equal(recording.sweeps, 1);
+      assert.equal(settled, false, "transaction work must wait for cleanup");
+      const failure = new Error("transaction cleanup failed");
+      gate.reject(failure);
+      for (const result of await outcomes) {
+        assert.equal(result.status, "rejected");
+        if (result.status === "rejected") assert.equal(result.reason, failure);
+      }
+    } finally {
+      gate.resolve();
+      await outcomes;
+      await store.drop();
+      time.restore();
     }
-  } finally {
-    gate.resolve();
-    await outcomes;
-    await store.drop();
-    time.restore();
-  }
-});
+  });
+}
 
 test("PostgresKvStore never reports a rolled-back transaction as successful", {
   ignore: !dbUrl,
@@ -637,6 +638,72 @@ test(
           assert.deepEqual(entries, []);
         }
       });
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
+
+test(
+  "PostgresKvStore reserved clients propagate manual transaction cleanup errors",
+  {
+    ignore: !dbUrl,
+  },
+  async () => {
+    if (!dbUrl) return;
+    const { sql, tableName, store } = database();
+    const key = ["reserved"] as const;
+    try {
+      await store.initialize();
+      await store.set(key, "original");
+      for (const mutation of ["set", "delete"] as const) {
+        const reserved = await sql.reserve();
+        try {
+          await reserved`BEGIN`;
+          const failingCleanup = new Proxy(reserved, {
+            apply(target, thisArg, args) {
+              if (
+                Array.isArray(args[0]) &&
+                args[0].join("").includes("pg_try_advisory_xact_lock")
+              ) {
+                return reserved`SELECT 1 / 0`;
+              }
+              return Reflect.apply(target, thisArg, args);
+            },
+          });
+          const reservedStore = new PostgresKvStore(failingCleanup, {
+            tableName,
+            initialized: true,
+          });
+          await assert.rejects(
+            mutation === "set"
+              ? reservedStore.set(key, "must roll back")
+              : reservedStore.delete(key),
+            { code: "22012" },
+          );
+          const committed = await reserved`COMMIT`;
+          assert.equal(committed.command, "ROLLBACK");
+          assert.equal(await store.get(key), "original");
+        } finally {
+          await reserved`ROLLBACK`;
+          reserved.release();
+        }
+      }
+      const reserved = await sql.reserve();
+      try {
+        await reserved`BEGIN`;
+        const reservedStore = new PostgresKvStore(reserved, {
+          tableName,
+          initialized: true,
+        });
+        await reservedStore.set(key, "committed");
+        await reserved`COMMIT`;
+        assert.equal(await store.get(key), "committed");
+      } finally {
+        await reserved`ROLLBACK`;
+        reserved.release();
+      }
     } finally {
       await store.drop();
       await sql.end();

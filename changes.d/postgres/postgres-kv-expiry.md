@@ -8,9 +8,10 @@ links:
     with a delay between attempts that shortens after a full batch.  Store
     instances sharing a table do not sweep it concurrently. With a pooled
     client, writes no longer wait for cleanup, and a cleanup failure no longer
-    fails the write. Caller-owned transactions still await cleanup and
-    propagate its errors to avoid hiding a rollback.  Reads continue to exclude
-    expired entries before physical deletion.  [[#1308], [#1314]]
+    fails the write. Caller-owned transactions and reserved connections still
+    await cleanup and propagate its errors to avoid hiding a rollback.  Reads
+    continue to exclude expired entries before physical deletion.
+    [[#1308], [#1314]]
  -  Fixed `PostgresKvStore.set()` retaining an old creation time when
     replacing an existing key.  TTLs are now measured from the SQL statement
     clock on both insert and update, and expiration checks use that same clock

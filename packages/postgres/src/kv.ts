@@ -77,12 +77,14 @@ export class PostgresKvStore implements KvStore {
   }
 
   #expire(): Promise<void> | void {
-    // A caller-owned transaction cannot outlive its housekeeping.  Catching a
+    // A caller-owned connection cannot outlive its housekeeping.  Catching a
     // detached SQL error would still abort it and could hide a rollback.
-    // Its cleanup locks remain held until the caller ends the transaction.
-    const transactional = "savepoint" in this.#sql &&
-      typeof this.#sql.savepoint === "function";
-    if (this.#expiring) return transactional ? this.#expiring : undefined;
+    // Reserved clients may run manual transactions without savepoint().
+    // Cleanup locks remain held until the caller ends the transaction.
+    const callerOwned = ("savepoint" in this.#sql &&
+      typeof this.#sql.savepoint === "function") ||
+      ("release" in this.#sql && typeof this.#sql.release === "function");
+    if (this.#expiring) return callerOwned ? this.#expiring : undefined;
     if (performance.now() < this.#nextExpiry) return;
     this.#expiring = (async () => {
       let interval = expiryInterval;
@@ -91,7 +93,7 @@ export class PostgresKvStore implements KvStore {
           interval = expiryCatchUpInterval;
         }
       } catch (error) {
-        if (transactional) throw error;
+        if (callerOwned) throw error;
         logger.warn("Failed to expire keys in {tableName}: {error}", {
           tableName: this.#tableName,
           error,
@@ -103,7 +105,7 @@ export class PostgresKvStore implements KvStore {
         this.#expiring = undefined;
       }
     })();
-    return transactional ? this.#expiring : undefined;
+    return callerOwned ? this.#expiring : undefined;
   }
 
   async #sweep(): Promise<number> {
