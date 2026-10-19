@@ -10,6 +10,10 @@ import { driverSerializesJson } from "./utils.ts";
 
 const logger = getLogger(["fedify", "postgres", "kv"]);
 
+const expiryBatchSize = 1000;
+const expiryInterval = 60_000;
+const expiryCatchUpInterval = 1000;
+
 /**
  * Options for the PostgreSQL key–value store.
  */
@@ -54,6 +58,8 @@ export class PostgresKvStore implements KvStore {
   readonly #skipDdl: boolean;
   #initialized = false;
   #driverSerializesJson = false;
+  #expiring?: Promise<void>;
+  #nextExpiry = 0;
 
   /**
    * Creates a new PostgreSQL key–value store.
@@ -70,11 +76,60 @@ export class PostgresKvStore implements KvStore {
     this.#skipDdl = options.initialized ?? false;
   }
 
-  async #expire(): Promise<void> {
-    await this.#sql`
-      DELETE FROM ${this.#sql(this.#tableName)}
-      WHERE ttl IS NOT NULL AND created + ttl < CURRENT_TIMESTAMP;
+  #expire(): Promise<void> | void {
+    // A caller-owned transaction cannot outlive its housekeeping.  Catching a
+    // detached SQL error would still abort it and could hide a rollback.
+    // Its cleanup locks remain held until the caller ends the transaction.
+    const transactional = "savepoint" in this.#sql &&
+      typeof this.#sql.savepoint === "function";
+    if (this.#expiring) return transactional ? this.#expiring : undefined;
+    if (performance.now() < this.#nextExpiry) return;
+    this.#expiring = (async () => {
+      let interval = expiryInterval;
+      try {
+        if (await this.#sweep() === expiryBatchSize) {
+          interval = expiryCatchUpInterval;
+        }
+      } catch (error) {
+        if (transactional) throw error;
+        logger.warn("Failed to expire keys in {tableName}: {error}", {
+          tableName: this.#tableName,
+          error,
+        });
+      } finally {
+        // Back off after failures and lock misses too.  Jitter spreads work
+        // across stores; the database lock prevents overlapping table scans.
+        this.#nextExpiry = performance.now() + interval * (1 + Math.random());
+        this.#expiring = undefined;
+      }
+    })();
+    return transactional ? this.#expiring : undefined;
+  }
+
+  async #sweep(): Promise<number> {
+    // Resolve the physical table through the driver's identifier transform.
+    // The bigint lock namespace is separate from the queue's two-int locks.
+    // A scalar lock check gates the expiry scan; ARRAY keeps deletion on a TID
+    // lookup instead of a join that may scan the entire table a second time.
+    const [result] = await this.#sql<{ count: number }[]>`
+      WITH sweep_lock AS MATERIALIZED (
+        SELECT pg_try_advisory_xact_lock(
+          (hashtext('fedify.postgres.kv.expire')::bigint << 32) |
+          (SELECT tableoid::bigint FROM ${this.#sql(this.#tableName)} LIMIT 1)
+        ) AS acquired
+      ), deleted AS (
+        DELETE FROM ${this.#sql(this.#tableName)}
+        WHERE ctid = ANY(ARRAY(
+          SELECT ctid FROM ${this.#sql(this.#tableName)}
+          WHERE (SELECT acquired FROM sweep_lock)
+            AND ttl IS NOT NULL AND created + ttl < statement_timestamp()
+          LIMIT ${expiryBatchSize} FOR UPDATE SKIP LOCKED
+        )) AND ttl IS NOT NULL AND created + ttl < statement_timestamp()
+        RETURNING 1
+      )
+      SELECT count(*)::int AS count FROM deleted;
     `;
+    return result.count;
   }
 
   async get<T = unknown>(key: KvKey): Promise<T | undefined> {
@@ -82,7 +137,7 @@ export class PostgresKvStore implements KvStore {
     const result = await this.#sql`
       SELECT value
       FROM ${this.#sql(this.#tableName)}
-      WHERE key = ${key} AND (ttl IS NULL OR created + ttl > CURRENT_TIMESTAMP);
+      WHERE key = ${key} AND (ttl IS NULL OR created + ttl > statement_timestamp());
     `;
     if (result.length < 1) return undefined;
     return result[0].value as T;
@@ -101,14 +156,18 @@ export class PostgresKvStore implements KvStore {
       ? this.#sql`'null'::jsonb`
       : this.#json(value);
     await this.#sql`
-      INSERT INTO ${this.#sql(this.#tableName)} (key, value, ttl)
+      INSERT INTO ${this.#sql(this.#tableName)} (key, value, created, ttl)
       VALUES (
         ${key},
         ${jsonValue},
+        statement_timestamp(),
         ${ttl}
       )
       ON CONFLICT (key)
-        DO UPDATE SET value = EXCLUDED.value, ttl = EXCLUDED.ttl;
+        DO UPDATE SET
+          value = EXCLUDED.value,
+          created = statement_timestamp(),
+          ttl = EXCLUDED.ttl;
     `;
     await this.#expire();
   }
@@ -134,7 +193,7 @@ export class PostgresKvStore implements KvStore {
       results = await this.#sql`
         SELECT key, value
         FROM ${this.#sql(this.#tableName)}
-        WHERE ttl IS NULL OR created + ttl > CURRENT_TIMESTAMP
+        WHERE ttl IS NULL OR created + ttl > statement_timestamp()
         ORDER BY key
       `;
     } else {
@@ -144,7 +203,7 @@ export class PostgresKvStore implements KvStore {
         FROM ${this.#sql(this.#tableName)}
         WHERE array_length(key, 1) >= ${prefixLength}
           AND key[1:${prefixLength}] = ${prefix}::text[]
-          AND (ttl IS NULL OR created + ttl > CURRENT_TIMESTAMP)
+          AND (ttl IS NULL OR created + ttl > statement_timestamp())
         ORDER BY key
       `;
     }
@@ -190,6 +249,7 @@ export class PostgresKvStore implements KvStore {
    * does not exist.
    */
   async drop(): Promise<void> {
+    await this.#expiring;
     await this.#sql`DROP TABLE IF EXISTS ${this.#sql(this.#tableName)};`;
   }
 
