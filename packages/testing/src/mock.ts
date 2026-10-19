@@ -464,8 +464,9 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       })
       : activity;
     if (receivedActivity !== activity) {
-      // clone() drops the parsed JSON-LD cache.  Preserve it so listeners can
-      // serialize the received document without losing unknown extensions.
+      // _cachedJsonLd is an internal cross-package contract documented in
+      // @fedify/vocab-tools.  clone() drops this cache, so preserve it to keep
+      // unknown extensions when listeners serialize the received document.
       Reflect.set(
         receivedActivity,
         "_cachedJsonLd",
