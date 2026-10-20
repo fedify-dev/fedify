@@ -1468,9 +1468,15 @@ importers:
       '@fedify/vocab':
         specifier: workspace:^
         version: link:../vocab
+      '@fedify/vocab-runtime':
+        specifier: workspace:^
+        version: link:../vocab-runtime
       '@js-temporal/polyfill':
         specifier: 'catalog:'
         version: 0.5.1
+      '@opentelemetry/api':
+        specifier: 'catalog:'
+        version: 1.9.0
       es-toolkit:
         specifier: 'catalog:'
         version: 1.43.0
@@ -1478,9 +1484,6 @@ importers:
       '@fedify/fixture':
         specifier: workspace:^
         version: link:../fixture
-      '@fedify/vocab-runtime':
-        specifier: workspace:^
-        version: link:../vocab-runtime
       '@std/assert':
         specifier: 'catalog:'
         version: '@jsr/std__assert@1.0.13'

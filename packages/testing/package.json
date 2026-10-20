@@ -54,12 +54,13 @@
   },
   "dependencies": {
     "@fedify/vocab": "workspace:^",
+    "@fedify/vocab-runtime": "workspace:^",
     "@js-temporal/polyfill": "catalog:",
+    "@opentelemetry/api": "catalog:",
     "es-toolkit": "catalog:"
   },
   "devDependencies": {
     "@fedify/fixture": "workspace:^",
-    "@fedify/vocab-runtime": "workspace:^",
     "@std/assert": "catalog:",
     "@std/async": "catalog:",
     "tsdown": "catalog:",
