@@ -1,5 +1,9 @@
 import type { InboxRequestReport } from "./inbox-report.ts";
-import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import {
   type Activity,
   Create,
@@ -16,7 +20,14 @@ import {
   parseIri,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
-import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertExists,
+  assertFalse,
+  assertNotEquals,
+  assertThrows,
+} from "@std/assert";
 import { encodeBase64 } from "byte-encodings/base64";
 import fetchMock from "fetch-mock";
 import { signRequest, verifyRequestDetailed } from "../sig/http.ts";
@@ -883,6 +894,80 @@ test("forwardPortableInboxActivity() does not wait for slow gateways", async () 
   }
 });
 
+test(
+  "forwardPortableInboxActivity() preserves a send's real outcome and " +
+    "deliveryId for a gateway that completes after the deadline",
+  async () => {
+    fetchMock.spyGlobal();
+    let release: () => void = () => {};
+    const pending = new Promise<void>((resolve) => release = resolve);
+    fetchMock.post(`begin:${GATEWAY2}/`, async () => {
+      await pending;
+      return new Response("", { status: 202 });
+    });
+    try {
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const kv = new MemoryKvStore();
+      const activityId = parseIri(`ap+ef61://${did}/follows/late-success`);
+      const parameters = {
+        recipient: {
+          actorId: parseIri(`ap+ef61://${did}/users/alice`),
+          inboxId: parseIri(`ap+ef61://${did}/users/alice/inbox`),
+          canonicalInboxId: `ap://${did}/users/alice/inbox`,
+          gateways: [new URL(LOCAL), new URL(GATEWAY2)],
+        },
+        activity: { id: formatIri(activityId) },
+        activityId,
+        activityType: "https://www.w3.org/ns/activitystreams#Follow",
+        excludedOrigins: [LOCAL],
+        baseUrl: LOCAL,
+        kv,
+        kvPrefix: ["_fedify", "portableInboxForwarding"],
+        tracerProvider,
+        options: resolvePortableInboxForwardingOptions({
+          deadline: { milliseconds: 10 },
+        }),
+        // The mocked gateway is not resolved:
+        allowPrivateAddress: true,
+      } as const;
+
+      // The call returns once the deadline passes, before the gateway
+      // responds at all; no outcome is recorded yet, let alone a
+      // fabricated failure:
+      await forwardPortableInboxActivity(parameters);
+      assertEquals(exporter.getSpans("activitypub.send_activity").length, 0);
+
+      // Once the gateway actually responds, the real outcome (success)
+      // is recorded, under the same deliveryId the call already used:
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      const spans = exporter.getSpans("activitypub.send_activity");
+      assertEquals(spans.length, 1);
+      assertEquals(
+        exporter.getEvents(
+          "activitypub.send_activity",
+          "activitypub.activity.sent",
+        ).length,
+        1,
+      );
+      assertEquals(
+        exporter.getEvents(
+          "activitypub.send_activity",
+          "activitypub.activity.send_failed",
+        ).length,
+        0,
+      );
+      assertExists(spans[0].attributes["activitypub.delivery.id"]);
+      assertEquals(
+        spans[0].attributes["activitypub.delivery.kind"],
+        "replication",
+      );
+    } finally {
+      fetchMock.hardReset();
+    }
+  },
+);
+
 // Compatible-ID actors
 
 function compatibleAlice(
@@ -1041,6 +1126,59 @@ test("forwardPortableInboxActivity() deduplicates compatible activity IDs", asyn
   }
   assertEquals(queue.outbox.length, 1);
 });
+
+test(
+  "forwardPortableInboxActivity() gives each replicated gateway its own " +
+    "deliveryId, sharing one broadcastId (queued)",
+  async () => {
+    const queue = new RecordingQueue();
+    const forwarded = await forwardPortableInboxActivity(
+      forwardingParameters({
+        recipient: {
+          actorId: aliceId,
+          inboxId: parseIri(`ap+ef61://${did}/users/alice/inbox`),
+          canonicalInboxId: `ap://${did}/users/alice/inbox`,
+          gateways: [new URL(LOCAL), new URL(GATEWAY2), new URL(GATEWAY3)],
+        },
+        outboxQueue: queue,
+      }),
+    );
+    assertEquals(forwarded.length, 2);
+    assertEquals(queue.outbox.length, 2);
+    const [first, second] = queue.outbox;
+    assertEquals(first.deliveryKind, "replication");
+    assertEquals(second.deliveryKind, "replication");
+    assertExists(first.deliveryId);
+    assertExists(second.deliveryId);
+    assertNotEquals(first.deliveryId, second.deliveryId);
+    assertExists(first.broadcastId);
+    assertEquals(first.broadcastId, second.broadcastId);
+  },
+);
+
+test(
+  "forwardPortableInboxActivity() gives each replicated gateway its own " +
+    "deliveryId, sharing one broadcastId (immediate)",
+  async () => {
+    const requests = captureGatewayRequests();
+    try {
+      const forwarded = await forwardPortableInboxActivity(
+        forwardingParameters({
+          recipient: {
+            actorId: aliceId,
+            inboxId: parseIri(`ap+ef61://${did}/users/alice/inbox`),
+            canonicalInboxId: `ap://${did}/users/alice/inbox`,
+            gateways: [new URL(LOCAL), new URL(GATEWAY2), new URL(GATEWAY3)],
+          },
+        }),
+      );
+      assertEquals(forwarded.length, 2);
+    } finally {
+      fetchMock.hardReset();
+    }
+    assertEquals(requests.length, 2);
+  },
+);
 
 // Gateway keys
 
