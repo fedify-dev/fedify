@@ -46,4 +46,26 @@ links:
     `TraceSummary` gained a matching `outboundWorkerCount`, so a trace whose
     every execution was held or dropped is still listed by
     `~FedifySpanExporter.getRecentTraces()` even though its `activityCount`
-    is `0`.  [[#1257] by Yujin Jung]
+    is `0`.  A queued delivery retrying across more than one of a portable
+    actor's gateways in a single round now produces this kind of record
+    too, which it previously did not.
+ -  Added `broadcastId` and `deliveryId` to `TraceActivityRecord` and
+    `TraceOutboundWorkerRecord`.  `broadcastId` is shared by every
+    delivery a single `Context.sendActivity()` or
+    `~Context.forwardActivity()` call fanned out into; `deliveryId` is
+    shared by every attempt and worker execution for one deduplicated
+    destination, staying the same across a retry, a circuit-breaker
+    hold, and a change to which of a portable actor's gateways is being
+    tried. Both are absent on a record from a delivery that an older
+    version of Fedify started and is still being retried after an
+    upgrade.
+ -  Added `deliveryKind`, `destinationInbox`, and `portableInbox` to
+    `TraceActivityRecord`.  `deliveryKind` distinguishes an ordinary
+    delivery falling back across a portable actor's gateways
+    (`"fallback"`, the default) from a FEP-ef61 gateway's own
+    independent forwarding of a received activity to the actor's other
+    gateways (`"replication"`), where every gateway must receive its
+    own copy. `destinationInbox` stays the same across attempts at the
+    same delivery that try different gateways, unlike `inboxUrl`;
+    `portableInbox` is set only when the destination is a portable
+    actor. [[#1257] by Yujin Jung]

@@ -1374,6 +1374,9 @@ Each `TraceActivityRecord` contains:
     native queue redelivery can leave it unchanged, and a single round can
     run more than one attempt when trying a portable actor's gateways.
     Absent for an immediate send that never went through a queue
+ -  `destinationInbox`, `portableInbox`, `broadcastId`, `deliveryId`,
+    `deliveryKind` (optional, for outbound activities): See
+    [Broadcasts and deliveries](#broadcasts-and-deliveries) below
 
 ### Outbound delivery attempts
 
@@ -1437,12 +1440,78 @@ contains:
  -  `activityType` (optional): The ActivityPub activity type, if known
  -  `queueAttempt` (optional): The outbox queue's own retry round for this
     execution
+ -  `broadcastId`, `deliveryId` (optional): See
+    [Broadcasts and deliveries](#broadcasts-and-deliveries) below
  -  `timestamp`: ISO 8601 timestamp
 
 A trace whose every worker execution was held or dropped has no
 `TraceActivityRecord` at all, and so an `activityCount` of `0`, but is
 still listed by `getRecentTraces()`: `TraceSummary` gained a matching
 `outboundWorkerCount` field, counted the same way `activityCount` is.
+A queued delivery that still has more than one of a portable actor's
+gateways left to try produces this kind of record too when a round
+holds or drops it before trying any gateway, or after trying only
+some of them and holding the rest for later; `attemptsStarted` is the
+number of gateways that round actually tried.
+
+### Broadcasts and deliveries
+
+*This behavior is available since Fedify 2.5.0.*
+
+A single `Context.sendActivity()` or `~Context.forwardActivity()` call
+is a *broadcast*: it resolves a recipient list into one or more
+deduplicated destinations and fans the activity out to each. Each of
+those deduplicated destinations is a *delivery*, which may be retried,
+held by the circuit breaker, or redelivered by the queue's own native
+retry one or more times before it succeeds, exhausts its retries, or
+fails permanently.
+
+`TraceActivityRecord` and `TraceOutboundWorkerRecord` carry two IDs
+that correlate attempts and worker executions along these two axes:
+
+ -  `broadcastId`: Shared by every delivery, attempt, and worker
+    execution that a single `sendActivity()`/`forwardActivity()` call
+    fanned out into.
+ -  `deliveryId`: Shared by every attempt and worker execution for one
+    deduplicated destination, stable across a retry, a circuit-breaker
+    hold, and a change to which of a portable actor's gateways is
+    being tried.
+
+`TraceActivityRecord` additionally carries:
+
+ -  `deliveryKind`: `"fallback"` (the default) for an ordinary
+    delivery that tries a portable actor's gateways in order until one
+    accepts, or `"replication"` for a FEP-ef61 gateway's own
+    independent forwarding of a received activity to the actor's
+    other gateways, where each gateway must receive its own copy
+    rather than just one of them accepting on the others' behalf.
+ -  `destinationInbox`: The identity of the attempt's destination that
+    stays the same across every attempt at the same delivery, even one
+    that tries a different gateway than an earlier attempt did. This
+    is the canonical portable inbox when `portableInbox` is set, or
+    `inboxUrl` otherwise.
+ -  `portableInbox` (optional): The canonical FEP-ef61 portable inbox
+    that `inboxUrl` is a compatible identifier of, set only when the
+    destination is a portable actor.
+
+Both IDs are absent on a record from a delivery that a version of
+Fedify older than 2.5.0 started and that is still being retried after
+an upgrade, since the queued message it was retried from predates
+these fields. Grouping such a delivery's earlier and later attempts by
+`broadcastId`/`deliveryId` is not possible; `OutboxMessage.id`, which
+*is* stable across those same retries even on older messages, is the
+closest available grouping key, though it is not exposed on
+`TraceActivityRecord` and does not identify the broadcast a delivery
+came from. A deployment that mixes Fedify versions during a rolling
+upgrade should expect this gap for deliveries in flight at upgrade
+time, not for ones started afterward.
+
+A FEP-ef61 relay forwarding an activity immediately rather than
+through a queue bounds how long it waits for every gateway to finish,
+not the forwarding itself: a send still in flight when that deadline
+passes keeps running and is recorded with whatever it actually
+resolves to, success or failure, rather than being reported as failed
+just because the call stopped waiting for it.
 
 ### Configuration options
 

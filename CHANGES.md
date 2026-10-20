@@ -57,11 +57,25 @@ To be released.
     `"failed"`, and, for a failed attempt, a nested `failure` object with a
     `kind` of `"http"`, `"transport"`, `"policy"`, `"local"`, or `"unknown"`,
     a `phase` of `"pre-request"`, `"request"`, `"response"`,
-    `"post-response"`, or `"unknown"`, and, for an HTTP failure, the
-    response's `statusCode`.  Retrying the same activity and inbox no longer
-    overwrites or merges earlier attempts' records, and `activityCount` in a
-    `TraceSummary` now counts every attempt.  The `activitypub.activity.sent`
-    span event remains reserved for a successful delivery.
+    `"post-response"`, or `"unknown"`, and, when the attempt's response
+    status is known, its `statusCode`, including when the failure is
+    `"local"` and `"post-response"`.  Retrying the same activity and inbox
+    no longer overwrites or merges earlier attempts' records, and
+    `activityCount` in a `TraceSummary` now counts every attempt.  The
+    `activitypub.activity.sent` span event remains reserved for a
+    successful delivery.
+ -  Changed `~FedifySpanExporter.getRecentTraces()` to compute every
+    `TraceSummary` it returns directly from the activity and worker
+    records currently stored for each trace, rather than from a
+    separately maintained counter.  A trace is now discoverable, and its
+    `activityCount` accurate, as soon as its records are stored, with no
+    further write needed, and a record that has since expired is no
+    longer counted.  This costs a scan of every record retained under
+    the exporter's `keyPrefix` on each call, so its cost grows with the
+    total number of retained records rather than with how much changed
+    since the previous call; a deployment that retains many traces and
+    polls `getRecentTraces()` should size its polling interval, TTL, and
+    `KvStore` choice accordingly.
  -  Added `queueAttempt` to `TraceActivityRecord`.  It carries the outbox
     queue's own retry round for an attempt dispatched from a queued message,
     which is not the same thing as a count of delivery attempts: a native
