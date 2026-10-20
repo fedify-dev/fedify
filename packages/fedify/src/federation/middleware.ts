@@ -1235,7 +1235,13 @@ export class FederationImpl<TContextData>
         };
         await this.#runWorkerSpan(
           "activitypub.fanout",
-          { "activitypub.activity.type": message.activityType },
+          {
+            "activitypub.activity.type": message.activityType,
+            // id is stable identity for this fanout, and the fallback
+            // broadcast identity for a message enqueued before
+            // broadcastId existed.
+            "activitypub.broadcast.id": message.broadcastId ?? message.id,
+          },
           extractedContext,
           this.#instrumentWorkerBody(common, async (span) => {
             if (message.activityId != null) {
@@ -1256,6 +1262,14 @@ export class FederationImpl<TContextData>
           {
             "activitypub.activity.type": message.activityType,
             "activitypub.activity.retries": message.attempt,
+            ...(message.broadcastId == null
+              ? {}
+              : { "activitypub.broadcast.id": message.broadcastId }),
+            // id is stable across retries/holds/gateway-list changes just
+            // like deliveryId, so it is the fallback identity for a
+            // message enqueued before deliveryId existed.
+            "activitypub.delivery.id": message.deliveryId ?? message.id,
+            "activitypub.delivery.kind": message.deliveryKind ?? "fallback",
           },
           extractedContext,
           this.#instrumentWorkerBody(common, async (span) => {
@@ -1435,6 +1449,9 @@ export class FederationImpl<TContextData>
       orderingKey: message.orderingKey,
       normalizeExistingProofs: message.normalizeExistingProofs,
       activityJsonLd: message.activity,
+      // id is stable identity for this fanout, and the fallback broadcast
+      // identity for a message enqueued before broadcastId existed.
+      broadcastId: message.broadcastId ?? message.id,
       context,
     });
   }
@@ -1686,6 +1703,13 @@ export class FederationImpl<TContextData>
         meterProvider: this.meterProvider,
         tracerProvider: this.tracerProvider,
         queueAttempt: message.attempt,
+        broadcastId: message.broadcastId,
+        // id is stable across retries/holds/gateway-list changes just
+        // like deliveryId, so it is the fallback identity for a message
+        // enqueued before deliveryId existed.
+        deliveryId: message.deliveryId ?? message.id,
+        deliveryKind: message.deliveryKind,
+        portableInbox: message.portableInbox,
       });
       if (circuit != null) {
         try {
@@ -2161,6 +2185,11 @@ export class FederationImpl<TContextData>
           specDeterminer,
           meterProvider: this.meterProvider,
           tracerProvider: this.tracerProvider,
+          queueAttempt: message.attempt,
+          broadcastId: message.broadcastId,
+          deliveryId: message.deliveryId ?? message.id,
+          deliveryKind: message.deliveryKind,
+          portableInbox: message.portableInbox,
         });
       } catch (error) {
         lastError = error;
@@ -3247,6 +3276,7 @@ export class FederationImpl<TContextData>
       {
         actorIds: Iterable<string>;
         sharedInbox: boolean;
+        deliveryId?: string;
         portableInbox?: string;
         gatewayInboxes?: readonly string[];
       }
@@ -3255,7 +3285,13 @@ export class FederationImpl<TContextData>
     options: SendActivityInternalOptions<TContextData>,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
-    const { immediate, collectionSync, orderingKey, context: ctx } = options;
+    const {
+      immediate,
+      collectionSync,
+      orderingKey,
+      broadcastId,
+      context: ctx,
+    } = options;
     if (activity.id == null) {
       throw new TypeError("The activity to send must have an id.");
     }
@@ -3390,6 +3426,9 @@ export class FederationImpl<TContextData>
             activityId: activity.id?.href,
             activityType: getTypeId(activity).href,
             sharedInbox: inboxes[inbox].sharedInbox,
+            broadcastId,
+            deliveryId: inboxes[inbox].deliveryId,
+            portableInbox: inboxes[inbox].portableInbox,
             headers: collectionSync == null ? undefined : new Headers({
               "Collection-Synchronization":
                 await buildCollectionSynchronizationHeader(
@@ -3432,6 +3471,8 @@ export class FederationImpl<TContextData>
       const message: OutboxMessage = {
         type: "outbox",
         id: crypto.randomUUID(),
+        broadcastId,
+        deliveryId: inboxes[inbox].deliveryId,
         baseUrl: ctx.origin,
         keys: keyJwkPairs,
         activity: jsonLd,
@@ -5774,6 +5815,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     span: Span,
   ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
+    // Minted before recipients are resolved into inboxes, so that every
+    // delivery this call fans out into shares one broadcast identity.
+    const broadcastId = crypto.randomUUID();
+    span.setAttribute("activitypub.broadcast.id", broadcastId);
     let keys: SenderKeyPair[];
     let identifier: string | null = null;
     let actorKeyPairs: ActorKeyPair[] | null = null;
@@ -5862,6 +5907,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       collectionSync,
       immediate: options.immediate,
       normalizeExistingProofs: options.normalizeExistingProofs,
+      broadcastId,
     };
     span.setAttribute("activitypub.inboxes", expandedRecipients.length);
     for (const activityTransformer of this.federation.activityTransformers) {
@@ -5976,14 +6022,25 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     const message: FanoutMessage = {
       type: "fanout",
       id: crypto.randomUUID(),
+      broadcastId,
       baseUrl: this.origin,
       keys: keyJwkPairs,
       inboxes: globalThis.Object.fromEntries(
         globalThis.Object.entries(inboxes).map((
-          [k, { actorIds, sharedInbox, portableInbox, gatewayInboxes }],
+          [
+            k,
+            {
+              actorIds,
+              sharedInbox,
+              deliveryId,
+              portableInbox,
+              gatewayInboxes,
+            },
+          ],
         ) => [k, {
           actorIds: [...actorIds],
           sharedInbox,
+          deliveryId,
           ...getPortableMessageFields(portableInbox, gatewayInboxes),
         }]),
       ),
@@ -6796,6 +6853,10 @@ async function forwardActivityInternal<TContextData>(
   options?: ForwardActivityOptions,
 ): Promise<boolean> {
   const logger = getLogger(["fedify", "federation", loggerCategory]);
+  // Minted before recipients are resolved into inboxes, so that every
+  // delivery this call fans out into shares one broadcast identity.
+  const broadcastId = crypto.randomUUID();
+  trace.getActiveSpan()?.setAttribute("activitypub.broadcast.id", broadcastId);
   let keys: SenderKeyPair[];
   let identifier: string | null = null;
   if (
@@ -6909,6 +6970,9 @@ async function forwardActivityInternal<TContextData>(
           activityId: ctx.activityId,
           activityType: ctx.activityType,
           sharedInbox: inboxes[inbox].sharedInbox,
+          broadcastId,
+          deliveryId: inboxes[inbox].deliveryId,
+          portableInbox: inboxes[inbox].portableInbox,
           meterProvider: ctx.meterProvider,
           tracerProvider: ctx.tracerProvider,
           specDeterminer: new KvSpecDeterminer(
@@ -6945,6 +7009,8 @@ async function forwardActivityInternal<TContextData>(
     const message: OutboxMessage = {
       type: "outbox",
       id: crypto.randomUUID(),
+      broadcastId,
+      deliveryId: inboxes[inbox].deliveryId,
       baseUrl: ctx.origin,
       keys: keyJwkPairs,
       activity: ctx.activity,
@@ -7234,6 +7300,12 @@ interface SendActivityInternalOptions<TContextData> {
   readonly collectionSync?: string;
   readonly orderingKey?: string;
   readonly normalizeExistingProofs?: boolean;
+  /**
+   * The identifier of the broadcast (the `Context.sendActivity()` or
+   * `~Context.forwardActivity()` call) that this send was fanned out
+   * from.
+   */
+  readonly broadcastId?: string;
   /**
    * The compact JSON-LD document the activity was already serialized into,
    * when the caller has one.  Reusing it keeps a document that embeds a

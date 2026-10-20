@@ -50,7 +50,21 @@ import {
 } from "../testing/keys.ts";
 import { MemoryKvStore } from "./kv.ts";
 
+import type { ExtractedInbox } from "./send.ts";
 import { extractInboxes, sendActivity, SendActivityError } from "./send.ts";
+
+// deliveryId is a freshly minted UUID, so it is checked for presence and
+// stripped before comparing the rest of extractInboxes()'s result.
+function stripDeliveryIds(
+  inboxes: Record<string, ExtractedInbox>,
+): Record<string, Omit<ExtractedInbox, "deliveryId">> {
+  const result: Record<string, Omit<ExtractedInbox, "deliveryId">> = {};
+  for (const [key, { deliveryId, ...rest }] of Object.entries(inboxes)) {
+    assertEquals(typeof deliveryId, "string");
+    result[key] = rest;
+  }
+  return result;
+}
 
 test("extractInboxes()", () => {
   const recipients: Actor[] = [
@@ -82,7 +96,7 @@ test("extractInboxes()", () => {
   ];
   let inboxes = extractInboxes({ recipients });
   assertEquals(
-    inboxes,
+    stripDeliveryIds(inboxes),
     {
       "https://example.com/alice/inbox": {
         actorIds: new Set(["https://example.com/alice"]),
@@ -104,7 +118,7 @@ test("extractInboxes()", () => {
   );
   inboxes = extractInboxes({ recipients, preferSharedInbox: true });
   assertEquals(
-    inboxes,
+    stripDeliveryIds(inboxes),
     {
       "https://example.com/inbox": {
         actorIds: new Set([
@@ -128,7 +142,7 @@ test("extractInboxes()", () => {
     excludeBaseUris: [new URL("https://foo.bar/")],
   });
   assertEquals(
-    inboxes,
+    stripDeliveryIds(inboxes),
     {
       "https://example.com/alice/inbox": {
         actorIds: new Set(["https://example.com/alice"]),
@@ -153,7 +167,7 @@ test("extractInboxes()", () => {
     excludeBaseUris: [new URL("https://example.com/")],
   });
   assertEquals(
-    inboxes,
+    stripDeliveryIds(inboxes),
     {
       "https://example.org/group/inbox": {
         actorIds: new Set(["https://example.org/group"]),
@@ -171,7 +185,7 @@ test("extractInboxes()", () => {
     excludeBaseUris: [new URL("https://example.com/")],
   });
   assertEquals(
-    inboxes,
+    stripDeliveryIds(inboxes),
     {
       "https://example.org/group/inbox": {
         actorIds: new Set(["https://example.org/group"]),

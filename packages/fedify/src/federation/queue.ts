@@ -24,6 +24,15 @@ export type Message =
 export interface FanoutMessage {
   readonly type: "fanout";
   readonly id: ReturnType<typeof crypto.randomUUID>;
+  /**
+   * The identifier of the broadcast (the `Context.sendActivity()` or
+   * `~Context.forwardActivity()` call) that this fanout belongs to, shared
+   * by every delivery it fans out into.  Absent on a message enqueued by a
+   * version of Fedify that predates this field; such a fanout has no
+   * recoverable broadcast identity other than its own {@link id}.
+   * @internal
+   */
+  readonly broadcastId?: string;
   readonly baseUrl: string;
   readonly keys: readonly SenderKeyJwkPair[];
   readonly inboxes: Readonly<
@@ -32,6 +41,14 @@ export interface FanoutMessage {
       {
         readonly actorIds: readonly string[];
         readonly sharedInbox: boolean;
+        /**
+         * The identifier of this deduplicated destination's delivery,
+         * stable across retries, holds, and gateway-list changes.  Absent
+         * on a message enqueued by a version of Fedify that predates this
+         * field.
+         * @internal
+         */
+        readonly deliveryId?: string;
         /**
          * The canonical form of the FEP-ef61 portable inbox that the inbox
          * stands for.
@@ -67,6 +84,35 @@ export interface FanoutMessage {
 export interface OutboxMessage {
   readonly type: "outbox";
   readonly id: ReturnType<typeof crypto.randomUUID>;
+  /**
+   * The identifier of the broadcast (the `Context.sendActivity()` or
+   * `~Context.forwardActivity()` call) that this delivery was fanned out
+   * from.  Absent on a message enqueued by a version of Fedify that
+   * predates this field.
+   * @internal
+   */
+  readonly broadcastId?: string;
+  /**
+   * The identifier of this deduplicated destination's delivery, stable
+   * across retries, holds, and gateway-list changes, i.e., across every
+   * {@link OutboxMessage} that represents a later attempt at the same
+   * delivery.  Absent on a message enqueued by a version of Fedify that
+   * predates this field; {@link id} is itself stable across those same
+   * mutations and is the fallback identity for such a message.
+   * @internal
+   */
+  readonly deliveryId?: string;
+  /**
+   * Whether this delivery is an ordinary fallback attempt at one logical
+   * destination (trying each of {@link gatewayInboxes} in turn until one
+   * accepts), or a FEP-ef61 gateway's independent replication of an
+   * activity it received to the portable actor's other gateways, each of
+   * which must receive its own copy.  Absent on a message enqueued by a
+   * version of Fedify that predates this field, or on a non-portable
+   * delivery, which is always `"fallback"`.
+   * @internal
+   */
+  readonly deliveryKind?: "fallback" | "replication";
   readonly baseUrl: string;
   readonly keys: readonly SenderKeyJwkPair[];
   readonly activity: unknown;

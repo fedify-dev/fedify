@@ -9,7 +9,21 @@ import { FederationImpl, InboxContextImpl } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
 import { MAX_DELIVERY_GATEWAYS } from "./portable-delivery.ts";
 import type { FanoutMessage, Message, OutboxMessage } from "./queue.ts";
+import type { ExtractedInbox } from "./send.ts";
 import { extractInboxes, SendActivityError } from "./send.ts";
+
+// deliveryId is a freshly minted UUID, so it is checked for presence and
+// stripped before comparing the rest of extractInboxes()'s result.
+function stripDeliveryIds(
+  inboxes: Record<string, ExtractedInbox>,
+): Record<string, Omit<ExtractedInbox, "deliveryId">> {
+  const result: Record<string, Omit<ExtractedInbox, "deliveryId">> = {};
+  for (const [key, { deliveryId, ...rest }] of Object.entries(inboxes)) {
+    strictEqual(typeof deliveryId, "string");
+    result[key] = rest;
+  }
+  return result;
+}
 
 // cSpell: disable
 const DID = "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2";
@@ -50,7 +64,7 @@ test("extractInboxes() resolves portable inboxes", async (t) => {
         }),
       ],
     });
-    deepStrictEqual(inboxes, {
+    deepStrictEqual(stripDeliveryIds(inboxes), {
       [inboxOn("https://gw1.example")]: {
         actorIds: new Set([ACTOR_ID]),
         sharedInbox: false,
@@ -149,7 +163,7 @@ test("extractInboxes() resolves portable inboxes", async (t) => {
     });
     for (const recipients of [[compatible, portable], [portable, compatible]]) {
       const inboxes = extractInboxes({ recipients });
-      deepStrictEqual(inboxes, {
+      deepStrictEqual(stripDeliveryIds(inboxes), {
         [inboxOn("https://gw1.example")]: {
           actorIds: new Set(recipients.map((r) => r.id!.href)),
           sharedInbox: false,
@@ -288,7 +302,7 @@ test("extractInboxes() resolves portable inboxes", async (t) => {
         }),
       ],
     });
-    deepStrictEqual(inboxes, {
+    deepStrictEqual(stripDeliveryIds(inboxes), {
       "https://example.com/alice/inbox": {
         actorIds: new Set(["https://example.com/alice"]),
         sharedInbox: false,
@@ -515,16 +529,20 @@ test("Context.sendActivity() to a portable inbox", async (t) => {
     );
     strictEqual(queued.length, 1);
     const fanout = queued[0].message as FanoutMessage;
-    deepStrictEqual(fanout.inboxes, {
-      [inboxOn("https://gw1.example")]: {
-        actorIds: [ACTOR_ID],
-        sharedInbox: false,
-        portableInbox: PORTABLE_INBOX,
-        gatewayInboxes: [
-          inboxOn("https://gw1.example"),
-          inboxOn("https://gw2.example"),
-        ],
-      },
+    strictEqual(
+      typeof fanout.inboxes[inboxOn("https://gw1.example")].deliveryId,
+      "string",
+    );
+    const { deliveryId: _deliveryId, ...fanoutInboxWithoutDeliveryId } =
+      fanout.inboxes[inboxOn("https://gw1.example")];
+    deepStrictEqual(fanoutInboxWithoutDeliveryId, {
+      actorIds: [ACTOR_ID],
+      sharedInbox: false,
+      portableInbox: PORTABLE_INBOX,
+      gatewayInboxes: [
+        inboxOn("https://gw1.example"),
+        inboxOn("https://gw2.example"),
+      ],
     });
     queued.length = 0;
     await federation.processQueuedTask(undefined, fanout);

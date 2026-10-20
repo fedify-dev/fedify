@@ -57,6 +57,14 @@ export interface ExtractInboxesParameters {
  */
 export interface ExtractedInbox {
   /**
+   * The identifier of this deduplicated destination's delivery.  It stays
+   * the same across every attempt at delivering to it, including a retry,
+   * a circuit-breaker hold, and a change to {@link gatewayInboxes}.
+   * @since 2.5.0
+   */
+  deliveryId: string;
+
+  /**
    * The IDs of the recipients that the inbox belongs to.
    */
   actorIds: Set<string>;
@@ -149,7 +157,11 @@ export function extractInboxes(
       }
       const [key = gatewayInboxes[0], ...otherKeys] = existingKeys;
       portableKeys.set(target.portableInbox, key);
-      const entry = inboxes[key] ??= { actorIds: new Set(), sharedInbox };
+      const entry = inboxes[key] ??= {
+        deliveryId: crypto.randomUUID(),
+        actorIds: new Set(),
+        sharedInbox,
+      };
       for (const k of otherKeys) {
         for (const actorId of inboxes[k].actorIds) entry.actorIds.add(actorId);
         delete inboxes[k];
@@ -173,7 +185,11 @@ export function extractInboxes(
       continue;
     }
     const key = compatibleKeys.get(inbox.href) ?? inbox.href;
-    inboxes[key] ??= { actorIds: new Set(), sharedInbox };
+    inboxes[key] ??= {
+      deliveryId: crypto.randomUUID(),
+      actorIds: new Set(),
+      sharedInbox,
+    };
     inboxes[key].actorIds.add(recipient.id.href);
   }
   return inboxes;
@@ -274,6 +290,37 @@ export interface SendActivityParameters {
    * @since 2.5.0
    */
   readonly queueAttempt?: number;
+
+  /**
+   * The identifier of the broadcast (the `Context.sendActivity()` or
+   * `~Context.forwardActivity()` call) that this delivery was fanned out
+   * from.
+   * @since 2.5.0
+   */
+  readonly broadcastId?: string;
+
+  /**
+   * The identifier of this deduplicated destination's delivery, stable
+   * across retries, holds, and gateway-list changes.
+   * @since 2.5.0
+   */
+  readonly deliveryId?: string;
+
+  /**
+   * Whether this delivery is an ordinary fallback attempt at one logical
+   * destination, or a FEP-ef61 gateway's independent replication of an
+   * activity it received to the portable actor's other gateways.
+   * Defaults to `"fallback"`.
+   * @since 2.5.0
+   */
+  readonly deliveryKind?: "fallback" | "replication";
+
+  /**
+   * The canonical form of the FEP-ef61 portable inbox that {@link inbox}
+   * is a compatible identifier of, if the destination is a portable actor.
+   * @since 2.5.0
+   */
+  readonly portableInbox?: string;
 }
 
 /**
@@ -305,6 +352,26 @@ export function sendActivity(
       }
       if (options.queueAttempt != null) {
         span.setAttribute("activitypub.activity.retries", options.queueAttempt);
+      }
+      if (options.broadcastId != null) {
+        span.setAttribute("activitypub.broadcast.id", options.broadcastId);
+      }
+      if (options.deliveryId != null) {
+        span.setAttribute("activitypub.delivery.id", options.deliveryId);
+      }
+      if (options.deliveryKind != null) {
+        span.setAttribute(
+          "activitypub.delivery.kind",
+          options.deliveryKind,
+        );
+      }
+      const destinationInbox = options.portableInbox ?? options.inbox.href;
+      span.setAttribute("activitypub.destination.inbox", destinationInbox);
+      if (options.portableInbox != null) {
+        span.setAttribute(
+          "activitypub.destination.portable_inbox",
+          options.portableInbox,
+        );
       }
       const spanContext = span.spanContext();
       try {

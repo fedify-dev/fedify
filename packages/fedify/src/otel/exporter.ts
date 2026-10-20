@@ -163,6 +163,19 @@ export interface TraceOutboundWorkerRecord {
   readonly queueAttempt?: number;
 
   /**
+   * The identifier of the broadcast that this execution belongs to.
+   * @since 2.5.0
+   */
+  readonly broadcastId?: string;
+
+  /**
+   * The identifier of this execution's delivery, stable across retries,
+   * holds, and gateway-list changes.
+   * @since 2.5.0
+   */
+  readonly deliveryId?: string;
+
+  /**
    * The timestamp when this record was created (ISO 8601 format).
    */
   readonly timestamp: string;
@@ -270,9 +283,61 @@ export interface TraceActivityRecord {
   readonly timestamp: string;
 
   /**
-   * The target inbox URL (for outbound activities).
+   * The actual inbox URL this attempt was made against (for outbound
+   * activities).  For a delivery that tries more than one of a portable
+   * actor's gateways, this can differ between attempts that share the
+   * same {@link deliveryId}; {@link destinationInbox} is the identity
+   * that stays the same across them.
    */
   readonly inboxUrl?: string;
+
+  /**
+   * The stable identity of this attempt's destination (for outbound
+   * activities): the canonical portable inbox if {@link portableInbox}
+   * is set, or {@link inboxUrl} otherwise.  Unlike {@link inboxUrl}, this
+   * does not change between attempts at the same delivery that try
+   * different gateways.
+   *
+   * @since 2.5.0
+   */
+  readonly destinationInbox?: string;
+
+  /**
+   * The canonical form of the FEP-ef61 portable inbox that {@link inboxUrl}
+   * is a compatible identifier of, if the destination is a portable actor.
+   *
+   * @since 2.5.0
+   */
+  readonly portableInbox?: string;
+
+  /**
+   * The identifier of the broadcast (the `Context.sendActivity()` or
+   * `~Context.forwardActivity()` call) that this attempt was fanned out
+   * from (for outbound activities).
+   *
+   * @since 2.5.0
+   */
+  readonly broadcastId?: string;
+
+  /**
+   * The identifier of this deduplicated destination's delivery (for
+   * outbound activities), stable across every attempt at it, including a
+   * retry, a hold, and a change to which gateway is being tried.
+   *
+   * @since 2.5.0
+   */
+  readonly deliveryId?: string;
+
+  /**
+   * Whether this attempt belongs to an ordinary fallback delivery (trying
+   * each of a portable actor's gateways in turn until one accepts), or a
+   * FEP-ef61 gateway's independent replication of a received activity to
+   * the actor's other gateways (for outbound activities).  Defaults to
+   * `"fallback"` when absent.
+   *
+   * @since 2.5.0
+   */
+  readonly deliveryKind?: "fallback" | "replication";
 
   /**
    * The outcome of an outbound delivery attempt (for outbound activities).
@@ -554,6 +619,8 @@ export class FedifySpanExporter implements SpanExporter {
     const attemptsStarted = attrs["activitypub.outbox.worker.attempts_started"];
     const activityType = span.attributes["activitypub.activity.type"];
     const queueAttempt = span.attributes["activitypub.activity.retries"];
+    const broadcastId = span.attributes["activitypub.broadcast.id"];
+    const deliveryId = span.attributes["activitypub.delivery.id"];
 
     return {
       traceId,
@@ -565,6 +632,8 @@ export class FedifySpanExporter implements SpanExporter {
         : 0,
       activityType: typeof activityType === "string" ? activityType : undefined,
       queueAttempt: typeof queueAttempt === "number" ? queueAttempt : undefined,
+      ...(typeof broadcastId === "string" ? { broadcastId } : {}),
+      ...(typeof deliveryId === "string" ? { deliveryId } : {}),
       timestamp: new Date(
         event.time[0] * 1000 + event.time[1] / 1e6,
       ).toISOString(),
@@ -700,6 +769,12 @@ export class FedifySpanExporter implements SpanExporter {
     const failurePhase = attrs["activitypub.delivery.failure_phase"];
     const statusCode = attrs["http.response.status_code"];
     const queueAttempt = span.attributes["activitypub.activity.retries"];
+    const broadcastId = span.attributes["activitypub.broadcast.id"];
+    const deliveryId = span.attributes["activitypub.delivery.id"];
+    const deliveryKind = span.attributes["activitypub.delivery.kind"];
+    const destinationInbox = span.attributes["activitypub.destination.inbox"];
+    const portableInbox =
+      span.attributes["activitypub.destination.portable_inbox"];
 
     return {
       traceId,
@@ -722,8 +797,15 @@ export class FedifySpanExporter implements SpanExporter {
         event.time[0] * 1000 + event.time[1] / 1e6,
       ).toISOString(),
       inboxUrl: typeof inboxUrl === "string" ? inboxUrl : undefined,
+      ...(typeof destinationInbox === "string" ? { destinationInbox } : {}),
+      ...(typeof portableInbox === "string" ? { portableInbox } : {}),
       outcome,
       ...(typeof queueAttempt === "number" ? { queueAttempt } : {}),
+      ...(typeof broadcastId === "string" ? { broadcastId } : {}),
+      ...(typeof deliveryId === "string" ? { deliveryId } : {}),
+      ...(deliveryKind === "fallback" || deliveryKind === "replication"
+        ? { deliveryKind }
+        : {}),
       ...(outcome === "failed"
         ? {
           failure: {

@@ -11238,11 +11238,15 @@ test("ContextImpl.sendActivity()", async (t) => {
     assertEquals(fanoutMsg.baseUrl, "https://example.com");
     assertEquals(fanoutMsg.collectionSync, undefined);
     assertEquals(fanoutMsg.orderingKey, undefined);
-    assertEquals(fanoutMsg.inboxes, {
-      "https://example.com/inbox": {
-        actorIds: ["https://example.com/recipient"],
-        sharedInbox: false,
-      },
+    assertEquals(
+      typeof fanoutMsg.inboxes["https://example.com/inbox"].deliveryId,
+      "string",
+    );
+    const { deliveryId: _deliveryId, ...inboxWithoutDeliveryId } =
+      fanoutMsg.inboxes["https://example.com/inbox"];
+    assertEquals(inboxWithoutDeliveryId, {
+      actorIds: ["https://example.com/recipient"],
+      sharedInbox: false,
     });
     // Regression test for <https://github.com/fedify-dev/fedify/issues/663>:
     // The activity in the fanout message should be pre-signed with OIP before

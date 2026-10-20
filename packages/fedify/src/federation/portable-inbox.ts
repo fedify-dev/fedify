@@ -374,10 +374,14 @@ export async function forwardPortableInboxActivity(
       targets: claimed.map((t) => t.href),
     },
   );
+  // Each gateway forwarded to here gets its own, independent delivery of
+  // the same activity, unlike an ordinary delivery's fallback across a
+  // portable actor's gateways, where only one of them needs to accept it.
+  const broadcastId = crypto.randomUUID();
   if (outboxQueue == null) {
-    await forwardImmediately(parameters, claimed, deadline);
+    await forwardImmediately(parameters, claimed, deadline, broadcastId);
   } else {
-    await enqueueForwarding(parameters, outboxQueue, claimed);
+    await enqueueForwarding(parameters, outboxQueue, claimed, broadcastId);
   }
   return claimed;
 }
@@ -569,6 +573,7 @@ async function forwardImmediately(
   parameters: ForwardPortableInboxActivityParameters,
   inboxes: readonly URL[],
   deadlineAt: number,
+  broadcastId: string,
 ): Promise<void> {
   const {
     activity,
@@ -581,7 +586,11 @@ async function forwardImmediately(
   } = parameters;
   const logger = getLogger(["fedify", "federation", "inbox"]);
   const deadline = Math.max(0, deadlineAt - Date.now());
-  // The deadline also covers resolving the key, which may be slow:
+  // The deadline bounds how long this call waits for forwarding to
+  // finish, not the forwarding itself: a send already in flight when the
+  // deadline passes keeps running and reports whatever it actually
+  // resolves to, rather than being treated as failed just because this
+  // call stopped waiting for it.
   const forwarding = resolveForwardingKey(parameters).then((key) =>
     Promise.all(inboxes.map((inbox) =>
       sendActivity({
@@ -594,6 +603,9 @@ async function forwardImmediately(
         specDeterminer,
         meterProvider,
         tracerProvider,
+        broadcastId,
+        deliveryId: crypto.randomUUID(),
+        deliveryKind: "replication",
       }).catch((error) => {
         logger.error(
           "Failed to forward activity {activityId} to {inbox}; it will not " +
@@ -624,6 +636,7 @@ async function enqueueForwarding(
   parameters: ForwardPortableInboxActivityParameters,
   outboxQueue: MessageQueue,
   inboxes: readonly URL[],
+  broadcastId: string,
 ): Promise<void> {
   const {
     activity,
@@ -658,6 +671,9 @@ async function enqueueForwarding(
     const message: OutboxMessage = {
       type: "outbox",
       id: crypto.randomUUID(),
+      broadcastId,
+      deliveryId: crypto.randomUUID(),
+      deliveryKind: "replication",
       baseUrl,
       keys,
       activity,
