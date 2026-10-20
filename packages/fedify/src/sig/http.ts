@@ -2219,6 +2219,53 @@ export async function doubleKnock(
   return await doubleKnockInternal(request, identity, options);
 }
 
+// Links a thrown error back to where doubleKnock() learned it failed, read
+// only by sendActivity()'s own catch block to classify the failure.  A
+// WeakMap keyed by the error object itself, rather than a property on the
+// error, so this never collides with a property the error already has,
+// never requires the error to be extensible, and is never part of the
+// public error API.
+type DoubleKnockFailureProvenance =
+  | { readonly kind: "local" }
+  | { readonly kind: "post-response-bookkeeping"; readonly response: Response };
+
+const doubleKnockFailureProvenance = new WeakMap<
+  object,
+  DoubleKnockFailureProvenance
+>();
+
+function markLocalFailure(error: unknown): void {
+  if (typeof error === "object" && error != null) {
+    doubleKnockFailureProvenance.set(error, { kind: "local" });
+  }
+}
+
+async function markingLocalFailures<T>(fn: () => T | Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    markLocalFailure(error);
+    throw error;
+  }
+}
+
+/**
+ * Reports where a {@link doubleKnock} call learned a failure it threw
+ * occurred, for a caller that needs to tell apart a failure that happened
+ * before any request was sent (e.g., signing or spec-determiner lookup)
+ * from one the network itself reported.  Not part of the error itself:
+ * this only works on the exact error object `doubleKnock` threw.
+ * @param error An error caught from a {@link doubleKnock} call.
+ * @returns The provenance recorded for `error`, or `undefined` if none was.
+ * @since 2.5.0
+ */
+export function getDoubleKnockFailureProvenance(
+  error: unknown,
+): DoubleKnockFailureProvenance | undefined {
+  if (typeof error !== "object" || error == null) return undefined;
+  return doubleKnockFailureProvenance.get(error);
+}
+
 async function rememberSpecForResponse(
   specDeterminer: HttpMessageSignaturesSpecDeterminer | undefined,
   origin: string,
@@ -2248,18 +2295,15 @@ async function rememberSpecForResponse(
         "did not complete:\n{error}",
       { spec, origin, status: response.status, error },
     );
-    const cause = error instanceof Error ? error : new Error(String(error));
-    const failure = new Error(
-      `Delivered to ${origin} (${response.status}), but failed to ` +
-        `remember the HTTP Message Signatures spec afterward: ` +
-        cause.message,
-    );
-    failure.cause = cause;
-    Object.defineProperty(failure, "response", {
-      value: response,
-      enumerable: false,
-    });
-    throw failure;
+    // The original error propagates as-is, unwrapped, so its own message,
+    // stack, and cause stay exactly what rememberSpec() threw.
+    if (typeof error === "object" && error != null) {
+      doubleKnockFailureProvenance.set(error, {
+        kind: "post-response-bookkeeping",
+        response,
+      });
+    }
+    throw error;
   }
   return response;
 }
@@ -2278,7 +2322,7 @@ async function doubleKnockInternal(
   const origin = new URL(request.url).origin;
   const firstTrySpec: HttpMessageSignaturesSpec = specDeterminer == null
     ? "rfc9421"
-    : await specDeterminer.determineSpec(origin);
+    : await markingLocalFailures(() => specDeterminer.determineSpec(origin));
   signal?.throwIfAborted();
 
   // Get the request body once at the top level to avoid multiple clones
@@ -2288,11 +2332,13 @@ async function doubleKnockInternal(
     ? await request.clone().arrayBuffer()
     : null;
 
-  let signedRequest = await signRequest(
-    request,
-    identity.privateKey,
-    identity.keyId,
-    { spec: firstTrySpec, tracerProvider, body },
+  let signedRequest = await markingLocalFailures(() =>
+    signRequest(
+      request,
+      identity.privateKey,
+      identity.keyId,
+      { spec: firstTrySpec, tracerProvider, body },
+    )
   );
   signal?.throwIfAborted();
   log?.(signedRequest);
@@ -2442,11 +2488,13 @@ async function doubleKnockInternal(
       },
     );
     signal?.throwIfAborted();
-    signedRequest = await signRequest(
-      request,
-      identity.privateKey,
-      identity.keyId,
-      { spec, tracerProvider, body },
+    signedRequest = await markingLocalFailures(() =>
+      signRequest(
+        request,
+        identity.privateKey,
+        identity.keyId,
+        { spec, tracerProvider, body },
+      )
     );
     signal?.throwIfAborted();
     log?.(signedRequest);

@@ -13,6 +13,7 @@ import {
 import metadata from "../../deno.json" with { type: "json" };
 import {
   doubleKnock,
+  getDoubleKnockFailureProvenance,
   type HttpMessageSignaturesSpecDeterminer,
 } from "../sig/http.ts";
 import { isPortableUri } from "../sig/portable-key-id.ts";
@@ -664,14 +665,20 @@ async function sendActivityInternal(
       false,
       activityType,
     );
-    // doubleKnock() already obtained a response before a bookkeeping
-    // call afterward (rememberSpec()) failed.  A response it never saw
-    // as OK stays a plain transport/policy failure here; a response it
-    // saw as OK means the delivery itself succeeded, so the failure is
-    // local to this side, with the response's status retained.
-    const bookkeepingResponse = getAttachedResponse(error);
-    if (bookkeepingResponse != null) {
-      recordSendFailure("local", "post-response", bookkeepingResponse.status);
+    // doubleKnock() reports where it learned this failure occurred, so
+    // the failure kind reflects where it actually happened instead of a
+    // guess from the error's class.  A response it already saw as OK
+    // before a bookkeeping call afterward failed is a local failure with
+    // that response's status retained; a failure doubleKnock() marked as
+    // happening before any request was sent (e.g., signing or spec
+    // lookup) is local too, even though it is not a FetchError/UrlError;
+    // anything else, including a response it never saw as OK, is left to
+    // the policy/transport check below.
+    const provenance = getDoubleKnockFailureProvenance(error);
+    if (provenance?.kind === "post-response-bookkeeping") {
+      recordSendFailure("local", "post-response", provenance.response.status);
+    } else if (provenance?.kind === "local") {
+      recordSendFailure("local", "request");
     } else {
       recordSendFailure(
         error instanceof UrlError ? "policy" : "transport",
@@ -733,15 +740,6 @@ function createFetchError(url: string, cause: unknown): FetchError {
   const error = new FetchError(url, message);
   error.cause = cause;
   return error;
-}
-
-// doubleKnock() attaches the response it already obtained to an error
-// thrown by a post-response bookkeeping failure, without otherwise
-// expanding its public error surface.
-function getAttachedResponse(error: unknown): Response | undefined {
-  if (!(error instanceof Error) || !("response" in error)) return undefined;
-  const response = (error as { response?: unknown }).response;
-  return response instanceof Response ? response : undefined;
 }
 
 // Preserve Fetch's redirect semantics while validating every destination.

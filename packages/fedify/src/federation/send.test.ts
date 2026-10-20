@@ -952,6 +952,81 @@ test("sendActivity() records OpenTelemetry span events", async (t) => {
       }
     },
   );
+
+  await t.step(
+    "failed send (spec-determiner lookup failure, before any request " +
+      "is sent)",
+    async () => {
+      try {
+        fetchMock.spyGlobal();
+        let requested = false;
+        fetchMock.post(
+          "https://example.com/inbox-send-failed-spec-lookup",
+          () => {
+            requested = true;
+            return { status: 202 };
+          },
+        );
+
+        const activity = {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://example.com/activity/send-failed-spec-lookup",
+          actor: "https://example.com/person",
+        };
+
+        // determineSpec() throwing happens before signRequest() or any
+        // network call, so it is a local failure, not a guess at
+        // "anything that isn't a FetchError/UrlError is transport".
+        await assertRejects(
+          () =>
+            sendActivity({
+              activity,
+              activityId:
+                "https://example.com/activity/send-failed-spec-lookup",
+              activityType: "https://www.w3.org/ns/activitystreams#Create",
+              keys: [{
+                keyId: new URL("https://example.com/person#key"),
+                privateKey: rsaPrivateKey2,
+              }],
+              inbox: new URL(
+                "https://example.com/inbox-send-failed-spec-lookup",
+              ),
+              tracerProvider,
+              specDeterminer: {
+                determineSpec: () => {
+                  throw new Error("simulated spec cache read failure");
+                },
+                rememberSpec: () => {},
+              },
+            }),
+          FetchError,
+        );
+        assertFalse(requested);
+
+        const events = exporter.getEvents(
+          "activitypub.send_activity",
+          "activitypub.activity.send_failed",
+        );
+        assertEquals(events.length, 1);
+        assertEquals(
+          events[0].attributes?.["activitypub.delivery.failure_kind"],
+          "local",
+        );
+        assertEquals(
+          events[0].attributes?.["activitypub.delivery.failure_phase"],
+          "request",
+        );
+        assertEquals(
+          events[0].attributes?.["http.response.status_code"],
+          undefined,
+        );
+      } finally {
+        exporter.clear();
+        fetchMock.hardReset();
+      }
+    },
+  );
 });
 
 function createActivity(id: string) {

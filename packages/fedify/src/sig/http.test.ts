@@ -39,6 +39,7 @@ import {
   doubleKnock,
   formatRfc9421Signature,
   formatRfc9421SignatureParameters,
+  getDoubleKnockFailureProvenance,
   type HttpMessageSignaturesSpec,
   listRequestSignatures,
   parseRfc9421Signature,
@@ -2481,9 +2482,10 @@ test(
     // when its own work throws: a successful delivery is not reported as
     // one when the bookkeeping that follows it fails, since that
     // bookkeeping failure is itself something the caller needs to know
-    // about and retry.  The response it already received is still
-    // retrievable from the thrown error, and the original cause is kept
-    // as its `cause`.
+    // about and retry.  The error rejected with is the exact object
+    // rememberSpec() threw, unwrapped, so its message, stack, and any
+    // cause it already had are untouched; the response it already
+    // received is retrievable separately, via getDoubleKnockFailureProvenance().
     const error = await assertRejects(
       () =>
         doubleKnock(
@@ -2493,11 +2495,11 @@ test(
         ),
       Error,
     );
-    assertEquals(error.cause, rememberSpecError);
-    const attachedResponse = (error as unknown as { response?: Response })
-      .response;
-    assertExists(attachedResponse);
-    assertEquals(attachedResponse.status, 202);
+    assertEquals(error, rememberSpecError);
+    const provenance = getDoubleKnockFailureProvenance(error);
+    assertEquals(provenance?.kind, "post-response-bookkeeping");
+    assert(provenance?.kind === "post-response-bookkeeping");
+    assertEquals(provenance.response.status, 202);
 
     fetchMock.hardReset();
   },
@@ -2541,6 +2543,102 @@ test(
       { specDeterminer },
     );
     assertEquals(response.status, 500);
+
+    fetchMock.hardReset();
+  },
+);
+
+test(
+  "doubleKnock() marks a spec-determiner lookup failure as local, " +
+    "before any request is sent",
+  async () => {
+    fetchMock.spyGlobal();
+    let requested = false;
+    fetchMock.post(
+      "https://example.com/inbox-spec-lookup-fails",
+      () => {
+        requested = true;
+        return new Response("", { status: 202 });
+      },
+    );
+
+    const request = new Request(
+      "https://example.com/inbox-spec-lookup-fails",
+      {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+      },
+    );
+
+    const lookupError = new Error("simulated spec cache read failure");
+    const specDeterminer = {
+      determineSpec(_origin: string): HttpMessageSignaturesSpec {
+        throw lookupError;
+      },
+      rememberSpec(_origin: string, _spec: HttpMessageSignaturesSpec): void {},
+    };
+
+    const error = await assertRejects(
+      () =>
+        doubleKnock(
+          request,
+          { keyId: rsaPublicKey2.id!, privateKey: rsaPrivateKey2 },
+          { specDeterminer },
+        ),
+      Error,
+    );
+    // The error is the exact one determineSpec() threw, unwrapped.
+    assertEquals(error, lookupError);
+    assertEquals(getDoubleKnockFailureProvenance(error)?.kind, "local");
+    // No request was ever sent: the failure happened before that.
+    assertFalse(requested);
+
+    fetchMock.hardReset();
+  },
+);
+
+test(
+  "doubleKnock() marks a signing failure as local, before any request " +
+    "is sent",
+  async () => {
+    fetchMock.spyGlobal();
+    let requested = false;
+    fetchMock.post(
+      "https://example.com/inbox-signing-fails",
+      () => {
+        requested = true;
+        return new Response("", { status: 202 });
+      },
+    );
+
+    const request = new Request(
+      "https://example.com/inbox-signing-fails",
+      {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+      },
+    );
+
+    // An invalid private key makes signRequest() throw.
+    const invalidKey = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"],
+    );
+
+    const error = await assertRejects(
+      () =>
+        doubleKnock(
+          request,
+          {
+            keyId: rsaPublicKey2.id!,
+            privateKey: invalidKey.privateKey,
+          },
+        ),
+      Error,
+    );
+    assertEquals(getDoubleKnockFailureProvenance(error)?.kind, "local");
+    assertFalse(requested);
 
     fetchMock.hardReset();
   },
