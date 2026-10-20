@@ -2450,6 +2450,43 @@ test("doubleKnock() function with successful first attempt", async () => {
   fetchMock.hardReset();
 });
 
+test(
+  "doubleKnock() still returns a successful response when rememberSpec() throws",
+  async () => {
+    fetchMock.spyGlobal();
+    fetchMock.post("https://example.com/inbox-remember-spec-fails", () => {
+      return new Response("", { status: 202 });
+    });
+
+    const request = new Request(
+      "https://example.com/inbox-remember-spec-fails",
+      {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+      },
+    );
+
+    const specDeterminer = {
+      determineSpec(_origin: string): HttpMessageSignaturesSpec {
+        return "rfc9421";
+      },
+      rememberSpec(_origin: string, _spec: HttpMessageSignaturesSpec): void {
+        throw new Error("simulated spec-cache write failure");
+      },
+    };
+
+    const response = await doubleKnock(
+      request,
+      { keyId: rsaPublicKey2.id!, privateKey: rsaPrivateKey2 },
+      { specDeterminer },
+    );
+
+    assertEquals(response.status, 202);
+
+    fetchMock.hardReset();
+  },
+);
+
 test("doubleKnock() function with fallback to draft-cavage", async () => {
   // Install mock fetch handler
   fetchMock.spyGlobal();

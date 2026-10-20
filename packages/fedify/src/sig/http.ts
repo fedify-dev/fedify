@@ -2219,6 +2219,23 @@ export async function doubleKnock(
   return await doubleKnockInternal(request, identity, options);
 }
 
+async function rememberSpecBestEffort(
+  specDeterminer: HttpMessageSignaturesSpecDeterminer | undefined,
+  origin: string,
+  spec: HttpMessageSignaturesSpec,
+): Promise<void> {
+  try {
+    await specDeterminer?.rememberSpec(origin, spec);
+  } catch (error) {
+    getLogger(["fedify", "sig", "http"]).warn(
+      "Failed to remember the HTTP Message Signatures spec {spec} for " +
+        "{origin}; this does not affect the delivery that just " +
+        "completed:\n{error}",
+      { spec, origin, error },
+    );
+  }
+}
+
 async function doubleKnockInternal(
   request: Request,
   identity: { keyId: URL; privateKey: CryptoKey },
@@ -2368,7 +2385,7 @@ async function doubleKnockInternal(
       }
       // If the challenge retry succeeded, remember spec and return
       if (fulfilled && response.status < 300) {
-        await specDeterminer?.rememberSpec(origin, "rfc9421");
+        await rememberSpecBestEffort(specDeterminer, origin, "rfc9421");
         return response;
       }
       if (
@@ -2434,10 +2451,10 @@ async function doubleKnockInternal(
         visited,
       );
     } else if (response.status !== 400 && response.status !== 401) {
-      await specDeterminer?.rememberSpec(origin, spec);
+      await rememberSpecBestEffort(specDeterminer, origin, spec);
     }
   } else {
-    await specDeterminer?.rememberSpec(origin, firstTrySpec);
+    await rememberSpecBestEffort(specDeterminer, origin, firstTrySpec);
   }
   return response;
 }
