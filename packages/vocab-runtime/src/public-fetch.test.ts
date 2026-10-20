@@ -6,7 +6,7 @@ import type { LookupAddress } from "node:dns";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { type PinGrant, redeemPinGrant } from "./pin-grant.ts";
-import type { ConnectionPinner } from "./pinners/mod.ts";
+import { type ConnectionPinner, detectRuntime } from "./pinners/mod.ts";
 import {
   createPublicFetch,
   openDirectFetch,
@@ -1173,6 +1173,41 @@ test("openPublicFetch() uses the global fetch() on Deno", {
   } finally {
     worker.terminate();
   }
+});
+
+test("openPublicFetch() pins connections on Node.js", {
+  ignore: detectRuntime() !== "node",
+}, async () => {
+  const { lookup, hostnames } = createRecordingLookup(publicAddresses);
+  await withMockedGlobalFetch(async () => {
+    fetchMock.route("https://node-host.invalid/object", { body: "ok" });
+    const session = await openPublicFetch(
+      "https://node-host.invalid/object",
+      { lookup },
+    );
+    try {
+      const response = await session.fetch(
+        "https://node-host.invalid/object",
+        { redirect: "follow" },
+      );
+      deepStrictEqual(await response.text(), "ok");
+    } finally {
+      await session.close();
+    }
+    // The request is sent with the pinner's undici agent as the dispatcher;
+    // fetch-mock replaces the global fetch(), so the agent is not used here:
+    const calls = fetchMock.callHistory.calls();
+    deepStrictEqual(calls.length, 1);
+    const init = calls[0].args[1] as RequestInit & { dispatcher?: unknown };
+    deepStrictEqual(calls[0].url, "https://node-host.invalid/object");
+    deepStrictEqual(init.redirect, "manual");
+    ok(
+      typeof (init.dispatcher as { dispatch?: unknown } | undefined)
+        ?.dispatch === "function",
+      String(init.dispatcher),
+    );
+  });
+  deepStrictEqual(hostnames, ["node-host.invalid"]);
 });
 
 test("openPublicFetch() rejects fedify-test.internal", async (t) => {

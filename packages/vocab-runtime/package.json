@@ -103,6 +103,7 @@
     "asn1js": "catalog:",
     "byte-encodings": "catalog:",
     "jsonld": "^9.0.0",
-    "pkijs": "catalog:"
+    "pkijs": "catalog:",
+    "undici": "catalog:"
   }
 }

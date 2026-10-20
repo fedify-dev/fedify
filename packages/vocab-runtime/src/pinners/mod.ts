@@ -1,5 +1,6 @@
 import { assertPublicAddress } from "../url.ts";
 import { createBunPinner } from "./bun.ts";
+import { createNodePinner } from "./node.ts";
 import type { ConnectionPinner } from "./types.ts";
 
 export type { ConnectionPinner, ConnectionPinnerOptions } from "./types.ts";
@@ -31,8 +32,8 @@ let runtimePinner: Promise<ConnectionPinner | null> | undefined;
 
 /**
  * Gets the production pinner of the current runtime, which rejects
- * non-public addresses right before connecting.  Deno, Cloudflare Workers,
- * and Node.js have no pinner.
+ * non-public addresses right before connecting.  Deno and Cloudflare Workers
+ * have no pinner.
  * @returns The pinner, or `null` if the runtime has none.
  */
 export function getRuntimePinner(): Promise<ConnectionPinner | null> {
@@ -40,15 +41,19 @@ export function getRuntimePinner(): Promise<ConnectionPinner | null> {
   return runtimePinner;
 }
 
-function createRuntimePinner(
+async function createRuntimePinner(
   runtime: Runtime,
 ): Promise<ConnectionPinner | null> {
   switch (runtime) {
     case "bun":
-      return Promise.resolve(
-        createBunPinner({ verifyAddress: assertPublicAddress }),
-      );
+      return createBunPinner({ verifyAddress: assertPublicAddress });
+    case "node":
+      // The npm undici package is loaded only on Node.js:
+      return createNodePinner({
+        verifyAddress: assertPublicAddress,
+        undici: await import("undici"),
+      });
     default:
-      return Promise.resolve(null);
+      return null;
   }
 }
