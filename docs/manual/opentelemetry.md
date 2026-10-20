@@ -1340,11 +1340,25 @@ Each `TraceActivityRecord` contains:
     persisted before this field was introduced; such a record is always for
     a successful delivery, since a failed delivery attempt used to leave no
     record at all
- -  `failureKind` (optional): The kind of failure for a failed outbound
-    delivery attempt, one of `"http"`, `"transport"`, or `"policy"`.  Only
-    set when `outcome` is `"failed"`
- -  `statusCode` (optional): The HTTP status code returned by the inbox.
-    Only set when `failureKind` is `"http"`
+ -  `failure` (optional): Details about why an outbound delivery attempt
+    failed.  Only set when `outcome` is `"failed"`, containing:
+     -  `kind`: `"http"` (the inbox returned a non-2xx response),
+        `"transport"` (no response was ever received, e.g., a DNS or
+        network failure), `"policy"` (Fedify's own private-address policy
+        refused the destination), `"local"` (the attempt failed for a
+        reason other than the network or the response, e.g., the activity
+        could not be serialized), or `"unknown"`
+     -  `phase`: Where in the attempt the failure happened:
+        `"pre-request"`, `"request"`, `"response"`, `"post-response"`, or
+        `"unknown"`
+     -  `statusCode` (optional): The HTTP status code returned by the
+        inbox.  Only set when `kind` is `"http"`
+ -  `queueAttempt` (optional): The outbox queue's own retry round this
+    attempt ran under, if it was dispatched from a queued message.  This is
+    the queue's redelivery count, not a count of delivery attempts: a
+    native queue redelivery can leave it unchanged, and a single round can
+    run more than one attempt when trying a portable actor's gateways.
+    Absent for an immediate send that never went through a queue
 
 ### Outbound delivery attempts
 
@@ -1373,6 +1387,47 @@ recorded on the worker's own `activitypub.outbox` span, not on a
 `TraceActivityRecord`.  They keep the worker's own `spanId`, which differs
 from the `spanId` of the delivery attempt it retries, even though both
 belong to the same trace.
+
+These records describe observed send results; they are not proof that the
+remote server received nothing, or that it finished whatever it does with
+an activity after accepting it.  Sampling, export loss, and the configured
+TTL mean `activityCount` and `getActivitiesByTraceId()` reflect what is
+currently retained, not a lifetime total.
+
+### Outbox worker records
+
+*This behavior is available since Fedify 2.5.0.*
+
+Some outbox queue worker executions reach a disposition without ever
+calling `sendActivity()`, so they cannot produce a `TraceActivityRecord`:
+the circuit breaker can hold or drop a message before any attempt, and a
+queued message can fail to prepare at all (e.g., a malformed inbox URL).
+Others call `sendActivity()` but then fail in the worker's own follow-up
+action, such as re-enqueueing a held message.
+
+`FedifySpanExporter` captures these as a separate `TraceOutboundWorkerRecord`,
+exposed through `~FedifySpanExporter.getWorkerRecordsByTraceId()`, which
+stays separate from `~FedifySpanExporter.getActivitiesByTraceId()` so a
+worker disposition is never mistaken for a delivery attempt.  Each record
+contains:
+
+ -  `traceId`, `spanId`, `parentSpanId` (optional): The worker's own
+    OpenTelemetry identifiers
+ -  `disposition`: `"held"` or `"dropped"` (a circuit-breaker decision),
+    `"preparation_failed"` (the worker never reached `sendActivity()`), or
+    `"action_failed"` (the worker's own hold or drop action itself failed)
+ -  `attemptsStarted`: The number of times this execution actually entered
+    `sendActivity()`, tracked from the execution itself rather than
+    inferred from whether a span happened to be exported
+ -  `activityType` (optional): The ActivityPub activity type, if known
+ -  `queueAttempt` (optional): The outbox queue's own retry round for this
+    execution
+ -  `timestamp`: ISO 8601 timestamp
+
+A trace whose every worker execution was held or dropped has no
+`TraceActivityRecord` at all, and so an `activityCount` of `0`, but is
+still listed by `getRecentTraces()`: `TraceSummary` gained a matching
+`outboundWorkerCount` field, counted the same way `activityCount` is.
 
 ### Configuration options
 

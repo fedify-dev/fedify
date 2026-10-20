@@ -48,6 +48,19 @@ To be released.
     `idempotency` strategy, as direct processing already did, instead of always
     deduplicating them per origin.  Activities recorded by workers of older
     versions are still recognized.  [[#1290], [#1299]]
+ -  Added `TraceActivityRecord` entries for failed outbound delivery
+    attempts.  Previously, `FedifySpanExporter` only persisted a record for
+    a delivery once it succeeded, so a delivery that failed on every attempt
+    left no record at all, and `~FedifySpanExporter.getRecentTraces()` could
+    not surface it.  Each attempt now gets its own record, carrying the
+    attempt's own `traceId`/`spanId`, a new `outcome` of `"success"` or
+    `"failed"`, and, for a failed attempt, a `failureKind` of `"http"`,
+    `"transport"`, or `"policy"` and, for an HTTP failure, the response's
+    `statusCode`.  Retrying the same activity and inbox no longer overwrites
+    or merges earlier attempts' records, and `activityCount` in a
+    `TraceSummary` now counts every attempt.  The `activitypub.activity.sent`
+    span event remains reserved for a successful delivery.  [[#1257] by
+    Yujin Jung\]
  -  Added the `activityOriginMismatch` reason to rejected `InboxAuthentication`
     decisions in `onRequestFinished` reports.  Inbox deliveries rejected
     because the activity's ID does not have the same origin as its actors now
@@ -74,6 +87,7 @@ To be released.
 [#1030]: https://github.com/fedify-dev/fedify/issues/1030
 [#1177]: https://github.com/fedify-dev/fedify/issues/1177
 [#1205]: https://github.com/fedify-dev/fedify/pull/1205
+[#1257]: https://github.com/fedify-dev/fedify/issues/1257
 [#1264]: https://github.com/fedify-dev/fedify/pull/1264
 [#1289]: https://github.com/fedify-dev/fedify/issues/1289
 [#1290]: https://github.com/fedify-dev/fedify/issues/1290
