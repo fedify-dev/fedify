@@ -740,6 +740,15 @@ test("FedifySpanExporter", async (t) => {
       // around that, since this exporter does not bound or hide it.
       assertEquals(entriesRead, traceCount * recordsPerTrace);
       assert(bytesRead > 0);
+
+      // limit truncates the returned array after the scan, not the scan
+      // itself: it costs exactly as much as an unlimited call.
+      entriesRead = 0;
+      bytesRead = 0;
+      const limited = await exporter.getRecentTraces({ limit: 3 });
+      assertEquals(limited.length, 3);
+      assertEquals(entriesRead, traceCount * recordsPerTrace);
+      assert(bytesRead > 0);
     },
   );
 
