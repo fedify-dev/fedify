@@ -605,6 +605,144 @@ test("FedifySpanExporter", async (t) => {
     },
   );
 
+  await t.step(
+    "getRecentTraces() needs no additional writes to discover a trace " +
+      "or correct its activityCount",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+      const traceId = "query-time-correction-trace";
+
+      for (const spanId of ["span-a", "span-b"]) {
+        const span = createMockSpan({
+          traceId,
+          spanId,
+          name: "activitypub.send_activity",
+          events: [
+            createActivitySentEvent({
+              activityId: `https://myserver.com/activities/${spanId}`,
+              inboxUrl: "https://example.com/inbox",
+            }),
+          ],
+        });
+        await new Promise<void>((resolve) => {
+          exporter.export([span], () => resolve());
+        });
+      }
+
+      let writeCalls = 0;
+      const originalSet = kv.set.bind(kv);
+      kv.set = (key, value, options) => {
+        writeCalls++;
+        return originalSet(key, value, options);
+      };
+
+      const recent = await exporter.getRecentTraces();
+      const summary = recent.find((s) => s.traceId === traceId);
+      assertEquals(summary?.activityCount, 2);
+      assertEquals(writeCalls, 0);
+    },
+  );
+
+  await t.step(
+    "getRecentTraces() reflects only currently-retained records, " +
+      "e.g., after some have expired",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+      const traceId = "expiry-reflects-retained-trace";
+
+      for (const spanId of ["span-a", "span-b"]) {
+        const span = createMockSpan({
+          traceId,
+          spanId,
+          name: "activitypub.send_activity",
+          events: [
+            createActivitySentEvent({
+              activityId: `https://myserver.com/activities/${spanId}`,
+              inboxUrl: "https://example.com/inbox",
+            }),
+          ],
+        });
+        await new Promise<void>((resolve) => {
+          exporter.export([span], () => resolve());
+        });
+      }
+
+      let recent = await exporter.getRecentTraces();
+      assertEquals(
+        recent.find((s) => s.traceId === traceId)?.activityCount,
+        2,
+      );
+
+      // Stand in for span-a's record having expired (or otherwise been
+      // removed) since it was written: it is no longer returned by
+      // list(), so it must no longer be counted either.
+      await kv.delete(["fedify", "traces", traceId, "span-a"]);
+
+      recent = await exporter.getRecentTraces();
+      assertEquals(
+        recent.find((s) => s.traceId === traceId)?.activityCount,
+        1,
+      );
+    },
+  );
+
+  await t.step(
+    "getRecentTraces() polling cost scales with every retained record " +
+      "and worker disposition, not just ones changed since the last poll",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+      const traceCount = 10;
+      const recordsPerTrace = 3;
+
+      for (let i = 0; i < traceCount; i++) {
+        const traceId = `poll-cost-trace-${i}`;
+        const spans = Array.from(
+          { length: recordsPerTrace },
+          (_, j) =>
+            createMockSpan({
+              traceId,
+              spanId: `span-${j}`,
+              name: "activitypub.send_activity",
+              events: [
+                createActivitySentEvent({
+                  activityId: `https://myserver.com/activities/${i}-${j}`,
+                  inboxUrl: "https://example.com/inbox",
+                }),
+              ],
+            }),
+        );
+        await new Promise<void>((resolve) => {
+          exporter.export(spans, () => resolve());
+        });
+      }
+
+      const originalList = kv.list.bind(kv);
+      let entriesRead = 0;
+      let bytesRead = 0;
+      kv.list = async function* (prefix) {
+        for await (const entry of originalList(prefix)) {
+          entriesRead++;
+          bytesRead += JSON.stringify(entry.value).length;
+          yield entry;
+        }
+      };
+
+      const recent = await exporter.getRecentTraces();
+      assertEquals(recent.length, traceCount);
+
+      // Every call reads every retained record, so polling this method
+      // costs O(total retained records), not O(records changed since
+      // the previous poll). A deployment with many retained traces
+      // should size its polling interval, TTL, and/or KvStore pagination
+      // around that, since this exporter does not bound or hide it.
+      assertEquals(entriesRead, traceCount * recordsPerTrace);
+      assert(bytesRead > 0);
+    },
+  );
+
   await t.step("forceFlush() returns resolved promise", async () => {
     const kv = new MemoryKvStore();
     const exporter = new FedifySpanExporter(kv);

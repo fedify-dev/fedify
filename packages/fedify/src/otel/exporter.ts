@@ -750,65 +750,7 @@ export class FedifySpanExporter implements SpanExporter {
       record.traceId,
       record.spanId,
     ] as KvKey;
-    const alreadyStored = await this.#kv.get(key) != null;
     await this.#kv.set(key, record, options);
-    if (!alreadyStored) {
-      await this.#updateTraceSummary(record, options);
-    }
-  }
-
-  async #setWithCasRetry<T>(
-    key: KvKey,
-    transform: (existing: T | undefined) => T,
-    options?: KvStoreSetOptions,
-  ): Promise<void> {
-    if (this.#kv.cas != null) {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const existing = await this.#kv.get<T>(key);
-        const newValue = transform(existing);
-        if (await this.#kv.cas(key, existing, newValue, options)) {
-          return;
-        }
-      }
-    }
-
-    // Fallback to non-atomic set if CAS is not available or fails
-    const existing = await this.#kv.get<T>(key);
-    const newValue = transform(existing);
-    await this.#kv.set(key, newValue, options);
-  }
-
-  async #updateTraceSummary(
-    record: TraceActivityRecord,
-    options?: KvStoreSetOptions,
-  ): Promise<void> {
-    const summaryKey: KvKey = [
-      ...this.#keyPrefix,
-      "_summaries",
-      record.traceId,
-    ] as KvKey;
-
-    await this.#setWithCasRetry<TraceSummary>(
-      summaryKey,
-      (existing) => {
-        const activityCount = existing != null ? existing.activityCount + 1 : 1;
-        const activityTypes = existing != null
-          ? existing.activityTypes.includes(record.activityType)
-            ? existing.activityTypes
-            : [...existing.activityTypes, record.activityType]
-          : [record.activityType];
-        return {
-          traceId: existing?.traceId ?? record.traceId,
-          timestamp: existing?.timestamp ?? record.timestamp,
-          activityCount,
-          activityTypes,
-          ...(existing?.outboundWorkerCount == null
-            ? {}
-            : { outboundWorkerCount: existing.outboundWorkerCount }),
-        };
-      },
-      options,
-    );
   }
 
   async #storeWorkerRecord(record: TraceOutboundWorkerRecord): Promise<void> {
@@ -822,34 +764,7 @@ export class FedifySpanExporter implements SpanExporter {
       record.traceId,
       record.spanId,
     ] as KvKey;
-    const alreadyStored = await this.#kv.get(key) != null;
     await this.#kv.set(key, record, options);
-    if (!alreadyStored) {
-      await this.#updateWorkerSummary(record, options);
-    }
-  }
-
-  async #updateWorkerSummary(
-    record: TraceOutboundWorkerRecord,
-    options?: KvStoreSetOptions,
-  ): Promise<void> {
-    const summaryKey: KvKey = [
-      ...this.#keyPrefix,
-      "_summaries",
-      record.traceId,
-    ] as KvKey;
-
-    await this.#setWithCasRetry<TraceSummary>(
-      summaryKey,
-      (existing) => ({
-        traceId: existing?.traceId ?? record.traceId,
-        timestamp: existing?.timestamp ?? record.timestamp,
-        activityCount: existing?.activityCount ?? 0,
-        activityTypes: existing?.activityTypes ?? [],
-        outboundWorkerCount: (existing?.outboundWorkerCount ?? 0) + 1,
-      }),
-      options,
-    );
   }
 
   /**
@@ -898,18 +813,85 @@ export class FedifySpanExporter implements SpanExporter {
   /**
    * Gets recent traces with summary information.
    *
+   * Each summary is computed directly from the primary activity and
+   * worker records that are actually stored, rather than from a
+   * separately maintained counter.  This guarantees that a trace is
+   * discoverable, and its `activityCount`/`outboundWorkerCount`
+   * accurate, as soon as its records are stored, and that the counts
+   * always reflect records that have not expired.  It costs a full scan
+   * of every stored record under {@link FedifySpanExporterOptions.keyPrefix}
+   * on every call, which does not scale to large deployments without
+   * pagination at the `KvStore` layer; callers that poll this method
+   * frequently should keep that cost in mind.
+   *
    * @param options Options for the query.
    * @returns An array of trace summaries.
    */
   async getRecentTraces(
     options?: GetRecentTracesOptions,
   ): Promise<TraceSummary[]> {
-    const summaryPrefix = [...this.#keyPrefix, "_summaries"] as KvKey;
-    const summaries: TraceSummary[] = [];
+    const aggregates = new Map<string, {
+      timestamp: string;
+      activityCount: number;
+      activityTypes: string[];
+      outboundWorkerCount: number;
+    }>();
+    const firstSegmentIndex = this.#keyPrefix.length;
 
-    for await (const entry of this.#kv.list(summaryPrefix)) {
-      summaries.push(entry.value as TraceSummary);
+    const aggregateFor = (traceId: string, timestamp: string) => {
+      let aggregate = aggregates.get(traceId);
+      if (aggregate == null) {
+        aggregate = {
+          timestamp,
+          activityCount: 0,
+          activityTypes: [],
+          outboundWorkerCount: 0,
+        };
+        aggregates.set(traceId, aggregate);
+      } else if (timestamp < aggregate.timestamp) {
+        aggregate.timestamp = timestamp;
+      }
+      return aggregate;
+    };
+
+    for await (const entry of this.#kv.list(this.#keyPrefix)) {
+      const first = entry.key[firstSegmentIndex];
+      // Skip summary entries left behind by older versions of this
+      // exporter; they are no longer read or maintained.
+      if (first == null || first === "_summaries") continue;
+
+      if (first === "_workers") {
+        const traceId = entry.key[firstSegmentIndex + 1];
+        const record = entry.value as TraceOutboundWorkerRecord | undefined;
+        if (
+          traceId == null || record == null ||
+          typeof record.timestamp !== "string"
+        ) continue;
+        aggregateFor(traceId, record.timestamp).outboundWorkerCount++;
+        continue;
+      }
+
+      const traceId = first;
+      const record = entry.value as TraceActivityRecord | undefined;
+      if (record == null || typeof record.timestamp !== "string") continue;
+      const aggregate = aggregateFor(traceId, record.timestamp);
+      aggregate.activityCount++;
+      if (!aggregate.activityTypes.includes(record.activityType)) {
+        aggregate.activityTypes.push(record.activityType);
+      }
     }
+
+    const summaries: TraceSummary[] = [...aggregates].map(
+      ([traceId, aggregate]) => ({
+        traceId,
+        timestamp: aggregate.timestamp,
+        activityCount: aggregate.activityCount,
+        activityTypes: aggregate.activityTypes,
+        ...(aggregate.outboundWorkerCount > 0
+          ? { outboundWorkerCount: aggregate.outboundWorkerCount }
+          : {}),
+      }),
+    );
 
     // Sort by timestamp descending (most recent first)
     summaries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));

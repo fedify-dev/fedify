@@ -1310,6 +1310,19 @@ const recentTraces = await fedifyExporter.getRecentTraces({ limit: 100 });
 > that only provides `cas()` without `list()` support, this method will
 > return an empty array.
 
+> [!NOTE]
+> `~FedifySpanExporter.getRecentTraces()` computes every summary it
+> returns directly from the activity and worker records currently stored
+> for each trace, rather than from a separately maintained counter.  This
+> is why a trace is discoverable, and its `activityCount` accurate, as
+> soon as its records are stored, with no further write, and why the
+> count never includes a record that has since expired.  It also means
+> each call scans every record stored under the exporter's `keyPrefix`,
+> so its cost grows with the total number of retained records, not with
+> how much changed since the previous call.  Size the polling interval,
+> TTL, and `KvStore` choice accordingly in a deployment that retains many
+> traces.
+
 Each `TraceActivityRecord` contains:
 
  -  `traceId`: The OpenTelemetry trace ID
@@ -1351,8 +1364,10 @@ Each `TraceActivityRecord` contains:
      -  `phase`: Where in the attempt the failure happened:
         `"pre-request"`, `"request"`, `"response"`, `"post-response"`, or
         `"unknown"`
-     -  `statusCode` (optional): The HTTP status code returned by the
-        inbox.  Only set when `kind` is `"http"`
+     -  `statusCode` (optional): The HTTP status code of the response the
+        attempt observed, if any.  Set when `kind` is `"http"`, and also
+        when `kind` is `"local"` and `phase` is `"post-response"`, since
+        that failure happens after a response was already received
  -  `queueAttempt` (optional): The outbox queue's own retry round this
     attempt ran under, if it was dispatched from a queued message.  This is
     the queue's redelivery count, not a count of delivery attempts: a
