@@ -25,10 +25,65 @@ export type DeliveryOutcome = "success" | "failed";
  *     resolution failure or a network error.
  *  -  `"policy"`: The destination was refused by Fedify's own
  *     private-address policy before a request was made.
+ *  -  `"local"`: The attempt failed for a reason other than the network or
+ *     the remote response, e.g., the activity could not be serialized, or
+ *     a signing or HTTP Message Signatures spec lookup failed.
+ *  -  `"unknown"`: The attempt failed for a reason this version of Fedify
+ *     does not classify.
  *
  * @since 2.5.0
  */
-export type DeliveryFailureKind = "http" | "transport" | "policy";
+export type DeliveryFailureKind =
+  | "http"
+  | "transport"
+  | "policy"
+  | "local"
+  | "unknown";
+
+/**
+ * The phase of a delivery attempt in which it failed.
+ *
+ *  -  `"pre-request"`: Before a request was ever built, e.g., a
+ *     private-address policy rejection or activity serialization failure.
+ *  -  `"request"`: While sending the request or awaiting a response.
+ *  -  `"response"`: After a final response was received, but it was not a
+ *     successful (2xx) status.
+ *  -  `"post-response"`: After a successful response, during follow-up
+ *     bookkeeping that is not part of the delivery itself.
+ *  -  `"unknown"`: This version of Fedify did not record which phase the
+ *     attempt failed in.
+ *
+ * @since 2.5.0
+ */
+export type DeliveryFailurePhase =
+  | "pre-request"
+  | "request"
+  | "response"
+  | "post-response"
+  | "unknown";
+
+/**
+ * Details about a failed outbound delivery attempt.
+ *
+ * @since 2.5.0
+ */
+export interface DeliveryFailureDetails {
+  /**
+   * The kind of failure.
+   */
+  readonly kind: DeliveryFailureKind;
+
+  /**
+   * The phase of the delivery attempt in which it failed.
+   */
+  readonly phase: DeliveryFailurePhase;
+
+  /**
+   * The HTTP status code returned by the inbox.  Only set when
+   * {@link kind} is `"http"`.
+   */
+  readonly statusCode?: number;
+}
 
 /**
  * Signature verification details for an inbound activity.
@@ -148,20 +203,12 @@ export interface TraceActivityRecord {
   readonly outcome?: DeliveryOutcome;
 
   /**
-   * The kind of failure for a failed outbound delivery attempt (for
-   * outbound activities).  Only set when {@link outcome} is `"failed"`.
+   * Details about why an outbound delivery attempt failed (for outbound
+   * activities).  Only set when {@link outcome} is `"failed"`.
    *
    * @since 2.5.0
    */
-  readonly failureKind?: DeliveryFailureKind;
-
-  /**
-   * The HTTP status code returned by the inbox, for a failed outbound
-   * delivery attempt whose {@link failureKind} is `"http"`.
-   *
-   * @since 2.5.0
-   */
-  readonly statusCode?: number;
+  readonly failure?: DeliveryFailureDetails;
 }
 
 /**
@@ -493,6 +540,7 @@ export class FedifySpanExporter implements SpanExporter {
     const explicitActivityType = attrs["activitypub.activity.type"];
     const explicitActorId = attrs["activitypub.actor.id"];
     const failureKind = attrs["activitypub.delivery.failure_kind"];
+    const failurePhase = attrs["activitypub.delivery.failure_phase"];
     const statusCode = attrs["http.response.status_code"];
 
     return {
@@ -517,10 +565,19 @@ export class FedifySpanExporter implements SpanExporter {
       ).toISOString(),
       inboxUrl: typeof inboxUrl === "string" ? inboxUrl : undefined,
       outcome,
-      ...(outcome === "failed" && typeof failureKind === "string"
-        ? { failureKind: failureKind as DeliveryFailureKind }
+      ...(outcome === "failed"
+        ? {
+          failure: {
+            kind: typeof failureKind === "string"
+              ? failureKind as DeliveryFailureKind
+              : "unknown",
+            phase: typeof failurePhase === "string"
+              ? failurePhase as DeliveryFailurePhase
+              : "unknown",
+            ...(typeof statusCode === "number" ? { statusCode } : {}),
+          },
+        }
         : {}),
-      ...(typeof statusCode === "number" ? { statusCode } : {}),
     };
   }
 

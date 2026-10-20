@@ -8903,8 +8903,8 @@ test(
         assertEquals(record.spanId, deliveryCtx.spanId);
         assertEquals(record.direction, "outbound");
         assertEquals(record.outcome, "failed");
-        assertEquals(record.failureKind, "http");
-        assertEquals(record.statusCode, 500);
+        assertEquals(record.failure?.kind, "http");
+        assertEquals(record.failure?.statusCode, 500);
 
         const deliveryLog = records.find((r) =>
           String(r.rawMessage).startsWith(

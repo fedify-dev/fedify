@@ -127,7 +127,8 @@ function createActivitySendFailedEvent(options: {
   activityId?: string;
   activityType?: string;
   actorId?: string;
-  failureKind: "http" | "transport" | "policy";
+  failureKind: "http" | "transport" | "policy" | "local" | "unknown";
+  failurePhase?: "pre-request" | "request" | "response" | "post-response";
   statusCode?: number;
   time?: HrTime;
 }): TimedEvent {
@@ -135,6 +136,7 @@ function createActivitySendFailedEvent(options: {
     "activitypub.inbox.url": options.inboxUrl,
     "activitypub.activity.id": options.activityId ?? "",
     "activitypub.delivery.failure_kind": options.failureKind,
+    "activitypub.delivery.failure_phase": options.failurePhase ?? "response",
   };
   if (options.activityType != null) {
     attributes["activitypub.activity.type"] = options.activityType;
@@ -253,7 +255,7 @@ test("FedifySpanExporter", async (t) => {
       assertEquals(activities[0].activityJson, undefined);
       assertEquals(activities[0].inboxUrl, inboxUrl);
       assertEquals(activities[0].outcome, "success");
-      assertEquals(activities[0].failureKind, undefined);
+      assertEquals(activities[0].failure, undefined);
     },
   );
 
@@ -279,6 +281,7 @@ test("FedifySpanExporter", async (t) => {
             activityId,
             activityType,
             failureKind: "http",
+            failurePhase: "response",
             statusCode: 500,
           }),
         ],
@@ -297,8 +300,9 @@ test("FedifySpanExporter", async (t) => {
       assertEquals(activities[0].activityId, activityId);
       assertEquals(activities[0].inboxUrl, inboxUrl);
       assertEquals(activities[0].outcome, "failed");
-      assertEquals(activities[0].failureKind, "http");
-      assertEquals(activities[0].statusCode, 500);
+      assertEquals(activities[0].failure?.kind, "http");
+      assertEquals(activities[0].failure?.phase, "response");
+      assertEquals(activities[0].failure?.statusCode, 500);
 
       const summaries = await exporter.getRecentTraces();
       const summary = summaries.find((s) => s.traceId === traceId);
@@ -329,6 +333,7 @@ test("FedifySpanExporter", async (t) => {
             activityId,
             activityType,
             failureKind: "transport",
+            failurePhase: "request",
           }),
         ],
       });
@@ -342,6 +347,7 @@ test("FedifySpanExporter", async (t) => {
             activityId,
             activityType,
             failureKind: "http",
+            failurePhase: "response",
             statusCode: 503,
           }),
         ],
@@ -365,10 +371,12 @@ test("FedifySpanExporter", async (t) => {
       assertEquals(activities.length, 3);
       const bySpanId = new Map(activities.map((a) => [a.spanId, a]));
       assertEquals(bySpanId.get("span-attempt-1")?.outcome, "failed");
-      assertEquals(bySpanId.get("span-attempt-1")?.failureKind, "transport");
+      assertEquals(bySpanId.get("span-attempt-1")?.failure?.kind, "transport");
+      assertEquals(bySpanId.get("span-attempt-1")?.failure?.phase, "request");
       assertEquals(bySpanId.get("span-attempt-2")?.outcome, "failed");
-      assertEquals(bySpanId.get("span-attempt-2")?.failureKind, "http");
-      assertEquals(bySpanId.get("span-attempt-2")?.statusCode, 503);
+      assertEquals(bySpanId.get("span-attempt-2")?.failure?.kind, "http");
+      assertEquals(bySpanId.get("span-attempt-2")?.failure?.phase, "response");
+      assertEquals(bySpanId.get("span-attempt-2")?.failure?.statusCode, 503);
       assertEquals(bySpanId.get("span-attempt-3")?.outcome, "success");
 
       const summaries = await exporter.getRecentTraces();
@@ -400,7 +408,7 @@ test("FedifySpanExporter", async (t) => {
       const activities = await exporter.getActivitiesByTraceId(traceId);
       assertEquals(activities.length, 1);
       assertEquals(activities[0].outcome, undefined);
-      assertEquals(activities[0].failureKind, undefined);
+      assertEquals(activities[0].failure, undefined);
     },
   );
 

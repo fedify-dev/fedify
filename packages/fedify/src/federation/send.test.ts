@@ -632,6 +632,10 @@ test("sendActivity() records OpenTelemetry span events", async (t) => {
         event.attributes["activitypub.delivery.failure_kind"],
         "http",
       );
+      assertEquals(
+        event.attributes["activitypub.delivery.failure_phase"],
+        "response",
+      );
       assertEquals(event.attributes["http.response.status_code"], 500);
     } finally {
       exporter.clear();
@@ -675,6 +679,10 @@ test("sendActivity() records OpenTelemetry span events", async (t) => {
         "transport",
       );
       assertEquals(
+        events[0].attributes?.["activitypub.delivery.failure_phase"],
+        "request",
+      );
+      assertEquals(
         events[0].attributes?.["http.response.status_code"],
         undefined,
       );
@@ -714,6 +722,66 @@ test("sendActivity() records OpenTelemetry span events", async (t) => {
       assertEquals(
         events[0].attributes?.["activitypub.delivery.failure_kind"],
         "policy",
+      );
+      assertEquals(
+        events[0].attributes?.["activitypub.delivery.failure_phase"],
+        "pre-request",
+      );
+    } finally {
+      exporter.clear();
+      fetchMock.hardReset();
+    }
+  });
+
+  await t.step("failed send (activity serialization failure)", async () => {
+    try {
+      fetchMock.spyGlobal();
+      const circular: Record<string, unknown> = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: "https://example.com/activity/send-failed-serialize",
+        actor: "https://example.com/person",
+      };
+      circular.self = circular;
+
+      await assertRejects(
+        () =>
+          sendActivity({
+            activity: circular,
+            activityId: "https://example.com/activity/send-failed-serialize",
+            keys: [],
+            inbox: new URL(
+              "https://example.com/inbox-send-failed-serialize",
+            ),
+            tracerProvider,
+          }),
+        TypeError,
+      );
+
+      assertEquals(
+        exporter.getEvents(
+          "activitypub.send_activity",
+          "activitypub.activity.sent",
+        ).length,
+        0,
+      );
+
+      const events = exporter.getEvents(
+        "activitypub.send_activity",
+        "activitypub.activity.send_failed",
+      );
+      assertEquals(events.length, 1);
+      assertEquals(
+        events[0].attributes?.["activitypub.delivery.failure_kind"],
+        "local",
+      );
+      assertEquals(
+        events[0].attributes?.["activitypub.delivery.failure_phase"],
+        "pre-request",
+      );
+      assertEquals(
+        events[0].attributes?.["http.response.status_code"],
+        undefined,
       );
     } finally {
       exporter.clear();
@@ -869,8 +937,9 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
           assertEquals(record.direction, "outbound");
           assertEquals(record.spanId, spanId);
           assertEquals(record.outcome, "failed");
-          assertEquals(record.failureKind, "http");
-          assertEquals(record.statusCode, 500);
+          assertEquals(record.failure?.kind, "http");
+          assertEquals(record.failure?.phase, "response");
+          assertEquals(record.failure?.statusCode, 500);
 
           const failureLog = records.find((r) =>
             String(r.rawMessage).startsWith(

@@ -411,6 +411,13 @@ async function readLimitedResponseBody(
   return result;
 }
 
+type SendFailureKind = "http" | "transport" | "policy" | "local" | "unknown";
+type SendFailurePhase =
+  | "pre-request"
+  | "request"
+  | "response"
+  | "post-response";
+
 async function sendActivityInternal(
   {
     activity,
@@ -441,13 +448,18 @@ async function sendActivityInternal(
   if (actorId != null) {
     eventAttributes["activitypub.actor.id"] = actorId;
   }
+  let terminalEventEmitted = false;
   function recordSendFailure(
-    kind: "transport" | "http" | "policy",
+    kind: SendFailureKind,
+    phase: SendFailurePhase,
     statusCode?: number,
   ): void {
+    if (terminalEventEmitted) return;
+    terminalEventEmitted = true;
     span.addEvent("activitypub.activity.send_failed", {
       ...eventAttributes,
       "activitypub.delivery.failure_kind": kind,
+      "activitypub.delivery.failure_phase": phase,
       ...(statusCode == null
         ? {}
         : { "http.response.status_code": statusCode }),
@@ -484,10 +496,27 @@ async function sendActivityInternal(
         false,
         activityType,
       );
-      recordSendFailure("transport");
+      recordSendFailure("transport", "pre-request");
     } else {
-      recordSendFailure("policy");
+      recordSendFailure("policy", "pre-request");
     }
+    throw error;
+  }
+  let body: string;
+  try {
+    body = JSON.stringify(activity);
+  } catch (error) {
+    logger.error(
+      "Failed to serialize activity {activityId} for {inbox}:\n{error}",
+      { activityId, inbox: inbox.href, error },
+    );
+    federationMetrics.recordDelivery(
+      inbox,
+      getDurationMs(started),
+      false,
+      activityType,
+    );
+    recordSendFailure("local", "pre-request");
     throw error;
   }
   headers = new Headers(headers);
@@ -495,7 +524,7 @@ async function sendActivityInternal(
   const request = new Request(inbox, {
     method: "POST",
     headers,
-    body: JSON.stringify(activity),
+    body,
     redirect: "manual",
   });
   let rsaKey: SenderKeyPair | null = null;
@@ -556,7 +585,10 @@ async function sendActivityInternal(
       false,
       activityType,
     );
-    recordSendFailure(failure instanceof UrlError ? "policy" : "transport");
+    recordSendFailure(
+      error instanceof UrlError ? "policy" : "transport",
+      "request",
+    );
     throw failure;
   }
   try {
@@ -581,7 +613,7 @@ async function sendActivityInternal(
           error,
         },
       );
-      recordSendFailure("http", response.status);
+      recordSendFailure("http", "response", response.status);
       throw new SendActivityError(
         inbox,
         response.status,
@@ -593,7 +625,10 @@ async function sendActivityInternal(
     }
 
     deliverySuccess = true;
-    span.addEvent("activitypub.activity.sent", eventAttributes);
+    if (!terminalEventEmitted) {
+      terminalEventEmitted = true;
+      span.addEvent("activitypub.activity.sent", eventAttributes);
+    }
   } finally {
     federationMetrics.recordDelivery(
       inbox,
