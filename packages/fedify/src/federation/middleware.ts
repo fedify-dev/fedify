@@ -2096,6 +2096,7 @@ export class FederationImpl<TContextData>
     const survivors: Survivor[] = [];
     let lastError: unknown;
     let lastPermanent: { error: SendActivityError; inbox: URL } | undefined;
+    let attemptsStarted = 0;
     let activity: Activity | undefined;
     const getActivity = async () => activity ??= await parseActivity();
     const drop = async (
@@ -2123,7 +2124,21 @@ export class FederationImpl<TContextData>
         ) <= 0
     ) {
       const inbox = new URL(message.gatewayInboxes[0]);
-      await drop(circuit, getRemoteHost(inbox), inbox, heldSince);
+      try {
+        await drop(circuit, getRemoteHost(inbox), inbox, heldSince);
+      } catch (dropError) {
+        recordOutboundWorkerDispositionSpanEvent(
+          span,
+          "action_failed",
+          attemptsStarted,
+        );
+        throw dropError;
+      }
+      recordOutboundWorkerDispositionSpanEvent(
+        span,
+        "dropped",
+        attemptsStarted,
+      );
       return;
     }
     for (const inboxHref of message.gatewayInboxes) {
@@ -2154,7 +2169,21 @@ export class FederationImpl<TContextData>
       }
       if (decision != null && circuit != null) {
         if (decision.type === "drop") {
-          await drop(circuit, remoteHost, inbox, decision.heldSince);
+          try {
+            await drop(circuit, remoteHost, inbox, decision.heldSince);
+          } catch (dropError) {
+            recordOutboundWorkerDispositionSpanEvent(
+              span,
+              "action_failed",
+              attemptsStarted,
+            );
+            throw dropError;
+          }
+          recordOutboundWorkerDispositionSpanEvent(
+            span,
+            "dropped",
+            attemptsStarted,
+          );
           return;
         } else if (decision.type === "hold") {
           recordCircuitBreakerHeldSpanEvent(span, remoteHost, decision.state);
@@ -2172,6 +2201,7 @@ export class FederationImpl<TContextData>
           );
         }
       }
+      attemptsStarted++;
       try {
         await sendActivity({
           allowPrivateAddress: this.allowPrivateAddress,
@@ -2417,10 +2447,20 @@ export class FederationImpl<TContextData>
           "until one of its gateways can be tried again.",
         { ...logData, portableInbox: message.portableInbox },
       );
-      await outboxQueue.enqueue(heldMessage, {
-        delay: clampNegativeDelay(delay),
-        orderingKey: message.orderingKey,
-      });
+      try {
+        await outboxQueue.enqueue(heldMessage, {
+          delay: clampNegativeDelay(delay),
+          orderingKey: message.orderingKey,
+        });
+      } catch (enqueueError) {
+        recordOutboundWorkerDispositionSpanEvent(
+          span,
+          "action_failed",
+          attemptsStarted,
+        );
+        throw enqueueError;
+      }
+      recordOutboundWorkerDispositionSpanEvent(span, "held", attemptsStarted);
       this.metrics.recordQueueTaskEnqueued(
         {
           role: "outbox",

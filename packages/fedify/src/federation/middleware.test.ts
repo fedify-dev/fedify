@@ -9397,6 +9397,80 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     },
   );
 
+  await t.step(
+    "a gateway round held after trying every gateway, then held again " +
+      "without trying any, both leave a worker record",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://gw1-gateway-round.example/inbox", {
+        status: 500,
+        body: "server error",
+      });
+      fetchMock.post("https://gw2-gateway-round.example/inbox", {
+        status: 500,
+        body: "server error",
+      });
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const { federation, queued } = setup(
+        { failureThreshold: 1, recoveryDelay: { hours: 1 } },
+        { tracerProvider },
+      );
+      const gatewayInboxes = [
+        "https://gw1-gateway-round.example/inbox",
+        "https://gw2-gateway-round.example/inbox",
+      ];
+
+      await federation.processQueuedTask(
+        undefined,
+        createOutboxMessage(gatewayInboxes[0], {
+          gatewayInboxes,
+          broadcastId: "test-broadcast",
+          deliveryId: "test-delivery",
+        }),
+      );
+      assertEquals(queued.length, 1);
+      const held = queued[0].message as OutboxMessage;
+      // Both gateways were tried once each before this round held them:
+      assertEquals(held.gatewayInboxes?.length, 2);
+      assertEquals(held.broadcastId, "test-broadcast");
+      assertEquals(held.deliveryId, "test-delivery");
+
+      queued.length = 0;
+      await federation.processQueuedTask(undefined, held);
+      // Every gateway's circuit is already open, so this round holds them
+      // again without trying either:
+      assertEquals(queued.length, 1);
+
+      const workerSpans = exporter.getSpans("activitypub.outbox");
+      assertEquals(workerSpans.length, 2);
+      const fedifyExporter = new FedifySpanExporter(new MemoryKvStore());
+      await new Promise<void>((resolve) => {
+        fedifyExporter.export(workerSpans, () => resolve());
+      });
+      const [firstSpan, secondSpan] = workerSpans;
+      const firstWorkers = await fedifyExporter.getWorkerRecordsByTraceId(
+        firstSpan.spanContext().traceId,
+      );
+      const firstWorker = firstWorkers.find(
+        (w) => w.spanId === firstSpan.spanContext().spanId,
+      );
+      assertEquals(firstWorker?.disposition, "held");
+      assertEquals(firstWorker?.attemptsStarted, 2);
+      assertEquals(firstWorker?.broadcastId, "test-broadcast");
+      assertEquals(firstWorker?.deliveryId, "test-delivery");
+
+      const secondWorkers = await fedifyExporter.getWorkerRecordsByTraceId(
+        secondSpan.spanContext().traceId,
+      );
+      const secondWorker = secondWorkers.find(
+        (w) => w.spanId === secondSpan.spanContext().spanId,
+      );
+      assertEquals(secondWorker?.disposition, "held");
+      assertEquals(secondWorker?.attemptsStarted, 0);
+    },
+  );
+
   await t.step("circuit keys include non-default ports", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();
