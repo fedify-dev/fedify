@@ -507,6 +507,17 @@ function recordCircuitBreakerHeldSpanEvent(
   });
 }
 
+function recordOutboundWorkerDispositionSpanEvent(
+  span: Span,
+  disposition: "held" | "dropped" | "preparation_failed" | "action_failed",
+  attemptsStarted: number,
+): void {
+  span.addEvent("activitypub.outbox.worker.disposition", {
+    "activitypub.outbox.worker.disposition": disposition,
+    "activitypub.outbox.worker.attempts_started": attemptsStarted,
+  });
+}
+
 function isRemoteContextLoadingFailure(error: unknown): boolean {
   return error instanceof Error &&
     typeof (error as Error & { details?: { code?: unknown } }).details ===
@@ -1433,6 +1444,7 @@ export class FederationImpl<TContextData>
     message: OutboxMessage,
     span: Span,
   ): Promise<void> {
+    let attemptsStarted = 0;
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const logData = {
       keyIds: message.keys.map((pair) => pair.keyId),
@@ -1605,17 +1617,45 @@ export class FederationImpl<TContextData>
       if (decision != null && circuit != null) {
         if (decision.type === "hold") {
           recordCircuitBreakerHeldSpanEvent(span, remoteHost, decision.state);
-          await enqueueHeldOutboxMessage(decision.delay, decision.heldSince);
+          try {
+            await enqueueHeldOutboxMessage(decision.delay, decision.heldSince);
+          } catch (enqueueError) {
+            recordOutboundWorkerDispositionSpanEvent(
+              span,
+              "action_failed",
+              attemptsStarted,
+            );
+            throw enqueueError;
+          }
+          recordOutboundWorkerDispositionSpanEvent(
+            span,
+            "held",
+            attemptsStarted,
+          );
           return;
         }
         if (decision.type === "drop") {
           const activity = await parseActivity();
-          await dropHeldOutboxMessage(
-            circuit,
-            remoteHost,
-            inbox,
-            decision.heldSince,
-            activity,
+          try {
+            await dropHeldOutboxMessage(
+              circuit,
+              remoteHost,
+              inbox,
+              decision.heldSince,
+              activity,
+            );
+          } catch (dropError) {
+            recordOutboundWorkerDispositionSpanEvent(
+              span,
+              "action_failed",
+              attemptsStarted,
+            );
+            throw dropError;
+          }
+          recordOutboundWorkerDispositionSpanEvent(
+            span,
+            "dropped",
+            attemptsStarted,
           );
           return;
         }
@@ -1627,6 +1667,7 @@ export class FederationImpl<TContextData>
           );
         }
       }
+      attemptsStarted++;
       await sendActivity({
         allowPrivateAddress: this.allowPrivateAddress,
         keys,
@@ -1675,6 +1716,13 @@ export class FederationImpl<TContextData>
           return undefined;
         }
       })();
+      if (attemptsStarted === 0) {
+        recordOutboundWorkerDispositionSpanEvent(
+          span,
+          "preparation_failed",
+          attemptsStarted,
+        );
+      }
       let retryAfterDelay: Temporal.Duration | undefined;
       let circuitHold:
         | {
@@ -1790,12 +1838,26 @@ export class FederationImpl<TContextData>
       }
 
       if (circuitDrop != null) {
-        await dropHeldOutboxMessage(
-          circuitDrop.circuit,
-          circuitDrop.remoteHost,
-          circuitDrop.inbox,
-          circuitDrop.heldSince,
-          activity,
+        try {
+          await dropHeldOutboxMessage(
+            circuitDrop.circuit,
+            circuitDrop.remoteHost,
+            circuitDrop.inbox,
+            circuitDrop.heldSince,
+            activity,
+          );
+        } catch (dropError) {
+          recordOutboundWorkerDispositionSpanEvent(
+            span,
+            "action_failed",
+            attemptsStarted,
+          );
+          throw dropError;
+        }
+        recordOutboundWorkerDispositionSpanEvent(
+          span,
+          "dropped",
+          attemptsStarted,
         );
         return;
       }
@@ -1867,9 +1929,23 @@ export class FederationImpl<TContextData>
             circuitHold.heldSince,
             maxDelay(circuitHold.delay, retryAfterDelay),
           );
-        await enqueueHeldOutboxMessage(
-          holdDelay,
-          circuitHold.heldSince,
+        try {
+          await enqueueHeldOutboxMessage(
+            holdDelay,
+            circuitHold.heldSince,
+          );
+        } catch (enqueueError) {
+          recordOutboundWorkerDispositionSpanEvent(
+            span,
+            "action_failed",
+            attemptsStarted,
+          );
+          throw enqueueError;
+        }
+        recordOutboundWorkerDispositionSpanEvent(
+          span,
+          "held",
+          attemptsStarted,
         );
         return;
       }

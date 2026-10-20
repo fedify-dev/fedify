@@ -8647,6 +8647,31 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
           ),
           true,
         );
+
+        const workerSpan = exporter.getSpan("activitypub.outbox");
+        assert(workerSpan != null);
+        const workerTraceId = workerSpan.spanContext().traceId;
+        const kv = new MemoryKvStore();
+        const fedifyExporter = new FedifySpanExporter(kv);
+        await new Promise<void>((resolve) => {
+          fedifyExporter.export([workerSpan], () => resolve());
+        });
+        assertEquals(
+          await fedifyExporter.getActivitiesByTraceId(workerTraceId),
+          [],
+        );
+        const workers = await fedifyExporter.getWorkerRecordsByTraceId(
+          workerTraceId,
+        );
+        assertEquals(workers.length, 1);
+        assertEquals(workers[0].disposition, "preparation_failed");
+        assertEquals(workers[0].attemptsStarted, 0);
+
+        const summaries = await fedifyExporter.getRecentTraces();
+        const summary = summaries.find((s) => s.traceId === workerTraceId);
+        assert(summary != null);
+        assertEquals(summary.activityCount, 0);
+        assertEquals(summary.outboundWorkerCount, 1);
       } finally {
         await reset();
       }
@@ -9269,11 +9294,101 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
         [...deliverySpans, ...workerSpans].map((s) => s.spanContext().traceId),
       );
       let totalRecords = 0;
+      let totalWorkerRecords = 0;
       for (const traceId of traceIds) {
         totalRecords +=
           (await fedifyExporter.getActivitiesByTraceId(traceId)).length;
+        totalWorkerRecords +=
+          (await fedifyExporter.getWorkerRecordsByTraceId(traceId)).length;
       }
       assertEquals(totalRecords, 1);
+      assertEquals(totalWorkerRecords, 2);
+
+      const [firstWorkerSpan, secondWorkerSpan] = workerSpans;
+      const firstWorkers = await fedifyExporter.getWorkerRecordsByTraceId(
+        firstWorkerSpan.spanContext().traceId,
+      );
+      assertEquals(
+        firstWorkers.find((w) =>
+          w.spanId === firstWorkerSpan.spanContext().spanId
+        )
+          ?.disposition,
+        "held",
+      );
+      assertEquals(
+        firstWorkers.find((w) =>
+          w.spanId === firstWorkerSpan.spanContext().spanId
+        )
+          ?.attemptsStarted,
+        1,
+      );
+      const secondWorkers = await fedifyExporter.getWorkerRecordsByTraceId(
+        secondWorkerSpan.spanContext().traceId,
+      );
+      assertEquals(
+        secondWorkers.find((w) =>
+          w.spanId === secondWorkerSpan.spanContext().spanId
+        )?.disposition,
+        "held",
+      );
+      assertEquals(
+        secondWorkers.find((w) =>
+          w.spanId === secondWorkerSpan.spanContext().spanId
+        )?.attemptsStarted,
+        0,
+      );
+    },
+  );
+
+  await t.step(
+    "a failed re-enqueue of a held message is recorded as action_failed",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://action-failed.example/inbox", {
+        status: 500,
+        body: "server error",
+      });
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const queue: MessageQueue = {
+        enqueue(_message, _options) {
+          return Promise.reject(new Error("simulated enqueue failure"));
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue,
+        allowPrivateAddress: true,
+        tracerProvider,
+        circuitBreaker: { failureThreshold: 1, recoveryDelay: { hours: 1 } },
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+
+      await assertRejects(
+        () =>
+          federation.processQueuedTask(
+            undefined,
+            createOutboxMessage("https://action-failed.example/inbox"),
+          ),
+        Error,
+        "simulated enqueue failure",
+      );
+
+      const workerSpan = exporter.getSpan("activitypub.outbox");
+      assert(workerSpan != null);
+      const fedifyExporter = new FedifySpanExporter(new MemoryKvStore());
+      await new Promise<void>((resolve) => {
+        fedifyExporter.export([workerSpan], () => resolve());
+      });
+      const workers = await fedifyExporter.getWorkerRecordsByTraceId(
+        workerSpan.spanContext().traceId,
+      );
+      assertEquals(workers.length, 1);
+      assertEquals(workers[0].disposition, "action_failed");
+      assertEquals(workers[0].attemptsStarted, 1);
     },
   );
 
@@ -10166,7 +10281,8 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     const now = Temporal.Instant.from("2026-05-25T00:00:02Z");
     let dropped: { remoteHost: string; heldSince: Temporal.Instant } | null =
       null;
-    const { federation, queued, kv } = setup(false);
+    const [tracerProvider, exporter] = createTestTracerProvider();
+    const { federation, queued, kv } = setup(false, { tracerProvider });
     federation.circuitBreaker = new CircuitBreaker({
       kv,
       prefix: ["_fedify", "circuit"],
@@ -10198,6 +10314,20 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       heldSince: Temporal.Instant.from("2026-05-25T00:00:00Z"),
     });
     assertEquals(permanentFailureReason, "circuit-breaker-ttl");
+
+    const workerSpan = exporter.getSpan("activitypub.outbox");
+    assert(workerSpan != null);
+    const kv2 = new MemoryKvStore();
+    const fedifyExporter = new FedifySpanExporter(kv2);
+    await new Promise<void>((resolve) => {
+      fedifyExporter.export([workerSpan], () => resolve());
+    });
+    const workers = await fedifyExporter.getWorkerRecordsByTraceId(
+      workerSpan.spanContext().traceId,
+    );
+    assertEquals(workers.length, 1);
+    assertEquals(workers[0].disposition, "dropped");
+    assertEquals(workers[0].attemptsStarted, 0);
   });
 
   await t.step("expired held probe is dropped after failed send", async () => {
