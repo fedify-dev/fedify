@@ -1444,7 +1444,22 @@ export class FederationImpl<TContextData>
         }),
       },
     );
-    await this.sendActivity(keys, message.inboxes, activity, {
+    // A fanout message enqueued before deliveryId existed has no stable
+    // per-destination identity at all: resolving the same inbox twice
+    // from that message would otherwise mint a fresh, unrelated
+    // deliveryId each time, since none of it survives rehydration.  Its
+    // own id and the destination key together give that case a
+    // deliveryId that comes out the same every time this exact message
+    // is processed, rather than leaving it unset.
+    const inboxes = globalThis.Object.fromEntries(
+      globalThis.Object.entries(message.inboxes).map(([key, entry]) => [
+        key,
+        entry.deliveryId == null
+          ? { ...entry, deliveryId: `legacy:${message.id}:${key}` }
+          : entry,
+      ]),
+    );
+    await this.sendActivity(keys, inboxes, activity, {
       collectionSync: message.collectionSync,
       orderingKey: message.orderingKey,
       normalizeExistingProofs: message.normalizeExistingProofs,
@@ -2142,7 +2157,16 @@ export class FederationImpl<TContextData>
       return;
     }
     for (const inboxHref of message.gatewayInboxes) {
-      const inbox = new URL(inboxHref);
+      let inbox: URL;
+      try {
+        inbox = new URL(inboxHref);
+      } catch (urlError) {
+        logger.warn(
+          "Invalid gateway inbox URL in OutboxMessage: {inbox}",
+          { ...logData, inbox: inboxHref, error: urlError },
+        );
+        continue;
+      }
       const remoteHost = getRemoteHost(inbox);
       const now = Temporal.Now.instant();
       const notBefore = parseInstant(message.gatewayNotBefore?.[inboxHref]);
@@ -2351,6 +2375,25 @@ export class FederationImpl<TContextData>
         code: SpanStatusCode.ERROR,
         message: String(lastError),
       });
+    }
+    if (survivors.length < 1 && lastPermanent == null) {
+      // Every gateway inbox was invalid, so none could even be attempted;
+      // this is the gateway round's equivalent of the single-inbox
+      // path's preparation_failed, since no attempt record exists for
+      // this execution at all otherwise.
+      if (attemptsStarted === 0) {
+        recordOutboundWorkerDispositionSpanEvent(
+          span,
+          "preparation_failed",
+          attemptsStarted,
+        );
+      }
+      recordOutboxActivity(
+        this.meterProvider,
+        "abandoned",
+        message.activityType,
+      );
+      return;
     }
     if (survivors.length < 1) {
       // Every gateway failed permanently:
@@ -6870,6 +6913,7 @@ function forwardActivity<TContextData>(
           forwarder,
           recipients,
           options,
+          span,
         );
       } catch (e) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
@@ -6890,13 +6934,17 @@ async function forwardActivityInternal<TContextData>(
     | { identifier: string }
     | { username: string },
   recipients: Recipient | Recipient[] | "followers",
-  options?: ForwardActivityOptions,
+  options: ForwardActivityOptions | undefined,
+  span: Span,
 ): Promise<boolean> {
   const logger = getLogger(["fedify", "federation", loggerCategory]);
   // Minted before recipients are resolved into inboxes, so that every
   // delivery this call fans out into shares one broadcast identity.
+  // Set directly on the span passed down from forwardActivity(), rather
+  // than through trace.getActiveSpan(), since that depends on a
+  // ContextManager being registered globally, which is not guaranteed.
   const broadcastId = crypto.randomUUID();
-  trace.getActiveSpan()?.setAttribute("activitypub.broadcast.id", broadcastId);
+  span.setAttribute("activitypub.broadcast.id", broadcastId);
   let keys: SenderKeyPair[];
   let identifier: string | null = null;
   if (

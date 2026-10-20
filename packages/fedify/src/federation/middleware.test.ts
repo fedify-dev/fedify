@@ -73,6 +73,7 @@ import {
   signRequest,
   verifyRequest,
 } from "../sig/http.ts";
+import { exportJwk } from "../sig/key.ts";
 import type { KeyCache } from "../sig/key.ts";
 import {
   compactJsonLd,
@@ -118,6 +119,7 @@ import type {
   MessageQueueListenOptions,
 } from "./mq.ts";
 import type {
+  FanoutMessage,
   InboxMessage,
   Message,
   OutboxMessage,
@@ -5521,6 +5523,80 @@ test("FederationImpl.processQueuedTask()", async (t) => {
     assertEquals(queuedMessages, []);
   });
 
+  await t.step(
+    "a native redelivery is the same message, so deliveryId/" +
+      "broadcastId need no preservation logic of their own: they are " +
+      "still on the attempt's own record",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://example.com/inbox-native-redelivery", {
+        status: 500,
+        body: "server error",
+      });
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const queuedMessages: Message[] = [];
+      const queue: MessageQueue = {
+        nativeRetrial: true,
+        enqueue(message) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen() {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        allowPrivateAddress: true,
+        kv: new MemoryKvStore(),
+        queue,
+        tracerProvider,
+      });
+      const message: OutboxMessage = {
+        type: "outbox",
+        id: crypto.randomUUID(),
+        broadcastId: "test-broadcast-native-redelivery",
+        deliveryId: "test-delivery-native-redelivery",
+        baseUrl: "https://example.com",
+        keys: [],
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://example.com/activity/native-redelivery",
+          actor: "https://example.com/users/alice",
+        },
+        activityType: "https://www.w3.org/ns/activitystreams#Create",
+        inbox: "https://example.com/inbox-native-redelivery",
+        sharedInbox: false,
+        started: new Date().toISOString(),
+        attempt: 0,
+        headers: {},
+        traceContext: {},
+      };
+
+      // nativeRetrial means a transient failure rethrows instead of
+      // building a new message, so the exact same message, with its
+      // deliveryId/broadcastId untouched, is what the queue backend
+      // redelivers:
+      await assertRejects(() =>
+        federation.processQueuedTask(undefined, message)
+      );
+      assertEquals(queuedMessages, []);
+
+      const span = exporter.getSpan("activitypub.send_activity");
+      assertExists(span);
+      assertEquals(
+        span.attributes["activitypub.delivery.id"],
+        "test-delivery-native-redelivery",
+      );
+      assertEquals(
+        span.attributes["activitypub.broadcast.id"],
+        "test-broadcast-native-redelivery",
+      );
+      fetchMock.hardReset();
+    },
+  );
+
   await t.step("with MessageQueue having no nativeRetrial", async () => {
     const kv = new MemoryKvStore();
     let queuedMessages: Message[] = [];
@@ -9006,6 +9082,8 @@ test(
         const baseMessage = {
           type: "outbox",
           id: crypto.randomUUID(),
+          broadcastId: "test-broadcast-retry-sequence",
+          deliveryId: "test-delivery-retry-sequence",
           baseUrl: "https://example.com",
           keys: [],
           activity: {
@@ -9033,6 +9111,13 @@ test(
           );
         }
         assertEquals(queuedMessages.length, 2);
+        // Fedify's own policy-driven retry re-enqueues the message with
+        // the same deliveryId/broadcastId, not fresh ones:
+        for (const queued of queuedMessages) {
+          assert(queued.type === "outbox");
+          assertEquals(queued.deliveryId, "test-delivery-retry-sequence");
+          assertEquals(queued.broadcastId, "test-broadcast-retry-sequence");
+        }
 
         const deliverySpans = exporter.getSpans("activitypub.send_activity");
         assertEquals(deliverySpans.length, 3);
@@ -9065,6 +9150,15 @@ test(
           .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
           .map((a) => a.queueAttempt);
         assertEquals(queueAttempts, [0, 1, 2]);
+        // Every attempt across the retry sequence, whether it failed or
+        // finally succeeded, shares the same deliveryId/broadcastId:
+        for (const activity of activities) {
+          assertEquals(activity.deliveryId, "test-delivery-retry-sequence");
+          assertEquals(
+            activity.broadcastId,
+            "test-broadcast-retry-sequence",
+          );
+        }
 
         const summaries = await fedifyExporter.getRecentTraces();
         const summary = summaries.find((s) => s.traceId === traceId);
@@ -9468,6 +9562,65 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       );
       assertEquals(secondWorker?.disposition, "held");
       assertEquals(secondWorker?.attemptsStarted, 0);
+    },
+  );
+
+  await t.step(
+    "a gateway round whose every gateway inbox is unusable is recorded " +
+      "as preparation_failed, with no attempt ever entered, and leaves " +
+      "the trace with activityCount 0 but outboundWorkerCount 1",
+    async () => {
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const { federation } = setup(undefined, { tracerProvider });
+      const message: OutboxMessage = {
+        type: "outbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        keys: [],
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://example.com/activity/gw-prep-failed",
+          actor: "https://breaker.example/users/bob",
+        },
+        activityId: "https://example.com/activity/gw-prep-failed",
+        activityType: "https://www.w3.org/ns/activitystreams#Create",
+        inbox: "not a url",
+        gatewayInboxes: ["not a url", "also not a url"],
+        sharedInbox: false,
+        started: new Date().toISOString(),
+        attempt: 0,
+        headers: {},
+        traceContext: {},
+      };
+
+      await federation.processQueuedTask(undefined, message);
+
+      assertEquals(
+        exporter.getSpans("activitypub.send_activity").length,
+        0,
+      );
+      const workerSpan = exporter.getSpan("activitypub.outbox");
+      assertExists(workerSpan);
+      const fedifyExporter = new FedifySpanExporter(new MemoryKvStore());
+      await new Promise<void>((resolve) => {
+        fedifyExporter.export([workerSpan], () => resolve());
+      });
+      const traceId = workerSpan.spanContext().traceId;
+      const workers = await fedifyExporter.getWorkerRecordsByTraceId(traceId);
+      assertEquals(workers.length, 1);
+      assertEquals(workers[0].disposition, "preparation_failed");
+      assertEquals(workers[0].attemptsStarted, 0);
+
+      const activities = await fedifyExporter.getActivitiesByTraceId(
+        traceId,
+      );
+      assertEquals(activities.length, 0);
+      const summaries = await fedifyExporter.getRecentTraces();
+      const summary = summaries.find((s) => s.traceId === traceId);
+      assert(summary != null);
+      assertEquals(summary.activityCount, 0);
+      assertEquals(summary.outboundWorkerCount, 1);
     },
   );
 
@@ -11704,6 +11857,504 @@ test("ContextImpl.sendActivity()", async (t) => {
   });
 
   fetchMock.hardReset();
+});
+
+test("broadcastId and deliveryId boundaries", async (t) => {
+  await t.step(
+    "ContextImpl.sendActivityInternal() (middleware.ts) mints a fresh " +
+      "broadcastId per call, even for the exact same activity object " +
+      "sent twice separately",
+    async () => {
+      fetchMock.spyGlobal();
+      fetchMock.post("https://example.com/inbox-broadcast-twice", {
+        status: 202,
+      });
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        contextLoaderFactory: () => mockDocumentLoader,
+        tracerProvider,
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      const activity = new vocab.Create({
+        id: new URL("https://example.com/activity/broadcast-twice"),
+        actor: new URL("https://example.com/person"),
+      });
+      const recipient = {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox-broadcast-twice"),
+      };
+      const keys = [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }];
+      await ctx.sendActivity(keys, recipient, activity);
+      await ctx.sendActivity(keys, recipient, activity);
+
+      const spans = exporter.getSpans("activitypub.outbox");
+      assertEquals(spans.length, 2);
+      const [broadcastId1, broadcastId2] = spans.map(
+        (s) => s.attributes["activitypub.broadcast.id"],
+      );
+      assertExists(broadcastId1);
+      assertExists(broadcastId2);
+      assertNotEquals(broadcastId1, broadcastId2);
+      fetchMock.hardReset();
+    },
+  );
+
+  await t.step(
+    "ContextImpl.sendActivityInternal() (middleware.ts) sets " +
+      "broadcastId on its span before a preparation failure, since it " +
+      "mints it before resolving recipients into inboxes",
+    async () => {
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        contextLoaderFactory: () => mockDocumentLoader,
+        tracerProvider,
+      });
+      federation
+        .setActorDispatcher("/{identifier}", (_ctx, _identifier) => null)
+        .setKeyPairsDispatcher((_ctx, _identifier) => []);
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      await assertRejects(() =>
+        ctx.sendActivity(
+          { identifier: "not-found" },
+          {
+            id: new URL("https://example.com/recipient"),
+            inboxId: new URL("https://example.com/inbox"),
+          },
+          new vocab.Create({
+            id: new URL("https://example.com/activity/broadcast-prep-fail"),
+            actor: new URL("https://example.com/person"),
+          }),
+        )
+      );
+      const span = exporter.getSpan("activitypub.outbox");
+      assertExists(span);
+      assertExists(span.attributes["activitypub.broadcast.id"]);
+    },
+  );
+
+  await t.step(
+    "forwardActivityInternal() (middleware.ts, module-level, shared by " +
+      "ContextImpl.forwardActivity() and OutboxContextImpl.forwardActivity())" +
+      " mints its own broadcastId per call, independent of sendActivity's",
+    async () => {
+      fetchMock.spyGlobal();
+      fetchMock.post("https://example.com/inbox-forward-broadcast", {
+        status: 202,
+      });
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        contextLoaderFactory: () => mockDocumentLoader,
+        tracerProvider,
+      });
+      const activity = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Create",
+        "id": "https://example.com/activity/forward-broadcast",
+        "actor": "https://example.com/person2",
+      };
+      const makeCtx = () =>
+        new InboxContextImpl(
+          null,
+          activity,
+          "https://example.com/activity/forward-broadcast",
+          "https://www.w3.org/ns/activitystreams#Create",
+          {
+            data: undefined,
+            federation,
+            url: new URL("https://example.com/"),
+            documentLoader: mockDocumentLoader,
+            contextLoader: mockDocumentLoader,
+          },
+        );
+      const recipient = {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox-forward-broadcast"),
+      };
+      const keys = [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }];
+      await makeCtx().forwardActivity(keys, recipient, {
+        skipIfUnsigned: false,
+      }).catch(() => {});
+      await makeCtx().forwardActivity(keys, recipient, {
+        skipIfUnsigned: false,
+      }).catch(() => {});
+
+      const spans = exporter.getSpans("activitypub.inbox");
+      assertEquals(spans.length, 2);
+      const [broadcastId1, broadcastId2] = spans.map(
+        (s) => s.attributes["activitypub.broadcast.id"],
+      );
+      assertExists(broadcastId1);
+      assertExists(broadcastId2);
+      assertNotEquals(broadcastId1, broadcastId2);
+      fetchMock.hardReset();
+    },
+  );
+
+  await t.step(
+    "a gateway-fallback round (#listenGatewayOutboxMessage in " +
+      "middleware.ts) keeps one deliveryId across every gateway it " +
+      "tries, unlike portable-inbox.ts's replication, which gives each " +
+      "gateway its own",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://gw1-delivery-id.example/inbox", {
+        status: 500,
+        body: "server error",
+      });
+      fetchMock.post("https://gw2-delivery-id.example/inbox", {
+        status: 202,
+      });
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const kv = new MemoryKvStore();
+      const queue: MessageQueue = {
+        enqueue() {
+          return Promise.resolve();
+        },
+        listen() {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+        allowPrivateAddress: true,
+        tracerProvider,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+      const gatewayInboxes = [
+        "https://gw1-delivery-id.example/inbox",
+        "https://gw2-delivery-id.example/inbox",
+      ];
+      const message: OutboxMessage = {
+        type: "outbox",
+        id: crypto.randomUUID(),
+        broadcastId: "test-broadcast-gw",
+        deliveryId: "test-delivery-gw",
+        baseUrl: "https://example.com",
+        keys: [],
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://example.com/activity/delivery-id-gw",
+          actor: "https://example.com/users/alice",
+        },
+        activityId: "https://example.com/activity/delivery-id-gw",
+        activityType: "https://www.w3.org/ns/activitystreams#Create",
+        inbox: gatewayInboxes[0],
+        gatewayInboxes,
+        sharedInbox: false,
+        actorIds: ["https://delivery-id-gw.example/users/bob"],
+        started: new Date().toISOString(),
+        attempt: 0,
+        headers: {},
+        traceContext: {},
+      };
+
+      await federation.processQueuedTask(undefined, message);
+
+      const deliverySpans = exporter.getSpans("activitypub.send_activity");
+      assertEquals(deliverySpans.length, 2);
+      // Both attempts in this round share the same deliveryId, since they
+      // are two tries at the same logical delivery, not two independent
+      // deliveries:
+      for (const span of deliverySpans) {
+        assertEquals(
+          span.attributes["activitypub.delivery.id"],
+          "test-delivery-gw",
+        );
+        assertEquals(
+          span.attributes["activitypub.broadcast.id"],
+          "test-broadcast-gw",
+        );
+      }
+      // But the actual inbox tried differs between them:
+      assertNotEquals(
+        deliverySpans[0].attributes["activitypub.destination.inbox"],
+        deliverySpans[1].attributes["activitypub.destination.inbox"],
+      );
+    },
+  );
+
+  await t.step(
+    "a gateway-list-narrowing retry (one gateway failing permanently, " +
+      "another transiently) keeps the same deliveryId on the narrowed " +
+      "OutboxMessage",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://gw-gone.example/inbox", {
+        status: 410,
+        body: "Gone",
+      });
+      fetchMock.post("https://gw-transient.example/inbox", {
+        status: 500,
+        body: "server error",
+      });
+      const queued: Message[] = [];
+      const queue: MessageQueue = {
+        enqueue(m) {
+          queued.push(m);
+          return Promise.resolve();
+        },
+        listen() {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue,
+        allowPrivateAddress: true,
+        permanentFailureStatusCodes: [410],
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+      const gatewayInboxes = [
+        "https://gw-gone.example/inbox",
+        "https://gw-transient.example/inbox",
+      ];
+      const message: OutboxMessage = {
+        type: "outbox",
+        id: crypto.randomUUID(),
+        broadcastId: "test-broadcast-narrowing",
+        deliveryId: "test-delivery-narrowing",
+        baseUrl: "https://example.com",
+        keys: [],
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://example.com/activity/narrowing",
+          actor: "https://example.com/users/alice",
+        },
+        activityId: "https://example.com/activity/narrowing",
+        activityType: "https://www.w3.org/ns/activitystreams#Create",
+        inbox: gatewayInboxes[0],
+        gatewayInboxes,
+        sharedInbox: false,
+        actorIds: ["https://narrowing.example/users/bob"],
+        started: new Date().toISOString(),
+        attempt: 0,
+        headers: {},
+        traceContext: {},
+      };
+
+      await federation.processQueuedTask(undefined, message);
+
+      assertEquals(queued.length, 1);
+      const retried = queued[0];
+      assert(retried.type === "outbox");
+      // The gateway that failed permanently is dropped from the list,
+      // leaving only the one that can still be retried:
+      assertEquals(retried.gatewayInboxes, [
+        "https://gw-transient.example/inbox",
+      ]);
+      assertEquals(retried.deliveryId, "test-delivery-narrowing");
+      assertEquals(retried.broadcastId, "test-broadcast-narrowing");
+    },
+  );
+
+  await t.step(
+    "a fanout's deliveryId reaches the dispatched OutboxMessage " +
+      "unchanged, not re-minted (FederationImpl.sendActivity() in " +
+      "middleware.ts, called from #listenFanoutMessage)",
+    async () => {
+      const queued: OutboxMessage[] = [];
+      const queue: MessageQueue = {
+        enqueue(m) {
+          if (m.type === "outbox") queued.push(m);
+          return Promise.resolve();
+        },
+        listen() {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue,
+        allowPrivateAddress: true,
+      });
+      const fanoutMessage: FanoutMessage = {
+        type: "fanout",
+        id: crypto.randomUUID(),
+        broadcastId: "test-broadcast-fanout",
+        baseUrl: "https://example.com",
+        keys: [{
+          keyId: rsaPublicKey2.id!.href,
+          privateKey: await exportJwk(rsaPrivateKey2),
+        }],
+        inboxes: {
+          "https://fanout-plan.example/inbox": {
+            actorIds: ["https://fanout-plan.example/users/bob"],
+            sharedInbox: false,
+            deliveryId: "test-delivery-from-plan",
+          },
+        },
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://example.com/activity/fanout-plan",
+          actor: "https://example.com/users/alice",
+        },
+        activityId: "https://example.com/activity/fanout-plan",
+        activityType: "https://www.w3.org/ns/activitystreams#Create",
+        traceContext: {},
+      };
+
+      await federation.processQueuedTask(undefined, fanoutMessage);
+
+      assertEquals(queued.length, 1);
+      assertEquals(queued[0].deliveryId, "test-delivery-from-plan");
+      assertEquals(queued[0].broadcastId, "test-broadcast-fanout");
+    },
+  );
+
+  await t.step(
+    "a legacy fanout (enqueued before deliveryId/broadcastId existed) " +
+      "still gets a stable deliveryId, derived from its own id and the " +
+      "destination key, the same on every replay",
+    async () => {
+      const queued: OutboxMessage[] = [];
+      const queue: MessageQueue = {
+        enqueue(m) {
+          if (m.type === "outbox") queued.push(m);
+          return Promise.resolve();
+        },
+        listen() {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue,
+        allowPrivateAddress: true,
+      });
+      // No broadcastId, and no deliveryId on the inbox entry: this is
+      // what a message enqueued by a pre-2.5.0 Fedify looks like.
+      const legacyFanoutId = crypto.randomUUID();
+      const legacyFanoutMessage: FanoutMessage = {
+        type: "fanout",
+        id: legacyFanoutId,
+        baseUrl: "https://example.com",
+        keys: [{
+          keyId: rsaPublicKey2.id!.href,
+          privateKey: await exportJwk(rsaPrivateKey2),
+        }],
+        inboxes: {
+          "https://legacy-fanout.example/inbox": {
+            actorIds: ["https://legacy-fanout.example/users/bob"],
+            sharedInbox: false,
+          },
+        },
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://example.com/activity/legacy-fanout",
+          actor: "https://example.com/users/alice",
+        },
+        activityId: "https://example.com/activity/legacy-fanout",
+        activityType: "https://www.w3.org/ns/activitystreams#Create",
+        traceContext: {},
+      };
+
+      // A native queue redelivery, or any other reprocessing, replays
+      // this exact legacy message as-is:
+      await federation.processQueuedTask(undefined, legacyFanoutMessage);
+      await federation.processQueuedTask(undefined, legacyFanoutMessage);
+
+      assertEquals(queued.length, 2);
+      assertExists(queued[0].deliveryId);
+      // Not "N/A": a real, stable identity derived from what the legacy
+      // message does have, the same both times it was processed.
+      assertEquals(queued[0].deliveryId, queued[1].deliveryId);
+      // And it is the fanout's own id, not a fresh broadcast identity,
+      // that stands in for broadcastId here:
+      assertEquals(queued[0].broadcastId, legacyFanoutId);
+      assertEquals(queued[1].broadcastId, legacyFanoutId);
+    },
+  );
+
+  await t.step(
+    "a legacy outbox message (enqueued before deliveryId/broadcastId " +
+      "existed) retried by policy still has a stable delivery identity: " +
+      "its own id, which a retry preserves",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://legacy-outbox.example/inbox", {
+        status: 500,
+        body: "server error",
+      });
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const queued: Message[] = [];
+      const queue: MessageQueue = {
+        enqueue(m) {
+          queued.push(m);
+          return Promise.resolve();
+        },
+        listen() {
+          return Promise.resolve();
+        },
+      };
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue,
+        allowPrivateAddress: true,
+        tracerProvider,
+      });
+      // No broadcastId/deliveryId at all, matching a message built by a
+      // pre-2.5.0 Fedify that was never part of a fanout.
+      const legacyOutboxId = crypto.randomUUID();
+      const legacyMessage: OutboxMessage = {
+        type: "outbox",
+        id: legacyOutboxId,
+        baseUrl: "https://example.com",
+        keys: [],
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://example.com/activity/legacy-outbox",
+          actor: "https://example.com/users/alice",
+        },
+        activityType: "https://www.w3.org/ns/activitystreams#Create",
+        inbox: "https://legacy-outbox.example/inbox",
+        sharedInbox: false,
+        started: new Date().toISOString(),
+        attempt: 0,
+        headers: {},
+        traceContext: {},
+      };
+
+      await federation.processQueuedTask(undefined, legacyMessage);
+
+      assertEquals(queued.length, 1);
+      const retried = queued[0];
+      assert(retried.type === "outbox");
+      // id is untouched by the retry, and remains the only stable
+      // identity this legacy message has:
+      assertEquals(retried.id, legacyOutboxId);
+      assertEquals(retried.deliveryId, undefined);
+      assertEquals(retried.broadcastId, undefined);
+
+      const span = exporter.getSpan("activitypub.send_activity");
+      assertExists(span);
+      // sendActivity() itself falls back to id for a legacy message with
+      // no deliveryId, so the record for this failed attempt is not
+      // left without any delivery identity at all:
+      assertEquals(
+        span.attributes["activitypub.delivery.id"],
+        legacyOutboxId,
+      );
+      fetchMock.hardReset();
+    },
+  );
 });
 
 test("ContextImpl.sendActivity() records fanout recipient metrics", async () => {
