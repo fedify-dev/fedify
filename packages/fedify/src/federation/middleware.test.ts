@@ -9060,6 +9060,11 @@ test(
           .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
           .map((a) => a.outcome);
         assertEquals(outcomes, ["failed", "failed", "success"]);
+        const queueAttempts = activities
+          .slice()
+          .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+          .map((a) => a.queueAttempt);
+        assertEquals(queueAttempts, [0, 1, 2]);
 
         const summaries = await fedifyExporter.getRecentTraces();
         const summary = summaries.find((s) => s.traceId === traceId);

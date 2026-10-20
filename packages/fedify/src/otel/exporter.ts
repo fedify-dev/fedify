@@ -290,6 +290,19 @@ export interface TraceActivityRecord {
    * @since 2.5.0
    */
   readonly failure?: DeliveryFailureDetails;
+
+  /**
+   * The message queue's own retry round this attempt ran under (for
+   * outbound activities), if it was dispatched from a queued outbox
+   * message.  This is the queue's redelivery count, not a count of
+   * delivery attempts: native queue redelivery can leave it unchanged,
+   * and a single round can run more than one attempt when trying a
+   * portable actor's gateways.  Absent for an immediate send that never
+   * went through a queue.
+   *
+   * @since 2.5.0
+   */
+  readonly queueAttempt?: number;
 }
 
 /**
@@ -491,6 +504,7 @@ export class FedifySpanExporter implements SpanExporter {
       } else if (event.name === "activitypub.activity.sent") {
         const record = this.#extractOutboundRecord(
           event,
+          span,
           traceId,
           spanId,
           parentSpanId,
@@ -500,6 +514,7 @@ export class FedifySpanExporter implements SpanExporter {
       } else if (event.name === "activitypub.activity.send_failed") {
         const record = this.#extractOutboundRecord(
           event,
+          span,
           traceId,
           spanId,
           parentSpanId,
@@ -642,6 +657,7 @@ export class FedifySpanExporter implements SpanExporter {
 
   #extractOutboundRecord(
     event: ReadableSpan["events"][number],
+    span: ReadableSpan,
     traceId: string,
     spanId: string,
     parentSpanId: string | undefined,
@@ -681,6 +697,7 @@ export class FedifySpanExporter implements SpanExporter {
     const failureKind = attrs["activitypub.delivery.failure_kind"];
     const failurePhase = attrs["activitypub.delivery.failure_phase"];
     const statusCode = attrs["http.response.status_code"];
+    const queueAttempt = span.attributes["activitypub.activity.retries"];
 
     return {
       traceId,
@@ -704,6 +721,7 @@ export class FedifySpanExporter implements SpanExporter {
       ).toISOString(),
       inboxUrl: typeof inboxUrl === "string" ? inboxUrl : undefined,
       outcome,
+      ...(typeof queueAttempt === "number" ? { queueAttempt } : {}),
       ...(outcome === "failed"
         ? {
           failure: {

@@ -1685,6 +1685,7 @@ export class FederationImpl<TContextData>
         ),
         meterProvider: this.meterProvider,
         tracerProvider: this.tracerProvider,
+        queueAttempt: message.attempt,
       });
       if (circuit != null) {
         try {

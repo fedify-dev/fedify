@@ -265,6 +265,15 @@ export interface SendActivityParameters {
    * @since 1.3.0
    */
   readonly tracerProvider?: TracerProvider;
+
+  /**
+   * The message queue's own retry round this call is running under, if
+   * it was dispatched from a queued outbox message.  This is the queue's
+   * redelivery count, not a count of delivery attempts: omit it for an
+   * immediate send that never went through a queue.
+   * @since 2.5.0
+   */
+  readonly queueAttempt?: number;
 }
 
 /**
@@ -293,6 +302,9 @@ export function sendActivity(
       }
       if (options.activityType != null) {
         span.setAttribute("activitypub.activity.type", options.activityType);
+      }
+      if (options.queueAttempt != null) {
+        span.setAttribute("activitypub.activity.retries", options.queueAttempt);
       }
       const spanContext = span.spanContext();
       try {
