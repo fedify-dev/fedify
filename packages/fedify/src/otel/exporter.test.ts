@@ -22,6 +22,7 @@ function createMockSpan(options: {
   parentSpanId?: string;
   name?: string;
   events?: TimedEvent[];
+  attributes?: Attributes;
 }): ReadableSpan {
   const traceId = options.traceId ?? "0123456789abcdef0123456789abcdef";
   const spanId = options.spanId ?? "0123456789abcdef";
@@ -48,7 +49,7 @@ function createMockSpan(options: {
     startTime: [1700000000, 0] as HrTime,
     endTime: [1700000001, 0] as HrTime,
     status: { code: SpanStatusCode.OK } as SpanStatus,
-    attributes: {},
+    attributes: options.attributes ?? {},
     links: [],
     events: options.events ?? [],
     duration: [1, 0] as HrTime,
@@ -151,6 +152,22 @@ function createActivitySendFailedEvent(options: {
     name: "activitypub.activity.send_failed",
     time: options.time ?? [1700000000, 500000000] as HrTime,
     attributes,
+  };
+}
+
+function createWorkerDispositionEvent(options: {
+  disposition: "held" | "dropped" | "preparation_failed" | "action_failed";
+  attemptsStarted?: number;
+  time?: HrTime;
+}): TimedEvent {
+  return {
+    name: "activitypub.outbox.worker.disposition",
+    time: options.time ?? [1700000000, 500000000] as HrTime,
+    attributes: {
+      "activitypub.outbox.worker.disposition": options.disposition,
+      "activitypub.outbox.worker.attempts_started": options.attemptsStarted ??
+        0,
+    },
   };
 }
 
@@ -1159,6 +1176,152 @@ test("FedifySpanExporter", async (t) => {
       );
       assertEquals(activities.length, 1);
       assertEquals(activities[0].actorId, undefined);
+    },
+  );
+
+  await t.step(
+    "export() stores a worker disposition record separately from " +
+      "attempt records",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+
+      const traceId = "worker-held-trace";
+      const workerSpanId = "worker-span-held";
+      const span = createMockSpan({
+        traceId,
+        spanId: workerSpanId,
+        parentSpanId: "remote-parent-span",
+        name: "activitypub.outbox",
+        attributes: {
+          "activitypub.activity.type":
+            "https://www.w3.org/ns/activitystreams#Create",
+          "activitypub.activity.retries": 2,
+        },
+        events: [
+          createWorkerDispositionEvent({
+            disposition: "held",
+            attemptsStarted: 0,
+          }),
+        ],
+      });
+
+      await new Promise<void>((resolve) => {
+        exporter.export([span], () => resolve());
+      });
+
+      const activities = await exporter.getActivitiesByTraceId(traceId);
+      assertEquals(activities.length, 0);
+
+      const workers = await exporter.getWorkerRecordsByTraceId(traceId);
+      assertEquals(workers.length, 1);
+      assertEquals(workers[0].spanId, workerSpanId);
+      assertEquals(workers[0].parentSpanId, "remote-parent-span");
+      assertEquals(workers[0].disposition, "held");
+      assertEquals(workers[0].attemptsStarted, 0);
+      assertEquals(
+        workers[0].activityType,
+        "https://www.w3.org/ns/activitystreams#Create",
+      );
+      assertEquals(workers[0].queueAttempt, 2);
+
+      const summaries = await exporter.getRecentTraces();
+      const summary = summaries.find((s) => s.traceId === traceId);
+      assert(summary != null, "a worker-only trace must still be listed");
+      assertEquals(summary.activityCount, 0);
+      assertEquals(summary.outboundWorkerCount, 1);
+    },
+  );
+
+  await t.step(
+    "export() counts both an attempt and a worker disposition for the " +
+      "same trace",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+
+      const traceId = "worker-and-attempt-trace";
+      const workerSpan = createMockSpan({
+        traceId,
+        spanId: "worker-span-1",
+        name: "activitypub.outbox",
+        attributes: {
+          "activitypub.activity.type":
+            "https://www.w3.org/ns/activitystreams#Create",
+        },
+        events: [
+          createWorkerDispositionEvent({
+            disposition: "preparation_failed",
+            attemptsStarted: 0,
+          }),
+        ],
+      });
+      const attemptSpan = createMockSpan({
+        traceId,
+        spanId: "attempt-span-1",
+        name: "activitypub.send_activity",
+        events: [
+          createActivitySendFailedEvent({
+            inboxUrl: "https://example.com/inbox",
+            failureKind: "transport",
+            failurePhase: "request",
+          }),
+        ],
+      });
+
+      await new Promise<void>((resolve) => {
+        exporter.export([workerSpan, attemptSpan], () => resolve());
+      });
+
+      const activities = await exporter.getActivitiesByTraceId(traceId);
+      assertEquals(activities.length, 1);
+
+      const workers = await exporter.getWorkerRecordsByTraceId(traceId);
+      assertEquals(workers.length, 1);
+      assertEquals(workers[0].disposition, "preparation_failed");
+
+      const summaries = await exporter.getRecentTraces();
+      const summary = summaries.find((s) => s.traceId === traceId);
+      assert(summary != null);
+      assertEquals(summary.activityCount, 1);
+      assertEquals(summary.outboundWorkerCount, 1);
+    },
+  );
+
+  await t.step(
+    "export() ignores the worker's own activitypub.delivery.failed " +
+      "event and does not turn it into an attempt or a worker record",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+
+      const traceId = "legacy-worker-event-trace";
+      const span = createMockSpan({
+        traceId,
+        spanId: "worker-span-legacy",
+        name: "activitypub.outbox",
+        events: [{
+          name: "activitypub.delivery.failed",
+          time: [1700000000, 0] as HrTime,
+          attributes: {
+            "activitypub.remote.host": "example.com",
+            "activitypub.delivery.attempt": 1,
+          },
+        }],
+      });
+
+      await new Promise<void>((resolve) => {
+        exporter.export([span], () => resolve());
+      });
+
+      assertEquals(
+        (await exporter.getActivitiesByTraceId(traceId)).length,
+        0,
+      );
+      assertEquals(
+        (await exporter.getWorkerRecordsByTraceId(traceId)).length,
+        0,
+      );
     },
   );
 });
