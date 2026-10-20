@@ -79,8 +79,10 @@ export interface DeliveryFailureDetails {
   readonly phase: DeliveryFailurePhase;
 
   /**
-   * The HTTP status code returned by the inbox.  Only set when
-   * {@link kind} is `"http"`.
+   * The HTTP status code of the response the delivery attempt observed,
+   * if any.  Set when {@link kind} is `"http"`, and also when {@link kind}
+   * is `"local"` and {@link phase} is `"post-response"`, since that
+   * failure happens after a response was already received.
    */
   readonly statusCode?: number;
 }

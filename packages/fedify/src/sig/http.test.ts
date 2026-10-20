@@ -2451,7 +2451,8 @@ test("doubleKnock() function with successful first attempt", async () => {
 });
 
 test(
-  "doubleKnock() still returns a successful response when rememberSpec() throws",
+  "doubleKnock() rejects and attaches the response when rememberSpec() " +
+    "throws after a successful response",
   async () => {
     fetchMock.spyGlobal();
     fetchMock.post("https://example.com/inbox-remember-spec-fails", () => {
@@ -2460,6 +2461,62 @@ test(
 
     const request = new Request(
       "https://example.com/inbox-remember-spec-fails",
+      {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+      },
+    );
+
+    const rememberSpecError = new Error("simulated spec-cache write failure");
+    const specDeterminer = {
+      determineSpec(_origin: string): HttpMessageSignaturesSpec {
+        return "rfc9421";
+      },
+      rememberSpec(_origin: string, _spec: HttpMessageSignaturesSpec): void {
+        throw rememberSpecError;
+      },
+    };
+
+    // This must match doubleKnock()'s pre-existing behavior of rejecting
+    // when its own work throws: a successful delivery is not reported as
+    // one when the bookkeeping that follows it fails, since that
+    // bookkeeping failure is itself something the caller needs to know
+    // about and retry.  The response it already received is still
+    // retrievable from the thrown error, and the original cause is kept
+    // as its `cause`.
+    const error = await assertRejects(
+      () =>
+        doubleKnock(
+          request,
+          { keyId: rsaPublicKey2.id!, privateKey: rsaPrivateKey2 },
+          { specDeterminer },
+        ),
+      Error,
+    );
+    assertEquals(error.cause, rememberSpecError);
+    const attachedResponse = (error as unknown as { response?: Response })
+      .response;
+    assertExists(attachedResponse);
+    assertEquals(attachedResponse.status, 202);
+
+    fetchMock.hardReset();
+  },
+);
+
+test(
+  "doubleKnock() still returns a non-OK response when rememberSpec() " +
+    "throws afterward",
+  async () => {
+    fetchMock.spyGlobal();
+    fetchMock.post(
+      "https://example.com/inbox-remember-spec-fails-non-ok",
+      () => {
+        return new Response("", { status: 500 });
+      },
+    );
+
+    const request = new Request(
+      "https://example.com/inbox-remember-spec-fails-non-ok",
       {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
@@ -2475,13 +2532,15 @@ test(
       },
     };
 
+    // A final non-OK response must stay the outcome the caller sees, with
+    // its real status intact, even though the bookkeeping call afterward
+    // also failed.
     const response = await doubleKnock(
       request,
       { keyId: rsaPublicKey2.id!, privateKey: rsaPrivateKey2 },
       { specDeterminer },
     );
-
-    assertEquals(response.status, 202);
+    assertEquals(response.status, 500);
 
     fetchMock.hardReset();
   },

@@ -54,13 +54,31 @@ To be released.
     left no record at all, and `~FedifySpanExporter.getRecentTraces()` could
     not surface it.  Each attempt now gets its own record, carrying the
     attempt's own `traceId`/`spanId`, a new `outcome` of `"success"` or
-    `"failed"`, and, for a failed attempt, a `failureKind` of `"http"`,
-    `"transport"`, or `"policy"` and, for an HTTP failure, the response's
-    `statusCode`.  Retrying the same activity and inbox no longer overwrites
-    or merges earlier attempts' records, and `activityCount` in a
+    `"failed"`, and, for a failed attempt, a nested `failure` object with a
+    `kind` of `"http"`, `"transport"`, `"policy"`, `"local"`, or `"unknown"`,
+    a `phase` of `"pre-request"`, `"request"`, `"response"`,
+    `"post-response"`, or `"unknown"`, and, for an HTTP failure, the
+    response's `statusCode`.  Retrying the same activity and inbox no longer
+    overwrites or merges earlier attempts' records, and `activityCount` in a
     `TraceSummary` now counts every attempt.  The `activitypub.activity.sent`
-    span event remains reserved for a successful delivery.  [[#1257] by
-    Yujin Jung\]
+    span event remains reserved for a successful delivery.
+ -  Added `queueAttempt` to `TraceActivityRecord`.  It carries the outbox
+    queue's own retry round for an attempt dispatched from a queued message,
+    which is not the same thing as a count of delivery attempts: a native
+    queue redelivery can leave it unchanged, and a single round can run more
+    than one attempt when trying a portable actor's gateways.  It is absent
+    for an immediate send that never went through a queue.
+ -  Added `TraceOutboundWorkerRecord`, exposed through the new
+    `FedifySpanExporter.getWorkerRecordsByTraceId()` method and kept
+    separate from `~FedifySpanExporter.getActivitiesByTraceId()`.  It
+    records an outbox queue worker execution that reached a disposition of
+    `"held"`, `"dropped"`, `"preparation_failed"`, or `"action_failed"`
+    without necessarily ever calling `sendActivity()`, along with
+    `attemptsStarted`, the number of attempts the execution actually made.
+    `TraceSummary` gained a matching `outboundWorkerCount`, so a trace whose
+    every execution was held or dropped is still listed by
+    `~FedifySpanExporter.getRecentTraces()` even though its `activityCount`
+    is `0`.  [[#1257] by Yujin Jung\]
  -  Added the `activityOriginMismatch` reason to rejected `InboxAuthentication`
     decisions in `onRequestFinished` reports.  Inbox deliveries rejected
     because the activity's ID does not have the same origin as its actors now
@@ -72,6 +90,14 @@ To be released.
     for maps that will be rejected.  Policy-rejected maps now appear in
     `onRequestFinished` verification reports with their policy failure and no
     signature checks.  [[#1177], [#1264]]
+ -  Fixed `doubleKnock()` rejecting an otherwise-successful delivery when
+    the `HttpMessageSignaturesSpecDeterminer`'s `rememberSpec()` call
+    afterward threw, e.g., because of a transient `KvStore` write failure.
+    The response it already received was discarded, and the error
+    propagated as if the delivery itself had failed.  `rememberSpec()`
+    failures are now logged and otherwise ignored, since they only affect
+    which signature spec the next delivery to the same origin tries first.
+    [[#1257] by Yujin Jung\]
  -  Fixed log entries emitted during an individual outbound activity delivery
     or inbound activity processing carrying the enclosing HTTP request's or
     queue worker's `traceId`/`spanId` instead of the delivery or processing

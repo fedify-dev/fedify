@@ -597,10 +597,20 @@ async function sendActivityInternal(
       false,
       activityType,
     );
-    recordSendFailure(
-      error instanceof UrlError ? "policy" : "transport",
-      "request",
-    );
+    // doubleKnock() already obtained a response before a bookkeeping
+    // call afterward (rememberSpec()) failed.  A response it never saw
+    // as OK stays a plain transport/policy failure here; a response it
+    // saw as OK means the delivery itself succeeded, so the failure is
+    // local to this side, with the response's status retained.
+    const bookkeepingResponse = getAttachedResponse(error);
+    if (bookkeepingResponse != null) {
+      recordSendFailure("local", "post-response", bookkeepingResponse.status);
+    } else {
+      recordSendFailure(
+        error instanceof UrlError ? "policy" : "transport",
+        "request",
+      );
+    }
     throw failure;
   }
   try {
@@ -656,6 +666,15 @@ function createFetchError(url: string, cause: unknown): FetchError {
   const error = new FetchError(url, message);
   error.cause = cause;
   return error;
+}
+
+// doubleKnock() attaches the response it already obtained to an error
+// thrown by a post-response bookkeeping failure, without otherwise
+// expanding its public error surface.
+function getAttachedResponse(error: unknown): Response | undefined {
+  if (!(error instanceof Error) || !("response" in error)) return undefined;
+  const response = (error as { response?: unknown }).response;
+  return response instanceof Response ? response : undefined;
 }
 
 // Preserve Fetch's redirect semantics while validating every destination.

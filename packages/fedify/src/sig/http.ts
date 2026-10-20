@@ -2219,21 +2219,49 @@ export async function doubleKnock(
   return await doubleKnockInternal(request, identity, options);
 }
 
-async function rememberSpecBestEffort(
+async function rememberSpecForResponse(
   specDeterminer: HttpMessageSignaturesSpecDeterminer | undefined,
   origin: string,
   spec: HttpMessageSignaturesSpec,
-): Promise<void> {
+  response: Response,
+): Promise<Response> {
   try {
     await specDeterminer?.rememberSpec(origin, spec);
   } catch (error) {
-    getLogger(["fedify", "sig", "http"]).warn(
+    const logger = getLogger(["fedify", "sig", "http"]);
+    if (!response.ok) {
+      // The response already carries the real outcome of this attempt;
+      // a bookkeeping failure on top of it must not override or discard
+      // that outcome.
+      logger.warn(
+        "Failed to remember the HTTP Message Signatures spec {spec} for " +
+          "{origin} after a {status} response; the response is " +
+          "unaffected:\n{error}",
+        { spec, origin, status: response.status, error },
+      );
+      return response;
+    }
+    logger.warn(
       "Failed to remember the HTTP Message Signatures spec {spec} for " +
-        "{origin}; this does not affect the delivery that just " +
-        "completed:\n{error}",
-      { spec, origin, error },
+        "{origin} after a successful {status} response; the delivery " +
+        "will be reported as failed because the bookkeeping afterward " +
+        "did not complete:\n{error}",
+      { spec, origin, status: response.status, error },
     );
+    const cause = error instanceof Error ? error : new Error(String(error));
+    const failure = new Error(
+      `Delivered to ${origin} (${response.status}), but failed to ` +
+        `remember the HTTP Message Signatures spec afterward: ` +
+        cause.message,
+    );
+    failure.cause = cause;
+    Object.defineProperty(failure, "response", {
+      value: response,
+      enumerable: false,
+    });
+    throw failure;
   }
+  return response;
 }
 
 async function doubleKnockInternal(
@@ -2385,8 +2413,12 @@ async function doubleKnockInternal(
       }
       // If the challenge retry succeeded, remember spec and return
       if (fulfilled && response.status < 300) {
-        await rememberSpecBestEffort(specDeterminer, origin, "rfc9421");
-        return response;
+        return await rememberSpecForResponse(
+          specDeterminer,
+          origin,
+          "rfc9421",
+          response,
+        );
       }
       if (
         fulfilled && response.status !== 400 && response.status !== 401
@@ -2451,10 +2483,20 @@ async function doubleKnockInternal(
         visited,
       );
     } else if (response.status !== 400 && response.status !== 401) {
-      await rememberSpecBestEffort(specDeterminer, origin, spec);
+      response = await rememberSpecForResponse(
+        specDeterminer,
+        origin,
+        spec,
+        response,
+      );
     }
   } else {
-    await rememberSpecBestEffort(specDeterminer, origin, firstTrySpec);
+    response = await rememberSpecForResponse(
+      specDeterminer,
+      origin,
+      firstTrySpec,
+      response,
+    );
   }
   return response;
 }

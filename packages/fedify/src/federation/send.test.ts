@@ -788,6 +788,156 @@ test("sendActivity() records OpenTelemetry span events", async (t) => {
       fetchMock.hardReset();
     }
   });
+
+  await t.step(
+    "failed send (successful response, post-response bookkeeping failure)",
+    async () => {
+      try {
+        fetchMock.spyGlobal();
+        fetchMock.post(
+          "https://example.com/inbox-send-failed-post-response",
+          { status: 202 },
+        );
+
+        const activity = {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://example.com/activity/send-failed-post-response",
+          actor: "https://example.com/person",
+        };
+
+        await assertRejects(
+          () =>
+            sendActivity({
+              activity,
+              activityId:
+                "https://example.com/activity/send-failed-post-response",
+              activityType: "https://www.w3.org/ns/activitystreams#Create",
+              keys: [{
+                keyId: new URL("https://example.com/person#key"),
+                privateKey: rsaPrivateKey2,
+              }],
+              inbox: new URL(
+                "https://example.com/inbox-send-failed-post-response",
+              ),
+              tracerProvider,
+              specDeterminer: {
+                determineSpec: () => "rfc9421",
+                rememberSpec: () => {
+                  throw new Error("simulated spec-cache write failure");
+                },
+              },
+            }),
+          FetchError,
+        );
+
+        // A response was obtained, so no "activitypub.activity.sent"
+        // event is recorded, since the bookkeeping afterward failed.
+        assertEquals(
+          exporter.getEvents(
+            "activitypub.send_activity",
+            "activitypub.activity.sent",
+          ).length,
+          0,
+        );
+
+        const events = exporter.getEvents(
+          "activitypub.send_activity",
+          "activitypub.activity.send_failed",
+        );
+        assertEquals(events.length, 1);
+        assertEquals(
+          events[0].attributes?.["activitypub.delivery.failure_kind"],
+          "local",
+        );
+        assertEquals(
+          events[0].attributes?.["activitypub.delivery.failure_phase"],
+          "post-response",
+        );
+        // The response's own status is retained separately from the
+        // local failure that followed it.
+        assertEquals(
+          events[0].attributes?.["http.response.status_code"],
+          202,
+        );
+      } finally {
+        exporter.clear();
+        fetchMock.hardReset();
+      }
+    },
+  );
+
+  await t.step(
+    "failed send (non-OK response, post-response bookkeeping failure " +
+      "stays an HTTP failure)",
+    async () => {
+      try {
+        fetchMock.spyGlobal();
+        fetchMock.post(
+          "https://example.com/inbox-send-failed-http-bookkeeping",
+          { status: 500, body: "Internal Server Error" },
+        );
+
+        const activity = {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://example.com/activity/send-failed-http-bookkeeping",
+          actor: "https://example.com/person",
+        };
+
+        // A bookkeeping failure on top of an already-failed response must
+        // not override or mask the original, real outcome: this stays an
+        // HTTP failure with the real status, exactly like a bookkeeping
+        // success would, matching the existing (pre-change) behavior for
+        // this case.
+        await assertRejects(
+          () =>
+            sendActivity({
+              activity,
+              activityId:
+                "https://example.com/activity/send-failed-http-bookkeeping",
+              activityType: "https://www.w3.org/ns/activitystreams#Create",
+              keys: [{
+                keyId: new URL("https://example.com/person#key"),
+                privateKey: rsaPrivateKey2,
+              }],
+              inbox: new URL(
+                "https://example.com/inbox-send-failed-http-bookkeeping",
+              ),
+              tracerProvider,
+              specDeterminer: {
+                determineSpec: () => "rfc9421",
+                rememberSpec: () => {
+                  throw new Error("simulated spec-cache write failure");
+                },
+              },
+            }),
+          SendActivityError,
+        );
+
+        const events = exporter.getEvents(
+          "activitypub.send_activity",
+          "activitypub.activity.send_failed",
+        );
+        assertEquals(events.length, 1);
+        assertEquals(
+          events[0].attributes?.["activitypub.delivery.failure_kind"],
+          "http",
+        );
+        assertEquals(
+          events[0].attributes?.["activitypub.delivery.failure_phase"],
+          "response",
+        );
+        assertEquals(
+          events[0].attributes?.["http.response.status_code"],
+          500,
+        );
+      } finally {
+        exporter.clear();
+        fetchMock.hardReset();
+      }
+    },
+  );
 });
 
 function createActivity(id: string) {
