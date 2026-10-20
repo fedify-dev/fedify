@@ -35,6 +35,16 @@
       "require": "./dist/mod.cjs",
       "default": "./dist/mod.js"
     },
+    "./internal": {
+      "types": {
+        "import": "./dist/internal.d.ts",
+        "require": "./dist/internal.d.cts",
+        "default": "./dist/internal.d.ts"
+      },
+      "import": "./dist/internal.js",
+      "require": "./dist/internal.cjs",
+      "default": "./dist/internal.js"
+    },
     "./jsonld": {
       "types": {
         "import": "./dist/jsonld.d.ts",

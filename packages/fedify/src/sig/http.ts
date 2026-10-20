@@ -1,5 +1,6 @@
 import { CryptographicKey } from "@fedify/vocab";
 import { type DocumentLoader, FetchError } from "@fedify/vocab-runtime";
+import type { PublicFetchSession } from "@fedify/vocab-runtime/internal";
 import { getLogger } from "@logtape/logtape";
 import {
   type Span,
@@ -1351,6 +1352,7 @@ async function createRedirectRequest(
 }
 
 async function fetchDoubleKnockRequest(
+  session: PublicFetchSession,
   request: Request,
   signedRequest: Request,
   signal?: AbortSignal,
@@ -1360,7 +1362,7 @@ async function fetchDoubleKnockRequest(
     : 1;
   for (let attempt = 1;; attempt++) {
     try {
-      return await fetch(signedRequest, {
+      return await session.fetch(signedRequest, {
         // Since Bun has a bug that ignores the `Request.redirect` option,
         // to work around it we specify `redirect: "manual"` here too:
         // https://github.com/oven-sh/bun/issues/10754
@@ -1443,6 +1445,28 @@ function getAbortReason(signal: AbortSignal): unknown {
 }
 
 /**
+ * Opens a fetch session for a hop of a double-knock request.
+ * @param url The URL of the hop.
+ * @returns The session.  It must be closed.
+ */
+export type DoubleKnockOpenHop = (url: string) => Promise<PublicFetchSession>;
+
+/**
+ * The last hop of a double-knock request.
+ */
+interface DoubleKnockHop {
+  /**
+   * The final response.
+   */
+  readonly response: Response;
+
+  /**
+   * The session the final response was fetched with.  It is still open.
+   */
+  readonly session: PublicFetchSession;
+}
+
+/**
  * Performs a double-knock request to the given URL.  For the details of
  * double-knocking, see
  * <https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions>.
@@ -1457,22 +1481,101 @@ export async function doubleKnock(
   identity: { keyId: URL; privateKey: CryptoKey },
   options: DoubleKnockOptions = {},
 ): Promise<Response> {
-  return await doubleKnockInternal(request, identity, options);
+  const { response } = await doubleKnockCore(
+    request,
+    identity,
+    options,
+    openGlobalFetchHop,
+  );
+  return response;
 }
 
-async function doubleKnockInternal(
+/**
+ * Performs a double-knock request like {@link doubleKnock}, opening a session
+ * for every hop with the given function, and passes the final response to
+ * the given function.  The final session is closed after `consume` settles,
+ * so `consume` must read or cancel the response body before it returns.
+ * This is not exported from any entry point.
+ * @param request The request to send.
+ * @param identity The identity to use for signing the request.
+ * @param options The options for double-knock requests.
+ * @param openHop The function to open a session for each hop.  The session of
+ *                a hop is closed before the next hop is opened.
+ * @param consume The function to consume the final response.
+ * @returns The value returned by `consume`.
+ */
+export async function doubleKnockScoped<T>(
   request: Request,
   identity: { keyId: URL; privateKey: CryptoKey },
   options: DoubleKnockOptions,
-  redirected = 0,
-  visited = new Set<string>(),
-): Promise<Response> {
+  openHop: DoubleKnockOpenHop,
+  consume: (response: Response) => Promise<T>,
+): Promise<T> {
+  const { response, session } = await doubleKnockCore(
+    request,
+    identity,
+    options,
+    openHop,
+  );
+  try {
+    return await consume(response);
+  } catch (error) {
+    getLogger(["fedify", "sig", "http"]).debug(
+      "Failed to consume the response from {url}; closing the session: " +
+        "{error}",
+      { url: request.url, error },
+    );
+    throw error;
+  } finally {
+    await session.close();
+  }
+}
+
+/**
+ * A hop session for {@link doubleKnock}: it uses the global `fetch()` without
+ * validating or pinning addresses, and its `close()` does nothing, so that
+ * the final response can be returned to the caller.
+ */
+function openGlobalFetchHop(url: string): Promise<PublicFetchSession> {
+  const sessionUrl = new URL(url);
+  return Promise.resolve({
+    get url() {
+      return new URL(sessionUrl);
+    },
+    fetch: (input, init) => fetch(input, init),
+    close: () => Promise.resolve(),
+  });
+}
+
+function isRedirectResponse(response: Response): boolean {
+  return response.status >= 300 && response.status < 400 &&
+    response.headers.has("Location");
+}
+
+/**
+ * Starts cancelling the body of a response that is not passed to the caller,
+ * without waiting for it to settle.  The cancellation of a branch of a tee
+ * (e.g., a body cloned by a fetch mock) settles only after the other branch
+ * is cancelled too, per the Streams standard, so awaiting it could block
+ * forever.  Failures are only logged.
+ */
+function cancelResponseBody(response: Response, url: string): void {
+  response.body?.cancel().catch((error) => {
+    getLogger(["fedify", "sig", "http"]).debug(
+      "Failed to cancel the response body from {url}: {error}",
+      { url, error },
+    );
+  });
+}
+
+async function doubleKnockCore(
+  request: Request,
+  identity: { keyId: URL; privateKey: CryptoKey },
+  options: DoubleKnockOptions,
+  openHop: DoubleKnockOpenHop,
+): Promise<DoubleKnockHop> {
   const { specDeterminer, log, tracerProvider, signal } = options;
-  visited.add(request.url);
-  const origin = new URL(request.url).origin;
-  const firstTrySpec: HttpMessageSignaturesSpec = specDeterminer == null
-    ? "rfc9421"
-    : await specDeterminer.determineSpec(origin);
+  const visited = new Set<string>();
 
   // Get the request body once at the top level to avoid multiple clones
   const body = options.body !== undefined
@@ -1481,81 +1584,83 @@ async function doubleKnockInternal(
     ? await request.clone().arrayBuffer()
     : null;
 
-  let signedRequest = await signRequest(
-    request,
-    identity.privateKey,
-    identity.keyId,
-    { spec: firstTrySpec, tracerProvider, body },
-  );
-  log?.(signedRequest);
-  let response = await fetchDoubleKnockRequest(request, signedRequest, signal);
-  // Follow redirects manually to get the final URL:
-  if (
-    response.status >= 300 && response.status < 400 &&
-    response.headers.has("Location")
-  ) {
-    if (redirected >= DEFAULT_MAX_REDIRECTION) {
-      throw new FetchError(
-        request.url,
-        `Too many redirections (${redirected + 1})`,
+  let session = await openHop(request.url);
+  try {
+    for (let redirected = 0;; redirected++) {
+      visited.add(request.url);
+      const origin = new URL(request.url).origin;
+      const firstTrySpec: HttpMessageSignaturesSpec = specDeterminer == null
+        ? "rfc9421"
+        : await specDeterminer.determineSpec(origin);
+      let signedRequest = await signRequest(
+        request,
+        identity.privateKey,
+        identity.keyId,
+        { spec: firstTrySpec, tracerProvider, body },
       );
-    }
-    const location = response.headers.get("Location")!;
-    const redirectRequest = await createRedirectRequest(
-      request,
-      location,
-      body,
-      options.validateRedirect,
-    );
-    if (visited.has(redirectRequest.url)) {
-      throw new FetchError(
-        request.url,
-        `Redirect loop detected: ${redirectRequest.url}`,
+      log?.(signedRequest);
+      let response = await fetchDoubleKnockRequest(
+        session,
+        request,
+        signedRequest,
+        signal,
       );
-    }
-    return doubleKnockInternal(
-      redirectRequest,
-      identity,
-      { ...options, body },
-      redirected + 1,
-      visited,
-    );
-  } else if (
-    // FIXME: Temporary hotfix for Mastodon RFC 9421 implementation bug (as of 2025-06-19).
-    // Some Mastodon servers (including mastodon.social) are running bleeding edge versions
-    // with RFC 9421 support that have a bug causing 500 Internal Server Error when receiving
-    // RFC 9421 signatures. This extends double-knocking to 5xx errors as a workaround,
-    // allowing fallback to draft-cavage signatures. This should be reverted once Mastodon
-    // fixes their RFC 9421 implementation and affected servers are updated.
-    response.status === 400 || response.status === 401 || response.status > 401
-  ) {
-    // verification failed; retry with the other spec of HTTP Signatures
-    // (double-knocking; see https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions)
-    const spec = firstTrySpec === "draft-cavage-http-signatures-12"
-      ? "rfc9421"
-      : "draft-cavage-http-signatures-12";
-    getLogger(["fedify", "sig", "http"]).debug(
-      "Failed to verify with the spec {spec} ({status} {statusText}); retrying with spec {secondSpec}... (double-knocking)",
-      {
-        spec: firstTrySpec,
-        secondSpec: spec,
-        status: response.status,
-        statusText: response.statusText,
-      },
-    );
-    signedRequest = await signRequest(
-      request,
-      identity.privateKey,
-      identity.keyId,
-      { spec, tracerProvider, body },
-    );
-    log?.(signedRequest);
-    response = await fetchDoubleKnockRequest(request, signedRequest, signal);
-    // Follow redirects manually to get the final URL:
-    if (
-      response.status >= 300 && response.status < 400 &&
-      response.headers.has("Location")
-    ) {
+      const firstRedirected = isRedirectResponse(response);
+      if (
+        !firstRedirected &&
+        // FIXME: Temporary hotfix for Mastodon RFC 9421 implementation bug (as of 2025-06-19).
+        // Some Mastodon servers (including mastodon.social) are running bleeding edge versions
+        // with RFC 9421 support that have a bug causing 500 Internal Server Error when receiving
+        // RFC 9421 signatures. This extends double-knocking to 5xx errors as a workaround,
+        // allowing fallback to draft-cavage signatures. This should be reverted once Mastodon
+        // fixes their RFC 9421 implementation and affected servers are updated.
+        (response.status === 400 || response.status === 401 ||
+          response.status > 401)
+      ) {
+        // verification failed; retry with the other spec of HTTP Signatures
+        // (double-knocking; see https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions)
+        const spec = firstTrySpec === "draft-cavage-http-signatures-12"
+          ? "rfc9421"
+          : "draft-cavage-http-signatures-12";
+        getLogger(["fedify", "sig", "http"]).debug(
+          "Failed to verify with the spec {spec} ({status} {statusText}); retrying with spec {secondSpec}... (double-knocking)",
+          {
+            spec: firstTrySpec,
+            secondSpec: spec,
+            status: response.status,
+            statusText: response.statusText,
+          },
+        );
+        // The retry goes to the same URL, so it uses the same session:
+        cancelResponseBody(response, request.url);
+        signedRequest = await signRequest(
+          request,
+          identity.privateKey,
+          identity.keyId,
+          { spec, tracerProvider, body },
+        );
+        log?.(signedRequest);
+        response = await fetchDoubleKnockRequest(
+          session,
+          request,
+          signedRequest,
+          signal,
+        );
+        if (
+          !isRedirectResponse(response) &&
+          response.status !== 400 && response.status !== 401
+        ) {
+          await specDeterminer?.rememberSpec(origin, spec);
+        }
+      } else if (!firstRedirected) {
+        await specDeterminer?.rememberSpec(origin, firstTrySpec);
+      }
+      if (!isRedirectResponse(response)) return { response, session };
+
+      // Follow redirects manually to get the final URL.  The current hop is
+      // closed before the next one is validated and opened:
+      cancelResponseBody(response, request.url);
+      await session.close();
       if (redirected >= DEFAULT_MAX_REDIRECTION) {
         throw new FetchError(
           request.url,
@@ -1575,20 +1680,21 @@ async function doubleKnockInternal(
           `Redirect loop detected: ${redirectRequest.url}`,
         );
       }
-      return doubleKnockInternal(
-        redirectRequest,
-        identity,
-        { ...options, body },
-        redirected + 1,
-        visited,
-      );
-    } else if (response.status !== 400 && response.status !== 401) {
-      await specDeterminer?.rememberSpec(origin, spec);
+      request = redirectRequest;
+      session = await openHop(request.url);
     }
-  } else {
-    await specDeterminer?.rememberSpec(origin, firstTrySpec);
+  } catch (error) {
+    // The session may already be closed; closing it again does nothing:
+    try {
+      await session.close();
+    } catch (closeError) {
+      getLogger(["fedify", "sig", "http"]).debug(
+        "Failed to close the session for {url}: {error}",
+        { url: request.url, error: closeError },
+      );
+    }
+    throw error;
   }
-  return response;
 }
 
 /**

@@ -4,6 +4,7 @@
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
+    "./internal": "./src/internal.ts",
     "./jsonld": "./src/jsonld.ts",
     "./temporal": "./src/temporal.ts"
   },
@@ -29,6 +30,7 @@
   "publish": {
     "exclude": [
       "**/*.test.ts",
+      "src/**/testdata/",
       "tsdown.config.ts"
     ]
   },

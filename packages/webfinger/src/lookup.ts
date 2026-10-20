@@ -1,10 +1,4 @@
-import {
-  getUserAgent,
-  type GetUserAgentOptions,
-  UrlError,
-  validatePublicUrl,
-} from "@fedify/vocab-runtime";
-import { getLogger } from "@logtape/logtape";
+import type { GetUserAgentOptions } from "@fedify/vocab-runtime";
 import {
   SpanKind,
   SpanStatusCode,
@@ -12,12 +6,8 @@ import {
   type TracerProvider,
 } from "@opentelemetry/api";
 import metadata from "../deno.json" with { type: "json" };
-import { BodyTooLargeError, MAX_BODY_SIZE, readBoundedText } from "./body.ts";
 import type { ResourceDescriptor } from "./jrd.ts";
-
-const logger = getLogger(["fedify", "webfinger", "lookup"]);
-
-const DEFAULT_MAX_REDIRECTION = 5;
+import { lookupWebFingerInternal } from "./lookup-impl.ts";
 
 /**
  * Options for {@link lookupWebFinger}.
@@ -107,137 +97,4 @@ export async function lookupWebFinger(
       }
     },
   );
-}
-
-async function lookupWebFingerInternal(
-  resource: URL | string,
-  options: LookupWebFingerOptions = {},
-): Promise<ResourceDescriptor | null> {
-  if (typeof resource === "string") resource = new URL(resource);
-  let protocol = "https:";
-  let server: string;
-  if (resource.protocol === "acct:") {
-    const atPos = resource.pathname.lastIndexOf("@");
-    if (atPos < 0) return null;
-    server = resource.pathname.substring(atPos + 1);
-    if (server === "") return null;
-  } else {
-    protocol = resource.protocol;
-    server = resource.host;
-  }
-  let url = new URL(`${protocol}//${server}/.well-known/webfinger`);
-  url.searchParams.set("resource", resource.href);
-  let redirected = 0;
-  while (true) {
-    logger.debug(
-      "Fetching WebFinger resource descriptor from {url}...",
-      { url: url.href },
-    );
-    let response: Response;
-    if (options.allowPrivateAddress !== true) {
-      try {
-        await validatePublicUrl(url.href);
-      } catch (e) {
-        if (e instanceof UrlError) {
-          if (e.reason === "dns") {
-            logger.debug("DNS lookup failed for {url}", {
-              url: url.href,
-              error: e,
-            });
-          } else {
-            logger.error(
-              "Invalid URL for WebFinger resource descriptor: {error}",
-              { error: e },
-            );
-          }
-          // TODO: When merging forward into 2.3-maintenance and later, where
-          // this returns { resource: null, result: "network_error", remoteHost }
-          // instead of null, keep that return value for both reasons.
-          return null;
-        }
-        throw e;
-      }
-    }
-    try {
-      response = await fetch(url, {
-        headers: {
-          Accept: "application/jrd+json",
-          "User-Agent": typeof options.userAgent === "string"
-            ? options.userAgent
-            : getUserAgent(options.userAgent),
-        },
-        redirect: "manual",
-        signal: options.signal,
-      });
-    } catch (error) {
-      logger.debug(
-        "Failed to fetch WebFinger resource descriptor: {error}",
-        { url: url.href, error },
-      );
-      return null;
-    }
-    if (
-      response.status >= 300 && response.status < 400 &&
-      response.headers.has("Location")
-    ) {
-      redirected++;
-      const maxRedirection = options.maxRedirection ?? DEFAULT_MAX_REDIRECTION;
-      if (redirected >= maxRedirection) {
-        logger.error(
-          "Too many redirections ({redirections}) while fetching WebFinger " +
-            "resource descriptor.",
-          { redirections: redirected },
-        );
-        return null;
-      }
-      const redirectedUrl = new URL(
-        response.headers.get("Location")!,
-        response.url == null || response.url === "" ? url : response.url,
-      );
-      if (redirectedUrl.protocol !== url.protocol) {
-        logger.error(
-          "Redirected to a different protocol ({protocol} to " +
-            "{redirectedProtocol}) while fetching WebFinger resource " +
-            "descriptor.",
-          {
-            protocol: url.protocol,
-            redirectedProtocol: redirectedUrl.protocol,
-          },
-        );
-        return null;
-      }
-      url = redirectedUrl;
-      continue;
-    }
-    if (!response.ok) {
-      logger.debug(
-        "Failed to fetch WebFinger resource descriptor: {status} {statusText}.",
-        {
-          url: url.href,
-          status: response.status,
-          statusText: response.statusText,
-        },
-      );
-      return null;
-    }
-    try {
-      return JSON.parse(
-        await readBoundedText(
-          response,
-          MAX_BODY_SIZE,
-          url,
-        ),
-      ) as ResourceDescriptor;
-    } catch (e) {
-      if (e instanceof BodyTooLargeError) return null;
-      if (e instanceof SyntaxError) {
-        logger.debug(
-          "Failed to parse WebFinger resource descriptor as JSON: {error}",
-          { error: e },
-        );
-        return null;
-      }
-      throw e;
-    }
-  }
 }

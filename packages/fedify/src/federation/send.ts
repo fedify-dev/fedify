@@ -1,5 +1,10 @@
 import type { Recipient } from "@fedify/vocab";
-import { FetchError, UrlError, validatePublicUrl } from "@fedify/vocab-runtime";
+import { FetchError, UrlError } from "@fedify/vocab-runtime";
+import {
+  openDirectFetch,
+  openPublicFetch,
+  type PublicFetchSession,
+} from "@fedify/vocab-runtime/internal";
 import { getLogger } from "@logtape/logtape";
 import {
   type Span,
@@ -10,7 +15,8 @@ import {
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
 import {
-  doubleKnock,
+  type DoubleKnockOpenHop,
+  doubleKnockScoped,
   type HttpMessageSignaturesSpecDeterminer,
 } from "../sig/http.ts";
 
@@ -156,14 +162,27 @@ export interface SendActivityParameters {
 }
 
 /**
+ * The dependencies of {@link sendActivity}, for tests.
+ */
+export interface SendActivityDependencies {
+  /**
+   * Opens a fetch session for each hop, instead of `openPublicFetch()` (or
+   * `openDirectFetch()` if private addresses are allowed).
+   */
+  readonly openHop?: DoubleKnockOpenHop;
+}
+
+/**
  * Sends an {@link Activity} to an inbox.
  *
  * @param parameters The parameters for sending the activity.
  *                   See also {@link SendActivityParameters}.
+ * @param deps The dependencies, for tests.
  * @throws {Error} If the activity fails to send.
  */
 export function sendActivity(
   options: SendActivityParameters,
+  deps: SendActivityDependencies = {},
 ): Promise<void> {
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
@@ -183,7 +202,7 @@ export function sendActivity(
         span.setAttribute("activitypub.activity.type", options.activityType);
       }
       try {
-        await sendActivityInternal({ ...options, tracerProvider }, span);
+        await sendActivityInternal({ ...options, tracerProvider }, span, deps);
       } catch (e) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
         throw e;
@@ -226,6 +245,10 @@ async function readLimitedResponseBody(
       totalBytes += value.length;
     }
   } finally {
+    // Start cancelling the rest of a truncated body instead of leaving it
+    // unread.  It is not awaited, since the cancellation of a tee branch
+    // (e.g., a body cloned by a fetch mock) may never settle:
+    if (truncated) reader.cancel().catch(() => {});
     reader.releaseLock();
   }
   let result = chunks.join("");
@@ -234,6 +257,18 @@ async function readLimitedResponseBody(
   }
   return result;
 }
+
+/**
+ * The outcome of a delivery, determined while its session is open.
+ */
+type SendActivityOutcome =
+  | { readonly ok: true }
+  | {
+    readonly ok: false;
+    readonly status: number;
+    readonly statusText: string;
+    readonly error: string;
+  };
 
 async function sendActivityInternal(
   {
@@ -247,32 +282,34 @@ async function sendActivityInternal(
     tracerProvider,
   }: SendActivityParameters,
   span: Span,
+  deps: SendActivityDependencies,
 ): Promise<void> {
   const logger = getLogger(["fedify", "federation", "outbox"]);
-  async function validateUrl(url: string): Promise<void> {
-    if (!allowPrivateAddress) {
-      try {
-        await validatePublicUrl(url);
-      } catch (error) {
-        if (error instanceof UrlError && error.reason === "dns") {
-          logger.error("DNS resolution failed for URL: {url}", { url, error });
-          const failure = new FetchError(url, error.message);
-          failure.cause = error;
-          throw failure;
-        }
-        if (error instanceof UrlError) {
-          logger.error("Disallowed private URL: {url}", { url, error });
-        }
-        throw error;
+  const openUnvalidatedHop: DoubleKnockOpenHop = deps.openHop ??
+    (allowPrivateAddress ? openDirectFetch : (url) => openPublicFetch(url));
+  // Whether the initial destination has been opened; failures before that
+  // are logged only by openHop():
+  let opened = false;
+  async function openHop(url: string): Promise<PublicFetchSession> {
+    let session: PublicFetchSession;
+    try {
+      session = await openUnvalidatedHop(url);
+    } catch (error) {
+      if (error instanceof UrlError && error.reason === "dns") {
+        logger.error("DNS resolution failed for URL: {url}", { url, error });
+        const failure = new FetchError(url, error.message);
+        failure.cause = error;
+        throw failure;
       }
+      if (error instanceof UrlError) {
+        logger.error("Disallowed private URL: {url}", { url, error });
+      }
+      throw error;
     }
+    opened = true;
+    return session;
   }
 
-  // TODO: When forwarding to 2.3+, include initial DNS failures in delivery
-  // metrics without changing disallowed-URL handling. Test metrics and
-  // circuit-breaker accounting for both direct and redirected destinations.
-  // https://github.com/fedify-dev/fedify/issues/1055
-  await validateUrl(inbox.href);
   headers = new Headers(headers);
   headers.set("Content-Type", "application/activity+json");
   const request = new Request(inbox, {
@@ -303,52 +340,56 @@ async function sendActivityInternal(
       },
     );
   }
-  let response: Response;
+  // TODO: When forwarding to 2.3+, include initial DNS failures in delivery
+  // metrics without changing disallowed-URL handling. Test metrics and
+  // circuit-breaker accounting for both direct and redirected destinations.
+  // https://github.com/fedify-dev/fedify/issues/1055
+  let outcome: SendActivityOutcome;
   try {
-    response = rsaKey == null
-      ? await fetchWithValidatedRedirects(request, validateUrl)
-      : await doubleKnock(request, rsaKey, {
-        tracerProvider,
-        specDeterminer,
-        validateRedirect: validateUrl,
-      });
+    outcome = rsaKey == null
+      ? await fetchWithValidatedRedirects(
+        request,
+        openHop,
+        (response) => consumeSendActivityResponse(response, inbox),
+      )
+      : await doubleKnockScoped(
+        request,
+        rsaKey,
+        { tracerProvider, specDeterminer },
+        openHop,
+        (response) => consumeSendActivityResponse(response, inbox),
+      );
   } catch (error) {
-    logger.error(
-      "Failed to send activity {activityId} to {inbox}:\n{error}",
-      {
-        activityId,
-        inbox: inbox.href,
-        error,
-      },
-    );
+    if (opened) {
+      logger.error(
+        "Failed to send activity {activityId} to {inbox}:\n{error}",
+        {
+          activityId,
+          inbox: inbox.href,
+          error,
+        },
+      );
+    }
     throw error;
   }
-  if (!response.ok) {
-    let error: string;
-    try {
-      error = await readLimitedResponseBody(
-        response,
-        MAX_ERROR_RESPONSE_BODY_BYTES,
-      );
-    } catch (_) {
-      error = "";
-    }
+  if (!outcome.ok) {
+    const { status, statusText, error } = outcome;
     logger.error(
       "Failed to send activity {activityId} to {inbox} ({status} " +
         "{statusText}):\n{error}",
       {
         activityId,
         inbox: inbox.href,
-        status: response.status,
-        statusText: response.statusText,
+        status,
+        statusText,
         error,
       },
     );
     throw new SendActivityError(
       inbox,
-      response.status,
+      status,
       `Failed to send activity ${activityId} to ${inbox.href} ` +
-        `(${response.status} ${response.statusText}):\n${error}`,
+        `(${status} ${statusText}):\n${error}`,
       error,
     );
   }
@@ -361,23 +402,101 @@ async function sendActivityInternal(
   });
 }
 
-// Preserve Fetch's redirect semantics while validating every destination.
-async function fetchWithValidatedRedirects(
+/**
+ * Starts cancelling the body of a response without waiting for it to settle.
+ * The cancellation of a branch of a tee (e.g., a body cloned by a fetch mock)
+ * settles only after the other branch is cancelled too, per the Streams
+ * standard, so awaiting it could block forever.  Failures are only logged.
+ */
+function cancelResponseBody(response: Response, url: string): void {
+  response.body?.cancel().catch((error) => {
+    getLogger(["fedify", "federation", "outbox"]).debug(
+      "Failed to cancel the response body from {url}: {error}",
+      { url, error },
+    );
+  });
+}
+
+/**
+ * Reads what is needed from the final response of a delivery while its
+ * session is open: the body of a successful response is cancelled, and at
+ * most 1 KiB of an error response body is read.
+ */
+async function consumeSendActivityResponse(
+  response: Response,
+  inbox: URL,
+): Promise<SendActivityOutcome> {
+  if (response.ok) {
+    cancelResponseBody(response, response.url || inbox.href);
+    return { ok: true };
+  }
+  let error: string;
+  try {
+    error = await readLimitedResponseBody(
+      response,
+      MAX_ERROR_RESPONSE_BODY_BYTES,
+    );
+  } catch (_) {
+    error = "";
+  }
+  return {
+    ok: false,
+    status: response.status,
+    statusText: response.statusText,
+    error,
+  };
+}
+
+/**
+ * Sends a request without signing it, following redirects manually like the
+ * Fetch standard does.  Every hop is opened with `openHop()`, which validates
+ * the destination, after the previous hop is closed.  The final response is
+ * passed to `consume()`, and its session is closed after that.
+ * This is exported only for tests; it is not exported from any entry point.
+ * @param request The request to send.
+ * @param openHop The function to open a session for each hop.
+ * @param consume The function to consume the final response.
+ * @returns The value returned by `consume`.
+ */
+export async function fetchWithValidatedRedirects<T>(
   request: Request,
-  validateUrl: (url: string) => Promise<void>,
-): Promise<Response> {
+  openHop: DoubleKnockOpenHop,
+  consume: (response: Response) => Promise<T>,
+): Promise<T> {
+  const logger = getLogger(["fedify", "federation", "outbox"]);
   let body: string | undefined = await request.clone().text();
   for (let redirects = 0;; redirects++) {
-    // Bun also needs the redirect option on fetch() itself.
-    const response = await fetch(request, { redirect: "manual" });
+    const session = await openHop(request.url);
+    let response: Response;
+    try {
+      // Bun also needs the redirect option on fetch() itself.
+      response = await session.fetch(request, { redirect: "manual" });
+    } catch (error) {
+      await closeAfterError(session, logger);
+      throw error;
+    }
     const location = response.headers.get("Location");
     if (
       ![301, 302, 303, 307, 308].includes(response.status) || location == null
-    ) return response;
-    await response.body?.cancel();
+    ) {
+      try {
+        return await consume(response);
+      } catch (error) {
+        logger.debug(
+          "Failed to consume the response from {url}; closing the session: " +
+            "{error}",
+          { url: request.url, error },
+        );
+        throw error;
+      } finally {
+        await session.close();
+      }
+    }
+    // The current hop is closed before the next one is validated and opened:
+    cancelResponseBody(response, request.url);
+    await session.close();
     if (redirects >= 20) throw new TypeError("Too many redirects");
     const url = new URL(location, request.url);
-    await validateUrl(url.href);
     const headers = new Headers(request.headers);
     if (url.origin !== new URL(request.url).origin) {
       headers.delete("Authorization");
@@ -404,6 +523,20 @@ async function fetchWithValidatedRedirects(
       ) headers.delete(name);
     }
     request = new Request(url, { method, headers, body, redirect: "manual" });
+  }
+}
+
+async function closeAfterError(
+  session: PublicFetchSession,
+  logger: ReturnType<typeof getLogger>,
+): Promise<void> {
+  try {
+    await session.close();
+  } catch (error) {
+    logger.debug(
+      "Failed to close the session for {url}: {error}",
+      { url: session.url.href, error },
+    );
   }
 }
 
