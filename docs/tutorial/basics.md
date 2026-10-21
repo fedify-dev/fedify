@@ -45,12 +45,28 @@ Creating a new project
 ----------------------
 
 > [!TIP]
-> We recommend using [Deno] or [Bun] (which are TypeScript-first) for the best
-> experience, but you can use [Node.js] if you prefer.
+> We recommend using the latest version of [Node.js] for the best experience,
+> but you can use [Bun] if you prefer.  We no longer recommend [Deno] for new
+> projects following its team's recent [announcement].
 
 Let's create a new project directory and initialize a new project:
 
 ::: code-group
+
+~~~~ sh [Node.js]
+mkdir follow-server
+cd follow-server/
+echo '{ "type": "module" }' > package.json
+npm add -D typescript tsx @types/node
+npm add @fedify/fedify @fedify/sqlite @hono/node-server
+~~~~
+
+~~~~ sh [Bun]
+mkdir follow-server
+cd follow-server/
+echo '{ "type": "module" }' > package.json
+bun add @fedify/fedify @fedify/sqlite
+~~~~
 
 ~~~~ sh [Deno]
 mkdir follow-server
@@ -59,28 +75,39 @@ echo '{ "unstable": ["kv"] }' > deno.json
 deno add jsr:@fedify/fedify
 ~~~~
 
-~~~~ sh [Bun]
-mkdir follow-server
-cd follow-server/
-echo '{ "type": "module" }' > package.json
-bun add @fedify/fedify @deno/kv
-~~~~
-
-~~~~ sh [Node.js]
-mkdir follow-server
-cd follow-server/
-echo '{ "type": "module" }' > package.json
-npm add -D typescript tsx @types/node
-npm add @fedify/fedify @deno/kv @hono/node-server
-~~~~
-
 :::
 
-The above commands will create a *deno.json* (in case of Deno) or *package.json*
-(in case of Node.js or Bun) in the project directory with the following content
-(formatted for readability):[^2]
+The above commands will create a *package.json* (in case of Node.js or Bun) or
+*deno.json* (in case of Deno) in the project directory with the following
+content (formatted for readability):[^2]
 
 ::: code-group
+
+~~~~ json [Node.js]
+{
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^24.19.0",
+    "tsx": "^4.8.2",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@fedify/fedify": "^2.4.5",
+    "@fedify/sqlite": "^2.4.5",
+    "@hono/node-server": "^1.11.1"
+  }
+}
+~~~~
+
+~~~~ json [Bun]
+{
+  "type": "module",
+  "dependencies": {
+    "@fedify/fedify": "^2.4.5",
+    "@fedify/sqlite": "^2.4.5"
+  }
+}
+~~~~
 
 ~~~~ json [Deno]
 {
@@ -91,44 +118,18 @@ The above commands will create a *deno.json* (in case of Deno) or *package.json*
 }
 ~~~~
 
-~~~~ json [Bun]
-{
-  "type": "module",
-  "dependencies": {
-    "@deno/kv": "^0.8.1",
-    "@fedify/fedify": "^1.1.0"
-  }
-}
-~~~~
-
-~~~~ json [Node.js]
-{
-  "type": "module",
-  "devDependencies": {
-    "@types/node": "^20.12.7",
-    "tsx": "^4.8.2",
-    "typescript": "^5.4.5"
-  },
-  "dependencies": {
-    "@deno/kv": "^0.8.1",
-    "@fedify/fedify": "^1.1.0",
-    "@hono/node-server": "^1.11.1"
-  }
-}
-~~~~
-
 :::
+
+> [!NOTE]
+> In Node.js and Bun, we recommend adding [`"type": "module"`] to the
+> *package.json* file to use [ESM] imports. While Fedify also supports
+> [CommonJS] for legacy compatibility, ESM is the preferred and recommended
+> approach.
 
 > [!NOTE]
 > If you use Deno 2.7.0 or later, you do not need any extra setting for
 > [`Temporal`].  If you use Deno earlier than 2.7.0, add `"temporal"` to the
 > [`"unstable"`] field in *deno.json*.
-
-> [!NOTE]
-> In Bun and Node.js, we recommend adding [`"type": "module"`] to the
-> *package.json* file to use [ESM] imports. While Fedify also supports
-> [CommonJS] for legacy compatibility, ESM is the preferred and recommended
-> approach.
 
 > [!TIP]
 > Do you wonder why we need to add *[tsx]* and *@types/node* in the case of
@@ -139,14 +140,15 @@ The above commands will create a *deno.json* (in case of Deno) or *package.json*
 [^2]: The actual version number may vary depending on the latest version of the
       Fedify framework as of reading this tutorial.
 
-[Deno]: https://deno.com/
-[Bun]: https://bun.sh/
 [Node.js]: https://nodejs.org/
-[`Temporal`]: https://tc39.es/proposal-temporal/docs/
-[`"unstable"`]: https://docs.deno.com/runtime/manual/tools/unstable_flags/#configuring-flags-in-deno.json
+[Bun]: https://bun.sh/
+[Deno]: https://deno.com/
+[announcement]: https://deno.com/blog/cloudflare
 [`"type": "module"`]: https://nodejs.org/api/packages.html#type
 [ESM]: https://nodejs.org/api/esm.html
 [CommonJS]: https://nodejs.org/docs/latest/api/modules.html
+[`Temporal`]: https://tc39.es/proposal-temporal/docs/
+[`"unstable"`]: https://docs.deno.com/runtime/manual/tools/unstable_flags/#configuring-flags-in-deno.json
 [tsx]: https://tsx.is/
 
 
@@ -158,12 +160,17 @@ project directory and write the following code:
 
 ::: code-group
 
-~~~~ typescript twoslash [Deno]
-Deno.serve(request =>
-  new Response("Hello, world", {
-    headers: { "Content-Type": "text/plain" }
-  })
-);
+~~~~ typescript twoslash [Node.js]
+import { serve } from "@hono/node-server";
+
+serve({
+  port: 8000,
+  fetch(request) {
+    return new Response("Hello, world", {
+      headers: { "Content-Type": "text/plain" }
+    });
+  }
+});
 ~~~~
 
 ~~~~ typescript twoslash [Bun]
@@ -179,17 +186,12 @@ Bun.serve({
 });
 ~~~~
 
-~~~~ typescript twoslash [Node.js]
-import { serve } from "@hono/node-server";
-
-serve({
-  port: 8000,
-  fetch(request) {
-    return new Response("Hello, world", {
-      headers: { "Content-Type": "text/plain" }
-    });
-  }
-});
+~~~~ typescript twoslash [Deno]
+Deno.serve(request =>
+  new Response("Hello, world", {
+    headers: { "Content-Type": "text/plain" }
+  })
+);
 ~~~~
 
 :::
@@ -199,16 +201,16 @@ request.  You can run the server by executing the following command:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno run -A server.ts
+~~~~ sh [Node.js]
+node --import tsx server.ts
 ~~~~
 
 ~~~~ sh [Bun]
 bun server.ts
 ~~~~
 
-~~~~ sh [Node.js]
-node --import tsx server.ts
+~~~~ sh [Deno]
+deno run -A server.ts
 ~~~~
 
 ::::
@@ -216,17 +218,17 @@ node --import tsx server.ts
 Now, open your web browser and navigate to <http://localhost:8000/>.  You should
 see the <q>Hello, world</q> message.
 
-As you can guess, [`Deno.serve()`] (in case of Deno), [`Bun.serve()`] (in case
-of Bun), and [`serve()`] (in case of Node.js) are functions to create an HTTP
+As you can guess, [`serve()`] (in case of Node.js), [`Bun.serve()`] (in case
+of Bun), and [`Deno.serve()`] (in case of Deno) are functions to create an HTTP
 server.  They take a callback function that receives a [`Request`] object and
 returns a [`Response`] object. The `Response` object is sent back to the client.
 
 This server is not federated yet, but it's a good starting point to build a
 federated server.
 
-[`Deno.serve()`]: https://docs.deno.com/api/deno/~/Deno.serve
-[`Bun.serve()`]: https://bun.sh/docs/api/http#bun-serve
 [`serve()`]: https://github.com/honojs/node-server?tab=readme-ov-file#usage
+[`Bun.serve()`]: https://bun.sh/docs/api/http#bun-serve
+[`Deno.serve()`]: https://docs.deno.com/api/deno/~/Deno.serve
 [`Request`]: https://developer.mozilla.org/en-US/docs/Web/API/Request
 [`Response`]: https://developer.mozilla.org/en-US/docs/Web/API/Response
 
@@ -267,13 +269,18 @@ Then, we pass the incoming `Request` to the `Federation.fetch()` method:
 
 ::: code-group
 
-~~~~ typescript{2} twoslash [Deno]
+~~~~ typescript{6} twoslash [Node.js]
 import type { Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
-Deno.serve(
-  request => federation.fetch(request, { contextData: undefined })
-);
+import { serve } from "@hono/node-server";
+
+serve({
+  port: 8000,
+  fetch(request) {
+    return federation.fetch(request, { contextData: undefined });
+  }
+});
 ~~~~
 
 ~~~~ typescript{4} twoslash [Bun]
@@ -289,18 +296,13 @@ Bun.serve({
 });
 ~~~~
 
-~~~~ typescript{6} twoslash [Node.js]
+~~~~ typescript{2} twoslash [Deno]
 import type { Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
-import { serve } from "@hono/node-server";
-
-serve({
-  port: 8000,
-  fetch(request) {
-    return federation.fetch(request, { contextData: undefined });
-  }
-});
+Deno.serve(
+  request => federation.fetch(request, { contextData: undefined })
+);
 ~~~~
 
 :::
@@ -330,16 +332,16 @@ to the next step.
 >
 > ::: code-group
 >
-> ~~~~ sh [Deno]
-> deno add jsr:@logtape/logtape
+> ~~~~ sh [Node.js]
+> npm add @logtape/logtape
 > ~~~~
 >
 > ~~~~ sh [Bun]
 > bun add @logtape/logtape
 > ~~~~
 >
-> ~~~~ sh [Node.js]
-> npm add @logtape/logtape
+> ~~~~ sh [Deno]
+> deno add jsr:@logtape/logtape
 > ~~~~
 >
 > :::
@@ -384,9 +386,10 @@ Let's create an actor dispatcher for our server:
 
 ::: code-group
 
-~~~~ typescript{7-16} twoslash [Deno]
+~~~~ typescript{8-17} twoslash [Node.js]
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
 import { Person } from "@fedify/vocab";
+import { serve } from "@hono/node-server";
 
 const federation = createFederation<void>({
   kv: new MemoryKvStore(),
@@ -403,9 +406,12 @@ federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => 
   });
 });
 
-Deno.serve(
-  request => federation.fetch(request, { contextData: undefined })
-);
+serve({
+  port: 8000,
+  fetch(request) {
+    return federation.fetch(request, { contextData: undefined });
+  }
+});
 ~~~~
 
 ~~~~ typescript{7-16} twoslash [Bun]
@@ -437,10 +443,9 @@ Bun.serve({
 });
 ~~~~
 
-~~~~ typescript{8-17} twoslash [Node.js]
+~~~~ typescript{7-16} twoslash [Deno]
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
 import { Person } from "@fedify/vocab";
-import { serve } from "@hono/node-server";
 
 const federation = createFederation<void>({
   kv: new MemoryKvStore(),
@@ -457,12 +462,9 @@ federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => 
   });
 });
 
-serve({
-  port: 8000,
-  fetch(request) {
-    return federation.fetch(request, { contextData: undefined });
-  }
-});
+Deno.serve(
+  request => federation.fetch(request, { contextData: undefined })
+);
 ~~~~
 
 :::
@@ -480,16 +482,16 @@ WebFinger for the actor.  Run the server by executing the following command:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno run -A server.ts
+~~~~ sh [Node.js]
+node --import tsx server.ts
 ~~~~
 
 ~~~~ sh [Bun]
 bun run server.ts
 ~~~~
 
-~~~~ sh [Node.js]
-node --import tsx server.ts
+~~~~ sh [Deno]
+deno run -A server.ts
 ~~~~
 
 :::
@@ -624,16 +626,16 @@ To do this, you need to install the package:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@hongminhee/x-forwarded-fetch
+~~~~ sh [Node.js]
+npm add x-forwarded-fetch
 ~~~~
 
 ~~~~ sh [Bun]
 bun add x-forwarded-fetch
 ~~~~
 
-~~~~ sh [Node.js]
-npm add x-forwarded-fetch
+~~~~ sh [Deno]
+deno add jsr:@hongminhee/x-forwarded-fetch
 ~~~~
 
 :::
@@ -643,17 +645,17 @@ the `Federation.fetch()` method:
 
 ::: code-group
 
-~~~~ typescript{1,4} twoslash [Deno]
-// @noErrors: 2300 2307
-import { behindProxy } from "x-forwarded-fetch";
+~~~~ typescript{2,6} twoslash [Node.js]
 import type { Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
-import { behindProxy } from "@hongminhee/x-forwarded-fetch";
+import { serve } from "@hono/node-server";
+import { behindProxy } from "x-forwarded-fetch";
 
-Deno.serve(
-  behindProxy(request => federation.fetch(request, { contextData: undefined }))
-);
+serve({
+  port: 8000,
+  fetch: behindProxy((request) => federation.fetch(request, { contextData: undefined })),
+});
 ~~~~
 
 ~~~~ typescript{1,5} twoslash [Bun]
@@ -669,17 +671,17 @@ Bun.serve({
 });
 ~~~~
 
-~~~~ typescript{2,6} twoslash [Node.js]
+~~~~ typescript{1,4} twoslash [Deno]
+// @noErrors: 2300 2307
+import { behindProxy } from "x-forwarded-fetch";
 import type { Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
-import { serve } from "@hono/node-server";
-import { behindProxy } from "x-forwarded-fetch";
+import { behindProxy } from "@hongminhee/x-forwarded-fetch";
 
-serve({
-  port: 8000,
-  fetch: behindProxy((request) => federation.fetch(request, { contextData: undefined })),
-});
+Deno.serve(
+  behindProxy(request => federation.fetch(request, { contextData: undefined }))
+);
 ~~~~
 
 :::
@@ -689,16 +691,16 @@ then run the server again:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno run -A server.ts
+~~~~ sh [Node.js]
+node --import tsx server.ts
 ~~~~
 
 ~~~~ sh [Bun]
 bun run server.ts
 ~~~~
 
-~~~~ sh [Node.js]
-node --import tsx server.ts
+~~~~ sh [Deno]
+deno run -A server.ts
 ~~~~
 
 :::
@@ -848,6 +850,124 @@ method should be chained after the `~Federatable.setActorDispatcher()` method:
 
 ::: code-group
 
+~~~~ typescript{16-17,20-40} twoslash [Node.js]
+import {
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+  type Federation,
+} from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+// ---cut-before---
+import { DatabaseSync } from "node:sqlite";
+import { SqliteKvStore } from "@fedify/sqlite";
+
+const kv = new SqliteKvStore(new DatabaseSync("kv.sqlite"));
+
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    if (identifier !== "me") return null;
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      name: "Me",
+      summary: "This is me!",
+      preferredUsername: identifier,
+      url: new URL("/", ctx.url),
+      inbox: ctx.getInboxUri(identifier),
+      // The public keys of the actor; they are provided by the key pairs
+      // dispatcher we define below:
+      publicKeys: (await ctx.getActorKeyPairs(identifier))
+        .map(keyPair => keyPair.cryptographicKey),
+    });
+  })
+  .setKeyPairsDispatcher(async (ctx, identifier) => {
+    if (identifier != "me") return [];  // Other than "me" is not found.
+    const entry = await kv.get<{
+      privateKey: JsonWebKey;
+      publicKey: JsonWebKey;
+    }>(["key"]);
+    if (entry == null) {
+      // Generate a new key pair at the first time:
+      const { privateKey, publicKey } =
+        await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+      // Store the generated key pair to the SQLite database in JWK format:
+      await kv.set(
+        ["key"],
+        {
+          privateKey: await exportJwk(privateKey),
+          publicKey: await exportJwk(publicKey),
+        }
+      );
+      return [{ privateKey, publicKey }];
+    }
+    // Load the key pair from the SQLite database:
+    const privateKey = await importJwk(entry.privateKey, "private");
+    const publicKey =  await importJwk(entry.publicKey, "public");
+    return [{ privateKey, publicKey }];
+  });
+~~~~
+
+~~~~ typescript{16-17,20-40} twoslash [Bun]
+// @customConditions: bun
+import "bun";
+import {
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+  type Federation,
+} from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+// ---cut-before---
+import { Database } from "bun:sqlite";
+import { SqliteKvStore } from "@fedify/sqlite";
+
+const kv = new SqliteKvStore(new Database("kv.sqlite", { create: true }));
+
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    if (identifier !== "me") return null;
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      name: "Me",
+      summary: "This is me!",
+      preferredUsername: identifier,
+      url: new URL("/", ctx.url),
+      inbox: ctx.getInboxUri(identifier),
+      // The public keys of the actor; they are provided by the key pairs
+      // dispatcher we define below:
+      publicKeys: (await ctx.getActorKeyPairs(identifier))
+        .map(keyPair => keyPair.cryptographicKey),
+    });
+  })
+  .setKeyPairsDispatcher(async (ctx, identifier) => {
+    if (identifier != "me") return [];  // Other than "me" is not found.
+    const entry = await kv.get<{
+      privateKey: JsonWebKey;
+      publicKey: JsonWebKey;
+    }>(["key"]);
+    if (entry == null) {
+      // Generate a new key pair at the first time:
+      const { privateKey, publicKey } =
+        await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+      // Store the generated key pair to the SQLite database in JWK format:
+      await kv.set(
+        ["key"],
+        {
+          privateKey: await exportJwk(privateKey),
+          publicKey: await exportJwk(publicKey),
+        }
+      );
+      return [{ privateKey, publicKey }];
+    }
+    // Load the key pair from the SQLite database:
+    const privateKey = await importJwk(entry.privateKey, "private");
+    const publicKey =  await importJwk(entry.publicKey, "public");
+    return [{ privateKey, publicKey }];
+  });
+~~~~
+
 ~~~~ typescript{13-14,17-37} twoslash [Deno]
 import {
   exportJwk,
@@ -859,123 +979,6 @@ import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 const kv = await Deno.openKv();  // Open the key–value store
-
-federation
-  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-    if (identifier !== "me") return null;
-    return new Person({
-      id: ctx.getActorUri(identifier),
-      name: "Me",
-      summary: "This is me!",
-      preferredUsername: identifier,
-      url: new URL("/", ctx.url),
-      inbox: ctx.getInboxUri(identifier),
-      // The public keys of the actor; they are provided by the key pairs
-      // dispatcher we define below:
-      publicKeys: (await ctx.getActorKeyPairs(identifier))
-        .map(keyPair => keyPair.cryptographicKey),
-    });
-  })
-  .setKeyPairsDispatcher(async (ctx, identifier) => {
-    if (identifier != "me") return [];  // Other than "me" is not found.
-    const entry = await kv.get<{
-      privateKey: JsonWebKey;
-      publicKey: JsonWebKey;
-    }>(["key"]);
-    if (entry == null || entry.value == null) {
-      // Generate a new key pair at the first time:
-      const { privateKey, publicKey } =
-        await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
-      // Store the generated key pair to the Deno KV database in JWK format:
-      await kv.set(
-        ["key"],
-        {
-          privateKey: await exportJwk(privateKey),
-          publicKey: await exportJwk(publicKey),
-        }
-      );
-      return [{ privateKey, publicKey }];
-    }
-    // Load the key pair from the Deno KV database:
-    const privateKey = await importJwk(entry.value.privateKey, "private");
-    const publicKey =  await importJwk(entry.value.publicKey, "public");
-    return [{ privateKey, publicKey }];
-  });
-~~~~
-
-~~~~ typescript{15-16,19-39} twoslash [Bun]
-// @noErrors: 2307
-import {
-  exportJwk,
-  generateCryptoKeyPair,
-  importJwk,
-  type Federation,
-} from "@fedify/fedify";
-import { Person } from "@fedify/vocab";
-const federation = null as unknown as Federation<void>;
-// ---cut-before---
-import { serialize as encodeV8, deserialize as decodeV8 } from "node:v8";
-import { openKv } from "@deno/kv";
-
-// Open the key–value store:
-const kv = await openKv("kv.db", { encodeV8, decodeV8 });
-
-federation
-  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-    if (identifier !== "me") return null;
-    return new Person({
-      id: ctx.getActorUri(identifier),
-      name: "Me",
-      summary: "This is me!",
-      preferredUsername: identifier,
-      url: new URL("/", ctx.url),
-      inbox: ctx.getInboxUri(identifier),
-      // The public keys of the actor; they are provided by the key pairs
-      // dispatcher we define below:
-      publicKeys: (await ctx.getActorKeyPairs(identifier))
-        .map(keyPair => keyPair.cryptographicKey),
-    });
-  })
-  .setKeyPairsDispatcher(async (ctx, identifier) => {
-    if (identifier != "me") return [];  // Other than "me" is not found.
-    const entry = await kv.get<{
-      privateKey: JsonWebKey;
-      publicKey: JsonWebKey;
-    }>(["key"]);
-    if (entry == null || entry.value == null) {
-      // Generate a new key pair at the first time:
-      const { privateKey, publicKey } =
-        await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
-      // Store the generated key pair to the Deno KV database in JWK format:
-      await kv.set(
-        ["key"],
-        {
-          privateKey: await exportJwk(privateKey),
-          publicKey: await exportJwk(publicKey),
-        }
-      );
-      return [{ privateKey, publicKey }];
-    }
-    // Load the key pair from the Deno KV database:
-    const privateKey = await importJwk(entry.value.privateKey, "private");
-    const publicKey =  await importJwk(entry.value.publicKey, "public");
-    return [{ privateKey, publicKey }];
-  });
-~~~~
-
-~~~~ typescript{15-16,19-39} twoslash [Node.js]
-import {
-  exportJwk,
-  generateCryptoKeyPair,
-  importJwk,
-  type Federation,
-} from "@fedify/fedify";
-import { Person } from "@fedify/vocab";
-const federation = null as unknown as Federation<void>;
-// ---cut-before---
-import { openKv } from "@deno/kv";
-
-const kv = await openKv("kv.db");  // Open the key–value store
 
 federation
   .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
@@ -1032,9 +1035,9 @@ dispatched again, the key pairs dispatcher loads the key pair from the key–val
 store.
 
 > [!NOTE]
-> Although we use the Deno KV database in this tutorial, you can use any
-> other your favorite database to store the key pair.  The key–value store
-> is just an example.
+> This tutorial uses SQLite for Node.js and Bun, and Deno KV for Deno.
+> You can use any database you prefer to store the key pair.  See the
+> [*Key–value stores* section](../manual/kv.md) for other options.
 
 Restart the server and make an HTTP request to the actor *me* using `curl`.
 Now you should see the actor *me* with the public key in the response:
@@ -1182,6 +1185,75 @@ the script inside the fetch function:
 
 ::: code-group
 
+~~~~ typescript{4-19} twoslash [Node.js]
+import { serve } from "@hono/node-server";
+import type { Federation } from "@fedify/fedify";
+import { DatabaseSync } from "node:sqlite";
+import { SqliteKvStore } from "@fedify/sqlite";
+const federation = null as unknown as Federation<void>;
+const kv = new SqliteKvStore(new DatabaseSync("kv.sqlite"));
+// ---cut-before---
+serve({
+  port: 8000,
+  async fetch(request) {
+    const url = new URL(request.url);
+    // The home page:
+    if (url.pathname === "/") {
+      const followers: string[] = [];
+      for await (const entry of kv.list(["followers"])) {
+        if (typeof entry.value !== "string") continue;
+        if (followers.includes(entry.value)) continue;
+        followers.push(entry.value);
+      }
+      return new Response(
+        `<ul>${followers.map((f) => `<li>${f}</li>`)}</ul>`,
+        {
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        },
+      );
+    }
+
+    // The federation-related requests are handled by the Federation object:
+    return await federation.fetch(request, { contextData: undefined });
+  }
+});
+~~~~
+
+~~~~ typescript{4-19} twoslash [Bun]
+// @customConditions: bun
+import "bun";
+import type { Federation } from "@fedify/fedify";
+import { Database } from "bun:sqlite";
+import { SqliteKvStore } from "@fedify/sqlite";
+const federation = null as unknown as Federation<void>;
+const kv = new SqliteKvStore(new Database("kv.sqlite", { create: true }));
+// ---cut-before---
+Bun.serve({
+  port: 8000,
+  async fetch(request) {
+    const url = new URL(request.url);
+    // The home page:
+    if (url.pathname === "/") {
+      const followers: string[] = [];
+      for await (const entry of kv.list(["followers"])) {
+        if (typeof entry.value !== "string") continue;
+        if (followers.includes(entry.value)) continue;
+        followers.push(entry.value);
+      }
+      return new Response(
+        `<ul>${followers.map((f) => `<li>${f}</li>`)}</ul>`,
+        {
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        },
+      );
+    }
+
+    // The federation-related requests are handled by the Federation object:
+    return await federation.fetch(request, { contextData: undefined });
+  }
+});
+~~~~
+
 ~~~~ typescript{2-16} twoslash [Deno]
 import type { Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
@@ -1206,70 +1278,6 @@ Deno.serve(async (request) => {
 
   // The federation-related requests are handled by the Federation object:
   return await federation.fetch(request, { contextData: undefined });
-});
-~~~~
-
-~~~~ typescript{4-18} twoslash [Bun]
-import "bun";
-import type { Federation } from "@fedify/fedify";
-import { openKv } from "@deno/kv";
-const federation = null as unknown as Federation<void>;
-const kv = await openKv();
-// ---cut-before---
-Bun.serve({
-  port: 8000,
-  async fetch(request) {
-    const url = new URL(request.url);
-    // The home page:
-    if (url.pathname === "/") {
-      const followers: string[] = [];
-      for await (const entry of kv.list<string>({ prefix: ["followers"] })) {
-        if (followers.includes(entry.value)) continue;
-        followers.push(entry.value);
-      }
-      return new Response(
-        `<ul>${followers.map((f) => `<li>${f}</li>`)}</ul>`,
-        {
-          headers: { "Content-Type": "text/html; charset=utf-8" },
-        },
-      );
-    }
-
-    // The federation-related requests are handled by the Federation object:
-    return await federation.fetch(request, { contextData: undefined });
-  }
-});
-~~~~
-
-~~~~ typescript{4-18} twoslash [Node.js]
-import { serve } from "@hono/node-server";
-import type { Federation } from "@fedify/fedify";
-import { openKv } from "@deno/kv";
-const federation = null as unknown as Federation<void>;
-const kv = await openKv();
-// ---cut-before---
-serve({
-  port: 8000,
-  async fetch(request) {
-    const url = new URL(request.url);
-    // The home page:
-    if (url.pathname === "/") {
-      const followers: string[] = [];
-      for await (const entry of kv.list<string>({ prefix: ["followers"] })) {
-        if (followers.includes(entry.value)) continue;
-        followers.push(entry.value);
-      }
-      return new Response(
-        `<ul>${followers.map((f) => `<li>${f}</li>`)}</ul>`,
-        {
-          headers: { "Content-Type": "text/html; charset=utf-8" },
-        },
-      );
-    }
-
-    // The federation-related requests are handled by the Federation object:
-    return await federation.fetch(request, { contextData: undefined });
-  }
 });
 ~~~~
 
@@ -1383,12 +1391,12 @@ Exercises
     activity.
 
  -  Integration with a web framework: In the above example, we hard-coded
-    the home page inside the callback function passed to `Deno.serve()`
-    (in case of Deno), `Bun.serve()` (in case of Bun), and `serve()` (in case
-    of Node.js).  This is not enough for a real-world application as you would
-    need to rendering HTML templates, handling media files, and so on.
-    Instead, you can use a web framework like [Hono] or [Fresh] to utilize
-    the proper routing system and [JSX] templates to produce HTML.
+    the home page inside the callback function passed to `serve()`
+    (in case of Node.js), `Bun.serve()` (in case of Bun), and `Deno.serve()`
+    (in case of Deno).  This is not enough for a real-world application as you
+    would need to rendering HTML templates, handling media files, and so on.
+    Instead, you can use a web framework like [Hono] or [Fresh] to utilize the
+    proper routing system and [JSX] templates to produce HTML.
 
     See also the [*Integration* section](../manual/integration.md) in
     the manual for more details.
