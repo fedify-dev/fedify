@@ -93,16 +93,16 @@ or environments:
 ~~~~~ markdown
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/fedify
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/fedify
 ~~~~
 
 ~~~~ bash [pnpm]
 pnpm add @fedify/fedify
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/fedify
 ~~~~
 
 :::
