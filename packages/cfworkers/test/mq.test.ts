@@ -1,3 +1,6 @@
+// Keep WorkersMessageQueue coverage here, using the configured Workers
+// bindings where needed.  Do not duplicate it with hand-written queue mocks
+// in ../src/mod.test.ts.
 import { env } from "cloudflare:test";
 import { describe, expect, it, vi } from "vitest";
 import { WorkersMessageQueue } from "../src/mod.ts";
@@ -314,7 +317,8 @@ describe("WorkersMessageQueue", () => {
     const queue = new WorkersMessageQueue(env.Q1);
     expect(() => queue.listen(() => {})).toThrow(TypeError);
     expect(() => queue.listen(() => {})).toThrow(
-      "WorkersMessageQueue does not support listen()",
+      "WorkersMessageQueue does not support listen().  " +
+        "Use Federation.processQueuedTask() method instead.",
     );
   });
 
@@ -387,6 +391,56 @@ describe("WorkersMessageQueue", () => {
       deleteSpy.mockRestore();
     });
 
+    it("release() allows the next message with the same ordering key", async () => {
+      const orderingKey = "release-allows-next-message";
+      const lockKey = `__fedify_ordering_${orderingKey}`;
+      const queue = new WorkersMessageQueue(env.Q1, {
+        orderingKv: env.KV1,
+      });
+
+      await env.KV1.delete(lockKey);
+      
+      try {
+        const first = await queue.processMessage({
+          __fedify_ordering_key__: orderingKey,
+          __fedify_payload__: { id: "first" },
+        });
+        
+        expect(first.shouldProcess).toBe(true);
+        expect(first.message).toEqual({ id: "first" });
+        expect(first.release).toBeDefined();
+        expect(await env.KV1.get(lockKey)).not.toBeNull();
+
+        const blocked = await queue.processMessage({
+          __fedify_ordering_key__: orderingKey,
+          __fedify_payload__: { id: "blocked" },
+        });
+
+        expect(blocked.shouldProcess).toBe(false);
+        expect(blocked.message).toBeUndefined();
+        expect(blocked.release).toBeUndefined();
+
+        await first.release!();
+
+        expect(await env.KV1.get(lockKey)).toBeNull();
+
+        const second = await queue.processMessage({
+          __fedify_ordering_key__: orderingKey,
+          __fedify_payload__: { id: "second" },
+        });
+
+        expect(second.shouldProcess).toBe(true);
+        expect(second.message).toEqual({ id: "second" });
+        expect(second.release).toBeDefined();
+
+        await second.release!();
+
+        expect(await env.KV1.get(lockKey)).toBeNull();
+      } finally {
+        await env.KV1.delete(lockKey);
+      }
+    });
+      
     it("returns shouldProcess=false when lock exists", async () => {
       const getSpy = vi.spyOn(env.KV1, "get").mockResolvedValue("locked");
 
