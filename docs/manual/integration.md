@@ -88,7 +88,7 @@ AdonisJS
 own IoC container, service providers and CLI.  The *@fedify/adonisjs* package
 integrates Fedify with AdonisJS.  It requires `@adonisjs/core` 7.4.0 or later,
 whose `request.authority()` honors `X-Forwarded-Host`, and Node.js 24 or later.
-It is published to npm only, and is not tested on Deno or Bun.
+It is published to npm only, and is not tested on Bun or Deno.
 
 ::: code-group
 

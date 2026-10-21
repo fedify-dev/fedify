@@ -129,7 +129,7 @@ const federation = createFederation<void>({
 
 > [!CAUTION]
 > The Sentry SDK's OpenTelemetry integration is available since [@sentry/node]
-> 8.0.0, and it's not available yet in [@sentry/deno] or [@sentry/bun] as of
+> 8.0.0, and it's not available yet in [@sentry/bun] or [@sentry/deno] as of
 > November 2024.
 >
 > For more information about the Sentry SDK's OpenTelemetry integration, please
@@ -138,8 +138,8 @@ const federation = createFederation<void>({
 [`TracerProvider`]: https://open-telemetry.github.io/opentelemetry-js/interfaces/_opentelemetry_api._opentelemetry_api.TracerProvider.html
 [Sentry]: https://sentry.io/
 [@sentry/node]: https://npmjs.com/package/@sentry/node
-[@sentry/deno]: https://npmjs.com/package/@sentry/deno
 [@sentry/bun]: https://npmjs.com/package/@sentry/bun
+[@sentry/deno]: https://npmjs.com/package/@sentry/deno
 [*OpenTelemetry Support* section]: https://docs.sentry.io/platforms/javascript/guides/node/opentelemetry/
 
 

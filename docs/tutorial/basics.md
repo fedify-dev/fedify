@@ -258,7 +258,8 @@ a key–value store.
 
 > [!IMPORTANT]
 > Since `MemoryKvStore` is for testing and development purposes, you should
-> use a persistent key–value store like `DenoKvStore` (in Deno) or
+> use a persistent key–value store like
+> [`SqliteKvStore`](../manual/kv.md#sqlitekvstore) (from `@fedify/sqlite`) or
 > [`RedisKvStore`] (from [`@fedify/redis`] package) or [`PostgresKvStore`]
 > (from [`@fedify/postgres`] package) or [`MysqlKvStore`]
 > (from [`@fedify/mysql`] package) for production use.
@@ -1157,8 +1158,10 @@ we need to store the followers in the key–value store.  We will store each
 ~~~~ typescript{16-17} twoslash [server.ts]
 import { type Federation } from "@fedify/fedify";
 import { Accept, Follow } from "@fedify/vocab";
+import { SqliteKvStore } from "@fedify/sqlite";
+import { DatabaseSync } from "node:sqlite";
 const federation = null as unknown as Federation<void>;
-const kv = await Deno.openKv();
+const kv = new SqliteKvStore(new DatabaseSync("kv.sqlite"));
 // ---cut-before---
 federation
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
