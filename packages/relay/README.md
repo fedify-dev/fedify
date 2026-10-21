@@ -107,11 +107,14 @@ Usage
 
 ### Creating a relay
 
-Here's a simple example of creating a relay server using the factory function.
+Here's a simple example of creating a relay server on Node.js using the
+factory function. Install `@hono/node-server` alongside `@fedify/relay` to
+serve the relay.
 
 ~~~~ typescript
 import { createRelay } from "@fedify/relay";
 import { MemoryKvStore } from "@fedify/fedify";
+import { serve } from "@hono/node-server";
 
 // Create a Mastodon-style relay
 const relay = createRelay("mastodon", {
@@ -130,7 +133,7 @@ const relay = createRelay("mastodon", {
 });
 
 // Serve the relay
-Deno.serve((request) => relay.fetch(request));
+serve({ fetch: (request) => relay.fetch(request), port: 8000 });
 ~~~~
 
 You can also create a LitePub-style relay by changing the type.

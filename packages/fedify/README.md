@@ -15,6 +15,9 @@ It aims to eliminate the complexity and boilerplate code when
 building a federated server app, so that you can focus on your business logic
 and user experience.
 
+Fedify supports Node.js, Bun, and Deno.  We recommend using the latest
+version of Node.js for the best experience.
+
 Currently, Fedify provides the following features out of the box:
 
  -  Type-safe objects for [Activity Vocabulary] (including some vendor-specific

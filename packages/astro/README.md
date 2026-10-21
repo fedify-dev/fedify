@@ -78,6 +78,39 @@ export const onRequest = sequence(
 [Astro]: https://astro.build/
 
 
+For Bun users
+-------------
+
+Astro 7 does not have a compatible Bun-specific adapter.  The tested Bun
+configuration uses `@astrojs/node` 11 in standalone mode, builds Astro with
+Bun, and runs the resulting server entry point with Bun:
+
+~~~~ typescript
+import { defineConfig } from "astro/config";
+import { fedifyIntegration } from "@fedify/astro";
+import node from "@astrojs/node";
+
+export default defineConfig({
+  integrations: [fedifyIntegration()],
+  output: "server",
+  adapter: node({ mode: "standalone" }),
+});
+~~~~
+
+Then use Bun to start Astro in development, and run the generated server entry
+point after building for preview or production:
+
+~~~~ json
+{
+  "scripts": {
+    "dev": "bunx --bun astro dev",
+    "build": "bunx --bun astro build",
+    "preview": "bun ./dist/server/entry.mjs"
+  }
+}
+~~~~
+
+
 For Deno users
 --------------
 
@@ -111,39 +144,6 @@ instead of `astro`:
     "dev": "deno run -A npm:astro dev",
     "build": "deno run -A npm:astro build",
     "preview": "deno run -A npm:astro preview"
-  }
-}
-~~~~
-
-
-For Bun users
--------------
-
-Astro 7 does not have a compatible Bun-specific adapter.  The tested Bun
-configuration uses `@astrojs/node` 11 in standalone mode, builds Astro with
-Bun, and runs the resulting server entry point with Bun:
-
-~~~~ typescript
-import { defineConfig } from "astro/config";
-import { fedifyIntegration } from "@fedify/astro";
-import node from "@astrojs/node";
-
-export default defineConfig({
-  integrations: [fedifyIntegration()],
-  output: "server",
-  adapter: node({ mode: "standalone" }),
-});
-~~~~
-
-Then use Bun to start Astro in development, and run the generated server entry
-point after building for preview or production:
-
-~~~~ json
-{
-  "scripts": {
-    "dev": "bunx --bun astro dev",
-    "build": "bunx --bun astro build",
-    "preview": "bun ./dist/server/entry.mjs"
   }
 }
 ~~~~
