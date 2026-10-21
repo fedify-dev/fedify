@@ -507,18 +507,18 @@ Standalone `@fedify/uri-template` package                {#uri-template-package}
 
 The routing engine described above is published on its own as the
 [`@fedify/uri-template`][@fedify/uri-template] package.  It has zero runtime
-dependencies and works on Deno, Node.js, and Bun, so you can use it for plain
+dependencies and works on Node.js, Bun, and Deno, so you can use it for plain
 [RFC 6570] URI Template expansion and matching even outside a Fedify
 application.
 
 Install it with your package manager:
 
 ~~~~ bash
-deno add jsr:@fedify/uri-template  # Deno
 npm  add     @fedify/uri-template  # npm
 pnpm add     @fedify/uri-template  # pnpm
 yarn add     @fedify/uri-template  # Yarn
 bun  add     @fedify/uri-template  # Bun
+deno add jsr:@fedify/uri-template  # Deno
 ~~~~
 
 ### Expanding and matching with `Template`

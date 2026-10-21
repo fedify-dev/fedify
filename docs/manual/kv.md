@@ -50,10 +50,6 @@ first:
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/sqlite
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/sqlite
 ~~~~
@@ -68,6 +64,10 @@ yarn add @fedify/sqlite
 
 ~~~~ bash [Bun]
 bun add @fedify/sqlite
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/sqlite
 ~~~~
 
 :::
@@ -88,18 +88,6 @@ Cons
 
 ::: code-group
 
-~~~~ typescript twoslash [Deno]
-import { DatabaseSync } from "node:sqlite";
-import { createFederation } from "@fedify/fedify";
-import { SqliteKvStore } from "@fedify/sqlite";
-
-const db = new DatabaseSync(":memory:");
-const federation = createFederation<void>({
-  // ...
-  kv: new SqliteKvStore(db),
-});
-~~~~
-
 ~~~~ typescript twoslash [Node.js]
 import { DatabaseSync } from "node:sqlite";
 import { createFederation } from "@fedify/fedify";
@@ -118,6 +106,18 @@ import { createFederation } from "@fedify/fedify";
 import { SqliteKvStore } from "@fedify/sqlite";
 
 const db = new Database(":memory:");
+const federation = createFederation<void>({
+  // ...
+  kv: new SqliteKvStore(db),
+});
+~~~~
+
+~~~~ typescript twoslash [Deno]
+import { DatabaseSync } from "node:sqlite";
+import { createFederation } from "@fedify/fedify";
+import { SqliteKvStore } from "@fedify/sqlite";
+
+const db = new DatabaseSync(":memory:");
 const federation = createFederation<void>({
   // ...
   kv: new SqliteKvStore(db),
@@ -149,58 +149,12 @@ const federation = createFederation<void>({
 [`bun:sqlite`]: https://bun.com/docs/api/sqlite
 [conditional exports]: https://nodejs.org/api/packages.html#conditional-exports
 
-### `DenoKvStore` (Deno only)
-
-To use the [`DenoKvStore`], you need to install the *@fedify/denokv* package
-first:
-
-::: code-group
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/denokv
-~~~~
-
-:::
-
-[`DenoKvStore`] is a key–value store implementation for [Deno] runtime that uses
-Deno's built-in [`Deno.openKv()`] API. It provides persistent storage and good
-performance for Deno environments.  It's suitable for production use in Deno
-applications.
-
-Best for
-:   Production use in Deno environments.
-
-Pros
-:   Persistent storage, good performance, easy to set up.
-
-Cons
-:   Only available in Deno runtime.
-
-~~~~ typescript
-import { createFederation } from "@fedify/fedify";
-import { DenoKvStore } from "@fedify/denokv";
-
-const kv = await Deno.openKv();
-const federation = createFederation<void>({
-  kv: new DenoKvStore(kv),
-  // ... other options
-});
-~~~~
-
-[`DenoKvStore`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvStore
-[Deno]: https://deno.com/
-[`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
-
 ### [`RedisKvStore`]
 
 To use the [`RedisKvStore`], you need to install the *@fedify/redis* package
 first:
 
 ::: code-group
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/redis
-~~~~
 
 ~~~~ bash [npm]
 npm add @fedify/redis
@@ -216,6 +170,10 @@ yarn add @fedify/redis
 
 ~~~~ bash [Bun]
 bun add @fedify/redis
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/redis
 ~~~~
 
 :::
@@ -258,10 +216,6 @@ package first:
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/postgres
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/postgres
 ~~~~
@@ -276,6 +230,10 @@ yarn add @fedify/postgres
 
 ~~~~ bash [Bun]
 bun add @fedify/postgres
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/postgres
 ~~~~
 
 :::
@@ -317,10 +275,6 @@ To use the [`PgliteKvStore`], install the *@fedify/pglite* package and PGlite:
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/pglite npm:@electric-sql/pglite
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/pglite @electric-sql/pglite
 ~~~~
@@ -335,6 +289,10 @@ yarn add @fedify/pglite @electric-sql/pglite
 
 ~~~~ bash [Bun]
 bun add @fedify/pglite @electric-sql/pglite
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/pglite npm:@electric-sql/pglite
 ~~~~
 
 :::
@@ -386,10 +344,6 @@ first:
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/mysql
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/mysql mysql2
 ~~~~
@@ -404,6 +358,10 @@ yarn add @fedify/mysql mysql2
 
 ~~~~ bash [Bun]
 bun add @fedify/mysql mysql2
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/mysql
 ~~~~
 
 :::
@@ -436,6 +394,48 @@ const federation = createFederation<void>({
 
 [`MysqlKvStore`]: https://jsr.io/@fedify/mysql/doc/kv/~/MysqlKvStore
 
+### `DenoKvStore` (Deno only)
+
+To use the [`DenoKvStore`], you need to install the *@fedify/denokv* package
+first:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/denokv
+~~~~
+
+:::
+
+[`DenoKvStore`] is a key–value store implementation for [Deno] runtime that uses
+Deno's built-in [`Deno.openKv()`] API. It provides persistent storage and good
+performance for Deno environments.  It can be used in existing Deno
+applications.
+
+Best for
+:   Existing Deno applications.
+
+Pros
+:   Persistent storage, good performance, easy to set up.
+
+Cons
+:   Only available in Deno runtime.
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+import { DenoKvStore } from "@fedify/denokv";
+
+const kv = await Deno.openKv();
+const federation = createFederation<void>({
+  kv: new DenoKvStore(kv),
+  // ... other options
+});
+~~~~
+
+[`DenoKvStore`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvStore
+[Deno]: https://deno.com/
+[`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
+
 ### `WorkersKvStore` (Cloudflare Workers only)
 
 *This API is available since Fedify 1.6.0.*
@@ -444,10 +444,6 @@ To use the [`WorkersKvStore`], you need to install the *@fedify/cfworkers*
 package first:
 
 ::: code-group
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/cfworkers
-~~~~
 
 ~~~~ bash [npm]
 npm add @fedify/cfworkers
@@ -463,6 +459,10 @@ yarn add @fedify/cfworkers
 
 ~~~~ bash [Bun]
 bun add @fedify/cfworkers
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/cfworkers
 ~~~~
 
 :::
@@ -523,10 +523,6 @@ To use the [`NetlifyBlobsKvStore`], you need to install *@fedify/netlify* and
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/netlify npm:@netlify/blobs
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/netlify @netlify/blobs
 ~~~~
@@ -541,6 +537,10 @@ yarn add @fedify/netlify @netlify/blobs
 
 ~~~~ bash [Bun]
 bun add @fedify/netlify @netlify/blobs
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/netlify npm:@netlify/blobs
 ~~~~
 
 :::

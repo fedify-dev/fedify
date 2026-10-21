@@ -21,10 +21,6 @@ Installation
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/debugger
-~~~~
-
 ~~~~ bash [npm]
 npm install @fedify/debugger
 ~~~~
@@ -39,6 +35,10 @@ yarn add @fedify/debugger
 
 ~~~~ bash [Bun]
 bun add @fedify/debugger
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/debugger
 ~~~~
 
 :::
@@ -146,11 +146,13 @@ const innerFederation = createFederation<void>({
   kv: new MemoryKvStore(),
 });
 // ---cut-before---
+import process from "node:process";
+
 // Static password:
 const federation = createFederationDebugger(innerFederation, {
   auth: {
     type: "password",
-    password: Deno.env.get("DEBUG_PASSWORD")!,
+    password: process.env.DEBUG_PASSWORD!,
   },
 });
 ~~~~
@@ -186,12 +188,14 @@ const innerFederation = createFederation<void>({
   kv: new MemoryKvStore(),
 });
 // ---cut-before---
+import process from "node:process";
+
 // Static credentials:
 const federation = createFederationDebugger(innerFederation, {
   auth: {
     type: "usernamePassword",
     username: "admin",
-    password: Deno.env.get("DEBUG_PASSWORD")!,
+    password: process.env.DEBUG_PASSWORD!,
   },
 });
 ~~~~

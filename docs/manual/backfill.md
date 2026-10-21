@@ -22,10 +22,6 @@ Installation
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@fedify/backfill
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/backfill
 ~~~~
@@ -40,6 +36,10 @@ yarn add @fedify/backfill
 
 ~~~~ sh [Bun]
 bun add @fedify/backfill
+~~~~
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/backfill
 ~~~~
 
 :::

@@ -1,6 +1,6 @@
 ---
 description: >-
-  Fedify provides linting plugins for Deno Lint, ESLint, and Oxlint to help you
+  Fedify provides linting plugins for ESLint, Oxlint, and Deno Lint to help you
   catch common mistakes and enforce best practices when building federated
   server apps.
 ---
@@ -15,8 +15,8 @@ _This package is available since Fedify 2.0.0._
 > app to catch common mistakes early and enforce best practices.
 
 Fedify provides the [`@fedify/lint`] package, which includes lint rules
-specifically designed for Fedify applications. It supports [Deno Lint],
-[ESLint], and [Oxlint], so you can use it regardless of your
+specifically designed for Fedify applications. It supports [ESLint],
+[Oxlint], and [Deno Lint], so you can use it regardless of your
 JavaScript/TypeScript runtime.
 
 The plugin includes rules that check for:
@@ -28,19 +28,15 @@ The plugin includes rules that check for:
  -  Collection filtering implementation
 
 [`@fedify/lint`]: https://jsr.io/@fedify/lint
-[Deno Lint]: https://docs.deno.com/runtime/reference/lint_plugins/
 [ESLint]: https://eslint.org/
 [Oxlint]: https://oxc.rs/docs/guide/usage/linter/
+[Deno Lint]: https://docs.deno.com/runtime/reference/lint_plugins/
 
 
 Installation
 ------------
 
 ::: code-group
-
-~~~~ sh [Deno]
-deno add jsr:@fedify/lint
-~~~~
 
 ~~~~ sh [npm]
 npm add -D @fedify/lint
@@ -58,72 +54,11 @@ yarn add -D @fedify/lint
 bun add -D @fedify/lint
 ~~~~
 
+~~~~ sh [Deno]
+deno add jsr:@fedify/lint
+~~~~
+
 :::
-
-
-Deno Lint
----------
-
-### Basic setup
-
-Add the plugin to your _deno.json_ configuration file:
-
-~~~~ json
-{
-  "lint": {
-    "plugins": ["jsr:@fedify/lint"]
-  }
-}
-~~~~
-
-Listing the plugin enables every rule it provides, and Deno Lint reports all of
-them as errors.  Plugin rules have no recommended subset and no severity
-levels: those concepts exist for Deno's own built-in rules, not for rules that
-come from a plugin.
-
-### Turning rules off
-
-Rule IDs in *deno.json* are prefixed with the plugin's name, `fedify-lint`,
-which is what `deno lint` prints in its diagnostics.  This differs from the
-ESLint and Oxlint plugins, where the prefix is the package name,
-`@fedify/lint`.
-
-`rules.exclude` is the only setting that applies to plugin rules.  List the
-rules you do not want, one ID at a time:
-
-~~~~ json
-{
-  "lint": {
-    "plugins": ["jsr:@fedify/lint"],
-    "rules": {
-      "exclude": [
-        "fedify-lint/actor-featured-property-required",
-        "fedify-lint/actor-liked-property-required"
-      ]
-    }
-  }
-}
-~~~~
-
-`rules.tags` and `rules.include` select among Deno's built-in rules and leave
-plugin rules untouched, so neither can be used to enable a subset of this
-plugin.  Excluding the plugin's name on its own does not work either; each rule
-has to be named.
-
-### Running Deno Lint
-
-After setting up the configuration, run Deno's linter:
-
-~~~~ sh
-deno lint
-~~~~
-
-You can also specify which files to lint:
-
-~~~~ sh
-deno lint federation.ts
-deno lint src/federation/
-~~~~
 
 
 ESLint
@@ -380,6 +315,71 @@ bunx oxlint .
 ~~~~
 
 :::
+
+
+Deno Lint
+---------
+
+### Basic setup
+
+Add the plugin to your _deno.json_ configuration file:
+
+~~~~ json
+{
+  "lint": {
+    "plugins": ["jsr:@fedify/lint"]
+  }
+}
+~~~~
+
+Listing the plugin enables every rule it provides, and Deno Lint reports all of
+them as errors.  Plugin rules have no recommended subset and no severity
+levels: those concepts exist for Deno's own built-in rules, not for rules that
+come from a plugin.
+
+### Turning rules off
+
+Rule IDs in *deno.json* are prefixed with the plugin's name, `fedify-lint`,
+which is what `deno lint` prints in its diagnostics.  This differs from the
+ESLint and Oxlint plugins, where the prefix is the package name,
+`@fedify/lint`.
+
+`rules.exclude` is the only setting that applies to plugin rules.  List the
+rules you do not want, one ID at a time:
+
+~~~~ json
+{
+  "lint": {
+    "plugins": ["jsr:@fedify/lint"],
+    "rules": {
+      "exclude": [
+        "fedify-lint/actor-featured-property-required",
+        "fedify-lint/actor-liked-property-required"
+      ]
+    }
+  }
+}
+~~~~
+
+`rules.tags` and `rules.include` select among Deno's built-in rules and leave
+plugin rules untouched, so neither can be used to enable a subset of this
+plugin.  Excluding the plugin's name on its own does not work either; each rule
+has to be named.
+
+### Running Deno Lint
+
+After setting up the configuration, run Deno's linter:
+
+~~~~ sh
+deno lint
+~~~~
+
+You can also specify which files to lint:
+
+~~~~ sh
+deno lint federation.ts
+deno lint src/federation/
+~~~~
 
 
 Rules
@@ -1773,14 +1773,14 @@ See also
 
  -  [`@fedify/lint` on JSR]
  -  [`@fedify/lint` on npm]
- -  [Deno Lint plugins documentation]
  -  [ESLint documentation]
  -  [Oxlint documentation]
+ -  [Deno Lint plugins documentation]
  -  [Example project]
 
 [`@fedify/lint` on JSR]: https://jsr.io/@fedify/lint
 [`@fedify/lint` on npm]: https://www.npmjs.com/package/@fedify/lint
-[Deno Lint plugins documentation]: https://docs.deno.com/runtime/reference/lint_plugins/
 [ESLint documentation]: https://eslint.org/
 [Oxlint documentation]: https://oxc.rs/docs/guide/usage/linter/
+[Deno Lint plugins documentation]: https://docs.deno.com/runtime/reference/lint_plugins/
 [Example project]: https://github.com/fedify-dev/fedify/tree/main/examples/lint

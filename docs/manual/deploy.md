@@ -32,7 +32,7 @@ come back here when you are ready to ship.
 Choosing a JavaScript runtime
 -----------------------------
 
-Fedify supports Deno, Node.js, and Bun as first-class runtimes, and has
+Fedify supports Node.js, Bun, and Deno as first-class runtimes, and has
 dedicated support for Cloudflare Workers.  The choice matters for production.
 
 Node.js
@@ -41,13 +41,6 @@ Node.js
     a built-in HTTP server that accepts `fetch()`-style handlers, so you
     will need an HTTP adapter such as [@hono/node-server] or [srvx].
 
-Deno
-:   A strong choice if you prefer TypeScript-first tooling, a built-in HTTP
-    server (`Deno.serve()`), permission-based sandboxing, and native
-    OpenTelemetry support enabled with `OTEL_DENO=1` (stable since Deno 2.4).
-    If you are already comfortable with Deno, there is no reason to switch to
-    Node.js for production.
-
 Bun
 :   Bun runs Fedify, but has known memory-leak issues that make it a
     difficult recommendation for long-running production workloads at the time
@@ -55,6 +48,11 @@ Bun
     install and test loops) and deploy on Node.js, since both consume the same
     npm-style package sources.  Revisit Bun for production once the memory
     profile stabilizes for your workload.
+
+Deno
+:   We no longer recommend Deno for new projects following its team's recent
+    [announcement][deno-announcement].  Existing applications can continue
+    using the Deno-specific examples in this guide.
 
 Cloudflare Workers
 :   A cost-effective option for servers that do not need persistent
@@ -69,6 +67,7 @@ Deno) unless noted otherwise.
 
 [@hono/node-server]: https://github.com/honojs/node-server
 [srvx]: https://srvx.h3.dev/
+[deno-announcement]: https://deno.com/blog/cloudflare
 [`@fedify/cfworkers`]: https://jsr.io/@fedify/cfworkers
 
 
@@ -230,7 +229,7 @@ details that matter specifically for Fedify.
 
 Node.js needs an adapter because it has no built-in `fetch()`-style HTTP
 server.  [@hono/node-server] is the most common choice; [srvx] is a
-universal alternative that also works unchanged on Deno and Bun:
+universal alternative that also works unchanged on Bun and Deno:
 
 ::: code-group
 
@@ -788,56 +787,11 @@ for the full context, which includes specific notes about
 Serverless and edge deployments
 -------------------------------
 
-Fedify runs on two classes of platform that don't fit the long-running
-process model: Deno Deploy and Cloudflare Workers.  Both can host a
-Fedify application with zero self-managed infrastructure, at a cost that
-scales down to near-zero for low-traffic servers.  The trade-off is that
-each platform imposes architectural constraints that shape how the code is
-organized—so unlike the traditional- and container-based sections above,
-the choice here affects your *application code*, not just the deployment
-configuration.
-
-### Deno Deploy
-
-[Deno Deploy] is a serverless platform for Deno applications with global
-distribution and built-in persistence through Deno KV.  At the time of
-writing, Deno Deploy offers two products:
-
- -  *Deno Deploy Early Access (EA)* is the current generation and the
-    one you should target for new deployments.  It runs on Deno 2 with
-    improved cold-start behavior, native HTTP/3, and first-class
-    OpenTelemetry support.
- -  *Deno Deploy Classic* is the previous generation.  It is now
-    deprecated and scheduled to shut down on July 20, 2026; existing
-    applications must migrate to Deno Deploy EA before that date.
-
-Fedify targets Deno Deploy (both EA and Classic) through the
-[`@fedify/denokv`] package, which exposes `DenoKvStore` and
-`DenoKvMessageQueue`.  Deno Deploy EA's Deno KV is automatically
-available—no configuration required, no separate database to provision:
-
-~~~~ typescript
-import { createFederation } from "@fedify/fedify";
-import { DenoKvStore, DenoKvMessageQueue } from "@fedify/denokv";
-
-const kv = await Deno.openKv();
-
-const federation = createFederation<void>({
-  kv: new DenoKvStore(kv),
-  queue: new DenoKvMessageQueue(kv),
-  // Other configuration...
-});
-
-Deno.serve((request) => federation.fetch(request, { contextData: undefined }));
-~~~~
-
-`DenoKvMessageQueue` exposes native retry via
-[`MessageQueue.nativeRetrial`], so Fedify delegates retry semantics to
-Deno KV's built-in exponential-backoff mechanism.
-
-[Deno Deploy]: https://deno.com/deploy
-[`@fedify/denokv`]: https://jsr.io/@fedify/denokv
-[`MessageQueue.nativeRetrial`]: ./mq.md#native-retry-mechanisms
+Fedify supports serverless and edge deployments, including Cloudflare Workers
+and Netlify Functions.  Each platform imposes architectural constraints that
+shape how the code is organized—so unlike the traditional- and container-based
+sections above, the choice here affects your *application code*, not just the
+deployment configuration.
 
 ### Cloudflare Workers
 
@@ -982,7 +936,45 @@ deployed to Workers.
 
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Node.js compatibility]: https://developers.cloudflare.com/workers/runtime-apis/nodejs/
+[`MessageQueue.nativeRetrial`]: ./mq.md#native-retry-mechanisms
 [Cloudflare Workers example]: https://github.com/fedify-dev/fedify/tree/main/examples/cloudflare-workers
+
+### Deno Deploy
+
+[Deno Deploy] is a serverless platform for Deno applications with global
+distribution and built-in persistence through Deno KV.
+
+> [!WARNING]
+> Do not choose Deno Deploy for new deployments.  In its October 2026
+> [announcement][deno-announcement], the Deno team said the service would
+> continue operating for six months before shutting down.  Existing users
+> should plan to migrate; the team announced migration support for paying
+> customers moving to Cloudflare Workers.
+
+For existing Deno Deploy applications, the [`@fedify/denokv`] package provides
+`DenoKvStore` and `DenoKvMessageQueue` backed by Deno KV:
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+import { DenoKvStore, DenoKvMessageQueue } from "@fedify/denokv";
+
+const kv = await Deno.openKv();
+
+const federation = createFederation<void>({
+  kv: new DenoKvStore(kv),
+  queue: new DenoKvMessageQueue(kv),
+  // Other configuration...
+});
+
+Deno.serve((request) => federation.fetch(request, { contextData: undefined }));
+~~~~
+
+`DenoKvMessageQueue` exposes native retry via
+[`MessageQueue.nativeRetrial`], so Fedify delegates retry semantics to
+Deno KV's built-in exponential-backoff mechanism.
+
+[Deno Deploy]: https://deno.com/deploy
+[`@fedify/denokv`]: https://jsr.io/@fedify/denokv
 
 ### Netlify Functions
 

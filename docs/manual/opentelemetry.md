@@ -22,11 +22,6 @@ OpenTelemetry with Fedify.
 Setting up OpenTelemetry
 ------------------------
 
-> [!TIP]
-> If you are using Deno 2.2 or later, you can use Deno's built-in OpenTelemetry
-> support.  See the [*Using Deno's built-in OpenTelemetry support*
-> section](#using-deno-s-built-in-opentelemetry-support) for more details.
-
 To trace your Fedify application and collect metrics with OpenTelemetry, you
 need to set up the OpenTelemetry SDK.  First of all, you need to install the
 OpenTelemetry SDK and the exporter you want to use.  For example, if you want
@@ -35,16 +30,16 @@ following packages:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add npm:@opentelemetry/sdk-node npm:@opentelemetry/exporter-trace-otlp-proto
-~~~~
-
 ~~~~ sh [Node.js]
 npm add @opentelemetry/sdk-node @opentelemetry/exporter-trace-otlp-proto
 ~~~~
 
 ~~~~ sh [Bun]
 bun add @opentelemetry/sdk-node @opentelemetry/exporter-trace-otlp-proto
+~~~~
+
+~~~~ sh [Deno]
+deno add npm:@opentelemetry/sdk-node npm:@opentelemetry/exporter-trace-otlp-proto
 ~~~~
 
 :::
@@ -1224,6 +1219,32 @@ and configure it with a [`KvStore`](./kv.md):
 
 ::: code-group
 
+~~~~ typescript [Node.js]
+import { createFederation } from "@fedify/fedify";
+import { RedisKvStore } from "@fedify/redis";
+import { FedifySpanExporter } from "@fedify/fedify/otel";
+import { NodeTracerProvider, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-node";
+import Redis from "ioredis";
+
+const redis = new Redis();
+const kv = new RedisKvStore(redis);
+
+// Create the exporter that writes to KvStore
+const fedifyExporter = new FedifySpanExporter(kv, {
+  ttl: Temporal.Duration.from({ hours: 1 }),
+});
+
+const tracerProvider = new NodeTracerProvider({
+  spanProcessors: [new SimpleSpanProcessor(fedifyExporter)],
+});
+
+const federation = createFederation({
+  kv,
+  tracerProvider,
+  // Omitted for brevity; see the related section for details.
+});
+~~~~
+
 ~~~~ typescript twoslash [Deno]
 import type { KvStore, MessageQueue } from "@fedify/fedify";
 // ---cut-before---
@@ -1254,32 +1275,6 @@ const federation = createFederation<void>({
 // ---cut-start---
   queue: null as unknown as MessageQueue,
 // ---cut-end---
-  // Omitted for brevity; see the related section for details.
-});
-~~~~
-
-~~~~ typescript [Node.js]
-import { createFederation } from "@fedify/fedify";
-import { RedisKvStore } from "@fedify/redis";
-import { FedifySpanExporter } from "@fedify/fedify/otel";
-import { NodeTracerProvider, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-node";
-import Redis from "ioredis";
-
-const redis = new Redis();
-const kv = new RedisKvStore(redis);
-
-// Create the exporter that writes to KvStore
-const fedifyExporter = new FedifySpanExporter(kv, {
-  ttl: Temporal.Duration.from({ hours: 1 }),
-});
-
-const tracerProvider = new NodeTracerProvider({
-  spanProcessors: [new SimpleSpanProcessor(fedifyExporter)],
-});
-
-const federation = createFederation({
-  kv,
-  tracerProvider,
   // Omitted for brevity; see the related section for details.
 });
 ~~~~

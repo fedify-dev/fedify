@@ -180,10 +180,6 @@ Express:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@fedify/express
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/express
 ~~~~
@@ -198,6 +194,10 @@ yarn add @fedify/express
 
 ~~~~ sh [Bun]
 bun add @fedify/express
+~~~~
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/express
 ~~~~
 
 :::
@@ -299,10 +299,6 @@ a middleware to integrate Fedify with Koa:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@fedify/koa
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/koa
 ~~~~
@@ -317,6 +313,10 @@ yarn add @fedify/koa
 
 ~~~~ sh [Bun]
 bun add @fedify/koa
+~~~~
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/koa
 ~~~~
 
 :::
@@ -355,10 +355,6 @@ Fedify with Hono:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@fedify/hono
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/hono
 ~~~~
@@ -373,6 +369,10 @@ yarn add @fedify/hono
 
 ~~~~ sh [Bun]
 bun add @fedify/hono
+~~~~
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/hono
 ~~~~
 
 :::
@@ -409,10 +409,6 @@ The *@fedify/h3* package provides a middleware to integrate Fedify with h3:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@fedify/h3
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/h3
 ~~~~
@@ -427,6 +423,10 @@ yarn add @fedify/h3
 
 ~~~~ sh [Bun]
 bun add @fedify/h3
+~~~~
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/h3
 ~~~~
 
 :::
@@ -477,10 +477,6 @@ performs deferred `406 Not Acceptable` handling for content negotiation:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@fedify/nuxt
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/nuxt
 ~~~~
@@ -495,6 +491,10 @@ yarn add @fedify/nuxt
 
 ~~~~ sh [Bun]
 bun add @fedify/nuxt
+~~~~
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/nuxt
 ~~~~
 
 :::
@@ -547,10 +547,6 @@ SvelteKit:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@fedify/sveltekit
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/sveltekit
 ~~~~
@@ -565,6 +561,10 @@ yarn add @fedify/sveltekit
 
 ~~~~ sh [Bun]
 bun add @fedify/sveltekit
+~~~~
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/sveltekit
 ~~~~
 
 :::
@@ -782,14 +782,6 @@ a seamless plugin for integrating Fedify with Elysia:
 
 ::: code-group
 
-~~~~ sh [Bun]
-bun add @fedify/elysia
-~~~~
-
-~~~~ sh [Deno]
-deno add npm:@fedify/elysia
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/elysia
 ~~~~
@@ -800,6 +792,14 @@ pnpm add @fedify/elysia
 
 ~~~~ sh [Yarn]
 yarn add @fedify/elysia
+~~~~
+
+~~~~ sh [Bun]
+bun add @fedify/elysia
+~~~~
+
+~~~~ sh [Deno]
+deno add npm:@fedify/elysia
 ~~~~
 
 :::
@@ -861,10 +861,6 @@ a middleware to integrate Fedify with Next.js:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@fedify/next
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/next
 ~~~~
@@ -879,6 +875,10 @@ yarn add @fedify/next
 
 ~~~~ sh [Bun]
 bun add @fedify/next
+~~~~
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/next
 ~~~~
 
 :::
@@ -1015,10 +1015,6 @@ to integrate Fedify with Astro:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add npm:@fedify/astro
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/astro
 ~~~~
@@ -1035,12 +1031,11 @@ yarn add @fedify/astro
 bun add @fedify/astro
 ~~~~
 
-:::
+~~~~ sh [Deno]
+deno add npm:@fedify/astro
+~~~~
 
-The *@fedify/astro* package is also published on JSR.  Deno-based Astro
-projects use its npm package because Astro loads integrations and middleware
-through Vite, which resolves bare imports through *node\_modules/* rather than
-Deno's JSR import map.
+:::
 
 Fedify requires on-demand rendering, so install a server adapter for your
 runtime.  For Astro 7 on Node.js, add `@astrojs/node` 11 and configure it with
@@ -1097,10 +1092,42 @@ export const onRequest = sequence(
 
 [Astro]: https://astro.build/
 
+### For Bun users
+
+For Astro 7, use `@astrojs/node` 11 in standalone mode.  This combination is
+tested by building Astro and running the generated server with Bun; the
+`@nurodev/astro-bun` adapter is not compatible because it only supports
+Astro 5:
+
+~~~~ typescript
+import node from "@astrojs/node";
+import { fedifyIntegration } from "@fedify/astro";
+import { defineConfig } from "astro/config";
+
+export default defineConfig({
+  integrations: [fedifyIntegration()],
+  output: "server",
+  adapter: node({ mode: "standalone" }),
+});
+~~~~
+
+~~~~ json
+{
+  "scripts": {
+    "dev": "bunx --bun astro dev",
+    "build": "bunx --bun astro build",
+    "preview": "bun ./dist/server/entry.mjs"
+  }
+}
+~~~~
+
 ### For Deno users
 
-Install packages that Astro loads through Vite from npm.  Vite resolves these
-imports through *node\_modules/* rather than Deno's JSR import map;
+The *@fedify/astro* package is also published on JSR.  Deno-based Astro
+projects use its npm package because Astro loads integrations and middleware
+through Vite, which resolves bare imports through *node\_modules/* rather than
+Deno's JSR import map.
+
 `fedify init` selects npm packages for this reason.
 
 If you are using Deno, you should import `@deno/astro-adapter` in
@@ -1131,35 +1158,6 @@ instead of `astro`:
 }
 ~~~~
 
-### For Bun users
-
-For Astro 7, use `@astrojs/node` 11 in standalone mode.  This combination is
-tested by building Astro and running the generated server with Bun; the
-`@nurodev/astro-bun` adapter is not compatible because it only supports
-Astro 5:
-
-~~~~ typescript
-import node from "@astrojs/node";
-import { fedifyIntegration } from "@fedify/astro";
-import { defineConfig } from "astro/config";
-
-export default defineConfig({
-  integrations: [fedifyIntegration()],
-  output: "server",
-  adapter: node({ mode: "standalone" }),
-});
-~~~~
-
-~~~~ json
-{
-  "scripts": {
-    "dev": "bunx --bun astro dev",
-    "build": "bunx --bun astro build",
-    "preview": "bun ./dist/server/entry.mjs"
-  }
-}
-~~~~
-
 
 SolidStart
 ----------
@@ -1171,10 +1169,6 @@ full-stack web applications.  The *@fedify/solidstart* package provides
 a middleware to integrate Fedify with SolidStart:
 
 ::: code-group
-
-~~~~ sh [Deno]
-deno add jsr:@fedify/solidstart
-~~~~
 
 ~~~~ sh [npm]
 npm add @fedify/solidstart
@@ -1190,6 +1184,10 @@ yarn add @fedify/solidstart
 
 ~~~~ sh [Bun]
 bun add @fedify/solidstart
+~~~~
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/solidstart
 ~~~~
 
 :::

@@ -340,14 +340,18 @@ the database and return them.
 
 How to generate key pairs and store them in the database is out of the scope of
 this document, but here's a simple example of how to generate key pairs and
-store them in a [Deno KV] database in form of JWK:
+store them in a SQLite database in JWK form using
+[`SqliteKvStore`](./kv.md#sqlitekvstore). Install `@fedify/sqlite` as described
+in the linked section. The following examples use Node.js:
 
 ~~~~ typescript twoslash
 const identifier: string = "";
 // ---cut-before---
 import { generateCryptoKeyPair, exportJwk } from "@fedify/fedify";
+import { SqliteKvStore } from "@fedify/sqlite";
+import { DatabaseSync } from "node:sqlite";
 
-const kv = await Deno.openKv();
+const kv = new SqliteKvStore(new DatabaseSync("kv.sqlite"));
 const rsaPair = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
 const ed25519Pair = await generateCryptoKeyPair("Ed25519");
 await kv.set(["keypair", "rsa", identifier], {
@@ -384,12 +388,16 @@ await kv.set(["keypair", "ed25519", identifier], {
 
 Here's an example of how to load key pairs from the database too:
 
-~~~~ typescript{12-34} twoslash
+~~~~ typescript{16-37} twoslash
 // @noErrors: 2345
 import { type Federation } from "@fedify/fedify";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
 import { importJwk } from "@fedify/fedify";
+import { SqliteKvStore } from "@fedify/sqlite";
+import { DatabaseSync } from "node:sqlite";
+
+const kv = new SqliteKvStore(new DatabaseSync("kv.sqlite"));
 
 interface KeyPairEntry {
   privateKey: JsonWebKey;
@@ -401,24 +409,23 @@ federation
     // Omitted for brevity; see the previous example for details.
   })
   .setKeyPairsDispatcher(async (ctx, identifier) => {
-    const kv = await Deno.openKv();
     const result: CryptoKeyPair[] = [];
     const rsaPair = await kv.get<KeyPairEntry>(
       ["keypair", "rsa", identifier],
     );
-    if (rsaPair?.value != null) {
+    if (rsaPair != null) {
       result.push({
-        privateKey: await importJwk(rsaPair.value.privateKey, "private"),
-        publicKey: await importJwk(rsaPair.value.publicKey, "public"),
+        privateKey: await importJwk(rsaPair.privateKey, "private"),
+        publicKey: await importJwk(rsaPair.publicKey, "public"),
       });
     }
     const ed25519Pair = await kv.get<KeyPairEntry>(
       ["keypair", "ed25519", identifier],
     );
-    if (ed25519Pair?.value != null) {
+    if (ed25519Pair != null) {
       result.push({
-        privateKey: await importJwk(ed25519Pair.value.privateKey, "private"),
-        publicKey: await importJwk(ed25519Pair.value.publicKey, "public"),
+        privateKey: await importJwk(ed25519Pair.privateKey, "private"),
+        publicKey: await importJwk(ed25519Pair.publicKey, "public"),
       });
     }
     return result;
@@ -426,7 +433,6 @@ federation
 ~~~~
 
 [`CryptoKeyPair`]: https://developer.mozilla.org/en-US/docs/Web/API/CryptoKeyPair
-[Deno KV]: https://deno.com/kv
 
 
 Constructing actor URIs
