@@ -514,11 +514,11 @@ application.
 Install it with your package manager:
 
 ~~~~ bash
+deno add jsr:@fedify/uri-template  # Deno
 npm  add     @fedify/uri-template  # npm
 pnpm add     @fedify/uri-template  # pnpm
 yarn add     @fedify/uri-template  # Yarn
 bun  add     @fedify/uri-template  # Bun
-deno add jsr:@fedify/uri-template  # Deno
 ~~~~
 
 ### Expanding and matching with `Template`

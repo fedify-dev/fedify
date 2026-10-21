@@ -64,6 +64,10 @@ To use [`RedisMessageQueue`], you need to install the *@fedify/redis* package:
 
 ::: code-group
 
+~~~~ bash [Deno]
+deno add jsr:@fedify/redis
+~~~~
+
 ~~~~ bash [npm]
 npm add @fedify/redis
 ~~~~
@@ -78,10 +82,6 @@ yarn add @fedify/redis
 
 ~~~~ bash [Bun]
 bun add @fedify/redis
-~~~~
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/redis
 ~~~~
 
 :::
@@ -125,6 +125,10 @@ package first:
 
 ::: code-group
 
+~~~~ bash [Deno]
+deno add jsr:@fedify/postgres
+~~~~
+
 ~~~~ bash [npm]
 npm add @fedify/postgres
 ~~~~
@@ -139,10 +143,6 @@ yarn add @fedify/postgres
 
 ~~~~ bash [Bun]
 bun add @fedify/postgres
-~~~~
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/postgres
 ~~~~
 
 :::
@@ -209,6 +209,10 @@ first:
 
 ::: code-group
 
+~~~~ bash [Deno]
+deno add jsr:@fedify/amqp
+~~~~
+
 ~~~~ bash [npm]
 npm add @fedify/amqp
 ~~~~
@@ -223,10 +227,6 @@ yarn add @fedify/amqp
 
 ~~~~ bash [Bun]
 bun add @fedify/amqp
-~~~~
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/amqp
 ~~~~
 
 :::
@@ -279,6 +279,10 @@ first:
 
 ::: code-group
 
+~~~~ bash [Deno]
+deno add jsr:@fedify/mysql
+~~~~
+
 ~~~~ bash [npm]
 npm add @fedify/mysql mysql2
 ~~~~
@@ -293,10 +297,6 @@ yarn add @fedify/mysql mysql2
 
 ~~~~ bash [Bun]
 bun add @fedify/mysql mysql2
-~~~~
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/mysql
 ~~~~
 
 :::
@@ -366,6 +366,10 @@ first:
 
 ::: code-group
 
+~~~~ bash [Deno]
+deno add jsr:@fedify/sqlite
+~~~~
+
 ~~~~ bash [npm]
 npm add @fedify/sqlite
 ~~~~
@@ -380,10 +384,6 @@ yarn add @fedify/sqlite
 
 ~~~~ bash [Bun]
 bun add @fedify/sqlite
-~~~~
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/sqlite
 ~~~~
 
 :::
@@ -518,6 +518,10 @@ package first:
 
 ::: code-group
 
+~~~~ bash [Deno]
+deno add jsr:@fedify/cfworkers
+~~~~
+
 ~~~~ bash [npm]
 npm add @fedify/cfworkers
 ~~~~
@@ -532,10 +536,6 @@ yarn add @fedify/cfworkers
 
 ~~~~ bash [Bun]
 bun add @fedify/cfworkers
-~~~~
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/cfworkers
 ~~~~
 
 :::
@@ -679,6 +679,10 @@ Workloads SDK:
 
 ::: code-group
 
+~~~~ bash [Deno]
+deno add jsr:@fedify/netlify npm:@netlify/async-workloads
+~~~~
+
 ~~~~ bash [npm]
 npm add @fedify/netlify @netlify/async-workloads
 ~~~~
@@ -695,16 +699,16 @@ yarn add @fedify/netlify @netlify/async-workloads
 bun add @fedify/netlify @netlify/async-workloads
 ~~~~
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/netlify npm:@netlify/async-workloads
-~~~~
-
 :::
 
 The PostgreSQL-backed `orderingKv` example below also needs
 *@fedify/postgres* and *postgres*:
 
 ::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/postgres npm:postgres
+~~~~
 
 ~~~~ bash [npm]
 npm add @fedify/postgres postgres
@@ -720,10 +724,6 @@ yarn add @fedify/postgres postgres
 
 ~~~~ bash [Bun]
 bun add @fedify/postgres postgres
-~~~~
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/postgres npm:postgres
 ~~~~
 
 :::

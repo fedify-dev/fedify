@@ -288,6 +288,10 @@ install it using the following command:
 
 ::: code-group
 
+~~~~ bash [Deno]
+deno add jsr:@fedify/webfinger
+~~~~
+
 ~~~~ bash [npm]
 npm add @fedify/webfinger
 ~~~~
@@ -302,10 +306,6 @@ yarn add @fedify/webfinger
 
 ~~~~ bash [Bun]
 bun add @fedify/webfinger
-~~~~
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/webfinger
 ~~~~
 
 :::

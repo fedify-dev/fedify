@@ -58,6 +58,10 @@ it using the following command:
 
 ::: code-group
 
+~~~~ bash [Deno]
+deno add jsr:@fedify/vocab
+~~~~
+
 ~~~~ bash [npm]
 npm add @fedify/vocab
 ~~~~
@@ -72,10 +76,6 @@ yarn add @fedify/vocab
 
 ~~~~ bash [Bun]
 bun add @fedify/vocab
-~~~~
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/vocab
 ~~~~
 
 :::

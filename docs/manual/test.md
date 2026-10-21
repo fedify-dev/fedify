@@ -218,6 +218,10 @@ manager:
 
 ::: code-group
 
+~~~~ bash [Deno]
+deno add @fedify/testing
+~~~~
+
 ~~~~ bash [npm]
 npm install @fedify/testing
 ~~~~
@@ -232,10 +236,6 @@ yarn add @fedify/testing
 
 ~~~~ bash [Bun]
 bun add @fedify/testing
-~~~~
-
-~~~~ bash [Deno]
-deno add @fedify/testing
 ~~~~
 
 :::

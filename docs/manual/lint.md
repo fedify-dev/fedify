@@ -38,6 +38,10 @@ Installation
 
 ::: code-group
 
+~~~~ sh [Deno]
+deno add jsr:@fedify/lint
+~~~~
+
 ~~~~ sh [npm]
 npm add -D @fedify/lint
 ~~~~
@@ -52,10 +56,6 @@ yarn add -D @fedify/lint
 
 ~~~~ sh [Bun]
 bun add -D @fedify/lint
-~~~~
-
-~~~~ sh [Deno]
-deno add jsr:@fedify/lint
 ~~~~
 
 :::
