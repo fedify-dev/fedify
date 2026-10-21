@@ -242,16 +242,16 @@ project.  It will ask you a few questions to set up the project:
 
  -  Web framework: Bare-bones, [Hono], [Elysia], [Express], [Nitro], [Next.js],
     or [Astro]
- -  Package manager: [Deno], [Bun], [npm], [pnpm], or [Yarn]
+ -  Package manager: [npm], [pnpm], [Yarn], [Bun], or [Deno]
  -  Message queue: In-Process, [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
     or [Deno KV] (if Deno)
  -  Key–value store: In-Memory, [Redis], [PostgreSQL], or [Deno KV] (if Deno)
 
 > [!TIP]
 > Projects created with `fedify init` automatically include [`@fedify/lint`]
-> for consistent code linting.  Deno projects get a lint plugin configured in
-> *deno.json*, while Node.js and Bun projects get an *.oxlintrc.json* with
-> `@fedify/lint/oxlint`.
+> for consistent code linting.  Node.js and Bun projects get an *.oxlintrc.json*
+> with `@fedify/lint/oxlint`, while Deno projects get a lint plugin configured
+> in *deno.json*.
 
 > [!NOTE]
 > If you find the full `@fedify/cli` toolchain too heavy for your needs, you
@@ -285,11 +285,11 @@ interactive prompts:
 You can specify the package manager by using the `-p`/`--package-manager`
 option.  The available options are:
 
- -  `deno`: [Deno]
- -  `pnpm`: [pnpm]
- -  `bun`: [Bun]
- -  `yarn`: [Yarn]
  -  `npm`: [npm]
+ -  `pnpm`: [pnpm]
+ -  `yarn`: [Yarn]
+ -  `bun`: [Bun]
+ -  `deno`: [Deno]
 
 ### `-w`/`--web-framework`: Web framework
 
