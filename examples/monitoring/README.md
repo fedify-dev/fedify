@@ -72,6 +72,15 @@ Connect a Fedify app
 --------------------
 
 Leave the monitoring stack running and point your application at the Collector.
+
+For Node.js, Bun, or a custom SDK setup, configure an OpenTelemetry
+`MeterProvider` and an OTLP metrics exporter before starting the Fedify server.
+Fedify uses the global meter provider by default for most metrics, or the
+explicit `meterProvider` option passed to `createFederation()`.  Document
+loader metrics (`activitypub.document.fetch`, `activitypub.document.cache`)
+require an explicit `meterProvider`; see the [OpenTelemetry manual] for that
+detail.
+
 For a Deno 2.4 or later application, the built-in OpenTelemetry exporter is the
 shortest path:
 
@@ -89,14 +98,6 @@ service name instead of `localhost`:
 ~~~~ sh
 OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
 ~~~~
-
-For Node.js, Bun, or a custom SDK setup, configure an OpenTelemetry
-`MeterProvider` and an OTLP metrics exporter before starting the Fedify server.
-Fedify uses the global meter provider by default for most metrics, or the
-explicit `meterProvider` option passed to `createFederation()`.  Document
-loader metrics (`activitypub.document.fetch`, `activitypub.document.cache`)
-require an explicit `meterProvider`; see the [OpenTelemetry manual] for that
-detail.
 
 Once your app is exporting, you can stop the synthetic sample service:
 

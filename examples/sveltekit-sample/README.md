@@ -29,7 +29,7 @@ implementations.
 
 Before you begin, ensure you have the following installed:
 
- -  **Node.js** (version 18 or higher)
+ -  **Node.js** (version 22 or higher, as required by Fedify)
  -  **npm** or **yarn** package manager
  -  **Git** for version control
 
