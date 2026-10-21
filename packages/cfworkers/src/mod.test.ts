@@ -1,9 +1,7 @@
+// Keep mock-based KV logic tests here.  Add WorkersMessageQueue tests to
+// ../test/mq.test.ts rather than duplicating its binding-based coverage.
 import { describe, expect, it } from "vitest";
-import {
-  type WorkersKvNamespaceLike,
-  WorkersKvStore,
-  WorkersMessageQueue,
-} from "./mod.ts";
+import { type WorkersKvNamespaceLike, WorkersKvStore } from "./mod.ts";
 
 // Mock Temporal.Duration for testing in Cloudflare Workers environment
 const mockDuration = (seconds: number) => ({
@@ -302,91 +300,5 @@ describe("WorkersKvStore", () => {
     expect(entries).toContainEqual({ key: ["page", "e"], value: "value-e" });
 
     expect(namespace.listCalls).toBe(3);
-  });
-});
-
-describe("WorkersMessageQueue", () => {
-  // listen() throws before touching the queue, so no methods are needed.
-  const mockQueue = {} as unknown as Queue;
-
-  it("listen() throws TypeError", () => {
-    const queue = new WorkersMessageQueue(mockQueue);
-    expect(() => queue.listen(() => {})).toThrow(TypeError);
-    expect(() => queue.listen(() => {})).toThrow(
-      "WorkersMessageQueue does not support listen().  " +
-        "Use Federation.processQueuedTask() method instead.",
-    );
-  });
-
-  it("processMessage() - release() frees the ordering lock", async () => {
-    const orderingKv = new MockKvNamespace();
-    const queue = new WorkersMessageQueue(mockQueue, { orderingKv });
-
-    const first = await queue.processMessage({
-      __fedify_ordering_key__: "actor-1",
-      __fedify_payload__: { id: "first" },
-    });
-
-    expect(first.shouldProcess).toBe(true);
-    expect(first.message).toEqual({ id: "first" });
-    expect(orderingKv.entries.has("__fedify_ordering_actor-1")).toBe(true);
-
-    await first.release?.();
-
-    expect(orderingKv.entries.has("__fedify_ordering_actor-1")).toBe(false);
-
-    // Releasing is only meaningful if it lets the next message through, so
-    // check the queue actually moves rather than just that the key is gone.
-    const second = await queue.processMessage({
-      __fedify_ordering_key__: "actor-1",
-      __fedify_payload__: { id: "second" },
-    });
-
-    expect(second.shouldProcess).toBe(true);
-    expect(second.message).toEqual({ id: "second" });
-  });
-
-  it("enqueue() sends __fedify_ordering_key__ and __fedify_payload__ to the queue binding", async () => {
-    let sentMessage: unknown;
-
-    const queueBinding = {
-      send: (message: unknown) => {
-        sentMessage = message;
-      },
-    } as unknown as Queue;
-
-    const queue = new WorkersMessageQueue(queueBinding);
-
-    await queue.enqueue(
-      { id: "test-message" },
-      { orderingKey: "actor-1" },
-    );
-
-    expect(sentMessage).toEqual({
-      __fedify_ordering_key__: "actor-1",
-      __fedify_payload__: { id: "test-message" },
-    });
-  });
-
-  it("processMessage() - returns shouldProcess=false when lock exists", async () => {
-    const orderingKv = new MockKvNamespace();
-    const queue = new WorkersMessageQueue(mockQueue, { orderingKv });
-
-    const first = await queue.processMessage({
-      __fedify_ordering_key__: "key1",
-      __fedify_payload__: { id: "first" },
-    });
-
-    expect(first.shouldProcess).toBe(true);
-    expect(first.message).toEqual({ id: "first" });
-
-    const second = await queue.processMessage({
-      __fedify_ordering_key__: "key1",
-      __fedify_payload__: { id: "second" },
-    });
-
-    expect(second.shouldProcess).toBe(false);
-    expect(second.message).toBeUndefined();
-    expect(second.release).toBeUndefined();
   });
 });
