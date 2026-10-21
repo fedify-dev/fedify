@@ -87,7 +87,7 @@ Setting up the development environment
 
 ### Installing Bun
 
-Fedify supports three JavaScript runtimes: [Deno], [Node.js], and [Bun].
+Fedify supports three JavaScript runtimes: [Node.js], [Bun], and [Deno].
 In this tutorial we'll use [Bun] because it includes a built-in SQLite driver
 (`bun:sqlite`) that we'll use later to store followers and comments.
 
@@ -106,9 +106,9 @@ bun --version
 
 You should see a version number such as `1.2.0` or later.
 
-[Deno]: https://deno.com/
 [Node.js]: https://nodejs.org/
 [Bun]: https://bun.sh/
+[Deno]: https://deno.com/
 [Bun installation page]: https://bun.sh/docs/installation
 
 ### Installing the `fedify` command

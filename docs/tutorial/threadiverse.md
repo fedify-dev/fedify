@@ -114,7 +114,7 @@ Setting up the development environment
 
 ### Installing Node.js
 
-Fedify supports three JavaScript runtimes: [Deno], [Bun], and [Node.js].
+Fedify supports three JavaScript runtimes: [Node.js], [Bun], and [Deno].
 Next.js itself runs on Node.js, so we'll use Node.js here as well.
 
 You need Node.js version 22.0.0 or higher.  There are
@@ -126,9 +126,9 @@ node --version
 npm --version
 ~~~~
 
-[Deno]: https://deno.com/
-[Bun]: https://bun.sh/
 [Node.js]: https://nodejs.org/
+[Bun]: https://bun.sh/
+[Deno]: https://deno.com/
 [several installation methods]: https://nodejs.org/en/download/package-manager
 
 ### Installing the `fedify` command

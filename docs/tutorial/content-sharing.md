@@ -100,7 +100,7 @@ Setting up the development environment
 
 ### Installing Node.js
 
-Fedify supports three JavaScript runtimes: [Deno], [Bun], and [Node.js].
+Fedify supports three JavaScript runtimes: [Node.js], [Bun], and [Deno].
 Among the three, Node.js is the most widely used, and Nuxt targets Node.js
 by default, so that is what we will use.
 
@@ -120,9 +120,9 @@ node --version
 npm --version
 ~~~~
 
-[Deno]: https://deno.com/
-[Bun]: https://bun.sh/
 [Node.js]: https://nodejs.org/
+[Bun]: https://bun.sh/
+[Deno]: https://deno.com/
 [various installation methods]: https://nodejs.org/en/download/package-manager
 
 ### Installing the `fedify` command
