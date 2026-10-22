@@ -17,8 +17,8 @@
     [*HTTPS servers on non-default ports with Bun*].  [[GHSA-r48c-xx2h-fv4g]]
  -  On Deno, `fetch()` offers no way to choose the addresses it connects to,
     so Fedify cannot close the gap above.  Run Deno 2.8.1 or later with
-    `--deny-net` listing private IPv4 ranges, and listen on a Unix domain
-    socket or on `[::]`.  IPv6 private ranges cannot be listed in
+    `--deny-net` listing private IPv4 ranges, `[::1]`, and `[::]`, and
+    listen on a Unix domain socket.  IPv6 private ranges cannot be listed in
     `--deny-net` and need to be blocked at the network layer.  See
     [*Restricting outbound connections on Deno*] for details.  For new and
     long-lived deployments, we recommend Node.js or Bun instead of Deno,

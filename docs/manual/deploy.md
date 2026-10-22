@@ -190,7 +190,9 @@ the following:
 
 > [!WARNING]
 > Upgrading Fedify alone does not protect Deno deployments against DNS
-> rebinding.  Apply the mitigation below.
+> rebinding.  Furthermore, we no longer recommend Deno for new projects
+> following its team's recent [announcement][Deno joins Cloudflare].
+> Apply the mitigation below.
 
 Fedify checks that a remote hostname resolves only to public addresses before
 fetching remote documents or delivering activities.  On Node.js and Bun, it
@@ -204,12 +206,12 @@ Deno itself can refuse such connections.  Since Deno 2.8.1, `--deny-net`
 checks the resolved IP addresses right before connecting.  Deno 2.8.0 and
 earlier check only the hostname, so a hostname that resolves to a denied
 address is still allowed (see [GHSA-cpgj-f7g3-2pp2]).  Run Deno 2.8.1 or later
-with `--deny-net` listing the IPv4 ranges that Fedify treats as private, and
-`[::1]`:
+with `--deny-net` listing the IPv4 ranges that Fedify treats as private,
+`[::1]`, and `[::]`:
 
 ~~~~ bash
 deno run --allow-net --allow-read=/run/fedify --allow-write=/run/fedify \
-  --deny-net=0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.88.99.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4,[::1] \
+  --deny-net=0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.88.99.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4,[::1],[::] \
   server.ts
 ~~~~
 
@@ -218,26 +220,21 @@ the following limitations:
 
  -  `--deny-net` takes precedence over `--allow-net`, so the server cannot
     listen on an address inside a denied range, such as `127.0.0.1`,
-    `0.0.0.0`, or a container address like `172.17.0.2`.  Leaving
+    `0.0.0.0`, `[::]`, or a container address like `172.17.0.2`.  Leaving
     the listening address out of the list does not work either, since it
     lets rebinding reach that address too; for example, on Linux, connecting
-    to `0.0.0.0` reaches services listening on the loopback interface.
-    Listen on one of the following instead:
+    to `0.0.0.0` or `[::]` reaches services listening on the loopback
+    interface.  Listen on a Unix domain socket behind a reverse proxy
+    instead.  Listening on a socket path requires read and write permissions
+    for the path rather than the `net` permission, so all of the addresses
+    above can be denied:
 
-     -  A Unix domain socket behind a reverse proxy (recommended).  Listening
-        on a socket path requires read and write permissions for the path
-        rather than the `net` permission, so all of the ranges above can be
-        denied:
-
-        ~~~~ typescript
-        Deno.serve(
-          { path: "/run/fedify/fedify.sock" },
-          (request) => federation.fetch(request, { contextData: undefined }),
-        );
-        ~~~~
-
-     -  `[::]`, which is not in the list above and accepts both IPv4 and
-        IPv6 clients on dual-stack hosts.  Note the IPv6 limitation below.
+    ~~~~ typescript
+    Deno.serve(
+      { path: "/run/fedify/fedify.sock" },
+      (request) => federation.fetch(request, { contextData: undefined }),
+    );
+    ~~~~
 
  -  `--deny-net` does not accept IPv6 ranges, only literal addresses like
     `[::1]`.  Unique local addresses (`fc00::/7`) and link-local addresses
@@ -247,7 +244,9 @@ the following limitations:
 If your deployment cannot use `--deny-net`, for example a container that must
 listen on `0.0.0.0`, block the same ranges for outbound traffic of the Fedify
 process with owner-based `OUTPUT` rules of iptables or nftables, or with
-a container network policy.  These can also express IPv6 ranges.
+a container network policy.  These can also express IPv6 ranges.  Block `::1`
+and `::` as well as `fc00::/7` and `fe80::/10`, since on Linux connecting to
+`::` also reaches local services.
 
 The deny list overlaps with Fedify's own check, but because Deno applies it
 right before connecting, it also covers the addresses a hostname is rebound to.
@@ -263,9 +262,9 @@ See also [Cloudflare's announcement][Deno joins Cloudflare].
 
 [`deno serve`]: https://docs.deno.com/runtime/reference/cli/serve/
 [Bun's `export default` syntax]: https://bun.sh/docs/api/http#export-default-syntax
+[Deno joins Cloudflare]: https://blog.cloudflare.com/deno-joins-cloudflare/
 [GHSA-cpgj-f7g3-2pp2]: https://github.com/denoland/deno/security/advisories/GHSA-cpgj-f7g3-2pp2
 [Deno is joining Cloudflare]: https://deno.com/blog/cloudflare
-[Deno joins Cloudflare]: https://blog.cloudflare.com/deno-joins-cloudflare/
 
 ### Key–value store and message queue
 
