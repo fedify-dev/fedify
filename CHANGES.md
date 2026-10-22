@@ -8,6 +8,20 @@ Version 2.3.15
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed incoming requests failing to reach dispatchers when Mastodon decoded
+    percent-encoded colons in path identifiers.  Generated URIs and HTTP
+    signature verification retain their existing behavior.  [[#1325]]
+
+[#1325]: https://github.com/fedify-dev/fedify/pull/1325
+
+### @fedify/uri-template
+
+ -  Added the `allowUnencodedColon` option to `Router.route()` for matching
+    HTTP request paths containing decoded colons in variable values.  Exact
+    matches take precedence, and matching remains strict by default.  [[#1325]]
+
 
 Version 2.3.14
 --------------

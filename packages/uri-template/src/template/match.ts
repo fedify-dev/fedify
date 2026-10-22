@@ -4,32 +4,29 @@ import type {
   ExpandContext,
   ExpandValue,
   OperatorSpec,
-  TemplateOptions,
   Token,
   VarSpec,
 } from "../types.ts";
 import { encodeName, truncateValue } from "./encoding.ts";
-import expand from "./expand.ts";
 
 /**
  * Matches a URI against a parsed URI template and extracts variable bindings.
  *
- * The inverse of {@link expand}: given the token stream produced by parsing a
- * template and a concrete URI, recovers an {@link ExpandContext} such that
- * re-expanding the template with that context reproduces the original URI.
+ * Recovers variable bindings whose completed context satisfies the caller's
+ * roundtrip check. Literal tokens always match the original URI exactly.
  *
  * @param tokens The parsed template tokens to match against.
  * @param uri The concrete URI to decompose.
- * @param options Template options shared with the expansion side.
+ * @param accept The roundtrip check for a completed variable context.
  * @returns The recovered variable context, or `null` if the URI does not match
  *   the template under any interpretation.
  */
 export default function match(
   tokens: readonly Token[],
   uri: string,
-  options: TemplateOptions,
+  accept: (context: ExpandContext) => boolean,
 ): ExpandContext | null {
-  return matchTokens(tokens, uri, options, 0, 0, {});
+  return matchTokens(tokens, uri, accept, 0, 0, {});
 }
 
 interface Binding {
@@ -55,16 +52,15 @@ interface ConsumedParts {
  *
  * Literal tokens advance deterministically; expression tokens fan out across
  * all viable end positions and value interpretations. When the token stream is
- * exhausted, the accumulated bindings are accepted only if re-expanding the
- * template with them yields the original URI exactly — this is what filters
- * out the spurious interpretations that the permissive parsing stage admits.
+ * exhausted, the accumulated bindings must pass the caller's roundtrip check,
+ * filtering out spurious interpretations from the permissive parsing stage.
  *
  * @returns The first surviving context, or `null` if every branch fails.
  */
 function matchTokens(
   tokens: readonly Token[],
   uri: string,
-  options: TemplateOptions,
+  accept: (context: ExpandContext) => boolean,
   tokenIndex: number,
   uriIndex: number,
   bindings: Bindings,
@@ -72,7 +68,7 @@ function matchTokens(
   if (tokenIndex >= tokens.length) {
     if (uriIndex !== uri.length) return null;
     const context = toExpandContext(bindings);
-    return expand(tokens, context, options) === uri ? context : null;
+    return accept(context) ? context : null;
   }
 
   const token = tokens[tokenIndex];
@@ -81,7 +77,7 @@ function matchTokens(
       ? matchTokens(
         tokens,
         uri,
-        options,
+        accept,
         tokenIndex + 1,
         uriIndex + token.text.length,
         bindings,
@@ -103,7 +99,7 @@ function matchTokens(
       const result = matchTokens(
         tokens,
         uri,
-        options,
+        accept,
         tokenIndex + 1,
         end,
         merged,

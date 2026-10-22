@@ -71,7 +71,8 @@ export default class Template {
    */
   readonly match: (uri: string) => ExpandContext | null = (
     uri: string,
-  ): ExpandContext | null => match(this.#tokens, uri, this.#fullOptions);
+  ): ExpandContext | null =>
+    match(this.#tokens, uri, (context) => this.expand(context) === uri);
 
   readonly toString = (): string => this.uriTemplate;
 }

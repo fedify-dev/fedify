@@ -148,6 +148,32 @@ Features
  -  Zero runtime dependencies
 
 
+HTTP path compatibility
+-----------------------
+
+Some HTTP clients, including Mastodon, decode `%3A` to `:` in request paths.
+Pass `{ allowUnencodedColon: true }` to `Router.route()` to accept literal
+colons in variable values where expansion would produce `%3A`:
+
+~~~~ typescript
+const router = new Router([["/users/{identifier}", "actor"]]);
+router.route("/users/alice:work", { allowUnencodedColon: true });
+// { name: "actor", template: "/users/{identifier}",
+//   values: { identifier: "alice:work" } }
+~~~~
+
+Exact matches, including configured trailing-slash retries, take precedence
+over colon-compatible matches.  Literal template text still matches exactly,
+and other percent-encoded characters keep their existing matching rules.
+When a template uses colons to separate variables, a decoded colon in a value
+can make the boundary ambiguous; matching follows the existing backtracking
+order.
+
+Fedify enables this option for incoming HTTP requests.  URI generation and
+`Context.parseUri()` retain their existing behavior.  Standalone
+`Template.match()` and `Router.route()` without the option also remain exact.
+
+
 Route variable constraints
 --------------------------
 

@@ -1,4 +1,5 @@
 import { Template } from "../template/mod.ts";
+import match from "../template/match.ts";
 import type { ExpandContext, ExpandValue, Path, Token } from "../types.ts";
 import { isExpression, isLiteral, isPath } from "../utils.ts";
 import { RouteTemplatePathError } from "./errors.ts";
@@ -12,6 +13,7 @@ import type {
   RouterOptions,
   RouterPathPattern,
   RouterRoute,
+  RouterRouteOptions,
   RouterRouteResult,
   VariableConstraint,
 } from "./types.ts";
@@ -176,6 +178,7 @@ export default class Router {
   /**
    * Resolves a path name and values from a URI, if any match.
    * @param url The URI to resolve.
+   * @param options Options for this lookup only.
    * @returns The name of the path and its values, if any match.  Otherwise,
    *          `null`.
    */
@@ -184,17 +187,42 @@ export default class Router {
       never,
       never
     >,
-  >(url: Path): RouterRouteResult<TConstraints> | null =>
-    this.#route(url) ??
+  >(
+    url: Path,
+    options: RouterRouteOptions = {},
+  ): RouterRouteResult<TConstraints> | null => {
+    const strict = this.#route<TConstraints>(url) ??
       (this.trailingSlashInsensitive
-        ? this.#route(toggleTrailingSlash(url))
+        ? this.#route<TConstraints>(toggleTrailingSlash(url))
         : null);
+    if (strict != null || !options.allowUnencodedColon || !url.includes(":")) {
+      return strict;
+    }
+    return this.#route<TConstraints>(url, true) ??
+      (this.trailingSlashInsensitive
+        ? this.#route<TConstraints>(toggleTrailingSlash(url), true)
+        : null);
+  };
 
   #route<
     TConstraints extends Record<string, MinimalConstraint>,
-  >(url: Path): RouterRouteResult<TConstraints> | null {
+  >(
+    url: Path,
+    allowUnencodedColon = false,
+  ): RouterRouteResult<TConstraints> | null {
     for (const entry of this.#trie.candidates(url)) {
-      const context = entry.pattern.template.match(url);
+      const template = entry.pattern.template;
+      // Literal tokens still match exactly. Fold both comparison strings so
+      // variable values can contain a mixture of encoded and literal colons.
+      const context = allowUnencodedColon
+        ? match(
+          template.tokens,
+          url,
+          (values) =>
+            template.expand(values).replaceAll("%3A", ":") ===
+              url.replaceAll("%3A", ":"),
+        )
+        : template.match(url);
       if (context == null) continue;
 
       const values = resolveValues(context, entry);
