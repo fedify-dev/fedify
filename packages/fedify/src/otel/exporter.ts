@@ -462,9 +462,11 @@ export class FedifySpanExporter implements SpanExporter {
    * an earlier attempt at summarizing it (in a previous version of this
    * exporter) never completed, and that the count always reflects
    * records that have not expired.  It costs a full scan of every stored
-   * record on every call, which does not scale to large deployments
-   * without pagination at the `KvStore` layer; callers that poll this
-   * method frequently should keep that cost in mind.
+   * record on every call, including full inbound activity JSON.  The
+   * `limit` option only truncates the returned summaries and does not
+   * reduce the scan.  Callers that poll this method frequently should
+   * account for the total retained data when choosing a TTL and polling
+   * interval.
    *
    * @param options Options for the query.
    * @returns An array of trace summaries.

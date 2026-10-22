@@ -362,6 +362,174 @@ test("FedifySpanExporter", async (t) => {
     });
   }
 
+  async function exportSpans(
+    exporter: FedifySpanExporter,
+    spans: ReadableSpan[],
+  ): Promise<void> {
+    const result = await new Promise<{ code: number }>((resolve) => {
+      exporter.export(spans, resolve);
+    });
+    assertEquals(result.code, 0);
+  }
+
+  for (const withCas of [true, false]) {
+    const createStore = (): KvStore => {
+      const memory = new MemoryKvStore();
+      return withCas ? memory : {
+        get: memory.get.bind(memory),
+        set: memory.set.bind(memory),
+        delete: memory.delete.bind(memory),
+        list: memory.list.bind(memory),
+      };
+    };
+
+    await t.step(
+      `re-export counts each retained span once (CAS=${withCas})`,
+      async () => {
+        const kv = createStore();
+        const exporters = [
+          new FedifySpanExporter(kv),
+          new FedifySpanExporter(kv),
+        ];
+        const span = createOutboundSpan("reexport-trace", "span-a");
+        await exportSpans(exporters[0], [span]);
+        await exportSpans(exporters[0], [span]);
+        assertEquals(
+          (await exporters[1].getRecentTraces())[0].activityCount,
+          1,
+        );
+
+        await Promise.all(
+          exporters.map((exporter) => exportSpans(exporter, [span])),
+        );
+        assertEquals(
+          (await exporters[0].getActivitiesByTraceId("reexport-trace")).length,
+          1,
+        );
+        assertEquals(
+          (await exporters[1].getRecentTraces())[0].activityCount,
+          1,
+        );
+      },
+    );
+
+    await t.step(
+      `concurrent distinct spans are all counted (CAS=${withCas})`,
+      async () => {
+        const kv = createStore();
+        const exporters = [
+          new FedifySpanExporter(kv),
+          new FedifySpanExporter(kv),
+        ];
+        await Promise.all(exporters.map((exporter, i) =>
+          exportSpans(exporter, [
+            createOutboundSpan("concurrent-count-trace", `span-${i}`),
+          ])
+        ));
+        const reader = new FedifySpanExporter(kv);
+        assertEquals(
+          (await reader.getActivitiesByTraceId("concurrent-count-trace"))
+            .length,
+          2,
+        );
+        assertEquals((await reader.getRecentTraces())[0].activityCount, 2);
+      },
+    );
+
+    await t.step(
+      `legacy summaries cannot hide or inflate retained records (CAS=${withCas})`,
+      async () => {
+        const kv = createStore();
+        const exporter = new FedifySpanExporter(kv);
+        await exportSpans(exporter, [
+          createOutboundSpan("legacy-trace", "span-a"),
+        ]);
+        // Model an old writer whose record write succeeded but summary write failed.
+        await kv.delete(["fedify", "traces", "_summaries", "legacy-trace"]);
+        const originalSet = kv.set.bind(kv);
+        let writes = 0;
+        kv.set = (...args) => {
+          writes++;
+          return originalSet(...args);
+        };
+        assertEquals((await exporter.getRecentTraces())[0].activityCount, 1);
+        assertEquals(writes, 0);
+
+        const stale = {
+          traceId: "legacy-trace",
+          timestamp: "2000-01-01T00:00:00.000Z",
+          activityCount: 99,
+          activityTypes: ["Bogus"],
+        };
+        await kv.set(["fedify", "traces", "_summaries", "legacy-trace"], stale);
+        await kv.set(["fedify", "traces", "_summaries", "ghost-trace"], {
+          ...stale,
+          traceId: "ghost-trace",
+        });
+        const records = await exporter.getActivitiesByTraceId("legacy-trace");
+        assertEquals(await exporter.getRecentTraces(), [{
+          traceId: "legacy-trace",
+          timestamp: records[0].timestamp,
+          activityCount: 1,
+          activityTypes: ["Create"],
+        }]);
+        await kv.delete(["fedify", "traces", "legacy-trace", "span-a"]);
+        assertEquals(await exporter.getRecentTraces(), []);
+      },
+    );
+
+    await t.step(
+      `summary metadata follows retained records (CAS=${withCas})`,
+      async () => {
+        const kv = createStore();
+        const exporter = new FedifySpanExporter(kv, { keyPrefix: ["custom"] });
+        function span(
+          traceId: string,
+          spanId: string,
+          type: string,
+          seconds: number,
+        ) {
+          const event = createActivitySentEvent({
+            activityJson: JSON.stringify({ type }),
+            inboxUrl: "https://example.com/inbox",
+          });
+          return createMockSpan({
+            traceId,
+            spanId,
+            events: [{ ...event, time: [seconds, 0] }],
+          });
+        }
+        // Write later events first so aggregation must lower the timestamp.
+        await exportSpans(exporter, [
+          span("older-trace", "late", "Like", 1700000002),
+          span("older-trace", "early", "Create", 1700000000),
+          span("older-trace", "duplicate-type", "Like", 1700000003),
+          span("newer-trace", "only", "Follow", 1700000001),
+        ]);
+        const recent = await exporter.getRecentTraces();
+        assertEquals(recent.map((summary) => summary.traceId), [
+          "newer-trace",
+          "older-trace",
+        ]);
+        assertEquals(recent[1], {
+          traceId: "older-trace",
+          timestamp: new Date(1700000000000).toISOString(),
+          activityCount: 3,
+          activityTypes: ["Like", "Create"],
+        });
+        assertEquals(await exporter.getRecentTraces({ limit: 1 }), [recent[0]]);
+        await kv.delete(["custom", "older-trace", "early"]);
+        const retained = await exporter.getRecentTraces();
+        assertEquals(retained[0], {
+          traceId: "older-trace",
+          timestamp: new Date(1700000002000).toISOString(),
+          activityCount: 2,
+          activityTypes: ["Like"],
+        });
+      },
+    );
+  }
+
   await t.step(
     "a trace with only one record is discoverable via " +
       "getRecentTraces(), with no further write",
@@ -482,7 +650,8 @@ test("FedifySpanExporter", async (t) => {
       kv.list = async function* (prefix) {
         for await (const entry of originalList(prefix)) {
           entriesRead++;
-          bytesRead += JSON.stringify(entry.value).length;
+          bytesRead +=
+            new TextEncoder().encode(JSON.stringify(entry.value)).byteLength;
           yield entry;
         }
       };
@@ -502,6 +671,45 @@ test("FedifySpanExporter", async (t) => {
       // does not reduce how much is scanned or read.
       assertEquals(entriesRead, entriesReadForFullScan);
       assertEquals(bytesRead, bytesReadForFullScan);
+    },
+  );
+
+  await t.step(
+    "recent-list scans include full inbound payloads even with limit",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+      const activityJson = JSON.stringify({
+        type: "Create",
+        object: { type: "Note", content: "한".repeat(64 * 1024) },
+      });
+      await exportSpans(
+        exporter,
+        Array.from({ length: 10 }, (_, i) =>
+          createMockSpan({
+            traceId: `large-inbound-${i}`,
+            spanId: "inbound",
+            events: [createActivityReceivedEvent({ activityJson })],
+          })),
+      );
+      const originalList = kv.list.bind(kv);
+      let entriesRead = 0;
+      let bytesRead = 0;
+      kv.list = async function* (prefix) {
+        for await (const entry of originalList(prefix)) {
+          entriesRead++;
+          bytesRead +=
+            new TextEncoder().encode(JSON.stringify(entry.value)).byteLength;
+          yield entry;
+        }
+      };
+      assertEquals((await exporter.getRecentTraces({ limit: 1 })).length, 1);
+      assertEquals(entriesRead, 10);
+      assert(
+        bytesRead >= new TextEncoder().encode(activityJson).byteLength * 10,
+      );
+      // Serialized UTF-8 value bytes only; excludes keys and backend protocol overhead.
+      assert(bytesRead > 1.8 * 1024 * 1024);
     },
   );
 
