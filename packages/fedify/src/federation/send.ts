@@ -13,6 +13,7 @@ import {
 import metadata from "../../deno.json" with { type: "json" };
 import {
   doubleKnock,
+  getDoubleKnockFailureProvenance,
   type HttpMessageSignaturesSpecDeterminer,
 } from "../sig/http.ts";
 import { isPortableUri } from "../sig/portable-key-id.ts";
@@ -56,6 +57,14 @@ export interface ExtractInboxesParameters {
  * An inbox extracted by {@link extractInboxes}.
  */
 export interface ExtractedInbox {
+  /**
+   * The identifier of this deduplicated destination's delivery.  It stays
+   * the same across every attempt at delivering to it, including a retry,
+   * a circuit-breaker hold, and a change to {@link gatewayInboxes}.
+   * @since 2.5.0
+   */
+  deliveryId: string;
+
   /**
    * The IDs of the recipients that the inbox belongs to.
    */
@@ -149,7 +158,11 @@ export function extractInboxes(
       }
       const [key = gatewayInboxes[0], ...otherKeys] = existingKeys;
       portableKeys.set(target.portableInbox, key);
-      const entry = inboxes[key] ??= { actorIds: new Set(), sharedInbox };
+      const entry = inboxes[key] ??= {
+        deliveryId: crypto.randomUUID(),
+        actorIds: new Set(),
+        sharedInbox,
+      };
       for (const k of otherKeys) {
         for (const actorId of inboxes[k].actorIds) entry.actorIds.add(actorId);
         delete inboxes[k];
@@ -173,7 +186,11 @@ export function extractInboxes(
       continue;
     }
     const key = compatibleKeys.get(inbox.href) ?? inbox.href;
-    inboxes[key] ??= { actorIds: new Set(), sharedInbox };
+    inboxes[key] ??= {
+      deliveryId: crypto.randomUUID(),
+      actorIds: new Set(),
+      sharedInbox,
+    };
     inboxes[key].actorIds.add(recipient.id.href);
   }
   return inboxes;
@@ -265,6 +282,46 @@ export interface SendActivityParameters {
    * @since 1.3.0
    */
   readonly tracerProvider?: TracerProvider;
+
+  /**
+   * The message queue's own retry round this call is running under, if
+   * it was dispatched from a queued outbox message.  This is the queue's
+   * redelivery count, not a count of delivery attempts: omit it for an
+   * immediate send that never went through a queue.
+   * @since 2.5.0
+   */
+  readonly queueAttempt?: number;
+
+  /**
+   * The identifier of the broadcast (the `Context.sendActivity()` or
+   * `~Context.forwardActivity()` call) that this delivery was fanned out
+   * from.
+   * @since 2.5.0
+   */
+  readonly broadcastId?: string;
+
+  /**
+   * The identifier of this deduplicated destination's delivery, stable
+   * across retries, holds, and gateway-list changes.
+   * @since 2.5.0
+   */
+  readonly deliveryId?: string;
+
+  /**
+   * Whether this delivery is an ordinary fallback attempt at one logical
+   * destination, or a FEP-ef61 gateway's independent replication of an
+   * activity it received to the portable actor's other gateways.
+   * Defaults to `"fallback"`.
+   * @since 2.5.0
+   */
+  readonly deliveryKind?: "fallback" | "replication";
+
+  /**
+   * The canonical form of the FEP-ef61 portable inbox that {@link inbox}
+   * is a compatible identifier of, if the destination is a portable actor.
+   * @since 2.5.0
+   */
+  readonly portableInbox?: string;
 }
 
 /**
@@ -293,6 +350,29 @@ export function sendActivity(
       }
       if (options.activityType != null) {
         span.setAttribute("activitypub.activity.type", options.activityType);
+      }
+      if (options.queueAttempt != null) {
+        span.setAttribute("activitypub.activity.retries", options.queueAttempt);
+      }
+      if (options.broadcastId != null) {
+        span.setAttribute("activitypub.broadcast.id", options.broadcastId);
+      }
+      if (options.deliveryId != null) {
+        span.setAttribute("activitypub.delivery.id", options.deliveryId);
+      }
+      if (options.deliveryKind != null) {
+        span.setAttribute(
+          "activitypub.delivery.kind",
+          options.deliveryKind,
+        );
+      }
+      const destinationInbox = options.portableInbox ?? options.inbox.href;
+      span.setAttribute("activitypub.destination.inbox", destinationInbox);
+      if (options.portableInbox != null) {
+        span.setAttribute(
+          "activitypub.destination.portable_inbox",
+          options.portableInbox,
+        );
       }
       const spanContext = span.spanContext();
       try {
@@ -411,6 +491,13 @@ async function readLimitedResponseBody(
   return result;
 }
 
+type SendFailureKind = "http" | "transport" | "policy" | "local" | "unknown";
+type SendFailurePhase =
+  | "pre-request"
+  | "request"
+  | "response"
+  | "post-response";
+
 async function sendActivityInternal(
   {
     activity,
@@ -430,6 +517,34 @@ async function sendActivityInternal(
   const federationMetrics = getFederationMetrics(meterProvider);
   const started = performance.now();
   let deliverySuccess = false;
+  const eventAttributes: Attributes = {
+    "activitypub.inbox.url": inbox.href,
+    "activitypub.activity.id": activityId ?? "",
+  };
+  if (activityType != null) {
+    eventAttributes["activitypub.activity.type"] = activityType;
+  }
+  const actorId = getActivityActorId(activity);
+  if (actorId != null) {
+    eventAttributes["activitypub.actor.id"] = actorId;
+  }
+  let terminalEventEmitted = false;
+  function recordSendFailure(
+    kind: SendFailureKind,
+    phase: SendFailurePhase,
+    statusCode?: number,
+  ): void {
+    if (terminalEventEmitted) return;
+    terminalEventEmitted = true;
+    span.addEvent("activitypub.activity.send_failed", {
+      ...eventAttributes,
+      "activitypub.delivery.failure_kind": kind,
+      "activitypub.delivery.failure_phase": phase,
+      ...(statusCode == null
+        ? {}
+        : { "http.response.status_code": statusCode }),
+    });
+  }
   async function validateUrl(url: string): Promise<void> {
     if (!allowPrivateAddress) {
       try {
@@ -461,7 +576,27 @@ async function sendActivityInternal(
         false,
         activityType,
       );
+      recordSendFailure("transport", "pre-request");
+    } else {
+      recordSendFailure("policy", "pre-request");
     }
+    throw error;
+  }
+  let body: string;
+  try {
+    body = JSON.stringify(activity);
+  } catch (error) {
+    logger.error(
+      "Failed to serialize activity {activityId} for {inbox}:\n{error}",
+      { activityId, inbox: inbox.href, error },
+    );
+    federationMetrics.recordDelivery(
+      inbox,
+      getDurationMs(started),
+      false,
+      activityType,
+    );
+    recordSendFailure("local", "pre-request");
     throw error;
   }
   headers = new Headers(headers);
@@ -469,7 +604,7 @@ async function sendActivityInternal(
   const request = new Request(inbox, {
     method: "POST",
     headers,
-    body: JSON.stringify(activity),
+    body,
     redirect: "manual",
   });
   let rsaKey: SenderKeyPair | null = null;
@@ -530,6 +665,26 @@ async function sendActivityInternal(
       false,
       activityType,
     );
+    // doubleKnock() reports where it learned this failure occurred, so
+    // the failure kind reflects where it actually happened instead of a
+    // guess from the error's class.  A response it already saw as OK
+    // before a bookkeeping call afterward failed is a local failure with
+    // that response's status retained; a failure doubleKnock() marked as
+    // happening before any request was sent (e.g., signing or spec
+    // lookup) is local too, even though it is not a FetchError/UrlError;
+    // anything else, including a response it never saw as OK, is left to
+    // the policy/transport check below.
+    const provenance = getDoubleKnockFailureProvenance(error);
+    if (provenance?.kind === "post-response-bookkeeping") {
+      recordSendFailure("local", "post-response", provenance.response.status);
+    } else if (provenance?.kind === "local") {
+      recordSendFailure("local", "request");
+    } else {
+      recordSendFailure(
+        error instanceof UrlError ? "policy" : "transport",
+        "request",
+      );
+    }
     throw failure;
   }
   try {
@@ -554,6 +709,7 @@ async function sendActivityInternal(
           error,
         },
       );
+      recordSendFailure("http", "response", response.status);
       throw new SendActivityError(
         inbox,
         response.status,
@@ -565,20 +721,10 @@ async function sendActivityInternal(
     }
 
     deliverySuccess = true;
-
-    // Record the sent activity with delivery details
-    const eventAttributes: Attributes = {
-      "activitypub.inbox.url": inbox.href,
-      "activitypub.activity.id": activityId ?? "",
-    };
-    if (activityType != null) {
-      eventAttributes["activitypub.activity.type"] = activityType;
+    if (!terminalEventEmitted) {
+      terminalEventEmitted = true;
+      span.addEvent("activitypub.activity.sent", eventAttributes);
     }
-    const actorId = getActivityActorId(activity);
-    if (actorId != null) {
-      eventAttributes["activitypub.actor.id"] = actorId;
-    }
-    span.addEvent("activitypub.activity.sent", eventAttributes);
   } finally {
     federationMetrics.recordDelivery(
       inbox,

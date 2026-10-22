@@ -1310,6 +1310,19 @@ const recentTraces = await fedifyExporter.getRecentTraces({ limit: 100 });
 > that only provides `cas()` without `list()` support, this method will
 > return an empty array.
 
+> [!NOTE]
+> `~FedifySpanExporter.getRecentTraces()` computes every summary it
+> returns directly from the activity and worker records currently stored
+> for each trace, rather than from a separately maintained counter.  This
+> is why a trace is discoverable, and its `activityCount` accurate, as
+> soon as its records are stored, with no further write, and why the
+> count never includes a record that has since expired.  It also means
+> each call scans every record stored under the exporter's `keyPrefix`,
+> so its cost grows with the total number of retained records, not with
+> how much changed since the previous call.  Size the polling interval,
+> TTL, and `KvStore` choice accordingly in a deployment that retains many
+> traces.
+
 Each `TraceActivityRecord` contains:
 
  -  `traceId`: The OpenTelemetry trace ID
@@ -1335,6 +1348,170 @@ Each `TraceActivityRecord` contains:
      -  `ldSignaturesVerified`: Whether Linked Data Signatures were verified
  -  `timestamp`: ISO 8601 timestamp
  -  `inboxUrl`: The target inbox URL (for outbound activities)
+ -  `outcome` (optional): The outcome of an outbound delivery attempt,
+    `"success"` or `"failed"` (for outbound activities).  Absent on records
+    persisted before this field was introduced; such a record is always for
+    a successful delivery, since a failed delivery attempt used to leave no
+    record at all
+ -  `failure` (optional): Details about why an outbound delivery attempt
+    failed.  Only set when `outcome` is `"failed"`, containing:
+     -  `kind`: `"http"` (the inbox returned a non-2xx response),
+        `"transport"` (no response was ever received, e.g., a DNS or
+        network failure), `"policy"` (Fedify's own private-address policy
+        refused the destination), `"local"` (the attempt failed for a
+        reason other than the network or the response, e.g., the activity
+        could not be serialized), or `"unknown"`
+     -  `phase`: Where in the attempt the failure happened:
+        `"pre-request"`, `"request"`, `"response"`, `"post-response"`, or
+        `"unknown"`
+     -  `statusCode` (optional): The HTTP status code of the response the
+        attempt observed, if any.  Set when `kind` is `"http"`, and also
+        when `kind` is `"local"` and `phase` is `"post-response"`, since
+        that failure happens after a response was already received
+ -  `queueAttempt` (optional): The outbox queue's own retry round this
+    attempt ran under, if it was dispatched from a queued message.  This is
+    the queue's redelivery count, not a count of delivery attempts: a
+    native queue redelivery can leave it unchanged, and a single round can
+    run more than one attempt when trying a portable actor's gateways.
+    Absent for an immediate send that never went through a queue
+ -  `destinationInbox`, `portableInbox`, `broadcastId`, `deliveryId`,
+    `deliveryKind` (optional, for outbound activities): See
+    [Broadcasts and deliveries](#broadcasts-and-deliveries) below
+
+### Outbound delivery attempts
+
+*This behavior is available since Fedify 2.5.0.*
+
+Every call to `sendActivity()` persists one `TraceActivityRecord`, whether
+the delivery succeeds or fails, under the delivery operation's own `traceId`
+and `spanId`.  A delivery that fails after every retry therefore still has
+a record, and its `traceId` matches the `traceId` LogTape attaches to the
+error logs that operation emits, so a failed delivery's logs and record can
+be correlated directly.
+
+Each retry performed by the queue worker calls `sendActivity()` again,
+producing its own span and its own record, even when it targets the same
+activity and inbox as an earlier attempt.  Records are never merged or
+overwritten across attempts.  Because `~FedifySpanExporter.getRecentTraces()`
+summarizes every record stored for a trace, `activityCount` in a
+`TraceSummary` counts every attempt, not just the distinct activities in the
+trace; a delivery that fails twice before succeeding raises the count for
+its trace by three.  A trace whose every delivery attempt fails is still
+listed by `getRecentTraces()`, since each failed attempt leaves its own
+record.
+
+The queue worker's own retry, abandonment, and circuit-breaker events are
+recorded on the worker's own `activitypub.outbox` span, not on a
+`TraceActivityRecord`.  They keep the worker's own `spanId`, which differs
+from the `spanId` of the delivery attempt it retries, even though both
+belong to the same trace.
+
+These records describe observed send results; they are not proof that the
+remote server received nothing, or that it finished whatever it does with
+an activity after accepting it.  Sampling, export loss, and the configured
+TTL mean `activityCount` and `getActivitiesByTraceId()` reflect what is
+currently retained, not a lifetime total.
+
+### Outbox worker records
+
+*This behavior is available since Fedify 2.5.0.*
+
+Some outbox queue worker executions reach a disposition without ever
+calling `sendActivity()`, so they cannot produce a `TraceActivityRecord`:
+the circuit breaker can hold or drop a message before any attempt, and a
+queued message can fail to prepare at all (e.g., a malformed inbox URL).
+Others call `sendActivity()` but then fail in the worker's own follow-up
+action, such as re-enqueueing a held message.
+
+`FedifySpanExporter` captures these as a separate `TraceOutboundWorkerRecord`,
+exposed through `~FedifySpanExporter.getWorkerRecordsByTraceId()`, which
+stays separate from `~FedifySpanExporter.getActivitiesByTraceId()` so a
+worker disposition is never mistaken for a delivery attempt.  Each record
+contains:
+
+ -  `traceId`, `spanId`, `parentSpanId` (optional): The worker's own
+    OpenTelemetry identifiers
+ -  `disposition`: `"held"` or `"dropped"` (a circuit-breaker decision),
+    `"preparation_failed"` (the worker never reached `sendActivity()`), or
+    `"action_failed"` (the worker's own hold or drop action itself failed)
+ -  `attemptsStarted`: The number of times this execution actually entered
+    `sendActivity()`, tracked from the execution itself rather than
+    inferred from whether a span happened to be exported
+ -  `activityType` (optional): The ActivityPub activity type, if known
+ -  `queueAttempt` (optional): The outbox queue's own retry round for this
+    execution
+ -  `broadcastId`, `deliveryId` (optional): See
+    [Broadcasts and deliveries](#broadcasts-and-deliveries) below
+ -  `timestamp`: ISO 8601 timestamp
+
+A trace whose every worker execution was held or dropped has no
+`TraceActivityRecord` at all, and so an `activityCount` of `0`, but is
+still listed by `getRecentTraces()`: `TraceSummary` gained a matching
+`outboundWorkerCount` field, counted the same way `activityCount` is.
+A queued delivery that still has more than one of a portable actor's
+gateways left to try produces this kind of record too when a round
+holds or drops it before trying any gateway, or after trying only
+some of them and holding the rest for later; `attemptsStarted` is the
+number of gateways that round actually tried.
+
+### Broadcasts and deliveries
+
+*This behavior is available since Fedify 2.5.0.*
+
+A single `Context.sendActivity()` or `~Context.forwardActivity()` call
+is a *broadcast*: it resolves a recipient list into one or more
+deduplicated destinations and fans the activity out to each. Each of
+those deduplicated destinations is a *delivery*, which may be retried,
+held by the circuit breaker, or redelivered by the queue's own native
+retry one or more times before it succeeds, exhausts its retries, or
+fails permanently.
+
+`TraceActivityRecord` and `TraceOutboundWorkerRecord` carry two IDs
+that correlate attempts and worker executions along these two axes:
+
+ -  `broadcastId`: Shared by every delivery, attempt, and worker
+    execution that a single `sendActivity()`/`forwardActivity()` call
+    fanned out into.
+ -  `deliveryId`: Shared by every attempt and worker execution for one
+    deduplicated destination, stable across a retry, a circuit-breaker
+    hold, and a change to which of a portable actor's gateways is
+    being tried.
+
+`TraceActivityRecord` additionally carries:
+
+ -  `deliveryKind`: `"fallback"` (the default) for an ordinary
+    delivery that tries a portable actor's gateways in order until one
+    accepts, or `"replication"` for a FEP-ef61 gateway's own
+    independent forwarding of a received activity to the actor's
+    other gateways, where each gateway must receive its own copy
+    rather than just one of them accepting on the others' behalf.
+ -  `destinationInbox`: The identity of the attempt's destination that
+    stays the same across every attempt at the same delivery, even one
+    that tries a different gateway than an earlier attempt did. This
+    is the canonical portable inbox when `portableInbox` is set, or
+    `inboxUrl` otherwise.
+ -  `portableInbox` (optional): The canonical FEP-ef61 portable inbox
+    that `inboxUrl` is a compatible identifier of, set only when the
+    destination is a portable actor.
+
+Both IDs are absent on a record from a delivery that a version of
+Fedify older than 2.5.0 started and that is still being retried after
+an upgrade, since the queued message it was retried from predates
+these fields. Grouping such a delivery's earlier and later attempts by
+`broadcastId`/`deliveryId` is not possible; `OutboxMessage.id`, which
+*is* stable across those same retries even on older messages, is the
+closest available grouping key, though it is not exposed on
+`TraceActivityRecord` and does not identify the broadcast a delivery
+came from. A deployment that mixes Fedify versions during a rolling
+upgrade should expect this gap for deliveries in flight at upgrade
+time, not for ones started afterward.
+
+A FEP-ef61 relay forwarding an activity immediately rather than
+through a queue bounds how long it waits for every gateway to finish,
+not the forwarding itself: a send still in flight when that deadline
+passes keeps running and is recorded with whatever it actually
+resolves to, success or failure, rather than being reported as failed
+just because the call stopped waiting for it.
 
 ### Configuration options
 

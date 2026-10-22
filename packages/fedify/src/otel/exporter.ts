@@ -11,6 +11,177 @@ import type { KvKey, KvStore, KvStoreSetOptions } from "../federation/kv.ts";
 export type ActivityDirection = "inbound" | "outbound";
 
 /**
+ * The outcome of an outbound delivery attempt.
+ *
+ * @since 2.5.0
+ */
+export type DeliveryOutcome = "success" | "failed";
+
+/**
+ * The kind of failure for a failed outbound delivery attempt.
+ *
+ *  -  `"http"`: The inbox responded with a non-2xx HTTP status.
+ *  -  `"transport"`: The request could not be sent at all, e.g., a DNS
+ *     resolution failure or a network error.
+ *  -  `"policy"`: The destination was refused by Fedify's own
+ *     private-address policy before a request was made.
+ *  -  `"local"`: The attempt failed for a reason other than the network or
+ *     the remote response, e.g., the activity could not be serialized, or
+ *     a signing or HTTP Message Signatures spec lookup failed.
+ *  -  `"unknown"`: The attempt failed for a reason this version of Fedify
+ *     does not classify.
+ *
+ * @since 2.5.0
+ */
+export type DeliveryFailureKind =
+  | "http"
+  | "transport"
+  | "policy"
+  | "local"
+  | "unknown";
+
+/**
+ * The phase of a delivery attempt in which it failed.
+ *
+ *  -  `"pre-request"`: Before a request was ever built, e.g., a
+ *     private-address policy rejection or activity serialization failure.
+ *  -  `"request"`: While sending the request or awaiting a response.
+ *  -  `"response"`: After a final response was received, but it was not a
+ *     successful (2xx) status.
+ *  -  `"post-response"`: After a successful response, during follow-up
+ *     bookkeeping that is not part of the delivery itself.
+ *  -  `"unknown"`: This version of Fedify did not record which phase the
+ *     attempt failed in.
+ *
+ * @since 2.5.0
+ */
+export type DeliveryFailurePhase =
+  | "pre-request"
+  | "request"
+  | "response"
+  | "post-response"
+  | "unknown";
+
+/**
+ * Details about a failed outbound delivery attempt.
+ *
+ * @since 2.5.0
+ */
+export interface DeliveryFailureDetails {
+  /**
+   * The kind of failure.
+   */
+  readonly kind: DeliveryFailureKind;
+
+  /**
+   * The phase of the delivery attempt in which it failed.
+   */
+  readonly phase: DeliveryFailurePhase;
+
+  /**
+   * The HTTP status code of the response the delivery attempt observed,
+   * if any.  Set when {@link kind} is `"http"`, and also when {@link kind}
+   * is `"local"` and {@link phase} is `"post-response"`, since that
+   * failure happens after a response was already received.
+   */
+  readonly statusCode?: number;
+}
+
+/**
+ * A disposition the outbox queue worker reached for a message without
+ * necessarily entering {@link TraceActivityRecord | an attempt}.
+ *
+ *  -  `"held"`: The circuit breaker deferred the message to a later time.
+ *  -  `"dropped"`: The circuit breaker gave up on the message, e.g., after
+ *     its hold expired.
+ *  -  `"preparation_failed"`: The worker could not even prepare the
+ *     delivery, e.g., the queued message's inbox URL was malformed.
+ *  -  `"action_failed"`: The worker's own hold or drop action failed, e.g.,
+ *     re-enqueueing the held message was rejected by the queue backend.
+ *
+ * @since 2.5.0
+ */
+export type OutboundWorkerDisposition =
+  | "held"
+  | "dropped"
+  | "preparation_failed"
+  | "action_failed";
+
+/**
+ * A record of a disposition the outbox queue worker reached for a message,
+ * captured from the worker's own span.  This is distinct from
+ * {@link TraceActivityRecord}: it describes the worker's execution, not a
+ * delivery attempt, and a worker execution that reaches
+ * `sendActivity()` still produces its own `TraceActivityRecord` for that
+ * attempt instead of (or in addition to) a record here.
+ *
+ * @since 2.5.0
+ */
+export interface TraceOutboundWorkerRecord {
+  /**
+   * The trace ID from OpenTelemetry.
+   */
+  readonly traceId: string;
+
+  /**
+   * The worker's own span ID from OpenTelemetry.
+   */
+  readonly spanId: string;
+
+  /**
+   * The parent span ID, if any.
+   */
+  readonly parentSpanId?: string;
+
+  /**
+   * The disposition the worker reached.
+   */
+  readonly disposition: OutboundWorkerDisposition;
+
+  /**
+   * The number of times this worker execution actually entered
+   * `sendActivity()`.  This is tracked from the execution itself, not
+   * inferred from whether a span was exported, since a sampled-out span
+   * is not evidence that no attempt happened.
+   */
+  readonly attemptsStarted: number;
+
+  /**
+   * The ActivityPub activity type (e.g., "Create", "Follow", "Like"), if
+   * known.
+   */
+  readonly activityType?: string;
+
+  /**
+   * The message queue's own retry round for this execution, if the
+   * message came from a queue.  This is the queue's redelivery count, not
+   * a count of delivery attempts: native queue redelivery can leave it
+   * unchanged, and a single round can run more than one attempt when
+   * trying a portable actor's gateways.  Absent for an immediate send
+   * that never went through a queue.
+   */
+  readonly queueAttempt?: number;
+
+  /**
+   * The identifier of the broadcast that this execution belongs to.
+   * @since 2.5.0
+   */
+  readonly broadcastId?: string;
+
+  /**
+   * The identifier of this execution's delivery, stable across retries,
+   * holds, and gateway-list changes.
+   * @since 2.5.0
+   */
+  readonly deliveryId?: string;
+
+  /**
+   * The timestamp when this record was created (ISO 8601 format).
+   */
+  readonly timestamp: string;
+}
+
+/**
  * Signature verification details for an inbound activity.
  *
  * @since 1.10.0
@@ -112,9 +283,93 @@ export interface TraceActivityRecord {
   readonly timestamp: string;
 
   /**
-   * The target inbox URL (for outbound activities).
+   * The actual inbox URL this attempt was made against (for outbound
+   * activities).  For a delivery that tries more than one of a portable
+   * actor's gateways, this can differ between attempts that share the
+   * same {@link deliveryId}; {@link destinationInbox} is the identity
+   * that stays the same across them.
    */
   readonly inboxUrl?: string;
+
+  /**
+   * The stable identity of this attempt's destination (for outbound
+   * activities): the canonical portable inbox if {@link portableInbox}
+   * is set, or {@link inboxUrl} otherwise.  Unlike {@link inboxUrl}, this
+   * does not change between attempts at the same delivery that try
+   * different gateways.
+   *
+   * @since 2.5.0
+   */
+  readonly destinationInbox?: string;
+
+  /**
+   * The canonical form of the FEP-ef61 portable inbox that {@link inboxUrl}
+   * is a compatible identifier of, if the destination is a portable actor.
+   *
+   * @since 2.5.0
+   */
+  readonly portableInbox?: string;
+
+  /**
+   * The identifier of the broadcast (the `Context.sendActivity()` or
+   * `~Context.forwardActivity()` call) that this attempt was fanned out
+   * from (for outbound activities).
+   *
+   * @since 2.5.0
+   */
+  readonly broadcastId?: string;
+
+  /**
+   * The identifier of this deduplicated destination's delivery (for
+   * outbound activities), stable across every attempt at it, including a
+   * retry, a hold, and a change to which gateway is being tried.
+   *
+   * @since 2.5.0
+   */
+  readonly deliveryId?: string;
+
+  /**
+   * Whether this attempt belongs to an ordinary fallback delivery (trying
+   * each of a portable actor's gateways in turn until one accepts), or a
+   * FEP-ef61 gateway's independent replication of a received activity to
+   * the actor's other gateways (for outbound activities).  Defaults to
+   * `"fallback"` when absent.
+   *
+   * @since 2.5.0
+   */
+  readonly deliveryKind?: "fallback" | "replication";
+
+  /**
+   * The outcome of an outbound delivery attempt (for outbound activities).
+   *
+   * Absent on records persisted before this field was introduced.  Such
+   * a record is always for a successful delivery, since a failed outbound
+   * delivery attempt used to leave no record at all.
+   *
+   * @since 2.5.0
+   */
+  readonly outcome?: DeliveryOutcome;
+
+  /**
+   * Details about why an outbound delivery attempt failed (for outbound
+   * activities).  Only set when {@link outcome} is `"failed"`.
+   *
+   * @since 2.5.0
+   */
+  readonly failure?: DeliveryFailureDetails;
+
+  /**
+   * The message queue's own retry round this attempt ran under (for
+   * outbound activities), if it was dispatched from a queued outbox
+   * message.  This is the queue's redelivery count, not a count of
+   * delivery attempts: native queue redelivery can leave it unchanged,
+   * and a single round can run more than one attempt when trying a
+   * portable actor's gateways.  Absent for an immediate send that never
+   * went through a queue.
+   *
+   * @since 2.5.0
+   */
+  readonly queueAttempt?: number;
 }
 
 /**
@@ -142,6 +397,15 @@ export interface TraceSummary {
    * Activity types present in this trace.
    */
   readonly activityTypes: readonly string[];
+
+  /**
+   * The number of {@link TraceOutboundWorkerRecord}s recorded for this
+   * trace.  A trace with only worker records and no attempts has
+   * {@link activityCount} `0` and this field greater than `0`.
+   *
+   * @since 2.5.0
+   */
+  readonly outboundWorkerCount?: number;
 }
 
 /**
@@ -264,9 +528,12 @@ export class FedifySpanExporter implements SpanExporter {
   async #exportAsync(spans: ReadableSpan[]): Promise<void> {
     const storeOperations: Promise<void>[] = [];
     for (const span of spans) {
-      const records = this.#extractRecords(span);
-      for (const record of records) {
+      const { activities, workers } = this.#extractRecords(span);
+      for (const record of activities) {
         storeOperations.push(this.#storeRecord(record));
+      }
+      for (const record of workers) {
+        storeOperations.push(this.#storeWorkerRecord(record));
       }
     }
     const results = await Promise.allSettled(storeOperations);
@@ -281,8 +548,12 @@ export class FedifySpanExporter implements SpanExporter {
     }
   }
 
-  #extractRecords(span: ReadableSpan): TraceActivityRecord[] {
-    const records: TraceActivityRecord[] = [];
+  #extractRecords(span: ReadableSpan): {
+    activities: TraceActivityRecord[];
+    workers: TraceOutboundWorkerRecord[];
+  } {
+    const activities: TraceActivityRecord[] = [];
+    const workers: TraceOutboundWorkerRecord[] = [];
     const spanContext = span.spanContext();
     const traceId = spanContext.traceId;
     const spanId = spanContext.spanId;
@@ -296,19 +567,77 @@ export class FedifySpanExporter implements SpanExporter {
           spanId,
           parentSpanId,
         );
-        if (record != null) records.push(record);
+        if (record != null) activities.push(record);
       } else if (event.name === "activitypub.activity.sent") {
         const record = this.#extractOutboundRecord(
           event,
+          span,
+          traceId,
+          spanId,
+          parentSpanId,
+          "success",
+        );
+        if (record != null) activities.push(record);
+      } else if (event.name === "activitypub.activity.send_failed") {
+        const record = this.#extractOutboundRecord(
+          event,
+          span,
+          traceId,
+          spanId,
+          parentSpanId,
+          "failed",
+        );
+        if (record != null) activities.push(record);
+      } else if (event.name === "activitypub.outbox.worker.disposition") {
+        const record = this.#extractWorkerRecord(
+          event,
+          span,
           traceId,
           spanId,
           parentSpanId,
         );
-        if (record != null) records.push(record);
+        if (record != null) workers.push(record);
       }
     }
 
-    return records;
+    return { activities, workers };
+  }
+
+  #extractWorkerRecord(
+    event: ReadableSpan["events"][number],
+    span: ReadableSpan,
+    traceId: string,
+    spanId: string,
+    parentSpanId: string | undefined,
+  ): TraceOutboundWorkerRecord | null {
+    const attrs = event.attributes;
+    if (attrs == null) return null;
+
+    const disposition = attrs["activitypub.outbox.worker.disposition"];
+    if (typeof disposition !== "string") return null;
+
+    const attemptsStarted = attrs["activitypub.outbox.worker.attempts_started"];
+    const activityType = span.attributes["activitypub.activity.type"];
+    const queueAttempt = span.attributes["activitypub.activity.retries"];
+    const broadcastId = span.attributes["activitypub.broadcast.id"];
+    const deliveryId = span.attributes["activitypub.delivery.id"];
+
+    return {
+      traceId,
+      spanId,
+      parentSpanId,
+      disposition: disposition as OutboundWorkerDisposition,
+      attemptsStarted: typeof attemptsStarted === "number"
+        ? attemptsStarted
+        : 0,
+      activityType: typeof activityType === "string" ? activityType : undefined,
+      queueAttempt: typeof queueAttempt === "number" ? queueAttempt : undefined,
+      ...(typeof broadcastId === "string" ? { broadcastId } : {}),
+      ...(typeof deliveryId === "string" ? { deliveryId } : {}),
+      timestamp: new Date(
+        event.time[0] * 1000 + event.time[1] / 1e6,
+      ).toISOString(),
+    };
   }
 
   #extractInboundRecord(
@@ -399,9 +728,11 @@ export class FedifySpanExporter implements SpanExporter {
 
   #extractOutboundRecord(
     event: ReadableSpan["events"][number],
+    span: ReadableSpan,
     traceId: string,
     spanId: string,
-    parentSpanId?: string,
+    parentSpanId: string | undefined,
+    outcome: DeliveryOutcome,
   ): TraceActivityRecord | null {
     const attrs = event.attributes;
     if (attrs == null) return null;
@@ -434,6 +765,16 @@ export class FedifySpanExporter implements SpanExporter {
     const explicitActivityId = attrs["activitypub.activity.id"];
     const explicitActivityType = attrs["activitypub.activity.type"];
     const explicitActorId = attrs["activitypub.actor.id"];
+    const failureKind = attrs["activitypub.delivery.failure_kind"];
+    const failurePhase = attrs["activitypub.delivery.failure_phase"];
+    const statusCode = attrs["http.response.status_code"];
+    const queueAttempt = span.attributes["activitypub.activity.retries"];
+    const broadcastId = span.attributes["activitypub.broadcast.id"];
+    const deliveryId = span.attributes["activitypub.delivery.id"];
+    const deliveryKind = span.attributes["activitypub.delivery.kind"];
+    const destinationInbox = span.attributes["activitypub.destination.inbox"];
+    const portableInbox =
+      span.attributes["activitypub.destination.portable_inbox"];
 
     return {
       traceId,
@@ -456,6 +797,28 @@ export class FedifySpanExporter implements SpanExporter {
         event.time[0] * 1000 + event.time[1] / 1e6,
       ).toISOString(),
       inboxUrl: typeof inboxUrl === "string" ? inboxUrl : undefined,
+      ...(typeof destinationInbox === "string" ? { destinationInbox } : {}),
+      ...(typeof portableInbox === "string" ? { portableInbox } : {}),
+      outcome,
+      ...(typeof queueAttempt === "number" ? { queueAttempt } : {}),
+      ...(typeof broadcastId === "string" ? { broadcastId } : {}),
+      ...(typeof deliveryId === "string" ? { deliveryId } : {}),
+      ...(deliveryKind === "fallback" || deliveryKind === "replication"
+        ? { deliveryKind }
+        : {}),
+      ...(outcome === "failed"
+        ? {
+          failure: {
+            kind: typeof failureKind === "string"
+              ? failureKind as DeliveryFailureKind
+              : "unknown",
+            phase: typeof failurePhase === "string"
+              ? failurePhase as DeliveryFailurePhase
+              : "unknown",
+            ...(typeof statusCode === "number" ? { statusCode } : {}),
+          },
+        }
+        : {}),
     };
   }
 
@@ -470,60 +833,20 @@ export class FedifySpanExporter implements SpanExporter {
       record.spanId,
     ] as KvKey;
     await this.#kv.set(key, record, options);
-
-    // Also store trace summary for getRecentTraces()
-    await this.#updateTraceSummary(record, options);
   }
 
-  async #setWithCasRetry<T>(
-    key: KvKey,
-    transform: (existing: T | undefined) => T,
-    options?: KvStoreSetOptions,
-  ): Promise<void> {
-    if (this.#kv.cas != null) {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const existing = await this.#kv.get<T>(key);
-        const newValue = transform(existing);
-        if (await this.#kv.cas(key, existing, newValue, options)) {
-          return;
-        }
-      }
-    }
+  async #storeWorkerRecord(record: TraceOutboundWorkerRecord): Promise<void> {
+    const options: KvStoreSetOptions | undefined = this.#ttl != null
+      ? { ttl: this.#ttl }
+      : undefined;
 
-    // Fallback to non-atomic set if CAS is not available or fails
-    const existing = await this.#kv.get<T>(key);
-    const newValue = transform(existing);
-    await this.#kv.set(key, newValue, options);
-  }
-
-  async #updateTraceSummary(
-    record: TraceActivityRecord,
-    options?: KvStoreSetOptions,
-  ): Promise<void> {
-    const summaryKey: KvKey = [
+    const key: KvKey = [
       ...this.#keyPrefix,
-      "_summaries",
+      "_workers",
       record.traceId,
+      record.spanId,
     ] as KvKey;
-
-    await this.#setWithCasRetry<TraceSummary>(
-      summaryKey,
-      (existing) => {
-        const activityCount = existing != null ? existing.activityCount + 1 : 1;
-        const activityTypes = existing != null
-          ? existing.activityTypes.includes(record.activityType)
-            ? existing.activityTypes
-            : [...existing.activityTypes, record.activityType]
-          : [record.activityType];
-        return {
-          traceId: existing?.traceId ?? record.traceId,
-          timestamp: existing?.timestamp ?? record.timestamp,
-          activityCount,
-          activityTypes,
-        };
-      },
-      options,
-    );
+    await this.#kv.set(key, record, options);
   }
 
   /**
@@ -546,7 +869,42 @@ export class FedifySpanExporter implements SpanExporter {
   }
 
   /**
+   * Gets all outbox queue worker records for a specific trace ID.  These
+   * are kept separate from {@link getActivitiesByTraceId}'s results: a
+   * worker record describes the worker's own execution, not a delivery
+   * attempt.
+   *
+   * @param traceId The trace ID to query.
+   * @returns An array of worker records belonging to the trace.
+   *
+   * @since 2.5.0
+   */
+  async getWorkerRecordsByTraceId(
+    traceId: string,
+  ): Promise<TraceOutboundWorkerRecord[]> {
+    const prefix: KvKey = [...this.#keyPrefix, "_workers", traceId] as KvKey;
+    const records: TraceOutboundWorkerRecord[] = [];
+
+    for await (const entry of this.#kv.list(prefix)) {
+      records.push(entry.value as TraceOutboundWorkerRecord);
+    }
+
+    return records;
+  }
+
+  /**
    * Gets recent traces with summary information.
+   *
+   * Each summary is computed directly from the primary activity and
+   * worker records that are actually stored, rather than from a
+   * separately maintained counter.  This guarantees that a trace is
+   * discoverable, and its `activityCount`/`outboundWorkerCount`
+   * accurate, as soon as its records are stored, and that the counts
+   * always reflect records that have not expired.  It costs a full scan
+   * of every stored record under {@link FedifySpanExporterOptions.keyPrefix}
+   * on every call, which does not scale to large deployments without
+   * pagination at the `KvStore` layer; callers that poll this method
+   * frequently should keep that cost in mind.
    *
    * @param options Options for the query.
    * @returns An array of trace summaries.
@@ -554,12 +912,68 @@ export class FedifySpanExporter implements SpanExporter {
   async getRecentTraces(
     options?: GetRecentTracesOptions,
   ): Promise<TraceSummary[]> {
-    const summaryPrefix = [...this.#keyPrefix, "_summaries"] as KvKey;
-    const summaries: TraceSummary[] = [];
+    const aggregates = new Map<string, {
+      timestamp: string;
+      activityCount: number;
+      activityTypes: string[];
+      outboundWorkerCount: number;
+    }>();
+    const firstSegmentIndex = this.#keyPrefix.length;
 
-    for await (const entry of this.#kv.list(summaryPrefix)) {
-      summaries.push(entry.value as TraceSummary);
+    const aggregateFor = (traceId: string, timestamp: string) => {
+      let aggregate = aggregates.get(traceId);
+      if (aggregate == null) {
+        aggregate = {
+          timestamp,
+          activityCount: 0,
+          activityTypes: [],
+          outboundWorkerCount: 0,
+        };
+        aggregates.set(traceId, aggregate);
+      } else if (timestamp < aggregate.timestamp) {
+        aggregate.timestamp = timestamp;
+      }
+      return aggregate;
+    };
+
+    for await (const entry of this.#kv.list(this.#keyPrefix)) {
+      const first = entry.key[firstSegmentIndex];
+      // Skip summary entries left behind by older versions of this
+      // exporter; they are no longer read or maintained.
+      if (first == null || first === "_summaries") continue;
+
+      if (first === "_workers") {
+        const traceId = entry.key[firstSegmentIndex + 1];
+        const record = entry.value as TraceOutboundWorkerRecord | undefined;
+        if (
+          traceId == null || record == null ||
+          typeof record.timestamp !== "string"
+        ) continue;
+        aggregateFor(traceId, record.timestamp).outboundWorkerCount++;
+        continue;
+      }
+
+      const traceId = first;
+      const record = entry.value as TraceActivityRecord | undefined;
+      if (record == null || typeof record.timestamp !== "string") continue;
+      const aggregate = aggregateFor(traceId, record.timestamp);
+      aggregate.activityCount++;
+      if (!aggregate.activityTypes.includes(record.activityType)) {
+        aggregate.activityTypes.push(record.activityType);
+      }
     }
+
+    const summaries: TraceSummary[] = [...aggregates].map(
+      ([traceId, aggregate]) => ({
+        traceId,
+        timestamp: aggregate.timestamp,
+        activityCount: aggregate.activityCount,
+        activityTypes: aggregate.activityTypes,
+        ...(aggregate.outboundWorkerCount > 0
+          ? { outboundWorkerCount: aggregate.outboundWorkerCount }
+          : {}),
+      }),
+    );
 
     // Sort by timestamp descending (most recent first)
     summaries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));

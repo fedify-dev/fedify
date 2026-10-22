@@ -507,6 +507,17 @@ function recordCircuitBreakerHeldSpanEvent(
   });
 }
 
+function recordOutboundWorkerDispositionSpanEvent(
+  span: Span,
+  disposition: "held" | "dropped" | "preparation_failed" | "action_failed",
+  attemptsStarted: number,
+): void {
+  span.addEvent("activitypub.outbox.worker.disposition", {
+    "activitypub.outbox.worker.disposition": disposition,
+    "activitypub.outbox.worker.attempts_started": attemptsStarted,
+  });
+}
+
 function isRemoteContextLoadingFailure(error: unknown): boolean {
   return error instanceof Error &&
     typeof (error as Error & { details?: { code?: unknown } }).details ===
@@ -1224,7 +1235,13 @@ export class FederationImpl<TContextData>
         };
         await this.#runWorkerSpan(
           "activitypub.fanout",
-          { "activitypub.activity.type": message.activityType },
+          {
+            "activitypub.activity.type": message.activityType,
+            // id is stable identity for this fanout, and the fallback
+            // broadcast identity for a message enqueued before
+            // broadcastId existed.
+            "activitypub.broadcast.id": message.broadcastId ?? message.id,
+          },
           extractedContext,
           this.#instrumentWorkerBody(common, async (span) => {
             if (message.activityId != null) {
@@ -1245,6 +1262,14 @@ export class FederationImpl<TContextData>
           {
             "activitypub.activity.type": message.activityType,
             "activitypub.activity.retries": message.attempt,
+            ...(message.broadcastId == null
+              ? {}
+              : { "activitypub.broadcast.id": message.broadcastId }),
+            // id is stable across retries/holds/gateway-list changes just
+            // like deliveryId, so it is the fallback identity for a
+            // message enqueued before deliveryId existed.
+            "activitypub.delivery.id": message.deliveryId ?? message.id,
+            "activitypub.delivery.kind": message.deliveryKind ?? "fallback",
           },
           extractedContext,
           this.#instrumentWorkerBody(common, async (span) => {
@@ -1419,11 +1444,29 @@ export class FederationImpl<TContextData>
         }),
       },
     );
-    await this.sendActivity(keys, message.inboxes, activity, {
+    // A fanout message enqueued before deliveryId existed has no stable
+    // per-destination identity at all: resolving the same inbox twice
+    // from that message would otherwise mint a fresh, unrelated
+    // deliveryId each time, since none of it survives rehydration.  Its
+    // own id and the destination key together give that case a
+    // deliveryId that comes out the same every time this exact message
+    // is processed, rather than leaving it unset.
+    const inboxes = globalThis.Object.fromEntries(
+      globalThis.Object.entries(message.inboxes).map(([key, entry]) => [
+        key,
+        entry.deliveryId == null
+          ? { ...entry, deliveryId: `legacy:${message.id}:${key}` }
+          : entry,
+      ]),
+    );
+    await this.sendActivity(keys, inboxes, activity, {
       collectionSync: message.collectionSync,
       orderingKey: message.orderingKey,
       normalizeExistingProofs: message.normalizeExistingProofs,
       activityJsonLd: message.activity,
+      // id is stable identity for this fanout, and the fallback broadcast
+      // identity for a message enqueued before broadcastId existed.
+      broadcastId: message.broadcastId ?? message.id,
       context,
     });
   }
@@ -1433,6 +1476,7 @@ export class FederationImpl<TContextData>
     message: OutboxMessage,
     span: Span,
   ): Promise<void> {
+    let attemptsStarted = 0;
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const logData = {
       keyIds: message.keys.map((pair) => pair.keyId),
@@ -1605,17 +1649,45 @@ export class FederationImpl<TContextData>
       if (decision != null && circuit != null) {
         if (decision.type === "hold") {
           recordCircuitBreakerHeldSpanEvent(span, remoteHost, decision.state);
-          await enqueueHeldOutboxMessage(decision.delay, decision.heldSince);
+          try {
+            await enqueueHeldOutboxMessage(decision.delay, decision.heldSince);
+          } catch (enqueueError) {
+            recordOutboundWorkerDispositionSpanEvent(
+              span,
+              "action_failed",
+              attemptsStarted,
+            );
+            throw enqueueError;
+          }
+          recordOutboundWorkerDispositionSpanEvent(
+            span,
+            "held",
+            attemptsStarted,
+          );
           return;
         }
         if (decision.type === "drop") {
           const activity = await parseActivity();
-          await dropHeldOutboxMessage(
-            circuit,
-            remoteHost,
-            inbox,
-            decision.heldSince,
-            activity,
+          try {
+            await dropHeldOutboxMessage(
+              circuit,
+              remoteHost,
+              inbox,
+              decision.heldSince,
+              activity,
+            );
+          } catch (dropError) {
+            recordOutboundWorkerDispositionSpanEvent(
+              span,
+              "action_failed",
+              attemptsStarted,
+            );
+            throw dropError;
+          }
+          recordOutboundWorkerDispositionSpanEvent(
+            span,
+            "dropped",
+            attemptsStarted,
           );
           return;
         }
@@ -1627,6 +1699,7 @@ export class FederationImpl<TContextData>
           );
         }
       }
+      attemptsStarted++;
       await sendActivity({
         allowPrivateAddress: this.allowPrivateAddress,
         keys,
@@ -1644,6 +1717,14 @@ export class FederationImpl<TContextData>
         ),
         meterProvider: this.meterProvider,
         tracerProvider: this.tracerProvider,
+        queueAttempt: message.attempt,
+        broadcastId: message.broadcastId,
+        // id is stable across retries/holds/gateway-list changes just
+        // like deliveryId, so it is the fallback identity for a message
+        // enqueued before deliveryId existed.
+        deliveryId: message.deliveryId ?? message.id,
+        deliveryKind: message.deliveryKind,
+        portableInbox: message.portableInbox,
       });
       if (circuit != null) {
         try {
@@ -1675,6 +1756,13 @@ export class FederationImpl<TContextData>
           return undefined;
         }
       })();
+      if (attemptsStarted === 0) {
+        recordOutboundWorkerDispositionSpanEvent(
+          span,
+          "preparation_failed",
+          attemptsStarted,
+        );
+      }
       let retryAfterDelay: Temporal.Duration | undefined;
       let circuitHold:
         | {
@@ -1790,12 +1878,26 @@ export class FederationImpl<TContextData>
       }
 
       if (circuitDrop != null) {
-        await dropHeldOutboxMessage(
-          circuitDrop.circuit,
-          circuitDrop.remoteHost,
-          circuitDrop.inbox,
-          circuitDrop.heldSince,
-          activity,
+        try {
+          await dropHeldOutboxMessage(
+            circuitDrop.circuit,
+            circuitDrop.remoteHost,
+            circuitDrop.inbox,
+            circuitDrop.heldSince,
+            activity,
+          );
+        } catch (dropError) {
+          recordOutboundWorkerDispositionSpanEvent(
+            span,
+            "action_failed",
+            attemptsStarted,
+          );
+          throw dropError;
+        }
+        recordOutboundWorkerDispositionSpanEvent(
+          span,
+          "dropped",
+          attemptsStarted,
         );
         return;
       }
@@ -1867,9 +1969,23 @@ export class FederationImpl<TContextData>
             circuitHold.heldSince,
             maxDelay(circuitHold.delay, retryAfterDelay),
           );
-        await enqueueHeldOutboxMessage(
-          holdDelay,
-          circuitHold.heldSince,
+        try {
+          await enqueueHeldOutboxMessage(
+            holdDelay,
+            circuitHold.heldSince,
+          );
+        } catch (enqueueError) {
+          recordOutboundWorkerDispositionSpanEvent(
+            span,
+            "action_failed",
+            attemptsStarted,
+          );
+          throw enqueueError;
+        }
+        recordOutboundWorkerDispositionSpanEvent(
+          span,
+          "held",
+          attemptsStarted,
         );
         return;
       }
@@ -1995,6 +2111,7 @@ export class FederationImpl<TContextData>
     const survivors: Survivor[] = [];
     let lastError: unknown;
     let lastPermanent: { error: SendActivityError; inbox: URL } | undefined;
+    let attemptsStarted = 0;
     let activity: Activity | undefined;
     const getActivity = async () => activity ??= await parseActivity();
     const drop = async (
@@ -2022,11 +2139,34 @@ export class FederationImpl<TContextData>
         ) <= 0
     ) {
       const inbox = new URL(message.gatewayInboxes[0]);
-      await drop(circuit, getRemoteHost(inbox), inbox, heldSince);
+      try {
+        await drop(circuit, getRemoteHost(inbox), inbox, heldSince);
+      } catch (dropError) {
+        recordOutboundWorkerDispositionSpanEvent(
+          span,
+          "action_failed",
+          attemptsStarted,
+        );
+        throw dropError;
+      }
+      recordOutboundWorkerDispositionSpanEvent(
+        span,
+        "dropped",
+        attemptsStarted,
+      );
       return;
     }
     for (const inboxHref of message.gatewayInboxes) {
-      const inbox = new URL(inboxHref);
+      let inbox: URL;
+      try {
+        inbox = new URL(inboxHref);
+      } catch (urlError) {
+        logger.warn(
+          "Invalid gateway inbox URL in OutboxMessage: {inbox}",
+          { ...logData, inbox: inboxHref, error: urlError },
+        );
+        continue;
+      }
       const remoteHost = getRemoteHost(inbox);
       const now = Temporal.Now.instant();
       const notBefore = parseInstant(message.gatewayNotBefore?.[inboxHref]);
@@ -2053,7 +2193,21 @@ export class FederationImpl<TContextData>
       }
       if (decision != null && circuit != null) {
         if (decision.type === "drop") {
-          await drop(circuit, remoteHost, inbox, decision.heldSince);
+          try {
+            await drop(circuit, remoteHost, inbox, decision.heldSince);
+          } catch (dropError) {
+            recordOutboundWorkerDispositionSpanEvent(
+              span,
+              "action_failed",
+              attemptsStarted,
+            );
+            throw dropError;
+          }
+          recordOutboundWorkerDispositionSpanEvent(
+            span,
+            "dropped",
+            attemptsStarted,
+          );
           return;
         } else if (decision.type === "hold") {
           recordCircuitBreakerHeldSpanEvent(span, remoteHost, decision.state);
@@ -2071,6 +2225,7 @@ export class FederationImpl<TContextData>
           );
         }
       }
+      attemptsStarted++;
       try {
         await sendActivity({
           allowPrivateAddress: this.allowPrivateAddress,
@@ -2084,6 +2239,11 @@ export class FederationImpl<TContextData>
           specDeterminer,
           meterProvider: this.meterProvider,
           tracerProvider: this.tracerProvider,
+          queueAttempt: message.attempt,
+          broadcastId: message.broadcastId,
+          deliveryId: message.deliveryId ?? message.id,
+          deliveryKind: message.deliveryKind,
+          portableInbox: message.portableInbox,
         });
       } catch (error) {
         lastError = error;
@@ -2216,6 +2376,25 @@ export class FederationImpl<TContextData>
         message: String(lastError),
       });
     }
+    if (survivors.length < 1 && lastPermanent == null) {
+      // Every gateway inbox was invalid, so none could even be attempted;
+      // this is the gateway round's equivalent of the single-inbox
+      // path's preparation_failed, since no attempt record exists for
+      // this execution at all otherwise.
+      if (attemptsStarted === 0) {
+        recordOutboundWorkerDispositionSpanEvent(
+          span,
+          "preparation_failed",
+          attemptsStarted,
+        );
+      }
+      recordOutboxActivity(
+        this.meterProvider,
+        "abandoned",
+        message.activityType,
+      );
+      return;
+    }
     if (survivors.length < 1) {
       // Every gateway failed permanently:
       const { error, inbox } = lastPermanent!;
@@ -2311,10 +2490,20 @@ export class FederationImpl<TContextData>
           "until one of its gateways can be tried again.",
         { ...logData, portableInbox: message.portableInbox },
       );
-      await outboxQueue.enqueue(heldMessage, {
-        delay: clampNegativeDelay(delay),
-        orderingKey: message.orderingKey,
-      });
+      try {
+        await outboxQueue.enqueue(heldMessage, {
+          delay: clampNegativeDelay(delay),
+          orderingKey: message.orderingKey,
+        });
+      } catch (enqueueError) {
+        recordOutboundWorkerDispositionSpanEvent(
+          span,
+          "action_failed",
+          attemptsStarted,
+        );
+        throw enqueueError;
+      }
+      recordOutboundWorkerDispositionSpanEvent(span, "held", attemptsStarted);
       this.metrics.recordQueueTaskEnqueued(
         {
           role: "outbox",
@@ -3170,6 +3359,7 @@ export class FederationImpl<TContextData>
       {
         actorIds: Iterable<string>;
         sharedInbox: boolean;
+        deliveryId?: string;
         portableInbox?: string;
         gatewayInboxes?: readonly string[];
       }
@@ -3178,7 +3368,13 @@ export class FederationImpl<TContextData>
     options: SendActivityInternalOptions<TContextData>,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
-    const { immediate, collectionSync, orderingKey, context: ctx } = options;
+    const {
+      immediate,
+      collectionSync,
+      orderingKey,
+      broadcastId,
+      context: ctx,
+    } = options;
     if (activity.id == null) {
       throw new TypeError("The activity to send must have an id.");
     }
@@ -3313,6 +3509,9 @@ export class FederationImpl<TContextData>
             activityId: activity.id?.href,
             activityType: getTypeId(activity).href,
             sharedInbox: inboxes[inbox].sharedInbox,
+            broadcastId,
+            deliveryId: inboxes[inbox].deliveryId,
+            portableInbox: inboxes[inbox].portableInbox,
             headers: collectionSync == null ? undefined : new Headers({
               "Collection-Synchronization":
                 await buildCollectionSynchronizationHeader(
@@ -3355,6 +3554,8 @@ export class FederationImpl<TContextData>
       const message: OutboxMessage = {
         type: "outbox",
         id: crypto.randomUUID(),
+        broadcastId,
+        deliveryId: inboxes[inbox].deliveryId,
         baseUrl: ctx.origin,
         keys: keyJwkPairs,
         activity: jsonLd,
@@ -5697,6 +5898,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     span: Span,
   ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
+    // Minted before recipients are resolved into inboxes, so that every
+    // delivery this call fans out into shares one broadcast identity.
+    const broadcastId = crypto.randomUUID();
+    span.setAttribute("activitypub.broadcast.id", broadcastId);
     let keys: SenderKeyPair[];
     let identifier: string | null = null;
     let actorKeyPairs: ActorKeyPair[] | null = null;
@@ -5785,6 +5990,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       collectionSync,
       immediate: options.immediate,
       normalizeExistingProofs: options.normalizeExistingProofs,
+      broadcastId,
     };
     span.setAttribute("activitypub.inboxes", expandedRecipients.length);
     for (const activityTransformer of this.federation.activityTransformers) {
@@ -5899,14 +6105,25 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     const message: FanoutMessage = {
       type: "fanout",
       id: crypto.randomUUID(),
+      broadcastId,
       baseUrl: this.origin,
       keys: keyJwkPairs,
       inboxes: globalThis.Object.fromEntries(
         globalThis.Object.entries(inboxes).map((
-          [k, { actorIds, sharedInbox, portableInbox, gatewayInboxes }],
+          [
+            k,
+            {
+              actorIds,
+              sharedInbox,
+              deliveryId,
+              portableInbox,
+              gatewayInboxes,
+            },
+          ],
         ) => [k, {
           actorIds: [...actorIds],
           sharedInbox,
+          deliveryId,
           ...getPortableMessageFields(portableInbox, gatewayInboxes),
         }]),
       ),
@@ -6696,6 +6913,7 @@ function forwardActivity<TContextData>(
           forwarder,
           recipients,
           options,
+          span,
         );
       } catch (e) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
@@ -6716,9 +6934,17 @@ async function forwardActivityInternal<TContextData>(
     | { identifier: string }
     | { username: string },
   recipients: Recipient | Recipient[] | "followers",
-  options?: ForwardActivityOptions,
+  options: ForwardActivityOptions | undefined,
+  span: Span,
 ): Promise<boolean> {
   const logger = getLogger(["fedify", "federation", loggerCategory]);
+  // Minted before recipients are resolved into inboxes, so that every
+  // delivery this call fans out into shares one broadcast identity.
+  // Set directly on the span passed down from forwardActivity(), rather
+  // than through trace.getActiveSpan(), since that depends on a
+  // ContextManager being registered globally, which is not guaranteed.
+  const broadcastId = crypto.randomUUID();
+  span.setAttribute("activitypub.broadcast.id", broadcastId);
   let keys: SenderKeyPair[];
   let identifier: string | null = null;
   if (
@@ -6832,6 +7058,9 @@ async function forwardActivityInternal<TContextData>(
           activityId: ctx.activityId,
           activityType: ctx.activityType,
           sharedInbox: inboxes[inbox].sharedInbox,
+          broadcastId,
+          deliveryId: inboxes[inbox].deliveryId,
+          portableInbox: inboxes[inbox].portableInbox,
           meterProvider: ctx.meterProvider,
           tracerProvider: ctx.tracerProvider,
           specDeterminer: new KvSpecDeterminer(
@@ -6868,6 +7097,8 @@ async function forwardActivityInternal<TContextData>(
     const message: OutboxMessage = {
       type: "outbox",
       id: crypto.randomUUID(),
+      broadcastId,
+      deliveryId: inboxes[inbox].deliveryId,
       baseUrl: ctx.origin,
       keys: keyJwkPairs,
       activity: ctx.activity,
@@ -7157,6 +7388,12 @@ interface SendActivityInternalOptions<TContextData> {
   readonly collectionSync?: string;
   readonly orderingKey?: string;
   readonly normalizeExistingProofs?: boolean;
+  /**
+   * The identifier of the broadcast (the `Context.sendActivity()` or
+   * `~Context.forwardActivity()` call) that this send was fanned out
+   * from.
+   */
+  readonly broadcastId?: string;
   /**
    * The compact JSON-LD document the activity was already serialized into,
    * when the caller has one.  Reusing it keeps a document that embeds a

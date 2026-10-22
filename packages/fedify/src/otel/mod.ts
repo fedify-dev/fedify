@@ -29,10 +29,16 @@
  */
 export {
   type ActivityDirection,
+  type DeliveryFailureDetails,
+  type DeliveryFailureKind,
+  type DeliveryFailurePhase,
+  type DeliveryOutcome,
   FedifySpanExporter,
   type FedifySpanExporterOptions,
   type GetRecentTracesOptions,
+  type OutboundWorkerDisposition,
   type SignatureVerificationDetails,
   type TraceActivityRecord,
+  type TraceOutboundWorkerRecord,
   type TraceSummary,
 } from "./exporter.ts";
