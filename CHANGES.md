@@ -25,6 +25,9 @@ To be released.
     cost; a deployment that retains many traces and polls
     `getRecentTraces()` should size its polling interval, TTL, and
     `KvStore` choice accordingly.  [[#1257], [#1322] by Yujin Jung\]
+ -  Fixed installation failures with strict peer dependency checks by keeping
+    the OpenTelemetry API dependency within the range supported by the
+    OpenTelemetry SDK.
  -  Fixed repeated HTTP signature verification and signing-key owner lookups
     when a request context was checked concurrently with the same document
     and context loaders.  `null` key-verification and owner-lookup results

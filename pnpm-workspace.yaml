@@ -57,7 +57,7 @@ catalog:
   "@logtape/file": ^2.0.0
   "@logtape/logtape": ^2.0.0
   "@multiformats/base-x": ^4.0.1
-  "@opentelemetry/api": ^1.9.0
+  "@opentelemetry/api": ~1.9.0
   "@opentelemetry/exporter-trace-otlp-proto": ^0.211.0
   "@opentelemetry/context-async-hooks": ^2.5.0
   "@opentelemetry/core": ^2.5.0
