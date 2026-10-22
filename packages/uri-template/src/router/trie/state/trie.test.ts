@@ -39,6 +39,31 @@ const candidatesOf = (
   path: Path,
 ): RouteEntry[] => Array.from(trie.candidates(path));
 
+test("StateTrie visits ambiguous states once per query", () => {
+  const trie = new StateTrie<RouteEntry>();
+  const many = makeEntry("/o/{a}:{b}:{c}:{d}:{e}");
+  const fallback = makeEntry("/o/{x}", 1);
+  trie.insert(many);
+  trie.insert(fallback);
+  const path = `/o/${":".repeat(12)}` as Path;
+  const collect = (): RouteEntry[] => {
+    const entries: RouteEntry[] = [];
+    for (const entry of trie.candidates(path)) {
+      if (entries.length >= 64) {
+        throw new Error("excessive duplicate candidates");
+      }
+      entries.push(entry);
+    }
+    return entries;
+  };
+  deepEqual(new Set(collect()), new Set([many, fallback]));
+  deepEqual(collect().length, 2);
+  trie.remove(many);
+  deepEqual(collect(), [fallback]);
+  trie.insert(many);
+  deepEqual(new Set(collect()), new Set([many, fallback]));
+});
+
 test(
   "StateTrie.candidates() yields entries with matching literal segments",
   () => {

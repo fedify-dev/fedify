@@ -218,9 +218,8 @@ export default class Router {
         ? match(
           template.tokens,
           url,
-          (values) =>
-            template.expand(values).replaceAll("%3A", ":") ===
-              url.replaceAll("%3A", ":"),
+          (values) => equalWithUnencodedColon(template.expand(values), url),
+          equalWithUnencodedColon,
         )
         : template.match(url);
       if (context == null) continue;
@@ -273,6 +272,9 @@ export default class Router {
       .sort((left, right) => left.index - right.index)
       .map((entry) => [entry.pattern, entry.name, entry.options]);
 }
+
+const equalWithUnencodedColon = (left: string, right: string): boolean =>
+  left.replaceAll("%3A", ":") === right.replaceAll("%3A", ":");
 
 const createRouteEntry = ({
   index,

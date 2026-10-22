@@ -31,6 +31,32 @@ import type { PartialRouterRoute, RouterPathPattern } from "./types.ts";
 const runAddCases = createRouterAddTest(Router);
 test("Router.add()", runAddCases(routerRouteDefinitions));
 
+test("Router.route() handles long colon paths and encoding near misses", () => {
+  const router = new Router([
+    ["/o/{a}:{b}:{c}:{d}:{e}", "many"],
+    ["/o/{x}", "one"],
+  ]);
+  const colons = ":".repeat(2000);
+  equal(router.route(`/o/${colons}`), null);
+  deepEqual(router.route(`/o/${colons}`, { allowUnencodedColon: true }), {
+    name: "one",
+    template: "/o/{x}",
+    values: { x: colons },
+  });
+  for (const suffix of ["%", "%zz", "%3a", "=", "%41", "%FF"]) {
+    const path = `/o/${":".repeat(48)}${suffix}` as const;
+    equal(router.route(path), null, suffix);
+    equal(router.route(path, { allowUnencodedColon: true }), null, suffix);
+  }
+  const unicode = new Router([["/o/{x}", "one"]]);
+  deepEqual(
+    unicode.route("/o/%E2%82%AC:%C3%A9", { allowUnencodedColon: true })?.values,
+    {
+      x: "€:é",
+    },
+  );
+});
+
 test("Router.route() unencoded colon compatibility", async (t) => {
   const pattern = Router.compile("/users/{identifier}/inbox");
   const router = new Router([[pattern, "inbox"]]);
