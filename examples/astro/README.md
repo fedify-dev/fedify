@@ -299,9 +299,9 @@ Then remove the `--config` flags from *deno.json* tasks:
 ~~~~ json
 {
   "tasks": {
-    "dev": "deno run -A npm:astro dev",
-    "build": "deno run -A npm:astro build",
-    "preview": "deno run -A npm:astro preview"
+    "dev": "deno run -A --node-modules-dir=manual npm:astro@7 dev",
+    "build": "deno run -A --node-modules-dir=manual npm:astro@7 build",
+    "preview": "deno run -A --node-modules-dir=manual npm:astro@7 preview"
   }
 }
 ~~~~

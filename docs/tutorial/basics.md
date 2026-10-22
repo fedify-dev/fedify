@@ -257,12 +257,13 @@ data of the `Federation` object.  We use the `MemoryKvStore` to open
 a key–value store.
 
 > [!IMPORTANT]
-> Since `MemoryKvStore` is for testing and development purposes, you should
-> use a persistent key–value store like
-> [`SqliteKvStore`](../manual/kv.md#sqlitekvstore) (from `@fedify/sqlite`) or
-> [`RedisKvStore`] (from [`@fedify/redis`] package) or [`PostgresKvStore`]
-> (from [`@fedify/postgres`] package) or [`MysqlKvStore`]
-> (from [`@fedify/mysql`] package) for production use.
+> Since `MemoryKvStore` is for testing and development purposes, use a
+> persistent key–value store for production.
+> [`SqliteKvStore`](../manual/kv.md#sqlitekvstore) (from `@fedify/sqlite`) is
+> an option for small-scale production deployments. For larger deployments,
+> consider [`RedisKvStore`] (from [`@fedify/redis`] package),
+> [`PostgresKvStore`] (from [`@fedify/postgres`] package), or [`MysqlKvStore`]
+> (from [`@fedify/mysql`] package).
 >
 > For further details, see the [*Key–value store* section](../manual/kv.md).
 
@@ -1397,7 +1398,7 @@ Exercises
     the home page inside the callback function passed to `serve()`
     (in case of Node.js), `Bun.serve()` (in case of Bun), and `Deno.serve()`
     (in case of Deno).  This is not enough for a real-world application as you
-    would need to rendering HTML templates, handling media files, and so on.
+    would need to render HTML templates, handling media files, and so on.
     Instead, you can use a web framework like [Hono] or [Fresh] to utilize the
     proper routing system and [JSX] templates to produce HTML.
 

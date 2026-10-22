@@ -60,20 +60,12 @@ export default fedifyLint;
 
 ### Deno Lint configuration example
 
-~~~~ typescript
+~~~~ jsonc
 // deno.json
 
 {
   "lint": {
-    "plugins": {
-      "@fedify/lint": "jsr:@fedify/lint"
-    },
-    "rules": {
-      "@fedify/lint/actor-id-required": "error",
-      "@fedify/lint/actor-id-mismatch": "error",
-      "@fedify/lint/actor-inbox-property-required": "warn"
-      // ... other rules
-    }
+    "plugins": ["jsr:@fedify/lint"]
   }
 }
 ~~~~
@@ -382,29 +374,32 @@ Add the plugin to your *deno.json* configuration file:
 }
 ~~~~
 
-By default, this enables all recommended rules.
+This enables every rule provided by the plugin. Deno reports plugin rules
+as errors; it does not support a recommended subset or configurable severity
+levels for plugin rules.
 
 ### Custom configuration
 
-You can customize which rules to enable and their severity levels:
+Disable individual plugin rules through `lint.rules.exclude`, using the
+plugin name `fedify-lint` as the prefix:
 
 ~~~~ json
 {
   "lint": {
     "plugins": ["jsr:@fedify/lint"],
     "rules": {
-      "tags": ["recommended"],
-      "include": [
-        "@fedify/lint/actor-id-required",
-        "@fedify/lint/actor-id-mismatch"
-      ],
       "exclude": [
-        "@fedify/lint/actor-featured-property-required"
+        "fedify-lint/actor-featured-property-required"
       ]
     }
   }
 }
 ~~~~
+
+`rules.tags` and `rules.include` apply to Deno's built-in rules, not plugin
+rules. See the [linting manual] for more details.
+
+[linting manual]: https://fedify.dev/manual/lint#turning-rules-off
 
 ### Running Deno Lint
 

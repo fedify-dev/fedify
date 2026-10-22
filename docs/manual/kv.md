@@ -432,7 +432,7 @@ const federation = createFederation<void>({
 });
 ~~~~
 
-[`DenoKvStore`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvStore
+[`DenoKvStore`]: https://jsr.io/@fedify/denokv/doc/~/DenoKvStore
 [Deno]: https://deno.com/
 [`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
 

@@ -135,15 +135,15 @@ export default defineConfig({
 });
 ~~~~
 
-And the tasks in *deno.json* should be updated to use `deno run npm:astro`
-instead of `astro`:
+And the tasks in *deno.json* should use Astro 7 with manual *node\_modules/*
+management:
 
 ~~~~ json
 {
   "tasks": {
-    "dev": "deno run -A npm:astro dev",
-    "build": "deno run -A npm:astro build",
-    "preview": "deno run -A npm:astro preview"
+    "dev": "deno run -A --node-modules-dir=manual npm:astro@7 dev",
+    "build": "deno run -A --node-modules-dir=manual npm:astro@7 build",
+    "preview": "deno run -A --node-modules-dir=manual npm:astro@7 preview"
   }
 }
 ~~~~
