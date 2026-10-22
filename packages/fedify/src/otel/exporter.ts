@@ -431,60 +431,6 @@ export class FedifySpanExporter implements SpanExporter {
       record.spanId,
     ] as KvKey;
     await this.#kv.set(key, record, options);
-
-    // Also store trace summary for getRecentTraces()
-    await this.#updateTraceSummary(record, options);
-  }
-
-  async #setWithCasRetry<T>(
-    key: KvKey,
-    transform: (existing: T | undefined) => T,
-    options?: KvStoreSetOptions,
-  ): Promise<void> {
-    if (this.#kv.cas != null) {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const existing = await this.#kv.get<T>(key);
-        const newValue = transform(existing);
-        if (await this.#kv.cas(key, existing, newValue, options)) {
-          return;
-        }
-      }
-    }
-
-    // Fallback to non-atomic set if CAS is not available or fails
-    const existing = await this.#kv.get<T>(key);
-    const newValue = transform(existing);
-    await this.#kv.set(key, newValue, options);
-  }
-
-  async #updateTraceSummary(
-    record: TraceActivityRecord,
-    options?: KvStoreSetOptions,
-  ): Promise<void> {
-    const summaryKey: KvKey = [
-      ...this.#keyPrefix,
-      "_summaries",
-      record.traceId,
-    ] as KvKey;
-
-    await this.#setWithCasRetry<TraceSummary>(
-      summaryKey,
-      (existing) => {
-        const activityCount = existing != null ? existing.activityCount + 1 : 1;
-        const activityTypes = existing != null
-          ? existing.activityTypes.includes(record.activityType)
-            ? existing.activityTypes
-            : [...existing.activityTypes, record.activityType]
-          : [record.activityType];
-        return {
-          traceId: existing?.traceId ?? record.traceId,
-          timestamp: existing?.timestamp ?? record.timestamp,
-          activityCount,
-          activityTypes,
-        };
-      },
-      options,
-    );
   }
 
   /**
@@ -509,20 +455,61 @@ export class FedifySpanExporter implements SpanExporter {
   /**
    * Gets recent traces with summary information.
    *
+   * Each summary is computed directly from the activity records currently
+   * stored for each trace, rather than from a separately maintained
+   * counter.  This guarantees that a trace is discoverable, and its
+   * `activityCount` accurate, as soon as its records are stored, even if
+   * an earlier attempt at summarizing it (in a previous version of this
+   * exporter) never completed, and that the count always reflects
+   * records that have not expired.  It costs a full scan of every stored
+   * record on every call, including full inbound activity JSON.  The
+   * `limit` option only truncates the returned summaries and does not
+   * reduce the scan.  Callers that poll this method frequently should
+   * account for the total retained data when choosing a TTL and polling
+   * interval.
+   *
    * @param options Options for the query.
    * @returns An array of trace summaries.
    */
   async getRecentTraces(
     options?: GetRecentTracesOptions,
   ): Promise<TraceSummary[]> {
-    const summaryPrefix = [...this.#keyPrefix, "_summaries"] as KvKey;
-    const summaries: TraceSummary[] = [];
+    const aggregates = new Map<string, {
+      timestamp: string;
+      activityCount: number;
+      activityTypes: string[];
+    }>();
+    const traceIdIndex = this.#keyPrefix.length;
 
-    for await (const entry of this.#kv.list(summaryPrefix)) {
-      summaries.push(entry.value as TraceSummary);
+    for await (const entry of this.#kv.list(this.#keyPrefix)) {
+      const traceId = entry.key[traceIdIndex];
+      // Skip summary entries left behind by older versions of this
+      // exporter; they are no longer read or maintained.
+      if (traceId == null || traceId === "_summaries") continue;
+      const record = entry.value as TraceActivityRecord | undefined;
+      if (record == null || typeof record.timestamp !== "string") continue;
+
+      const aggregate = aggregates.get(traceId);
+      if (aggregate == null) {
+        aggregates.set(traceId, {
+          timestamp: record.timestamp,
+          activityCount: 1,
+          activityTypes: [record.activityType],
+        });
+      } else {
+        aggregate.activityCount++;
+        if (record.timestamp < aggregate.timestamp) {
+          aggregate.timestamp = record.timestamp;
+        }
+        if (!aggregate.activityTypes.includes(record.activityType)) {
+          aggregate.activityTypes.push(record.activityType);
+        }
+      }
     }
 
-    // Sort by timestamp descending (most recent first)
+    const summaries: TraceSummary[] = [...aggregates].map(
+      ([traceId, aggregate]) => ({ traceId, ...aggregate }),
+    );
     summaries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
     if (options?.limit != null) {
