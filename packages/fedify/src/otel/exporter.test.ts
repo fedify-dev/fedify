@@ -2,7 +2,7 @@ import { test } from "@fedify/fixture";
 import type { HrTime, SpanContext, SpanStatus } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode, TraceFlags } from "@opentelemetry/api";
 import type { ReadableSpan, TimedEvent } from "@opentelemetry/sdk-trace-base";
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import {
   type KvKey,
   type KvStore,
@@ -341,6 +341,167 @@ test("FedifySpanExporter", async (t) => {
 
       const traces = await exporter.getRecentTraces();
       assertEquals(traces.length >= 3, true);
+    },
+  );
+
+  function createOutboundSpan(traceId: string, spanId: string): ReadableSpan {
+    return createMockSpan({
+      traceId,
+      spanId,
+      name: "activitypub.send_activity",
+      events: [
+        createActivitySentEvent({
+          activityJson: JSON.stringify({
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: `https://local.example/activities/${spanId}`,
+          }),
+          inboxUrl: "https://follower.example/inbox",
+        }),
+      ],
+    });
+  }
+
+  await t.step(
+    "a trace with only one record is discoverable via " +
+      "getRecentTraces(), with no further write",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+      const traceId = "first-write-discoverable-trace";
+
+      await new Promise<void>((resolve) => {
+        exporter.export(
+          [createOutboundSpan(traceId, "span-a")],
+          () => resolve(),
+        );
+      });
+
+      const recent = await exporter.getRecentTraces();
+      const summary = recent.find((s) => s.traceId === traceId);
+      assertEquals(summary?.activityCount, 1);
+    },
+  );
+
+  await t.step(
+    "getRecentTraces() needs no additional writes to discover a trace " +
+      "or correct its activityCount",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+      const traceId = "query-time-correction-trace";
+
+      await new Promise<void>((resolve) => {
+        exporter.export(
+          [createOutboundSpan(traceId, "span-a")],
+          () => resolve(),
+        );
+      });
+      await new Promise<void>((resolve) => {
+        exporter.export(
+          [createOutboundSpan(traceId, "span-b")],
+          () => resolve(),
+        );
+      });
+
+      const originalSet = kv.set.bind(kv);
+      let writeCalls = 0;
+      kv.set = (key, value, options) => {
+        writeCalls++;
+        return originalSet(key, value, options);
+      };
+
+      const recent = await exporter.getRecentTraces();
+      const summary = recent.find((s) => s.traceId === traceId);
+      assertEquals(summary?.activityCount, 2);
+      assertEquals(writeCalls, 0);
+    },
+  );
+
+  await t.step(
+    "getRecentTraces() reflects only currently-retained records, " +
+      "e.g., after some have expired",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+      const traceId = "expiry-reflects-retained-trace";
+
+      await new Promise<void>((resolve) => {
+        exporter.export(
+          [
+            createOutboundSpan(traceId, "span-a"),
+            createOutboundSpan(traceId, "span-b"),
+          ],
+          () => resolve(),
+        );
+      });
+
+      let recent = await exporter.getRecentTraces();
+      assertEquals(
+        recent.find((s) => s.traceId === traceId)?.activityCount,
+        2,
+      );
+
+      // Stand in for span-a's record having expired (or otherwise been
+      // removed) since it was written: it is no longer returned by
+      // list(), so it must no longer be counted either.
+      await kv.delete(["fedify", "traces", traceId, "span-a"]);
+
+      recent = await exporter.getRecentTraces();
+      assertEquals(
+        recent.find((s) => s.traceId === traceId)?.activityCount,
+        1,
+      );
+    },
+  );
+
+  await t.step(
+    "getRecentTraces() polling cost scales with every retained record, " +
+      "not just records changed since the last poll, and limit does " +
+      "not reduce it",
+    async () => {
+      const kv = new MemoryKvStore();
+      const exporter = new FedifySpanExporter(kv);
+      const traceCount = 20;
+      const recordsPerTrace = 5;
+
+      for (let i = 0; i < traceCount; i++) {
+        const traceId = `poll-cost-trace-${i}`;
+        const spans = Array.from(
+          { length: recordsPerTrace },
+          (_, j) => createOutboundSpan(traceId, `span-${j}`),
+        );
+        await new Promise<void>((resolve) => {
+          exporter.export(spans, () => resolve());
+        });
+      }
+
+      const originalList = kv.list.bind(kv);
+      let entriesRead = 0;
+      let bytesRead = 0;
+      kv.list = async function* (prefix) {
+        for await (const entry of originalList(prefix)) {
+          entriesRead++;
+          bytesRead += JSON.stringify(entry.value).length;
+          yield entry;
+        }
+      };
+
+      const recent = await exporter.getRecentTraces();
+      assertEquals(recent.length, traceCount);
+      assertEquals(entriesRead, traceCount * recordsPerTrace);
+      assert(bytesRead > 0);
+      const entriesReadForFullScan = entriesRead;
+      const bytesReadForFullScan = bytesRead;
+
+      entriesRead = 0;
+      bytesRead = 0;
+      const limited = await exporter.getRecentTraces({ limit: 3 });
+      assertEquals(limited.length, 3);
+      // limit only truncates the array returned after the full scan; it
+      // does not reduce how much is scanned or read.
+      assertEquals(entriesRead, entriesReadForFullScan);
+      assertEquals(bytesRead, bytesReadForFullScan);
     },
   );
 
