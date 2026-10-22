@@ -24,7 +24,7 @@ To be released.
     much changed since the previous call, and `limit` does not reduce that
     cost; a deployment that retains many traces and polls
     `getRecentTraces()` should size its polling interval, TTL, and
-    `KvStore` choice accordingly.
+    `KvStore` choice accordingly.  [[#1257], [#1322] by Yujin Jung\]
  -  Fixed repeated HTTP signature verification and signing-key owner lookups
     when a request context was checked concurrently with the same document
     and context loaders.  `null` key-verification and owner-lookup results
@@ -33,8 +33,10 @@ To be released.
     key is not retained, allowing an owner lookup after another loader verifies
     the key.  [[#1313], [#1315]]
 
+[#1257]: https://github.com/fedify-dev/fedify/issues/1257
 [#1313]: https://github.com/fedify-dev/fedify/issues/1313
 [#1315]: https://github.com/fedify-dev/fedify/pull/1315
+[#1322]: https://github.com/fedify-dev/fedify/pull/1322
 
 ### @fedify/postgres
 

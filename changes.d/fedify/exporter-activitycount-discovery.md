@@ -1,3 +1,8 @@
+---
+links:
+  '#1257': https://github.com/fedify-dev/fedify/issues/1257
+  '#1322': https://github.com/fedify-dev/fedify/pull/1322
+---
  -  Fixed `FedifySpanExporter.getRecentTraces()`'s `activityCount` drifting
     from the number of records `getActivitiesByTraceId()` actually returns
     for a trace when a span was re-exported, and a trace becoming
@@ -12,4 +17,4 @@
     much changed since the previous call, and `limit` does not reduce that
     cost; a deployment that retains many traces and polls
     `getRecentTraces()` should size its polling interval, TTL, and
-    `KvStore` choice accordingly.
+    `KvStore` choice accordingly.  [[#1257], [#1322] by Yujin Jung]
