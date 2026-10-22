@@ -49,9 +49,10 @@ Then create a relay using the `createRelay()` function.
 
 ::: code-group
 
-~~~~ typescript twoslash [Deno]
+~~~~ typescript twoslash [Node.js]
 import { createRelay } from "@fedify/relay";
 import { MemoryKvStore } from "@fedify/fedify";
+import { serve } from "@hono/node-server";
 
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
@@ -63,7 +64,12 @@ const relay = createRelay("mastodon", {
   },
 });
 
-Deno.serve((request) => relay.fetch(request));
+serve({
+  port: 8000,
+  fetch(request) {
+    return relay.fetch(request);
+  },
+});
 ~~~~
 
 ~~~~ typescript twoslash [Bun]
@@ -90,10 +96,9 @@ Bun.serve({
 });
 ~~~~
 
-~~~~ typescript twoslash [Node.js]
+~~~~ typescript twoslash [Deno]
 import { createRelay } from "@fedify/relay";
 import { MemoryKvStore } from "@fedify/fedify";
-import { serve } from "@hono/node-server";
 
 const relay = createRelay("mastodon", {
   kv: new MemoryKvStore(),
@@ -105,12 +110,7 @@ const relay = createRelay("mastodon", {
   },
 });
 
-serve({
-  port: 8000,
-  fetch(request) {
-    return relay.fetch(request);
-  },
-});
+Deno.serve((request) => relay.fetch(request));
 ~~~~
 
 :::

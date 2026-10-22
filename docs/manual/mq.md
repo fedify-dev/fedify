@@ -14,7 +14,7 @@ Choosing a `MessageQueue` implementation
 
 When choosing an implementation, consider the following factors:
 
-1.  *Runtime environment*: Are you using [Deno], [Node.js], [Bun],
+1.  *Runtime environment*: Are you using [Node.js], [Bun], [Deno],
     or another JavaScript runtime?
 2.  *Scalability need*: Do you need to support multiple workers or servers?
 3.  *Persistence requirements*: Do messages need to survive server restarts?
@@ -24,9 +24,9 @@ When choosing an implementation, consider the following factors:
 Fedify provides several built-in `MessageQueue` implementations,
 each suited for different use cases:
 
-[Deno]: https://deno.com/
 [Node.js]: https://nodejs.org/
 [Bun]: https://bun.sh/
+[Deno]: https://deno.com/
 
 ### `InProcessMessageQueue`
 
@@ -57,47 +57,6 @@ const federation = createFederation<void>({
   // ... other options
 });
 ~~~~
-
-### `DenoKvMessageQueue` (Deno only)
-
-To use the [`DenoKvMessageQueue`], you need to install the *@fedify/denokv*
-package first:
-
-::: code-group
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/denokv
-~~~~
-
-:::
-
-[`DenoKvMessageQueue`] is a message queue implementation for [Deno] runtime that
-uses Deno's built-in [`Deno.openKv()`] API. It provides persistent storage and
-good performance for Deno environments.  It's suitable for production use in
-Deno applications.
-
-Best for
-:   Production use in Deno environments.
-
-Pros
-:   Persistent, scalable, easy to set up, native retry with exponential backoff.
-
-Cons
-:   Only available in Deno runtime.
-
-~~~~ typescript
-import { createFederation } from "@fedify/fedify";
-import { DenoKvMessageQueue } from "@fedify/denokv";
-
-const kv = await Deno.openKv();
-const federation = createFederation<void>({
-  queue: new DenoKvMessageQueue(kv),  // [!code highlight]
-  // ... other options
-});
-~~~~
-
-[`DenoKvMessageQueue`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvMessageQueue
-[`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
 
 ### [`RedisMessageQueue`]
 
@@ -452,23 +411,6 @@ Cons
 
 ::: code-group
 
-~~~~ typescript twoslash [Deno]
-import type { KvStore } from "@fedify/fedify";
-// ---cut-before---
-import { DatabaseSync } from "node:sqlite";
-import { createFederation } from "@fedify/fedify";
-import { SqliteMessageQueue } from "@fedify/sqlite";
-
-const db = new DatabaseSync(":memory:");
-const federation = createFederation<void>({
-  // ...
-  // ---cut-start---
-    kv: null as unknown as KvStore,
-  // ---cut-end---
-  queue: new SqliteMessageQueue(db),  // [!code highlight]
-});
-~~~~
-
 ~~~~ typescript twoslash [Node.js]
 import type { KvStore } from "@fedify/fedify";
 // ---cut-before---
@@ -503,11 +445,69 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+~~~~ typescript twoslash [Deno]
+import type { KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { DatabaseSync } from "node:sqlite";
+import { createFederation } from "@fedify/fedify";
+import { SqliteMessageQueue } from "@fedify/sqlite";
+
+const db = new DatabaseSync(":memory:");
+const federation = createFederation<void>({
+  // ...
+  // ---cut-start---
+    kv: null as unknown as KvStore,
+  // ---cut-end---
+  queue: new SqliteMessageQueue(db),  // [!code highlight]
+});
+~~~~
+
 :::
 
 [`SqliteMessageQueue`]: https://jsr.io/@fedify/sqlite/doc/mq/~/SqliteMessageQueue
 [`node:sqlite`]: https://nodejs.org/api/sqlite.html
 [`bun:sqlite`]: https://bun.com/docs/runtime/sqlite
+
+### `DenoKvMessageQueue` (Deno only)
+
+To use the [`DenoKvMessageQueue`], you need to install the *@fedify/denokv*
+package first:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/denokv
+~~~~
+
+:::
+
+[`DenoKvMessageQueue`] is a message queue implementation for [Deno] runtime that
+uses Deno's built-in [`Deno.openKv()`] API. It provides persistent storage and
+good performance for Deno environments.  It can be used in existing Deno
+applications.
+
+Best for
+:   Existing Deno applications.
+
+Pros
+:   Persistent, scalable, easy to set up, native retry with exponential backoff.
+
+Cons
+:   Only available in Deno runtime.
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+import { DenoKvMessageQueue } from "@fedify/denokv";
+
+const kv = await Deno.openKv();
+const federation = createFederation<void>({
+  queue: new DenoKvMessageQueue(kv),  // [!code highlight]
+  // ... other options
+});
+~~~~
+
+[`DenoKvMessageQueue`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvMessageQueue
+[`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
 
 ### `WorkersMessageQueue` (Cloudflare Workers only)
 
@@ -1130,31 +1130,6 @@ you can use the `~FederationOptions.manuallyStartQueue` option and
 
 ::: code-group
 
-~~~~ typescript{11-17} twoslash [Deno]
-import type { KvStore } from "@fedify/fedify";
-// ---cut-before---
-import { createFederation } from "@fedify/fedify";
-import { RedisMessageQueue } from "@fedify/redis";
-import Redis from "ioredis";
-
-const federation = createFederation<void>({
-  queue: new RedisMessageQueue(() => new Redis()),
-  manuallyStartQueue: true,  // [!code highlight]
-  // ... other options
-  // ---cut-start---
-  kv: null as unknown as KvStore,
-  // ---cut-end---
-});
-
-// Start the message queue manually only in worker nodes.
-// On non-worker nodes, the queue won't be started.
-if (Deno.env.get("NODE_TYPE") === "worker") {
-  const controller = new AbortController();
-  Deno.addSignalListener("SIGINT", () => controller.abort());
-  await federation.startQueue(undefined, { signal: controller.signal });
-}
-~~~~
-
 ~~~~ typescript{12-18} twoslash [Node.js/Bun]
 import type { KvStore } from "@fedify/fedify";
 // ---cut-before---
@@ -1177,6 +1152,31 @@ const federation = createFederation<void>({
 if (process.env.NODE_TYPE === "worker") {
   const controller = new AbortController();
   process.on("SIGINT", () => controller.abort());
+  await federation.startQueue(undefined, { signal: controller.signal });
+}
+~~~~
+
+~~~~ typescript{11-17} twoslash [Deno]
+import type { KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { createFederation } from "@fedify/fedify";
+import { RedisMessageQueue } from "@fedify/redis";
+import Redis from "ioredis";
+
+const federation = createFederation<void>({
+  queue: new RedisMessageQueue(() => new Redis()),
+  manuallyStartQueue: true,  // [!code highlight]
+  // ... other options
+  // ---cut-start---
+  kv: null as unknown as KvStore,
+  // ---cut-end---
+});
+
+// Start the message queue manually only in worker nodes.
+// On non-worker nodes, the queue won't be started.
+if (Deno.env.get("NODE_TYPE") === "worker") {
+  const controller = new AbortController();
+  Deno.addSignalListener("SIGINT", () => controller.abort());
   await federation.startQueue(undefined, { signal: controller.signal });
 }
 ~~~~
@@ -1487,32 +1487,6 @@ all queues).  The following example shows how to start only the `inbox` queue:
 
 ::: code-group
 
-~~~~ typescript twoslash [Deno]
-import type { KvStore } from "@fedify/fedify";
-import { createFederation } from "@fedify/fedify";
-import { RedisMessageQueue } from "@fedify/redis";
-import Redis from "ioredis";
-
-const federation = createFederation<void>({
-  queue: new RedisMessageQueue(() => new Redis()),
-  manuallyStartQueue: true,  // [!code highlight]
-  // ... other options
-  // ---cut-start---
-  kv: null as unknown as KvStore,
-  // ---cut-end---
-});
-
-// ---cut-before---
-if (Deno.env.get("NODE_TYPE") === "worker") {
-  const controller = new AbortController();
-  Deno.addSignalListener("SIGINT", () => controller.abort());
-  await federation.startQueue(undefined, {
-    signal: controller.signal,
-    queue: "inbox",  // [!code highlight]
-  });
-}
-~~~~
-
 ~~~~ typescript twoslash [Node.js/Bun]
 import type { KvStore } from "@fedify/fedify";
 import { createFederation } from "@fedify/fedify";
@@ -1533,6 +1507,32 @@ const federation = createFederation<void>({
 if (process.env.NODE_TYPE === "worker") {
   const controller = new AbortController();
   process.on("SIGINT", () => controller.abort());
+  await federation.startQueue(undefined, {
+    signal: controller.signal,
+    queue: "inbox",  // [!code highlight]
+  });
+}
+~~~~
+
+~~~~ typescript twoslash [Deno]
+import type { KvStore } from "@fedify/fedify";
+import { createFederation } from "@fedify/fedify";
+import { RedisMessageQueue } from "@fedify/redis";
+import Redis from "ioredis";
+
+const federation = createFederation<void>({
+  queue: new RedisMessageQueue(() => new Redis()),
+  manuallyStartQueue: true,  // [!code highlight]
+  // ... other options
+  // ---cut-start---
+  kv: null as unknown as KvStore,
+  // ---cut-end---
+});
+
+// ---cut-before---
+if (Deno.env.get("NODE_TYPE") === "worker") {
+  const controller = new AbortController();
+  Deno.addSignalListener("SIGINT", () => controller.abort());
   await federation.startQueue(undefined, {
     signal: controller.signal,
     queue: "inbox",  // [!code highlight]

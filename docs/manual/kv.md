@@ -88,18 +88,6 @@ Cons
 
 ::: code-group
 
-~~~~ typescript twoslash [Deno]
-import { DatabaseSync } from "node:sqlite";
-import { createFederation } from "@fedify/fedify";
-import { SqliteKvStore } from "@fedify/sqlite";
-
-const db = new DatabaseSync(":memory:");
-const federation = createFederation<void>({
-  // ...
-  kv: new SqliteKvStore(db),
-});
-~~~~
-
 ~~~~ typescript twoslash [Node.js]
 import { DatabaseSync } from "node:sqlite";
 import { createFederation } from "@fedify/fedify";
@@ -118,6 +106,18 @@ import { createFederation } from "@fedify/fedify";
 import { SqliteKvStore } from "@fedify/sqlite";
 
 const db = new Database(":memory:");
+const federation = createFederation<void>({
+  // ...
+  kv: new SqliteKvStore(db),
+});
+~~~~
+
+~~~~ typescript twoslash [Deno]
+import { DatabaseSync } from "node:sqlite";
+import { createFederation } from "@fedify/fedify";
+import { SqliteKvStore } from "@fedify/sqlite";
+
+const db = new DatabaseSync(":memory:");
 const federation = createFederation<void>({
   // ...
   kv: new SqliteKvStore(db),
@@ -148,48 +148,6 @@ const federation = createFederation<void>({
 [`node:sqlite`]: https://nodejs.org/api/sqlite.html
 [`bun:sqlite`]: https://bun.com/docs/api/sqlite
 [conditional exports]: https://nodejs.org/api/packages.html#conditional-exports
-
-### `DenoKvStore` (Deno only)
-
-To use the [`DenoKvStore`], you need to install the *@fedify/denokv* package
-first:
-
-::: code-group
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/denokv
-~~~~
-
-:::
-
-[`DenoKvStore`] is a key–value store implementation for [Deno] runtime that uses
-Deno's built-in [`Deno.openKv()`] API. It provides persistent storage and good
-performance for Deno environments.  It's suitable for production use in Deno
-applications.
-
-Best for
-:   Production use in Deno environments.
-
-Pros
-:   Persistent storage, good performance, easy to set up.
-
-Cons
-:   Only available in Deno runtime.
-
-~~~~ typescript
-import { createFederation } from "@fedify/fedify";
-import { DenoKvStore } from "@fedify/denokv";
-
-const kv = await Deno.openKv();
-const federation = createFederation<void>({
-  kv: new DenoKvStore(kv),
-  // ... other options
-});
-~~~~
-
-[`DenoKvStore`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvStore
-[Deno]: https://deno.com/
-[`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
 
 ### [`RedisKvStore`]
 
@@ -435,6 +393,48 @@ const federation = createFederation<void>({
 ~~~~
 
 [`MysqlKvStore`]: https://jsr.io/@fedify/mysql/doc/kv/~/MysqlKvStore
+
+### `DenoKvStore` (Deno only)
+
+To use the [`DenoKvStore`], you need to install the *@fedify/denokv* package
+first:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/denokv
+~~~~
+
+:::
+
+[`DenoKvStore`] is a key–value store implementation for [Deno] runtime that uses
+Deno's built-in [`Deno.openKv()`] API. It provides persistent storage and good
+performance for Deno environments.  It can be used in existing Deno
+applications.
+
+Best for
+:   Existing Deno applications.
+
+Pros
+:   Persistent storage, good performance, easy to set up.
+
+Cons
+:   Only available in Deno runtime.
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+import { DenoKvStore } from "@fedify/denokv";
+
+const kv = await Deno.openKv();
+const federation = createFederation<void>({
+  kv: new DenoKvStore(kv),
+  // ... other options
+});
+~~~~
+
+[`DenoKvStore`]: https://jsr.io/@fedify/denokv/doc/~/DenoKvStore
+[Deno]: https://deno.com/
+[`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
 
 ### `WorkersKvStore` (Cloudflare Workers only)
 

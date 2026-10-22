@@ -512,8 +512,8 @@ in:
 Process and runtime
 :   CPU, resident memory, heap usage, event-loop lag, and garbage-collection
     pauses.  These come from runtime instrumentation:
-    `@opentelemetry/instrumentation-runtime-node` on Node.js, the built-in
-    exporter on Deno (`OTEL_DENO=1`), and the equivalent for Bun.
+    `@opentelemetry/instrumentation-runtime-node` on Node.js, the equivalent
+    for Bun, and the built-in exporter on Deno (`OTEL_DENO=1`).
 
 Database and cache backend
 :   Connection-pool saturation, PostgreSQL query latency, Redis command

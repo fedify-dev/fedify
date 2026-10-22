@@ -17,16 +17,6 @@ This package provides a SQLite-based [`KvStore`] implementation for [Fedify].
 Usage
 -----
 
-### Deno
-
-~~~~ typescript
-import { DatabaseSync } from 'node:sqlite';
-import { SqliteKvStore } from '@fedify/sqlite';
-
-const db = new DatabaseSync('./data.db');
-const store = new SqliteKvStore(db);
-~~~~
-
 ### Node.js
 
 ~~~~ typescript
@@ -44,5 +34,15 @@ import { Database } from 'bun:sqlite';
 import { SqliteKvStore } from '@fedify/sqlite';
 
 const db = new Database('./data.db');
+const store = new SqliteKvStore(db);
+~~~~
+
+### Deno
+
+~~~~ typescript
+import { DatabaseSync } from 'node:sqlite';
+import { SqliteKvStore } from '@fedify/sqlite';
+
+const db = new DatabaseSync('./data.db');
 const store = new SqliteKvStore(db);
 ~~~~

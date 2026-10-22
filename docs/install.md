@@ -106,53 +106,19 @@ project setup wizard.
 Manual installation
 -------------------
 
-Fedify is available on [JSR] for [Deno] and on [npm] for [Bun] and [Node.js].
+Fedify is available on [npm] for [Node.js] and [Bun], and on [JSR] for [Deno].
 
+[npm]: https://www.npmjs.com/package/@fedify/fedify
+[Node.js]: https://nodejs.org/
+[Bun]: https://bun.sh/
 [JSR]: https://jsr.io/@fedify/fedify
 [Deno]: https://deno.com/
-[npm]: https://www.npmjs.com/package/@fedify/fedify
-[Bun]: https://bun.sh/
-[Node.js]: https://nodejs.org/
-
-### Deno
-
-[Deno] is the primary runtime for Fedify.  As a prerequisite, you need to have
-Deno 2.0.0 or later installed on your system.  Then you can install Fedify
-via the following command:
-
-~~~~ sh
-deno add jsr:@fedify/fedify
-~~~~
-
-Fedify requires the [`Temporal`] API.  On Deno 2.7.0 or later, it is stable and
-no extra setting is needed.  On Deno versions earlier than 2.7.0, add
-`"temporal"` to the `"unstable"` field in *deno.json*:
-
-~~~~ json{5}
-{
-  "imports": {
-    "@fedify/fedify": "jsr:@fedify/fedify"
-  },
-  "unstable": ["temporal"]
-}
-~~~~
-
-[`Temporal`]: https://tc39.es/proposal-temporal/docs/
-
-### Bun
-
-Fedify can also be used in Bun.  You can install it via the following
-command:
-
-~~~~ sh
-bun add @fedify/fedify
-~~~~
 
 ### Node.js
 
-Fedify can also be used in Node.js.  As a prerequisite, you need to have Node.js
-22.0.0 or later installed on your system.  Then you can install Fedify via
-the following command:
+[Node.js] is the primary runtime for Fedify.  As a prerequisite, you need to
+have Node.js 22.0.0 or later installed on your system.  Then you can install
+Fedify via the following command:
 
 ::: code-group
 
@@ -186,6 +152,40 @@ compatibility, ESM is the preferred approach:
 [ESM]: https://nodejs.org/api/esm.html
 [CommonJS]: https://nodejs.org/docs/latest/api/modules.html
 
+### Bun
+
+Fedify can also be used in Bun.  You can install it via the following
+command:
+
+~~~~ sh
+bun add @fedify/fedify
+~~~~
+
+### Deno
+
+Fedify can also be used in [Deno].  As a prerequisite, you need to have
+Deno 2.0.0 or later installed on your system.  Then you can install Fedify
+via the following command:
+
+~~~~ sh
+deno add jsr:@fedify/fedify
+~~~~
+
+Fedify requires the [`Temporal`] API.  On Deno 2.7.0 or later, it is stable and
+no extra setting is needed.  On Deno versions earlier than 2.7.0, add
+`"temporal"` to the `"unstable"` field in *deno.json*:
+
+~~~~ json{5}
+{
+  "imports": {
+    "@fedify/fedify": "jsr:@fedify/fedify"
+  },
+  "unstable": ["temporal"]
+}
+~~~~
+
+[`Temporal`]: https://tc39.es/proposal-temporal/docs/
+
 
 Editor setup
 ------------
@@ -197,6 +197,34 @@ up [Zed] takes a few extra steps because `fedify init` does not generate
 [Zed]: https://zed.dev/
 
 ### Visual Studio Code
+
+*For Node.js/Bun projects*, `fedify init` writes a *.vscode/extensions.json*
+that recommends the [Oxc extension]:
+
+~~~~ json [.vscode/extensions.json]
+{ "recommendations": ["oxc.oxc-vscode"] }
+~~~~
+
+The matching *.vscode/settings.json* sets Oxfmt as the default formatter and
+enables Oxc's fix-all action on save:
+
+~~~~ jsonc [.vscode/settings.json]
+{
+  "editor.detectIndentation": false,
+  "editor.indentSize": 2,
+  "editor.insertSpaces": true,
+  "oxc.fmt.configPath": ".oxfmtrc.json",
+  "[typescript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.oxc": "always"
+    }
+  }
+  // The same block applies to [javascript], [javascriptreact],
+  // [typescriptreact], [json], and [jsonc].
+}
+~~~~
 
 *For Deno projects*, `fedify init` writes a *.vscode/extensions.json* that
 recommends the [Deno extension]:
@@ -229,43 +257,29 @@ it as the default formatter for JavaScript and TypeScript:
 
 Deno's [*Set up your environment*] guide covers other editors and shells.
 
-*For Node.js/Bun projects*, `fedify init` writes a *.vscode/extensions.json*
-that recommends the [Oxc extension]:
-
-~~~~ json [.vscode/extensions.json]
-{ "recommendations": ["oxc.oxc-vscode"] }
-~~~~
-
-The matching *.vscode/settings.json* sets Oxfmt as the default formatter and
-enables Oxc's fix-all action on save:
-
-~~~~ jsonc [.vscode/settings.json]
-{
-  "editor.detectIndentation": false,
-  "editor.indentSize": 2,
-  "editor.insertSpaces": true,
-  "oxc.fmt.configPath": ".oxfmtrc.json",
-  "[typescript]": {
-    "editor.defaultFormatter": "oxc.oxc-vscode",
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.fixAll.oxc": "always"
-    }
-  }
-  // The same block applies to [javascript], [javascriptreact],
-  // [typescriptreact], [json], and [jsonc].
-}
-~~~~
-
+[Oxc extension]: https://marketplace.visualstudio.com/items?itemName=oxc.oxc-vscode
 [Deno extension]: https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno
 [*Set up your environment*]: https://docs.deno.com/runtime/getting_started/setup_your_environment/
-[Oxc extension]: https://marketplace.visualstudio.com/items?itemName=oxc.oxc-vscode
 
 ### Zed
 
 > [!TIP]
 > `fedify init` does not generate *.zed/* configuration; the snippets below
 > need to be added by hand.
+
+*For Node.js/Bun projects*, Zed enables its bundled TypeScript language
+server out of the box; the typical addition is wiring up Oxc for formatting
+and lint fixes.  See Zed's [TypeScript language docs][zed-ts] for setup.
+Set Oxc as the language server and turn on its fix-all action on format:
+
+~~~~ jsonc [.zed/settings.json]
+{
+  "language_servers": ["oxc", "..."],
+  "code_actions_on_format": {
+    "source.fixAll.oxc": true
+  }
+}
+~~~~
 
 *For Deno projects*, create *.zed/settings.json* that enables the Deno
 language server and uses it as the formatter for TypeScript and JavaScript.
@@ -301,31 +315,17 @@ not compete with Deno:
 Zed's [Deno language docs][zed-deno] cover the available options.
 [Hackers' Pub] is a real-world reference.
 
-*For Node.js/Bun projects*, Zed enables its bundled TypeScript language
-server out of the box; the typical addition is wiring up Oxc for formatting
-and lint fixes.  See Zed's [TypeScript language docs][zed-ts] for setup.
-Set Oxc as the language server and turn on its fix-all action on format:
-
-~~~~ jsonc [.zed/settings.json]
-{
-  "language_servers": ["oxc", "..."],
-  "code_actions_on_format": {
-    "source.fixAll.oxc": true
-  }
-}
-~~~~
-
+[zed-ts]: https://zed.dev/docs/languages/typescript
 [zed-deno]: https://zed.dev/docs/languages/deno
 [Hackers' Pub]: https://github.com/hackers-pub/hackerspub/blob/main/.zed/settings.json
-[zed-ts]: https://zed.dev/docs/languages/typescript
 
 
 Linting
 -------
 
-`fedify init` configures the [`@fedify/lint`] plugin automatically: Deno
-projects pick it up through `lint.plugins` in *deno.json*, and Node.js/Bun
-projects through a generated *.oxlintrc.json* using `@fedify/lint/oxlint`.
+`fedify init` configures the [`@fedify/lint`] plugin automatically: Node.js/Bun
+projects pick it up through a generated *.oxlintrc.json* using
+`@fedify/lint/oxlint`, and Deno projects through `lint.plugins` in *deno.json*.
 For the full rule list, configuration options, and how to run the linter, see
 the [*Linting*](./manual/lint.md) chapter.
 

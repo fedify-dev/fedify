@@ -644,10 +644,10 @@ const federation = createFederation({
 > [!NOTE]
 > The `InProcessMessageQueue` is a simple in-memory message queue that is
 > suitable for development and testing.  For production use, you should
-> consider using a more robust message queue, such as [`DenoKvMessageQueue`]
-> from [`@fedify/denokv`] package, [`RedisMessageQueue`] from
-> [`@fedify/redis`] package, or [`MysqlMessageQueue`] from
-> [`@fedify/mysql`] package.
+> consider using a more robust message queue, such as [`RedisMessageQueue`]
+> from the [`@fedify/redis`] package or [`MysqlMessageQueue`] from the
+> [`@fedify/mysql`] package. For existing Deno applications,
+> [`DenoKvMessageQueue`] from the [`@fedify/denokv`] package is also available.
 >
 > For more information, see the [*Message queue* section](./mq.md).
 
@@ -685,12 +685,12 @@ duplicate retry mechanisms and leverages the backend's optimized retry features.
 > your application so that each node can process messages in parallel with
 > the shared message queue.
 
-[`DenoKvMessageQueue`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvMessageQueue
-[`@fedify/denokv`]: https://github.com/fedify-dev/fedify/tree/main/packages/denokv
 [`RedisMessageQueue`]: https://jsr.io/@fedify/redis/doc/mq/~/RedisMessageQueue
 [`@fedify/redis`]: https://github.com/fedify-dev/fedify/tree/main/packages/redis
 [`MysqlMessageQueue`]: https://jsr.io/@fedify/mysql/doc/mq/~/MysqlMessageQueue
 [`@fedify/mysql`]: https://github.com/fedify-dev/fedify/tree/main/packages/mysql
+[`DenoKvMessageQueue`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvMessageQueue
+[`@fedify/denokv`]: https://github.com/fedify-dev/fedify/tree/main/packages/denokv
 
 
 Activity idempotency

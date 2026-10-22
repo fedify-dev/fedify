@@ -9,7 +9,7 @@
 
 *This package is available since Fedify 2.0.0.*
 
-This package provides [Deno Lint], [ESLint], and [Oxlint] plugins with lint
+This package provides [ESLint], [Oxlint], and [Deno Lint] plugins with lint
 rules specifically designed for [Fedify] applications.  It helps you catch
 common mistakes and enforce best practices when building federated server apps
 with Fedify.
@@ -28,30 +28,10 @@ The plugin includes rules that check for:
 [npm]: https://www.npmjs.com/package/@fedify/lint
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
 [@fedify@hackers.pub]: https://hackers.pub/@fedify
-[Deno Lint]: https://docs.deno.com/runtime/reference/lint_plugins/
 [ESLint]: https://eslint.org/
 [Oxlint]: https://oxc.rs/docs/guide/usage/linter/
+[Deno Lint]: https://docs.deno.com/runtime/reference/lint_plugins/
 [Fedify]: https://fedify.dev/
-
-### Deno Lint configuration example
-
-~~~~ typescript
-// deno.json
-
-{
-  "lint": {
-    "plugins": {
-      "@fedify/lint": "jsr:@fedify/lint"
-    },
-    "rules": {
-      "@fedify/lint/actor-id-required": "error",
-      "@fedify/lint/actor-id-mismatch": "error",
-      "@fedify/lint/actor-inbox-property-required": "warn"
-      // ... other rules
-    }
-  }
-}
-~~~~
 
 ### ESLint configuration example
 
@@ -74,6 +54,18 @@ export default fedifyLint;
     "@fedify/lint/actor-id-required": "error",
     "@fedify/lint/actor-id-mismatch": "error",
     "@fedify/lint/actor-inbox-property-required": "warn"
+  }
+}
+~~~~
+
+### Deno Lint configuration example
+
+~~~~ jsonc
+// deno.json
+
+{
+  "lint": {
+    "plugins": ["jsr:@fedify/lint"]
   }
 }
 ~~~~
@@ -179,61 +171,6 @@ bun add -D @fedify/lint
 :::
 
 
-Usage (Deno Lint)
------------------
-
-### Basic setup
-
-Add the plugin to your *deno.json* configuration file:
-
-~~~~ json
-{
-  "lint": {
-    "plugins": ["jsr:@fedify/lint"]
-  }
-}
-~~~~
-
-By default, this enables all recommended rules.
-
-### Custom configuration
-
-You can customize which rules to enable and their severity levels:
-
-~~~~ json
-{
-  "lint": {
-    "plugins": ["jsr:@fedify/lint"],
-    "rules": {
-      "tags": ["recommended"],
-      "include": [
-        "@fedify/lint/actor-id-required",
-        "@fedify/lint/actor-id-mismatch"
-      ],
-      "exclude": [
-        "@fedify/lint/actor-featured-property-required"
-      ]
-    }
-  }
-}
-~~~~
-
-### Running Deno Lint
-
-After setting up the configuration, run Deno's linter:
-
-~~~~ sh
-deno lint
-~~~~
-
-You can also specify which files to lint:
-
-~~~~ sh
-deno lint federation.ts
-deno lint src/federation/
-~~~~
-
-
 Usage (ESLint)
 --------------
 
@@ -312,128 +249,6 @@ export default [{
   ...plugin.configs.strict,
 }];
 ~~~~
-
-
-Example
--------
-
-Here's an example of code that would trigger lint errors:
-
-~~~~ typescript
-// ❌ Wrong: Using relative URL for actor ID
-import { createFederation, Person } from "@fedify/fedify";
-
-const federation = createFederation({ /* ... */ });
-
-federation.setActorDispatcher(
-  "/{identifier}",
-  (_ctx, identifier) => {
-    return new Person({
-      id: new URL(`/${identifier}`),  // ❌ Should use ctx.getActorUri()
-      name: "Example User",
-    });
-  },
-);
-~~~~
-
-Corrected version:
-
-~~~~ typescript
-// ✅ Correct: Using Context.getActorUri() for actor ID
-import { createFederation, Person } from "@fedify/fedify";
-
-const federation = createFederation({ /* ... */ });
-
-federation.setActorDispatcher(
-  "/{identifier}",
-  (ctx, identifier) => {
-    return new Person({
-      id: ctx.getActorUri(identifier),  // ✅ Correct
-      name: "Example User",
-      inbox: ctx.getInboxUri(identifier),
-      outbox: ctx.getOutboxUri(identifier),
-      followers: ctx.getFollowersUri(identifier),
-      // ... other required properties
-    });
-  },
-);
-~~~~
-
-
-Running the linter
-------------------
-
-### Deno Lint
-
-Run Deno's linter with the plugin enabled:
-
-~~~~ sh
-deno lint
-~~~~
-
-You can also specify which files or directories to lint:
-
-~~~~ sh
-deno lint federation.ts
-deno lint src/federation/
-~~~~
-
-### ESLint
-
-Set up your ESLint configuration as shown above and add a follwing script on
-`package.json`:
-
-~~~~ jsonc
-{
-  "scripts": {
-    "lint": "eslint ."
-  }
-}
-~~~~
-
-After setting up the configuration, run ESLint on your codebase:
-
-::: code-group
-
-~~~~ sh [npm]
-npm run lint
-~~~~
-
-~~~~ sh [pnpm]
-pnpm lint
-~~~~
-
-~~~~ sh [Yarn]
-yarn lint
-~~~~
-
-~~~~ sh [Bun]
-bun lint
-~~~~
-
-:::
-
-or run the linter directly via command line:
-
-::: code-group
-
-~~~~ sh [npm]
-npx eslint .
-~~~~
-
-~~~~ sh [pnpm]
-pnpx eslint .
-~~~~
-
-~~~~ sh [Yarn]
-yarn eslint .
-~~~~
-
-~~~~ sh [Bun]
-bunx eslint .
-~~~~
-
-:::
 
 
 Usage (Oxlint)
@@ -542,6 +357,186 @@ bunx oxlint .
 ~~~~
 
 :::
+
+
+Usage (Deno Lint)
+-----------------
+
+### Basic setup
+
+Add the plugin to your *deno.json* configuration file:
+
+~~~~ json
+{
+  "lint": {
+    "plugins": ["jsr:@fedify/lint"]
+  }
+}
+~~~~
+
+This enables every rule provided by the plugin. Deno reports plugin rules
+as errors; it does not support a recommended subset or configurable severity
+levels for plugin rules.
+
+### Custom configuration
+
+Disable individual plugin rules through `lint.rules.exclude`, using the
+plugin name `fedify-lint` as the prefix:
+
+~~~~ json
+{
+  "lint": {
+    "plugins": ["jsr:@fedify/lint"],
+    "rules": {
+      "exclude": [
+        "fedify-lint/actor-featured-property-required"
+      ]
+    }
+  }
+}
+~~~~
+
+`rules.tags` and `rules.include` apply to Deno's built-in rules, not plugin
+rules. See the [linting manual] for more details.
+
+[linting manual]: https://fedify.dev/manual/lint#turning-rules-off
+
+### Running Deno Lint
+
+After setting up the configuration, run Deno's linter:
+
+~~~~ sh
+deno lint
+~~~~
+
+You can also specify which files to lint:
+
+~~~~ sh
+deno lint federation.ts
+deno lint src/federation/
+~~~~
+
+
+Example
+-------
+
+Here's an example of code that would trigger lint errors:
+
+~~~~ typescript
+// ❌ Wrong: Using relative URL for actor ID
+import { createFederation, Person } from "@fedify/fedify";
+
+const federation = createFederation({ /* ... */ });
+
+federation.setActorDispatcher(
+  "/{identifier}",
+  (_ctx, identifier) => {
+    return new Person({
+      id: new URL(`/${identifier}`),  // ❌ Should use ctx.getActorUri()
+      name: "Example User",
+    });
+  },
+);
+~~~~
+
+Corrected version:
+
+~~~~ typescript
+// ✅ Correct: Using Context.getActorUri() for actor ID
+import { createFederation, Person } from "@fedify/fedify";
+
+const federation = createFederation({ /* ... */ });
+
+federation.setActorDispatcher(
+  "/{identifier}",
+  (ctx, identifier) => {
+    return new Person({
+      id: ctx.getActorUri(identifier),  // ✅ Correct
+      name: "Example User",
+      inbox: ctx.getInboxUri(identifier),
+      outbox: ctx.getOutboxUri(identifier),
+      followers: ctx.getFollowersUri(identifier),
+      // ... other required properties
+    });
+  },
+);
+~~~~
+
+
+Running the linter
+------------------
+
+### ESLint
+
+Set up your ESLint configuration as shown above and add a follwing script on
+`package.json`:
+
+~~~~ jsonc
+{
+  "scripts": {
+    "lint": "eslint ."
+  }
+}
+~~~~
+
+After setting up the configuration, run ESLint on your codebase:
+
+::: code-group
+
+~~~~ sh [npm]
+npm run lint
+~~~~
+
+~~~~ sh [pnpm]
+pnpm lint
+~~~~
+
+~~~~ sh [Yarn]
+yarn lint
+~~~~
+
+~~~~ sh [Bun]
+bun lint
+~~~~
+
+:::
+
+or run the linter directly via command line:
+
+::: code-group
+
+~~~~ sh [npm]
+npx eslint .
+~~~~
+
+~~~~ sh [pnpm]
+pnpx eslint .
+~~~~
+
+~~~~ sh [Yarn]
+yarn eslint .
+~~~~
+
+~~~~ sh [Bun]
+bunx eslint .
+~~~~
+
+:::
+
+### Deno Lint
+
+Run Deno's linter with the plugin enabled:
+
+~~~~ sh
+deno lint
+~~~~
+
+You can also specify which files or directories to lint:
+
+~~~~ sh
+deno lint federation.ts
+deno lint src/federation/
+~~~~
 
 
 See also

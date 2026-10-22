@@ -78,7 +78,7 @@ Some concrete reasons to switch:
  -  Core dependencies (`request`, `request-promise-native`, the MongoDB v4
     driver) are long-deprecated.
 
-Fedify addresses all five: it runs on Deno, Node.js, and Bun; exposes a shared
+Fedify addresses all five: it runs on Node.js, Bun, and Deno; exposes a shared
 inbox by default when you opt in; speaks draft-cavage HTTP Signatures,
 RFC 9421 HTTP Message Signatures, Linked Data Signatures, and Object Integrity
 Proofs; and ships durable queue backends via [`@fedify/postgres`],
@@ -660,7 +660,7 @@ dormant bucket for production planning.
 
 Fedify keeps federation and presentation separate, ships `signRequest`,
 `verifyRequest`, and `verifyObject` as public functions, and lets you run
-on Deno, Node.js, or Bun behind any of its framework integrations.
+on Node.js, Bun, or Deno behind any of its framework integrations.
 
 ### Mental-model mapping
 

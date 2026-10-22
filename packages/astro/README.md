@@ -78,44 +78,6 @@ export const onRequest = sequence(
 [Astro]: https://astro.build/
 
 
-For Deno users
---------------
-
-`@fedify/astro` remains available on JSR, but Deno-based Astro projects should
-install it and the other packages loaded by Astro from npm.  Astro loads
-integrations and middleware through Vite, which resolves bare imports through
-*node\_modules/* rather than Deno's JSR import map.  The npm specifiers let Deno
-populate *node\_modules/* for Vite.
-
-If you are using Deno, you should import `@deno/astro-adapter` in
-*astro.config.mjs* and use it as the adapter:
-
-~~~~ typescript
-import { defineConfig } from "astro/config";
-import { fedifyIntegration } from "@fedify/astro";
-import deno from "@deno/astro-adapter";
-
-export default defineConfig({
-  integrations: [fedifyIntegration()],
-  output: "server",
-  adapter: deno(),
-});
-~~~~
-
-And the tasks in *deno.json* should be updated to use `deno run npm:astro`
-instead of `astro`:
-
-~~~~ json
-{
-  "tasks": {
-    "dev": "deno run -A npm:astro dev",
-    "build": "deno run -A npm:astro build",
-    "preview": "deno run -A npm:astro preview"
-  }
-}
-~~~~
-
-
 For Bun users
 -------------
 
@@ -144,6 +106,44 @@ point after building for preview or production:
     "dev": "bunx --bun astro dev",
     "build": "bunx --bun astro build",
     "preview": "bun ./dist/server/entry.mjs"
+  }
+}
+~~~~
+
+
+For Deno users
+--------------
+
+`@fedify/astro` remains available on JSR, but Deno-based Astro projects should
+install it and the other packages loaded by Astro from npm.  Astro loads
+integrations and middleware through Vite, which resolves bare imports through
+*node\_modules/* rather than Deno's JSR import map.  The npm specifiers let Deno
+populate *node\_modules/* for Vite.
+
+If you are using Deno, you should import `@deno/astro-adapter` in
+*astro.config.mjs* and use it as the adapter:
+
+~~~~ typescript
+import { defineConfig } from "astro/config";
+import { fedifyIntegration } from "@fedify/astro";
+import deno from "@deno/astro-adapter";
+
+export default defineConfig({
+  integrations: [fedifyIntegration()],
+  output: "server",
+  adapter: deno(),
+});
+~~~~
+
+And the tasks in *deno.json* should use Astro 7 with manual *node\_modules/*
+management:
+
+~~~~ json
+{
+  "tasks": {
+    "dev": "deno run -A --node-modules-dir=manual npm:astro@7 dev",
+    "build": "deno run -A --node-modules-dir=manual npm:astro@7 build",
+    "preview": "deno run -A --node-modules-dir=manual npm:astro@7 preview"
   }
 }
 ~~~~
