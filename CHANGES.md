@@ -10,6 +10,33 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Fixed DNS rebinding bypassing the SSRF protection on Node.js and Bun.
+    Deno requires a separate deployment mitigation, described below, and
+    remains vulnerable without it.  `getAuthenticatedDocumentLoader()`,
+    outbound activity delivery (`sendActivity()`), and the NodeInfo client
+    (`getNodeInfo()`) resolved a hostname once to check that it was public,
+    and then let `fetch()` resolve it again to connect, so a hostname
+    answering with a public address for the check and a private one for
+    the connection could reach internal services.  On Node.js and Bun,
+    connections are now made only to the addresses that passed the check.
+    Bun deployments that set the `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY`
+    environment variables should use Bun 1.4.3 or later, since earlier
+    versions ignore the option to connect directly and send the requests
+    through the proxy; see [*Bun behind an HTTP proxy*] for mitigations.
+    On Bun versions before 1.3.11, requests to HTTPS servers on non-default
+    ports now fail, since those versions cannot verify the certificate of
+    a pinned connection against the original hostname; see
+    [*HTTPS servers on non-default ports with Bun*].  \[[GHSA-r48c-xx2h-fv4g]]
+ -  On Deno, `fetch()` offers no way to choose the addresses it connects to,
+    so Fedify cannot close the gap above.  Run Deno 2.8.1 or later with
+    `--deny-net` listing private IPv4 ranges, `[::1]`, and `[::]`, and
+    listen on a Unix domain socket.  IPv6 private ranges cannot be listed in
+    `--deny-net` and need to be blocked at the network layer.  See
+    [*Restricting outbound connections on Deno*] for details.  For new and
+    long-lived deployments, we recommend Node.js or Bun instead of Deno,
+    since the Deno team has announced that it will end its development of
+    the Deno runtime after a year of bug-fix and security releases.
+    [[GHSA-r48c-xx2h-fv4g]]
  -  Fixed `FedifySpanExporter.getRecentTraces()`'s `activityCount` drifting
     from the number of records `getActivitiesByTraceId()` actually returns
     for a trace when a span was re-exported, and a trace becoming
@@ -36,6 +63,10 @@ To be released.
     key is not retained, allowing an owner lookup after another loader verifies
     the key.  [[#1313], [#1315]]
 
+[*Bun behind an HTTP proxy*]: https://fedify.dev/manual/deploy#bun-behind-an-http-proxy
+[*HTTPS servers on non-default ports with Bun*]: https://fedify.dev/manual/deploy#https-servers-on-non-default-ports-with-bun
+[GHSA-r48c-xx2h-fv4g]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-r48c-xx2h-fv4g
+[*Restricting outbound connections on Deno*]: https://fedify.dev/manual/deploy#restricting-outbound-connections-on-deno
 [#1257]: https://github.com/fedify-dev/fedify/issues/1257
 [#1313]: https://github.com/fedify-dev/fedify/issues/1313
 [#1315]: https://github.com/fedify-dev/fedify/pull/1315
@@ -79,6 +110,31 @@ To be released.
 [#1305]: https://github.com/fedify-dev/fedify/issues/1305
 [#1306]: https://github.com/fedify-dev/fedify/pull/1306
 [#1307]: https://github.com/fedify-dev/fedify/pull/1307
+
+### @fedify/vocab-runtime
+
+ -  Fixed DNS rebinding bypassing the SSRF protection of
+    `getDocumentLoader()` on Node.js and Bun.  Deno requires a separate
+    deployment mitigation, described in the `@fedify/fedify` section above,
+    and remains vulnerable without it.  The document loader resolved
+    a hostname once to check that it was public, and then let `fetch()`
+    resolve it again to connect.  On Node.js and Bun, connections are now
+    made only to the addresses that passed the check.  The behavior of
+    `allowPrivateAddress` is unchanged.  \[[GHSA-r48c-xx2h-fv4g]]
+ -  Added [undici] `^7.30.1` as a dependency, which is used on Node.js to
+    connect only to validated addresses.  \[[GHSA-r48c-xx2h-fv4g]]
+ -  Documented that `validatePublicUrl()` only checks the addresses
+    a hostname currently resolves to and does not pin the connection, so it
+    alone does not prevent DNS rebinding.  \[[GHSA-r48c-xx2h-fv4g]]
+
+[undici]: https://undici.nodejs.org/
+
+### @fedify/webfinger
+
+ -  Fixed DNS rebinding bypassing the SSRF protection of `lookupWebFinger()`
+    on Node.js and Bun.  Deno requires a separate deployment mitigation,
+    described in the `@fedify/fedify` section above, and remains vulnerable
+    without it.  \[[GHSA-r48c-xx2h-fv4g]]
 
 
 Version 2.0.34

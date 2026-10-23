@@ -50,7 +50,7 @@ import {
 import { FetchError, getDocumentLoader, UrlError } from "@fedify/vocab-runtime";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 
-const documentLoader = getDocumentLoader();
+const documentLoader = getDocumentLoader({ allowPrivateAddress: true });
 import type { Context } from "./context.ts";
 import { type KvKey, type KvStoreSetOptions, MemoryKvStore } from "./kv.ts";
 import {
@@ -229,6 +229,10 @@ test({
         kv,
         documentLoaderFactory: () => rejectingLoader,
         contextLoaderFactory: () => mockDocumentLoader,
+        authenticatedDocumentLoaderFactory: (identity) =>
+          getAuthenticatedDocumentLoader(identity, {
+            allowPrivateAddress: true,
+          }),
       });
       let ctx = federation.createContext(
         new URL("https://example.com:1234/"),
@@ -371,7 +375,14 @@ test({
         documentUrl: "https://example.com/auth-check",
         document: true,
       });
-      assertEquals(await ctx.lookupObject("https://example.com/object"), null);
+      // The WebFinger fallback must not reach the network:
+      assertEquals(
+        await withDnsLookup(
+          () => Promise.reject(new Error("Resolver unavailable")),
+          () => ctx.lookupObject("https://example.com/object"),
+        ),
+        null,
+      );
       await assertRejects(
         () =>
           ctx.sendActivity({ identifier: "handle" }, [], new vocab.Create({})),
@@ -780,7 +791,9 @@ test({
       assertStrictEquals(clone.federation, ctx.federation);
     });
 
-    fetchMock.get("https://example.com/.well-known/nodeinfo", (cl) => {
+    // Bun connects to the resolved address instead of the hostname, so these
+    // routes match only the path; the lookup is stubbed in the step below:
+    fetchMock.get("path:/.well-known/nodeinfo", (cl) => {
       const headers = (cl.options.headers ?? {}) as
         | [string, string][]
         | Record<string, string>
@@ -801,7 +814,7 @@ test({
       );
     });
 
-    fetchMock.get("https://example.com/nodeinfo/2.1", (cl) => {
+    fetchMock.get("path:/nodeinfo/2.1", (cl) => {
       const headers = (cl.options.headers ?? {}) as
         | [string, string][]
         | Record<string, string>
@@ -826,7 +839,12 @@ test({
         new URL("https://example.com/"),
         123,
       );
-      const nodeInfo = await ctx.lookupNodeInfo("https://example.com/");
+      const lookupExample = () =>
+        Promise.resolve([{ address: "93.184.215.14", family: 4 }]);
+      const nodeInfo = await withDnsLookup(
+        lookupExample,
+        () => ctx.lookupNodeInfo("https://example.com/"),
+      );
       assertEquals(nodeInfo, {
         software: {
           name: "foo",
@@ -836,9 +854,10 @@ test({
         usage: { users: {}, localPosts: 123, localComments: 456 },
       });
 
-      const rawNodeInfo = await ctx.lookupNodeInfo("https://example.com/", {
-        parse: "none",
-      });
+      const rawNodeInfo = await withDnsLookup(
+        lookupExample,
+        () => ctx.lookupNodeInfo("https://example.com/", { parse: "none" }),
+      );
       assertEquals(rawNodeInfo, {
         software: { name: "foo", version: "1.2.3" },
         protocols: ["activitypub", "diaspora"],
@@ -1431,7 +1450,9 @@ test("Federation.fetch()", async (t) => {
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory(identity) {
-        const docLoader = getAuthenticatedDocumentLoader(identity);
+        const docLoader = getAuthenticatedDocumentLoader(identity, {
+          allowPrivateAddress: true,
+        });
         return (url: string) => {
           const urlObj = new URL(url);
           if (urlObj.host === "example.com") return docLoader(url);
@@ -1721,7 +1742,9 @@ test("Federation.setInboxListeners()", async (t) => {
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory(identity) {
-        const docLoader = getAuthenticatedDocumentLoader(identity);
+        const docLoader = getAuthenticatedDocumentLoader(identity, {
+          allowPrivateAddress: true,
+        });
         return (url: string) => {
           const urlObj = new URL(url);
           authenticatedRequests.push([url, identity.keyId.href]);
@@ -1929,7 +1952,9 @@ test("Federation.setInboxListeners()", async (t) => {
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory(identity) {
-        const docLoader = getAuthenticatedDocumentLoader(identity);
+        const docLoader = getAuthenticatedDocumentLoader(identity, {
+          allowPrivateAddress: true,
+        });
         return (url: string) => {
           const urlObj = new URL(url);
           if (urlObj.host === "example.com") return docLoader(url);
@@ -2156,7 +2181,7 @@ test("FederationImpl.sendActivity()", async (t) => {
   const kv = new MemoryKvStore();
   const federation = new FederationImpl<void>({
     kv,
-    contextLoaderFactory: () => mockDocumentLoader,
+    allowPrivateAddress: true,
   });
   const context = federation.createContext(new URL("https://example.com/"));
 
@@ -4894,7 +4919,7 @@ test("ContextImpl.sendActivity()", async (t) => {
   const kv = new MemoryKvStore();
   const federation = new FederationImpl<void>({
     kv,
-    contextLoaderFactory: () => mockDocumentLoader,
+    allowPrivateAddress: true,
   });
 
   federation
@@ -5053,7 +5078,7 @@ test("ContextImpl.sendActivity()", async (t) => {
   };
   const federation2 = new FederationImpl<void>({
     kv,
-    contextLoaderFactory: () => mockDocumentLoader,
+    allowPrivateAddress: true,
     queue,
   });
   federation2
@@ -5252,7 +5277,7 @@ test("ContextImpl.sendActivity()", async (t) => {
       };
       const fed = new FederationImpl<void>({
         kv,
-        contextLoaderFactory: () => mockDocumentLoader,
+        allowPrivateAddress: true,
         queue: asyncQueue,
         manuallyStartQueue: true,
       });
@@ -5492,14 +5517,19 @@ test({
     assert(await ctx.routeActivity("id", signedInvite));
     assertEquals(activities, [[null, signedOffer], ["id", signedInvite]]);
 
-    // Unsigned activity dereferenced to 404
+    // Unsigned activity dereferenced to 404; the WebFinger fallback of
+    // lookupObject() must not reach the network:
     assertFalse(
-      await ctx.routeActivity(
-        null,
-        new vocab.Create({
-          id: new URL("https://example.com/not-found"),
-          actor: new URL("https://example.com/person"),
-        }),
+      await withDnsLookup(
+        () => Promise.reject(new Error("Resolver unavailable")),
+        () =>
+          ctx.routeActivity(
+            null,
+            new vocab.Create({
+              id: new URL("https://example.com/not-found"),
+              actor: new URL("https://example.com/person"),
+            }),
+          ),
       ),
     );
     assertEquals(activities, [[null, signedOffer], ["id", signedInvite]]);
@@ -6039,7 +6069,7 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
   const kv = new MemoryKvStore();
   const federation = new FederationImpl<void>({
     kv,
-    contextLoaderFactory: () => mockDocumentLoader,
+    allowPrivateAddress: true,
   });
 
   await t.step("skip", async () => {
@@ -6349,3 +6379,21 @@ test("Federation.fetch() bounds inbox bodies before dispatch", async () => {
   assertEquals(accepted.status, 202);
   assert(dispatched);
 });
+
+/**
+ * Runs the given function while `node:dns/promises`' `lookup()`, which the
+ * default public fetch resolves hostnames with, is replaced, so that no test
+ * depends on the real DNS.
+ */
+async function withDnsLookup<T>(
+  lookup: (hostname: string) => Promise<unknown>,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const originalLookup = dns.lookup;
+  dns.lookup = lookup as typeof dns.lookup;
+  try {
+    return await fn();
+  } finally {
+    dns.lookup = originalLookup;
+  }
+}

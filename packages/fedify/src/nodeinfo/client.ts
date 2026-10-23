@@ -2,8 +2,11 @@ import {
   getUserAgent,
   type GetUserAgentOptions,
   UrlError,
-  validatePublicUrl,
 } from "@fedify/vocab-runtime";
+import {
+  openPublicFetch,
+  type PublicFetchSession,
+} from "@fedify/vocab-runtime/internal";
 import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
 import { MAX_BODY_SIZE, readBoundedText } from "../utils/body.ts";
@@ -23,26 +26,50 @@ const logger = getLogger(["fedify", "nodeinfo", "client"]);
 const DEFAULT_MAX_REDIRECTION = 5;
 
 /**
- * Fetches a URL while guarding against SSRF.  Before every request—including
- * each redirect hop—the destination is validated with
- * {@link validatePublicUrl}, so that loopback, link-local, and private
- * addresses, as well as non-HTTP(S) schemes such as `data:`, are rejected.
- * Redirects are followed manually with a cap, so that a public URL cannot
- * bounce the request to an internal address.
+ * The dependencies of {@link fetchPublicUrl} and {@link getNodeInfoInternal}.
+ * @internal
+ */
+export interface FetchPublicUrlDependencies {
+  /**
+   * Opens a fetch session for a single hop.  Defaults to `openPublicFetch()`.
+   */
+  readonly openHop?: (url: string) => Promise<PublicFetchSession>;
+}
+
+/**
+ * Fetches a URL while guarding against SSRF.  Every request—including each
+ * redirect hop—is made in its own session opened with `openPublicFetch()`,
+ * which rejects loopback, link-local, and private addresses, as well as
+ * non-HTTP(S) schemes such as `data:`, and connects only to the validated
+ * addresses where the runtime supports it.  Redirects are followed manually
+ * with a cap, so that a public URL cannot bounce the request to an internal
+ * address.
+ *
+ * The final response is passed to `consume`, which must consume or cancel its
+ * body; the session is closed after `consume` settles.  The cancellation of
+ * redirect response bodies is started before their sessions are closed.
  * @param url The URL to fetch.
  * @param headers The request headers.
- * @returns The final response, or `null` if the URL is disallowed, its
- *          hostname cannot be resolved, or there are too many redirects.
+ * @param consume The function to consume the final response with.
+ * @param deps The dependencies.
+ * @returns The value returned by `consume`, or `null` if the URL is
+ *          disallowed, its hostname cannot be resolved, or there are too many
+ *          redirects.
+ * @internal
  */
-async function fetchPublicUrl(
+export async function fetchPublicUrl<T>(
   url: URL | string,
   headers: Record<string, string>,
-): Promise<Response | null> {
+  consume: (response: Response) => Promise<T>,
+  deps: FetchPublicUrlDependencies = {},
+): Promise<T | null> {
+  const openHop = deps.openHop ?? ((hopUrl: string) => openPublicFetch(hopUrl));
   let current = url instanceof URL ? url : new URL(url);
   let redirected = 0;
   while (true) {
+    let session: PublicFetchSession;
     try {
-      await validatePublicUrl(current.href);
+      session = await openHop(current.href);
     } catch (e) {
       if (e instanceof UrlError) {
         if (e.reason === "dns") {
@@ -60,36 +87,60 @@ async function fetchPublicUrl(
       }
       throw e;
     }
-    const response = await fetch(current, { headers, redirect: "manual" });
-    if (
-      response.status >= 300 && response.status < 400 &&
-      response.headers.has("Location")
-    ) {
-      redirected++;
-      if (redirected >= DEFAULT_MAX_REDIRECTION) {
-        logger.error(
-          "Too many redirections ({redirections}) while fetching {url}.",
-          { redirections: redirected, url: current.href },
-        );
-        return null;
+    let location: string;
+    try {
+      const response = await session.fetch(current, {
+        headers,
+        redirect: "manual",
+      });
+      if (
+        response.status < 300 || response.status >= 400 ||
+        !response.headers.has("Location")
+      ) {
+        return await consume(response);
       }
-      const next = new URL(
-        response.headers.get("Location")!,
-        response.url == null || response.url === "" ? current : response.url,
-      );
-      if (next.protocol !== current.protocol) {
-        logger.error(
-          "Refused a redirect to a different protocol ({protocol} to " +
-            "{redirectedProtocol}) while fetching NodeInfo.",
-          { protocol: current.protocol, redirectedProtocol: next.protocol },
-        );
-        return null;
-      }
-      current = next;
-      continue;
+      location = response.headers.get("Location")!;
+      cancelBody(response, current);
+    } finally {
+      await session.close();
     }
-    return response;
+    redirected++;
+    if (redirected >= DEFAULT_MAX_REDIRECTION) {
+      logger.error(
+        "Too many redirections ({redirections}) while fetching {url}.",
+        { redirections: redirected, url: current.href },
+      );
+      return null;
+    }
+    // The request URL is the base, since a pinned response's url can be an
+    // IP address URL:
+    const next = new URL(location, current);
+    if (next.protocol !== current.protocol) {
+      logger.error(
+        "Refused a redirect to a different protocol ({protocol} to " +
+          "{redirectedProtocol}) while fetching NodeInfo.",
+        { protocol: current.protocol, redirectedProtocol: next.protocol },
+      );
+      return null;
+    }
+    current = next;
   }
+}
+
+/**
+ * Starts cancelling a response body that is not read, without waiting for it
+ * to settle.  The cancellation of a branch of a tee (e.g., a body cloned by
+ * a fetch mock) settles only after the other branch is cancelled too, per
+ * the Streams standard, so awaiting it could block forever.  A failure is
+ * only logged.
+ */
+function cancelBody(response: Response, url: URL | string): void {
+  response.body?.cancel().catch((error) => {
+    logger.debug(
+      "Failed to cancel the response body from {url}: {error}",
+      { url: url.toString(), error },
+    );
+  });
 }
 
 /**
@@ -166,28 +217,58 @@ export async function getNodeInfo(
   url: URL | string,
   options: GetNodeInfoOptions = {},
 ): Promise<NodeInfo | JsonValue | undefined> {
+  return await getNodeInfoInternal(url, options);
+}
+
+/**
+ * The implementation of {@link getNodeInfo}, which is not exported from any
+ * entry point.
+ * @param url The base URL of the server, or the URL of the NodeInfo document
+ *            if `options.direct` is turned on.
+ * @param options Options for fetching the NodeInfo document.
+ * @param deps The dependencies.
+ * @returns The NodeInfo document if it could be fetched successfully.
+ *          Otherwise, `undefined` is returned.
+ * @internal
+ */
+export async function getNodeInfoInternal(
+  url: URL | string,
+  options: GetNodeInfoOptions = {},
+  deps: FetchPublicUrlDependencies = {},
+): Promise<NodeInfo | JsonValue | undefined> {
   try {
+    const headers = {
+      Accept: "application/json",
+      "User-Agent": typeof options.userAgent === "string"
+        ? options.userAgent
+        : getUserAgent(options.userAgent),
+    };
     let nodeInfoUrl: URL | string = url;
     if (!options.direct) {
       const wellKnownUrl = new URL("/.well-known/nodeinfo", url);
-      const wellKnownResponse = await fetchPublicUrl(wellKnownUrl, {
-        Accept: "application/json",
-        "User-Agent": typeof options.userAgent === "string"
-          ? options.userAgent
-          : getUserAgent(options.userAgent),
-      });
-      if (wellKnownResponse == null) return undefined;
-      if (!wellKnownResponse.ok) {
-        logger.error("Failed to fetch {url}: {status} {statusText}", {
-          url: wellKnownUrl.href,
-          status: wellKnownResponse.status,
-          statusText: wellKnownResponse.statusText,
-        });
-        return undefined;
-      }
-      const wellKnownRd = JSON.parse(
-        await readBoundedText(wellKnownResponse, MAX_BODY_SIZE, wellKnownUrl),
-      ) as ResourceDescriptor;
+      const wellKnown = await fetchPublicUrl(
+        wellKnownUrl,
+        headers,
+        async (response) => {
+          if (!response.ok) {
+            logger.error("Failed to fetch {url}: {status} {statusText}", {
+              url: wellKnownUrl.href,
+              status: response.status,
+              statusText: response.statusText,
+            });
+            cancelBody(response, wellKnownUrl);
+            return undefined;
+          }
+          return {
+            rd: JSON.parse(
+              await readBoundedText(response, MAX_BODY_SIZE, wellKnownUrl),
+            ) as ResourceDescriptor,
+          };
+        },
+        deps,
+      );
+      if (wellKnown == null) return undefined;
+      const wellKnownRd = wellKnown.rd;
       const link = wellKnownRd?.links?.find((link) =>
         link != null &&
         "rel" in link &&
@@ -205,27 +286,32 @@ export async function getNodeInfo(
       }
       nodeInfoUrl = link.href;
     }
-    const response = await fetchPublicUrl(nodeInfoUrl, {
-      Accept: "application/json",
-      "User-Agent": typeof options.userAgent === "string"
-        ? options.userAgent
-        : getUserAgent(options.userAgent),
-    });
-    if (response == null) return undefined;
-    if (!response.ok) {
-      logger.error(
-        "Failed to fetch NodeInfo document from {url}: {status} {statusText}",
-        {
-          url: nodeInfoUrl.toString(),
-          status: response.status,
-          statusText: response.statusText,
-        },
-      );
-      return undefined;
-    }
-    const data = JSON.parse(
-      await readBoundedText(response, MAX_BODY_SIZE, nodeInfoUrl),
+    const document = await fetchPublicUrl(
+      nodeInfoUrl,
+      headers,
+      async (response) => {
+        if (!response.ok) {
+          logger.error(
+            "Failed to fetch NodeInfo document from {url}: {status} {statusText}",
+            {
+              url: nodeInfoUrl.toString(),
+              status: response.status,
+              statusText: response.statusText,
+            },
+          );
+          cancelBody(response, nodeInfoUrl);
+          return undefined;
+        }
+        return {
+          data: JSON.parse(
+            await readBoundedText(response, MAX_BODY_SIZE, nodeInfoUrl),
+          ) as unknown,
+        };
+      },
+      deps,
     );
+    if (document == null) return undefined;
+    const { data } = document;
     if (options.parse === "none") return data as JsonValue;
     return parseNodeInfo(data, {
       tryBestEffort: options.parse === "best-effort",

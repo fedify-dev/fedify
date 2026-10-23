@@ -9,6 +9,12 @@ import { lookupObject, traverseCollection } from "./lookup.ts";
 import { assertInstanceOf } from "./utils.ts";
 import { Collection, Note, Object, Person } from "./vocab.ts";
 
+// lookupObject() accepts this option without declaring it, since Fedify's
+// Context passes it.  It makes WebFinger lookups use the global fetch()
+// (fetch-mock here) without resolving hostnames, so that the tests do not
+// depend on the real DNS:
+const allowPrivateAddress = { allowPrivateAddress: true };
+
 test("lookupObject()", {
   sanitizeResources: false,
   sanitizeOps: false,
@@ -42,6 +48,7 @@ test("lookupObject()", {
   const options = {
     documentLoader: mockDocumentLoader,
     contextLoader: mockDocumentLoader,
+    ...allowPrivateAddress,
   };
 
   await t.step("actor", async () => {
@@ -479,6 +486,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
 
     // Default behavior should return null
     const result1 = await lookupObject("@user@example.com", {
+      ...allowPrivateAddress,
       documentLoader: webfingerDocumentLoader,
       contextLoader: mockDocumentLoader,
     });
@@ -488,6 +496,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
     await rejects(
       () =>
         lookupObject("@user@example.com", {
+          ...allowPrivateAddress,
           documentLoader: webfingerDocumentLoader,
           contextLoader: mockDocumentLoader,
           crossOrigin: "throw",
@@ -498,6 +507,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
 
     // With crossOrigin: trust, should return the object
     const result2 = await lookupObject("@user@example.com", {
+      ...allowPrivateAddress,
       documentLoader: webfingerDocumentLoader,
       contextLoader: mockDocumentLoader,
       crossOrigin: "trust",
@@ -597,12 +607,22 @@ test("FEP-fe34: lookupObject() cross-origin security", {
       throw new Error("Network error");
     };
 
+    // The WebFinger fallback must not reach the network:
+    fetchMock.spyGlobal();
+    fetchMock.get("begin:https://example.com/.well-known/webfinger", 404);
+
     // Network errors should not be confused with cross-origin errors
-    const result = await lookupObject("https://example.com/note", {
-      documentLoader: errorDocumentLoader,
-      contextLoader: mockDocumentLoader,
-      crossOrigin: "throw",
-    });
+    let result;
+    try {
+      result = await lookupObject("https://example.com/note", {
+        ...allowPrivateAddress,
+        documentLoader: errorDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        crossOrigin: "throw",
+      });
+    } finally {
+      fetchMock.hardReset();
+    }
 
     // Should return null because the document loader failed,
     // not because of cross-origin policy
