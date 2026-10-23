@@ -40,7 +40,7 @@ export default class StateTrie<TEntry extends RouteEntry> {
     ).remove(entry);
 
   *candidates(path: Path): Generator<TEntry, void, unknown> {
-    yield* stateEntries(this.#root, path, 0);
+    yield* stateEntries(this.#root, path, 0, new Map());
   }
 }
 
@@ -64,11 +64,20 @@ const expressionKey = (
   { operator, vars: [{ explode, prefix }] }: ExpressionToken,
 ): string => [operator, explode ? "*" : "", prefix ?? ""].join("\0");
 
+type Visited<TEntry extends RouteEntry> = Map<StateNode<TEntry>, Set<number>>;
+
 function* stateEntries<TEntry extends RouteEntry>(
   node: StateNode<TEntry>,
   path: Path,
   index: number,
+  visited: Visited<TEntry>,
 ): Generator<TEntry, void, unknown> {
+  // Reachable entries depend only on this pair, not on earlier captures. The
+  // enclosing trie deduplicates and sorts entries before resolving a route.
+  let indexes = visited.get(node);
+  if (indexes == null) visited.set(node, indexes = new Set());
+  if (indexes.has(index)) return;
+  indexes.add(index);
   if (index === path.length) {
     yield* node.entries;
   }
@@ -79,12 +88,13 @@ function* stateEntries<TEntry extends RouteEntry>(
         edge.node,
         path,
         index + edge.text.length,
+        visited,
       );
     }
   }
 
   for (const edge of node.expressionEdges.values()) {
-    yield* expressionEntries(edge, path, index);
+    yield* expressionEntries(edge, path, index, visited);
   }
 }
 
@@ -92,11 +102,13 @@ function* expressionEntries<TEntry extends RouteEntry>(
   edge: ExpressionEdge<TEntry>,
   path: Path,
   index: number,
+  visited: Visited<TEntry>,
 ): Generator<TEntry, void, unknown> {
   for (const end of expressionEndIndexes(edge.node, path, index)) {
+    if (visited.get(edge.node)?.has(end)) continue;
     const expression = path.slice(index, end);
     if (!matchesExpressionShape(edge.operator, expression)) continue;
-    yield* stateEntries(edge.node, path, end);
+    yield* stateEntries(edge.node, path, end, visited);
   }
 }
 

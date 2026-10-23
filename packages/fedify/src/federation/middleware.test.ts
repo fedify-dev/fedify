@@ -1694,6 +1694,95 @@ test({
   },
 });
 
+test("Federation.fetch() accepts unencoded path colons", async () => {
+  const identifier = "https://pod.example/alice";
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  const dispatched: string[] = [];
+  federation.setActorDispatcher("/users/{identifier}", (ctx, id) => {
+    dispatched.push(id);
+    assertEquals(ctx.url.pathname, "/users/https:%2F%2Fpod.example%2Falice");
+    assertEquals(ctx.url.search, "?page=1");
+    assertEquals(ctx.request.url, ctx.url.href);
+    return new vocab.Person({ id: ctx.getActorUri(id) });
+  });
+  const request = new Request(
+    "https://local.example/users/https:%2F%2Fpod.example%2Falice?page=1",
+    { headers: { Accept: "application/activity+json" } },
+  );
+  const response = await federation.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  assertEquals(dispatched, [identifier]);
+  const canonical =
+    "https://local.example/users/https%3A%2F%2Fpod.example%2Falice";
+  const body = await response.json();
+  assert(body != null && typeof body === "object" && "id" in body);
+  assertEquals(body.id, canonical);
+  const ctx = federation.createContext(request, undefined);
+  assertEquals(ctx.getActorUri(identifier).href, canonical);
+  assertEquals(ctx.parseUri(new URL(canonical)), { type: "actor", identifier });
+  assertEquals(ctx.parseUri(new URL(request.url)), null);
+  assertEquals(
+    ctx.parseUri(new URL(canonical.replace("local.example", "other.example"))),
+    null,
+  );
+});
+
+test("Federation.fetch() verifies signatures over unencoded path colons", async (t) => {
+  const identifier = "https://pod.example/alice";
+  const canonical =
+    "https://local.example/users/https%3A%2F%2Fpod.example%2Falice/inbox";
+  const encoded = canonical + "?delivery=1";
+  const normalized = encoded.replace("%3A", ":");
+  for (const spec of ["draft-cavage-http-signatures-12", "rfc9421"] as const) {
+    for (const target of ["encoded", "normalized", "changed after signing"]) {
+      await t.step(`${spec}: ${target}`, async () => {
+        const recipients: (string | null)[] = [];
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          documentLoaderFactory: () => mockDocumentLoader,
+          contextLoaderFactory: () => mockDocumentLoader,
+        });
+        federation.setActorDispatcher(
+          "/users/{identifier}",
+          (ctx, id) => new vocab.Person({ id: ctx.getActorUri(id) }),
+        ).setKeyPairsDispatcher(() => []);
+        federation.setInboxListeners("/users/{identifier}/inbox")
+          .on(vocab.Create, (ctx) => {
+            recipients.push(ctx.recipient);
+          });
+        const signed = await signRequest(
+          new Request(target === "normalized" ? normalized : encoded, {
+            method: "POST",
+            headers: { "Content-Type": "application/activity+json" },
+            body: JSON.stringify(createFixture),
+          }),
+          rsaPrivateKey2,
+          rsaPublicKey2.id!,
+          { spec },
+        );
+        const request = target === "changed after signing"
+          ? new Request(normalized, signed)
+          : signed;
+        const response = await federation.fetch(request, {
+          contextData: undefined,
+        });
+        assertEquals(request.url, target === "encoded" ? encoded : normalized);
+        const valid = target !== "changed after signing";
+        assertEquals(response.status, valid ? 202 : 401);
+        assertEquals(recipients, valid ? [identifier] : []);
+        assertEquals(
+          federation.createContext(new URL(canonical), undefined)
+            .getInboxUri(identifier).href,
+          canonical,
+        );
+      });
+    }
+  }
+});
+
 test("Federation.fetch() [rfc9421] multiple POST signatures", async (t) => {
   for (const validSecond of [true, false]) {
     await t.step(

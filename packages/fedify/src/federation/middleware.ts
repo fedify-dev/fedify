@@ -2547,7 +2547,9 @@ export class FederationImpl<TContextData>
     onNotAcceptable ??= notAcceptable;
     onUnauthorized ??= unauthorized;
     const url = new URL(request.url);
-    const route = this.router.route(url.pathname as Path);
+    const route = this.router.route(url.pathname as Path, {
+      allowUnencodedColon: true,
+    });
     if (route == null) {
       metricState.endpoint = "not_found";
       return await onNotFound(request);
