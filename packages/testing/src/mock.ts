@@ -33,12 +33,14 @@ import {
   type DocumentLoader,
   formatIri,
   fromCompatibleEf61Id,
+  getDocumentLoader,
   getFe34Origin,
   parseDigestMultibase,
   parseHashlink,
   parseIri,
   type PortableObjectVerifier,
 } from "@fedify/vocab-runtime";
+import { trace } from "@opentelemetry/api";
 import {
   createContext,
   createInboxContext,
@@ -424,12 +426,15 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   private outboxListenersInitialized = false;
   private contextData?: TContextData;
   private receivedActivities: Activity[] = [];
+  private readonly documentLoader?: DocumentLoader;
+  private readonly contextLoader?: DocumentLoader;
 
   constructor(
     private options: {
       contextData?: TContextData;
       origin?: string;
       meterProvider?: any;
+      allowPrivateAddress?: boolean;
       tracerProvider?: any;
       documentLoader?: DocumentLoader;
       contextLoader?: DocumentLoader;
@@ -437,6 +442,11 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     } = {},
   ) {
     this.contextData = options.contextData;
+    this.documentLoader = options.documentLoader ??
+      (options.allowPrivateAddress
+        ? getDocumentLoader({ allowPrivateAddress: true })
+        : undefined);
+    this.contextLoader = options.contextLoader ?? this.documentLoader;
   }
 
   setNodeInfoDispatcher(path: string, dispatcher: any): void {
@@ -733,9 +743,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       data: contextData,
       federation: mockFederation as any,
       meterProvider: this.options.meterProvider,
-      tracerProvider: this.options.tracerProvider,
-      documentLoader: this.options.documentLoader,
-      contextLoader: this.options.contextLoader,
+      tracerProvider: this.options.tracerProvider ??
+        (this.documentLoader == null ? undefined : trace.getTracerProvider()),
+      documentLoader: this.documentLoader,
+      contextLoader: this.contextLoader,
       verifyPortableObject: this.options.verifyPortableObject,
       portableRequest: options.portableRequest,
     });
@@ -840,12 +851,34 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       );
     }
 
+    const receivedActivity = listeners.length > 0 && this.documentLoader != null
+      ? activity.clone({}, {
+        documentLoader: this.documentLoader,
+        contextLoader: this.contextLoader,
+      })
+      : activity;
+    if (receivedActivity !== activity) {
+      // _cachedJsonLd is an internal cross-package contract documented in
+      // @fedify/vocab-tools.  clone() drops this cache, so preserve it to keep
+      // unknown extensions when listeners serialize the received document.
+      Reflect.set(
+        receivedActivity,
+        "_cachedJsonLd",
+        Reflect.get(activity, "_cachedJsonLd"),
+      );
+    }
     for (const listener of listeners) {
       const context = createInboxContext({
         data: this.contextData as TContextData,
         federation: this as any,
+        documentLoader: this.documentLoader,
+        contextLoader: this.contextLoader,
+        tracerProvider: this.options.tracerProvider ??
+          (this.documentLoader == null ? undefined : trace.getTracerProvider()),
+        meterProvider: this.options.meterProvider,
+        verifyPortableObject: this.options.verifyPortableObject,
       });
-      await listener(context, activity);
+      await listener(context, receivedActivity);
     }
   }
 
@@ -1082,6 +1115,14 @@ export function createFederation<TContextData>(
      * @since 2.3.0
      */
     meterProvider?: any;
+    /**
+     * Use HTTP document loading for received activities and contexts created by
+     * this federation, allowing private addresses such as localhost.
+     * If false or omitted, contexts retain their no-op mock loaders and
+     * received activities retain their own loaders.
+     * @since 2.0.35
+     */
+    allowPrivateAddress?: boolean;
     tracerProvider?: any;
     /** The document loader used by mock context lookups. @since 2.4.0 */
     documentLoader?: DocumentLoader;

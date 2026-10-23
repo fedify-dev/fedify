@@ -6,6 +6,7 @@ export default [
   defineConfig({
     entry: [
       "src/mod.ts",
+      "src/internal.ts",
       "src/internal/jsonld-cache.ts",
       "src/internal/portable-dereference.ts",
       "src/internal/signed-representation.ts",
@@ -22,8 +23,12 @@ export default [
   }),
   defineConfig({
     outDir: "dist/tests",
-    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
-      .map((f) => f.replace(sep, "/")),
+    entry: [
+      ...await Array.fromAsync(glob(`src/**/*.test.ts`)),
+      // Run by the Node.js pinner tests in a child process, since Node.js
+      // cannot run TypeScript sources without flags before 22.6.0:
+      "src/pinners/testdata/node-child.ts",
+    ].map((f) => f.replace(sep, "/")),
     format: ["esm", "cjs"],
     platform: "node",
     deps: { neverBundle: [/^node:/, "@fedify/fixture"] },

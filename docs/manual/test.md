@@ -287,6 +287,40 @@ await federation.receiveActivity(activity);
 console.log("Sent activities:", federation.sentActivities);
 ~~~~
 
+To load actors or other referenced objects from a local HTTP server, pass
+`allowPrivateAddress: true`.  This enables HTTP document loading for received
+activities and contexts created by the mock federation, including addresses
+such as `localhost`:
+
+~~~~ typescript twoslash
+import { createFederation } from "@fedify/testing";
+import { Follow, Undo } from "@fedify/vocab";
+
+const federation = createFederation({
+  contextData: {},
+  allowPrivateAddress: true
+});
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox")
+  .on(Follow, async (ctx, follow) => {
+    const actor = await follow.getActor();
+  })
+  .on(Undo, async (ctx, undo) => {
+    const object = await undo.getObject();
+    if (object instanceof Follow) {
+      const actor = await object.getActor(ctx);
+    }
+  });
+~~~~
+
+*The `allowPrivateAddress` option is available since Fedify 2.0.35.*
+
+Received activities are cloned with the configured loaders.  Embedded objects
+remain shared, so pass the listener context to their getters, as in
+`object.getActor(ctx)` above.  If the option is `false` or omitted, contexts
+keep their no-op mock loaders and received activities keep their own loaders.
+
 ### Creating mock contexts
 
 You can create mock contexts using the `createContext()` method,

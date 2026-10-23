@@ -3703,7 +3703,7 @@ test(
         documentLoader: getAuthenticatedDocumentLoader({
           keyId: new URL("https://example.com/key2"),
           privateKey: rsaPrivateKey2,
-        }),
+        }, { allowPrivateAddress: true }),
         contextLoader: mockDocumentLoader,
         gateways: ["https://example.com"],
         verifyPortableObject: verifyPortableObjectProof,

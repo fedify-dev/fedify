@@ -12,6 +12,22 @@ export interface RouterOptions {
 }
 
 /**
+ * Options for an individual {@link Router.route} call.
+ * @since 2.3.15
+ */
+export interface RouterRouteOptions {
+  /**
+   * Accepts literal colons in variable values where expansion produces `%3A`.
+   * Exact matches, including trailing-slash retries, always take precedence.
+   * Literal template text remains exact. Defaults to `false`.
+   *
+   * Intended for inbound HTTP compatibility; identity lookups should keep
+   * the default strict matching.
+   */
+  readonly allowUnencodedColon?: boolean;
+}
+
+/**
  * Fully-resolved per-variable matching constraint.  Every template variable
  * is constrained even when it is not listed in {@link RouteOptions.variables};
  * the listed entries only override the defaults.  All fields are required;

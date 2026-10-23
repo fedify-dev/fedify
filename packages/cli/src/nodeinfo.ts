@@ -1,5 +1,5 @@
 import { getNodeInfo } from "@fedify/fedify";
-import { getUserAgent } from "@fedify/vocab-runtime";
+import { getUserAgent, validatePublicUrl } from "@fedify/vocab-runtime";
 import { createJimp } from "@jimp/core";
 import webp from "@jimp/wasm-webp";
 import { getLogger } from "@logtape/logtape";
@@ -32,6 +32,37 @@ import { userAgentOption } from "./options.ts";
 import { colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "nodeinfo"]);
+const MAX_FAVICON_REDIRECTS = 5;
+
+async function fetchFaviconResource(
+  url: URL | string,
+  userAgent?: string,
+): Promise<{ response: Response; url: URL }> {
+  let current = typeof url === "string" ? new URL(url) : url;
+  for (let redirects = 0;; redirects++) {
+    await validatePublicUrl(current.href);
+    const response = await fetch(current, {
+      headers: {
+        "User-Agent": userAgent == null ? getUserAgent() : userAgent,
+      },
+      redirect: "manual",
+    });
+    if (
+      response.status !== 301 && response.status !== 302 &&
+      response.status !== 303 && response.status !== 307 &&
+      response.status !== 308
+    ) {
+      return { response, url: current };
+    }
+    const location = response.headers.get("Location");
+    if (location == null) return { response, url: current };
+    await response.body?.cancel();
+    if (redirects >= MAX_FAVICON_REDIRECTS) {
+      throw new Error("Too many favicon redirects");
+    }
+    current = new URL(location, current);
+  }
+}
 
 export const Jimp = createJimp({
   formats: [...defaultFormats, webp],
@@ -207,13 +238,10 @@ export async function runNodeInfo(
     spinner.text = "Fetching the favicon...";
     try {
       const faviconUrl = await getFaviconUrl(url, command.userAgent);
-      const response = await fetch(faviconUrl, {
-        headers: {
-          "User-Agent": command.userAgent == null
-            ? getUserAgent()
-            : command.userAgent,
-        },
-      });
+      const { response } = await fetchFaviconResource(
+        faviconUrl,
+        command.userAgent,
+      );
       if (response.ok) {
         const contentType = response.headers.get("Content-Type");
         let buffer: ArrayBuffer = await response.arrayBuffer();
@@ -355,11 +383,10 @@ export async function getFaviconUrl(
   url: string | URL,
   userAgent?: string,
 ): Promise<URL> {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": userAgent == null ? getUserAgent() : userAgent,
-    },
-  });
+  const { response, url: finalUrl } = await fetchFaviconResource(
+    url,
+    userAgent,
+  );
   const text = await response.text();
   for (const match of text.matchAll(LINK_REGEXP)) {
     const attrs: Record<string, string> = {};
@@ -376,12 +403,12 @@ export async function getFaviconUrl(
       if (w < 38 || h < 19) continue;
     }
     if ("href" in attrs) {
-      const parsedUrl = new URL(attrs.href, response.url);
+      const parsedUrl = new URL(attrs.href, finalUrl);
       if (parsedUrl.pathname.toLowerCase().endsWith(".svg")) continue;
       return parsedUrl;
     }
   }
-  return new URL("/favicon.ico", response.url);
+  return new URL("/favicon.ico", finalUrl);
 }
 
 function checkTerminalColorSupport(): "truecolor" | "256color" | "none" {

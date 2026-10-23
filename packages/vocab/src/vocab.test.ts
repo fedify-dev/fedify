@@ -1,3 +1,5 @@
+import { createDocumentLoader } from "../../vocab-runtime/src/docloader.ts";
+import { createPublicFetch } from "../../vocab-runtime/src/public-fetch.ts";
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import {
   decodeMultibase,
@@ -1996,7 +1998,14 @@ test({
     const activity2 = new Activity({
       object: new URL("https://example.com/not-found"),
     });
-    deepStrictEqual(await activity2.getObject({ suppressError: true }), null);
+    deepStrictEqual(
+      await activity2.getObject({
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        suppressError: true,
+      }),
+      null,
+    );
 
     const activity3 = await Activity.fromJsonLd({
       "@context": "https://www.w3.org/ns/activitystreams",
@@ -2208,7 +2217,11 @@ test({
       ],
     });
     const objects2 = await Array.fromAsync(
-      activity2.getObjects({ suppressError: true }),
+      activity2.getObjects({
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        suppressError: true,
+      }),
     );
     deepStrictEqual(objects2.length, 1);
     assertInstanceOf(objects2[0], Object);
@@ -6347,6 +6360,15 @@ for (const typeUri in types) {
 }
 
 test("Announce.getObject() suppresses redirect, context, and private URL logs", async () => {
+  // Validate every hop, including private redirect targets, while keeping
+  // hostname-based fetch mocks independent of runtime connection pinning.
+  const publicFetch = createPublicFetch({
+    pinner: () => Promise.resolve(null),
+    lookup: () => Promise.resolve([{ address: "93.184.215.14", family: 4 }]),
+  });
+  const documentLoader = createDocumentLoader({}, {
+    openHop: (url) => publicFetch.openPublicFetch(url),
+  });
   const records: LogRecord[] = [];
   const objectUrl = "https://example.com/suppression-object";
   const contextUrl = "https://example.com/suppression-context";
@@ -6408,7 +6430,14 @@ test("Announce.getObject() suppresses redirect, context, and private URL logs", 
             ),
           });
           if (suppressError) {
-            deepStrictEqual(await announce.getObject({ suppressError }), null);
+            deepStrictEqual(
+              await announce.getObject({
+                suppressError,
+                documentLoader,
+                contextLoader: documentLoader,
+              }),
+              null,
+            );
             deepStrictEqual(
               records.filter((r) => r.level === "error"),
               [],
@@ -6416,7 +6445,13 @@ test("Announce.getObject() suppresses redirect, context, and private URL logs", 
             );
             ok(records.some((r) => r.level === "warning"), scenario);
           } else {
-            await rejects(() => announce.getObject({ suppressError }));
+            await rejects(() =>
+              announce.getObject({
+                suppressError,
+                documentLoader,
+                contextLoader: documentLoader,
+              })
+            );
             ok(records.some((r) => r.level === "error"), scenario);
           }
           if (scenario === "private") deepStrictEqual(fetches, 0);
@@ -6655,7 +6690,7 @@ test("portable verifiers suppress document logs only during dereferencing", asyn
       try {
         for (const suppressError of [true, false, undefined]) {
           records.length = 0;
-          const baseLoader = getDocumentLoader();
+          const baseLoader = getDocumentLoader({ allowPrivateAddress: true });
           const calls: Parameters<DocumentLoader>[1][] = [];
           const documentLoader: DocumentLoader = (url, options) => {
             calls.push(options);

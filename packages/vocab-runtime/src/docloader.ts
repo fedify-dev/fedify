@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
+import { type Span, SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import metadata from "../deno.json" with { type: "json" };
 import {
   BodyTooLargeError,
@@ -10,12 +10,17 @@ import {
 import preloadedContexts from "./contexts.ts";
 import { HttpHeaderLink } from "./link.ts";
 import {
+  openDirectFetch,
+  openPublicFetch,
+  type PublicFetchSession,
+} from "./public-fetch.ts";
+import {
   createActivityPubRequest,
   FetchError,
   type GetUserAgentOptions,
   logRequest,
 } from "./request.ts";
-import { UrlError, validatePublicUrl } from "./url.ts";
+import { UrlError } from "./url.ts";
 
 const logger = getLogger(["fedify", "runtime", "docloader"]);
 const DEFAULT_MAX_REDIRECTION = 20;
@@ -187,7 +192,8 @@ async function bufferErrorResponse(
     try {
       await readBoundedBytes(response, MAX_ERROR_BODY_SIZE, url);
     } catch (error) {
-      await clone.body?.cancel().catch(() => {});
+      // Cancelling a tee branch must not block scoped session cleanup.
+      clone.body?.cancel().catch(() => {});
       if (signal?.aborted) throw error;
       logger.debug(
         "Failed to read the error response body from {url}: {error}",
@@ -222,7 +228,9 @@ async function bufferErrorResponse(
  * Gets a {@link RemoteDocument} from the given response.
  * @param url The URL of the document to load.
  * @param response The response to get the document from.
- * @param fetch The function to fetch the document.
+ * @param fetch The function to fetch the document.  It is called with the URL
+ *              of an alternate document, if any, after the response body has
+ *              been either read or its cancellation has been started.
  * @param options The options for loading the document.
  * @returns The loaded remote document.
  * @throws {FetchError} If the response is not OK.
@@ -237,7 +245,55 @@ export async function getRemoteDocument(
   ) => Promise<RemoteDocument>,
   options?: DocumentLoaderOptions,
 ): Promise<RemoteDocument> {
-  const documentUrl = response.url === "" ? url : response.url;
+  const result = await parseRemoteDocument(url, response, options);
+  if ("alternate" in result) return await fetch(result.alternate, options);
+  return result.document;
+}
+
+/**
+ * Starts cancelling the body of a response without waiting for it to settle.
+ * The cancellation of a branch of a tee (e.g., a body cloned by a fetch mock)
+ * settles only after the other branch is cancelled too, per the Streams
+ * standard, so awaiting it could block forever.  Failures are only logged.
+ * @param response The response whose body is cancelled.
+ * @param url The URL of the response, for logging.
+ */
+function cancelResponseBody(response: Response, url: string): void {
+  response.body?.cancel().catch((error) => {
+    logger.debug(
+      "Failed to cancel the response body from {url}: {error}",
+      { url, error },
+    );
+  });
+}
+
+/**
+ * The result of {@link parseRemoteDocument}: either the loaded document, or
+ * the URL of an alternate document to load instead.
+ */
+type ParsedRemoteDocument =
+  | { readonly document: RemoteDocument }
+  | { readonly alternate: string };
+
+/**
+ * Gets a {@link RemoteDocument} from the given response, or the URL of an
+ * alternate document to load instead.  When an alternate document is found,
+ * the response body has been either read or its cancellation has been started
+ * (without waiting for it), so that the alternate document can be loaded after
+ * the response's session is closed.
+ * @param url The URL of the document to load.
+ * @param response The response to get the document from.
+ * @returns The loaded remote document, or the alternate document URL.
+ * @throws {FetchError} If the response is not OK.
+ */
+async function parseRemoteDocument(
+  url: string,
+  response: Response,
+  options?: DocumentLoaderOptions,
+): Promise<ParsedRemoteDocument> {
+  // Since the response URL is an IP address URL on runtimes that pin
+  // connections, the request URL is used instead:
+  const documentUrl = url;
   const docUrl = new URL(documentUrl);
   if (!response.ok) {
     if (options?.suppressError) {
@@ -308,7 +364,8 @@ export async function getRemoteDocument(
             "Found alternate document: {alternateUrl} from {url}",
             { alternateUrl: altUri.href, url: documentUrl },
           );
-          return await fetch(altUri.href, options);
+          cancelResponseBody(response, documentUrl);
+          return { alternate: altUri.href };
         }
       }
     }
@@ -370,7 +427,7 @@ export async function getRemoteDocument(
           "Found alternate document: {alternateUrl} from {url}",
           { alternateUrl: attribs.href, url: documentUrl },
         );
-        return await fetch(new URL(attribs.href, docUrl).href, options);
+        return { alternate: new URL(attribs.href, docUrl).href };
       }
     }
     try {
@@ -397,7 +454,7 @@ export async function getRemoteDocument(
       headers: Object.fromEntries(response.headers.entries()),
     },
   );
-  return { contextUrl, document, documentUrl };
+  return { document: { contextUrl, document, documentUrl } };
 }
 
 /**
@@ -537,6 +594,37 @@ export interface GetDocumentLoaderOptions extends DocumentLoaderFactoryOptions {
  * @since 1.3.0
  */
 export function getDocumentLoader(
+  options: GetDocumentLoaderOptions = {},
+): DocumentLoader {
+  return createDocumentLoader(options);
+}
+
+/**
+ * The dependencies of {@link createDocumentLoader}.
+ */
+export interface DocumentLoaderDependencies {
+  /**
+   * Opens the fetch session for a single hop, instead of
+   * {@link openPublicFetch} (or {@link openDirectFetch} if private addresses
+   * are allowed).
+   */
+  readonly openHop?: (url: string) => Promise<PublicFetchSession>;
+}
+
+/**
+ * The outcome of a single hop of {@link createDocumentLoader}, decided while
+ * its fetch session is open.
+ */
+type HopOutcome = ParsedRemoteDocument | { readonly location: string };
+
+/**
+ * The implementation of {@link getDocumentLoader}, with injectable
+ * dependencies.  This is not exported from any entry point.
+ * @param options Options for the document loader.
+ * @param deps The dependencies.
+ * @returns The document loader.
+ */
+export function createDocumentLoader(
   {
     allowPrivateAddress,
     maxRedirection,
@@ -544,11 +632,75 @@ export function getDocumentLoader(
     timeout,
     userAgent,
   }: GetDocumentLoaderOptions = {},
+  deps: DocumentLoaderDependencies = {},
 ): DocumentLoader {
   const resolvedTimeout = resolveDocumentLoaderTimeout(timeout);
   const tracerProvider = trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   const maximumRedirection = maxRedirection ?? DEFAULT_MAX_REDIRECTION;
+
+  async function openHop(
+    url: string,
+    options?: DocumentLoaderOptions,
+  ): Promise<PublicFetchSession> {
+    try {
+      const session = deps.openHop != null
+        ? await deps.openHop(url)
+        : allowPrivateAddress
+        ? await openDirectFetch(url)
+        : await openPublicFetch(url, { signal: options?.signal });
+      if (options?.signal?.aborted) {
+        await session.close();
+        options.signal.throwIfAborted();
+      }
+      return session;
+    } catch (error) {
+      if (error instanceof UrlError) {
+        if (error.reason === "dns") {
+          logger.debug("DNS lookup failed for {url}", { url, error });
+        } else {
+          logger[options?.suppressError ? "warn" : "error"](
+            "Disallowed private URL: {url}",
+            { url, error },
+          );
+        }
+      }
+      throw error;
+    }
+  }
+
+  async function fetchHop(
+    session: PublicFetchSession,
+    url: string,
+    span: Span,
+    options?: DocumentLoaderOptions,
+  ): Promise<HopOutcome> {
+    try {
+      const request = createActivityPubRequest(url, { userAgent });
+      logRequest(logger, request);
+      const response = await session.fetch(request, {
+        // Since Bun has a bug that ignores the `Request.redirect` option,
+        // to work around it we specify `redirect: "manual"` here too:
+        // https://github.com/oven-sh/bun/issues/10754
+        redirect: "manual",
+        signal: options?.signal,
+      });
+      span.setAttribute("http.response.status_code", response.status);
+
+      // Follow redirects manually to get the final URL:
+      if (
+        response.status >= 300 && response.status < 400 &&
+        response.headers.has("Location")
+      ) {
+        const location = response.headers.get("Location")!;
+        cancelResponseBody(response, url);
+        return { location };
+      }
+      return await parseRemoteDocument(url, response, options);
+    } finally {
+      await session.close();
+    }
+  }
 
   async function load(
     url: string,
@@ -575,32 +727,9 @@ export function getDocumentLoader(
         documentUrl: currentUrl,
       };
     }
-    if (!allowPrivateAddress) {
-      try {
-        await validatePublicUrl(currentUrl);
-      } catch (error) {
-        if (error instanceof UrlError) {
-          if (error.reason === "dns") {
-            logger.debug("DNS lookup failed for {url}", {
-              url: currentUrl,
-              error,
-            });
-          } else {
-            logger[options?.suppressError ? "warn" : "error"](
-              "Disallowed private URL: {url}",
-              {
-                url: currentUrl,
-                error,
-              },
-            );
-          }
-        }
-        throw error;
-      }
-      // The DNS lookup cannot be aborted, so do not go on if the call was
-      // aborted or timed out in the meantime:
-      options?.signal?.throwIfAborted();
-    }
+    // Opening the session validates the URL; the session is closed by
+    // fetchHop() before the next hop is opened:
+    const session = await openHop(currentUrl, options);
     visited.add(currentUrl);
 
     return await tracer.startActiveSpan(
@@ -613,22 +742,8 @@ export function getDocumentLoader(
       },
       async (span) => {
         try {
-          const request = createActivityPubRequest(currentUrl, { userAgent });
-          logRequest(logger, request);
-          const response = await fetch(request, {
-            // Since Bun has a bug that ignores the `Request.redirect` option,
-            // to work around it we specify `redirect: "manual"` here too:
-            // https://github.com/oven-sh/bun/issues/10754
-            redirect: "manual",
-            signal: options?.signal,
-          });
-          span.setAttribute("http.response.status_code", response.status);
-
-          // Follow redirects manually to get the final URL:
-          if (
-            response.status >= 300 && response.status < 400 &&
-            response.headers.has("Location")
-          ) {
+          const outcome = await fetchHop(session, currentUrl, span, options);
+          if ("location" in outcome) {
             if (redirected >= maximumRedirection) {
               logger[options?.suppressError ? "warn" : "error"](
                 "Too many redirections ({redirections}) while fetching document.",
@@ -639,10 +754,7 @@ export function getDocumentLoader(
                 `Too many redirections (${redirected + 1})`,
               );
             }
-            const redirectUrl = new URL(
-              response.headers.get("Location")!,
-              response.url === "" ? currentUrl : response.url,
-            ).href;
+            const redirectUrl = new URL(outcome.location, currentUrl).href;
             span.setAttribute("http.redirect.url", redirectUrl);
             if (visited.has(redirectUrl)) {
               logger[options?.suppressError ? "warn" : "error"](
@@ -658,27 +770,26 @@ export function getDocumentLoader(
             return await load(redirectUrl, options, redirected + 1, visited);
           }
 
-          const result = await getRemoteDocument(
-            currentUrl,
-            response,
-            async (alternateUrl) => {
-              options?.signal?.throwIfAborted();
-              if (redirected >= DEFAULT_MAX_REDIRECTION) {
-                throw new FetchError(
-                  currentUrl,
-                  `Too many redirections (${redirected + 1})`,
-                );
-              }
-              if (visited.has(alternateUrl)) {
-                throw new FetchError(
-                  currentUrl,
-                  `Redirect loop detected: ${alternateUrl}`,
-                );
-              }
-              return await load(alternateUrl, options, redirected + 1, visited);
-            },
-            options,
-          );
+          let result: RemoteDocument;
+          if ("alternate" in outcome) {
+            const alternateUrl = outcome.alternate;
+            options?.signal?.throwIfAborted();
+            if (redirected >= DEFAULT_MAX_REDIRECTION) {
+              throw new FetchError(
+                currentUrl,
+                `Too many redirections (${redirected + 1})`,
+              );
+            }
+            if (visited.has(alternateUrl)) {
+              throw new FetchError(
+                currentUrl,
+                `Redirect loop detected: ${alternateUrl}`,
+              );
+            }
+            result = await load(alternateUrl, options, redirected + 1, visited);
+          } else {
+            result = outcome.document;
+          }
           span.setAttribute("docloader.document_url", result.documentUrl);
           if (result.contextUrl != null) {
             span.setAttribute("docloader.context_url", result.contextUrl);

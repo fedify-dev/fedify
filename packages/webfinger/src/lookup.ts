@@ -1,10 +1,4 @@
-import {
-  getUserAgent,
-  type GetUserAgentOptions,
-  UrlError,
-  validatePublicUrl,
-} from "@fedify/vocab-runtime";
-import { getLogger } from "@logtape/logtape";
+import type { GetUserAgentOptions } from "@fedify/vocab-runtime";
 import {
   type Attributes,
   type Counter,
@@ -16,12 +10,12 @@ import {
   type TracerProvider,
 } from "@opentelemetry/api";
 import metadata from "../deno.json" with { type: "json" };
-import { BodyTooLargeError, MAX_BODY_SIZE, readBoundedText } from "./body.ts";
 import type { ResourceDescriptor } from "./jrd.ts";
 
-const logger = getLogger(["fedify", "webfinger", "lookup"]);
-
-const DEFAULT_MAX_REDIRECTION = 5;
+import {
+  type LookupWebFingerDependencies,
+  lookupWebFingerInternal,
+} from "./lookup-impl.ts";
 
 /**
  * The terminal classification of an outgoing {@link lookupWebFinger} call,
@@ -124,7 +118,7 @@ function getMetricResourceScheme(scheme: string): string {
   return WEBFINGER_LOOKUP_SCHEME_WHITELIST.has(scheme) ? scheme : "other";
 }
 
-interface WebFingerLookupOutcome {
+export interface WebFingerLookupOutcome {
   resource: ResourceDescriptor | null;
   result: WebFingerLookupResult;
   statusCode?: number;
@@ -195,6 +189,19 @@ export async function lookupWebFinger(
   resource: URL | string,
   options: LookupWebFingerOptions = {},
 ): Promise<ResourceDescriptor | null> {
+  return await lookupWebFingerWithDependencies(resource, options);
+}
+
+/**
+ * The lookup implementation with injectable hop sessions for tests.
+ * Not exported from the package entry point.
+ * @internal
+ */
+export async function lookupWebFingerWithDependencies(
+  resource: URL | string,
+  options: LookupWebFingerOptions = {},
+  deps: LookupWebFingerDependencies = {},
+): Promise<ResourceDescriptor | null> {
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(
     metadata.name,
@@ -222,7 +229,7 @@ export async function lookupWebFinger(
         result: "error",
       };
       try {
-        outcome = await lookupWebFingerInternal(resource, options);
+        outcome = await lookupWebFingerInternal(resource, options, deps);
         span.setStatus({
           code: outcome.resource === null
             ? SpanStatusCode.ERROR
@@ -265,210 +272,4 @@ function recordWebFingerLookup(
   const instruments = getWebFingerInstruments(meterProvider);
   instruments.lookup.add(1, attributes);
   instruments.lookupDuration.record(durationMs, attributes);
-}
-
-async function lookupWebFingerInternal(
-  resource: URL | string,
-  options: LookupWebFingerOptions = {},
-): Promise<WebFingerLookupOutcome> {
-  if (typeof resource === "string") resource = new URL(resource);
-  let protocol = "https:";
-  let server: string;
-  if (resource.protocol === "acct:" || resource.protocol === "mailto:") {
-    // `acct:` (RFC 7565) and `mailto:` (RFC 6068, used as a WebFinger
-    // resource per RFC 7033 §4.5) are opaque-path schemes: their
-    // `user@host` authority lives in `pathname`, not in `host`.  The
-    // WebFinger host is extracted from the substring after the last
-    // `@`, and the lookup always goes to https on that host.
-    const atPos = resource.pathname.lastIndexOf("@");
-    if (atPos < 0) return { resource: null, result: "invalid" };
-    server = resource.pathname.substring(atPos + 1);
-    // The authority part of both schemes must be a bare host: no
-    // path, query, or fragment characters embedded in it.  The
-    // WHATWG URL parser routes anything after the first `?` or `#`
-    // into `search` / `hash`, so by the time we read `pathname` the
-    // only stray characters that can land in `server` are slashes.
-    // Reject those (along with an empty authority) for both schemes.
-    if (server === "" || /[/?#]/.test(server)) {
-      return { resource: null, result: "invalid" };
-    }
-    // `acct:` (RFC 7565 §3) is bare authority only: no `search` or
-    // `hash` allowed.  `mailto:` (RFC 6068 §2) explicitly permits
-    // `?hfields=…` header fields and fragment identifiers, so we
-    // forward those to the remote WebFinger lookup unchanged and
-    // only enforce the stricter shape for `acct:`.
-    if (
-      resource.protocol === "acct:" &&
-      (resource.search !== "" || resource.hash !== "")
-    ) {
-      return { resource: null, result: "invalid" };
-    }
-  } else {
-    protocol = resource.protocol;
-    server = resource.host;
-  }
-  let url = new URL(`${protocol}//${server}/.well-known/webfinger`);
-  url.searchParams.set("resource", resource.href);
-  let redirected = 0;
-  while (true) {
-    const remoteHost = url.host;
-    logger.debug(
-      "Fetching WebFinger resource descriptor from {url}...",
-      { url: url.href },
-    );
-    let response: Response;
-    if (options.allowPrivateAddress !== true) {
-      try {
-        await validatePublicUrl(url.href);
-      } catch (e) {
-        if (e instanceof UrlError) {
-          if (e.reason === "dns") {
-            logger.debug("DNS lookup failed for {url}", {
-              url: url.href,
-              error: e,
-            });
-          } else {
-            logger.error(
-              "Invalid URL for WebFinger resource descriptor: {error}",
-              { error: e },
-            );
-          }
-          return { resource: null, result: "network_error", remoteHost };
-        }
-        throw e;
-      }
-    }
-    try {
-      response = await fetch(url, {
-        headers: {
-          Accept: "application/jrd+json",
-          "User-Agent": typeof options.userAgent === "string"
-            ? options.userAgent
-            : getUserAgent(options.userAgent),
-        },
-        redirect: "manual",
-        signal: options.signal,
-      });
-    } catch (error) {
-      logger.debug(
-        "Failed to fetch WebFinger resource descriptor: {error}",
-        { url: url.href, error },
-      );
-      return { resource: null, result: "network_error", remoteHost };
-    }
-    if (
-      response.status >= 300 && response.status < 400 &&
-      response.headers.has("Location")
-    ) {
-      redirected++;
-      const maxRedirection = options.maxRedirection ?? DEFAULT_MAX_REDIRECTION;
-      // `maxRedirection: N` is documented as "the maximum number of
-      // redirections to follow", so the Nth redirect must still be
-      // followed and the (N+1)th rejected.  An earlier version used
-      // `>=` here, which drifted by one from the documented semantics
-      // and from the sibling code in @fedify/vocab-runtime's document
-      // loader.
-      if (redirected > maxRedirection) {
-        logger.error(
-          "Too many redirections ({redirections}) while fetching WebFinger " +
-            "resource descriptor.",
-          { redirections: redirected },
-        );
-        return {
-          resource: null,
-          result: "invalid",
-          statusCode: response.status,
-          remoteHost,
-        };
-      }
-      let redirectedUrl: URL;
-      try {
-        redirectedUrl = new URL(
-          response.headers.get("Location")!,
-          response.url == null || response.url === "" ? url : response.url,
-        );
-      } catch (e) {
-        logger.error(
-          "Invalid Location header while following WebFinger redirect: " +
-            "{error}",
-          { url: url.href, error: e },
-        );
-        return {
-          resource: null,
-          result: "invalid",
-          statusCode: response.status,
-          remoteHost,
-        };
-      }
-      if (redirectedUrl.protocol !== url.protocol) {
-        logger.error(
-          "Redirected to a different protocol ({protocol} to " +
-            "{redirectedProtocol}) while fetching WebFinger resource " +
-            "descriptor.",
-          {
-            protocol: url.protocol,
-            redirectedProtocol: redirectedUrl.protocol,
-          },
-        );
-        return {
-          resource: null,
-          result: "invalid",
-          statusCode: response.status,
-          remoteHost,
-        };
-      }
-      url = redirectedUrl;
-      continue;
-    }
-    if (!response.ok) {
-      logger.debug(
-        "Failed to fetch WebFinger resource descriptor: {status} {statusText}.",
-        {
-          url: url.href,
-          status: response.status,
-          statusText: response.statusText,
-        },
-      );
-      const isNotFound = response.status === 404 || response.status === 410;
-      return {
-        resource: null,
-        result: isNotFound ? "not_found" : "error",
-        statusCode: response.status,
-        remoteHost,
-      };
-    }
-    try {
-      const parsed = JSON.parse(
-        await readBoundedText(response, MAX_BODY_SIZE, url),
-      ) as ResourceDescriptor;
-      return {
-        resource: parsed,
-        result: "found",
-        statusCode: response.status,
-        remoteHost,
-      };
-    } catch (e) {
-      if (e instanceof BodyTooLargeError) {
-        return {
-          resource: null,
-          result: "invalid",
-          statusCode: response.status,
-          remoteHost,
-        };
-      }
-      if (e instanceof SyntaxError) {
-        logger.debug(
-          "Failed to parse WebFinger resource descriptor as JSON: {error}",
-          { error: e },
-        );
-        return {
-          resource: null,
-          result: "invalid",
-          statusCode: response.status,
-          remoteHost,
-        };
-      }
-      throw e;
-    }
-  }
 }

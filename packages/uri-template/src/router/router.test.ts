@@ -31,6 +31,137 @@ import type { PartialRouterRoute, RouterPathPattern } from "./types.ts";
 const runAddCases = createRouterAddTest(Router);
 test("Router.add()", runAddCases(routerRouteDefinitions));
 
+test("Router.route() handles long colon paths and encoding near misses", () => {
+  const router = new Router([
+    ["/o/{a}:{b}:{c}:{d}:{e}", "many"],
+    ["/o/{x}", "one"],
+  ]);
+  const colons = ":".repeat(2000);
+  equal(router.route(`/o/${colons}`), null);
+  deepEqual(router.route(`/o/${colons}`, { allowUnencodedColon: true }), {
+    name: "one",
+    template: "/o/{x}",
+    values: { x: colons },
+  });
+  for (const suffix of ["%", "%zz", "%3a", "=", "%41", "%FF"]) {
+    const path = `/o/${":".repeat(48)}${suffix}` as const;
+    equal(router.route(path), null, suffix);
+    equal(router.route(path, { allowUnencodedColon: true }), null, suffix);
+  }
+  const unicode = new Router([["/o/{x}", "one"]]);
+  deepEqual(
+    unicode.route("/o/%E2%82%AC:%C3%A9", { allowUnencodedColon: true })?.values,
+    {
+      x: "€:é",
+    },
+  );
+});
+
+test("Router.route() unencoded colon compatibility", async (t) => {
+  const pattern = Router.compile("/users/{identifier}/inbox");
+  const router = new Router([[pattern, "inbox"]]);
+  const path = "/users/https:%2F%2Fpod.example%2Falice/inbox";
+  equal(router.route(path), null);
+  equal(pattern.template.match(path), null);
+  equal(
+    router.build("inbox", { identifier: "https://pod.example/alice" }),
+    "/users/https%3A%2F%2Fpod.example%2Falice/inbox",
+  );
+  const cases: readonly [Path, string | null][] = [
+    [path, "https://pod.example/alice"],
+    ["/users/a:b%3Ac/inbox", "a:b:c"],
+    ["/users/a%25:b/inbox", "a%:b"],
+    ["/users/a%253A:b/inbox", "a%3A:b"],
+    ["/users/a%253Ab/inbox", "a%3Ab"],
+    ["/users/a%3Ab/inbox", "a:b"],
+    ["/users/a%3a:b/inbox", null],
+    ["/users/a:b%ZZ/inbox", null],
+    ["/users/a:b/c/inbox", null],
+    ["/users/a:b,c/inbox", null],
+    ["/users//inbox", null],
+  ];
+  for (const [input, identifier] of cases) {
+    await t.step(input, () => {
+      const result = router.route(input, { allowUnencodedColon: true });
+      deepEqual(
+        result,
+        identifier == null ? null : {
+          name: "inbox",
+          template: pattern.path,
+          values: { identifier },
+        },
+      );
+    });
+  }
+});
+
+test("Router.route() colon compatibility preserves literals and bindings", async (t) => {
+  const cases: readonly [Path, Path, Record<string, string> | null][] = [
+    ["/kind:/{id}", "/kind:/a:b", { id: "a:b" }],
+    ["/kind%3A/{id}", "/kind%3A/a:b", { id: "a:b" }],
+    ["/kind%3A/{id}", "/kind:/a:b", null],
+    ["/kind:/{id}", "/kind%3A/a:b", null],
+    ["/pair/{a,b}", "/pair/x:1,y", { a: "x:1", b: "y" }],
+    ["/objects/{type}:{id}", "/objects/a:b:c", { type: "a", id: "b:c" }],
+    ["/raw/{+id}", "/raw/a:b", { id: "a:b" }],
+    ["/raw/{+id}", "/raw/a%3Ab", { id: "a%3Ab" }],
+  ];
+  for (const [template, path, values] of cases) {
+    await t.step(`${template}: ${path}`, () => {
+      const router = new Router([[template, "route"]]);
+      deepEqual(
+        router.route(path, { allowUnencodedColon: true }),
+        values == null ? null : { name: "route", template, values },
+      );
+    });
+  }
+  const repeated = new Router([[
+    "/repeat/{id}/{id}",
+    "repeat",
+    { variables: { id: { duplicable: true } } },
+  ]]);
+  deepEqual(
+    repeated.route("/repeat/a:b/a%3Ab", { allowUnencodedColon: true })?.values,
+    { id: "a:b" },
+  );
+  equal(repeated.route("/repeat/a:b/a:c", { allowUnencodedColon: true }), null);
+});
+
+test("Router.route() colon compatibility keeps every strict match ahead", () => {
+  for (const reverse of [false, true]) {
+    for (
+      const strict of [
+        ["/users/a:b", "literal"],
+        ["/{+rest}", "reserved"],
+      ] as const
+    ) {
+      const routes: PartialRouterRoute[] = [["/users/{id}", "simple"], strict];
+      if (reverse) routes.reverse();
+      const router = new Router(routes);
+      equal(
+        router.route("/users/a:b", { allowUnencodedColon: true })?.name,
+        strict[1],
+      );
+    }
+  }
+  const router = new Router([
+    ["/users/{id}", "simple"],
+    ["/users/a:b/", "literal"],
+  ], { trailingSlashInsensitive: true });
+  equal(
+    router.route("/users/a:b", { allowUnencodedColon: true })?.name,
+    "literal",
+  );
+  const trailing = new Router([["/users/{id}/", "user"]], {
+    trailingSlashInsensitive: true,
+  });
+  deepEqual(trailing.route("/users/a:b", { allowUnencodedColon: true }), {
+    name: "user",
+    template: "/users/{id}/",
+    values: { id: "a:b" },
+  });
+});
+
 const runCompileErrorCases = createRouterCompileErrorTest(Router);
 test(
   "Router.compile() rejects invalid templates",

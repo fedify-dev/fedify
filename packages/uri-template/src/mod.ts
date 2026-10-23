@@ -22,6 +22,7 @@ export type {
   RouterOptions,
   RouterPathPattern,
   RouterRoute,
+  RouterRouteOptions,
   RouterRouteResult,
   RouteValues,
   VariableConstraint,

@@ -1,13 +1,43 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import { FetchError, UrlError } from "@fedify/vocab-runtime";
+import {
+  openDirectFetch,
+  openPublicFetch,
+  type PublicFetchSession,
+} from "@fedify/vocab-runtime/internal";
 import { assertEquals, assertRejects } from "@std/assert";
 import fetchMock from "fetch-mock";
-import dns from "node:dns/promises";
 import { deepStrictEqual, ok, rejects } from "node:assert/strict";
 import { verifyRequest } from "../sig/http.ts";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { rsaPrivateKey2 } from "../testing/keys.ts";
-import { getAuthenticatedDocumentLoader } from "./docloader.ts";
+import {
+  createAuthenticatedDocumentLoader,
+  getAuthenticatedDocumentLoader,
+} from "./docloader.ts";
+
+const identity = {
+  keyId: new URL("https://example.com/key2"),
+  privateKey: rsaPrivateKey2,
+};
+
+// Loads without address validation, so that requests reach fetch-mock with
+// their hostnames on every runtime (Bun pins validated hostnames to IPs):
+const directDeps = { openHop: openDirectFetch };
+
+// Applies the public address policy with the given lookup, and then fetches
+// without pinning, so that requests reach fetch-mock with their hostnames:
+function publicPolicyHop(
+  lookup: (hostname: string) => Promise<{ address: string; family: number }[]>,
+): (url: string) => Promise<PublicFetchSession> {
+  return async (url) => {
+    const session = await openPublicFetch(url, { lookup });
+    await session.close();
+    return openDirectFetch(url);
+  };
+}
+
+const publicLookup = () => Promise.resolve([{ address: "8.8.8.8", family: 4 }]);
 
 test("getAuthenticatedDocumentLoader()", async (t) => {
   fetchMock.spyGlobal();
@@ -30,10 +60,7 @@ test("getAuthenticatedDocumentLoader()", async (t) => {
   );
 
   await t.step("test", async () => {
-    const loader = await getAuthenticatedDocumentLoader({
-      keyId: new URL("https://example.com/key2"),
-      privateKey: rsaPrivateKey2,
-    });
+    const loader = createAuthenticatedDocumentLoader(identity, {}, directDeps);
     assertEquals(await loader("https://example.com/object"), {
       contextUrl: null,
       documentUrl: "https://example.com/object",
@@ -74,12 +101,13 @@ test("getAuthenticatedDocumentLoader()", async (t) => {
       },
     );
 
-    const loader = getAuthenticatedDocumentLoader(
+    const loader = createAuthenticatedDocumentLoader(
       {
         keyId: new URL("https://example.com/key2"),
         privateKey: rsaPrivateKey2,
       },
       { maxRedirection: 1 },
+      directDeps,
     );
     await assertRejects(
       () => loader("https://example.com/custom-too-many-redirects/0"),
@@ -105,11 +133,10 @@ test("getAuthenticatedDocumentLoader() validates redirects", async (t) => {
     return Response.json({ private: true });
   });
 
+  const policyDeps = { openHop: publicPolicyHop(publicLookup) };
+
   await t.step("deny public-to-private redirects", async () => {
-    const loader = getAuthenticatedDocumentLoader({
-      keyId: new URL("https://example.com/key2"),
-      privateKey: rsaPrivateKey2,
-    });
+    const loader = createAuthenticatedDocumentLoader(identity, {}, policyDeps);
     await assertRejects(
       () => loader("https://example.com/redirect-to-private"),
       UrlError,
@@ -127,10 +154,7 @@ test("getAuthenticatedDocumentLoader() validates redirects", async (t) => {
   );
 
   await t.step("allow public-to-public redirects", async () => {
-    const loader = getAuthenticatedDocumentLoader({
-      keyId: new URL("https://example.com/key2"),
-      privateKey: rsaPrivateKey2,
-    });
+    const loader = createAuthenticatedDocumentLoader(identity, {}, policyDeps);
     const remoteDocument = await loader(
       "https://example.com/redirect-to-public",
     );
@@ -179,10 +203,11 @@ test("getAuthenticatedDocumentLoader() cancellation", async (t) => {
             }),
         );
 
-        const loader = getAuthenticatedDocumentLoader({
-          keyId: new URL("https://example.com/key2"),
-          privateKey: rsaPrivateKey2,
-        });
+        const loader = createAuthenticatedDocumentLoader(
+          identity,
+          {},
+          directDeps,
+        );
 
         const controller = new AbortController();
         const promise = loader("https://example.com/slow-object", {
@@ -207,10 +232,11 @@ test("getAuthenticatedDocumentLoader() cancellation", async (t) => {
     });
 
     await t.step("immediate cancellation", async () => {
-      const loader = getAuthenticatedDocumentLoader({
-        keyId: new URL("https://example.com/key2"),
-        privateKey: rsaPrivateKey2,
-      });
+      const loader = createAuthenticatedDocumentLoader(
+        identity,
+        {},
+        directDeps,
+      );
 
       const controller = new AbortController();
       controller.abort();
@@ -303,10 +329,14 @@ test("authenticated document loader suppresses HTTP failure logs", async () => {
 
 test("authenticated document loader suppresses private URL logs", async () => {
   const records: LogRecord[] = [];
-  const loader = getAuthenticatedDocumentLoader({
-    keyId: new URL("https://example.com/key2"),
-    privateKey: rsaPrivateKey2,
-  });
+  const loader = createAuthenticatedDocumentLoader(
+    {
+      keyId: new URL("https://example.com/key2"),
+      privateKey: rsaPrivateKey2,
+    },
+    {},
+    { openHop: publicPolicyHop(publicLookup) },
+  );
   await reset();
   await configure({
     sinks: {
@@ -351,31 +381,22 @@ test("authenticated document loader suppresses private URL logs", async () => {
   }
 });
 
-test("getAuthenticatedDocumentLoader() logs DNS failures as such", {
-  // The validator skips DNS when Deno has no network permission.
-  ignore: "Deno" in globalThis &&
-    (await Deno.permissions.query({ name: "net" })).state !== "granted",
-}, async (t) => {
-  const loader = getAuthenticatedDocumentLoader({
-    keyId: new URL("https://example.com/key2"),
-    privateKey: rsaPrivateKey2,
-  });
+test("getAuthenticatedDocumentLoader() logs DNS failures as such", async (t) => {
   for (const result of ["throws", "empty", "private"] as const) {
     await t.step(result, async () => {
-      // Stubbing works only because vocab-runtime's url.ts uses the default
-      // node:dns/promises import; see the FIXME there.
-      const originalLookup = dns.lookup;
-      dns.lookup = (() =>
+      const lookup = () =>
         result === "throws"
           ? Promise.reject(new Error("Resolver unavailable"))
           : Promise.resolve(
             result === "empty" ? [] : [{ address: "127.0.0.1", family: 4 }],
-          )) as typeof dns.lookup;
+          );
+      const loader = createAuthenticatedDocumentLoader(identity, {}, {
+        openHop: (url) => openPublicFetch(url, { lookup }),
+      });
       const records: LogRecord[] = [];
       await configure({
         sinks: {
-          buffer: (record) =>
-            records.push(record),
+          buffer: (record) => records.push(record),
         },
         loggers: [
           { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
@@ -398,7 +419,6 @@ test("getAuthenticatedDocumentLoader() logs DNS failures as such", {
         assertEquals(records[0].properties.error, error);
       } finally {
         await reset();
-        dns.lookup = originalLookup;
       }
     });
   }
@@ -850,6 +870,271 @@ test("getAuthenticatedDocumentLoader() times out", async (t) => {
   });
 });
 
+test("getAuthenticatedDocumentLoader() closes each hop before opening the next", async (t) => {
+  await t.step("redirect", async () => {
+    const start = "https://example.com/lifecycle/start";
+    const next = "https://example.com/lifecycle/document";
+    const hops = recordHops((request): RecordedResponseInit =>
+      request.url === start
+        ? { status: 302, headers: { Location: next }, body: "Found" }
+        : {
+          headers: { "Content-Type": "application/activity+json" },
+          body: '{"done":true}',
+        }
+    );
+    const loader = createAuthenticatedDocumentLoader(identity, {}, hops);
+    deepStrictEqual(await loader(start), {
+      contextUrl: null,
+      document: { done: true },
+      documentUrl: next,
+    });
+    deepStrictEqual(hops.events, [
+      `open ${start}`,
+      `fetch #1 ${start}`,
+      "cancel #1",
+      `close ${start}`,
+      `open ${next}`,
+      `fetch #2 ${next}`,
+      "consumed #2",
+      `close ${next}`,
+    ]);
+    hops.assertInvariants();
+  });
+
+  await t.step("Link header alternate", async () => {
+    const start = "https://example.com/lifecycle/page";
+    const next = "https://example.com/lifecycle/alternate";
+    const hops = recordHops((request): RecordedResponseInit =>
+      request.url === start
+        ? {
+          headers: {
+            "Content-Type": "text/plain",
+            Link:
+              `<${next}>; rel="alternate"; type="application/activity+json"`,
+          },
+          body: "not JSON",
+        }
+        : {
+          headers: { "Content-Type": "application/activity+json" },
+          body: '{"done":true}',
+        }
+    );
+    const loader = createAuthenticatedDocumentLoader(identity, {}, hops);
+    deepStrictEqual((await loader(start)).document, { done: true });
+    deepStrictEqual(hops.events, [
+      `open ${start}`,
+      `fetch #1 ${start}`,
+      "cancel #1",
+      `close ${start}`,
+      `open ${next}`,
+      `fetch #2 ${next}`,
+      "consumed #2",
+      `close ${next}`,
+    ]);
+    hops.assertInvariants();
+  });
+
+  await t.step("one lookup per hop", async () => {
+    const start = "https://first.example/start";
+    const next = "https://second.example/document";
+    const lookups: string[] = [];
+    const lookup = (hostname: string) => {
+      lookups.push(hostname);
+      return Promise.resolve([{ address: "8.8.8.8", family: 4 }]);
+    };
+    // Bun connects to the IP address with the original Host header, so the
+    // stub tells the hops apart by their paths:
+    await withFetchStub(
+      (request) =>
+        new URL(request.url).pathname === "/start"
+          ? Response.redirect(next, 302)
+          : Response.json({ done: true }),
+      async (fetched) => {
+        const loader = createAuthenticatedDocumentLoader(identity, {}, {
+          openHop: (url) => openPublicFetch(url, { lookup }),
+        });
+        deepStrictEqual((await loader(start)).document, { done: true });
+        deepStrictEqual(lookups, ["first.example", "second.example"]);
+        deepStrictEqual(fetched.length, 2);
+      },
+    );
+  });
+});
+
+// Captures the debug logs of fedify while running the given function:
+async function captureLogs(fn: () => Promise<void>): Promise<LogRecord[]> {
+  const records: LogRecord[] = [];
+  await configure({
+    sinks: { buffer: (record) => records.push(record) },
+    loggers: [
+      { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+    reset: true,
+  });
+  try {
+    await fn();
+    // Let the rejected cancellations be logged:
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  } finally {
+    await reset();
+  }
+  return records;
+}
+
+// Gets the error messages of the logged failures to cancel response bodies:
+function getCancelFailures(records: readonly LogRecord[]): string[] {
+  return records
+    .filter((r) =>
+      r.rawMessage === "Failed to cancel the response body from {url}: {error}"
+    )
+    .map((r) => (r.properties.error as Error).message);
+}
+
+const linkAlternate = (next: string): RecordedResponseInit => ({
+  headers: {
+    "Content-Type": "text/plain",
+    Link: `<${next}>; rel="alternate"; type="application/activity+json"`,
+  },
+  body: "not JSON",
+});
+
+const jsonDocument: RecordedResponseInit = {
+  headers: { "Content-Type": "application/activity+json" },
+  body: '{"done":true}',
+};
+
+test("getAuthenticatedDocumentLoader() logs bodies failing to cancel and loads the next hop", async (t) => {
+  for (const kind of ["redirect", "Link header alternate"] as const) {
+    await t.step(kind, async () => {
+      const start = "https://example.com/lifecycle/cancel-failure";
+      const next = "https://example.com/lifecycle/cancel-failure-next";
+      const hops = recordHops((request): RecordedResponseInit =>
+        request.url === start
+          ? {
+            ...(kind === "redirect"
+              ? { status: 302, headers: { Location: next }, body: "Found" }
+              : linkAlternate(next)),
+            failCancel: true,
+          }
+          : jsonDocument
+      );
+      const loader = createAuthenticatedDocumentLoader(identity, {}, hops);
+      let document: unknown;
+      const records = await captureLogs(async () => {
+        document = (await loader(start)).document;
+      });
+      deepStrictEqual(document, { done: true });
+      deepStrictEqual(hops.events, [
+        `open ${start}`,
+        `fetch #1 ${start}`,
+        "cancel #1",
+        `close ${start}`,
+        `open ${next}`,
+        `fetch #2 ${next}`,
+        "consumed #2",
+        `close ${next}`,
+      ]);
+      deepStrictEqual(getCancelFailures(records), ["cancel #1 failed"]);
+      hops.assertInvariants();
+    });
+  }
+});
+
+test("getAuthenticatedDocumentLoader() is not blocked by a body cancellation that never settles", async (t) => {
+  await t.step("redirect and Link header alternate", async () => {
+    const start = "https://example.com/lifecycle/hanging-start";
+    const page = "https://example.com/lifecycle/hanging-page";
+    const next = "https://example.com/lifecycle/hanging-document";
+    const hops = recordHops((request): RecordedResponseInit => ({
+      ...(request.url === start
+        ? { status: 302, headers: { Location: page }, body: "Found" }
+        : request.url === page
+        ? linkAlternate(next)
+        : jsonDocument),
+      hangCancel: true,
+    }));
+    const loader = createAuthenticatedDocumentLoader(identity, {}, hops);
+    deepStrictEqual((await loader(start)).document, { done: true });
+    deepStrictEqual(hops.events, [
+      `open ${start}`,
+      `fetch #1 ${start}`,
+      "cancel #1",
+      `close ${start}`,
+      `open ${page}`,
+      `fetch #2 ${page}`,
+      "cancel #2",
+      `close ${page}`,
+      `open ${next}`,
+      `fetch #3 ${next}`,
+      "consumed #3",
+      `close ${next}`,
+    ]);
+    hops.assertInvariants();
+  });
+
+  await t.step("not found", async () => {
+    const url = "https://example.com/lifecycle/hanging-missing";
+    const hops = recordHops((): RecordedResponseInit => ({
+      status: 404,
+      body: "Not Found",
+      hangCancel: true,
+    }));
+    const loader = createAuthenticatedDocumentLoader(identity, {}, hops);
+    await rejects(loader(url), FetchError);
+    deepStrictEqual(hops.events.slice(0, 2), [
+      `open ${url}`,
+      `fetch #1 ${url}`,
+    ]);
+    deepStrictEqual(hops.events.at(-1), `close ${url}`);
+    hops.assertInvariants();
+  });
+});
+
+test("getAuthenticatedDocumentLoader() completes with responses cloned by fetch-mock", async () => {
+  // fetch-mock returns a clone (a tee branch) of a Response instance, whose
+  // cancellation never settles on Node.js:
+  fetchMock.mockGlobal();
+  try {
+    const base = "https://example.com/tee/";
+    fetchMock.get(
+      `${base}start`,
+      () =>
+        new Response("Found", {
+          status: 302,
+          headers: { Location: `${base}page` },
+        }),
+    );
+    fetchMock.get(
+      `${base}page`,
+      () =>
+        new Response("not JSON", {
+          headers: {
+            "Content-Type": "text/plain",
+            Link:
+              `<${base}document>; rel="alternate"; type="application/activity+json"`,
+          },
+        }),
+    );
+    fetchMock.get(
+      `${base}document`,
+      () =>
+        new Response('{"done":true}', {
+          headers: { "Content-Type": "application/activity+json" },
+        }),
+    );
+    fetchMock.get(
+      `${base}missing`,
+      () => new Response("Not Found", { status: 404 }),
+    );
+    const loader = createAuthenticatedDocumentLoader(identity, {}, directDeps);
+    deepStrictEqual((await loader(`${base}start`)).document, { done: true });
+    await rejects(loader(`${base}missing`), FetchError);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
 const unsupportedUrls = [
   "ftp://example.com/collection",
   "file:///collection",
@@ -1097,3 +1382,163 @@ for (const url of unsupportedUrls) {
     );
   }
 }
+
+interface RecordedResponseInit {
+  readonly status?: number;
+  readonly headers?: HeadersInit;
+  readonly body?: string;
+  readonly chunkSize?: number;
+  readonly failCancel?: boolean;
+  readonly hangCancel?: boolean;
+}
+
+interface RecordedResponse {
+  readonly response: Response;
+  readonly settled: () => boolean;
+}
+
+// Creates a response whose body records being read to the end
+// ("consumed #n") or cancelled ("cancel #n"):
+function createRecordedResponse(
+  events: string[],
+  index: number,
+  init: RecordedResponseInit,
+  cancelSuffix: () => string = () => "",
+): RecordedResponse {
+  const bytes = new TextEncoder().encode(init.body ?? "");
+  const chunkSize = init.chunkSize ?? 256;
+  let offset = 0;
+  let settled = false;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (offset >= bytes.length) {
+        settled = true;
+        events.push(`consumed #${index}`);
+        controller.close();
+        return;
+      }
+      controller.enqueue(bytes.slice(offset, offset + chunkSize));
+      offset += chunkSize;
+    },
+    cancel() {
+      settled = true;
+      events.push(`cancel #${index}${cancelSuffix()}`);
+      if (init.failCancel) throw new Error(`cancel #${index} failed`);
+      // Like a branch of a tee whose other branch is never cancelled:
+      if (init.hangCancel) return new Promise<void>(() => {});
+    },
+  }, { highWaterMark: 0 });
+  return {
+    response: new Response(body, {
+      status: init.status ?? 200,
+      headers: init.headers,
+    }),
+    settled: () => settled,
+  };
+}
+
+interface HopRecorder {
+  readonly events: string[];
+  readonly requests: Request[];
+  openHop(url: string): Promise<PublicFetchSession>;
+  assertInvariants(): void;
+}
+
+// Records the lifecycle of the hop sessions.  Like the real sessions, close()
+// starts cancelling the bodies that are still unsettled without awaiting it,
+// but records them as "cancel #n by close" so that tests can tell them apart.
+// The cancel callbacks run synchronously inside cancel(), so they are
+// recorded before "close":
+function recordHops(
+  respond: (
+    request: Request,
+    index: number,
+  ) => RecordedResponseInit | Promise<RecordedResponseInit>,
+): HopRecorder {
+  const events: string[] = [];
+  const requests: Request[] = [];
+  const unsettledAtClose: number[] = [];
+  let opens = 0;
+  let closes = 0;
+  let fetches = 0;
+  return {
+    events,
+    requests,
+    openHop(url: string): Promise<PublicFetchSession> {
+      opens++;
+      events.push(`open ${url}`);
+      const tracked: (RecordedResponse & { index: number })[] = [];
+      let closed = false;
+      let closing = false;
+      return Promise.resolve({
+        url: new URL(url),
+        async fetch(input, init) {
+          if (closed) throw new TypeError("The session is closed.");
+          const request = new Request(
+            (input instanceof Request ? input.clone() : input) as
+              | Request
+              | URL
+              | string,
+            init,
+          );
+          const index = ++fetches;
+          requests.push(request);
+          events.push(`fetch #${index} ${request.url}`);
+          const recorded = createRecordedResponse(
+            events,
+            index,
+            await respond(request, index),
+            () => closing ? " by close" : "",
+          );
+          tracked.push({ ...recorded, index });
+          return recorded.response;
+        },
+        close() {
+          if (closed) return Promise.resolve();
+          closed = true;
+          closes++;
+          closing = true;
+          for (const { response, settled, index } of tracked) {
+            if (settled()) continue;
+            if (response.body?.locked) unsettledAtClose.push(index);
+            else response.body?.cancel().catch(() => {});
+          }
+          events.push(`close ${url}`);
+          return Promise.resolve();
+        },
+      });
+    },
+    assertInvariants() {
+      deepStrictEqual(opens, closes);
+      deepStrictEqual(unsettledAtClose, []);
+    },
+  };
+}
+
+test("authenticated loader closes a hop that opens after its timeout", async () => {
+  const url = "https://example.com/late-open";
+  let release: () => void = () => {};
+  const opened = new Promise<void>((resolve) => release = resolve);
+  let closed: () => void = () => {};
+  const closure = new Promise<void>((resolve) => closed = resolve);
+  const hops = recordHops(() => jsonDocument);
+  const loader = createAuthenticatedDocumentLoader(identity, { timeout: 20 }, {
+    async openHop(url) {
+      await opened;
+      const session = await hops.openHop(url);
+      return {
+        ...session,
+        async close() {
+          await session.close();
+          closed();
+        },
+      };
+    },
+  });
+  await rejects(loader(url), (error) => assertTimeoutFetchError(error, url));
+  release();
+  await closure;
+  deepStrictEqual(hops.requests, []);
+  deepStrictEqual(hops.events, [`open ${url}`, `close ${url}`]);
+  hops.assertInvariants();
+});

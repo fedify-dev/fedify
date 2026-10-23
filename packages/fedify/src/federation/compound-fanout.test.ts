@@ -84,6 +84,8 @@ test("fanout delivery keeps an embedded signed child intact", async () => {
       kv: new MemoryKvStore(),
       contextLoaderFactory: () => mockDocumentLoader,
     });
+    // Keep hostname-based fetch mocks on the direct transport.
+    federation.allowPrivateAddress = true;
     federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
     const message: FanoutMessage = {
       type: "fanout",
@@ -180,6 +182,8 @@ test("forced fanout signs before serializing so the child survives", async () =>
       manuallyStartQueue: true,
       contextLoaderFactory: () => mockDocumentLoader,
     });
+    // Keep hostname-based fetch mocks on the direct transport.
+    federation.allowPrivateAddress = true;
     federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
     const context = federation.createContext(new URL("https://example.com/"));
     await context.sendActivity(
@@ -271,6 +275,8 @@ test("an already signed activity keeps its single proof through fanout", async (
       manuallyStartQueue: true,
       contextLoaderFactory: () => mockDocumentLoader,
     });
+    // Keep hostname-based fetch mocks on the direct transport.
+    federation.allowPrivateAddress = true;
     federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
     const context_ = federation.createContext(new URL("https://example.com/"));
     await context_.sendActivity(

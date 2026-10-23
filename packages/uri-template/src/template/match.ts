@@ -4,32 +4,128 @@ import type {
   ExpandContext,
   ExpandValue,
   OperatorSpec,
-  TemplateOptions,
   Token,
   VarSpec,
 } from "../types.ts";
-import { encodeName, truncateValue } from "./encoding.ts";
-import expand from "./expand.ts";
+import {
+  encodeName,
+  encodeValue,
+  isPctEncodedAt,
+  truncateValue,
+} from "./encoding.ts";
 
 /**
  * Matches a URI against a parsed URI template and extracts variable bindings.
  *
- * The inverse of {@link expand}: given the token stream produced by parsing a
- * template and a concrete URI, recovers an {@link ExpandContext} such that
- * re-expanding the template with that context reproduces the original URI.
+ * Recovers variable bindings whose completed context satisfies the caller's
+ * roundtrip check. Literal tokens always match the original URI exactly.
  *
  * @param tokens The parsed template tokens to match against.
  * @param uri The concrete URI to decompose.
- * @param options Template options shared with the expansion side.
+ * @param accept The roundtrip check for a completed variable context.
+ * @param equivalent Exact or colon-compatible output comparison, also used by
+ *   the caller's roundtrip check.
  * @returns The recovered variable context, or `null` if the URI does not match
  *   the template under any interpretation.
  */
 export default function match(
   tokens: readonly Token[],
   uri: string,
-  options: TemplateOptions,
+  accept: (context: ExpandContext) => boolean,
+  equivalent: (left: string, right: string) => boolean = (left, right) =>
+    left === right,
 ): ExpandContext | null {
-  return matchTokens(tokens, uri, options, 0, 0, {});
+  if (!canExpandTo(tokens, uri, equivalent)) return null;
+  return matchTokens(tokens, uri, accept, 0, 0, {});
+}
+
+/**
+ * Checks necessary conditions on the whole output, without choosing expression
+ * boundaries or bindings. Individual expressions need not round-trip locally:
+ * repeated variables can compensate for different consumed lengths elsewhere.
+ */
+function canExpandTo(
+  tokens: readonly Token[],
+  uri: string,
+  equivalent: (left: string, right: string) => boolean,
+): boolean {
+  const specs = new Set<OperatorSpec>();
+  const counts = new Map<string, number>();
+  let namedOrExploded = false;
+  let verbatimPercent = false;
+  const count = (text: string, delta: number): void => {
+    // Code units compose across token boundaries, even when non-strict literal
+    // tokens supply the two halves of a surrogate pair around an empty value.
+    for (let index = 0; index < text.length; index++) {
+      const char = text[index];
+      counts.set(char, (counts.get(char) ?? 0) + delta);
+    }
+  };
+  for (const token of tokens) {
+    if (token.kind === "literal") {
+      count(token.text, -1);
+      verbatimPercent ||= token.text.includes("%");
+    } else {
+      // Preserve speculative prefix/composite expansion errors and reporters.
+      if (token.vars.some((variable) => variable.prefix != null)) return true;
+      const spec = operatorSpecs[token.operator];
+      specs.add(spec);
+      namedOrExploded ||= spec.named ||
+        token.vars.some((variable) => variable.explode);
+      verbatimPercent ||= token.vars.some((variable) =>
+        variable.name.includes("%")
+      );
+    }
+  }
+  count(uri, 1);
+  // Characters no expression can emit must occur exactly as often as in the
+  // literal tokens. Percent encodings and composite separators are output too.
+  for (const [char, difference] of counts) {
+    if (
+      difference === 0 || char === "%" || char === "," ||
+      (char === "=" && namedOrExploded)
+    ) continue;
+    if (
+      [...specs].some((spec) =>
+        spec.first.includes(char) || spec.sep.includes(char) ||
+        equivalent(encodeValue(spec.allowReserved)(char), char)
+      )
+    ) continue;
+    return false;
+  }
+  return verbatimPercent || hasPossiblePercentEncoding(
+    uri,
+    [...specs].some((spec) => spec.allowReserved),
+  );
+}
+
+/**
+ * With no percent signs supplied by literals or encoded variable names, every
+ * percent sign must come from a value encoder. Reserved expansion preserves
+ * triplets; other operators emit canonical UTF-8. Folding %3A only splits runs
+ * between complete code points, so canonicality also holds in colon mode.
+ */
+function hasPossiblePercentEncoding(
+  uri: string,
+  allowReserved: boolean,
+): boolean {
+  for (let index = 0; index < uri.length;) {
+    if (uri[index] !== "%") {
+      index++;
+      continue;
+    }
+    if (!isPctEncodedAt(uri, index)) return false;
+    const start = index;
+    do index += 3; while (isPctEncodedAt(uri, index));
+    if (allowReserved) continue;
+    const run = uri.slice(start, index);
+    try {
+      if (encodeValue(false)(decodeURIComponent(run)) !== run) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
 }
 
 interface Binding {
@@ -55,16 +151,15 @@ interface ConsumedParts {
  *
  * Literal tokens advance deterministically; expression tokens fan out across
  * all viable end positions and value interpretations. When the token stream is
- * exhausted, the accumulated bindings are accepted only if re-expanding the
- * template with them yields the original URI exactly — this is what filters
- * out the spurious interpretations that the permissive parsing stage admits.
+ * exhausted, the accumulated bindings must pass the caller's roundtrip check,
+ * filtering out spurious interpretations from the permissive parsing stage.
  *
  * @returns The first surviving context, or `null` if every branch fails.
  */
 function matchTokens(
   tokens: readonly Token[],
   uri: string,
-  options: TemplateOptions,
+  accept: (context: ExpandContext) => boolean,
   tokenIndex: number,
   uriIndex: number,
   bindings: Bindings,
@@ -72,7 +167,7 @@ function matchTokens(
   if (tokenIndex >= tokens.length) {
     if (uriIndex !== uri.length) return null;
     const context = toExpandContext(bindings);
-    return expand(tokens, context, options) === uri ? context : null;
+    return accept(context) ? context : null;
   }
 
   const token = tokens[tokenIndex];
@@ -81,7 +176,7 @@ function matchTokens(
       ? matchTokens(
         tokens,
         uri,
-        options,
+        accept,
         tokenIndex + 1,
         uriIndex + token.text.length,
         bindings,
@@ -103,7 +198,7 @@ function matchTokens(
       const result = matchTokens(
         tokens,
         uri,
-        options,
+        accept,
         tokenIndex + 1,
         end,
         merged,
