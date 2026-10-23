@@ -24,6 +24,7 @@ that help you do that:
  -  [ngrok]
  -  [serveo]
  -  [Tailscale Funnel]
+ -  [OpenTunnel]
 
 > [!NOTE]
 > These tools are not for production use; they are for testing only.
@@ -44,17 +45,65 @@ that help you do that:
 > section](./federation.md#how-the-federation-object-recognizes-the-domain-name)
 > in the *Federation* document.
 
-<!-- cSpell: ignore serveo tailscale -->
-
 [^1]: According to the [*Object Identifiers* section][1] in the ActivityPub
       specification, the public dereferenceable URIs should use HTTPS URIs.
 
 [ngrok]: https://ngrok.com/
 [serveo]: https://serveo.net/
 [Tailscale Funnel]: https://tailscale.com/kb/1223/funnel
+[OpenTunnel]: https://github.com/anomalyco/opentunnel
 [x-forwarded-fetch]: https://github.com/dahlia/x-forwarded-fetch
 
 [1]: https://www.w3.org/TR/activitypub/#obj-id
+
+### OpenTunnel
+
+[OpenTunnel] works differently from the other tools above.  It gives your
+machine a persistent hostname under *opentunnel.xyz* and terminates TLS
+locally, so the relay server never sees your traffic in plaintext.  You can
+install it with Homebrew, npm, or Cargo, or with its install script:
+
+~~~~ bash
+curl -fsSL https://opentunnel.xyz/install | sh
+~~~~
+
+Then route a local port to the public internet:
+
+~~~~ bash
+opentunnel route add 3000
+~~~~
+
+The command starts a background service and prints the public URL of the
+route, such as `https://21992cc9713e5fc5.<id>.opentunnel.xyz`.  The URL stays
+the same across restarts, and you can pass `--name` to pick a readable route
+name instead of a random one.
+
+Because the OpenTunnel client forwards the decrypted bytes to your server
+unchanged, it does not add `X-Forwarded-Proto` or any other forwarding headers.
+Your server sees a plain HTTP request whose `Host` header is the tunnel
+hostname, so the [x-forwarded-fetch] middleware does not help here.  Instead,
+set the [`~FederationOptions.origin`
+option](./federation.md#explicitly-setting-the-canonical-origin) to the URL
+that OpenTunnel printed:
+
+~~~~ typescript twoslash
+import { createFederation, type KvStore } from "@fedify/fedify";
+// ---cut-before---
+const federation = createFederation({
+// ---cut-start---
+  kv: null as unknown as KvStore,
+// ---cut-end---
+  origin: "https://21992cc9713e5fc5.<id>.opentunnel.xyz",
+});
+~~~~
+
+> [!WARNING]
+> A route name is not a secret, and anyone who knows the URL can reach your
+> server.  Also, since every request reaches your server from the loopback
+> address, do not treat requests as trusted just because they appear to come
+> from *localhost*.
+
+<!-- cSpell: ignore serveo tailscale opentunnel -->
 
 
 Inspecting ActivityPub objects
@@ -237,6 +286,40 @@ await federation.receiveActivity(activity);
 // Check sent activities
 console.log("Sent activities:", federation.sentActivities);
 ~~~~
+
+To load actors or other referenced objects from a local HTTP server, pass
+`allowPrivateAddress: true`.  This enables HTTP document loading for received
+activities and contexts created by the mock federation, including addresses
+such as `localhost`:
+
+~~~~ typescript twoslash
+import { createFederation } from "@fedify/testing";
+import { Follow, Undo } from "@fedify/vocab";
+
+const federation = createFederation({
+  contextData: {},
+  allowPrivateAddress: true
+});
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox")
+  .on(Follow, async (ctx, follow) => {
+    const actor = await follow.getActor();
+  })
+  .on(Undo, async (ctx, undo) => {
+    const object = await undo.getObject();
+    if (object instanceof Follow) {
+      const actor = await object.getActor(ctx);
+    }
+  });
+~~~~
+
+*The `allowPrivateAddress` option is available since Fedify 2.0.35.*
+
+Received activities are cloned with the configured loaders.  Embedded objects
+remain shared, so pass the listener context to their getters, as in
+`object.getActor(ctx)` above.  If the option is `false` or omitted, contexts
+keep their no-op mock loaders and received activities keep their own loaders.
 
 ### Creating mock contexts
 

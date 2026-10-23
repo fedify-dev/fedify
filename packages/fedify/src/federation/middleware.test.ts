@@ -5,6 +5,8 @@ import {
   test,
 } from "@fedify/fixture";
 import { RouterError } from "@fedify/uri-template";
+import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type { TracerProvider } from "@opentelemetry/api";
 import * as vocab from "@fedify/vocab";
 import {
   Create,
@@ -123,7 +125,7 @@ import {
   numberSchema,
 } from "../testing/mod.ts";
 
-const documentLoader = getDocumentLoader();
+const documentLoader = getDocumentLoader({ allowPrivateAddress: true });
 
 type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false;
@@ -875,6 +877,10 @@ test({
         kv,
         documentLoaderFactory: () => rejectingLoader,
         contextLoaderFactory: () => mockDocumentLoader,
+        authenticatedDocumentLoaderFactory: (identity) =>
+          getAuthenticatedDocumentLoader(identity, {
+            allowPrivateAddress: true,
+          }),
       });
       let ctx = federation.createContext(
         new URL("https://example.com:1234/"),
@@ -1036,7 +1042,14 @@ test({
         documentUrl: "https://example.com/auth-check",
         document: true,
       });
-      assertEquals(await ctx.lookupObject("https://example.com/object"), null);
+      // The WebFinger fallback must not reach the network:
+      assertEquals(
+        await withDnsLookup(
+          () => Promise.reject(new Error("Resolver unavailable")),
+          () => ctx.lookupObject("https://example.com/object"),
+        ),
+        null,
+      );
       await assertRejects(
         () =>
           ctx.sendActivity({ identifier: "handle" }, [], new vocab.Create({})),
@@ -1445,7 +1458,9 @@ test({
       assertStrictEquals(clone.federation, ctx.federation);
     });
 
-    fetchMock.get("https://example.com/.well-known/nodeinfo", (cl) => {
+    // Bun connects to the resolved address instead of the hostname, so these
+    // routes match only the path; the lookup is stubbed in the step below:
+    fetchMock.get("path:/.well-known/nodeinfo", (cl) => {
       const headers = (cl.options.headers ?? {}) as
         | [string, string][]
         | Record<string, string>
@@ -1466,7 +1481,7 @@ test({
       );
     });
 
-    fetchMock.get("https://example.com/nodeinfo/2.1", (cl) => {
+    fetchMock.get("path:/nodeinfo/2.1", (cl) => {
       const headers = (cl.options.headers ?? {}) as
         | [string, string][]
         | Record<string, string>
@@ -1491,7 +1506,12 @@ test({
         new URL("https://example.com/"),
         123,
       );
-      const nodeInfo = await ctx.lookupNodeInfo("https://example.com/");
+      const lookupExample = () =>
+        Promise.resolve([{ address: "93.184.215.14", family: 4 }]);
+      const nodeInfo = await withDnsLookup(
+        lookupExample,
+        () => ctx.lookupNodeInfo("https://example.com/"),
+      );
       assertEquals(nodeInfo, {
         software: {
           name: "foo",
@@ -1501,9 +1521,10 @@ test({
         usage: { users: {}, localPosts: 123, localComments: 456 },
       });
 
-      const rawNodeInfo = await ctx.lookupNodeInfo("https://example.com/", {
-        parse: "none",
-      });
+      const rawNodeInfo = await withDnsLookup(
+        lookupExample,
+        () => ctx.lookupNodeInfo("https://example.com/", { parse: "none" }),
+      );
       assertEquals(rawNodeInfo, {
         software: { name: "foo", version: "1.2.3" },
         protocols: ["activitypub", "diaspora"],
@@ -1894,6 +1915,496 @@ test({
   },
 });
 
+test("Federation.fetch() accepts unencoded path colons", async () => {
+  const identifier = "https://pod.example/alice";
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  const dispatched: string[] = [];
+  federation.setActorDispatcher("/users/{identifier}", (ctx, id) => {
+    dispatched.push(id);
+    assertEquals(ctx.url.pathname, "/users/https:%2F%2Fpod.example%2Falice");
+    assertEquals(ctx.url.search, "?page=1");
+    assertEquals(ctx.request.url, ctx.url.href);
+    return new vocab.Person({ id: ctx.getActorUri(id) });
+  });
+  const request = new Request(
+    "https://local.example/users/https:%2F%2Fpod.example%2Falice?page=1",
+    { headers: { Accept: "application/activity+json" } },
+  );
+  const response = await federation.fetch(request, { contextData: undefined });
+  assertEquals(response.status, 200);
+  assertEquals(dispatched, [identifier]);
+  const canonical =
+    "https://local.example/users/https%3A%2F%2Fpod.example%2Falice";
+  const body = await response.json();
+  assert(body != null && typeof body === "object" && "id" in body);
+  assertEquals(body.id, canonical);
+  const ctx = federation.createContext(request, undefined);
+  assertEquals(ctx.getActorUri(identifier).href, canonical);
+  assertEquals(ctx.parseUri(new URL(canonical)), { type: "actor", identifier });
+  assertEquals(ctx.parseUri(new URL(request.url)), null);
+  assertEquals(
+    ctx.parseUri(new URL(canonical.replace("local.example", "other.example"))),
+    null,
+  );
+});
+
+test("Federation.fetch() verifies signatures over unencoded path colons", async (t) => {
+  const identifier = "https://pod.example/alice";
+  const canonical =
+    "https://local.example/users/https%3A%2F%2Fpod.example%2Falice/inbox";
+  const encoded = canonical + "?delivery=1";
+  const normalized = encoded.replace("%3A", ":");
+  for (const spec of ["draft-cavage-http-signatures-12", "rfc9421"] as const) {
+    for (const target of ["encoded", "normalized", "changed after signing"]) {
+      await t.step(`${spec}: ${target}`, async () => {
+        const recipients: (string | null)[] = [];
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          documentLoaderFactory: () => mockDocumentLoader,
+          contextLoaderFactory: () => mockDocumentLoader,
+        });
+        federation.setActorDispatcher(
+          "/users/{identifier}",
+          (ctx, id) => new vocab.Person({ id: ctx.getActorUri(id) }),
+        ).setKeyPairsDispatcher(() => []);
+        federation.setInboxListeners("/users/{identifier}/inbox")
+          .on(vocab.Create, (ctx) => {
+            recipients.push(ctx.recipient);
+          });
+        const signed = await signRequest(
+          new Request(target === "normalized" ? normalized : encoded, {
+            method: "POST",
+            headers: { "Content-Type": "application/activity+json" },
+            body: JSON.stringify(createFixture),
+          }),
+          rsaPrivateKey2,
+          rsaPublicKey2.id!,
+          { spec },
+        );
+        const request = target === "changed after signing"
+          ? new Request(normalized, signed)
+          : signed;
+        const response = await federation.fetch(request, {
+          contextData: undefined,
+        });
+        assertEquals(request.url, target === "encoded" ? encoded : normalized);
+        const valid = target !== "changed after signing";
+        assertEquals(response.status, valid ? 202 : 401);
+        assertEquals(recipients, valid ? [identifier] : []);
+        assertEquals(
+          federation.createContext(new URL(canonical), undefined)
+            .getInboxUri(identifier).href,
+          canonical,
+        );
+      });
+    }
+  }
+});
+
+test("RequestContext signature checks", async (t) => {
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  const keyId = rsaPublicKey3.id!.href;
+  const ownerId = rsaPublicKey3.ownerId!.href;
+  const request = await signRequest(
+    new Request("https://example.com/"),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+
+  function setup(options: {
+    gate?: Promise<void>;
+    load?: DocumentLoader;
+    tracerProvider?: TracerProvider;
+    request?: Request;
+  } = {}) {
+    const loads = { key: 0, owner: 0 };
+    const loader: DocumentLoader = async (url, loaderOptions) => {
+      if (url === keyId) loads.key++;
+      else if (url === ownerId) loads.owner++;
+      await options.gate;
+      return await (options.load ?? mockDocumentLoader)(url, loaderOptions);
+    };
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      documentLoaderFactory: () => loader,
+      contextLoaderFactory: () => mockDocumentLoader,
+      tracerProvider: options.tracerProvider ?? tracerProvider,
+    });
+    const ctx = federation.createContext(
+      options.request ?? new Request(request),
+      undefined,
+    );
+    return { ctx, loads, loader, federation };
+  }
+
+  try {
+    for (const mode of ["keys", "owners", "warm owners", "mixed"] as const) {
+      await t.step(`coalesces ${mode}`, async () => {
+        exporter.clear();
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => release = resolve);
+        const { ctx, loads, loader } = setup({ gate });
+        if (mode === "warm owners") {
+          release();
+          assert(await ctx.getSignedKey());
+        }
+        const results = Promise.all(Array.from({ length: 8 }, (_, i) => {
+          // Fresh option objects and explicit defaults must use the same entry.
+          const options = i % 2 === 0 ? {} : {
+            documentLoader: loader,
+            contextLoader: ctx.contextLoader,
+            tracerProvider,
+          };
+          return mode === "keys" || (mode === "mixed" && i % 2 === 0)
+            ? ctx.getSignedKey(options)
+            : ctx.getSignedKeyOwner(options);
+        }));
+        release();
+        for (const result of await results) assert(result != null);
+        assertEquals(loads, { key: 1, owner: mode === "keys" ? 0 : 1 });
+        assertEquals(exporter.getSpans("http_signatures.verify").length, 1);
+        assert(await ctx.getSignedKey());
+        if (mode !== "keys") assert(await ctx.getSignedKeyOwner());
+        assertEquals(loads, { key: 1, owner: mode === "keys" ? 0 : 1 });
+      });
+    }
+
+    await t.step("memoizes null keys", async () => {
+      exporter.clear();
+      const { ctx, loads } = setup({
+        load: () => Promise.reject(new Error("unavailable")),
+      });
+      for (let i = 0; i < 3; i++) {
+        assertEquals(await ctx.getSignedKey(), null);
+        assertEquals(await ctx.getSignedKeyOwner(), null);
+      }
+      assertEquals(loads, { key: 1, owner: 0 });
+      assertEquals(exporter.getSpans("http_signatures.verify").length, 1);
+      // Another loader must still be able to verify the same request.
+      assert(await ctx.getSignedKey({ documentLoader: mockDocumentLoader }));
+      assert(
+        await ctx.getSignedKeyOwner({ documentLoader: mockDocumentLoader }),
+      );
+    });
+
+    await t.step("coalesces key-owner FetchError results", async () => {
+      const { ctx, loads } = setup({
+        load: async (url, options) => {
+          if (url === ownerId) {
+            throw new FetchError(new URL(url), "HTTP 401: Unauthorized");
+          }
+          return await mockDocumentLoader(url, options);
+        },
+      });
+      assert(await ctx.getSignedKey());
+      assertEquals(
+        await Promise.all(
+          Array.from({ length: 8 }, () => ctx.getSignedKeyOwner()),
+        ),
+        Array(8).fill(null),
+      );
+      assertEquals(await ctx.getSignedKeyOwner(), null);
+      assertEquals(loads, { key: 1, owner: 1 });
+      assert(
+        await ctx.getSignedKeyOwner({ documentLoader: mockDocumentLoader }),
+      );
+    });
+
+    await t.step("memoizes unsigned requests", async () => {
+      exporter.clear();
+      const { ctx, loads } = setup({
+        request: new Request("https://example.com/"),
+      });
+      for (let i = 0; i < 3; i++) {
+        assertEquals(await ctx.getSignedKey(), null);
+        assertEquals(await ctx.getSignedKeyOwner(), null);
+      }
+      assertEquals(loads, { key: 0, owner: 0 });
+      assertEquals(exporter.getSpans("http_signatures.verify").length, 1);
+    });
+
+    await t.step(
+      "memoizes null owners without trusting a key's owner claim",
+      async () => {
+        const { ctx, loads } = setup({
+          load: async (url, options) =>
+            url === ownerId
+              ? {
+                documentUrl: url,
+                contextUrl: null,
+                document: { ...person2Fixture, publicKey: [] },
+              }
+              : await mockDocumentLoader(url, options),
+        });
+        assert(await ctx.getSignedKey());
+        const owners = await Promise.all(
+          Array.from({ length: 8 }, () => ctx.getSignedKeyOwner()),
+        );
+        assertEquals(owners, Array(8).fill(null));
+        for (let i = 0; i < 3; i++) {
+          assertEquals(await ctx.getSignedKeyOwner(), null);
+        }
+        assertEquals(loads, { key: 1, owner: 1 });
+        assert(
+          await ctx.getSignedKeyOwner({ documentLoader: mockDocumentLoader }),
+        );
+        assert(await ctx.getSignedKeyOwner());
+      },
+    );
+
+    await t.step(
+      "isolates concurrent document loaders before success",
+      async () => {
+        const { ctx, loads } = setup();
+        let otherLoads = 0;
+        const otherLoader: DocumentLoader = async (url, options) => {
+          otherLoads++;
+          if (url === ownerId) {
+            return {
+              documentUrl: url,
+              contextUrl: null,
+              document: { ...person2Fixture, name: "Other view" },
+            };
+          }
+          return await mockDocumentLoader(url, options);
+        };
+        const [first, second] = await Promise.all([
+          ctx.getSignedKeyOwner(),
+          ctx.getSignedKeyOwner({ documentLoader: otherLoader }),
+        ]);
+        assertEquals(first?.name, "Jane Doe");
+        assertEquals(second?.name, "Other view");
+        const cached = await ctx.getSignedKeyOwner();
+        assert(cached === first || cached === second);
+        assertStrictEquals(
+          await ctx.getSignedKeyOwner({ documentLoader: otherLoader }),
+          cached,
+        );
+        assertEquals(loads, { key: 1, owner: 1 });
+        assertEquals(otherLoads, 2);
+      },
+    );
+
+    await t.step(
+      "preserves in-flight null while another loader succeeds",
+      async () => {
+        exporter.clear();
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => release = resolve);
+        const { ctx, loads } = setup({
+          load: async () => {
+            await gate;
+            throw new TypeError("fetch failed");
+          },
+        });
+        const failed = Promise.all([
+          ctx.getSignedKey(),
+          ctx.getSignedKeyOwner(),
+        ]);
+        const owner = await ctx.getSignedKeyOwner({
+          documentLoader: mockDocumentLoader,
+        });
+        assert(owner);
+        release();
+        assertEquals(await failed, [null, null]);
+        assertStrictEquals(await ctx.getSignedKeyOwner(), owner);
+        assert(await ctx.getSignedKey());
+        assertEquals(loads, { key: 1, owner: 0 });
+        assertEquals(exporter.getSpans("http_signatures.verify").length, 2);
+      },
+    );
+
+    await t.step("isolates context loaders", async () => {
+      exporter.clear();
+      const { ctx, loads } = setup();
+      const otherContextLoader: DocumentLoader = (url, options) =>
+        mockDocumentLoader(url, options);
+      await Promise.all([
+        ctx.getSignedKeyOwner(),
+        ctx.getSignedKeyOwner({ contextLoader: otherContextLoader }),
+      ]);
+      assertEquals(loads, { key: 2, owner: 2 });
+      assertEquals(exporter.getSpans("http_signatures.verify").length, 2);
+    });
+
+    await t.step("shares work across tracer providers", async () => {
+      exporter.clear();
+      const [otherProvider, otherExporter] = createTestTracerProvider();
+      try {
+        const { ctx, loads } = setup();
+        await Promise.all([
+          ctx.getSignedKeyOwner(),
+          ctx.getSignedKeyOwner({ tracerProvider: otherProvider }),
+          ctx.getSignedKey(),
+          ctx.getSignedKey({ tracerProvider: otherProvider }),
+        ]);
+        assert(await ctx.getSignedKeyOwner({ tracerProvider: otherProvider }));
+        assertEquals(loads, { key: 1, owner: 1 });
+        assertEquals(exporter.getSpans("http_signatures.verify").length, 1);
+        assertEquals(
+          otherExporter.getSpans("http_signatures.verify").length,
+          0,
+        );
+      } finally {
+        await otherProvider.shutdown();
+      }
+    });
+
+    await t.step(
+      "reuses success with a fresh authorization loader",
+      async () => {
+        exporter.clear();
+        const { ctx, loads } = setup();
+        let freshLoads = 0;
+        const freshLoader: DocumentLoader = (url, options) => {
+          freshLoads++;
+          return mockDocumentLoader(url, options);
+        };
+        const key = await ctx.getSignedKey({ documentLoader: freshLoader });
+        assert(key);
+        assertStrictEquals(await ctx.getSignedKey(), key);
+        const owner = await ctx.getSignedKeyOwner();
+        assert(owner);
+        assertStrictEquals(
+          await ctx.getSignedKeyOwner({ documentLoader: freshLoader }),
+          owner,
+        );
+        assertEquals(loads, { key: 0, owner: 1 });
+        assertEquals(freshLoads, 1);
+        assertEquals(exporter.getSpans("http_signatures.verify").length, 1);
+      },
+    );
+
+    await t.step(
+      "retains a transient owner lookup failure as null",
+      async () => {
+        let fail = true;
+        const { ctx, loads } = setup({
+          load: async (url, options) => {
+            if (url === ownerId && fail) throw new TypeError("fetch failed");
+            return await mockDocumentLoader(url, options);
+          },
+        });
+        assert(await ctx.getSignedKey());
+        assertEquals(await ctx.getSignedKeyOwner(), null);
+        fail = false;
+        assertEquals(await ctx.getSignedKeyOwner(), null);
+        assertEquals(loads, { key: 1, owner: 1 });
+        assert(
+          await ctx.getSignedKeyOwner({ documentLoader: mockDocumentLoader }),
+        );
+      },
+    );
+
+    await t.step(
+      "rechecks an owner after another loader verifies the key",
+      async () => {
+        let fail = true;
+        const { ctx, loads } = setup({
+          load: async (url, options) => {
+            if (url === keyId && fail) throw new TypeError("fetch failed");
+            return await mockDocumentLoader(url, options);
+          },
+        });
+        assertEquals(await ctx.getSignedKeyOwner(), null);
+        // Negative results with the same loaders remain cached after a transient failure.
+        fail = false;
+        assertEquals(await ctx.getSignedKeyOwner(), null);
+        assertEquals(loads, { key: 1, owner: 0 });
+        assert(await ctx.getSignedKey({ documentLoader: mockDocumentLoader }));
+        const owner = await ctx.getSignedKeyOwner();
+        assertEquals(owner?.id?.href, ownerId);
+        assertEquals(loads, { key: 1, owner: 1 });
+      },
+    );
+
+    await t.step(
+      "retries unexpected key rejections from a rejection handler",
+      async () => {
+        exporter.clear();
+        const failure = new Error("transient context loader failure");
+        let rejectContext = true;
+        const contextLoader: DocumentLoader = async (url, options) => {
+          if (rejectContext) throw failure;
+          return await mockDocumentLoader(url, options);
+        };
+        const { ctx, loads } = setup();
+        const options = { contextLoader };
+        const failedKeys = Promise.allSettled([
+          ctx.getSignedKey(options),
+          ctx.getSignedKeyOwner(options),
+          ctx.getSignedKey(options),
+        ]);
+        const recovery = ctx.getSignedKey(options).catch(() => {
+          rejectContext = false;
+          return ctx.getSignedKey(options);
+        });
+        for (const result of await failedKeys) {
+          assertEquals(result.status, "rejected");
+        }
+        assert(await recovery);
+        assertEquals(loads, { key: 2, owner: 0 });
+        assertEquals(exporter.getSpans("http_signatures.verify").length, 2);
+      },
+    );
+
+    await t.step(
+      "retries owner rejections while retaining the verified key",
+      async () => {
+        exporter.clear();
+        let rejectContext = false;
+        const contextLoader: DocumentLoader = async (url, options) => {
+          if (rejectContext) {
+            throw new Error("transient owner context failure");
+          }
+          return await mockDocumentLoader(url, options);
+        };
+        const { ctx, loads } = setup();
+        const options = { contextLoader };
+        // The fragment key is served in its own actor document, so this does not fetch the owner.
+        assert(await ctx.getSignedKey(options));
+        assertEquals(loads, { key: 1, owner: 0 });
+        rejectContext = true;
+        const failures = await Promise.allSettled([
+          ctx.getSignedKeyOwner(options),
+          ctx.getSignedKeyOwner(options),
+        ]);
+        for (const result of failures) {
+          assertEquals(result.status, "rejected");
+        }
+        assertEquals(loads, { key: 1, owner: 1 });
+        rejectContext = false;
+        assert(await ctx.getSignedKeyOwner(options));
+        assertEquals(loads, { key: 1, owner: 2 });
+        assertEquals(exporter.getSpans("http_signatures.verify").length, 1);
+      },
+    );
+
+    await t.step("keeps clones and separate requests independent", async () => {
+      exporter.clear();
+      const { ctx, loads, federation } = setup();
+      assert(await ctx.getSignedKeyOwner());
+      const clone = ctx.clone(undefined);
+      const separate = federation.createContext(
+        new Request(request),
+        undefined,
+      );
+      await Promise.all([
+        clone.getSignedKeyOwner(),
+        separate.getSignedKeyOwner(),
+      ]);
+      // The persistent key cache is shared, while each request checks ownership.
+      assertEquals(loads, { key: 1, owner: 3 });
+      assertEquals(exporter.getSpans("http_signatures.verify").length, 3);
+    });
+  } finally {
+    await tracerProvider.shutdown();
+  }
+});
+
 test("Federation.fetch() [rfc9421] multiple POST signatures", async (t) => {
   for (
     const [name, validSecond, maxHttpSignatures] of [
@@ -2042,7 +2553,9 @@ test("Federation.fetch()", async (t) => {
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory(identity) {
-        const docLoader = getAuthenticatedDocumentLoader(identity);
+        const docLoader = getAuthenticatedDocumentLoader(identity, {
+          allowPrivateAddress: true,
+        });
         return (url: string) => {
           const urlObj = new URL(url);
           if (urlObj.host === "example.com") return docLoader(url);
@@ -2880,7 +3393,9 @@ test("Federation.setInboxListeners()", async (t) => {
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory(identity) {
-        const docLoader = getAuthenticatedDocumentLoader(identity);
+        const docLoader = getAuthenticatedDocumentLoader(identity, {
+          allowPrivateAddress: true,
+        });
         return (url: string) => {
           const urlObj = new URL(url);
           authenticatedRequests.push([url, identity.keyId.href]);
@@ -3441,7 +3956,9 @@ test("Federation.setInboxListeners()", async (t) => {
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
       authenticatedDocumentLoaderFactory(identity) {
-        const docLoader = getAuthenticatedDocumentLoader(identity);
+        const docLoader = getAuthenticatedDocumentLoader(identity, {
+          allowPrivateAddress: true,
+        });
         return (url: string) => {
           const urlObj = new URL(url);
           if (urlObj.host === "example.com") return docLoader(url);
@@ -3786,10 +4303,11 @@ test("Federation.setOutboxListeners()", async (t) => {
           loggers: [{ category: [], sinks: ["buffer"] }],
         });
 
-        const federation = createFederation<void>({
+        const federation = new FederationImpl<void>({
           kv,
           documentLoaderFactory: () => mockDocumentLoader,
         });
+        federation.allowPrivateAddress = true;
         federation
           .setActorDispatcher(
             "/users/{identifier}",
@@ -3963,10 +4481,11 @@ test("Federation.setOutboxListeners()", async (t) => {
             loggers: [{ category: [], sinks: ["buffer"] }],
           });
 
-          const federation = createFederation<void>({
+          const federation = new FederationImpl<void>({
             kv,
             documentLoaderFactory: () => mockDocumentLoader,
           });
+          federation.allowPrivateAddress = true;
           federation
             .setActorDispatcher(
               "/{identifier}",
@@ -5217,7 +5736,7 @@ test("FederationImpl.sendActivity()", async (t) => {
   const kv = new MemoryKvStore();
   const federation = new FederationImpl<void>({
     kv,
-    contextLoaderFactory: () => mockDocumentLoader,
+    allowPrivateAddress: true,
   });
   const context = federation.createContext(new URL("https://example.com/"));
 
@@ -10458,7 +10977,7 @@ test("ContextImpl.sendActivity()", async (t) => {
   const kv = new MemoryKvStore();
   const federation = new FederationImpl<void>({
     kv,
-    contextLoaderFactory: () => mockDocumentLoader,
+    allowPrivateAddress: true,
   });
 
   federation
@@ -10648,6 +11167,7 @@ test("ContextImpl.sendActivity()", async (t) => {
       contextLoaderFactory: () => mockDocumentLoader,
       tracerProvider,
     });
+    federation3.allowPrivateAddress = true;
     const ctx = federation3.createContext(
       new URL("https://example.com/"),
       undefined,
@@ -10696,7 +11216,7 @@ test("ContextImpl.sendActivity()", async (t) => {
   };
   const federation2 = new FederationImpl<void>({
     kv,
-    contextLoaderFactory: () => mockDocumentLoader,
+    allowPrivateAddress: true,
     queue,
   });
   federation2
@@ -10959,7 +11479,7 @@ test("ContextImpl.sendActivity()", async (t) => {
       };
       const fed = new FederationImpl<void>({
         kv,
-        contextLoaderFactory: () => mockDocumentLoader,
+        allowPrivateAddress: true,
         queue: asyncQueue,
         manuallyStartQueue: true,
       });
@@ -11271,14 +11791,19 @@ test({
     assert(await ctx.routeActivity("id", signedInvite));
     assertEquals(activities, [[null, signedOffer], ["id", signedInvite]]);
 
-    // Unsigned activity dereferenced to 404
+    // Unsigned activity dereferenced to 404; the WebFinger fallback of
+    // lookupObject() must not reach the network:
     assertFalse(
-      await ctx.routeActivity(
-        null,
-        new vocab.Create({
-          id: new URL("https://example.com/not-found"),
-          actor: new URL("https://example.com/person"),
-        }),
+      await withDnsLookup(
+        () => Promise.reject(new Error("Resolver unavailable")),
+        () =>
+          ctx.routeActivity(
+            null,
+            new vocab.Create({
+              id: new URL("https://example.com/not-found"),
+              actor: new URL("https://example.com/person"),
+            }),
+          ),
       ),
     );
     assertEquals(activities, [[null, signedOffer], ["id", signedInvite]]);
@@ -12033,7 +12558,7 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
   const kv = new MemoryKvStore();
   const federation = new FederationImpl<void>({
     kv,
-    contextLoaderFactory: () => mockDocumentLoader,
+    allowPrivateAddress: true,
   });
 
   await t.step("skip", async () => {
@@ -12216,6 +12741,7 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
       contextLoaderFactory: () => mockDocumentLoader,
       tracerProvider,
     });
+    federationWithTracing.allowPrivateAddress = true;
     const activity = await signJsonLd(
       {
         "@context": "https://www.w3.org/ns/activitystreams",
@@ -12453,12 +12979,14 @@ test("createFederation() applies httpMessageSignaturesSpecTtl to remembered spec
     });
 
     const kv = new TtlRecordingKvStore();
-    const federation = createFederation<void>({
+    const federation = new FederationImpl<void>({
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
       contextLoaderFactory: () => mockDocumentLoader,
       httpMessageSignaturesSpecTtl: { days: 14 },
     });
+    // These hostname-based mocks exercise TTLs without pinned IP transport.
+    federation.allowPrivateAddress = true;
     const ctx = federation.createContext(
       new URL("https://example.com/"),
       undefined,
@@ -12524,12 +13052,19 @@ test("createFederation() applies publicKeyTtl to cached public keys", async () =
 
     const keyId = "https://example.com/person2#key3";
     const kv = new TtlRecordingKvStore();
-    const federation = createFederation<void>({
+    const federation = new FederationImpl<void>({
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
       contextLoaderFactory: () => mockDocumentLoader,
+      authenticatedDocumentLoaderFactory: (identity, options) =>
+        getAuthenticatedDocumentLoader(identity, {
+          ...options,
+          allowPrivateAddress: true,
+        }),
       publicKeyTtl: { days: 7 },
     });
+    // These hostname-based mocks exercise TTLs without pinned IP transport.
+    federation.allowPrivateAddress = true;
     const inbox: vocab.Create[] = [];
     federation
       .setActorDispatcher(
@@ -12824,7 +13359,8 @@ test("ContextImpl.lookupWebFinger()", async (t) => {
           "https://example.com/.well-known/webfinger?resource=acct%3Aalice%40example.com",
           { body: expected },
         );
-        const federation = createFederation<void>(mockOptions());
+        const federation = new FederationImpl<void>(mockOptions());
+        federation.allowPrivateAddress = true;
         const ctx = federation.createContext(
           new URL("https://example.com/"),
           undefined,
@@ -13509,3 +14045,21 @@ test("createFederation() validates documentLoaderTimeout", () => {
     documentLoaderTimeout: Temporal.Duration.from({ seconds: 30 }),
   });
 });
+
+/**
+ * Runs the given function while `node:dns/promises`' `lookup()`, which the
+ * default public fetch resolves hostnames with, is replaced, so that no test
+ * depends on the real DNS.
+ */
+async function withDnsLookup<T>(
+  lookup: (hostname: string) => Promise<unknown>,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const originalLookup = dns.lookup;
+  dns.lookup = lookup as typeof dns.lookup;
+  try {
+    return await fn();
+  } finally {
+    dns.lookup = originalLookup;
+  }
+}

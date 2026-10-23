@@ -230,5 +230,5 @@ mise run test-each netlify
 
 The test generates a temporary `AWL_API_KEY` for Netlify Dev, so it must not be
 added to *.env*.  When either required variable is absent, the integration test
-is skipped automatically.  Deno and Bun also skip this Node.js-only Netlify Dev
+is skipped automatically.  Bun and Deno also skip this Node.js-only Netlify Dev
 test while continuing to run the package's portable unit tests.

@@ -394,6 +394,8 @@ async function getPortableActorHandle(
     userAgent: options.userAgent,
     tracerProvider: options.tracerProvider,
     meterProvider: options.meterProvider,
+    allowPrivateAddress: "allowPrivateAddress" in options &&
+      options.allowPrivateAddress === true,
   });
   // Unlike an ordinary actor, whose ID vouches for its host, a portable
   // actor's gateways are claimed by the actor itself, so there is no
@@ -409,6 +411,8 @@ async function getPortableActorHandle(
       userAgent: options.userAgent,
       tracerProvider: options.tracerProvider,
       meterProvider: options.meterProvider,
+      allowPrivateAddress: "allowPrivateAddress" in options &&
+        options.allowPrivateAddress === true,
     });
     if (
       subjectResult != null && linksToPortableActor(subjectResult, canonicalId)

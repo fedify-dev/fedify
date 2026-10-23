@@ -47,14 +47,14 @@ the Node.js versions AdonisJS supports can `require()` ESM dependencies.
 
 > [!IMPORTANT]
 > This package targets Node.js exclusively.  It is published to npm only, never
-> to JSR, and it is neither tested nor supported on Deno or Bun.
+> to JSR, and it is neither tested nor supported on Bun or Deno.
 
 That is a deliberate scope decision inherited from the framework rather than an
 oversight, for three reasons.
 
  -  AdonisJS documents Node.js as its only runtime.  Its installation guide
     lists Node.js ≥ 24 and npm ≥ 11 as the sole prerequisites and never
-    mentions Deno or Bun, and its maintainers have
+    mentions Bun or Deno, and its maintainers have
     [declined to support multiple runtimes][adonisjs-runtimes].  An integration
     package cannot credibly promise a runtime that the framework it integrates
     does not.

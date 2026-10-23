@@ -14,6 +14,9 @@ import { lookupObject } from "./lookup.ts";
 import { assertInstanceOf } from "./utils.ts";
 import { Person } from "./vocab.ts";
 
+// Runtime-only transport override for hostname-based WebFinger mocks.
+const allowPrivateAddress = { allowPrivateAddress: true };
+
 const did = "did:key:z6Mkabc";
 const actorId = `ap+ef61://${did}/actor`;
 const gatewayPath = `/.well-known/apgateway/${did}/actor`;
@@ -92,6 +95,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
       const actor = await lookupObject("@alice@example.com", {
         documentLoader,
         contextLoader: mockDocumentLoader,
+        ...allowPrivateAddress,
         verifyPortableObject,
       });
       assertInstanceOf(actor, Person);
@@ -118,6 +122,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
         const actor = await lookupObject("@alice@example.com", {
           documentLoader,
           contextLoader: mockDocumentLoader,
+          ...allowPrivateAddress,
           verifyPortableObject: createVerifier(),
         });
         assertInstanceOf(actor, Person);
@@ -138,6 +143,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
       const actor = await lookupObject("@alice@example.com", {
         documentLoader,
         contextLoader: mockDocumentLoader,
+        ...allowPrivateAddress,
         verifyPortableObject: createVerifier(),
         gateways: ["https://second.example"],
       });
@@ -153,6 +159,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
         await lookupObject("@alice@example.com", {
           documentLoader,
           contextLoader: mockDocumentLoader,
+          ...allowPrivateAddress,
           verifyPortableObject: createVerifier(),
           gateways: Array.from(
             { length: 6 },
@@ -178,6 +185,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
       const actor = await lookupObject("@alice@example.com", {
         documentLoader,
         contextLoader: mockDocumentLoader,
+        ...allowPrivateAddress,
         verifyPortableObject: createVerifier(),
       });
       assertInstanceOf(actor, Person);
@@ -197,6 +205,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
       const actor = await lookupObject("@alice@example.com", {
         documentLoader,
         contextLoader: mockDocumentLoader,
+        ...allowPrivateAddress,
         verifyPortableObject,
       });
       assertInstanceOf(actor, Person);
@@ -227,6 +236,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
           await lookupObject("@alice@example.com", {
             documentLoader,
             contextLoader: mockDocumentLoader,
+            ...allowPrivateAddress,
             verifyPortableObject,
           }),
           null,
@@ -239,6 +249,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
             lookupObject("@alice@example.com", {
               documentLoader,
               contextLoader: mockDocumentLoader,
+              ...allowPrivateAddress,
               verifyPortableObject,
               crossOrigin: "throw",
             }),
@@ -248,6 +259,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
           await lookupObject("@alice@example.com", {
             documentLoader,
             contextLoader: mockDocumentLoader,
+            ...allowPrivateAddress,
             verifyPortableObject,
             crossOrigin: "trust",
           }),
@@ -270,6 +282,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
           await lookupObject("@alice@example.com", {
             documentLoader,
             contextLoader: mockDocumentLoader,
+            ...allowPrivateAddress,
             crossOrigin,
           }),
           null,
@@ -281,6 +294,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
           lookupObject("@alice@example.com", {
             documentLoader,
             contextLoader: mockDocumentLoader,
+            ...allowPrivateAddress,
             crossOrigin: "throw",
           }),
         /has a different origin than the document URL/,
@@ -292,6 +306,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
       const actor = await lookupObject("@alice@example.com", {
         documentLoader: httpLoader,
         contextLoader: mockDocumentLoader,
+        ...allowPrivateAddress,
       });
       assertInstanceOf(actor, Person);
       deepStrictEqual(actor.id, new URL(compatibleId));
@@ -303,6 +318,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
       const ordinary = await lookupObject(malformed, {
         documentLoader: ordinaryLoader,
         contextLoader: mockDocumentLoader,
+        ...allowPrivateAddress,
       });
       assertInstanceOf(ordinary, Person);
       deepStrictEqual(ordinaryLoader.fetched, [malformed]);
@@ -321,6 +337,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
       const options = {
         documentLoader,
         contextLoader: mockDocumentLoader,
+        ...allowPrivateAddress,
         verifyPortableObject: createVerifier(),
       };
       equal(await lookupObject("@alice@example.com", options), null);
@@ -341,6 +358,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
       const options = {
         documentLoader,
         contextLoader: mockDocumentLoader,
+        ...allowPrivateAddress,
         verifyPortableObject: createVerifier(),
       };
       equal(await lookupObject(dotted, options), null);
@@ -368,6 +386,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
         await lookupObject("@alice@example.com", {
           documentLoader,
           contextLoader: mockDocumentLoader,
+          ...allowPrivateAddress,
           verifyPortableObject: createVerifier(),
         }),
         null,
@@ -397,6 +416,7 @@ test("lookupObject() with FEP-ef61 portable actors", {
         await lookupObject("@alice@example.com", {
           documentLoader,
           contextLoader: mockDocumentLoader,
+          ...allowPrivateAddress,
           verifyPortableObject,
           signal: controller.signal,
         }),
@@ -573,13 +593,25 @@ test("getActorHandle() with FEP-ef61 portable actors", {
         "https://example.com/.well-known/webfinger?resource=acct%3Aalice%40example.com",
         selfLinks(compatibleId),
       );
-      deepStrictEqual(await getActorHandle(actor), "@alice@example.com");
+      deepStrictEqual(
+        await getActorHandle(actor, {
+          ...allowPrivateAddress,
+          userAgent: undefined,
+        }),
+        "@alice@example.com",
+      );
     });
 
     await t.step("canonical self link", async () => {
       fetchMock.removeRoutes();
       fetchMock.get(webFingerPrefix, selfLinks(`ap://${did}/actor`));
-      deepStrictEqual(await getActorHandle(actor), "@alice@example.com");
+      deepStrictEqual(
+        await getActorHandle(actor, {
+          ...allowPrivateAddress,
+          userAgent: undefined,
+        }),
+        "@alice@example.com",
+      );
     });
 
     await t.step("follows a verified subject", async () => {
@@ -592,7 +624,13 @@ test("getActorHandle() with FEP-ef61 portable actors", {
         "begin:https://example.org/.well-known/webfinger",
         { ...selfLinks(compatibleId), subject: "acct:alice@example.org" },
       );
-      deepStrictEqual(await getActorHandle(actor), "@alice@example.org");
+      deepStrictEqual(
+        await getActorHandle(actor, {
+          ...allowPrivateAddress,
+          userAgent: undefined,
+        }),
+        "@alice@example.org",
+      );
 
       // An unverified subject is ignored:
       fetchMock.removeRoutes();
@@ -604,7 +642,13 @@ test("getActorHandle() with FEP-ef61 portable actors", {
         "begin:https://example.org/.well-known/webfinger",
         selfLinks(`ap://${did}/other`),
       );
-      deepStrictEqual(await getActorHandle(actor), "@alice@example.com");
+      deepStrictEqual(
+        await getActorHandle(actor, {
+          ...allowPrivateAddress,
+          userAgent: undefined,
+        }),
+        "@alice@example.com",
+      );
     });
 
     await t.step("rejects a WebFinger response for another actor", async () => {
@@ -617,14 +661,28 @@ test("getActorHandle() with FEP-ef61 portable actors", {
       ) {
         fetchMock.removeRoutes();
         fetchMock.get(webFingerPrefix, jrd);
-        await rejects(() => getActorHandle(actor), TypeError);
+        await rejects(
+          () =>
+            getActorHandle(actor, {
+              ...allowPrivateAddress,
+              userAgent: undefined,
+            }),
+          TypeError,
+        );
       }
     });
 
     await t.step("does not fall back when WebFinger fails", async () => {
       fetchMock.removeRoutes();
       fetchMock.get(webFingerPrefix, 404);
-      await rejects(() => getActorHandle(actor), TypeError);
+      await rejects(
+        () =>
+          getActorHandle(actor, {
+            ...allowPrivateAddress,
+            userAgent: undefined,
+          }),
+        TypeError,
+      );
     });
 
     await t.step("not enough information", async () => {
@@ -640,7 +698,14 @@ test("getActorHandle() with FEP-ef61 portable actors", {
           }),
         ]
       ) {
-        await rejects(() => getActorHandle(target), TypeError);
+        await rejects(
+          () =>
+            getActorHandle(target, {
+              ...allowPrivateAddress,
+              userAgent: undefined,
+            }),
+          TypeError,
+        );
       }
       deepStrictEqual(fetchMock.callHistory.calls().length, 0);
     });

@@ -88,7 +88,7 @@ AdonisJS
 own IoC container, service providers and CLI.  The *@fedify/adonisjs* package
 integrates Fedify with AdonisJS.  It requires `@adonisjs/core` 7.4.0 or later,
 whose `request.authority()` honors `X-Forwarded-Host`, and Node.js 24 or later.
-It is published to npm only, and is not tested on Deno or Bun.
+It is published to npm only, and is not tested on Bun or Deno.
 
 ::: code-group
 
@@ -861,10 +861,6 @@ a middleware to integrate Fedify with Next.js:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@fedify/next
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/next
 ~~~~
@@ -879,6 +875,10 @@ yarn add @fedify/next
 
 ~~~~ sh [Bun]
 bun add @fedify/next
+~~~~
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/next
 ~~~~
 
 :::
@@ -1037,11 +1037,6 @@ bun add @fedify/astro
 
 :::
 
-The *@fedify/astro* package is also published on JSR.  Deno-based Astro
-projects use its npm package because Astro loads integrations and middleware
-through Vite, which resolves bare imports through *node\_modules/* rather than
-Deno's JSR import map.
-
 Fedify requires on-demand rendering, so install a server adapter for your
 runtime.  For Astro 7 on Node.js, add `@astrojs/node` 11 and configure it with
 the Fedify integration in _astro.config.ts_:
@@ -1097,40 +1092,6 @@ export const onRequest = sequence(
 
 [Astro]: https://astro.build/
 
-### For Deno users
-
-Install packages that Astro loads through Vite from npm.  Vite resolves these
-imports through *node\_modules/* rather than Deno's JSR import map;
-`fedify init` selects npm packages for this reason.
-
-If you are using Deno, you should import `@deno/astro-adapter` in
-_astro.config.ts_ and use it as the adapter:
-
-~~~~ typescript
-import { defineConfig } from "astro/config";
-import { fedifyIntegration } from "@fedify/astro";
-import deno from "@deno/astro-adapter";
-
-export default defineConfig({
-  integrations: [fedifyIntegration()],
-  output: "server",
-  adapter: deno(),
-});
-~~~~
-
-And the tasks in _deno.json_ should be updated to use `deno run npm:astro`
-instead of `astro`:
-
-~~~~ json
-{
-  "tasks": {
-    "dev": "deno run -A npm:astro dev",
-    "build": "deno run -A npm:astro build",
-    "preview": "deno run -A npm:astro preview"
-  }
-}
-~~~~
-
 ### For Bun users
 
 For Astro 7, use `@astrojs/node` 11 in standalone mode.  This combination is
@@ -1156,6 +1117,43 @@ export default defineConfig({
     "dev": "bunx --bun astro dev",
     "build": "bunx --bun astro build",
     "preview": "bun ./dist/server/entry.mjs"
+  }
+}
+~~~~
+
+### For Deno users
+
+The *@fedify/astro* package is also published on JSR.  Deno-based Astro
+projects use its npm package because Astro loads integrations and middleware
+through Vite, which resolves bare imports through *node\_modules/* rather than
+Deno's JSR import map.
+
+`fedify init` selects npm packages for this reason.
+
+If you are using Deno, you should import `@deno/astro-adapter` in
+_astro.config.ts_ and use it as the adapter:
+
+~~~~ typescript
+import { defineConfig } from "astro/config";
+import { fedifyIntegration } from "@fedify/astro";
+import deno from "@deno/astro-adapter";
+
+export default defineConfig({
+  integrations: [fedifyIntegration()],
+  output: "server",
+  adapter: deno(),
+});
+~~~~
+
+And the tasks in _deno.json_ should use Astro 7 with manual *node\_modules/*
+management:
+
+~~~~ json
+{
+  "tasks": {
+    "dev": "deno run -A --node-modules-dir=manual npm:astro@7 dev",
+    "build": "deno run -A --node-modules-dir=manual npm:astro@7 build",
+    "preview": "deno run -A --node-modules-dir=manual npm:astro@7 preview"
   }
 }
 ~~~~

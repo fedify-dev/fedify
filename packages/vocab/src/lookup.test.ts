@@ -18,10 +18,17 @@ import { lookupObject, lookupObserver, traverseCollection } from "./lookup.ts";
 import { assertInstanceOf } from "./utils.ts";
 import { Collection, Note, Object, Person } from "./vocab.ts";
 
+// lookupObject() accepts this option without declaring it, since Fedify's
+// Context passes it.  It makes WebFinger lookups use the global fetch()
+// (fetch-mock here) without resolving hostnames, so that the tests do not
+// depend on the real DNS:
+const allowPrivateAddress = { allowPrivateAddress: true };
+
 test("lookupObject()", {
   sanitizeResources: false,
   sanitizeOps: false,
 }, async (t) => {
+  const responseTimers: ReturnType<typeof setTimeout>[] = [];
   fetchMock.spyGlobal();
 
   fetchMock.get(
@@ -51,6 +58,7 @@ test("lookupObject()", {
   const options = {
     documentLoader: mockDocumentLoader,
     contextLoader: mockDocumentLoader,
+    ...allowPrivateAddress,
   };
 
   await t.step("actor", async () => {
@@ -114,7 +122,7 @@ test("lookupObject()", {
     "begin:https://example.com/.well-known/webfinger",
     () =>
       new Promise((resolve) => {
-        setTimeout(() => {
+        responseTimers.push(setTimeout(() => {
           resolve({
             subject: "acct:johndoe@example.com",
             links: [
@@ -125,7 +133,7 @@ test("lookupObject()", {
               },
             ],
           });
-        }, 1000);
+        }, 1000));
       }),
   );
 
@@ -170,7 +178,7 @@ test("lookupObject()", {
     "begin:https://example.com/.well-known/webfinger",
     () =>
       new Promise((resolve) => {
-        setTimeout(() => {
+        responseTimers.push(setTimeout(() => {
           resolve({
             subject: "acct:johndoe@example.com",
             links: [
@@ -181,7 +189,7 @@ test("lookupObject()", {
               },
             ],
           });
-        }, 500);
+        }, 500));
       }),
   );
 
@@ -201,7 +209,7 @@ test("lookupObject()", {
     "https://example.com/slow-object",
     () =>
       new Promise((resolve) => {
-        setTimeout(() => {
+        responseTimers.push(setTimeout(() => {
           resolve({
             status: 200,
             headers: { "Content-Type": "application/activity+json" },
@@ -211,7 +219,7 @@ test("lookupObject()", {
               content: "Slow response",
             },
           });
-        }, 1000);
+        }, 1000));
       }),
   );
 
@@ -226,6 +234,7 @@ test("lookupObject()", {
     deepStrictEqual(await promise, null);
   });
 
+  for (const timer of responseTimers) clearTimeout(timer);
   fetchMock.hardReset();
   fetchMock.removeRoutes();
 });
@@ -609,6 +618,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
 
     // Default behavior should return null
     const result1 = await lookupObject("@user@example.com", {
+      ...allowPrivateAddress,
       documentLoader: webfingerDocumentLoader,
       contextLoader: mockDocumentLoader,
     });
@@ -618,6 +628,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
     await rejects(
       () =>
         lookupObject("@user@example.com", {
+          ...allowPrivateAddress,
           documentLoader: webfingerDocumentLoader,
           contextLoader: mockDocumentLoader,
           crossOrigin: "throw",
@@ -628,6 +639,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
 
     // With crossOrigin: trust, should return the object
     const result2 = await lookupObject("@user@example.com", {
+      ...allowPrivateAddress,
       documentLoader: webfingerDocumentLoader,
       contextLoader: mockDocumentLoader,
       crossOrigin: "trust",
@@ -727,12 +739,22 @@ test("FEP-fe34: lookupObject() cross-origin security", {
       throw new Error("Network error");
     };
 
+    // The WebFinger fallback must not reach the network:
+    fetchMock.spyGlobal();
+    fetchMock.get("begin:https://example.com/.well-known/webfinger", 404);
+
     // Network errors should not be confused with cross-origin errors
-    const result = await lookupObject("https://example.com/note", {
-      documentLoader: errorDocumentLoader,
-      contextLoader: mockDocumentLoader,
-      crossOrigin: "throw",
-    });
+    let result;
+    try {
+      result = await lookupObject("https://example.com/note", {
+        ...allowPrivateAddress,
+        documentLoader: errorDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        crossOrigin: "throw",
+      });
+    } finally {
+      fetchMock.hardReset();
+    }
 
     // Should return null because the document loader failed,
     // not because of cross-origin policy
@@ -850,6 +872,7 @@ test("lookupObject() records activitypub.object.lookup counter", {
     await t.step("records kind=actor for an actor result", async () => {
       const [meterProvider, recorder] = createTestMeterProvider();
       const person = await lookupObject("@johndoe@example.com", {
+        ...allowPrivateAddress,
         documentLoader: mockDocumentLoader,
         contextLoader: mockDocumentLoader,
         meterProvider,
@@ -936,6 +959,7 @@ test("lookupObject() records activitypub.object.lookup counter", {
       });
       const [meterProvider, recorder] = createTestMeterProvider();
       const result = await lookupObject("janedoe@example.com", {
+        ...allowPrivateAddress,
         documentLoader: mockDocumentLoader,
         contextLoader: mockDocumentLoader,
         meterProvider,
@@ -987,6 +1011,7 @@ test("lookupObject() records activitypub.object.lookup counter", {
         );
         const [meterProvider, recorder] = createTestMeterProvider();
         await lookupObject("@johndoe@example.com", {
+          ...allowPrivateAddress,
           documentLoader: mockDocumentLoader,
           contextLoader: mockDocumentLoader,
           meterProvider,
@@ -1020,6 +1045,7 @@ test("lookupObject() records activitypub.object.lookup counter", {
         });
         const [meterProvider, recorder] = createTestMeterProvider();
         await lookupObject(new URL("acct:johndoe@example.com"), {
+          ...allowPrivateAddress,
           documentLoader: mockDocumentLoader,
           contextLoader: mockDocumentLoader,
           meterProvider,

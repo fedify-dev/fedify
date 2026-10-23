@@ -249,9 +249,9 @@ project.  It will ask you a few questions to set up the project:
 
 > [!TIP]
 > Projects created with `fedify init` automatically include [`@fedify/lint`]
-> for consistent code linting.  Deno projects get a lint plugin configured in
-> *deno.json*, while Node.js and Bun projects get an *.oxlintrc.json* with
-> `@fedify/lint/oxlint`.
+> for consistent code linting.  Node.js and Bun projects get an *.oxlintrc.json*
+> with `@fedify/lint/oxlint`, while Deno projects get a lint plugin configured
+> in *deno.json*.
 
 > [!NOTE]
 > If you find the full `@fedify/cli` toolchain too heavy for your needs, you
@@ -1081,10 +1081,10 @@ fedify lookup --authorized-fetch --tunnel-service fedify.com.es @user@example.co
 *This option is available since Fedify 1.3.0.*
 
 By default, the `fedify lookup` command sends the `User-Agent` header with the
-value `Fedify/1.3.0 (Deno/2.0.4)` (version numbers may vary).  You can specify
-a custom `User-Agent` header by using the `-u`/`--user-agent` option.  For
-example, to send the `User-Agent` header with the value `MyApp/1.0`, run the
-below command:
+value `Fedify/1.3.0 (Node.js/v22.10.0)` (runtime and version numbers may
+vary).  You can specify a custom `User-Agent` header by using the
+`-u`/`--user-agent` option.  For example, to send the `User-Agent` header with
+the value `MyApp/1.0`, run the below command:
 
 ~~~~ sh
 fedify lookup --user-agent MyApp/1.0 @fedify@hollo.social
@@ -1467,10 +1467,10 @@ i.e., the `metadata` field of the document.
 *This option is available since Fedify 1.3.0.*
 
 By default, the `fedify nodeinfo` command sends the `User-Agent` header with the
-value `Fedify/1.3.0 (Deno/2.0.4)` (version numbers may vary).  You can specify
-a custom `User-Agent` header by using the `-u`/`--user-agent` option.  For
-example, to send the `User-Agent` header with the value `MyApp/1.0`, run the
-below command:
+value `Fedify/1.3.0 (Node.js/v22.10.0)` (runtime and version numbers may
+vary).  You can specify a custom `User-Agent` header by using the
+`-u`/`--user-agent` option.  For example, to send the `User-Agent` header with
+the value `MyApp/1.0`, run the below command:
 
 ~~~~ sh
 fedify nodeinfo --user-agent MyApp/1.0 mastodon.social
@@ -1759,10 +1759,10 @@ be specified multiple times.
 ### `-a`/`--user-agent`: Custom `User-Agent` header
 
 By default, the `fedify webfinger` command sends the `User-Agent` header with
-the value `Fedify/1.8.0 (Deno/2.4.0)` (version numbers may vary).  You can
-specify a custom `User-Agent` header by using the `-a`/`--user-agent` option.
-For example, to send the `User-Agent` header with the value `MyApp/1.0`, run
-the below command:
+the value `Fedify/1.8.0 (Node.js/v22.10.0)` (runtime and version numbers may
+vary).  You can specify a custom `User-Agent` header by using the
+`-a`/`--user-agent` option. For example, to send the `User-Agent` header with
+the value `MyApp/1.0`, run the below command:
 
 ~~~~ sh
 fedify webfinger --user-agent MyApp/1.0 @username@domain.com

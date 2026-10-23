@@ -31,6 +31,7 @@ import type { CompatibleKeyCache, CompatibleKeyScope } from "../sig/key.ts";
 import { getVerifiedKeyOwnerEvidence } from "../sig/key-owner-evidence.ts";
 import { doesActorOwnKey, getKeyOwner } from "../sig/owner.ts";
 import { signJsonLd } from "../sig/ld.ts";
+import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { ActivityListenerSet } from "./activity-listener.ts";
 import type { InboxContext } from "./context.ts";
 import { handleInbox } from "./handler.ts";
@@ -124,7 +125,14 @@ function createTestFederation(
     manuallyStartQueue: true,
     contextLoaderFactory: () => mockDocumentLoader,
     documentLoaderFactory: () => mockDocumentLoader,
+    authenticatedDocumentLoaderFactory: (identity, options) =>
+      getAuthenticatedDocumentLoader(identity, {
+        ...options,
+        allowPrivateAddress: true,
+      }),
   });
+  // Hostname-based mocks exercise gateway keys without pinned IP transport.
+  federation.allowPrivateAddress = true;
   const setters = federation
     .setActorDispatcher("/users/{identifier}", () => null)
     .setKeyPairsDispatcher(() => [rsaGatewayKeyPair, ed25519GatewayKeyPair]);

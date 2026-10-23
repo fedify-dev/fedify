@@ -193,6 +193,7 @@ depends = [
   "check:workspace-protocol",
   "check:fixture-usage",
   "check:node-modules",
+  "test:docs-contributors",
 ]
 run = "sacho check"
 
@@ -274,6 +275,13 @@ for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
 [tasks."test:pack"]
 description = "Check that Deno preserves pnpm links and package packing"
 run = "node scripts/test_pack.mjs"
+
+[tasks."test:testing:pack"]
+description = "Check @fedify/testing tarballs in isolated Node.js and Bun consumers"
+run = """
+pnpm --filter @fedify/testing build
+node scripts/test_testing_pack.mjs
+"""
 
 [tasks."test:deno"]
 wait_for = ["build"]
@@ -397,6 +405,10 @@ run = "pnpm -C docs dev"
 [tasks."docs:build"]
 description = "Build the documentation for production"
 run = "pnpm -C docs build"
+
+[tasks."test:docs-contributors"]
+description = "Test the team page contributor loading and filtering"
+run = "node --experimental-strip-types --test docs/.vitepress/contributors.test.mts"
 
 [tasks."docs:preview"]
 description = "Preview the built documentation"

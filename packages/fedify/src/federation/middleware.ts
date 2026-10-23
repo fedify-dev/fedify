@@ -3560,7 +3560,9 @@ export class FederationImpl<TContextData>
     onNotAcceptable ??= notAcceptable;
     onUnauthorized ??= unauthorized;
     const url = new URL(request.url);
-    const route = this.router.route(url.pathname as Path);
+    const route = this.router.route(url.pathname as Path, {
+      allowUnencodedColon: true,
+    });
     if (route == null) {
       // Routes registered by the application take precedence over the FEP-ef61
       // gateway endpoint, so that existing routes keep working unchanged:
@@ -6335,6 +6337,12 @@ interface RequestContextOptions<TContextData>
   portableRequest?: PortableRequest;
 }
 
+/** Pending or completed checks made with one pair of document loaders. */
+interface SignatureCheck {
+  key?: Promise<CryptographicKey | null>;
+  owner?: Promise<Actor | null>;
+}
+
 class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
   implements RequestContext<TContextData> {
   readonly #invokedFromActorDispatcher?: { identifier: string };
@@ -6583,62 +6591,121 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     return object as TObject | Tombstone | null;
   }
 
-  #signedKey: CryptographicKey | null | undefined = undefined;
+  #signedKey: CryptographicKey | null = null;
+  #signedKeyOwner: Actor | null = null;
+  #signatureChecks: WeakMap<
+    DocumentLoader,
+    WeakMap<DocumentLoader, SignatureCheck>
+  > = new WeakMap();
+
+  #getSignatureCheck(
+    documentLoader: DocumentLoader,
+    contextLoader: DocumentLoader,
+  ): SignatureCheck {
+    let checks = this.#signatureChecks.get(documentLoader);
+    if (checks == null) {
+      checks = new WeakMap();
+      this.#signatureChecks.set(documentLoader, checks);
+    }
+    let check = checks.get(contextLoader);
+    if (check == null) {
+      check = {};
+      checks.set(contextLoader, check);
+    }
+    return check;
+  }
 
   async getSignedKey(
     options: GetSignedKeyOptions = {},
   ): Promise<CryptographicKey | null> {
     if (this.#signedKey != null) return this.#signedKey;
-
-    const keyCache = new KvKeyCache(
-      this.federation.kv,
-      this.federation.kvPrefixes.publicKey,
+    const documentLoader = options.documentLoader ?? this.documentLoader;
+    const contextLoader = options.contextLoader ?? this.contextLoader;
+    const check = this.#getSignatureCheck(documentLoader, contextLoader);
+    if (check.key != null) return check.key;
+    // Only the default loader pair shares persistent keys.  Another pair
+    // may have a different view of a key, so a cached negative result from
+    // the default loaders must not prevent its independent verification.
+    const keyCache = documentLoader === this.documentLoader &&
+        contextLoader === this.contextLoader
+      ? new KvKeyCache(
+        this.federation.kv,
+        this.federation.kvPrefixes.publicKey,
+        {
+          documentLoader,
+          contextLoader,
+          tracerProvider: options.tracerProvider ?? this.tracerProvider,
+          keyTtl: this.federation.publicKeyTtl,
+        },
+      )
+      : undefined;
+    const promise: Promise<CryptographicKey | null> = verifyRequest(
+      this.request,
       {
-        documentLoader: options.documentLoader ?? this.documentLoader,
-        contextLoader: options.contextLoader ?? this.contextLoader,
+        ...this,
+        contextLoader,
+        documentLoader,
+        timeWindow: this.federation.signatureTimeWindow,
+        maxSignatures: this.federation.maxHttpSignatures,
+        keyCache,
+        meterProvider: this.meterProvider,
         tracerProvider: options.tracerProvider ?? this.tracerProvider,
-        keyTtl: this.federation.publicKeyTtl,
       },
-    );
-
-    return this.#signedKey = await verifyRequest(this.request, {
-      ...this,
-      contextLoader: options.contextLoader ?? this.contextLoader,
-      documentLoader: options.documentLoader ?? this.documentLoader,
-      timeWindow: this.federation.signatureTimeWindow,
-      maxSignatures: this.federation.maxHttpSignatures,
-      meterProvider: this.meterProvider,
-      tracerProvider: options.tracerProvider ?? this.tracerProvider,
-      keyCache,
+    ).then((key) => {
+      if (key != null) this.#signedKey ??= key;
+      return key;
+    }).catch((error) => {
+      if (check.key === promise) check.key = undefined;
+      throw error;
     });
+    check.key = promise;
+    return await promise;
   }
-
-  #signedKeyOwner: Actor | null | undefined = undefined;
 
   async getSignedKeyOwner(
     options: GetKeyOwnerOptions = {},
   ): Promise<Actor | null> {
     if (this.#signedKeyOwner != null) return this.#signedKeyOwner;
-    const key = await this.getSignedKey(options);
-    if (key == null) return this.#signedKeyOwner = null;
-    try {
-      return this.#signedKeyOwner = await getKeyOwner(key, {
-        contextLoader: options.contextLoader ?? this.contextLoader,
-        documentLoader: options.documentLoader ?? this.documentLoader,
-        tracerProvider: options.tracerProvider ?? this.tracerProvider,
+    const normalizedOptions = {
+      documentLoader: options.documentLoader ?? this.documentLoader,
+      contextLoader: options.contextLoader ?? this.contextLoader,
+      tracerProvider: options.tracerProvider ?? this.tracerProvider,
+    };
+    const check = this.#getSignatureCheck(
+      normalizedOptions.documentLoader,
+      normalizedOptions.contextLoader,
+    );
+    if (check.owner != null) return check.owner;
+    const promise: Promise<Actor | null> = this.getSignedKey(normalizedOptions)
+      .then(async (key) => {
+        if (key == null) {
+          // Another loader may verify the key later.  Its success must let
+          // these loaders check ownership instead of reusing this null.
+          if (check.owner === promise) check.owner = undefined;
+          return null;
+        }
+        try {
+          const owner = await getKeyOwner(key, normalizedOptions);
+          if (owner != null) this.#signedKeyOwner ??= owner;
+          return owner;
+        } catch (error) {
+          if (error instanceof FetchError) {
+            getLogger(["fedify", "federation", "actor"]).warn(
+              "Failed to fetch the key owner {keyOwner} of {keyId} while " +
+                "verifying the request signature; treating the request as " +
+                "unauthenticated: {error}",
+              { keyId: key.id?.href, keyOwner: error.url.href, error },
+            );
+            return null;
+          }
+          throw error;
+        }
+      }).catch((error) => {
+        if (check.owner === promise) check.owner = undefined;
+        throw error;
       });
-    } catch (error) {
-      if (error instanceof FetchError) {
-        getLogger(["fedify", "federation", "actor"]).warn(
-          "Failed to fetch the key owner {keyOwner} of {keyId} while " +
-            "verifying the request signature; treating the request as " +
-            "unauthenticated: {error}",
-          { keyId: key.id?.href, keyOwner: error.url.href, error },
-        );
-        return this.#signedKeyOwner = null;
-      }
-      throw error;
-    }
+    check.owner = promise;
+    return await promise;
   }
 
   async isSignedByAudience(

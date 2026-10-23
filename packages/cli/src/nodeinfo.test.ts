@@ -8,6 +8,7 @@ import {
   Jimp,
   readImage,
   rgbTo256Color,
+  runNodeInfo,
 } from "./nodeinfo.ts";
 
 afterEach(() => {
@@ -29,13 +30,13 @@ const HTML_WITH_SMALL_ICON = `
 test("getFaviconUrl - small favicon.ico and apple-touch-icon.png", async () => {
   fetchMock.spyGlobal();
 
-  fetchMock.get("https://example.com/", {
+  fetchMock.get("https://8.8.8.8/", {
     body: HTML_WITH_SMALL_ICON,
     headers: { "Content-Type": "text/html" },
   });
 
-  const result = await getFaviconUrl("https://example.com/");
-  assert.equal(result.href, "https://example.com/apple-touch-icon.png");
+  const result = await getFaviconUrl("https://8.8.8.8/");
+  assert.equal(result.href, "https://8.8.8.8/apple-touch-icon.png");
 });
 
 const HTML_WITH_ICON = `
@@ -53,13 +54,13 @@ const HTML_WITH_ICON = `
 test("getFaviconUrl - favicon.ico and apple-touch-icon.png", async () => {
   fetchMock.spyGlobal();
 
-  fetchMock.get("https://example.com/", {
+  fetchMock.get("https://8.8.8.8/", {
     body: HTML_WITH_ICON,
     headers: { "Content-Type": "text/html" },
   });
 
-  const result = await getFaviconUrl("https://example.com/");
-  assert.equal(result.href, "https://example.com/favicon.ico");
+  const result = await getFaviconUrl("https://8.8.8.8/");
+  assert.equal(result.href, "https://8.8.8.8/favicon.ico");
 });
 
 const HTML_WITH_SVG_ONLY = `
@@ -76,13 +77,13 @@ const HTML_WITH_SVG_ONLY = `
 test("getFaviconUrl - svg icons only falls back to /favicon.ico", async () => {
   fetchMock.spyGlobal();
 
-  fetchMock.get("https://example.com/", {
+  fetchMock.get("https://8.8.8.8/", {
     body: HTML_WITH_SVG_ONLY,
     headers: { "Content-Type": "text/html" },
   });
 
-  const result = await getFaviconUrl("https://example.com/");
-  assert.equal(result.href, "https://example.com/favicon.ico");
+  const result = await getFaviconUrl("https://8.8.8.8/");
+  assert.equal(result.href, "https://8.8.8.8/favicon.ico");
 });
 
 const HTML_WITH_UPPERCASE_SVG_ONLY = `
@@ -99,13 +100,13 @@ const HTML_WITH_UPPERCASE_SVG_ONLY = `
 test("getFaviconUrl - uppercase svg icons only falls back to /favicon.ico", async () => {
   fetchMock.spyGlobal();
 
-  fetchMock.get("https://example.com/", {
+  fetchMock.get("https://8.8.8.8/", {
     body: HTML_WITH_UPPERCASE_SVG_ONLY,
     headers: { "Content-Type": "text/html" },
   });
 
-  const result = await getFaviconUrl("https://example.com/");
-  assert.equal(result.href, "https://example.com/favicon.ico");
+  const result = await getFaviconUrl("https://8.8.8.8/");
+  assert.equal(result.href, "https://8.8.8.8/favicon.ico");
 });
 
 const HTML_WITH_UPPERCASE_SVG_WITH_QUERY = `
@@ -122,13 +123,13 @@ const HTML_WITH_UPPERCASE_SVG_WITH_QUERY = `
 test("getFaviconUrl - uppercase svg icons with query and hash fall back to /favicon.ico", async () => {
   fetchMock.spyGlobal();
 
-  fetchMock.get("https://example.com/", {
+  fetchMock.get("https://8.8.8.8/", {
     body: HTML_WITH_UPPERCASE_SVG_WITH_QUERY,
     headers: { "Content-Type": "text/html" },
   });
 
-  const result = await getFaviconUrl("https://example.com/");
-  assert.equal(result.href, "https://example.com/favicon.ico");
+  const result = await getFaviconUrl("https://8.8.8.8/");
+  assert.equal(result.href, "https://8.8.8.8/favicon.ico");
 });
 
 const HTML_WITH_SVG_TYPE_ONLY = `
@@ -261,13 +262,13 @@ const HTML_WITHOUT_ICON = `
 test("getFaviconUrl - falls back to /favicon.ico", async () => {
   fetchMock.spyGlobal();
 
-  fetchMock.get("https://example.com/", {
+  fetchMock.get("https://8.8.8.8/", {
     body: HTML_WITHOUT_ICON,
     headers: { "Content-Type": "text/html" },
   });
 
-  const result = await getFaviconUrl("https://example.com/");
-  assert.equal(result.href, "https://example.com/favicon.ico");
+  const result = await getFaviconUrl("https://8.8.8.8/");
+  assert.equal(result.href, "https://8.8.8.8/favicon.ico");
 });
 
 test("rgbTo256Color - check RGB cube", () => {
@@ -391,4 +392,231 @@ test("getAsciiArt - Brightest Letter with true color support", async () => {
   );
 
   assert.equal(whiteResult, "\u001b[38;2;255;255;255m \u001b[39m");
+});
+
+type FetchCall = { url: string; redirect: string | undefined };
+
+async function withMockFetch(
+  routes: Record<string, () => Response>,
+  run: (calls: FetchCall[]) => Promise<void>,
+): Promise<void> {
+  const originalFetch = globalThis.fetch;
+  const calls: FetchCall[] = [];
+  globalThis.fetch = (input, init) => {
+    let url = typeof input === "string"
+      ? input
+      : input instanceof URL
+      ? input.href
+      : input.url;
+    for (let redirects = 0; redirects < 20; redirects++) {
+      calls.push({ url, redirect: init?.redirect });
+      const route = routes[url];
+      if (route == null) throw new Error("Unexpected fetch: " + url);
+      const response = route();
+      const location = response.headers.get("Location");
+      if (
+        init?.redirect !== "manual" && location != null &&
+        [301, 302, 303, 307, 308].includes(response.status)
+      ) {
+        url = new URL(location, url).href;
+        continue;
+      }
+      return Promise.resolve(response);
+    }
+    throw new Error("Too many mocked redirects");
+  };
+  try {
+    await run(calls);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+function nodeInfoRoutes(
+  html: string,
+): Record<string, () => Response> {
+  return {
+    "https://8.8.8.8/.well-known/nodeinfo": () =>
+      Response.json({
+        links: [{
+          rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
+          href: "https://8.8.8.8/nodeinfo/2.1",
+        }],
+      }),
+    "https://8.8.8.8/nodeinfo/2.1": () =>
+      Response.json({
+        software: { name: "test", version: "1.0.0" },
+        protocols: [],
+        usage: { users: {} },
+      }),
+    "https://8.8.8.8/": () => new Response(html),
+  };
+}
+
+async function runNodeInfoWithFavicon(): Promise<void> {
+  await runNodeInfo({
+    command: "nodeinfo",
+    host: "https://8.8.8.8/",
+    raw: false,
+    noFavicon: false,
+    metadata: false,
+    bestEffort: false,
+    userAgent: "Fedify test",
+  });
+}
+
+test("getFaviconUrl rejects a private page before fetch", async () => {
+  await withMockFetch(
+    { "http://127.0.0.1:9000/": () => new Response("") },
+    async (calls) => {
+      await assert.rejects(() => getFaviconUrl("http://127.0.0.1:9000/"));
+      assert.deepEqual(calls, []);
+    },
+  );
+});
+
+test("getFaviconUrl rejects a public page redirect to loopback", async () => {
+  await withMockFetch(
+    {
+      "https://8.8.8.8/": () =>
+        new Response(null, {
+          status: 302,
+          headers: { Location: "http://127.0.0.1:9000/private" },
+        }),
+      "http://127.0.0.1:9000/private": () => new Response("private"),
+    },
+    async (calls) => {
+      await assert.rejects(() => getFaviconUrl("https://8.8.8.8/"));
+      assert.deepEqual(calls, [
+        { url: "https://8.8.8.8/", redirect: "manual" },
+      ]);
+    },
+  );
+});
+
+test("nodeinfo rejects private and non-HTTP icon URLs", async () => {
+  for (
+    const href of [
+      "http://127.0.0.1:9000/secret",
+      "http://[::1]/secret",
+      "http://[::ffff:7f00:1]/secret",
+      "http://2130706433/secret",
+      "file:///etc/passwd",
+      "data:text/plain,secret",
+    ]
+  ) {
+    await withMockFetch(
+      nodeInfoRoutes('<link rel="icon" href="' + href + '">'),
+      async (calls) => {
+        await runNodeInfoWithFavicon();
+        assert.equal(
+          calls.length,
+          3,
+          "No icon fetch should occur for " + href,
+        );
+        assert.ok(calls.every((call) => call.redirect === "manual"));
+      },
+    );
+  }
+});
+
+test("nodeinfo rejects an icon redirect to loopback", async () => {
+  const routes = nodeInfoRoutes('<link rel="icon" href="/icon.png">');
+  routes["https://8.8.8.8/icon.png"] = () =>
+    new Response(null, {
+      status: 302,
+      headers: { Location: "http://127.0.0.1:9000/secret" },
+    });
+  routes["http://127.0.0.1:9000/secret"] = () => new Response("private");
+  await withMockFetch(routes, async (calls) => {
+    await runNodeInfoWithFavicon();
+    assert.deepEqual(calls.map((call) => call.url), [
+      "https://8.8.8.8/.well-known/nodeinfo",
+      "https://8.8.8.8/nodeinfo/2.1",
+      "https://8.8.8.8/",
+      "https://8.8.8.8/icon.png",
+    ]);
+    assert.ok(calls.every((call) => call.redirect === "manual"));
+  });
+});
+
+test("nodeinfo renders a public favicon", async () => {
+  const png = await new Jimp({ width: 4, height: 4, color: 0x000000ff })
+    .getBuffer("image/png");
+  const routes = nodeInfoRoutes('<link rel="icon" href="/icon.png">');
+  routes["https://8.8.8.8/icon.png"] = () =>
+    new Response(Uint8Array.from(png).buffer, {
+      headers: { "Content-Type": "image/png" },
+    });
+
+  const originalLog = console.log;
+  const output: string[] = [];
+  console.log = (...values: unknown[]) => {
+    output.push(values.join(" "));
+  };
+  try {
+    await withMockFetch(routes, async (calls) => {
+      await runNodeInfoWithFavicon();
+      assert.deepEqual(calls.map((call) => call.url), [
+        "https://8.8.8.8/.well-known/nodeinfo",
+        "https://8.8.8.8/nodeinfo/2.1",
+        "https://8.8.8.8/",
+        "https://8.8.8.8/icon.png",
+      ]);
+      assert.ok(calls.every((call) => call.redirect === "manual"));
+    });
+  } finally {
+    console.log = originalLog;
+  }
+  assert.match(output.join("\n"), /█/);
+});
+
+test("getFaviconUrl resolves fallback from final page URL", async () => {
+  await withMockFetch(
+    {
+      "https://8.8.8.8/": () =>
+        new Response(null, {
+          status: 302,
+          headers: { Location: "https://1.1.1.1/site" },
+        }),
+      "https://1.1.1.1/site": () => new Response("<html></html>"),
+    },
+    async (calls) => {
+      const url = await getFaviconUrl("https://8.8.8.8/");
+      assert.equal(url.href, "https://1.1.1.1/favicon.ico");
+      assert.deepEqual(calls, [
+        { url: "https://8.8.8.8/", redirect: "manual" },
+        { url: "https://1.1.1.1/site", redirect: "manual" },
+      ]);
+    },
+  );
+});
+
+test("getFaviconUrl permits five redirects but not six", async () => {
+  const routes: Record<string, () => Response> = {};
+  for (let i = 0; i < 6; i++) {
+    routes["https://8.8.8.8/hop" + i] = () =>
+      new Response(null, {
+        status: 302,
+        headers: { Location: "/hop" + (i + 1) },
+      });
+  }
+  routes["https://8.8.8.8/hop5"] = () => new Response("<html></html>");
+  await withMockFetch(routes, async (calls) => {
+    const url = await getFaviconUrl("https://8.8.8.8/hop0");
+    assert.equal(url.href, "https://8.8.8.8/favicon.ico");
+    assert.equal(calls.length, 6);
+    assert.ok(calls.every((call) => call.redirect === "manual"));
+  });
+
+  routes["https://8.8.8.8/hop5"] = () =>
+    new Response(null, { status: 302, headers: { Location: "/hop6" } });
+  await withMockFetch(routes, async (calls) => {
+    await assert.rejects(
+      () => getFaviconUrl("https://8.8.8.8/hop0"),
+      /Too many favicon redirects/,
+    );
+    assert.equal(calls.length, 6);
+    assert.equal(calls.some((call) => call.url.endsWith("/hop6")), false);
+  });
 });

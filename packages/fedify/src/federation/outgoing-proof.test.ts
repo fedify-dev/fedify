@@ -132,6 +132,8 @@ function createTestFederation(queue?: MessageQueue): FederationImpl<void> {
     contextLoaderFactory: () => mockDocumentLoader,
     documentLoaderFactory: () => mockDocumentLoader,
   });
+  // Keep hostname-based fetch mocks on the direct transport.
+  federation.allowPrivateAddress = true;
   federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
   return federation;
 }
@@ -1205,6 +1207,8 @@ test("an embedded actor supplies gateways to a plain send context", async () => 
     documentLoaderFactory: () => mockDocumentLoader,
     activityTransformers: [],
   });
+  // Keep hostname-based fetch mocks on the direct transport.
+  federation.allowPrivateAddress = true;
   const ctx = federation.createContext(new URL("https://example.com/"));
   const activity = await signObject(
     new Create({

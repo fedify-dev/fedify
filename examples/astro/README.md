@@ -7,8 +7,8 @@ A comprehensive example of building a federated server application using
 [Fedify] with [Astro] via the [`@fedify/astro`] package.  This sample
 demonstrates how to create an ActivityPub-compatible federated social media
 server that can interact with other federated platforms like Mastodon, Pleroma,
-and other ActivityPub implementations.  It supports [Deno], [Node.js], and
-[Bun] runtimes.
+and other ActivityPub implementations.  It supports [Node.js], [Bun], and
+[Deno] runtimes.
 
 The example uses Astro 7.  The `@fedify/astro` package also supports Astro 5
 and 6 through its dedicated compatibility matrix.
@@ -16,9 +16,9 @@ and 6 through its dedicated compatibility matrix.
 [Fedify]: https://fedify.dev
 [Astro]: https://astro.build/
 [`@fedify/astro`]: https://jsr.io/@fedify/astro
-[Deno]: https://deno.com/
 [Node.js]: https://nodejs.org/
 [Bun]: https://bun.sh/
+[Deno]: https://deno.com/
 
 
 Features
@@ -34,7 +34,7 @@ Features
  -  **Inbox Processing**: Real-time activity processing from federated instances
  -  **Content Negotiation**: Same routes serve HTML for browsers and ActivityPub
     JSON for federated clients
- -  **Three Runtimes**: Supports Deno, Node.js, and Bun via separate Astro
+ -  **Three Runtimes**: Supports Node.js, Bun, and Deno via separate Astro
     configs
  -  **TypeScript**: Full type safety throughout the application
 
@@ -42,13 +42,13 @@ Features
 How it works
 ------------
 
- -  *astro.config.deno.ts* registers `fedifyIntegration()` to configure Vite's
-    SSR settings for Fedify compatibility, and uses `@deno/astro-adapter` to
-    run on Deno.
  -  *astro.config.node.ts* registers `fedifyIntegration()` and uses
     `@astrojs/node` for Node.js.
  -  *astro.config.bun.ts* registers `fedifyIntegration()` and uses
     `@astrojs/node` standalone output, which is built and run with Bun.
+ -  *astro.config.deno.ts* registers `fedifyIntegration()` to configure Vite's
+    SSR settings for Fedify compatibility, and uses `@deno/astro-adapter` to
+    run on Deno.
  -  *src/lib/store.ts* defines in-memory stores for key pairs, follower
     relationships, and posts.
  -  *src/lib/federation.ts* sets up the full `Federation` instance with:
@@ -66,11 +66,6 @@ How it works
     new post creation via a form `POST`.
  -  `src/pages/users/[identifier]/posts/[id].astro` renders an individual post
     detail page.
-
-> [!NOTE]
-> When using Deno with Astro, you must use `npm:` specifiers (not `jsr:`) for
-> `@fedify/fedify` and `@fedify/vocab` in your *deno.json* due to Vite
-> compatibility limitations.
 
 
 Project structure
@@ -97,16 +92,6 @@ src/
 
 Running
 -------
-
-### Deno
-
-To run the dev server with Deno:
-
-~~~~ command
-deno task dev
-~~~~
-
-This uses *astro.config.deno.ts* as the configuration file.
 
 ### Node.js
 
@@ -138,6 +123,21 @@ bun run preview:bun
 The Bun setup intentionally uses `@astrojs/node` 11.  The previously used
 `@nurodev/astro-bun` adapter only declares compatibility with Astro 5.
 
+### Deno
+
+To run the dev server with Deno:
+
+~~~~ command
+deno task dev
+~~~~
+
+This uses *astro.config.deno.ts* as the configuration file.
+
+> [!NOTE]
+> When using Deno with Astro, you must use `npm:` specifiers (not `jsr:`) for
+> `@fedify/fedify` and `@fedify/vocab` in your *deno.json* due to Vite
+> compatibility limitations.
+
 ### Testing
 
 The application will be available at <http://localhost:4321/>.
@@ -163,11 +163,12 @@ Example usage scenarios
 1.  Start the development server:
 
     ~~~~ bash
-    deno task dev
-    # or for Node.js
+    # For Node.js
     pnpm dev
     # or for Bun
     bun run dev:bun
+    # or for Deno
+    deno task dev
     ~~~~
 
 2.  Visit the home page at <http://localhost:4321/> to see the demo account
@@ -248,25 +249,6 @@ If you are creating a new project based on this example, you only need the
 configuration file for your target runtime.  Delete the unused ones and rename
 the one you keep to *astro.config.ts*:
 
-### For Deno
-
-~~~~ command
-rm astro.config.node.ts astro.config.bun.ts
-mv astro.config.deno.ts astro.config.ts
-~~~~
-
-Then remove the `--config` flags from *deno.json* tasks:
-
-~~~~ json
-{
-  "tasks": {
-    "dev": "deno run -A npm:astro dev",
-    "build": "deno run -A npm:astro build",
-    "preview": "deno run -A npm:astro preview"
-  }
-}
-~~~~
-
 ### For Node.js
 
 ~~~~ command
@@ -301,6 +283,25 @@ Then update *package.json* scripts to use Bun's SSR entry point after build:
     "dev": "bunx --bun astro dev",
     "build": "bunx --bun astro build",
     "preview": "bun ./dist/server/entry.mjs"
+  }
+}
+~~~~
+
+### For Deno
+
+~~~~ command
+rm astro.config.node.ts astro.config.bun.ts
+mv astro.config.deno.ts astro.config.ts
+~~~~
+
+Then remove the `--config` flags from *deno.json* tasks:
+
+~~~~ json
+{
+  "tasks": {
+    "dev": "deno run -A --node-modules-dir=manual npm:astro@7 dev",
+    "build": "deno run -A --node-modules-dir=manual npm:astro@7 build",
+    "preview": "deno run -A --node-modules-dir=manual npm:astro@7 preview"
   }
 }
 ~~~~

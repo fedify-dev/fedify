@@ -876,7 +876,7 @@ test("getObject() sends the ActivityStreams Accept header to gateways", {
   });
   try {
     const object = await (await createActivity()).getObject({
-      documentLoader: getDocumentLoader(),
+      documentLoader: getDocumentLoader({ allowPrivateAddress: true }),
       contextLoader: mockDocumentLoader,
       gateways: ["https://example.com"],
       verifyPortableObject: createVerifier(),

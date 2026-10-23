@@ -6,12 +6,14 @@ import {
   Activity,
   Arrive,
   Create,
+  Follow,
   IntransitiveActivity,
   Note,
   Object as ASObject,
   Person,
   PUBLIC_COLLECTION,
   Tombstone,
+  Undo,
 } from "@fedify/vocab";
 import {
   computeDigestMultibase,
@@ -23,6 +25,7 @@ import {
 import {
   assertEquals,
   assertInstanceOf,
+  assertNotStrictEquals,
   assertRejects,
   assertStrictEquals,
   assertThrows,
@@ -37,6 +40,27 @@ import {
   createOutboxContext,
   createRequestContext,
 } from "./mock.ts";
+import { getDocumentLoader, UrlError } from "@fedify/vocab-runtime";
+import { metrics, trace } from "@opentelemetry/api";
+
+test("MockFederation preserves telemetry providers with private-address loaders", () => {
+  const meterProvider = metrics.getMeterProvider();
+  const tracerProvider = trace.getTracerProvider();
+  for (const allowPrivateAddress of [false, true]) {
+    const federation = createFederation({
+      contextData: {},
+      allowPrivateAddress,
+      meterProvider,
+      tracerProvider,
+    });
+    const context = federation.createContext(
+      new URL("https://example.com/"),
+      {},
+    );
+    assertStrictEquals(context.meterProvider, meterProvider);
+    assertStrictEquals(context.tracerProvider, tracerProvider);
+  }
+});
 
 test("MockFederation actor setters support chaining in any order", () => {
   const federation = createFederation<void>();
@@ -2520,4 +2544,272 @@ test("RequestContext.isSignedByAudience() in test contexts", async (t) => {
       false,
     );
   });
+});
+
+const localActorUrl = "http://localhost:9999/users/alicia";
+
+function createNetworkFederation() {
+  const options = { contextData: {}, allowPrivateAddress: true };
+  return createFederation(options);
+}
+
+function createLocalFollow(): Follow {
+  return new Follow({
+    id: new URL("http://localhost:9999/activities/follow"),
+    actor: new URL(localActorUrl),
+    object: new URL("https://example.com/users/alice"),
+  });
+}
+
+async function withActorFetch(fn: () => Promise<void>): Promise<string[]> {
+  const originalFetch = globalThis.fetch;
+  const requests: string[] = [];
+  globalThis.fetch = (input) => {
+    const url = input instanceof Request ? input.url : String(input);
+    requests.push(url);
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: url,
+          type: "Person",
+          preferredUsername: "alicia",
+        }),
+        { headers: { "Content-Type": "application/activity+json" } },
+      ),
+    );
+  };
+  try {
+    await fn();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  return requests;
+}
+
+for (const passContext of [false, true]) {
+  test(`receiveActivity allows private actor lookup (pass context: ${passContext})`, async () => {
+    const federation = createNetworkFederation();
+    const activity = createLocalFollow();
+    const received: Follow[] = [];
+    let actor: unknown;
+    federation.setInboxListeners("/users/{identifier}/inbox").on(
+      Follow,
+      async (ctx: InboxContext<Record<string, never>>, follow: Follow) => {
+        received.push(follow);
+        actor = await follow.getActor(passContext ? ctx : {});
+      },
+    ).on(
+      Follow,
+      (_ctx: InboxContext<Record<string, never>>, follow: Follow) => {
+        received.push(follow);
+        return Promise.resolve();
+      },
+    );
+    const requests = await withActorFetch(() =>
+      federation.receiveActivity(activity)
+    );
+    assertEquals(requests, [localActorUrl]);
+    assertInstanceOf(actor, Person);
+    assertEquals(actor.id?.href, localActorUrl);
+    assertInstanceOf(received[0], Follow);
+    assertNotStrictEquals(received[0], activity);
+    assertStrictEquals(received[0], received[1]);
+    assertEquals(activity.actorId?.href, localActorUrl);
+    // The listener's lazy lookup must not populate the caller's actor cache.
+    await assertRejects(() => activity.getActor(), UrlError, "Localhost");
+  });
+}
+
+for (const allowPrivateAddress of [undefined, false]) {
+  test(`receiveActivity retains offline defaults (allowPrivateAddress: ${allowPrivateAddress})`, async () => {
+    const options = { contextData: {}, allowPrivateAddress };
+    const federation = createFederation(options);
+    const activity = createLocalFollow();
+    let received: Follow | undefined;
+    let document: unknown;
+    let contextDocument: unknown;
+    federation.setInboxListeners("/users/{identifier}/inbox").on(
+      Follow,
+      async (ctx: InboxContext<Record<string, never>>, follow: Follow) => {
+        received = follow;
+        document = (await ctx.documentLoader(localActorUrl)).document;
+        contextDocument = (await ctx.contextLoader(localActorUrl)).document;
+        await assertRejects(() => follow.getActor(), UrlError, "Localhost");
+      },
+    );
+    const requests = await withActorFetch(async () => {
+      await federation.receiveActivity(activity);
+      const ctx = federation.createContext(new URL("https://example.com"), {});
+      await ctx.documentLoader(localActorUrl);
+      await ctx.contextLoader(localActorUrl);
+    });
+    assertEquals(requests, []);
+    assertStrictEquals(received, activity);
+    assertEquals(document, {});
+    assertEquals(contextDocument, {});
+  });
+}
+
+test("createContext allows private actor lookup", async () => {
+  const federation = createNetworkFederation();
+  const ctx = federation.createContext(new URL("https://example.com"), {});
+  const activity = createLocalFollow();
+  let actor: unknown;
+  const requests = await withActorFetch(async () => {
+    actor = await activity.getActor(ctx);
+  });
+  assertEquals(requests, [localActorUrl]);
+  assertInstanceOf(actor, Person);
+  assertEquals(actor.id?.href, localActorUrl);
+});
+
+test("receiveActivity preserves embedded objects and supports lookup with context", async () => {
+  const federation = createNetworkFederation();
+  const follow = createLocalFollow();
+  // A different origin must not cause a trusted embedded object to be fetched.
+  const activity = new Undo({
+    id: new URL("https://example.com/activities/undo"),
+    object: follow,
+  });
+  let embedded: unknown;
+  let actor: unknown;
+  federation.setInboxListeners("/users/{identifier}/inbox").on(
+    Undo,
+    async (ctx: InboxContext<Record<string, never>>, undo: Undo) => {
+      const object = await undo.getObject();
+      embedded = object;
+      if (object instanceof Follow) actor = await object.getActor(ctx);
+    },
+  );
+  const requests = await withActorFetch(() =>
+    federation.receiveActivity(activity)
+  );
+  assertEquals(requests, [localActorUrl]);
+  assertStrictEquals(embedded, follow);
+  assertInstanceOf(actor, Person);
+  assertEquals(actor.id?.href, localActorUrl);
+});
+
+test("receiveActivity respects an explicit getter document loader", async () => {
+  const federation = createNetworkFederation();
+  let actor: unknown;
+  const loaderRequests: string[] = [];
+  federation.setInboxListeners("/users/{identifier}/inbox").on(
+    Follow,
+    async (_ctx: InboxContext<Record<string, never>>, follow: Follow) => {
+      actor = await follow.getActor({
+        documentLoader: (url) => {
+          loaderRequests.push(url);
+          return Promise.resolve({
+            contextUrl: null,
+            documentUrl: url,
+            document: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              id: url,
+              type: "Person",
+            },
+          });
+        },
+      });
+    },
+  );
+  const requests = await withActorFetch(() =>
+    federation.receiveActivity(createLocalFollow())
+  );
+  assertEquals(requests, []);
+  assertEquals(loaderRequests, [localActorUrl]);
+  assertInstanceOf(actor, Person);
+  assertEquals(actor.id?.href, localActorUrl);
+});
+
+test("receiveActivity preserves an unconfigured activity's own loaders", async () => {
+  const federation = createFederation({ contextData: {} });
+  const loader = getDocumentLoader({ allowPrivateAddress: true });
+  const activity = createLocalFollow().clone({}, {
+    documentLoader: loader,
+    contextLoader: loader,
+  });
+  let actor: unknown;
+  federation.setInboxListeners("/users/{identifier}/inbox").on(
+    Follow,
+    async (_ctx: InboxContext<Record<string, never>>, follow: Follow) => {
+      actor = await follow.getActor();
+    },
+  );
+  const requests = await withActorFetch(() =>
+    federation.receiveActivity(activity)
+  );
+  assertEquals(requests, [localActorUrl]);
+  assertInstanceOf(actor, Person);
+});
+
+test("receiveActivity does not clone without listeners or context data", async () => {
+  const options = { contextData: undefined, allowPrivateAddress: true };
+  const federation = createFederation(options);
+  const activity = createLocalFollow();
+  let clones = 0;
+  activity.clone = () => {
+    clones++;
+    return activity;
+  };
+  const requests = await withActorFetch(async () => {
+    await federation.receiveActivity(activity);
+    federation.setInboxListeners("/users/{identifier}/inbox").on(
+      Follow,
+      () => Promise.resolve(),
+    );
+    await assertRejects(
+      () => federation.receiveActivity(activity),
+      Error,
+      "contextData",
+    );
+  });
+  assertEquals(requests, []);
+  assertEquals(clones, 0);
+});
+
+test("receiveActivity preserves parsed JSON-LD extension properties", async () => {
+  const federation = createNetworkFederation();
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "http://localhost:9999/activities/follow",
+    type: "Follow",
+    actor: localActorUrl,
+    object: "https://example.com/users/alice",
+    "https://example.com/ns#custom": "preserved",
+  };
+  const activity = await Follow.fromJsonLd(json);
+  let receivedJson: unknown;
+  federation.setInboxListeners("/users/{identifier}/inbox").on(
+    Follow,
+    async (_ctx: InboxContext<Record<string, never>>, follow: Follow) => {
+      receivedJson = await follow.toJsonLd();
+    },
+  );
+  const requests = await withActorFetch(() =>
+    federation.receiveActivity(activity)
+  );
+  assertEquals(requests, []);
+  assertEquals(receivedJson, json);
+  assertEquals(await activity.toJsonLd(), json);
+});
+
+test("MockFederation explicit loaders take precedence over private-address defaults", () => {
+  const documentLoader = mockDocumentLoader;
+  const contextLoader = (url: string) => mockDocumentLoader(url);
+  for (const allowPrivateAddress of [false, true]) {
+    const federation = createFederation({
+      contextData: {},
+      allowPrivateAddress,
+      documentLoader,
+      contextLoader,
+    });
+    const context = federation.createContext(
+      new URL("https://example.com/"),
+      {},
+    );
+    assertStrictEquals(context.documentLoader, documentLoader);
+    assertStrictEquals(context.contextLoader, contextLoader);
+  }
 });

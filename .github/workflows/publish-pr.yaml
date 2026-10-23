@@ -291,6 +291,7 @@ jobs:
         JSR_REF_VERSION=unstable \
         pnpm run build
       env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PLAUSIBLE_DOMAIN: ${{ secrets.PLAUSIBLE_DOMAIN }}
         STABLE_DOCS_URL: ${{ vars.STABLE_DOCS_URL }}
         UNSTABLE_DOCS_URL: ${{ vars.UNSTABLE_DOCS_URL }}

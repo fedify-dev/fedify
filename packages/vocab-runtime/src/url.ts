@@ -1,9 +1,20 @@
-import type { LookupAddress } from "node:dns";
 // FIXME: the default dns import exists since tests can stub `dns.lookup()`.
 // This should be replaced by injecting the lookup function such as an internal
 // option on `validatePublicUrl()`
 import dns from "node:dns/promises";
 import { isIP } from "node:net";
+
+/**
+ * An address returned by a DNS lookup.  It has the same shape as
+ * `ResolvedAddress` of `node:dns`, without depending on its type declarations.
+ * @internal
+ */
+export interface ResolvedAddress {
+  /** An IPv4 or IPv6 address. */
+  readonly address: string;
+  /** The IP family of the address: `4` or `6`. */
+  readonly family: number;
+}
 
 export class UrlError extends Error {
   /**
@@ -993,8 +1004,78 @@ function replaceGatewayHints(
 
 /**
  * Validates a URL to prevent SSRF attacks.
+ *
+ * This function only checks the addresses that the hostname currently
+ * resolves to; it does not pin the connection to those addresses.  A request
+ * made after this check resolves the hostname again, so this function alone
+ * does not prevent DNS rebinding.
  */
 export async function validatePublicUrl(url: string): Promise<void> {
+  const { hostname, family } = parsePublicUrl(url);
+  if (family !== 0) return;
+  if ("Deno" in globalThis) {
+    // If the `net` permission is not granted, we can't resolve the hostname.
+    // However, we can safely assume that it cannot gain access to private
+    // resources.
+    const netPermission = await Deno.permissions.query({ name: "net" });
+    if (netPermission.state !== "granted") return;
+  }
+  // FIXME: This is a temporary workaround for the `Bun` runtime; for unknown
+  // reasons, the Web Crypto API does not work as expected after a DNS lookup.
+  // This workaround purposes to prevent unit tests from hanging up.
+  // It only applies to this function; openPublicFetch() never skips lookups:
+  if ("Bun" in globalThis) {
+    if (hostname === "example.com" || hostname.endsWith(".example.com")) {
+      return;
+    } else if (hostname === "fedify-test.internal") {
+      throw new UrlError("Invalid or private address: fedify-test.internal");
+    }
+  }
+  // To prevent SSRF via DNS rebinding, we need to resolve all IP addresses
+  // and ensure that they are all public:
+  await lookupPublicAddresses(hostname, lookupAllAddresses);
+}
+
+/**
+ * A function that resolves all addresses of a hostname, like
+ * `node:dns.lookup()` with `{ all: true }`.
+ * @internal
+ */
+export type LookupAllAddresses = (
+  hostname: string,
+) => Promise<readonly ResolvedAddress[]>;
+
+/**
+ * Resolves all addresses of the given hostname through `node:dns/promises`.
+ * The default `dns` object is looked up on every call so that tests can still
+ * stub `dns.lookup()`.
+ * @internal
+ */
+export function lookupAllAddresses(
+  hostname: string,
+): Promise<readonly ResolvedAddress[]> {
+  return dns.lookup(hostname, { all: true });
+}
+
+/**
+ * The result of {@link parsePublicUrl}.
+ * @internal
+ */
+export interface ParsedPublicUrl {
+  readonly url: URL;
+  /** The hostname without brackets around IPv6 literals. */
+  readonly hostname: string;
+  /** The IP family of the hostname, or `0` if it is not an IP literal. */
+  readonly family: number;
+}
+
+/**
+ * Checks the parts of a URL that can be validated without resolving it:
+ * the protocol, the `localhost` hostname, and IP literal hostnames.
+ * @throws {UrlError} If the URL is not allowed.
+ * @internal
+ */
+export function parsePublicUrl(url: string | URL): ParsedPublicUrl {
   const parsed = new URL(url);
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new UrlError(`Unsupported protocol: ${parsed.protocol}`);
@@ -1006,37 +1087,47 @@ export async function validatePublicUrl(url: string): Promise<void> {
   if (hostname === "localhost") {
     throw new UrlError("Localhost is not allowed");
   }
-  const hostnameFamily = isIP(hostname);
-  if (hostnameFamily !== 0) {
-    validatePublicIpAddress(hostname, hostnameFamily);
-    return;
-  }
-  if ("Deno" in globalThis && !isIP(hostname)) {
-    // If the `net` permission is not granted, we can't resolve the hostname.
-    // However, we can safely assume that it cannot gain access to private
-    // resources.
-    const netPermission = await Deno.permissions.query({ name: "net" });
-    if (netPermission.state !== "granted") return;
-  }
-  // FIXME: This is a temporary workaround for the `Bun` runtime; for unknown
-  // reasons, the Web Crypto API does not work as expected after a DNS lookup.
-  // This workaround purposes to prevent unit tests from hanging up:
-  if ("Bun" in globalThis) {
-    if (hostname === "example.com" || hostname.endsWith(".example.com")) {
-      return;
-    } else if (hostname === "fedify-test.internal") {
-      throw new UrlError("Invalid or private address: fedify-test.internal");
-    }
-  }
-  // To prevent SSRF via DNS rebinding, we need to resolve all IP addresses
-  // and ensure that they are all public:
-  let addresses: LookupAddress[];
+  const family = isIP(hostname);
+  if (family !== 0) validatePublicIpAddress(hostname, family);
+  return { url: parsed, hostname, family };
+}
+
+/**
+ * Resolves the given hostname and checks that every returned IP address is
+ * public.
+ * @returns The IP addresses of the hostname, without non-IP entries.
+ * @throws {UrlError} If the lookup fails, returns no IP address, or returns
+ *                    any non-public address.
+ * @internal
+ */
+export async function lookupPublicAddresses(
+  hostname: string,
+  lookup: LookupAllAddresses,
+): Promise<ResolvedAddress[]> {
+  let addresses: readonly ResolvedAddress[];
   try {
-    addresses = await dns.lookup(hostname, { all: true });
+    addresses = await lookup(hostname);
   } catch (error) {
     throw new UrlError("DNS lookup failed", { cause: error, reason: "dns" });
   }
   validateLookupAddresses(addresses);
+  return addresses
+    .filter(({ address }) => isIP(address) !== 0)
+    .map(({ address }) => ({ address, family: isIP(address) }));
+}
+
+/**
+ * Checks that the given IP address is public.  This is used right before
+ * connecting to an address that passed {@link lookupPublicAddresses}.
+ * @throws {UrlError} If the address is not a public IP address.
+ * @internal
+ */
+export function assertPublicAddress(address: ResolvedAddress): void {
+  const family = isIP(address.address);
+  if (family === 0 || family !== address.family) {
+    throw new UrlError(`Invalid or private address: ${address.address}`);
+  }
+  validatePublicIpAddress(address.address, family);
 }
 
 /**
@@ -1057,7 +1148,7 @@ export async function validatePublicUrl(url: string): Promise<void> {
  * @internal
  */
 export function validateLookupAddresses(
-  addresses: readonly LookupAddress[],
+  addresses: readonly ResolvedAddress[],
 ): void {
   let ipAddressCount = 0;
   for (const { address } of addresses) {

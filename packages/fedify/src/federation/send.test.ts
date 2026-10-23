@@ -5,6 +5,11 @@ import {
   test,
 } from "@fedify/fixture";
 import { FetchError, UrlError } from "@fedify/vocab-runtime";
+import {
+  openDirectFetch,
+  openPublicFetch,
+  type PublicFetchSession,
+} from "@fedify/vocab-runtime/internal";
 import type { Actor } from "@fedify/vocab";
 import {
   Activity,
@@ -38,7 +43,6 @@ import {
 } from "@opentelemetry/sdk-metrics";
 import fetchMock from "fetch-mock";
 import { AsyncLocalStorage } from "node:async_hooks";
-import dns from "node:dns/promises";
 import { FedifySpanExporter } from "../otel/exporter.ts";
 import { verifyRequest } from "../sig/http.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
@@ -50,7 +54,19 @@ import {
 } from "../testing/keys.ts";
 import { MemoryKvStore } from "./kv.ts";
 
-import { extractInboxes, sendActivity, SendActivityError } from "./send.ts";
+import {
+  extractInboxes,
+  fetchWithValidatedRedirects,
+  sendActivity,
+  SendActivityError,
+  type SendActivityParameters,
+} from "./send.ts";
+
+// Sends without address validation, so that requests reach fetch-mock with
+// their hostnames on every runtime (Bun pins validated hostnames to IPs):
+function sendDirect(options: SendActivityParameters): Promise<void> {
+  return sendActivity(options, { openHop: openDirectFetch });
+}
 
 test("extractInboxes()", () => {
   const recipients: Actor[] = [
@@ -217,7 +233,7 @@ test("sendActivity()", async (t) => {
       "actor": "https://example.com/person",
     };
 
-    await sendActivity({
+    await sendDirect({
       activity,
       keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
       inbox: new URL("https://example.com/inbox"),
@@ -237,7 +253,7 @@ test("sendActivity()", async (t) => {
 
     httpSigVerified = null;
     await assertRejects(() =>
-      sendActivity({
+      sendDirect({
         activity: { ...activity, actor: "https://example.com/person2" },
         keys: [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
         inbox: new URL("https://example.com/inbox"),
@@ -268,7 +284,7 @@ test("sendActivity()", async (t) => {
     };
     await assertRejects(
       () =>
-        sendActivity({
+        sendDirect({
           activity,
           activityId: "https://example.com/activity",
           keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
@@ -289,7 +305,7 @@ test("sendActivity()", async (t) => {
       "actor": "https://example.com/person",
     };
     try {
-      await sendActivity({
+      await sendDirect({
         activity,
         activityId: "https://example.com/activity",
         keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
@@ -333,7 +349,7 @@ test("sendActivity()", async (t) => {
 
       const error = await assertRejects(
         () =>
-          sendActivity({
+          sendDirect({
             activity,
             activityId: "https://example.com/activity",
             keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
@@ -365,7 +381,7 @@ test("sendActivity()", async (t) => {
       "actor": "https://example.com/person",
     };
     try {
-      await sendActivity({
+      await sendDirect({
         activity,
         activityId: "https://example.com/activity",
         keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
@@ -393,7 +409,7 @@ test("sendActivity()", async (t) => {
       "actor": "https://example.com/person",
     };
     try {
-      await sendActivity({
+      await sendDirect({
         activity,
         activityId: "https://example.com/activity",
         keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
@@ -423,7 +439,7 @@ test("sendActivity()", async (t) => {
       "actor": "https://example.com/person",
     };
     try {
-      await sendActivity({
+      await sendDirect({
         activity,
         activityId: "https://example.com/activity",
         keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
@@ -450,7 +466,7 @@ test("sendActivity()", async (t) => {
       "actor": "https://example.com/person",
     };
     try {
-      await sendActivity({
+      await sendDirect({
         activity,
         activityId: "https://example.com/activity",
         keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
@@ -481,7 +497,7 @@ test("sendActivity()", async (t) => {
         "actor": "https://example.com/person",
       };
       try {
-        await sendActivity({
+        await sendDirect({
           activity,
           activityId: "https://example.com/activity",
           keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
@@ -514,7 +530,7 @@ test("sendActivity() records OpenTelemetry span events", async (t) => {
       actor: "https://example.com/person",
     };
 
-    await sendActivity({
+    await sendDirect({
       activity,
       activityId: "https://example.com/activity",
       activityType: "https://www.w3.org/ns/activitystreams#Create",
@@ -632,7 +648,7 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
           fetchMock.post("https://example.com/inbox-warn", { status: 202 });
 
           await withContext({ requestId: "outer-request-warn" }, async () => {
-            await sendActivity({
+            await sendDirect({
               ...deliveryParams(
                 "https://example.com/activity/warn",
                 "https://example.com/inbox-warn",
@@ -690,7 +706,7 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
           await withContext(outerContext, async () => {
             await assertRejects(
               () =>
-                sendActivity(
+                sendDirect(
                   deliveryParams(
                     "https://example.com/activity/failing",
                     "https://example.com/inbox-failing",
@@ -754,7 +770,7 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
           fetchMock.post("https://example.com/inbox-ok", { status: 202 });
 
           await withContext(outerContext, async () => {
-            await sendActivity(
+            await sendDirect(
               deliveryParams(
                 "https://example.com/activity/ok",
                 "https://example.com/inbox-ok",
@@ -806,14 +822,14 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
           fetchMock.post("https://example.com/inbox-concurrent-b", handler());
 
           const [resultA, resultB] = await Promise.allSettled([
-            sendActivity(
+            sendDirect(
               deliveryParams(
                 "https://example.com/activity/a",
                 "https://example.com/inbox-concurrent-a",
                 tracerProvider,
               ),
             ).finally(release),
-            sendActivity(
+            sendDirect(
               deliveryParams(
                 "https://example.com/activity/b",
                 "https://example.com/inbox-concurrent-b",
@@ -871,6 +887,54 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
     await reset();
     fetchMock.hardReset();
   }
+});
+
+test("sendActivity() validates the initial policy before serializing", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  let serialized = false;
+  await assertRejects(
+    () =>
+      sendActivity({
+        activity: {
+          toJSON() {
+            serialized = true;
+            throw new Error("must not serialize");
+          },
+        },
+        keys: [],
+        inbox: new URL("http://127.0.0.1/inbox"),
+        meterProvider,
+      }),
+    UrlError,
+  );
+  assertFalse(serialized);
+  assertEquals(recorder.getMeasurements("activitypub.delivery.sent"), []);
+});
+
+test("sendActivity() closes the initial session when serialization fails", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  const url = "https://example.com/lifecycle/serialization-failure";
+  const hops = recordHops(() => ({ status: 202, body: "Accepted" }));
+  const failure = new Error("serialization failed");
+  const error = await assertRejects(
+    () =>
+      sendActivity({
+        activity: {
+          toJSON() {
+            throw failure;
+          },
+        },
+        keys: [],
+        inbox: new URL(url),
+        meterProvider,
+      }, { openHop: hops.openHop }),
+    Error,
+    "serialization failed",
+  );
+  assertEquals(error, failure);
+  assertEquals(hops.events, [`open ${url}`, `close ${url}`]);
+  assertEquals(recorder.getMeasurements("activitypub.delivery.sent"), []);
+  hops.assertInvariants();
 });
 
 test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
@@ -1192,105 +1256,584 @@ for (const signed of [false, true]) {
 }
 
 for (const signed of [false, true]) {
-  test({
-    name: `sendActivity() classifies DNS failures (signed: ${signed})`,
-    // The validator skips DNS when Deno has no network permission.
-    ignore: "Deno" in globalThis &&
-      (await Deno.permissions.query({ name: "net" })).state !== "granted",
-    async fn(t) {
-      const activity = { type: "Create", id: "https://example.com/activity" };
-      const destination = "https://delivery.invalid/inbox";
-      const publicInbox = "https://8.8.8.8/inbox";
-      const keys = signed
-        ? [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }]
-        : [];
-      for (const result of ["throws", "empty", "cname", "private"] as const) {
-        for (const redirected of [false, true]) {
-          await t.step(`${result}, redirected: ${redirected}`, async () => {
-            const [meterProvider, recorder] = createTestMeterProvider();
-            const originalLookup = dns.lookup;
-            const resolverError = new Error("Resolver unavailable");
-            const lookups: string[] = [];
-            dns.lookup = ((hostname: string, options: unknown) => {
-              lookups.push(hostname);
-              assertEquals(hostname, "delivery.invalid");
-              assertEquals(options, { all: true });
-              if (result === "throws") return Promise.reject(resolverError);
-              return Promise.resolve(
-                result === "empty" ? [] : [{
-                  address: result === "private"
-                    ? "127.0.0.1"
-                    : "alias.invalid.",
-                  family: 4,
-                }],
-              );
-            }) as typeof dns.lookup;
-            try {
-              fetchMock.mockGlobal().catch(202);
-              if (redirected) {
-                fetchMock.route(publicInbox, {
-                  status: 307,
-                  headers: { Location: destination },
-                });
-              }
-              const send = () =>
-                sendActivity({
-                  activity,
-                  activityType: "https://www.w3.org/ns/activitystreams#Create",
-                  meterProvider,
-                  keys,
-                  inbox: new URL(redirected ? publicInbox : destination),
-                });
-              if (result === "private") {
-                const error = await assertRejects(send, UrlError);
-                assertEquals(error.reason, "disallowed");
-              } else {
-                const error = await assertRejects(send, FetchError);
-                assertEquals(error.url.href, destination);
-                assertInstanceOf(error.cause, UrlError);
-                assertEquals(error.cause.reason, "dns");
-                assertEquals(
-                  error.cause.cause,
-                  result === "throws" ? resolverError : undefined,
-                );
-              }
-              // Initial policy rejections remain outside delivery accounting;
-              // redirect policy rejections retain their existing failed metric.
-              const expectedCount = result === "private" && !redirected ? 0 : 1;
-              const sent = recorder.getMeasurements(
-                "activitypub.delivery.sent",
-              );
-              const durations = recorder.getMeasurements(
-                "activitypub.delivery.duration",
-              );
-              assertEquals(sent.length, expectedCount);
-              assertEquals(durations.length, expectedCount);
-              if (expectedCount === 1) {
-                assertEquals(sent[0].value, 1);
-                assertEquals(sent[0].attributes, {
-                  "activitypub.remote.host": redirected
-                    ? "8.8.8.8"
-                    : "delivery.invalid",
-                  "activitypub.activity.type":
-                    "https://www.w3.org/ns/activitystreams#Create",
-                  "activitypub.delivery.success": false,
-                });
-                assertEquals(durations[0].attributes, sent[0].attributes);
-                assertGreaterOrEqual(durations[0].value, 0);
-              }
-              assertEquals(lookups, ["delivery.invalid"]);
-              assertEquals(fetchMock.callHistory.calls(destination).length, 0);
-              assertEquals(
-                fetchMock.callHistory.calls().length,
-                redirected ? 1 : 0,
-              );
-            } finally {
-              dns.lookup = originalLookup;
-              fetchMock.hardReset();
+  test(`sendActivity() classifies DNS failures (signed: ${signed})`, async (t) => {
+    const activity = { type: "Create", id: "https://example.com/activity" };
+    const destination = "https://delivery.invalid/inbox";
+    const publicInbox = "https://8.8.8.8/inbox";
+    const keys = signed
+      ? [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }]
+      : [];
+    for (const result of ["throws", "empty", "cname", "private"] as const) {
+      for (const redirected of [false, true]) {
+        await t.step(`${result}, redirected: ${redirected}`, async () => {
+          const [meterProvider, recorder] = createTestMeterProvider();
+          const resolverError = new Error("Resolver unavailable");
+          const lookups: string[] = [];
+          const lookup = (hostname: string) => {
+            lookups.push(hostname);
+            assertEquals(hostname, "delivery.invalid");
+            if (result === "throws") return Promise.reject(resolverError);
+            return Promise.resolve(
+              result === "empty" ? [] : [{
+                address: result === "private" ? "127.0.0.1" : "alias.invalid.",
+                family: 4,
+              }],
+            );
+          };
+          try {
+            fetchMock.mockGlobal().catch(202);
+            if (redirected) {
+              fetchMock.route(publicInbox, {
+                status: 307,
+                headers: { Location: destination },
+              });
             }
-          });
-        }
+            const send = () =>
+              sendActivity({
+                activity,
+                activityType: "https://www.w3.org/ns/activitystreams#Create",
+                meterProvider,
+                keys,
+                inbox: new URL(redirected ? publicInbox : destination),
+              }, { openHop: (url) => openPublicFetch(url, { lookup }) });
+            if (result === "private") {
+              const error = await assertRejects(send, UrlError);
+              assertEquals(error.reason, "disallowed");
+            } else {
+              const error = await assertRejects(send, FetchError);
+              assertEquals(error.url.href, destination);
+              assertInstanceOf(error.cause, UrlError);
+              assertEquals(error.cause.reason, "dns");
+              assertEquals(
+                error.cause.cause,
+                result === "throws" ? resolverError : undefined,
+              );
+            }
+            // Initial policy rejections remain outside delivery accounting;
+            // redirect policy rejections retain their existing failed metric.
+            const expectedCount = result === "private" && !redirected ? 0 : 1;
+            const sent = recorder.getMeasurements(
+              "activitypub.delivery.sent",
+            );
+            const durations = recorder.getMeasurements(
+              "activitypub.delivery.duration",
+            );
+            assertEquals(sent.length, expectedCount);
+            assertEquals(durations.length, expectedCount);
+            if (expectedCount === 1) {
+              assertEquals(sent[0].value, 1);
+              assertEquals(sent[0].attributes, {
+                "activitypub.remote.host": redirected
+                  ? "8.8.8.8"
+                  : "delivery.invalid",
+                "activitypub.activity.type":
+                  "https://www.w3.org/ns/activitystreams#Create",
+                "activitypub.delivery.success": false,
+              });
+              assertEquals(durations[0].attributes, sent[0].attributes);
+              assertGreaterOrEqual(durations[0].value, 0);
+            }
+            assertEquals(lookups, ["delivery.invalid"]);
+            assertEquals(fetchMock.callHistory.calls(destination).length, 0);
+            assertEquals(
+              fetchMock.callHistory.calls().length,
+              redirected ? 1 : 0,
+            );
+          } finally {
+            fetchMock.hardReset();
+          }
+        });
       }
-    },
+    }
   });
+}
+
+const lifecycleActivity = {
+  "@context": "https://www.w3.org/ns/activitystreams",
+  type: "Create",
+  id: "https://example.com/activity",
+  actor: "https://example.com/person",
+};
+
+const signedKeys = [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }];
+const unsignedKeys = [{
+  privateKey: ed25519PrivateKey,
+  keyId: ed25519Multikey.id!,
+}];
+
+test("sendActivity() cancels a successful response body", async (t) => {
+  for (const signed of [true, false]) {
+    await t.step(`signed: ${signed}`, async () => {
+      const inbox = "https://example.com/lifecycle/inbox";
+      const hops = recordHops(() => ({ status: 202, body: "Accepted" }));
+      await sendActivity({
+        activity: lifecycleActivity,
+        keys: signed ? signedKeys : unsignedKeys,
+        inbox: new URL(inbox),
+      }, { openHop: hops.openHop });
+      assertEquals(hops.events, [
+        `open ${inbox}`,
+        `fetch #1 ${inbox}`,
+        "cancel #1",
+        `close ${inbox}`,
+      ]);
+      hops.assertInvariants();
+    });
+  }
+});
+
+test("sendActivity() reads at most 1 KiB of an error response body", async (t) => {
+  for (const signed of [true, false]) {
+    await t.step(`signed: ${signed}`, async () => {
+      const inbox = "https://example.com/lifecycle/error";
+      const hops = recordHops(() => ({
+        status: 500,
+        body: "x".repeat(4096),
+      }));
+      const error = await assertRejects(
+        () =>
+          sendActivity({
+            activity: lifecycleActivity,
+            activityId: lifecycleActivity.id,
+            keys: signed ? signedKeys : unsignedKeys,
+            inbox: new URL(inbox),
+          }, { openHop: hops.openHop }),
+        SendActivityError,
+      );
+      assertEquals(error.responseBody, "x".repeat(1024) + "… (truncated)");
+      assert(error.message.includes("… (truncated)"));
+      assertEquals(hops.events, [
+        `open ${inbox}`,
+        `fetch #1 ${inbox}`,
+        "cancel #1",
+        // The signed request is retried with the other spec on the same hop:
+        ...(signed ? [`fetch #2 ${inbox}`, "cancel #2"] : []),
+        `close ${inbox}`,
+      ]);
+      hops.assertInvariants();
+    });
+  }
+});
+
+test("sendActivity() closes each redirect hop before opening the next", async (t) => {
+  for (const [signed, status] of [[true, 307], [false, 308]] as const) {
+    await t.step(`signed: ${signed}, ${status}`, async () => {
+      const inbox = "https://example.com/lifecycle/redirect";
+      const next = "https://example.com/lifecycle/redirected";
+      const hops = recordHops((request) =>
+        request.url === inbox
+          ? { status, headers: { Location: next }, body: "Moved" }
+          : { status: 202, body: "Accepted" }
+      );
+      await sendActivity({
+        activity: lifecycleActivity,
+        keys: signed ? signedKeys : unsignedKeys,
+        inbox: new URL(inbox),
+      }, { openHop: hops.openHop });
+      assertEquals(hops.events, [
+        `open ${inbox}`,
+        `fetch #1 ${inbox}`,
+        "cancel #1",
+        `close ${inbox}`,
+        `open ${next}`,
+        `fetch #2 ${next}`,
+        "cancel #2",
+        `close ${next}`,
+      ]);
+      assertEquals(hops.requests[1].method, "POST");
+      assertEquals(
+        await hops.requests[1].text(),
+        JSON.stringify(lifecycleActivity),
+      );
+      hops.assertInvariants();
+    });
+  }
+});
+
+// Captures the debug logs of fedify while running the given function:
+async function captureLogs(fn: () => Promise<void>): Promise<LogRecord[]> {
+  const records: LogRecord[] = [];
+  await configure({
+    sinks: { buffer: (record) => records.push(record) },
+    loggers: [
+      { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+    reset: true,
+  });
+  try {
+    await fn();
+    // Let the rejected cancellations be logged:
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  } finally {
+    await reset();
+  }
+  return records;
+}
+
+// Gets the URLs of the logged failures to cancel response bodies:
+function getCancelFailureUrls(records: readonly LogRecord[]): unknown[] {
+  return records
+    .filter((r) =>
+      r.rawMessage === "Failed to cancel the response body from {url}: {error}"
+    )
+    .map((r) => r.properties.url);
+}
+
+test("fetchWithValidatedRedirects() logs a redirect body failing to cancel and follows the redirect", async (t) => {
+  const url = "https://example.com/lifecycle/cancel-failure";
+  const next = "https://example.com/lifecycle/cancel-failure-final";
+  const respond = (_: Request, index: number) =>
+    index === 1
+      ? {
+        status: 302,
+        headers: { Location: next },
+        body: "Found",
+        failCancel: true,
+      }
+      : { status: 202, body: "Accepted" };
+
+  await t.step("fetchWithValidatedRedirects()", async () => {
+    const hops = recordHops(respond);
+    let result: string | undefined;
+    const records = await captureLogs(async () => {
+      result = await fetchWithValidatedRedirects(
+        new Request(url, { method: "POST", body: "activity" }),
+        hops.openHop,
+        (response) => response.text(),
+      );
+    });
+    assertEquals(result, "Accepted");
+    assertEquals(hops.events, [
+      `open ${url}`,
+      `fetch #1 ${url}`,
+      "cancel #1",
+      `close ${url}`,
+      `open ${next}`,
+      `fetch #2 ${next}`,
+      "consumed #2",
+      `close ${next}`,
+    ]);
+    assertEquals(getCancelFailureUrls(records), [url]);
+    hops.assertInvariants();
+  });
+
+  for (const signed of [true, false]) {
+    await t.step(`signed sendActivity(): ${signed}`, async () => {
+      const hops = recordHops(respond);
+      const records = await captureLogs(() =>
+        sendActivity({
+          activity: lifecycleActivity,
+          keys: signed ? signedKeys : unsignedKeys,
+          inbox: new URL(url),
+        }, { openHop: hops.openHop })
+      );
+      assertEquals(hops.events, [
+        `open ${url}`,
+        `fetch #1 ${url}`,
+        "cancel #1",
+        `close ${url}`,
+        `open ${next}`,
+        `fetch #2 ${next}`,
+        "cancel #2",
+        `close ${next}`,
+      ]);
+      assertEquals(getCancelFailureUrls(records), [url]);
+      hops.assertInvariants();
+    });
+  }
+});
+
+test("fetchWithValidatedRedirects() closes the session when consuming fails", async () => {
+  const url = "https://example.com/lifecycle/consume-failure";
+  const hops = recordHops(() => ({ status: 200, body: "x".repeat(1024) }));
+  await assertRejects(
+    () =>
+      fetchWithValidatedRedirects(
+        new Request(url, { method: "POST", body: "activity" }),
+        hops.openHop,
+        () => Promise.reject(new Error("consume failed")),
+      ),
+    Error,
+    "consume failed",
+  );
+  assertEquals(hops.events, [
+    `open ${url}`,
+    `fetch #1 ${url}`,
+    "cancel #1 by close",
+    `close ${url}`,
+  ]);
+  hops.assertInvariants();
+});
+
+test("sendActivity() logs a successful response body failing to cancel", async (t) => {
+  for (const signed of [true, false]) {
+    await t.step(`signed: ${signed}`, async () => {
+      const inbox = "https://example.com/lifecycle/cancel-failure-inbox";
+      const hops = recordHops(() => ({
+        status: 202,
+        body: "Accepted",
+        failCancel: true,
+      }));
+      const records = await captureLogs(() =>
+        sendActivity({
+          activity: lifecycleActivity,
+          keys: signed ? signedKeys : unsignedKeys,
+          inbox: new URL(inbox),
+        }, { openHop: hops.openHop })
+      );
+      assertEquals(hops.events, [
+        `open ${inbox}`,
+        `fetch #1 ${inbox}`,
+        "cancel #1",
+        `close ${inbox}`,
+      ]);
+      assertEquals(getCancelFailureUrls(records), [inbox]);
+      hops.assertInvariants();
+    });
+  }
+});
+
+test("sendActivity() is not blocked by a body cancellation that never settles", async (t) => {
+  for (const signed of [true, false]) {
+    await t.step(`signed: ${signed}`, async () => {
+      const inbox = "https://example.com/lifecycle/hanging-cancel";
+      const next = "https://example.com/lifecycle/hanging-cancel-final";
+      const hops = recordHops((request) =>
+        request.url === inbox
+          ? {
+            status: 302,
+            headers: { Location: next },
+            body: "Found",
+            hangCancel: true,
+          }
+          : { status: 202, body: "Accepted", hangCancel: true }
+      );
+      await sendActivity({
+        activity: lifecycleActivity,
+        keys: signed ? signedKeys : unsignedKeys,
+        inbox: new URL(inbox),
+      }, { openHop: hops.openHop });
+      assertEquals(hops.events, [
+        `open ${inbox}`,
+        `fetch #1 ${inbox}`,
+        "cancel #1",
+        `close ${inbox}`,
+        `open ${next}`,
+        `fetch #2 ${next}`,
+        "cancel #2",
+        `close ${next}`,
+      ]);
+      hops.assertInvariants();
+    });
+  }
+
+  await t.step("truncated error body", async () => {
+    const inbox = "https://example.com/lifecycle/hanging-error";
+    const hops = recordHops(() => ({
+      status: 500,
+      body: "x".repeat(4096),
+      hangCancel: true,
+    }));
+    const error = await assertRejects(
+      () =>
+        sendActivity({
+          activity: lifecycleActivity,
+          keys: unsignedKeys,
+          inbox: new URL(inbox),
+        }, { openHop: hops.openHop }),
+      SendActivityError,
+    );
+    assertEquals(error.responseBody, "x".repeat(1024) + "… (truncated)");
+    assertEquals(hops.events, [
+      `open ${inbox}`,
+      `fetch #1 ${inbox}`,
+      "cancel #1",
+      `close ${inbox}`,
+    ]);
+    hops.assertInvariants();
+  });
+});
+
+test("sendActivity() completes with responses cloned by fetch-mock", async (t) => {
+  // fetch-mock returns a clone (a tee branch) of a Response instance, whose
+  // cancellation never settles on Node.js:
+  for (const signed of [true, false]) {
+    await t.step(`signed: ${signed}`, async () => {
+      fetchMock.spyGlobal();
+      try {
+        fetchMock.post(
+          "https://example.com/tee/inbox",
+          () =>
+            new Response("Moved", {
+              status: 307,
+              headers: { Location: "https://example.com/tee/final" },
+            }),
+        );
+        fetchMock.post(
+          "https://example.com/tee/final",
+          () => new Response("Accepted", { status: 202 }),
+        );
+        fetchMock.post(
+          "https://example.com/tee/error",
+          () => new Response("x".repeat(4096), { status: 404 }),
+        );
+        const keys = signed ? signedKeys : unsignedKeys;
+        await sendDirect({
+          activity: lifecycleActivity,
+          keys,
+          inbox: new URL("https://example.com/tee/inbox"),
+        });
+        assertEquals(
+          fetchMock.callHistory.calls("https://example.com/tee/final").length,
+          1,
+        );
+        const error = await assertRejects(
+          () =>
+            sendDirect({
+              activity: lifecycleActivity,
+              keys,
+              inbox: new URL("https://example.com/tee/error"),
+            }),
+          SendActivityError,
+        );
+        assertEquals(error.statusCode, 404);
+        assertEquals(error.responseBody, "x".repeat(1024) + "… (truncated)");
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
+interface RecordedResponseInit {
+  readonly status?: number;
+  readonly headers?: HeadersInit;
+  readonly body?: string;
+  readonly chunkSize?: number;
+  readonly failCancel?: boolean;
+  readonly hangCancel?: boolean;
+}
+
+interface RecordedResponse {
+  readonly response: Response;
+  readonly settled: () => boolean;
+}
+
+// Creates a response whose body records being read to the end
+// ("consumed #n") or cancelled ("cancel #n"):
+function createRecordedResponse(
+  events: string[],
+  index: number,
+  init: RecordedResponseInit,
+  cancelSuffix: () => string = () => "",
+): RecordedResponse {
+  const bytes = new TextEncoder().encode(init.body ?? "");
+  const chunkSize = init.chunkSize ?? 256;
+  let offset = 0;
+  let settled = false;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (offset >= bytes.length) {
+        settled = true;
+        events.push(`consumed #${index}`);
+        controller.close();
+        return;
+      }
+      controller.enqueue(bytes.slice(offset, offset + chunkSize));
+      offset += chunkSize;
+    },
+    cancel() {
+      settled = true;
+      events.push(`cancel #${index}${cancelSuffix()}`);
+      if (init.failCancel) throw new Error(`cancel #${index} failed`);
+      // Like a branch of a tee whose other branch is never cancelled:
+      if (init.hangCancel) return new Promise<void>(() => {});
+    },
+  }, { highWaterMark: 0 });
+  return {
+    response: new Response(body, {
+      status: init.status ?? 200,
+      headers: init.headers,
+    }),
+    settled: () => settled,
+  };
+}
+
+interface HopRecorder {
+  readonly events: string[];
+  readonly requests: Request[];
+  openHop(url: string): Promise<PublicFetchSession>;
+  assertInvariants(): void;
+}
+
+// Records the lifecycle of the hop sessions.  Like the real sessions, close()
+// starts cancelling the bodies that are still unsettled without awaiting it,
+// but records them as "cancel #n by close" so that tests can tell them apart.
+// The cancel callbacks run synchronously inside cancel(), so they are
+// recorded before "close":
+function recordHops(
+  respond: (
+    request: Request,
+    index: number,
+  ) => RecordedResponseInit | Promise<RecordedResponseInit>,
+): HopRecorder {
+  const events: string[] = [];
+  const requests: Request[] = [];
+  const unsettledAtClose: number[] = [];
+  let opens = 0;
+  let closes = 0;
+  let fetches = 0;
+  return {
+    events,
+    requests,
+    openHop(url: string): Promise<PublicFetchSession> {
+      opens++;
+      events.push(`open ${url}`);
+      const tracked: (RecordedResponse & { index: number })[] = [];
+      let closed = false;
+      let closing = false;
+      return Promise.resolve({
+        url: new URL(url),
+        async fetch(input, init) {
+          if (closed) throw new TypeError("The session is closed.");
+          const request = new Request(
+            (input instanceof Request ? input.clone() : input) as
+              | Request
+              | URL
+              | string,
+            init,
+          );
+          const index = ++fetches;
+          requests.push(request);
+          events.push(`fetch #${index} ${request.url}`);
+          const recorded = createRecordedResponse(
+            events,
+            index,
+            await respond(request, index),
+            () => closing ? " by close" : "",
+          );
+          tracked.push({ ...recorded, index });
+          return recorded.response;
+        },
+        close() {
+          if (closed) return Promise.resolve();
+          closed = true;
+          closes++;
+          closing = true;
+          for (const { response, settled, index } of tracked) {
+            if (settled()) continue;
+            if (response.body?.locked) unsettledAtClose.push(index);
+            else response.body?.cancel().catch(() => {});
+          }
+          events.push(`close ${url}`);
+          return Promise.resolve();
+        },
+      });
+    },
+    assertInvariants() {
+      assertEquals(opens, closes);
+      assertEquals(unsettledAtClose, []);
+    },
+  };
 }

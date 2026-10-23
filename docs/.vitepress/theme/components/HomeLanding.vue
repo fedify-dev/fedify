@@ -3,6 +3,8 @@
 // (`layout: HomeLanding` + `isHome: true` in docs/index.md).  Built as a real
 // narrative landing page rather than the default hero + emoji-feature grid.
 import { computed, ref, type Component } from "vue";
+import { withBase } from "vitepress";
+import TeamMembers from "./TeamMembers.vue";
 import {
   Activity,
   BadgeCheck,
@@ -91,6 +93,11 @@ const stack: {
   { name: "ActivityPub", link: "/manual/federation", logo: activityPubLogo },
   { name: "Activity Streams 2.0", link: "/manual/vocab", icon: Braces },
   {
+    name: "ActivityPub Media Upload",
+    link: "/manual/media-upload",
+    icon: FilePen,
+  },
+  {
     name: "HTTP Signatures",
     spec: "draft-cavage-http-signatures-12",
     link: "/manual/send#http-signatures",
@@ -114,6 +121,36 @@ const stack: {
     spec: "FEP-8b32",
     link: "/manual/send#object-integrity-proofs",
     icon: BadgeCheck,
+  },
+  {
+    name: "Portable objects",
+    spec: "FEP-ef61",
+    link: "/manual/portable",
+    icon: Share2,
+  },
+  {
+    name: "Consent-respecting quotes",
+    spec: "FEP-044f",
+    link: "/manual/interaction-controls#supported-interactions",
+    icon: BadgeCheck,
+  },
+  {
+    name: "Featured collections",
+    spec: "FEP-7aa9",
+    link: "/manual/interaction-controls#supported-interactions",
+    icon: Shapes,
+  },
+  {
+    name: "Origin-based security",
+    spec: "FEP-fe34",
+    link: "/manual/vocab#origin-based-security-model",
+    icon: ShieldCheck,
+  },
+  {
+    name: "Followers collection sync",
+    spec: "FEP-8fcf",
+    link: "/manual/send#followers-collection-synchronization",
+    icon: RotateCw,
   },
   {
     name: "Linked Data Signatures",
@@ -225,6 +262,12 @@ const frameworks: { name: string; url: string; svg: string }[] = [
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14.131.047c-.173 0-.334.037-.483.087c.316.21.49.49.576.806c.007.043.019.074.025.117a1 1 0 0 1 .013.112c.024.545-.143.614-.26.936c-.18.415-.13.861.086 1.22a.7.7 0 0 0 .074.137c-.235-1.568 1.073-1.803 1.314-2.293c.019-.428-.334-.713-.613-.911a1.37 1.37 0 0 0-.732-.21zM16.102.4c-.024.143-.006.106-.012.18c-.006.05-.006.112-.012.161c-.013.05-.025.1-.044.149q-.019.075-.05.149l-.067.142c-.02.025-.031.05-.05.075l-.037.055a2 2 0 0 1-.093.124c-.037.038-.068.081-.112.112v.006c-.037.031-.074.068-.118.1c-.13.099-.278.173-.415.266c-.043.03-.087.056-.124.093a1 1 0 0 0-.118.099c-.043.037-.074.074-.111.118c-.031.037-.068.08-.093.124a2 2 0 0 0-.087.13c-.025.05-.043.093-.068.142c-.019.05-.037.093-.05.143a2 2 0 0 0-.043.155c-.006.025-.006.056-.012.08c-.007.025-.007.05-.013.075c0 .05-.006.105-.006.155q-.002.055.006.111q0 .074.019.155q.01.075.03.15c.02.049.032.098.05.148c.013.03.031.062.044.087l-1.426-.552c-.241-.068-.477-.13-.719-.186l-.39-.093q-.56-.111-1.128-.167c-.013 0-.019-.006-.031-.006A11 11 0 0 0 8.9 2.855c-.378.025-.756.074-1.134.136a13 13 0 0 0-.837.174l-.279.074c-.092.037-.18.08-.266.118l-.205.093c-.012.006-.024.006-.03.012c-.063.031-.118.056-.174.087a3 3 0 0 0-.236.118c-.043.018-.086.043-.124.062l-.055.03q-.085.048-.162.094a2 2 0 0 0-.148.093c-.044.03-.087.055-.124.086c-.006.007-.013.007-.019.013c-.037.025-.08.056-.118.087l-.012.012l-.093.074c-.012.007-.025.019-.037.025c-.031.025-.062.056-.093.08c-.006.013-.019.02-.025.025c-.037.038-.074.069-.111.106c-.007 0-.007.006-.013.012a2 2 0 0 0-.111.106c-.007.006-.007.012-.013.012a2 2 0 0 0-.093.1c-.012.012-.03.024-.043.036a1 1 0 0 1-.106.112c-.006.012-.018.019-.024.03c-.05.05-.093.1-.143.15l-.018.018c-.1.106-.205.211-.317.304q-.168.15-.347.273a3.8 3.8 0 0 1-.762.421c-.13.056-.267.106-.403.149c-.26.056-.527.161-.756.18c-.05 0-.105.012-.155.018l-.155.037l-.149.056q-.075.03-.148.068c-.044.031-.093.056-.137.087a1 1 0 0 0-.124.106c-.043.03-.087.074-.124.111c-.037.043-.074.08-.105.124c-.031.05-.068.093-.093.143a1 1 0 0 0-.087.142c-.025.056-.05.106-.068.161q-.028.077-.056.161c-.012.05-.025.1-.03.15c0 .005-.007.012-.007.018c-.012.056-.012.13-.019.167C.006 7.95 0 7.986 0 8.03a.66.66 0 0 0 .074.31v.006q.03.056.069.112q.035.056.08.111c.031.031.068.069.106.1a1 1 0 0 0 .117.099c.149.13.186.173.378.272c.031.019.062.031.1.05c.006 0 .012.006.018.006c0 .013 0 .019.006.031a1.3 1.3 0 0 0 .08.298c.02.037.032.074.05.111q.01.02.02.031c.024.05.049.093.073.137l.093.13c.031.037.069.08.106.118s.074.068.118.105c0 0 .006.006.012.006q.055.048.112.087a1 1 0 0 0 .136.08c.043.025.093.05.142.069a1 1 0 0 0 .124.043c.007.006.013.006.025.012c.025.007.056.013.08.019c-.018.335-.024.65.026.762c.055.124.328-.254.6-.688c-.036.428-.061.93 0 1.079c.069.155.44-.329.763-.862c4.395-1.016 8.405 2.02 8.826 6.31c-.08-.67-.905-1.041-1.283-.948c-.186.458-.502 1.047-1.01 1.413c.043-.41.025-.83-.062-1.24a4 4 0 0 1-.769 1.562c-.588.043-1.177-.242-1.487-.67c-.025-.018-.031-.055-.05-.08q-.029-.065-.05-.13a.5.5 0 0 1-.037-.13q-.008-.064-.006-.137v-.093a1 1 0 0 1 .031-.13q.017-.064.044-.13c.024-.043.043-.087.074-.13c.105-.298.105-.54-.087-.682a1 1 0 0 0-.118-.062c-.024-.006-.055-.018-.08-.025l-.05-.018a1 1 0 0 0-.13-.031a.5.5 0 0 0-.13-.019a1 1 0 0 0-.136-.012c-.031 0-.062.006-.093.006a.5.5 0 0 0-.137.019q-.064.008-.13.024a1 1 0 0 0-.13.044c-.043.018-.08.037-.124.056c-.037.018-.074.043-.118.062c-1.444.942-.582 3.148.403 3.787c-.372.068-.75.148-.855.229l-.013.012q.4.24.837.416c.397.13.818.247 1.004.297v.006a6 6 0 0 0 1.562.112c2.746-.192 4.996-2.281 5.405-5.033l.037.161c.019.112.043.23.056.347v.006q.016.085.025.162v.024q.01.085.012.162q.01.102.012.204v.1c0 .03.007.067.007.098c0 .038-.007.075-.007.112v.087c0 .043-.006.08-.006.124q.002.036-.006.08c0 .044-.006.087-.006.137q-.007.027-.006.055l-.02.143q.001.028-.005.056c-.007.062-.019.118-.025.18v.012l-.037.174v.018l-.037.167c0 .007-.007.02-.007.025a2 2 0 0 1-.043.168v.018q-.03.091-.05.174q-.008.01-.006.012l-.056.186c-.024.062-.043.118-.068.18s-.043.124-.068.18c-.025.062-.05.117-.074.18h-.007c-.024.055-.05.117-.08.173l-.019.043c-.006.006-.006.013-.012.019a5.9 5.9 0 0 1-1.742 2.082c-.05.031-.099.069-.149.106c-.012.012-.03.018-.043.03a3 3 0 0 1-.136.094l.018.037h.007l.26-.037h.006q.241-.039.483-.087c.044-.006.093-.019.137-.031l.087-.019c.043-.006.086-.018.13-.024c.037-.013.074-.02.111-.031c.62-.15 1.221-.354 1.798-.595a9.9 9.9 0 0 1-3.85 3.142c.714-.05 1.426-.167 2.114-.366a9.9 9.9 0 0 0 5.857-4.68a9.9 9.9 0 0 1-1.667 3.986a9.8 9.8 0 0 0 1.655-1.376a9.8 9.8 0 0 0 2.61-5.268c.21.98.272 1.99.18 2.987c4.474-6.241.371-12.712-1.346-14.416c-.006-.013-.012-.019-.012-.031c-.006.006-.006.006-.006.012c0-.006 0-.006-.007-.012q-.002.11-.012.223a8 8 0 0 1-.062.415c-.03.136-.068.273-.105.41c-.044.13-.093.266-.15.396a5 5 0 0 1-.185.378a5 5 0 0 1-.477.688c-.093.111-.192.21-.292.31a4 4 0 0 1-.18.155l-.142.124a4 4 0 0 1-.347.241a4 4 0 0 1-.366.211q-.195.091-.39.174a4.4 4.4 0 0 1-.818.223c-.143.025-.285.037-.422.05a5 5 0 0 1-.297.012a5 5 0 0 1-.422-.025a3 3 0 0 1-.421-.062a3 3 0 0 1-.415-.105h-.007c.137-.013.273-.025.41-.05a4.5 4.5 0 0 0 .818-.223c.136-.05.266-.112.39-.174c.13-.062.248-.13.372-.204q.178-.119.347-.248q.168-.13.316-.279c.105-.093.198-.198.291-.304q.14-.167.26-.334c.013-.019.026-.044.038-.062q.095-.15.18-.298a4.3 4.3 0 0 0 .334-.775c.044-.13.075-.266.106-.403c.025-.142.05-.278.062-.415c.012-.142.025-.285.025-.421c0-.1-.007-.199-.013-.298a7 7 0 0 0-.05-.415a5 5 0 0 0-.092-.415c-.044-.13-.087-.267-.137-.397s-.111-.26-.173-.384q-.102-.187-.211-.366a7 7 0 0 0-.248-.34q-.138-.16-.285-.317a4 4 0 0 0-.161-.155q-.422-.327-.862-.607a1 1 0 0 0-.124-.062a2.4 2.4 0 0 0-.589-.26Z"/></svg>',
   },
   {
+    name: "AdonisJS",
+    url: "/manual/integration#adonisjs",
+    svg:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M0 12c0 9.68 2.32 12 12 12s12-2.32 12-12S21.68 0 12 0 0 2.32 0 12Zm4.84 2.492 3.762-8.555C9.238 4.498 10.46 3.716 12 3.716c1.54 0 2.762.781 3.398 2.223l3.762 8.554c.172.418.32.953.32 1.418 0 2.125-1.492 3.617-3.617 3.617-.726 0-1.3-.183-1.883-.37-.597-.192-1.203-.387-1.98-.387-.77 0-1.39.195-1.996.386-.59.188-1.168.371-1.867.371-2.125 0-3.617-1.492-3.617-3.617 0-.465.148-1 .32-1.418ZM12 7.43l-3.715 8.406c1.102-.512 2.371-.758 3.715-.758 1.297 0 2.613.246 3.664.758Z"/></svg>',
+  },
+  {
     name: "Next.js",
     url: "/manual/integration#next-js",
     svg:
@@ -333,34 +376,102 @@ const brokers: { name: string; url: string; svg: string }[] = [
     svg:
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m8.213.063l8.879 12.136l-8.67 11.739h2.476l8.665-11.735l-8.89-12.14Zm4.728 0l9.02 11.992l-9.018 11.883h2.496L24 12.656v-1.199L15.434.063ZM7.178 2.02L.01 11.398l-.01 1.2l7.203 9.644l1.238-1.676l-6.396-8.556l6.361-8.313Z"/></svg>',
   },
+  {
+    name: "Netlify Async Workloads",
+    url: "/manual/mq#netlifymessagequeue-netlify-functions-only",
+    svg:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.49 19.04h-.23L5.13 17.9v-.23l1.73-1.71h1.2l.15.15v1.2L6.5 19.04ZM5.13 6.31V6.1l1.13-1.13h.23L8.2 6.68v1.2l-.15.15h-1.2L5.13 6.31Zm9.96 9.09h-1.65l-.14-.13v-3.83c0-.68-.27-1.2-1.1-1.23-.42 0-.9 0-1.43.02l-.07.08v4.96l-.14.14H8.9l-.13-.14V8.73l.13-.14h3.7a2.6 2.6 0 0 1 2.61 2.6v4.08l-.13.14Zm-8.37-2.44H.14L0 12.82v-1.64l.14-.14h6.58l.14.14v1.64l-.14.14Zm17.14 0h-6.58l-.14-.14v-1.64l.14-.14h6.58l.14.14v1.64l-.14.14ZM11.05 6.55V1.64l.14-.14h1.65l.14.14v4.9l-.14.14h-1.65l-.14-.13Zm0 15.81v-4.9l.14-.14h1.65l.14.13v4.91l-.14.14h-1.65l-.14-.14Z"/></svg>',
+  },
 ];
 
 // Observability highlights for the OpenTelemetry section.
-const otelPoints: { icon: Component; term: string; desc: string }[] = [
+const otelPoints: {
+  icon: Component;
+  term: string;
+  desc: string;
+  link?: string;
+}[] = [
   {
     icon: Activity,
     term: "Distributed traces",
     desc:
-      "every step is a span: HTTP, inbox, outbox, fan-out, signatures, and WebFinger.",
+      "Every step is a span: HTTP, inbox, outbox, fan-out, signatures, and WebFinger.",
+    link: "/manual/opentelemetry#instrumented-spans",
   },
   {
     icon: Gauge,
     term: "Rich metrics",
     desc:
-      "counters and histograms for delivery, queue depth, signature verification, and more.",
+      "Counters and histograms for delivery, queue depth, signature verification, and more.",
+    link: "/manual/opentelemetry#instrumented-metrics",
   },
   {
     icon: Plug,
     term: "Any OTLP backend",
     desc:
-      "ship to Grafana, Jaeger, Sentry, or Deno's built-in OpenTelemetry.",
+      "Ship to Grafana, Jaeger, Sentry, or Deno's built-in OpenTelemetry.",
+    link: "/manual/opentelemetry#setting-up-opentelemetry",
   },
   {
     icon: ScrollText,
     term: "Structured logs too",
     desc:
-      "traceable JSON logging via LogTape, correlated by request and message IDs.",
+      "Traceable JSON logging via LogTape, correlated by request and message IDs.",
+    link: "/manual/log#tracing",
   },
+  {
+    icon: ShieldCheck,
+    term: "Inbox request reports",
+    desc:
+      "Inspect signature and proof checks, keys used, authentication decisions, and request outcomes for accepted and rejected deliveries with onRequestFinished(), independently of trace sampling.",
+    link: "/manual/inbox#observing-inbox-requests",
+  },
+];
+
+// Application-defined jobs use the same queue infrastructure as federation.
+const taskPoints: { icon: Component; term: string; desc: string }[] = [
+  {
+    icon: Braces,
+    term: "Typed and validated",
+    desc:
+      'a <a href="https://standardschema.dev/" target="_blank" rel="noopener noreferrer">Standard Schema</a>, such as one from Zod or Valibot, checks payloads at enqueue time and again on the worker.',
+  },
+  {
+    icon: RotateCw,
+    term: "Delays and retries",
+    desc:
+      "postpone jobs and retry failed ones under a configurable policy.",
+  },
+  {
+    icon: DatabaseZap,
+    term: "Your existing queue",
+    desc:
+      "reuse the outbox queue, or give tasks a queue and worker of their own.",
+  },
+];
+
+const taskCode = `<span class="c-kw">import</span> { z } <span class="c-kw">from</span> <span class="c-st">"zod"</span>;
+
+<span class="c-kw">const</span> sendDigest = federation.<span class="c-fn">defineTask</span>(<span class="c-st">"sendDigest"</span>, {
+  schema: z.<span class="c-fn">object</span>({
+    userId: z.<span class="c-fn">string</span>(),
+    since: z.<span class="c-fn">date</span>(),
+  }),
+  handler: <span class="c-kw">async</span> (_ctx, data) => {
+    <span class="c-kw">await</span> <span class="c-fn">sendDigestEmail</span>(data.userId, data.since);
+  },
+});
+
+<span class="c-kw">await</span> ctx.<span class="c-fn">enqueueTask</span>(sendDigest, {
+  userId: <span class="c-st">"alice"</span>,
+  since: <span class="c-kw">new</span> <span class="c-ty">Date</span>(),
+}, { delay: { minutes: <span class="c-ty">30</span> } });`;
+
+// Policy evaluation reports a decision for the application to act on.
+const interactionDecisions = [
+  { result: "automatic", desc: "Eligible for automatic approval." },
+  { result: "manual", desc: "Needs the owner's approval." },
+  { result: "denied", desc: "Not allowed by the policy." },
 ];
 
 // A mock trace waterfall (real Fedify span names) for the observability visual.
@@ -379,7 +490,7 @@ const cliCommands: { cmd: string; url: string; desc: string }[] = [
     cmd: "fedify lookup --authorized-fetch",
     url: "/cli#a-authorized-fetch-authorized-fetch",
     desc:
-      "Inspect any actor or object, even the authorized-fetch-only ones.",
+      'Inspect actors and objects, including portable IDs. Choose gateways with <a href="/cli#gateway-gateways-of-portable-objects"><code>--gateway</code></a> and set a timeout for each request with <a href="/cli#t-timeout-request-timeout"><code>--timeout</code></a>.',
   },
   {
     cmd: "fedify inbox",
@@ -396,7 +507,8 @@ const cliCommands: { cmd: string; url: string; desc: string }[] = [
   {
     cmd: "fedify init",
     url: "/cli#fedify-init-initializing-a-fedify-project",
-    desc: "Scaffold a ready-to-run project in seconds.",
+    desc:
+      "Scaffold a project with a smoke test that starts the app and resolves a local actor.",
   },
   {
     cmd: "fedify nodeinfo",
@@ -406,14 +518,15 @@ const cliCommands: { cmd: string; url: string; desc: string }[] = [
 ];
 
 // A mock terminal session showing `fedify inbox` (rendered with v-html).
-const cliTerminal = `<span class="t-p">$</span> fedify inbox
+const cliTerminal = `<span class="t-p">$</span> fedify inbox --tunnel-service fedify.com.es \\
+    --follow @john@activitypub.academy
 
-<span class="t-ok">✔</span> Ephemeral server up: <span class="t-url">https://f9285cf4.lhr.life/</span>
+<span class="t-ok">✔</span> Ephemeral server up: <span class="t-url">https://f9285cf4974c86ab.fedify.com.es/</span>
 <span class="t-ok">✔</span> Sent follow to <span class="t-at">@john@activitypub.academy</span>
 
-  <span class="t-k">Actor handle</span>   i@f9285cf4.lhr.life
-  <span class="t-k">Actor inbox</span>    https://f9285cf4.lhr.life/i/inbox
-  <span class="t-k">Shared inbox</span>   https://f9285cf4.lhr.life/inbox
+  <span class="t-k">Actor handle</span>   i@f9285cf4974c86ab.fedify.com.es
+  <span class="t-k">Actor inbox</span>    https://f9285cf4974c86ab.fedify.com.es/i/inbox
+  <span class="t-k">Shared inbox</span>   https://f9285cf4974c86ab.fedify.com.es/inbox
 
 <span class="t-rx">▸ Received</span> <span class="t-at">Follow</span>  POST /i/inbox  <span class="t-ok">202</span>`;
 
@@ -423,24 +536,24 @@ const vocabPoints: { icon: Component; term: string; desc: string }[] = [
     icon: BadgeCheck,
     term: "Standard-compliant output",
     desc:
-      "build an object and toJsonLd() emits valid, interoperable JSON-LD.",
+      "Build an object and toJsonLd() emits valid, interoperable JSON-LD.",
   },
   {
     icon: Shapes,
     term: "One shape to read",
-    desc: "every equivalent JSON-LD form normalizes to the same typed value.",
+    desc: "Every equivalent JSON-LD form normalizes to the same typed value.",
   },
   {
     icon: ExternalLink,
     term: "References, dereferenced",
     desc:
-      "<code>getActor()</code> and <code>getObject()</code> accessors fetch and hydrate remote objects on demand.",
+      "Use <code>getActor()</code> and <code>getObject()</code> to fetch and hydrate remote objects on demand.",
   },
   {
     icon: ShieldCheck,
     term: "Secure by default",
     desc:
-      'an origin-based security model (<a href="https://w3id.org/fep/fe34" target="_blank" rel="noopener noreferrer">FEP-fe34</a>) re-fetches cross-origin objects to prevent spoofing.',
+      'An <a href="/manual/vocab#origin-based-security-model">origin-based security model</a> (<a href="https://w3id.org/fep/fe34" target="_blank" rel="noopener noreferrer">FEP-fe34</a>) re-fetches cross-origin embedded objects with IDs. <a href="https://w3id.org/fep/ef61" target="_blank" rel="noopener noreferrer">Portable IDs</a> use cryptographic origins derived from their <a href="https://www.w3.org/TR/did-core/" target="_blank" rel="noopener noreferrer">DIDs</a>.',
   },
 ];
 
@@ -659,6 +772,32 @@ federation.<span class="c-fn">setActorDispatcher</span>(
             keeping them right as they evolve. Fedify implements them so you
             don't have to, and exposes them through one coherent, typed API.
           </p>
+          <dl class="lp-why-benefits">
+            <div>
+              <dt>Work across servers</dt>
+              <dd>
+                Fedify negotiates HTTP signature formats and handles discovery
+                through WebFinger and NodeInfo.
+              </dd>
+            </div>
+            <div>
+              <dt>Build on trust and consent</dt>
+              <dd>
+                Check object origins and integrity proofs, and use interaction
+                helpers in your app to request and verify consent for quotes and
+                recommendations.
+              </dd>
+            </div>
+            <div>
+              <dt>Keep identity across gateways</dt>
+              <dd>
+                Portable object IDs contain a
+                <a href="https://www.w3.org/TR/did-core/">DID</a> instead of a
+                host. Their integrity proofs can be verified without trusting
+                the hosting gateway.
+              </dd>
+            </div>
+          </dl>
           <a class="lp-textlink" href="/why">See the full rationale →</a>
         </div>
         <ul class="lp-stack" aria-label="Standards implemented by Fedify">
@@ -704,11 +843,16 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ====================== VOCABULARY ============================ -->
-    <section class="lp-section lp-section-alt">
+    <section
+      class="lp-section lp-section-alt"
+      aria-labelledby="home-vocabulary-heading"
+    >
       <div class="wrap lp-vocab">
         <div class="lp-vocab-copy">
           <p class="lp-kicker">Type-safe vocabulary</p>
-          <h2 class="lp-h2">Type-safe objects, no JSON-LD headaches</h2>
+          <h2 class="lp-h2" id="home-vocabulary-heading">
+            Type-safe objects, no JSON-LD headaches
+          </h2>
           <p class="lp-body">
             Fedify models the whole Activity Vocabulary as immutable, type-safe
             objects, backed by a real JSON-LD processor and exposed as a fully
@@ -744,12 +888,84 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       </div>
     </section>
 
+    <!-- ====================== PORTABLE OBJECTS ====================== -->
+    <section class="lp-section" aria-labelledby="home-portable-heading">
+      <div class="wrap lp-portable">
+        <div>
+          <p class="lp-kicker">
+            Portable objects ·
+            <a
+              href="https://w3id.org/fep/ef61"
+              target="_blank"
+              rel="noopener noreferrer"
+            >FEP-ef61</a>
+          </p>
+          <h2 id="home-portable-heading" class="lp-h2">
+            An identity beyond a single server
+          </h2>
+          <p class="lp-body">
+            Give actors and posts IDs based on a
+            <a
+              href="https://www.w3.org/TR/did-core/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >decentralized identifier (DID)</a>, independent of any server's domain. Fedify can serve these
+            objects through gateways, sign and deliver their activities, and
+            verify portable objects from other servers.
+          </p>
+          <p class="lp-body">
+            <a href="/manual/send#object-integrity-proofs">Object Integrity
+              Proofs</a> authenticate the objects themselves, wherever
+            they are hosted. Your application manages storage and synchronization
+            between gateways.
+          </p>
+          <a class="lp-textlink" href="/manual/portable">
+            Portable objects guide →
+          </a>
+        </div>
+        <div
+          class="lp-portable-diagram"
+          role="img"
+          aria-label="One portable actor has a DID-based ID and can be served by two gateways. Its Object Integrity Proof authenticates it independently of either server."
+        >
+          <div class="lp-portable-identity">
+            <span class="lp-portable-label">One portable identity</span>
+            <code>ap+ef61://did:key:z6Mk…/actor</code>
+            <span class="lp-portable-proof">
+              <BadgeCheck :size="16" aria-hidden="true" />
+              Signed with the DID's key
+            </span>
+          </div>
+          <div class="lp-portable-branches" aria-hidden="true">
+            <span></span><span></span>
+          </div>
+          <div class="lp-portable-gateways">
+            <div class="lp-portable-gateway">
+              <Server :size="22" aria-hidden="true" />
+              <span>Gateway A</span>
+              <span class="lp-portable-label">Same signed actor</span>
+            </div>
+            <div class="lp-portable-gateway">
+              <Server :size="22" aria-hidden="true" />
+              <span>Gateway B</span>
+              <span class="lp-portable-label">Same signed actor</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== RELIABLE DELIVERY ====================== -->
-    <section class="lp-section">
+    <section
+      class="lp-section lp-section-alt"
+      aria-labelledby="home-delivery-heading"
+    >
       <div class="wrap">
         <div class="lp-section-head">
           <p class="lp-kicker">Reliable at scale</p>
-          <h2 class="lp-h2">Reliable delivery, even to huge audiences</h2>
+          <h2 class="lp-h2" id="home-delivery-heading">
+            Reliable delivery, even to huge audiences
+          </h2>
           <p class="lp-body">
             Outgoing activities go through a message queue, so a flaky recipient
             never costs you a post. For large audiences, a two-stage fan-out
@@ -779,21 +995,127 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           </li>
           <li class="lp-logo-more">and more</li>
         </ul>
+        <p class="lp-brokers-note">
+          On <a href="/manual/deploy#netlify-functions">Netlify Functions</a>,
+          Fedify
+          <a
+            href="/manual/mq#netlifymessagequeue-netlify-functions-only"
+          >processes queued deliveries</a> through Async Workloads events,
+          without a long-running queue worker.
+        </p>
+      </div>
+    </section>
+
+    <!-- ===================== BACKGROUND TASKS ====================== -->
+    <section class="lp-section" aria-labelledby="home-tasks-heading">
+      <div class="wrap lp-code-grid">
+        <div>
+          <p class="lp-kicker">Background tasks</p>
+          <h2 id="home-tasks-heading" class="lp-h2">
+            Run your app's jobs in the background
+          </h2>
+          <p class="lp-body">
+            Send digest emails, rebuild timelines, or fetch link previews using
+            the same queue infrastructure that delivers your activities. Define
+            a task once, then enqueue it from any federation context.
+          </p>
+          <ul class="lp-checklist">
+            <li v-for="p in taskPoints" :key="p.term">
+              <span class="lp-check-ic" aria-hidden="true">
+                <component :is="p.icon" :size="18" :stroke-width="1.9" />
+              </span>
+              <span class="lp-check-text">
+                <span class="lp-check-term">{{ p.term }}</span>
+                <span class="lp-check-desc" v-html="p.desc" />
+              </span>
+            </li>
+          </ul>
+          <a class="lp-textlink" href="/manual/tasks">
+            Background tasks guide →
+          </a>
+        </div>
+        <div class="lp-code-window">
+          <div class="lp-code-bar" aria-hidden="true">
+            <span class="lp-code-file">tasks.ts</span>
+          </div>
+          <pre class="lp-code"><code v-html="taskCode" /></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== INTERACTION CONTROLS =================== -->
+    <section
+      class="lp-section lp-section-alt"
+      aria-labelledby="home-interactions-heading"
+    >
+      <div class="wrap lp-code-grid lp-interactions">
+        <div>
+          <p class="lp-kicker">Interaction controls</p>
+          <h2 id="home-interactions-heading" class="lp-h2">
+            Build interactions around consent
+          </h2>
+          <p class="lp-body">
+            Use <code>@fedify/interaction-controls</code> for likes, replies,
+            boosts, quotes, and featuring actors in recommendation collections.
+            Typed helpers evaluate policies and create and verify interaction
+            requests and authorizations.
+          </p>
+          <p class="lp-body">
+            The helpers support
+            <a
+              href="https://docs.gotosocial.org/en/stable/federation/interaction_controls/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >GoToSocial interaction controls</a>,
+            <a
+              class="lp-spec-link"
+              href="https://w3id.org/fep/044f"
+              target="_blank"
+              rel="noopener noreferrer"
+            >FEP-044f</a>
+            quote authorization, and
+            <a
+              class="lp-spec-link"
+              href="https://w3id.org/fep/7aa9"
+              target="_blank"
+              rel="noopener noreferrer"
+            >FEP-7aa9</a>
+            featured recommendation collections. Your application handles
+            delivery, storage, and moderation.
+          </p>
+          <a class="lp-textlink" href="/manual/interaction-controls">
+            Interaction controls guide →
+          </a>
+        </div>
+        <div class="lp-trace">
+          <div class="lp-trace-bar">
+            <span class="lp-trace-title">evaluatePolicy()</span>
+          </div>
+          <dl class="lp-policy-decisions" aria-label="Possible policy decisions">
+            <div v-for="decision in interactionDecisions" :key="decision.result">
+              <dt><code>{{ decision.result }}</code></dt>
+              <dd>{{ decision.desc }}</dd>
+            </div>
+          </dl>
+        </div>
       </div>
     </section>
 
     <!-- ======================== FRAMEWORKS ========================= -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section" aria-labelledby="home-frameworks-heading">
       <div class="wrap">
         <div class="lp-section-head">
           <p class="lp-kicker">Works with your stack</p>
-          <h2 class="lp-h2">Drops into the web framework you already use</h2>
+          <h2 class="lp-h2" id="home-frameworks-heading">
+            Drops into the web framework you already use
+          </h2>
           <p class="lp-body">
             Fedify doesn't take over your app. It runs as middleware on the
             domain and port you already have, using content negotiation to pick
             out federation traffic and leaving the rest of your routes alone.
-            First-party packages cover the frameworks below, and
-            <code>fedify init</code> scaffolds a project for you.
+            First-party packages cover the frameworks below. Scaffold a project
+            with <code>fedify init</code>. For AdonisJS, add Fedify to an existing
+            app on Node.js with <code>node ace add @fedify/adonisjs</code>.
           </p>
         </div>
         <ul class="lp-logos lp-frameworks">
@@ -842,25 +1164,39 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ===================== YOUR DATA / STORAGE ==================== -->
-    <section class="lp-section">
+    <section
+      class="lp-section lp-section-alt lp-storage"
+      aria-labelledby="home-storage-heading"
+    >
       <div class="wrap lp-narrow">
         <p class="lp-kicker">Your data, your schema</p>
-        <h2 class="lp-h2">Fedify never owns your data model</h2>
+        <h2 class="lp-h2" id="home-storage-heading">
+          Fedify never owns your data model
+        </h2>
         <p class="lp-body">
           Your actors, posts, and followers live in your own database, in
           whatever schema you already have. Fedify reads them through dispatcher
           callbacks you write, so the data model stays yours. For its own
           internal state, a cache and some federation bookkeeping, it relies on a
-          pluggable <code>KvStore</code>: keep it in memory while you develop, or
-          back it with Redis, PostgreSQL, MySQL, SQLite, Deno KV, or Cloudflare
-          Workers KV.
+          pluggable <code>KvStore</code>: keep it
+          <a href="/manual/kv#memorykvstore">in memory</a> while you develop, or
+          back it with <a href="/manual/kv#rediskvstore">Redis</a>,
+          <a href="/manual/kv#postgreskvstore">PostgreSQL</a>,
+          <a href="/manual/kv#pglitekvstore">PGlite</a>,
+          <a href="/manual/kv#mysqlkvstore">MySQL</a>,
+          <a href="/manual/kv#sqlitekvstore">SQLite</a>,
+          <a href="/manual/kv#denokvstore-deno-only">Deno KV</a>,
+          <a href="/manual/kv#netlifyblobskvstore">Netlify Blobs</a>, or
+          <a
+            href="/manual/kv#workerskvstore-cloudflare-workers-only"
+          >Cloudflare Workers KV</a>.
         </p>
         <a class="lp-textlink" href="/manual/kv">Key–value store guide →</a>
       </div>
     </section>
 
     <!-- ========================= INTEROP ============================ -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap lp-interop">
         <p class="lp-kicker">Plays well with others</p>
         <h2 class="lp-h2">Interoperates with the software people already use</h2>
@@ -885,30 +1221,34 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ============================ CLI ============================= -->
-    <section class="lp-section">
+    <section
+      class="lp-section lp-section-alt"
+      aria-labelledby="home-tooling-heading"
+    >
       <div class="wrap lp-cli">
         <div class="lp-cli-copy">
           <p class="lp-kicker">Developer tooling</p>
-          <h2 class="lp-h2">A toolchain for building and debugging</h2>
+          <h2 class="lp-h2" id="home-tooling-heading">
+            A toolchain for building and debugging
+          </h2>
           <p class="lp-body">
-            The <code>fedify</code> command-line tool turns the fiddly parts of
-            ActivityPub development into one-liners, from inspecting remote
-            objects to watching exactly what your own server sends. Alongside it,
-            <a
-              href="https://jsr.io/@fedify/lint"
-              target="_blank"
-              rel="noopener noreferrer"
-            ><code>@fedify/lint</code></a> catches common federation mistakes as
-            you write, and
+            Use the <code>fedify</code> CLI to inspect remote objects and test
+            what your server sends.
             <a href="/manual/debug"><code>@fedify/debugger</code></a> adds a live
             dashboard of inbox and outbox activity.
+          </p>
+          <p class="lp-body">
+            <a href="/manual/lint"><code>@fedify/lint</code></a> checks actor
+            properties and media upload setup. In ESLint and Oxlint, it can also flag
+            <a href="/manual/lint#outbox-listener-delivery-not-awaited">unhandled
+              outbox delivery promises</a>.
           </p>
           <ul class="lp-cli-list">
             <li v-for="c in cliCommands" :key="c.cmd">
               <a class="lp-cli-link" :href="c.url">
                 <code class="lp-cli-cmd">{{ c.cmd }}</code>
               </a>
-              <span class="lp-cli-desc">{{ c.desc }}</span>
+              <span class="lp-cli-desc" v-html="c.desc" />
             </li>
           </ul>
           <a class="lp-textlink" href="/cli">Explore the CLI →</a>
@@ -923,11 +1263,13 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ====================== OBSERVABILITY ========================= -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section" aria-labelledby="home-observability-heading">
       <div class="wrap lp-otel">
         <div class="lp-otel-copy">
           <p class="lp-kicker">Built for production</p>
-          <h2 class="lp-h2">See exactly what your server is doing</h2>
+          <h2 class="lp-h2" id="home-observability-heading">
+            See exactly what your server is doing
+          </h2>
           <p class="lp-body">
             Fedify is instrumented with OpenTelemetry out of the box, so the
             whole federation lifecycle shows up as traces and metrics in the
@@ -939,7 +1281,10 @@ federation.<span class="c-fn">setActorDispatcher</span>(
                 <component :is="p.icon" :size="18" :stroke-width="1.9" />
               </span>
               <span class="lp-otel-text">
-                <span class="lp-otel-term">{{ p.term }}</span>
+                <span class="lp-otel-term">
+                  <a v-if="p.link" :href="p.link">{{ p.term }}</a>
+                  <template v-else>{{ p.term }}</template>
+                </span>
                 <span class="lp-otel-desc">{{ p.desc }}</span>
               </span>
             </li>
@@ -975,7 +1320,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ====================== ACTIVITYPUB API ====================== -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap lp-c2s">
         <div class="lp-c2s-copy">
           <p class="lp-kicker">ActivityPub API</p>
@@ -1005,6 +1350,17 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           </div>
           <pre class="lp-code"><code v-html="outboxCode" /></pre>
         </div>
+      </div>
+    </section>
+
+    <section class="lp-section" aria-labelledby="home-team-heading">
+      <div class="wrap">
+        <div class="lp-section-head">
+          <h2 id="home-team-heading" class="lp-h2">The people behind Fedify</h2>
+          <p class="lp-team-description">An open source project, built and maintained by people in the fediverse.</p>
+        </div>
+        <TeamMembers compact />
+        <a class="lp-team-link" :href="withBase('/team')">Meet the team and contributors <span aria-hidden="true">→</span></a>
       </div>
     </section>
 
@@ -1082,6 +1438,10 @@ federation.<span class="c-fn">setActorDispatcher</span>(
 </template>
 
 <style scoped>
+.lp-team-description { color: var(--vp-c-text-2); margin-top: 16px; line-height: 1.75; }
+.lp-team-link { display: inline-block; margin-top: 32px; color: var(--vp-c-brand-1); font-weight: 500; }
+.lp-team-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+
 /* The custom layout zeroes VPContent's home padding (see brand.css); the hero
    owns the nav offset so spacing is consistent across breakpoints. */
 .lp {
@@ -1390,19 +1750,40 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   gap: 3rem;
   align-items: center;
 }
+.lp-why-benefits {
+  margin: 1.75rem 0;
+  display: grid;
+  gap: 1.4rem;
+}
+.lp-why-benefits dt {
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+}
+.lp-why-benefits dd {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--vp-c-text-2);
+}
+.lp-why-benefits a {
+  color: var(--vp-c-brand-1);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .lp-stack {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.6rem;
+  gap: 0.45rem;
 }
 .lp-stack li {
   position: relative;
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  padding: 0.8rem 1.1rem;
+  padding: 0.55rem 0.9rem;
   border-radius: 12px;
   background: var(--vp-c-bg);
   border: 1px solid var(--vp-c-divider);
@@ -1452,8 +1833,8 @@ a.lp-stack-name::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex: none;
   border-radius: 10px;
   color: var(--vp-c-brand-1);
@@ -1473,6 +1854,7 @@ a.lp-stack-name::after {
 
 /* ------------------------- Code showcase ----------------------- */
 .lp-code-grid,
+.lp-portable,
 .lp-c2s {
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
@@ -1529,6 +1911,145 @@ a.lp-stack-name::after {
 .lp-code :deep(.c-ty) { color: #fcd34d; }
 .lp-code :deep(.c-fn) { color: #93c5fd; }
 .lp-code :deep(.c-cm) { color: #64748b; font-style: italic; }
+
+/* ------------------------ Portable objects --------------------- */
+.lp-portable .lp-body a,
+.lp-interactions .lp-body a,
+.lp-storage .lp-body a,
+.lp-cli-copy .lp-body a,
+.lp-cli-desc :deep(a),
+.lp-brokers-note a,
+.lp-portable .lp-kicker a {
+  color: var(--vp-c-brand-1);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+.lp-portable .lp-body a:hover,
+.lp-interactions .lp-body a:hover,
+.lp-storage .lp-body a:hover,
+.lp-cli-copy .lp-body a:hover,
+.lp-cli-desc :deep(a:hover),
+.lp-brokers-note a:hover,
+.lp-portable .lp-kicker a:hover {
+  color: var(--vp-c-brand-2);
+}
+.lp-portable-diagram {
+  min-width: 0;
+  padding: 2rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 14px;
+  background: var(--vp-c-bg-soft);
+}
+.lp-portable-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1.5rem 1rem;
+  border: 1px solid var(--vp-c-brand-1);
+  border-radius: 12px;
+  background: var(--vp-c-bg);
+  text-align: center;
+}
+.lp-portable-label {
+  font-size: 0.78rem;
+  color: var(--vp-c-text-2);
+}
+.lp-portable-identity code {
+  font-family: var(--vp-font-family-mono);
+  font-size: clamp(0.75rem, 1.2vw, 0.95rem);
+  color: var(--vp-c-text-1);
+  overflow-wrap: anywhere;
+}
+.lp-portable-proof {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--vp-c-brand-1);
+}
+.lp-portable-branches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 3rem;
+  margin-inline: 25%;
+}
+.lp-portable-branches span {
+  border-top: 1px solid var(--vp-c-brand-1);
+  margin-top: 1.5rem;
+}
+.lp-portable-branches span:first-child {
+  border-left: 1px solid var(--vp-c-brand-1);
+  position: relative;
+}
+.lp-portable-branches span:first-child::before {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: 100%;
+  height: 1.5rem;
+  border-right: 1px solid var(--vp-c-brand-1);
+}
+.lp-portable-branches span:last-child {
+  border-right: 1px solid var(--vp-c-brand-1);
+}
+.lp-portable-gateways {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.lp-portable-gateway {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.2rem 0.5rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+  text-align: center;
+}
+.lp-portable-gateway > svg {
+  color: var(--vp-c-brand-1);
+}
+.lp-portable-gateway .lp-portable-label {
+  font-weight: 400;
+}
+
+/* ---------------------- Interaction controls ------------------- */
+.lp-interactions .lp-spec-link {
+  white-space: nowrap;
+}
+.lp-interactions .lp-body code {
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+.lp-policy-decisions {
+  margin: 0;
+  padding: 0 1.5rem;
+}
+.lp-policy-decisions > div {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 1.5rem 0;
+}
+.lp-policy-decisions > div + div {
+  border-top: 1px solid var(--vp-c-divider);
+}
+.lp-policy-decisions dt code {
+  font-size: 0.85rem;
+  color: var(--vp-c-brand-1);
+}
+.lp-policy-decisions dd {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--vp-c-text-2);
+}
 
 /* ----------------------- Framework section --------------------- */
 .lp-byo {
@@ -1625,6 +2146,14 @@ a.lp-stack-name::after {
   color: var(--vp-c-text-2);
   opacity: 0.7;
 }
+.lp-brokers-note {
+  max-width: 680px;
+  margin: 1.5rem auto 0;
+  text-align: center;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--vp-c-text-2);
+}
 
 /* --------------------------- Observability --------------------- */
 .lp-otel {
@@ -1681,6 +2210,13 @@ a.lp-stack-name::after {
   display: block;
   font-weight: 600;
   color: var(--vp-c-text-1);
+}
+.lp-otel-term a {
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+}
+.lp-otel-term a:hover {
+  text-decoration: underline;
 }
 .lp-otel-desc,
 .lp-check-desc {
@@ -2051,6 +2587,7 @@ a.lp-stack-name::after {
   .lp-otel,
   .lp-cli,
   .lp-vocab,
+  .lp-portable,
   .lp-c2s {
     grid-template-columns: 1fr;
   }
@@ -2088,8 +2625,7 @@ a.lp-stack-name::after {
   .lp-hero {
     padding-top: calc(var(--vp-nav-height) + 2rem);
   }
-  /* Keep each spec name on one line; let the formal id stay inline and wrap to
-     a second line only when it genuinely doesn't fit.  Tighten the chip, gaps,
+  /* Let spec names and formal ids wrap when they don't fit. Tighten the chip, gaps,
      and row-gap so single-line rows stay compact and any wrapped row doesn't
      look bulky. */
   .lp-stack li {
@@ -2098,7 +2634,7 @@ a.lp-stack-name::after {
     padding: 0.65rem 0.85rem;
   }
   .lp-stack-name {
-    white-space: nowrap;
+    min-width: 0;
   }
   .lp-stack-icon {
     width: 30px;
@@ -2110,6 +2646,9 @@ a.lp-stack-name::after {
   }
   .lp-stack-spec {
     font-size: 0.68rem;
+  }
+  .lp-stack-go {
+    display: none;
   }
 }
 </style>

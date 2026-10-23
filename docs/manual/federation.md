@@ -45,17 +45,17 @@ that the `Federation` object uses to store several kinds of cache data and
 to maintain the queue of outgoing activities.
 
 `KvStore` is an abstract interface that represents a key–value store.
-For now, Fedify provides two built-in implementations of `KvStore`, which are
-`MemoryKvStore` and `DenoKvStore` classes.  The `MemoryKvStore` class is for
-testing and development purposes, and the `DenoKvStore` class is Deno KV-backed
-implementation for production use (as you can guess from the name, it is only
-available in Deno runtime).
+Fedify provides the built-in `MemoryKvStore` class for testing and
+development purposes.
 
 As separate packages, [`@fedify/redis`] provides [`RedisKvStore`] class, which
 is a Redis-backed implementation for production use, [`@fedify/postgres`]
 provides [`PostgresKvStore`] class, which is a PostgreSQL-backed implementation
 for production use, and [`@fedify/mysql`] provides [`MysqlKvStore`] class, which
 is a MySQL/MariaDB-backed implementation for production use.
+
+For Deno applications, the separate [`@fedify/denokv`] package provides
+`DenoKvStore`, a Deno KV-backed implementation available only in Deno.
 
 Further details are explained in the [*Key–value store* section](./kv.md).
 
@@ -65,6 +65,7 @@ Further details are explained in the [*Key–value store* section](./kv.md).
 [`PostgresKvStore`]: https://jsr.io/@fedify/postgres/doc/kv/~/PostgresKvStore
 [`@fedify/mysql`]: https://github.com/fedify-dev/fedify/tree/main/packages/mysql
 [`MysqlKvStore`]: https://jsr.io/@fedify/mysql/doc/kv/~/MysqlKvStore
+[`@fedify/denokv`]: https://github.com/fedify-dev/fedify/tree/main/packages/denokv
 
 ### `kvPrefixes`
 
@@ -208,12 +209,8 @@ activities.  If you don't provide this option, activities will not be queued
 and will be processed immediately.
 
 `MessageQueue` is an abstract interface that represents a message queue.
-For now, Fedify provides two built-in implementations of `MessageQueue`, which
-are `InProcessMessageQueue` and `DenoKvMessageQueue` classes.
-The `InProcessMessageQueue` class is for testing and development purposes,
-and the `DenoKvMessageQueue` class is a Deno KV-backed implementation for
-production use (as you can guess from the name, it is only available in Deno
-runtime).
+Fedify provides the built-in `InProcessMessageQueue` class for testing and
+development purposes.
 
 As separate packages, [`@fedify/redis`] provides [`RedisMessageQueue`] class,
 which is a Redis-backed implementation for production use,
@@ -223,6 +220,9 @@ PostgreSQL-backed implementation for production use,
 MySQL/MariaDB-backed implementation for production use, and [`@fedify/amqp`]
 provides [`AmqpMessageQueue`] class, which is an AMQP broker-backed
 implementation for production use.
+
+For Deno applications, [`@fedify/denokv`] provides `DenoKvMessageQueue`, a
+Deno KV-backed implementation available only in Deno.
 
 Further details are explained in the [*Message queue* section](./mq.md).
 
@@ -410,7 +410,31 @@ Mostly useful for testing purposes.
 
 Turned off by default.
 
+When this option is turned off, Fedify resolves the hostname of every URL it
+fetches, checks that all of the resolved addresses are public, and connects
+only to the addresses it checked, so that a hostname cannot answer with
+a public address for the check and a private address for the connection
+(DNS rebinding).  Pinning connections to the checked addresses is possible
+only on Node.js (through an [undici] dispatcher) and Bun:
+
+ -  On Bun, deployments that set proxy environment variables should use
+    Bun 1.4.3 or later; see [*Bun behind an HTTP
+    proxy*](./deploy.md#bun-behind-an-http-proxy).  Bun versions before
+    1.3.11 cannot fetch from HTTPS servers on non-default ports; see
+    [*HTTPS servers on non-default ports with
+    Bun*](./deploy.md#https-servers-on-non-default-ports-with-bun).
+ -  On Deno, `fetch()` has no option to specify a resolver or a dispatcher, so
+    Fedify cannot close the gap between the check and the connection.
+    Deno added a custom resolver only to its Rust API ([denoland/deno#17165],
+    [denoland/deno#27740]).  Deploy with `--deny-net` listing the private
+    address ranges, as described in [*Restricting outbound connections on
+    Deno*](./deploy.md#restricting-outbound-connections-on-deno).  For new and
+    long-lived deployments, we recommend Node.js or Bun instead of Deno.
+
 [SSRF]: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+[undici]: https://undici.nodejs.org/
+[denoland/deno#17165]: https://github.com/denoland/deno/issues/17165
+[denoland/deno#27740]: https://github.com/denoland/deno/pull/27740
 
 ### `benchmarkMode`
 
@@ -442,9 +466,9 @@ makes.  By default, it contains the name and version of the Fedify library,
 and the name and version of the JavaScript runtime, e.g.:
 
 ~~~~
-Fedify/1.3.0 (Deno/2.0.4)
 Fedify/1.3.0 (Node.js/v22.10.0)
 Fedify/1.3.0 (Bun/1.1.33)
+Fedify/1.3.0 (Deno/2.0.4)
 ~~~~
 
 You can customize the `User-Agent` header by providing options like `software`
@@ -460,7 +484,7 @@ and `url`.  For example, if you provide the following options:
 The `User-Agent` header will be like:
 
 ~~~~
-MyApp/1.0.0 (Fedify/1.3.0; Deno/2.0.4; +https://myinstance.com/)
+MyApp/1.0.0 (Fedify/1.3.0; Node.js/v22.10.0; +https://myinstance.com/)
 ~~~~
 
 Or, you can rather provide a custom `User-Agent` string directly instead of
@@ -714,38 +738,8 @@ Actually, this interface is de facto standard in the server-side JavaScript
 world, and it is inspired by the [`window.fetch()`] method in the browser
 environment.
 
-Therefore, you can pass it to the [`Deno.serve()`] function in [Deno], and
-the [`Bun.serve()`] function in [Bun]:
-
-::: code-group
-
-~~~~ typescript twoslash [Deno]
-import { type Federation } from "@fedify/fedify";
-const federation = null as unknown as Federation<void>;
-const request = new Request("");
-// ---cut-before---
-Deno.serve(
-  (request) => federation.fetch(request, { contextData: undefined })
-);
-~~~~
-
-~~~~ typescript twoslash [Bun]
-import "bun";
-import { type Federation } from "@fedify/fedify";
-const federation = null as unknown as Federation<void>;
-const request = new Request("");
-// ---cut-before---
-Bun.serve({
-  fetch: (request) => federation.fetch(request, { contextData: undefined }),
-})
-~~~~
-
-:::
-
-However, in case of [Node.js], it has no built-in server API that takes
-`fetch()` callback function like Deno or Bun.  Instead, you need to use
-[@hono/node-server] package to adapt the `~Federation.fetch()` method to
-the Node.js' HTTP server API:
+In [Node.js], use the [@hono/node-server] package to adapt the
+`~Federation.fetch()` method to the Node.js HTTP server API:
 
 ::: code-group
 
@@ -773,6 +767,34 @@ serve({
 
 :::
 
+In [Bun] and [Deno], you can pass it to the built-in [`Bun.serve()`] and
+[`Deno.serve()`] functions:
+
+::: code-group
+
+~~~~ typescript twoslash [Bun]
+import "bun";
+import { type Federation } from "@fedify/fedify";
+const federation = null as unknown as Federation<void>;
+const request = new Request("");
+// ---cut-before---
+Bun.serve({
+  fetch: (request) => federation.fetch(request, { contextData: undefined }),
+})
+~~~~
+
+~~~~ typescript twoslash [Deno]
+import { type Federation } from "@fedify/fedify";
+const federation = null as unknown as Federation<void>;
+const request = new Request("");
+// ---cut-before---
+Deno.serve(
+  (request) => federation.fetch(request, { contextData: undefined })
+);
+~~~~
+
+:::
+
 > [!NOTE]
 >
 > Although a `Federation` object can be directly passed to the HTTP server
@@ -782,13 +804,13 @@ serve({
 [`Request`]: https://developer.mozilla.org/en-US/docs/Web/API/Request
 [`Response`]: https://developer.mozilla.org/en-US/docs/Web/API/Response
 [`window.fetch()`]: https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch
-[`Deno.serve()`]: https://docs.deno.com/api/deno/~/Deno.serve
-[Deno]: http://deno.com/
-[`Bun.serve()`]: https://bun.sh/docs/api/http#bun-serve
-[Bun]: https://bun.sh/
 [Node.js]: https://nodejs.org/
 [@hono/node-server]: https://github.com/honojs/node-server
 [`serve()`]: https://github.com/honojs/node-server?tab=readme-ov-file#usage
+[Bun]: https://bun.sh/
+[Deno]: http://deno.com/
+[`Bun.serve()`]: https://bun.sh/docs/api/http#bun-serve
+[`Deno.serve()`]: https://docs.deno.com/api/deno/~/Deno.serve
 
 
 How the `Federation` object recognizes the domain name
@@ -810,10 +832,6 @@ install the package:
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@hongminhee/x-forwarded-fetch
-~~~~
-
 ~~~~ sh [Node.js]
 npm install x-forwarded-fetch
 ~~~~
@@ -822,25 +840,16 @@ npm install x-forwarded-fetch
 bun add x-forwarded-fetch
 ~~~~
 
+~~~~ sh [Deno]
+deno add jsr:@hongminhee/x-forwarded-fetch
+~~~~
+
 :::
 
 Then, import the package and place the `behindProxy()` middleware in front of
 the `Federation.fetch()` method:
 
 ::: code-group
-
-~~~~ typescript{1,4} twoslash [Deno]
-// @noErrors: 2300 2307
-import { behindProxy } from "x-forwarded-fetch";
-import { type Federation } from "@fedify/fedify";
-const federation = null as unknown as Federation<void>;
-// ---cut-before---
-import { behindProxy } from "@hongminhee/x-forwarded-fetch";
-
-Deno.serve(
-  behindProxy(request => federation.fetch(request, { contextData: undefined }))
-);
-~~~~
 
 ~~~~ typescript{2,5} twoslash [Node.js]
 import { type Federation } from "@fedify/fedify";
@@ -864,6 +873,19 @@ import { behindProxy } from "x-forwarded-fetch";
 Bun.serve({
   fetch: behindProxy((request) => federation.fetch(request, { contextData: undefined })),
 });
+~~~~
+
+~~~~ typescript{1,4} twoslash [Deno]
+// @noErrors: 2300 2307
+import { behindProxy } from "x-forwarded-fetch";
+import { type Federation } from "@fedify/fedify";
+const federation = null as unknown as Federation<void>;
+// ---cut-before---
+import { behindProxy } from "@hongminhee/x-forwarded-fetch";
+
+Deno.serve(
+  behindProxy(request => federation.fetch(request, { contextData: undefined }))
+);
 ~~~~
 
 :::

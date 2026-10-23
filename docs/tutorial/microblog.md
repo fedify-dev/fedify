@@ -91,7 +91,7 @@ Setting up the development environment
 
 ### Installing Node.js
 
-Fedify supports three JavaScript runtimes: [Deno], [Bun], and [Node.js].
+Fedify supports three JavaScript runtimes: [Node.js], [Bun], and [Deno].
 Among these, Node.js is the most widely used, so we'll use Node.js as the basis
 for this tutorial.
 
@@ -111,9 +111,9 @@ node --version
 npm --version
 ~~~~
 
-[Deno]: https://deno.com/
-[Bun]: https://bun.sh/
 [Node.js]: https://nodejs.org/
+[Bun]: https://bun.sh/
+[Deno]: https://deno.com/
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [various installation methods]: https://nodejs.org/en/download/package-manager
 

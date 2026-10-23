@@ -184,6 +184,14 @@ const sendDigest = federation.defineTask("sendDigest", {
 });
 ~~~~
 
+A queue's `handlerTimeout` only stops the queue from waiting; expiry alone
+does not invoke `onError` or guarantee a retry.  Fedify does not supply a task
+execution signal.  Create an application-owned budget and clean up your own
+connections and transactions as described in
+[Handler timeouts and application cleanup](./mq.md#handler-timeouts-and-application-cleanup).
+With `ParallelMessageQueue`, detached worker failures also cannot reliably
+trigger native backend retries after the backend callback has returned.
+
 Two failure cases are *dropped without retry*, because retrying cannot help:
 a message whose `taskName` has no registered handler (logged as a warning),
 and a payload that cannot be decoded or fails dequeue-time validation
@@ -312,9 +320,9 @@ How the key is resolved depends on the queue and the key–value store:
     });
     ~~~~
 
-Among the first-party adapters, the in-memory, Deno KV, SQLite, MySQL,
-PostgreSQL, and Redis key–value stores implement `~KvStore.cas`; Cloudflare
-Workers KV does not, so those deployments take the
+Among the first-party adapters, the in-memory, SQLite, MySQL,
+PostgreSQL, Redis, Netlify Blobs, and Deno KV key–value stores implement
+`~KvStore.cas`; Cloudflare Workers KV does not, so those deployments take the
 `taskDeduplicationFallback` branch until per-adapter follow-ups add it.
 
 For `~Context.enqueueTaskMany()`, a single `deduplicationKey` applies to the

@@ -1216,6 +1216,17 @@ test("validatePublicUrl()", async () => {
   await validatePublicUrl("https://[64:ff9b::8.8.8.8]");
 });
 
+test("validatePublicUrl() keeps rejecting fedify-test.internal on Bun", {
+  skip: !("Bun" in globalThis),
+}, async () => {
+  // openPublicFetch() has no hostname exceptions, but validatePublicUrl()
+  // keeps its Bun-specific ones for compatibility:
+  await rejects(
+    () => validatePublicUrl("https://fedify-test.internal/"),
+    (error) => error instanceof UrlError && error.reason === "disallowed",
+  );
+});
+
 test("validateLookupAddresses() tolerates Cloudflare Workers CNAME entries", () => {
   validateLookupAddresses([
     { address: "app-host.example.net.", family: 4 },
