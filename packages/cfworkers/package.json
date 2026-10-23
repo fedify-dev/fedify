@@ -1,6 +1,6 @@
 {
   "name": "@fedify/cfworkers",
-  "version": "2.3.15",
+  "version": "2.3.16",
   "description": "Adapt Fedify with Cloudflare Workers",
   "keywords": [
     "Fedify",

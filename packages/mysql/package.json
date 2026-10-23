@@ -1,6 +1,6 @@
 {
   "name": "@fedify/mysql",
-  "version": "2.3.15",
+  "version": "2.3.16",
   "description": "MySQL/MariaDB drivers for Fedify",
   "keywords": [
     "fedify",
