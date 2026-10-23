@@ -46,7 +46,7 @@
     "@nestjs/common": "npm:@nestjs/common@^11.0.1",
     "@nestjs/core": "npm:@nestjs/core@11.1.4",
     "@nestjs/platform-express": "npm:@nestjs/platform-express@11.1.4",
-    "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0",
+    "@opentelemetry/api": "npm:@opentelemetry/api@~1.9.0",
     "@opentelemetry/context-async-hooks": "npm:@opentelemetry/context-async-hooks@^2.5.0",
     "@opentelemetry/core": "npm:@opentelemetry/core@^2.5.0",
     "@opentelemetry/sdk-trace-base": "npm:@opentelemetry/sdk-trace-base@^2.5.0",

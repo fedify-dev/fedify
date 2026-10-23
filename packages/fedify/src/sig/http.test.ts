@@ -6,6 +6,11 @@ import {
 import type { CryptographicKey, Multikey } from "@fedify/vocab";
 import { exportSpki, FetchError, UrlError } from "@fedify/vocab-runtime";
 import {
+  openDirectFetch,
+  type PublicFetchSession,
+} from "@fedify/vocab-runtime/internal";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
+import {
   assert,
   assertEquals,
   assertExists,
@@ -27,6 +32,7 @@ import {
 import {
   createRfc9421SignatureBase,
   doubleKnock,
+  doubleKnockScoped,
   formatRfc9421Signature,
   formatRfc9421SignatureParameters,
   type HttpMessageSignaturesSpec,
@@ -2352,6 +2358,574 @@ test("doubleKnock() async specDeterminer test", async () => {
   fetchMock.hardReset();
 });
 
+const lifecycleIdentity = {
+  keyId: rsaPublicKey2.id!,
+  privateKey: rsaPrivateKey2,
+};
+
+test("doubleKnockScoped() keeps challenge retries and fallback in the validated hop", async () => {
+  const url = "https://example.com/lifecycle/challenge-fallback";
+  const hops = recordHops((_, index): RecordedResponseInit =>
+    index === 1
+      ? {
+        status: 401,
+        headers: {
+          "Accept-Signature": 'challenge=("@method");nonce="challenge-nonce"',
+        },
+        body: "Challenge",
+      }
+      : index === 2
+      ? { status: 401, body: "Unauthorized" }
+      : { status: 202, body: "Accepted" }
+  );
+  const result = await doubleKnockScoped(
+    new Request(url, { method: "POST", body: "activity" }),
+    lifecycleIdentity,
+    {},
+    hops.openHop,
+    (response) => response.text(),
+  );
+  assertEquals(result, "Accepted");
+  assertEquals(hops.events, [
+    `open ${url}`,
+    `fetch #1 ${url}`,
+    "cancel #1",
+    `fetch #2 ${url}`,
+    "cancel #2",
+    `fetch #3 ${url}`,
+    "consumed #3",
+    `close ${url}`,
+  ]);
+  assertStringIncludes(
+    hops.requests[1].headers.get("Signature-Input")!,
+    'nonce="challenge-nonce"',
+  );
+  assertFalse(hops.requests[2].headers.has("Signature-Input"));
+  hops.assertInvariants();
+});
+
+test("doubleKnockScoped() reopens the session after challenge redirects", async () => {
+  const url = "https://example.com/lifecycle/challenge-redirect";
+  const next = "https://other.example/lifecycle/final";
+  const validated: string[] = [];
+  const hops = recordHops((_, index): RecordedResponseInit =>
+    index === 1
+      ? {
+        status: 401,
+        headers: { "Accept-Signature": 'challenge=("@method");created' },
+        body: "Challenge",
+      }
+      : index === 2
+      ? { status: 307, headers: { Location: next }, body: "Redirect" }
+      : { status: 200, body: "Done" }
+  );
+  const result = await doubleKnockScoped(
+    new Request(url, { method: "POST", body: "activity" }),
+    lifecycleIdentity,
+    {
+      validateRedirect: (target) => {
+        validated.push(target);
+      },
+    },
+    hops.openHop,
+    (response) => response.text(),
+  );
+  assertEquals(result, "Done");
+  assertEquals(validated, [next]);
+  assertEquals(hops.events, [
+    `open ${url}`,
+    `fetch #1 ${url}`,
+    "cancel #1",
+    `fetch #2 ${url}`,
+    "cancel #2",
+    `close ${url}`,
+    `open ${next}`,
+    `fetch #3 ${next}`,
+    "consumed #3",
+    `close ${next}`,
+  ]);
+  assertEquals(await hops.requests[2].text(), "activity");
+  hops.assertInvariants();
+});
+
+test("doubleKnockScoped() preserves maxRedirection across challenge redirects", async (t) => {
+  for (const maxRedirection of [0, 1]) {
+    await t.step(`limit ${maxRedirection}`, async () => {
+      const url = "https://example.com/lifecycle/challenge-limit";
+      const hops = recordHops((request, index): RecordedResponseInit =>
+        index % 2 === 1
+          ? {
+            status: 401,
+            headers: { "Accept-Signature": 'challenge=("@method");created' },
+            body: "Challenge",
+          }
+          : {
+            status: 307,
+            headers: { Location: `${request.url}/next` },
+            body: "Redirect",
+          }
+      );
+      await assertRejects(
+        () =>
+          doubleKnockScoped(
+            new Request(url, { method: "POST", body: "activity" }),
+            lifecycleIdentity,
+            { maxRedirection },
+            hops.openHop,
+            (response) => response.text(),
+          ),
+        FetchError,
+        `Too many redirections (${maxRedirection + 1})`,
+      );
+      assertEquals(hops.requests.length, 2 * (maxRedirection + 1));
+      assertEquals(
+        hops.events.filter((event) => event.startsWith("open ")).length,
+        maxRedirection + 1,
+      );
+      assertEquals(
+        hops.events.filter((event) => event.startsWith("cancel #")).length,
+        hops.requests.length,
+      );
+      hops.assertInvariants();
+    });
+  }
+});
+
+test("doubleKnockScoped() detects loops after challenge redirects", async () => {
+  const url = "https://example.com/lifecycle/challenge-loop";
+  const hops = recordHops((_, index): RecordedResponseInit =>
+    index === 1
+      ? {
+        status: 401,
+        headers: { "Accept-Signature": 'challenge=("@method");created' },
+        body: "Challenge",
+      }
+      : { status: 307, headers: { Location: url }, body: "Redirect" }
+  );
+  await assertRejects(
+    () =>
+      doubleKnockScoped(
+        new Request(url, { method: "POST", body: "activity" }),
+        lifecycleIdentity,
+        {},
+        hops.openHop,
+        (response) => response.text(),
+      ),
+    FetchError,
+    "Redirect loop detected",
+  );
+  assertEquals(hops.requests.length, 2);
+  assertEquals(hops.events, [
+    `open ${url}`,
+    `fetch #1 ${url}`,
+    "cancel #1",
+    `fetch #2 ${url}`,
+    "cancel #2",
+    `close ${url}`,
+  ]);
+  hops.assertInvariants();
+});
+
+test("doubleKnockScoped() retries another spec on the same hop", async () => {
+  const url = "https://example.com/lifecycle/retry";
+  const hops = recordHops((_, index) =>
+    index === 1
+      ? { status: 401, body: "Unauthorized" }
+      : { status: 202, body: "Accepted" }
+  );
+  const result = await doubleKnockScoped(
+    new Request(url, { method: "POST", body: "activity" }),
+    lifecycleIdentity,
+    {},
+    hops.openHop,
+    (response) => response.text(),
+  );
+  assertEquals(result, "Accepted");
+  assertEquals(hops.events, [
+    `open ${url}`,
+    `fetch #1 ${url}`,
+    "cancel #1",
+    `fetch #2 ${url}`,
+    "consumed #2",
+    `close ${url}`,
+  ]);
+  assertEquals(
+    hops.requests.map((r) => r.headers.has("Signature-Input")),
+    [true, false],
+  );
+  hops.assertInvariants();
+});
+
+test("doubleKnockScoped() closes the retried hop before a redirect", async () => {
+  const url = "https://example.com/lifecycle/retry-redirect";
+  const next = "https://example.com/lifecycle/final";
+  const hops = recordHops((_, index) =>
+    index === 1
+      ? { status: 401, body: "Unauthorized" }
+      : index === 2
+      ? { status: 302, headers: { Location: next }, body: "Found" }
+      : { status: 200, body: "Done" }
+  );
+  const result = await doubleKnockScoped(
+    new Request(url, { method: "POST", body: "activity" }),
+    lifecycleIdentity,
+    {},
+    hops.openHop,
+    (response) => response.text(),
+  );
+  assertEquals(result, "Done");
+  assertEquals(hops.events, [
+    `open ${url}`,
+    `fetch #1 ${url}`,
+    "cancel #1",
+    `fetch #2 ${url}`,
+    "cancel #2",
+    `close ${url}`,
+    `open ${next}`,
+    `fetch #3 ${next}`,
+    "consumed #3",
+    `close ${next}`,
+  ]);
+  assertEquals(await hops.requests[2].text(), "activity");
+  hops.assertInvariants();
+});
+
+test("doubleKnockScoped() retries transport errors on the same hop", async (t) => {
+  await t.step("GET", async () => {
+    const url = "https://example.com/lifecycle/flaky";
+    const hops = recordHops((_, index) => {
+      if (index === 1) throw new TypeError("connection reset");
+      return { body: "Success" };
+    });
+    const result = await doubleKnockScoped(
+      new Request(url),
+      lifecycleIdentity,
+      {},
+      hops.openHop,
+      (response) => response.text(),
+    );
+    assertEquals(result, "Success");
+    assertEquals(hops.events, [
+      `open ${url}`,
+      `fetch #1 ${url}`,
+      `fetch #2 ${url}`,
+      "consumed #2",
+      `close ${url}`,
+    ]);
+    hops.assertInvariants();
+  });
+
+  await t.step("POST", async () => {
+    const url = "https://example.com/lifecycle/flaky-inbox";
+    const hops = recordHops(() => {
+      throw new TypeError("connection reset");
+    });
+    await assertRejects(
+      () =>
+        doubleKnockScoped(
+          new Request(url, { method: "POST", body: "activity" }),
+          lifecycleIdentity,
+          {},
+          hops.openHop,
+          (response) => response.text(),
+        ),
+      FetchError,
+    );
+    assertEquals(hops.events, [
+      `open ${url}`,
+      `fetch #1 ${url}`,
+      `close ${url}`,
+    ]);
+    hops.assertInvariants();
+  });
+});
+
+// Captures the debug logs of fedify while running the given function:
+async function captureLogs(fn: () => Promise<void>): Promise<LogRecord[]> {
+  const records: LogRecord[] = [];
+  await configure({
+    sinks: { buffer: (record) => records.push(record) },
+    loggers: [
+      { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+    reset: true,
+  });
+  try {
+    await fn();
+    // Let the rejected cancellations be logged:
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  } finally {
+    await reset();
+  }
+  return records;
+}
+
+test("doubleKnockScoped() logs a redirect body failing to cancel and follows the redirect", async () => {
+  const url = "https://example.com/lifecycle/cancel-failure";
+  const next = "https://example.com/lifecycle/cancel-failure-final";
+  const hops = recordHops((_, index) =>
+    index === 1
+      ? {
+        status: 302,
+        headers: { Location: next },
+        body: "Found",
+        failCancel: true,
+      }
+      : { status: 200, body: "Done" }
+  );
+  let result: string | undefined;
+  const records = await captureLogs(async () => {
+    result = await doubleKnockScoped(
+      new Request(url),
+      lifecycleIdentity,
+      {},
+      hops.openHop,
+      (response) => response.text(),
+    );
+  });
+  assertEquals(result, "Done");
+  assertEquals(hops.events, [
+    `open ${url}`,
+    `fetch #1 ${url}`,
+    "cancel #1",
+    `close ${url}`,
+    `open ${next}`,
+    `fetch #2 ${next}`,
+    "consumed #2",
+    `close ${next}`,
+  ]);
+  const failures = records.filter((r) =>
+    r.rawMessage === "Failed to cancel the response body from {url}: {error}"
+  );
+  assertEquals(failures.map((r) => [r.level, r.properties.url]), [
+    ["debug", url],
+  ]);
+  assertEquals(
+    (failures[0].properties.error as Error).message,
+    "cancel #1 failed",
+  );
+  hops.assertInvariants();
+});
+
+test("doubleKnockScoped() is not blocked by a body cancellation that never settles", async () => {
+  const url = "https://example.com/lifecycle/hanging-cancel";
+  const next = "https://example.com/lifecycle/hanging-cancel-final";
+  const hops = recordHops((_, index) =>
+    index === 1
+      ? { status: 401, body: "Unauthorized", hangCancel: true }
+      : index === 2
+      ? {
+        status: 302,
+        headers: { Location: next },
+        body: "Found",
+        hangCancel: true,
+      }
+      : { status: 200, body: "Done", hangCancel: true }
+  );
+  const result = await doubleKnockScoped(
+    new Request(url, { method: "POST", body: "activity" }),
+    lifecycleIdentity,
+    {},
+    hops.openHop,
+    // Leaves the final body to be cancelled by close():
+    (response) => Promise.resolve(response.status),
+  );
+  assertEquals(result, 200);
+  assertEquals(hops.events, [
+    `open ${url}`,
+    `fetch #1 ${url}`,
+    "cancel #1",
+    `fetch #2 ${url}`,
+    "cancel #2",
+    `close ${url}`,
+    `open ${next}`,
+    `fetch #3 ${next}`,
+    "cancel #3 by close",
+    `close ${next}`,
+  ]);
+  hops.assertInvariants();
+});
+
+test("doubleKnockScoped() completes with responses cloned by fetch-mock", async () => {
+  // fetch-mock returns a clone (a tee branch) of a Response instance, whose
+  // cancellation never settles on Node.js:
+  fetchMock.spyGlobal();
+  try {
+    let attempts = 0;
+    fetchMock.post("https://example.com/tee/redirect", () => {
+      attempts++;
+      return attempts === 1
+        ? new Response("Unauthorized", { status: 401 })
+        : new Response("Found", {
+          status: 302,
+          headers: { Location: "https://example.com/tee/final" },
+        });
+    });
+    fetchMock.post(
+      "https://example.com/tee/final",
+      () => new Response("Accepted", { status: 202 }),
+    );
+    const request = () =>
+      new Request("https://example.com/tee/redirect", {
+        method: "POST",
+        body: "activity",
+      });
+    const status = await doubleKnockScoped(
+      request(),
+      lifecycleIdentity,
+      {},
+      openDirectFetch,
+      (response) => Promise.resolve(response.status),
+    );
+    assertEquals(status, 202);
+    assertEquals(attempts, 2);
+
+    attempts = 0;
+    const response = await doubleKnock(request(), lifecycleIdentity);
+    assertEquals(response.status, 202);
+    assertEquals(await response.text(), "Accepted");
+    assertEquals(attempts, 2);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+test("doubleKnockScoped() closes the session when consuming fails", async (t) => {
+  const url = "https://example.com/lifecycle/consume";
+  await t.step("exception", async () => {
+    const hops = recordHops(() => ({ body: "x".repeat(1024) }));
+    const error = new Error("consume failed");
+    await assertRejects(
+      () =>
+        doubleKnockScoped(
+          new Request(url),
+          lifecycleIdentity,
+          {},
+          hops.openHop,
+          async (response) => {
+            const reader = response.body!.getReader();
+            await reader.read();
+            reader.releaseLock();
+            throw error;
+          },
+        ),
+      Error,
+      "consume failed",
+    );
+    assertEquals(hops.events, [
+      `open ${url}`,
+      `fetch #1 ${url}`,
+      "cancel #1 by close",
+      `close ${url}`,
+    ]);
+    hops.assertInvariants();
+  });
+
+  await t.step("abort", async () => {
+    const hops = recordHops(() => ({ body: "Success" }));
+    const controller = new AbortController();
+    const reason = new Error("aborted while consuming");
+    const error = await assertRejects(() =>
+      doubleKnockScoped(
+        new Request(url),
+        lifecycleIdentity,
+        { signal: controller.signal },
+        hops.openHop,
+        () => {
+          controller.abort(reason);
+          controller.signal.throwIfAborted();
+          return Promise.resolve();
+        },
+      )
+    );
+    assert(error === reason);
+    assertEquals(hops.events, [
+      `open ${url}`,
+      `fetch #1 ${url}`,
+      "cancel #1 by close",
+      `close ${url}`,
+    ]);
+    hops.assertInvariants();
+  });
+});
+
+test("doubleKnock() returns the final response without cancelling its body", async () => {
+  const url = "https://example.com/lifecycle/public";
+  const next = "https://example.com/lifecycle/public-final";
+  const events: string[] = [];
+  const responses: RecordedResponse[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = ((input: RequestInfo | URL) => {
+    const requestUrl = input instanceof Request ? input.url : String(input);
+    const index = responses.length + 1;
+    events.push(`fetch #${index} ${requestUrl}`);
+    const recorded = createRecordedResponse(
+      events,
+      index,
+      requestUrl === url
+        ? { status: 302, headers: { Location: next }, body: "Found" }
+        : { status: 200, body: "Done" },
+    );
+    responses.push(recorded);
+    return Promise.resolve(recorded.response);
+  }) as typeof globalThis.fetch;
+  try {
+    const response = await doubleKnock(new Request(url), lifecycleIdentity);
+    assertEquals(events, [`fetch #1 ${url}`, "cancel #1", `fetch #2 ${next}`]);
+    assertFalse(responses[1].settled());
+    assertEquals(await response.text(), "Done");
+    assertEquals(events.at(-1), "consumed #2");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("doubleKnock() is not blocked by a body cancellation that never settles", async () => {
+  const url = "https://example.com/lifecycle/public-hanging";
+  const next = "https://example.com/lifecycle/public-hanging-final";
+  const events: string[] = [];
+  const originalFetch = globalThis.fetch;
+  let index = 0;
+  globalThis.fetch = ((input: RequestInfo | URL) => {
+    const requestUrl = input instanceof Request ? input.url : String(input);
+    index++;
+    events.push(`fetch #${index} ${requestUrl}`);
+    return Promise.resolve(
+      createRecordedResponse(
+        events,
+        index,
+        index === 1
+          ? { status: 401, body: "Unauthorized", hangCancel: true }
+          : index === 2
+          ? {
+            status: 302,
+            headers: { Location: next },
+            body: "Found",
+            hangCancel: true,
+          }
+          : { status: 200, body: "Done" },
+      ).response,
+    );
+  }) as typeof globalThis.fetch;
+  try {
+    const response = await doubleKnock(
+      new Request(url, { method: "POST", body: "activity" }),
+      lifecycleIdentity,
+    );
+    assertEquals(events, [
+      `fetch #1 ${url}`,
+      "cancel #1",
+      `fetch #2 ${url}`,
+      "cancel #2",
+      `fetch #3 ${next}`,
+    ]);
+    assertEquals(await response.text(), "Done");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("timingSafeEqual()", async (t) => {
   await t.step("should return true for equal empty arrays", () => {
     const a = new Uint8Array([]);
@@ -3397,3 +3971,135 @@ test(
     fetchMock.hardReset();
   },
 );
+
+interface RecordedResponseInit {
+  readonly status?: number;
+  readonly headers?: HeadersInit;
+  readonly body?: string;
+  readonly chunkSize?: number;
+  readonly failCancel?: boolean;
+  readonly hangCancel?: boolean;
+}
+
+interface RecordedResponse {
+  readonly response: Response;
+  readonly settled: () => boolean;
+}
+
+// Creates a response whose body records being read to the end
+// ("consumed #n") or cancelled ("cancel #n"):
+function createRecordedResponse(
+  events: string[],
+  index: number,
+  init: RecordedResponseInit,
+  cancelSuffix: () => string = () => "",
+): RecordedResponse {
+  const bytes = new TextEncoder().encode(init.body ?? "");
+  const chunkSize = init.chunkSize ?? 256;
+  let offset = 0;
+  let settled = false;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (offset >= bytes.length) {
+        settled = true;
+        events.push(`consumed #${index}`);
+        controller.close();
+        return;
+      }
+      controller.enqueue(bytes.slice(offset, offset + chunkSize));
+      offset += chunkSize;
+    },
+    cancel() {
+      settled = true;
+      events.push(`cancel #${index}${cancelSuffix()}`);
+      if (init.failCancel) throw new Error(`cancel #${index} failed`);
+      // Like a branch of a tee whose other branch is never cancelled:
+      if (init.hangCancel) return new Promise<void>(() => {});
+    },
+  }, { highWaterMark: 0 });
+  return {
+    response: new Response(body, {
+      status: init.status ?? 200,
+      headers: init.headers,
+    }),
+    settled: () => settled,
+  };
+}
+
+interface HopRecorder {
+  readonly events: string[];
+  readonly requests: Request[];
+  openHop(url: string): Promise<PublicFetchSession>;
+  assertInvariants(): void;
+}
+
+// Records the lifecycle of the hop sessions.  Like the real sessions, close()
+// starts cancelling the bodies that are still unsettled without awaiting it,
+// but records them as "cancel #n by close" so that tests can tell them apart.
+// The cancel callbacks run synchronously inside cancel(), so they are
+// recorded before "close":
+function recordHops(
+  respond: (
+    request: Request,
+    index: number,
+  ) => RecordedResponseInit | Promise<RecordedResponseInit>,
+): HopRecorder {
+  const events: string[] = [];
+  const requests: Request[] = [];
+  const unsettledAtClose: number[] = [];
+  let opens = 0;
+  let closes = 0;
+  let fetches = 0;
+  return {
+    events,
+    requests,
+    openHop(url: string): Promise<PublicFetchSession> {
+      opens++;
+      events.push(`open ${url}`);
+      const tracked: (RecordedResponse & { index: number })[] = [];
+      let closed = false;
+      let closing = false;
+      return Promise.resolve({
+        url: new URL(url),
+        async fetch(input, init) {
+          if (closed) throw new TypeError("The session is closed.");
+          const request = new Request(
+            (input instanceof Request ? input.clone() : input) as
+              | Request
+              | URL
+              | string,
+            init,
+          );
+          const index = ++fetches;
+          requests.push(request);
+          events.push(`fetch #${index} ${request.url}`);
+          const recorded = createRecordedResponse(
+            events,
+            index,
+            await respond(request, index),
+            () => closing ? " by close" : "",
+          );
+          tracked.push({ ...recorded, index });
+          return recorded.response;
+        },
+        close() {
+          if (closed) return Promise.resolve();
+          closed = true;
+          closes++;
+          closing = true;
+          for (const { response, settled, index } of tracked) {
+            if (settled()) continue;
+            if (response.body?.locked) unsettledAtClose.push(index);
+            else response.body?.cancel().catch(() => {});
+          }
+          events.push(`close ${url}`);
+          return Promise.resolve();
+        },
+      });
+    },
+    assertInvariants() {
+      assertEquals(opens, closes);
+      assertEquals(unsettledAtClose, []);
+    },
+  };
+}

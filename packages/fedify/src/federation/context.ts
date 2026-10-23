@@ -552,6 +552,11 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    * Gets the public key of the sender, if any exists and it is verified.
    * Otherwise, `null` is returned.
    *
+   * Successful results are reused for this request regardless of the options.
+   * Pending checks and `null` results are reused for the same effective
+   * document and context loaders, including failed lookups.  Rejected checks
+   * can be retried.  Shared work uses the first caller's tracer provider.
+   *
    * This can be used for implementing [authorized fetch] (also known as
    * secure mode) in ActivityPub.
    *
@@ -565,6 +570,11 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
   /**
    * Gets the public key of the sender, if any exists and it is verified.
    * Otherwise, `null` is returned.
+   *
+   * Successful results are reused for this request regardless of the options.
+   * Pending checks and `null` results are reused for the same effective
+   * document and context loaders, including failed lookups.  Rejected checks
+   * can be retried.  Shared work uses the first caller's tracer provider.
    *
    * This can be used for implementing [authorized fetch] (also known as
    * secure mode) in ActivityPub.
@@ -586,6 +596,14 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    * Gets the owner of the signed key, if any exists and it is verified.
    * Otherwise, `null` is returned.
    *
+   * Verified keys and owners are reused for this request regardless of the
+   * options.  Pending checks are shared for the same effective document and
+   * context loaders.  A `null` result from an owner lookup after key
+   * verification is retained for those loaders.  A `null` result caused by
+   * an unverified key is not retained, allowing an owner lookup after another
+   * loader verifies the key.  Rejected checks can be retried.  Shared work
+   * uses the first caller's tracer provider.
+   *
    * This can be used for implementing [authorized fetch] (also known as
    * secure mode) in ActivityPub.
    *
@@ -600,6 +618,14 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
   /**
    * Gets the owner of the signed key, if any exists and it is verified.
    * Otherwise, `null` is returned.
+   *
+   * Verified keys and owners are reused for this request regardless of the
+   * options.  Pending checks are shared for the same effective document and
+   * context loaders.  A `null` result from an owner lookup after key
+   * verification is retained for those loaders.  A `null` result caused by
+   * an unverified key is not retained, allowing an owner lookup after another
+   * loader verifies the key.  Rejected checks can be retried.  Shared work
+   * uses the first caller's tracer provider.
    *
    * This can be used for implementing [authorized fetch] (also known as
    * secure mode) in ActivityPub.

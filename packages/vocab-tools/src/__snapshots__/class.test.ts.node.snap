@@ -88,6 +88,11 @@ export class Object {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
@@ -18729,6 +18734,11 @@ export class PropertyValue {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
@@ -19370,6 +19380,11 @@ export class Measure {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
@@ -21403,6 +21418,11 @@ export class InteractionPolicy {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
@@ -22245,6 +22265,11 @@ export class InteractionRule {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
@@ -27194,6 +27219,11 @@ export class DidService {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
@@ -28030,6 +28060,11 @@ export class DataIntegrityProof {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
@@ -29142,6 +29177,11 @@ export class CryptographicKey {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
@@ -30063,6 +30103,11 @@ export class Multikey {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
@@ -30989,6 +31034,11 @@ export class Intent {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
@@ -51642,6 +51692,11 @@ export class Endpoints {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
@@ -60918,6 +60973,11 @@ export class Link {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
@@ -96949,6 +97009,11 @@ export class Source {
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }
