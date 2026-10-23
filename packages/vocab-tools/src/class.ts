@@ -82,6 +82,11 @@ async function* generateClass(
       return this.#warning;
     }
 
+    /**
+     * Internal cross-package contract with @fedify/testing, which copies this
+     * cache when attaching document loaders to an activity clone.  Keep this
+     * accessor name and its getter/setter semantics stable.
+     */
     protected get _cachedJsonLd(): unknown | undefined {
       return this.#cachedJsonLd;
     }

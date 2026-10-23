@@ -275,6 +275,12 @@ serve({
 
 :::
 
+> [!WARNING]
+> Deno deployments need the
+> [outbound connection restrictions](#restricting-outbound-connections-on-deno)
+> described below to prevent DNS rebinding.  Use a Unix domain socket behind a
+> reverse proxy when applying `--deny-net`.
+
 Deno ships a native server; export a default object with a `fetch` method
 and launch it with `deno serve`:
 
@@ -303,6 +309,117 @@ deno serve --host 127.0.0.1 index.ts
 
 For framework integration patterns (Hono, Express, Fresh, SvelteKit, and
 others), see the [*Integration* chapter](./integration.md).
+
+#### HTTPS servers on non-default ports with Bun
+
+On Bun, Fedify connects to the validated address of a remote server while
+still verifying its certificate against the original hostname.  Bun versions
+before 1.3.11 verify certificates against the `Host` header, which includes
+the port for servers on non-default ports, and offer no safe way to verify
+them against the hostname otherwise.  Therefore, on these versions, Fedify
+refuses requests to HTTPS servers on non-default ports (e.g.,
+`https://example.com:8443/`) with a `TypeError` before connecting.  Requests
+to HTTPS servers on the default port and to HTTP servers are not affected.
+Upgrade to Bun 1.3.11 or later to fetch from such servers.
+
+#### Bun behind an HTTP proxy
+
+On Bun, Fedify sends each outbound request directly to an address that passed
+its private address check, with the original `Host` header and TLS server
+name, and with `proxy: false`.  Fedify's own requests do not use HTTP proxies.
+
+Bun versions before 1.4.3 ignore `proxy: false` when any of the `HTTP_PROXY`,
+`HTTPS_PROXY`, or `ALL_PROXY` environment variables (or their lowercase forms)
+is set at startup, and send the requests through the proxy instead.
+The proxy still receives the validated IP address as the destination, but
+the connection is then made by the proxy, and a proxy that prefers the `Host`
+header over the request target may resolve the hostname again.  Fedify logs
+a warning once when it detects this configuration.
+
+If your Bun deployment sets proxy environment variables, do one of
+the following:
+
+ -  Upgrade to Bun 1.4.3 or later (recommended).
+ -  Unset the proxy environment variables for the Fedify process.
+ -  Make the proxy refuse private address ranges as destinations.
+
+#### Restricting outbound connections on Deno
+
+> [!WARNING]
+> Upgrading Fedify alone does not protect Deno deployments against DNS
+> rebinding.  Furthermore, we no longer recommend Deno for new projects
+> following its team's recent [announcement][Deno joins Cloudflare].
+> Apply the mitigation below.
+
+Fedify checks that a remote hostname resolves only to public addresses before
+fetching remote documents or delivering activities.  On Node.js and Bun, it
+then connects only to the addresses that passed the check.  Deno's `fetch()`
+provides no way to choose the addresses it connects to, so Deno resolves
+the hostname again when connecting, and a hostname that answers with a public
+address for the check and a private address for the connection
+(DNS rebinding) can make Fedify reach internal services.
+
+Deno itself can refuse such connections.  Since Deno 2.8.1, `--deny-net`
+checks the resolved IP addresses right before connecting.  Deno 2.8.0 and
+earlier check only the hostname, so a hostname that resolves to a denied
+address is still allowed (see [GHSA-cpgj-f7g3-2pp2]).  Run Deno 2.8.1 or later
+with `--deny-net` listing the IPv4 ranges that Fedify treats as private,
+`[::1]`, and `[::]`:
+
+~~~~ bash
+deno run --allow-net --allow-read=/run/fedify --allow-write=/run/fedify \
+  --deny-net=0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.88.99.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4,[::1],[::] \
+  server.ts
+~~~~
+
+Add the other permissions your application needs.  This mitigation has
+the following limitations:
+
+ -  `--deny-net` takes precedence over `--allow-net`, so the server cannot
+    listen on an address inside a denied range, such as `127.0.0.1`,
+    `0.0.0.0`, `[::]`, or a container address like `172.17.0.2`.  Leaving
+    the listening address out of the list does not work either, since it
+    lets rebinding reach that address too; for example, on Linux, connecting
+    to `0.0.0.0` or `[::]` reaches services listening on the loopback
+    interface.  Listen on a Unix domain socket behind a reverse proxy
+    instead.  Listening on a socket path requires read and write permissions
+    for the path rather than the `net` permission, so all of the addresses
+    above can be denied:
+
+    ~~~~ typescript
+    Deno.serve(
+      { path: "/run/fedify/fedify.sock" },
+      (request) => federation.fetch(request, { contextData: undefined }),
+    );
+    ~~~~
+
+ -  `--deny-net` does not accept IPv6 ranges, only literal addresses like
+    `[::1]`.  Unique local addresses (`fc00::/7`) and link-local addresses
+    (`fe80::/10`) cannot be denied this way, so block them at the network
+    layer or disable outbound IPv6.
+
+If your deployment cannot use `--deny-net`, for example a container that must
+listen on `0.0.0.0`, block the same ranges for outbound traffic of the Fedify
+process with owner-based `OUTPUT` rules of iptables or nftables, or with
+a container network policy.  These can also express IPv6 ranges.  Block `::1`
+and `::` as well as `fc00::/7` and `fe80::/10`, since on Linux connecting to
+`::` also reaches local services.
+
+The deny list overlaps with Fedify's own check, but because Deno applies it
+right before connecting, it also covers the addresses a hostname is rebound to.
+
+For new and long-lived deployments, we recommend Node.js or Bun instead of
+Deno.  The Deno team has [announced][Deno is joining Cloudflare] that it will
+ship only bug-fix and security releases for one year from October 9, 2026, and
+then end its development of the Deno runtime: “We will support the Deno
+runtime for another year with monthly releases containing bug fixes and
+security updates.  After that year we will end our development of the Deno
+runtime.”  Deno remains open source, so others may continue its development.
+See also [Cloudflare's announcement][Deno joins Cloudflare].
+
+[Deno joins Cloudflare]: https://blog.cloudflare.com/deno-joins-cloudflare/
+[GHSA-cpgj-f7g3-2pp2]: https://github.com/denoland/deno/security/advisories/GHSA-cpgj-f7g3-2pp2
+[Deno is joining Cloudflare]: https://deno.com/blog/cloudflare
 
 ### Running under systemd
 
@@ -798,6 +915,13 @@ configuration.
 
 ### Deno Deploy
 
+> [!WARNING]
+> The Deno team has [announced][Deno is joining Cloudflare] that Deno Deploy
+> will continue operating for six months from October 9, 2026, before shutting
+> down.  Consider moving to [Cloudflare Workers](#cloudflare-workers), or to
+> a [traditional server environment](#traditional-deployments) on
+> Node.js or Bun.
+
 [Deno Deploy] is a serverless platform for Deno applications with global
 distribution and built-in persistence through Deno KV.  At the time of
 writing, Deno Deploy offers two products:
@@ -1100,13 +1224,16 @@ Fedify's built-in document loaders defend against this by default:
 
  -  `lookupObject()`, `Context.getDocumentLoader()`, and
     `getAuthenticatedDocumentLoader()` reject URLs that resolve to
-    loopback, link-local, private (RFC 1918), or ULA/IPv6-link-local
-    addresses, and they refuse the `localhost` hostname outright.  At
-    validation time, DNS is resolved and every returned IP is checked to
-    be public, which helps mitigate DNS-rebinding-based SSRF.
- -  The protection is implemented in
-    [`validatePublicUrl()`], which you can call directly from application
-    code if you need the same checks for your own fetches.
+    loopback, link-local, private IPv4 (RFC 1918), ULA, or IPv6 link-local
+    addresses, and they refuse the `localhost` hostname outright.  On
+    Node.js and Bun, connections are pinned to the validated addresses,
+    including at each redirect, to prevent DNS rebinding.
+ -  Deno cannot pin these connections.  Apply the
+    [outbound connection restrictions](#restricting-outbound-connections-on-deno)
+    above; upgrading Fedify alone does not protect Deno deployments.
+ -  [`validatePublicUrl()`] checks the addresses a hostname currently
+    resolves to, but does not pin the subsequent connection.  Calling it
+    before `fetch()` does not by itself prevent DNS rebinding.
 
 There is an escape hatch—`allowPrivateAddress: true` on
 `createFederation()`—that disables the check.  It exists to make tests
@@ -1130,26 +1257,17 @@ defense.  The common cases where this happens in Fedify apps:
  -  Resolving link previews or OEmbed endpoints discovered in post content.
  -  Sending outbound webhooks to user-configured URLs.
 
-For these, either wrap the fetch with a library like [ssrfcheck] or call
-`validatePublicUrl()` yourself before the fetch:
+For application fetches, validate each destination and ensure the connection
+uses only the addresses that passed validation, or enforce private-address
+restrictions at the network layer.  `validatePublicUrl()` can check a URL's
+current addresses, but a later `fetch()` resolves the hostname again, so the
+two calls alone leave a DNS rebinding gap.
 
-~~~~ typescript
-import { validatePublicUrl } from "@fedify/vocab-runtime";
-
-async function fetchRemoteImage(url: URL): Promise<Response> {
-  await validatePublicUrl(url.href);  // throws if the URL is unsafe
-  return fetch(url, { redirect: "manual" });
-}
-~~~~
-
-Also disable following redirects by default, or constrain them: an
-attacker's URL might be public on its face but redirect to an internal
-address.  `fetch()` in the platform runtimes follows redirects automatically;
-either set `redirect: "manual"` and validate each hop, or cap the total
-number of hops with a wrapper library.
+Disable automatic redirects and validate every new destination before
+connecting to it.  A redirect limit bounds the number of requests; it does
+not prevent a redirect to a private address.
 
 [`validatePublicUrl()`]: https://jsr.io/@fedify/vocab-runtime/doc/~/validatePublicUrl
-[ssrfcheck]: https://www.npmjs.com/package/ssrfcheck
 
 ### Secret and key management
 

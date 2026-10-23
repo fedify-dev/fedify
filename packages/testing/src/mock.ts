@@ -18,7 +18,8 @@ import type {
   Object,
   TraverseCollectionOptions,
 } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import { type DocumentLoader, getDocumentLoader } from "@fedify/vocab-runtime";
+import { trace } from "@opentelemetry/api";
 import {
   createContext,
   createInboxContext,
@@ -300,16 +301,21 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   private outboxListenersInitialized = false;
   private contextData?: TContextData;
   private receivedActivities: Activity[] = [];
+  private readonly documentLoader?: DocumentLoader;
 
   constructor(
     private options: {
       contextData?: TContextData;
       origin?: string;
       meterProvider?: any;
+      allowPrivateAddress?: boolean;
       tracerProvider?: any;
     } = {},
   ) {
     this.contextData = options.contextData;
+    if (options.allowPrivateAddress === true) {
+      this.documentLoader = getDocumentLoader({ allowPrivateAddress: true });
+    }
   }
 
   setNodeInfoDispatcher(path: string, dispatcher: any): void {
@@ -547,7 +553,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       data: contextData,
       federation: mockFederation as any,
       meterProvider: this.options.meterProvider,
-      tracerProvider: this.options.tracerProvider,
+      documentLoader: this.documentLoader,
+      contextLoader: this.documentLoader,
+      tracerProvider: this.options.tracerProvider ??
+        (this.documentLoader == null ? undefined : trace.getTracerProvider()),
     });
   }
 
@@ -586,12 +595,33 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       );
     }
 
+    const receivedActivity = listeners.length > 0 && this.documentLoader != null
+      ? activity.clone({}, {
+        documentLoader: this.documentLoader,
+        contextLoader: this.documentLoader,
+      })
+      : activity;
+    if (receivedActivity !== activity) {
+      // _cachedJsonLd is an internal cross-package contract documented in
+      // @fedify/vocab-tools.  clone() drops this cache, so preserve it to keep
+      // unknown extensions when listeners serialize the received document.
+      Reflect.set(
+        receivedActivity,
+        "_cachedJsonLd",
+        Reflect.get(activity, "_cachedJsonLd"),
+      );
+    }
     for (const listener of listeners) {
       const context = createInboxContext({
         data: this.contextData as TContextData,
         federation: this as any,
+        documentLoader: this.documentLoader,
+        contextLoader: this.documentLoader,
+        tracerProvider: this.documentLoader == null
+          ? undefined
+          : this.options.tracerProvider ?? trace.getTracerProvider(),
       });
-      await listener(context, activity);
+      await listener(context, receivedActivity);
     }
   }
 
@@ -826,6 +856,14 @@ export function createFederation<TContextData>(
      * @since 2.3.0
      */
     meterProvider?: any;
+    /**
+     * Use HTTP document loading for received activities and contexts created by
+     * this federation, allowing private addresses such as localhost.
+     * If false or omitted, contexts retain their no-op mock loaders and
+     * received activities retain their own loaders.
+     * @since 2.0.35
+     */
+    allowPrivateAddress?: boolean;
     tracerProvider?: any;
   } = {},
 ): TestFederation<TContextData> {

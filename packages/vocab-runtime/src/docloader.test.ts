@@ -1,16 +1,49 @@
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok, rejects } from "node:assert";
-import dns from "node:dns/promises";
+import type { LookupAddress } from "node:dns";
 import { test } from "@fedify/fixture";
 import { createServer } from "node:http";
 import { gzipSync } from "node:zlib";
 import preloadedContexts from "./contexts.ts";
 import cidV1Context from "./contexts/cid-v1.json" with { type: "json" };
-import { getDocumentLoader, getRemoteDocument } from "./docloader.ts";
+import {
+  createDocumentLoader,
+  getDocumentLoader,
+  getRemoteDocument,
+  type RemoteDocument,
+} from "./docloader.ts";
 import jsonld from "./jsonld.ts";
+import type { ConnectionPinner } from "./pinners/mod.ts";
+import { createPublicFetch, type PublicFetchSession } from "./public-fetch.ts";
 import { FetchError } from "./request.ts";
 import { UrlError } from "./url.ts";
+
+// Validates addresses like openPublicFetch() but sends requests through the
+// global fetch() without pinning, so that fetch-mock's hostname routes match
+// on every runtime (the Bun pinner would substitute IP addresses).  The lookup
+// is always injected, so tests do not depend on the network's DNS.
+const unpinnedPublicFetch = createPublicFetch({
+  pinner: () => Promise.resolve(null),
+  lookup: () => Promise.reject(new Error("Unexpected default lookup")),
+});
+
+const PUBLIC_ADDRESS: LookupAddress = { address: "93.184.215.14", family: 4 };
+const PRIVATE_ADDRESS: LookupAddress = { address: "10.0.0.1", family: 4 };
+
+function lookupTestAddresses(
+  hostname: string,
+): Promise<readonly LookupAddress[]> {
+  return Promise.resolve([
+    hostname === "private.example" ? PRIVATE_ADDRESS : PUBLIC_ADDRESS,
+  ]);
+}
+
+function openUnpinnedHop(url: string): Promise<PublicFetchSession> {
+  return unpinnedPublicFetch.openPublicFetch(url, {
+    lookup: lookupTestAddresses,
+  });
+}
 
 test("new FetchError()", () => {
   const e = new FetchError("https://example.com/", "An error message.");
@@ -32,7 +65,9 @@ test("new FetchError()", () => {
 });
 
 test("getDocumentLoader()", async (t) => {
-  const fetchDocumentLoader = getDocumentLoader();
+  const fetchDocumentLoader = createDocumentLoader({}, {
+    openHop: openUnpinnedHop,
+  });
 
   fetchMock.spyGlobal();
 
@@ -557,6 +592,19 @@ test("getDocumentLoader()", async (t) => {
     },
   });
 
+  fetchMock.get("https://example.com/private-redirect", {
+    status: 302,
+    headers: { Location: "https://private.example/object" },
+  });
+
+  fetchMock.get("https://private.example/object", {
+    body: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://private.example/object",
+      type: "Object",
+    },
+  });
+
   await t.step("allowPrivateAddress: false", async () => {
     await rejects(
       () => fetchDocumentLoader("https://localhost/object"),
@@ -569,6 +617,26 @@ test("getDocumentLoader()", async (t) => {
     await rejects(
       () => fetchDocumentLoader("https://example.com/localhost-link"),
       UrlError,
+    );
+    await rejects(
+      () => fetchDocumentLoader("https://private.example/object"),
+      UrlError,
+    );
+    await rejects(
+      () => fetchDocumentLoader("https://example.com/private-redirect"),
+      UrlError,
+    );
+    deepStrictEqual(
+      fetchMock.callHistory.calls("https://private.example/object").length,
+      0,
+    );
+    // The default loader rejects these without resolving any hostname:
+    const defaultLoader = getDocumentLoader();
+    await rejects(() => defaultLoader("https://localhost/object"), UrlError);
+    await rejects(() => defaultLoader("https://127.0.0.1/object"), UrlError);
+    deepStrictEqual(
+      fetchMock.callHistory.calls("https://localhost/object").length,
+      0,
     );
   });
 
@@ -623,7 +691,10 @@ test("getDocumentLoader()", async (t) => {
 
   await t.step("custom max redirection", async () => {
     redirectAttempts = 0;
-    const loader = getDocumentLoader({ maxRedirection: 1 });
+    const loader = createDocumentLoader(
+      { maxRedirection: 1 },
+      { openHop: openUnpinnedHop },
+    );
     await rejects(
       () => loader("https://example.com/too-many-redirects/0"),
       FetchError,
@@ -830,33 +901,24 @@ test("getRemoteDocument() bounds JSON by default", async () => {
 });
 
 test("getDocumentLoader() logs DNS failures as such", async (t) => {
-  // The validator skips DNS when Deno has no network permission.  Checked
-  // here rather than with top-level await, which the CommonJS build rejects.
-  if (
-    "Deno" in globalThis &&
-    (await Deno.permissions.query({ name: "net" })).state !== "granted"
-  ) {
-    throw new Error(
-      "This DNS test requires Deno network permission (--allow-net).",
-    );
-  }
-  const loader = getDocumentLoader();
-  for (const result of ["throws", "empty", "private"] as const) {
+  for (const result of ["throws", "empty", "private", "default"] as const) {
     await t.step(result, async () => {
-      // Stubbing works only because url.ts uses the default node:dns/promises
-      // import; see the FIXME there.
-      const originalLookup = dns.lookup;
-      dns.lookup = (() =>
+      const lookup = (): Promise<readonly LookupAddress[]> =>
         result === "throws"
           ? Promise.reject(new Error("Resolver unavailable"))
-          : Promise.resolve(
-            result === "empty" ? [] : [{ address: "127.0.0.1", family: 4 }],
-          )) as typeof dns.lookup;
+          : Promise.resolve(result === "empty" ? [] : [PRIVATE_ADDRESS]);
+      // The default loader rejects IP literals without resolving them, so
+      // the "default" step checks that its logging matches the injected one:
+      const loader = result === "default"
+        ? getDocumentLoader()
+        : createDocumentLoader({}, {
+          openHop: (url) =>
+            unpinnedPublicFetch.openPublicFetch(url, { lookup }),
+        });
       const records: LogRecord[] = [];
       await configure({
         sinks: {
-          buffer: (record) =>
-            records.push(record),
+          buffer: (record) => records.push(record),
         },
         loggers: [
           { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
@@ -865,21 +927,21 @@ test("getDocumentLoader() logs DNS failures as such", async (t) => {
         reset: true,
       });
       try {
-        const url = "https://dns-failure.invalid/object";
+        const url = result === "default"
+          ? "https://10.0.0.1/object"
+          : "https://dns-failure.invalid/object";
         let error: unknown;
         await rejects(() => loader(url), (e) => {
           error = e;
           return true;
         });
         ok(error instanceof UrlError);
-        deepStrictEqual(
-          error.reason,
-          result === "private" ? "disallowed" : "dns",
-        );
+        const disallowed = result === "private" || result === "default";
+        deepStrictEqual(error.reason, disallowed ? "disallowed" : "dns");
         deepStrictEqual(
           records.map((r) => [r.level, r.rawMessage, r.properties.url]),
           [
-            result === "private"
+            disallowed
               ? ["error", "Disallowed private URL: {url}", url]
               : ["debug", "DNS lookup failed for {url}", url],
           ],
@@ -887,7 +949,6 @@ test("getDocumentLoader() logs DNS failures as such", async (t) => {
         ok(records[0].properties.error === error);
       } finally {
         await reset();
-        dns.lookup = originalLookup;
       }
     });
   }
@@ -1277,3 +1338,610 @@ for (const url of unsupportedUrls) {
     );
   }
 }
+
+interface RecordedResponseInit {
+  readonly status?: number;
+  readonly headers?: Record<string, string>;
+  readonly body?: string;
+  /** Whether cancelling the body fails. */
+  readonly failCancel?: boolean;
+  /** Whether cancelling the body never settles, like a tee branch's. */
+  readonly hangCancel?: boolean;
+  /** The `Response.url` to report, like an IP address URL on Bun. */
+  readonly responseUrl?: string;
+}
+
+/**
+ * Records the life cycle of fetch sessions and their responses as events:
+ * `open <url>`, `fetch <url> #n`, `cancel #n`, `consumed #n`, and
+ * `close <url>`.
+ */
+interface HopRecorder {
+  readonly events: readonly string[];
+  /** Makes a response whose body records being consumed or cancelled. */
+  respond(url: string): Response;
+  /** Records opening and closing the given session. */
+  record(url: string, session: PublicFetchSession): PublicFetchSession;
+  /** Opens a session that sends requests to {@link HopRecorder.respond}. */
+  openHop(url: string): Promise<PublicFetchSession>;
+  /**
+   * Checks that every opened session is closed, and that every response is
+   * consumed or cancelled before its session is closed.
+   */
+  assertInvariants(): void;
+}
+
+function createHopRecorder(
+  responder: (url: string) => RecordedResponseInit,
+): HopRecorder {
+  const events: string[] = [];
+  const states = new Map<Response, { readonly n: number; settled: boolean }>();
+  const violations: string[] = [];
+  let responses = 0;
+  let opens = 0;
+  let closes = 0;
+
+  function respond(url: string): Response {
+    const n = ++responses;
+    events.push(`fetch ${url} #${n}`);
+    const {
+      status = 200,
+      headers,
+      body = "",
+      failCancel,
+      hangCancel,
+      responseUrl,
+    } = responder(url);
+    const state = { n, settled: false };
+    let sent = false;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (!sent && body !== "") {
+          sent = true;
+          controller.enqueue(new TextEncoder().encode(body));
+          return;
+        }
+        controller.close();
+        state.settled = true;
+        events.push(`consumed #${n}`);
+      },
+      cancel() {
+        state.settled = true;
+        events.push(`cancel #${n}`);
+        if (failCancel) throw new Error(`Failed to cancel #${n}`);
+        if (hangCancel) return new Promise<void>(() => {});
+      },
+    }, { highWaterMark: 0 });
+    const response = new Response(stream, { status, headers });
+    if (responseUrl != null) {
+      Object.defineProperty(response, "url", { value: responseUrl });
+    }
+    states.set(response, state);
+    return response;
+  }
+
+  function record(
+    url: string,
+    session: PublicFetchSession,
+  ): PublicFetchSession {
+    opens++;
+    events.push(`open ${url}`);
+    const fetched: Response[] = [];
+    let closed = false;
+    return {
+      get url() {
+        return session.url;
+      },
+      async fetch(input, init) {
+        const response = await session.fetch(input, init);
+        fetched.push(response);
+        return response;
+      },
+      async close() {
+        if (closed) return;
+        closed = true;
+        for (const response of fetched) {
+          const state = states.get(response);
+          if (state != null && !state.settled) {
+            violations.push(`#${state.n} is still open when closing ${url}`);
+          }
+        }
+        closes++;
+        events.push(`close ${url}`);
+        await session.close();
+      },
+    };
+  }
+
+  function openHop(url: string): Promise<PublicFetchSession> {
+    const origin = new URL(url).origin;
+    return Promise.resolve(record(url, {
+      url: new URL(url),
+      fetch(input) {
+        const target = input instanceof Request ? input.url : String(input);
+        ok(new URL(target).origin === origin, `${target} is not on ${origin}`);
+        return Promise.resolve(respond(target));
+      },
+      close: () => Promise.resolve(),
+    }));
+  }
+
+  return {
+    events,
+    respond,
+    record,
+    openHop,
+    assertInvariants() {
+      deepStrictEqual(violations, []);
+      deepStrictEqual(opens, closes);
+    },
+  };
+}
+
+const lifecycleDocument = {
+  "@context": "https://www.w3.org/ns/activitystreams",
+  id: "https://b.example/object",
+  type: "Object",
+};
+
+test("getDocumentLoader() closes a redirect hop before the next hop", async () => {
+  const recorder = createHopRecorder((url) =>
+    url === "https://a.example/start"
+      ? { status: 302, headers: { Location: "https://b.example/object" } }
+      : { body: JSON.stringify(lifecycleDocument) }
+  );
+  const loader = createDocumentLoader({}, { openHop: recorder.openHop });
+  deepStrictEqual(await loader("https://a.example/start"), {
+    contextUrl: null,
+    documentUrl: "https://b.example/object",
+    document: lifecycleDocument,
+  });
+  deepStrictEqual(recorder.events, [
+    "open https://a.example/start",
+    "fetch https://a.example/start #1",
+    "cancel #1",
+    "close https://a.example/start",
+    "open https://b.example/object",
+    "fetch https://b.example/object #2",
+    "consumed #2",
+    "close https://b.example/object",
+  ]);
+  recorder.assertInvariants();
+});
+
+test("getDocumentLoader() cancels the body before a Link header alternate", async () => {
+  const recorder = createHopRecorder((url) =>
+    url === "https://a.example/start"
+      ? {
+        headers: {
+          "Content-Type": "text/plain",
+          Link: '<https://b.example/object>; rel="alternate"; ' +
+            'type="application/activity+json"',
+        },
+        body: "not JSON",
+      }
+      : { body: JSON.stringify(lifecycleDocument) }
+  );
+  const loader = createDocumentLoader({}, { openHop: recorder.openHop });
+  deepStrictEqual(
+    (await loader("https://a.example/start")).documentUrl,
+    "https://b.example/object",
+  );
+  deepStrictEqual(recorder.events, [
+    "open https://a.example/start",
+    "fetch https://a.example/start #1",
+    "cancel #1",
+    "close https://a.example/start",
+    "open https://b.example/object",
+    "fetch https://b.example/object #2",
+    "consumed #2",
+    "close https://b.example/object",
+  ]);
+  recorder.assertInvariants();
+});
+
+test("getDocumentLoader() reads the body before an HTML alternate", async () => {
+  const recorder = createHopRecorder((url) =>
+    url === "https://a.example/start"
+      ? {
+        headers: { "Content-Type": "text/html" },
+        body: '<link rel="alternate" type="application/activity+json" ' +
+          'href="https://b.example/object">',
+      }
+      : { body: JSON.stringify(lifecycleDocument) }
+  );
+  const loader = createDocumentLoader({}, { openHop: recorder.openHop });
+  deepStrictEqual(
+    (await loader("https://a.example/start")).documentUrl,
+    "https://b.example/object",
+  );
+  deepStrictEqual(recorder.events, [
+    "open https://a.example/start",
+    "fetch https://a.example/start #1",
+    "consumed #1",
+    "close https://a.example/start",
+    "open https://b.example/object",
+    "fetch https://b.example/object #2",
+    "consumed #2",
+    "close https://b.example/object",
+  ]);
+  recorder.assertInvariants();
+});
+
+/**
+ * Fails instead of blocking the test if the given promise does not settle
+ * within the given time.
+ */
+async function settlesWithin<T>(
+  promise: Promise<T>,
+  milliseconds = 1000,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Did not settle in ${milliseconds} ms.`)),
+          milliseconds,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Runs the given function while capturing the document loader's logs, and
+ * waits until the rejections of body cancellations started without being
+ * awaited have been logged.
+ */
+async function captureDocumentLoaderLogs<T>(
+  fn: () => Promise<T>,
+): Promise<{ result: T; records: LogRecord[] }> {
+  const records: LogRecord[] = [];
+  await configure({
+    sinks: { buffer: (record) => records.push(record) },
+    loggers: [
+      {
+        category: ["fedify", "runtime", "docloader"],
+        sinks: ["buffer"],
+        lowestLevel: "debug",
+      },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+    reset: true,
+  });
+  try {
+    const result = await fn();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    return { result, records };
+  } finally {
+    await reset();
+  }
+}
+
+function cancelFailureLogs(
+  records: readonly LogRecord[],
+): [string, unknown, string][] {
+  return records
+    .filter((record) =>
+      record.rawMessage ===
+        "Failed to cancel the response body from {url}: {error}"
+    )
+    .map((record) => [
+      record.level,
+      record.properties.url,
+      String(record.properties.error),
+    ]);
+}
+
+function linkHeaderAlternate(next: string): RecordedResponseInit {
+  return {
+    headers: {
+      "Content-Type": "text/plain",
+      Link: `<${next}>; rel="alternate"; type="application/activity+json"`,
+    },
+    body: "not JSON",
+  };
+}
+
+test("getDocumentLoader() continues if an intermediate body fails to cancel", async (t) => {
+  for (const kind of ["redirect", "Link header alternate"] as const) {
+    await t.step(kind, async () => {
+      const recorder = createHopRecorder((url) =>
+        url === "https://a.example/start"
+          ? {
+            ...(kind === "redirect"
+              ? {
+                status: 302,
+                headers: { Location: "https://b.example/object" },
+              }
+              : linkHeaderAlternate("https://b.example/object")),
+            failCancel: true,
+          }
+          : { body: JSON.stringify(lifecycleDocument) }
+      );
+      const loader = createDocumentLoader({}, { openHop: recorder.openHop });
+      const { result, records } = await captureDocumentLoaderLogs(() =>
+        loader("https://a.example/start")
+      );
+      deepStrictEqual(result, {
+        contextUrl: null,
+        documentUrl: "https://b.example/object",
+        document: lifecycleDocument,
+      });
+      deepStrictEqual(recorder.events, [
+        "open https://a.example/start",
+        "fetch https://a.example/start #1",
+        "cancel #1",
+        "close https://a.example/start",
+        "open https://b.example/object",
+        "fetch https://b.example/object #2",
+        "consumed #2",
+        "close https://b.example/object",
+      ]);
+      recorder.assertInvariants();
+      // The failure is only logged:
+      deepStrictEqual(cancelFailureLogs(records), [[
+        "debug",
+        "https://a.example/start",
+        "Error: Failed to cancel #1",
+      ]]);
+    });
+  }
+});
+
+test("getDocumentLoader() does not wait for intermediate bodies to be cancelled", async (t) => {
+  for (const kind of ["redirect", "Link header alternate"] as const) {
+    await t.step(kind, async () => {
+      const recorder = createHopRecorder((url) =>
+        url === "https://a.example/start"
+          ? {
+            ...(kind === "redirect"
+              ? {
+                status: 302,
+                headers: { Location: "https://b.example/object" },
+              }
+              : linkHeaderAlternate("https://b.example/object")),
+            hangCancel: true,
+          }
+          : { body: JSON.stringify(lifecycleDocument) }
+      );
+      const loader = createDocumentLoader({}, { openHop: recorder.openHop });
+      deepStrictEqual(
+        (await settlesWithin(loader("https://a.example/start"))).documentUrl,
+        "https://b.example/object",
+      );
+      deepStrictEqual(recorder.events, [
+        "open https://a.example/start",
+        "fetch https://a.example/start #1",
+        "cancel #1",
+        "close https://a.example/start",
+        "open https://b.example/object",
+        "fetch https://b.example/object #2",
+        "consumed #2",
+        "close https://b.example/object",
+      ]);
+      recorder.assertInvariants();
+    });
+  }
+
+  await t.step("public session with a never-settling cancel", async () => {
+    // A real session must not wait for a body it cancels on close() either:
+    let cancelled = 0;
+    const pinner: ConnectionPinner = {
+      supports: () => true,
+      fetch: () =>
+        Promise.resolve(
+          new Response(
+            new ReadableStream({
+              cancel() {
+                cancelled++;
+                return new Promise<void>(() => {});
+              },
+            }),
+            { status: 404 },
+          ),
+        ),
+      release() {},
+    };
+    const publicFetch = createPublicFetch({
+      pinner: () => Promise.resolve(pinner),
+      lookup: () => Promise.reject(new Error("Unexpected default lookup")),
+    });
+    const loader = createDocumentLoader({}, {
+      openHop: (url) =>
+        publicFetch.openPublicFetch(url, { lookup: lookupTestAddresses }),
+    });
+    await settlesWithin(
+      rejects(loader("https://a.example/missing"), (error) => {
+        ok(error instanceof FetchError);
+        // The error retains a response clone for the caller.  Cancel that tee
+        // branch too, so the underlying stream's cancellation can start.
+        error.response?.body?.cancel().catch(() => {});
+        return true;
+      }),
+    );
+    deepStrictEqual(cancelled, 1);
+  });
+});
+
+test("getDocumentLoader() completes with tee'd fetch-mock responses", async (t) => {
+  // fetch-mock returns a clone (a tee branch) of a Response instance that a
+  // route returns, and the cancellation of a tee branch settles only after
+  // the other branch is cancelled too.  That never happens for a string body
+  // on Node.js, and for a stream body on any runtime:
+  const url = "https://example.com/teed";
+  function stream(text: string): ReadableStream<Uint8Array> {
+    return new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(text));
+        controller.close();
+      },
+    });
+  }
+  const loaders = {
+    unpinned: createDocumentLoader({}, { openHop: openUnpinnedHop }),
+    "private addresses allowed": getDocumentLoader({
+      allowPrivateAddress: true,
+    }),
+  };
+  for (const [name, loader] of Object.entries(loaders)) {
+    for (const body of ["string", "stream"] as const) {
+      await t.step(`${name}: ${body} bodies`, async () => {
+        const make = (text: string) => body === "string" ? text : stream(text);
+        fetchMock.mockGlobal();
+        try {
+          fetchMock.get(
+            `${url}/object`,
+            () =>
+              new Response(make(JSON.stringify(lifecycleDocument)), {
+                headers: { "Content-Type": "application/activity+json" },
+              }),
+          );
+          fetchMock.get(
+            `${url}/redirect`,
+            () =>
+              new Response(make("redirect"), {
+                status: 302,
+                headers: { Location: `${url}/object` },
+              }),
+          );
+          fetchMock.get(
+            `${url}/alternate`,
+            () =>
+              new Response(make("not JSON"), {
+                headers: {
+                  "Content-Type": "text/plain",
+                  Link: `<${url}/object>; rel="alternate"; ` +
+                    'type="application/activity+json"',
+                },
+              }),
+          );
+          fetchMock.get(
+            `${url}/missing`,
+            () => new Response(make("not found"), { status: 404 }),
+          );
+          for (const path of ["redirect", "alternate"]) {
+            deepStrictEqual(
+              (await settlesWithin(loader(`${url}/${path}`))).document,
+              lifecycleDocument,
+            );
+          }
+          await settlesWithin(rejects(loader(`${url}/missing`), FetchError));
+          deepStrictEqual(
+            fetchMock.callHistory.calls().map((call) => call.url),
+            [
+              `${url}/redirect`,
+              `${url}/object`,
+              `${url}/alternate`,
+              `${url}/object`,
+              `${url}/missing`,
+            ],
+          );
+        } finally {
+          fetchMock.hardReset();
+        }
+      });
+    }
+  }
+});
+
+test("getDocumentLoader() resolves each hop once", async () => {
+  const lookups: string[] = [];
+  const recorder = createHopRecorder((url) => {
+    // Pinned responses report the IP address URL on Bun; the request URL must
+    // still be used as the document URL and as the base of Location:
+    const responseUrl = `https://${PUBLIC_ADDRESS.address}${
+      new URL(url).pathname
+    }`;
+    if (url === "https://a.example/start") {
+      return {
+        status: 302,
+        headers: { Location: "https://b.example/next" },
+        responseUrl,
+      };
+    } else if (url === "https://b.example/next") {
+      return { status: 301, headers: { Location: "/object" }, responseUrl };
+    }
+    return { body: JSON.stringify(lifecycleDocument), responseUrl };
+  });
+  const pinner: ConnectionPinner = {
+    supports: () => true,
+    fetch: (_grant, request) => Promise.resolve(recorder.respond(request.url)),
+    release() {},
+  };
+  const publicFetch = createPublicFetch({
+    pinner: () => Promise.resolve(pinner),
+    lookup: () => Promise.reject(new Error("Unexpected default lookup")),
+  });
+  const loader = createDocumentLoader({}, {
+    openHop: async (url) =>
+      recorder.record(
+        url,
+        await publicFetch.openPublicFetch(url, {
+          lookup(hostname) {
+            lookups.push(hostname);
+            return Promise.resolve([PUBLIC_ADDRESS]);
+          },
+        }),
+      ),
+  });
+  deepStrictEqual(await loader("https://a.example/start"), {
+    contextUrl: null,
+    documentUrl: "https://b.example/object",
+    document: lifecycleDocument,
+  });
+  deepStrictEqual(lookups, ["a.example", "b.example", "b.example"]);
+  deepStrictEqual(recorder.events, [
+    "open https://a.example/start",
+    "fetch https://a.example/start #1",
+    "cancel #1",
+    "close https://a.example/start",
+    "open https://b.example/next",
+    "fetch https://b.example/next #2",
+    "cancel #2",
+    "close https://b.example/next",
+    "open https://b.example/object",
+    "fetch https://b.example/object #3",
+    "consumed #3",
+    "close https://b.example/object",
+  ]);
+  recorder.assertInvariants();
+});
+
+test("getRemoteDocument() cancels the body before loading a Link header alternate", async () => {
+  const recorder = createHopRecorder(() => ({
+    headers: {
+      "Content-Type": "text/html",
+      Link: '<https://b.example/object>; rel="alternate"; ' +
+        'type="application/activity+json"',
+    },
+    body: "<html></html>",
+  }));
+  const response = recorder.respond("https://a.example/start");
+  const placeholder: RemoteDocument = {
+    contextUrl: null,
+    document: {},
+    documentUrl: "https://b.example/object",
+  };
+  const alternates: string[] = [];
+  const result = await getRemoteDocument(
+    "https://a.example/start",
+    response,
+    (url) => {
+      alternates.push(url);
+      deepStrictEqual(recorder.events.at(-1), "cancel #1");
+      ok(response.bodyUsed);
+      return Promise.resolve(placeholder);
+    },
+  );
+  ok(result === placeholder);
+  deepStrictEqual(alternates, ["https://b.example/object"]);
+  deepStrictEqual(recorder.events, [
+    "fetch https://a.example/start #1",
+    "cancel #1",
+  ]);
+});

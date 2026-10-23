@@ -10,11 +10,127 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Fixed DNS rebinding bypassing the SSRF protection on Node.js and Bun.
+    Deno requires a separate deployment mitigation, described below, and
+    remains vulnerable without it.  `getAuthenticatedDocumentLoader()`,
+    outbound activity delivery (`sendActivity()`), and the NodeInfo client
+    (`getNodeInfo()`) resolved a hostname once to check that it was public,
+    and then let `fetch()` resolve it again to connect, so a hostname
+    answering with a public address for the check and a private one for
+    the connection could reach internal services.  On Node.js and Bun,
+    connections are now made only to the addresses that passed the check.
+    Bun deployments that set the `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY`
+    environment variables should use Bun 1.4.3 or later, since earlier
+    versions ignore the option to connect directly and send the requests
+    through the proxy; see [*Bun behind an HTTP proxy*] for mitigations.
+    On Bun versions before 1.3.11, requests to HTTPS servers on non-default
+    ports now fail, since those versions cannot verify the certificate of
+    a pinned connection against the original hostname; see
+    [*HTTPS servers on non-default ports with Bun*].  \[[GHSA-r48c-xx2h-fv4g]]
+ -  On Deno, `fetch()` offers no way to choose the addresses it connects to,
+    so Fedify cannot close the gap above.  Run Deno 2.8.1 or later with
+    `--deny-net` listing private IPv4 ranges, `[::1]`, and `[::]`, and
+    listen on a Unix domain socket.  IPv6 private ranges cannot be listed in
+    `--deny-net` and need to be blocked at the network layer.  See
+    [*Restricting outbound connections on Deno*] for details.  For new and
+    long-lived deployments, we recommend Node.js or Bun instead of Deno,
+    since the Deno team has announced that it will end its development of
+    the Deno runtime after a year of bug-fix and security releases.
+    [[GHSA-r48c-xx2h-fv4g]]
+ -  Fixed `FedifySpanExporter.getRecentTraces()`'s `activityCount` drifting
+    from the number of records `getActivitiesByTraceId()` actually returns
+    for a trace when a span was re-exported, and a trace becoming
+    permanently undiscoverable through `getRecentTraces()` if the separate
+    summary entry it depended on was never successfully written.  Both
+    problems shared the same cause: counting and discovery depended on a
+    separately maintained counter instead of the records that are actually
+    stored.  `getRecentTraces()` now computes every summary it returns
+    directly from the activity records currently retained for each trace.
+    This costs a scan of every retained record on each call, so its cost
+    grows with the total number of retained records rather than with how
+    much changed since the previous call, and `limit` does not reduce that
+    cost; a deployment that retains many traces and polls
+    `getRecentTraces()` should size its polling interval, TTL, and
+    `KvStore` choice accordingly.
+    [[#1257], [#1322] by Yujin Jung\]
+ -  Fixed installation failures with strict peer dependency checks by keeping
+    the OpenTelemetry API dependency within the range supported by the
+    OpenTelemetry SDK.
+    [[#1324] by Jiwon Kwon\]
+ -  Fixed repeated HTTP signature verification and signing-key owner lookups
+    when a request context was checked concurrently with the same document
+    and context loaders.  `null` key-verification and owner-lookup results
+    are now reused for those loaders within the request; checks that reject
+    can still be retried.  An owner result of `null` caused by an unverified
+    key is not retained, allowing an owner lookup after another loader verifies
+    the key.
+    [[#1313], [#1315]]
  -  Fixed incoming requests failing to reach dispatchers when Mastodon decoded
     percent-encoded colons in path identifiers.  Generated URIs and HTTP
     signature verification retain their existing behavior.  [[#1325]]
 
+[*Bun behind an HTTP proxy*]: https://fedify.dev/manual/deploy#bun-behind-an-http-proxy
+[*HTTPS servers on non-default ports with Bun*]: https://fedify.dev/manual/deploy#https-servers-on-non-default-ports-with-bun
+[GHSA-r48c-xx2h-fv4g]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-r48c-xx2h-fv4g
+[*Restricting outbound connections on Deno*]: https://fedify.dev/manual/deploy#restricting-outbound-connections-on-deno
+[#1257]: https://github.com/fedify-dev/fedify/issues/1257
+[#1313]: https://github.com/fedify-dev/fedify/issues/1313
+[#1315]: https://github.com/fedify-dev/fedify/pull/1315
+[#1322]: https://github.com/fedify-dev/fedify/pull/1322
+[#1324]: https://github.com/fedify-dev/fedify/pull/1324
 [#1325]: https://github.com/fedify-dev/fedify/pull/1325
+
+### @fedify/cli
+
+ -  Fixed `fedify nodeinfo` fetching remote page and favicon URLs that lead to
+    private network addresses.  The command now skips the favicon when the
+    page, icon, or a redirect points to a private address, while still showing
+    the NodeInfo document.  Upgrade `@fedify/cli` to protect the machine
+    running the command.  Reported by Zachariah Mithani.
+    [[GHSA-cj5r-cw77-6gwp]]
+
+[GHSA-cj5r-cw77-6gwp]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-cj5r-cw77-6gwp
+
+### @fedify/postgres
+
+ -  `PostgresKvStore` no longer scans the entire table for expired entries
+    after every write.  Cleanup now deletes up to 1,000 rows per batch,
+    including across partitioned or inherited tables, with a delay between
+    attempts that shortens after a full batch.  Store
+    instances sharing a table do not sweep it concurrently. With a pooled
+    client, writes no longer wait for cleanup, and a cleanup failure no longer
+    fails the write. Caller-owned transactions and reserved connections still
+    await cleanup and propagate its errors to avoid hiding a rollback.  Reads
+    continue to exclude expired entries before physical deletion.
+    [[#1308], [#1314]]
+ -  Fixed `PostgresKvStore.set()` retaining an old creation time when
+    replacing an existing key.  TTLs are now measured from the SQL statement
+    clock on both insert and update, and expiration checks use that same clock
+    inside caller-owned transactions. Replacing an expired value works before
+    its row is physically deleted, and a replacement written with a zero TTL
+    still reads as absent.
+    [[#1308], [#1314]]
+
+[#1308]: https://github.com/fedify-dev/fedify/issues/1308
+[#1314]: https://github.com/fedify-dev/fedify/pull/1314
+
+### @fedify/testing
+
+ -  Fixed `createFederation()` ignoring `allowPrivateAddress: true`.  Received
+    activities and federation-created contexts now use document loaders that
+    allow local servers, so calls such as `follow.getActor()` can resolve
+    localhost actors in inbox listeners.
+    [[#1302], [#1306]]
+ -  Fixed missing runtime dependencies in the npm package.  `@fedify/vocab`
+    and `@js-temporal/polyfill` are now installed automatically so importing
+    `@fedify/testing` works even when dependency hoisting is disabled on
+    Node.js and Bun.
+    [[#1305], [#1307]]
+
+[#1302]: https://github.com/fedify-dev/fedify/issues/1302
+[#1305]: https://github.com/fedify-dev/fedify/issues/1305
+[#1306]: https://github.com/fedify-dev/fedify/pull/1306
+[#1307]: https://github.com/fedify-dev/fedify/pull/1307
 
 ### @fedify/uri-template
 
@@ -25,6 +141,31 @@ To be released.
     paths with invalid percent encoding.  Candidate traversal avoids repeated
     states, and matching rejects output that the template cannot produce while
     preserving route priority and colon compatibility.  [[#1325]]
+
+### @fedify/vocab-runtime
+
+ -  Fixed DNS rebinding bypassing the SSRF protection of
+    `getDocumentLoader()` on Node.js and Bun.  Deno requires a separate
+    deployment mitigation, described in the `@fedify/fedify` section above,
+    and remains vulnerable without it.  The document loader resolved
+    a hostname once to check that it was public, and then let `fetch()`
+    resolve it again to connect.  On Node.js and Bun, connections are now
+    made only to the addresses that passed the check.  The behavior of
+    `allowPrivateAddress` is unchanged.  \[[GHSA-r48c-xx2h-fv4g]]
+ -  Added [undici] `^7.30.1` as a dependency, which is used on Node.js to
+    connect only to validated addresses.  \[[GHSA-r48c-xx2h-fv4g]]
+ -  Documented that `validatePublicUrl()` only checks the addresses
+    a hostname currently resolves to and does not pin the connection, so it
+    alone does not prevent DNS rebinding.  \[[GHSA-r48c-xx2h-fv4g]]
+
+[undici]: https://undici.nodejs.org/
+
+### @fedify/webfinger
+
+ -  Fixed DNS rebinding bypassing the SSRF protection of `lookupWebFinger()`
+    on Node.js and Bun.  Deno requires a separate deployment mitigation,
+    described in the `@fedify/fedify` section above, and remains vulnerable
+    without it.  \[[GHSA-r48c-xx2h-fv4g]]
 
 
 Version 2.3.14
@@ -1499,6 +1640,135 @@ Released on June 25, 2026.
 [#756]: https://github.com/fedify-dev/fedify/pull/756
 
 
+Version 2.2.20
+--------------
+
+Released on October 24, 2026.
+
+### @fedify/fedify
+
+ -  Fixed DNS rebinding bypassing the SSRF protection on Node.js and Bun.
+    Deno requires a separate deployment mitigation, described below, and
+    remains vulnerable without it.  `getAuthenticatedDocumentLoader()`,
+    outbound activity delivery (`sendActivity()`), and the NodeInfo client
+    (`getNodeInfo()`) resolved a hostname once to check that it was public,
+    and then let `fetch()` resolve it again to connect, so a hostname
+    answering with a public address for the check and a private one for
+    the connection could reach internal services.  On Node.js and Bun,
+    connections are now made only to the addresses that passed the check.
+    Bun deployments that set the `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY`
+    environment variables should use Bun 1.4.3 or later, since earlier
+    versions ignore the option to connect directly and send the requests
+    through the proxy; see [*Bun behind an HTTP proxy*] for mitigations.
+    On Bun versions before 1.3.11, requests to HTTPS servers on non-default
+    ports now fail, since those versions cannot verify the certificate of
+    a pinned connection against the original hostname; see
+    [*HTTPS servers on non-default ports with Bun*].  \[[GHSA-r48c-xx2h-fv4g]]
+ -  On Deno, `fetch()` offers no way to choose the addresses it connects to,
+    so Fedify cannot close the gap above.  Run Deno 2.8.1 or later with
+    `--deny-net` listing private IPv4 ranges, `[::1]`, and `[::]`, and
+    listen on a Unix domain socket.  IPv6 private ranges cannot be listed in
+    `--deny-net` and need to be blocked at the network layer.  See
+    [*Restricting outbound connections on Deno*] for details.  For new and
+    long-lived deployments, we recommend Node.js or Bun instead of Deno,
+    since the Deno team has announced that it will end its development of
+    the Deno runtime after a year of bug-fix and security releases.
+    [[GHSA-r48c-xx2h-fv4g]]
+ -  Fixed `FedifySpanExporter.getRecentTraces()`'s `activityCount` drifting
+    from the number of records `getActivitiesByTraceId()` actually returns
+    for a trace when a span was re-exported, and a trace becoming
+    permanently undiscoverable through `getRecentTraces()` if the separate
+    summary entry it depended on was never successfully written.  Both
+    problems shared the same cause: counting and discovery depended on a
+    separately maintained counter instead of the records that are actually
+    stored.  `getRecentTraces()` now computes every summary it returns
+    directly from the activity records currently retained for each trace.
+    This costs a scan of every retained record on each call, so its cost
+    grows with the total number of retained records rather than with how
+    much changed since the previous call, and `limit` does not reduce that
+    cost; a deployment that retains many traces and polls
+    `getRecentTraces()` should size its polling interval, TTL, and
+    `KvStore` choice accordingly.
+    [[#1257], [#1322] by Yujin Jung\]
+ -  Fixed installation failures with strict peer dependency checks by keeping
+    the OpenTelemetry API dependency within the range supported by the
+    OpenTelemetry SDK.
+    [[#1324] by Jiwon Kwon\]
+ -  Fixed repeated HTTP signature verification and signing-key owner lookups
+    when a request context was checked concurrently with the same document
+    and context loaders.  `null` key-verification and owner-lookup results
+    are now reused for those loaders within the request; checks that reject
+    can still be retried.  An owner result of `null` caused by an unverified
+    key is not retained, allowing an owner lookup after another loader verifies
+    the key.
+    [[#1313], [#1315]]
+
+### @fedify/cli
+
+ -  Fixed `fedify nodeinfo` fetching remote page and favicon URLs that lead to
+    private network addresses.  The command now skips the favicon when the
+    page, icon, or a redirect points to a private address, while still showing
+    the NodeInfo document.  Upgrade `@fedify/cli` to protect the machine
+    running the command.  Reported by Zachariah Mithani.
+    [[GHSA-cj5r-cw77-6gwp]]
+
+### @fedify/postgres
+
+ -  `PostgresKvStore` no longer scans the entire table for expired entries
+    after every write.  Cleanup now deletes up to 1,000 rows per batch,
+    including across partitioned or inherited tables, with a delay between
+    attempts that shortens after a full batch.  Store
+    instances sharing a table do not sweep it concurrently. With a pooled
+    client, writes no longer wait for cleanup, and a cleanup failure no longer
+    fails the write. Caller-owned transactions and reserved connections still
+    await cleanup and propagate its errors to avoid hiding a rollback.  Reads
+    continue to exclude expired entries before physical deletion.
+    [[#1308], [#1314]]
+ -  Fixed `PostgresKvStore.set()` retaining an old creation time when
+    replacing an existing key.  TTLs are now measured from the SQL statement
+    clock on both insert and update, and expiration checks use that same clock
+    inside caller-owned transactions. Replacing an expired value works before
+    its row is physically deleted, and a replacement written with a zero TTL
+    still reads as absent.
+    [[#1308], [#1314]]
+
+### @fedify/testing
+
+ -  Fixed `createFederation()` ignoring `allowPrivateAddress: true`.  Received
+    activities and federation-created contexts now use document loaders that
+    allow local servers, so calls such as `follow.getActor()` can resolve
+    localhost actors in inbox listeners.
+    [[#1302], [#1306]]
+ -  Fixed missing runtime dependencies in the npm package.  `@fedify/vocab`
+    and `@js-temporal/polyfill` are now installed automatically so importing
+    `@fedify/testing` works even when dependency hoisting is disabled on
+    Node.js and Bun.
+    [[#1305], [#1307]]
+
+### @fedify/vocab-runtime
+
+ -  Fixed DNS rebinding bypassing the SSRF protection of
+    `getDocumentLoader()` on Node.js and Bun.  Deno requires a separate
+    deployment mitigation, described in the `@fedify/fedify` section above,
+    and remains vulnerable without it.  The document loader resolved
+    a hostname once to check that it was public, and then let `fetch()`
+    resolve it again to connect.  On Node.js and Bun, connections are now
+    made only to the addresses that passed the check.  The behavior of
+    `allowPrivateAddress` is unchanged.  \[[GHSA-r48c-xx2h-fv4g]]
+ -  Added [undici] `^7.30.1` as a dependency, which is used on Node.js to
+    connect only to validated addresses.  \[[GHSA-r48c-xx2h-fv4g]]
+ -  Documented that `validatePublicUrl()` only checks the addresses
+    a hostname currently resolves to and does not pin the connection, so it
+    alone does not prevent DNS rebinding.  \[[GHSA-r48c-xx2h-fv4g]]
+
+### @fedify/webfinger
+
+ -  Fixed DNS rebinding bypassing the SSRF protection of `lookupWebFinger()`
+    on Node.js and Bun.  Deno requires a separate deployment mitigation,
+    described in the `@fedify/fedify` section above, and remains vulnerable
+    without it.  \[[GHSA-r48c-xx2h-fv4g]]
+
+
 Version 2.2.19
 --------------
 
@@ -2635,6 +2905,135 @@ Released on April 28, 2026.
 [#706]: https://github.com/fedify-dev/fedify/issues/706
 [#715]: https://github.com/fedify-dev/fedify/pull/715
 [#722]: https://github.com/fedify-dev/fedify/pull/722
+
+
+Version 2.1.31
+--------------
+
+Released on October 24, 2026.
+
+### @fedify/fedify
+
+ -  Fixed DNS rebinding bypassing the SSRF protection on Node.js and Bun.
+    Deno requires a separate deployment mitigation, described below, and
+    remains vulnerable without it.  `getAuthenticatedDocumentLoader()`,
+    outbound activity delivery (`sendActivity()`), and the NodeInfo client
+    (`getNodeInfo()`) resolved a hostname once to check that it was public,
+    and then let `fetch()` resolve it again to connect, so a hostname
+    answering with a public address for the check and a private one for
+    the connection could reach internal services.  On Node.js and Bun,
+    connections are now made only to the addresses that passed the check.
+    Bun deployments that set the `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY`
+    environment variables should use Bun 1.4.3 or later, since earlier
+    versions ignore the option to connect directly and send the requests
+    through the proxy; see [*Bun behind an HTTP proxy*] for mitigations.
+    On Bun versions before 1.3.11, requests to HTTPS servers on non-default
+    ports now fail, since those versions cannot verify the certificate of
+    a pinned connection against the original hostname; see
+    [*HTTPS servers on non-default ports with Bun*].  \[[GHSA-r48c-xx2h-fv4g]]
+ -  On Deno, `fetch()` offers no way to choose the addresses it connects to,
+    so Fedify cannot close the gap above.  Run Deno 2.8.1 or later with
+    `--deny-net` listing private IPv4 ranges, `[::1]`, and `[::]`, and
+    listen on a Unix domain socket.  IPv6 private ranges cannot be listed in
+    `--deny-net` and need to be blocked at the network layer.  See
+    [*Restricting outbound connections on Deno*] for details.  For new and
+    long-lived deployments, we recommend Node.js or Bun instead of Deno,
+    since the Deno team has announced that it will end its development of
+    the Deno runtime after a year of bug-fix and security releases.
+    [[GHSA-r48c-xx2h-fv4g]]
+ -  Fixed `FedifySpanExporter.getRecentTraces()`'s `activityCount` drifting
+    from the number of records `getActivitiesByTraceId()` actually returns
+    for a trace when a span was re-exported, and a trace becoming
+    permanently undiscoverable through `getRecentTraces()` if the separate
+    summary entry it depended on was never successfully written.  Both
+    problems shared the same cause: counting and discovery depended on a
+    separately maintained counter instead of the records that are actually
+    stored.  `getRecentTraces()` now computes every summary it returns
+    directly from the activity records currently retained for each trace.
+    This costs a scan of every retained record on each call, so its cost
+    grows with the total number of retained records rather than with how
+    much changed since the previous call, and `limit` does not reduce that
+    cost; a deployment that retains many traces and polls
+    `getRecentTraces()` should size its polling interval, TTL, and
+    `KvStore` choice accordingly.
+    [[#1257], [#1322] by Yujin Jung\]
+ -  Fixed installation failures with strict peer dependency checks by keeping
+    the OpenTelemetry API dependency within the range supported by the
+    OpenTelemetry SDK.
+    [[#1324] by Jiwon Kwon\]
+ -  Fixed repeated HTTP signature verification and signing-key owner lookups
+    when a request context was checked concurrently with the same document
+    and context loaders.  `null` key-verification and owner-lookup results
+    are now reused for those loaders within the request; checks that reject
+    can still be retried.  An owner result of `null` caused by an unverified
+    key is not retained, allowing an owner lookup after another loader verifies
+    the key.
+    [[#1313], [#1315]]
+
+### @fedify/cli
+
+ -  Fixed `fedify nodeinfo` fetching remote page and favicon URLs that lead to
+    private network addresses.  The command now skips the favicon when the
+    page, icon, or a redirect points to a private address, while still showing
+    the NodeInfo document.  Upgrade `@fedify/cli` to protect the machine
+    running the command.  Reported by Zachariah Mithani.
+    [[GHSA-cj5r-cw77-6gwp]]
+
+### @fedify/postgres
+
+ -  `PostgresKvStore` no longer scans the entire table for expired entries
+    after every write.  Cleanup now deletes up to 1,000 rows per batch,
+    including across partitioned or inherited tables, with a delay between
+    attempts that shortens after a full batch.  Store
+    instances sharing a table do not sweep it concurrently. With a pooled
+    client, writes no longer wait for cleanup, and a cleanup failure no longer
+    fails the write. Caller-owned transactions and reserved connections still
+    await cleanup and propagate its errors to avoid hiding a rollback.  Reads
+    continue to exclude expired entries before physical deletion.
+    [[#1308], [#1314]]
+ -  Fixed `PostgresKvStore.set()` retaining an old creation time when
+    replacing an existing key.  TTLs are now measured from the SQL statement
+    clock on both insert and update, and expiration checks use that same clock
+    inside caller-owned transactions. Replacing an expired value works before
+    its row is physically deleted, and a replacement written with a zero TTL
+    still reads as absent.
+    [[#1308], [#1314]]
+
+### @fedify/testing
+
+ -  Fixed `createFederation()` ignoring `allowPrivateAddress: true`.  Received
+    activities and federation-created contexts now use document loaders that
+    allow local servers, so calls such as `follow.getActor()` can resolve
+    localhost actors in inbox listeners.
+    [[#1302], [#1306]]
+ -  Fixed missing runtime dependencies in the npm package.  `@fedify/vocab`
+    and `@js-temporal/polyfill` are now installed automatically so importing
+    `@fedify/testing` works even when dependency hoisting is disabled on
+    Node.js and Bun.
+    [[#1305], [#1307]]
+
+### @fedify/vocab-runtime
+
+ -  Fixed DNS rebinding bypassing the SSRF protection of
+    `getDocumentLoader()` on Node.js and Bun.  Deno requires a separate
+    deployment mitigation, described in the `@fedify/fedify` section above,
+    and remains vulnerable without it.  The document loader resolved
+    a hostname once to check that it was public, and then let `fetch()`
+    resolve it again to connect.  On Node.js and Bun, connections are now
+    made only to the addresses that passed the check.  The behavior of
+    `allowPrivateAddress` is unchanged.  \[[GHSA-r48c-xx2h-fv4g]]
+ -  Added [undici] `^7.30.1` as a dependency, which is used on Node.js to
+    connect only to validated addresses.  \[[GHSA-r48c-xx2h-fv4g]]
+ -  Documented that `validatePublicUrl()` only checks the addresses
+    a hostname currently resolves to and does not pin the connection, so it
+    alone does not prevent DNS rebinding.  \[[GHSA-r48c-xx2h-fv4g]]
+
+### @fedify/webfinger
+
+ -  Fixed DNS rebinding bypassing the SSRF protection of `lookupWebFinger()`
+    on Node.js and Bun.  Deno requires a separate deployment mitigation,
+    described in the `@fedify/fedify` section above, and remains vulnerable
+    without it.  \[[GHSA-r48c-xx2h-fv4g]]
 
 
 Version 2.1.30
@@ -3895,6 +4294,129 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.35
+--------------
+
+Released on October 24, 2026.
+
+### @fedify/fedify
+
+ -  Fixed DNS rebinding bypassing the SSRF protection on Node.js and Bun.
+    Deno requires a separate deployment mitigation, described below, and
+    remains vulnerable without it.  `getAuthenticatedDocumentLoader()`,
+    outbound activity delivery (`sendActivity()`), and the NodeInfo client
+    (`getNodeInfo()`) resolved a hostname once to check that it was public,
+    and then let `fetch()` resolve it again to connect, so a hostname
+    answering with a public address for the check and a private one for
+    the connection could reach internal services.  On Node.js and Bun,
+    connections are now made only to the addresses that passed the check.
+    Bun deployments that set the `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY`
+    environment variables should use Bun 1.4.3 or later, since earlier
+    versions ignore the option to connect directly and send the requests
+    through the proxy; see [*Bun behind an HTTP proxy*] for mitigations.
+    On Bun versions before 1.3.11, requests to HTTPS servers on non-default
+    ports now fail, since those versions cannot verify the certificate of
+    a pinned connection against the original hostname; see
+    [*HTTPS servers on non-default ports with Bun*].  \[[GHSA-r48c-xx2h-fv4g]]
+ -  On Deno, `fetch()` offers no way to choose the addresses it connects to,
+    so Fedify cannot close the gap above.  Run Deno 2.8.1 or later with
+    `--deny-net` listing private IPv4 ranges, `[::1]`, and `[::]`, and
+    listen on a Unix domain socket.  IPv6 private ranges cannot be listed in
+    `--deny-net` and need to be blocked at the network layer.  See
+    [*Restricting outbound connections on Deno*] for details.  For new and
+    long-lived deployments, we recommend Node.js or Bun instead of Deno,
+    since the Deno team has announced that it will end its development of
+    the Deno runtime after a year of bug-fix and security releases.
+    [[GHSA-r48c-xx2h-fv4g]]
+ -  Fixed `FedifySpanExporter.getRecentTraces()`'s `activityCount` drifting
+    from the number of records `getActivitiesByTraceId()` actually returns
+    for a trace when a span was re-exported, and a trace becoming
+    permanently undiscoverable through `getRecentTraces()` if the separate
+    summary entry it depended on was never successfully written.  Both
+    problems shared the same cause: counting and discovery depended on a
+    separately maintained counter instead of the records that are actually
+    stored.  `getRecentTraces()` now computes every summary it returns
+    directly from the activity records currently retained for each trace.
+    This costs a scan of every retained record on each call, so its cost
+    grows with the total number of retained records rather than with how
+    much changed since the previous call, and `limit` does not reduce that
+    cost; a deployment that retains many traces and polls
+    `getRecentTraces()` should size its polling interval, TTL, and
+    `KvStore` choice accordingly.  [[#1257], [#1322] by Yujin Jung\]
+ -  Fixed installation failures with strict peer dependency checks by keeping
+    the OpenTelemetry API dependency within the range supported by the
+    OpenTelemetry SDK.  [[#1324] by Jiwon Kwon\]
+ -  Fixed repeated HTTP signature verification and signing-key owner lookups
+    when a request context was checked concurrently with the same document
+    and context loaders.  `null` key-verification and owner-lookup results
+    are now reused for those loaders within the request; checks that reject
+    can still be retried.  An owner result of `null` caused by an unverified
+    key is not retained, allowing an owner lookup after another loader verifies
+    the key.  [[#1313], [#1315]]
+
+### @fedify/cli
+
+ -  Fixed `fedify nodeinfo` fetching remote page and favicon URLs that lead to
+    private network addresses.  The command now skips the favicon when the
+    page, icon, or a redirect points to a private address, while still showing
+    the NodeInfo document.  Upgrade `@fedify/cli` to protect the machine
+    running the command.  Reported by Zachariah Mithani.
+    [[GHSA-cj5r-cw77-6gwp]]
+
+### @fedify/postgres
+
+ -  `PostgresKvStore` no longer scans the entire table for expired entries
+    after every write.  Cleanup now deletes up to 1,000 rows per batch,
+    including across partitioned or inherited tables, with a delay between
+    attempts that shortens after a full batch.  Store
+    instances sharing a table do not sweep it concurrently. With a pooled
+    client, writes no longer wait for cleanup, and a cleanup failure no longer
+    fails the write. Caller-owned transactions and reserved connections still
+    await cleanup and propagate its errors to avoid hiding a rollback.  Reads
+    continue to exclude expired entries before physical deletion.
+    [[#1308], [#1314]]
+ -  Fixed `PostgresKvStore.set()` retaining an old creation time when
+    replacing an existing key.  TTLs are now measured from the SQL statement
+    clock on both insert and update, and expiration checks use that same clock
+    inside caller-owned transactions. Replacing an expired value works before
+    its row is physically deleted, and a replacement written with a zero TTL
+    still reads as absent.  [[#1308], [#1314]]
+
+### @fedify/testing
+
+ -  Fixed `createFederation()` ignoring `allowPrivateAddress: true`.  Received
+    activities and federation-created contexts now use document loaders that
+    allow local servers, so calls such as `follow.getActor()` can resolve
+    localhost actors in inbox listeners.  [[#1302], [#1306]]
+ -  Fixed missing runtime dependencies in the npm package.  `@fedify/vocab`
+    and `@js-temporal/polyfill` are now installed automatically so importing
+    `@fedify/testing` works even when dependency hoisting is disabled on
+    Node.js and Bun.  [[#1305], [#1307]]
+
+### @fedify/vocab-runtime
+
+ -  Fixed DNS rebinding bypassing the SSRF protection of
+    `getDocumentLoader()` on Node.js and Bun.  Deno requires a separate
+    deployment mitigation, described in the `@fedify/fedify` section above,
+    and remains vulnerable without it.  The document loader resolved
+    a hostname once to check that it was public, and then let `fetch()`
+    resolve it again to connect.  On Node.js and Bun, connections are now
+    made only to the addresses that passed the check.  The behavior of
+    `allowPrivateAddress` is unchanged.  \[[GHSA-r48c-xx2h-fv4g]]
+ -  Added [undici] `^7.30.1` as a dependency, which is used on Node.js to
+    connect only to validated addresses.  \[[GHSA-r48c-xx2h-fv4g]]
+ -  Documented that `validatePublicUrl()` only checks the addresses
+    a hostname currently resolves to and does not pin the connection, so it
+    alone does not prevent DNS rebinding.  \[[GHSA-r48c-xx2h-fv4g]]
+
+### @fedify/webfinger
+
+ -  Fixed DNS rebinding bypassing the SSRF protection of `lookupWebFinger()`
+    on Node.js and Bun.  Deno requires a separate deployment mitigation,
+    described in the `@fedify/fedify` section above, and remains vulnerable
+    without it.  \[[GHSA-r48c-xx2h-fv4g]]
 
 
 Version 2.0.34

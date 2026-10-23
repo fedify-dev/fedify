@@ -631,7 +631,14 @@ test({
     const activity2 = new Activity({
       object: new URL("https://example.com/not-found"),
     });
-    deepStrictEqual(await activity2.getObject({ suppressError: true }), null);
+    deepStrictEqual(
+      await activity2.getObject({
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        suppressError: true,
+      }),
+      null,
+    );
 
     const activity3 = await Activity.fromJsonLd({
       "@context": "https://www.w3.org/ns/activitystreams",
@@ -686,7 +693,11 @@ test({
       ],
     });
     const objects2 = await Array.fromAsync(
-      activity2.getObjects({ suppressError: true }),
+      activity2.getObjects({
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+        suppressError: true,
+      }),
     );
     deepStrictEqual(objects2.length, 1);
     assertInstanceOf(objects2[0], Object);

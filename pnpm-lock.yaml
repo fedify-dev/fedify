@@ -34,7 +34,7 @@ catalogs:
       specifier: ^4.4.2
       version: 4.4.2
     '@opentelemetry/api':
-      specifier: ^1.9.1
+      specifier: ~1.9.1
       version: 1.9.1
     '@opentelemetry/context-async-hooks':
       specifier: ^2.7.1
@@ -180,6 +180,9 @@ catalogs:
     typescript:
       specifier: ^6.0.0
       version: 6.0.3
+    undici:
+      specifier: ^7.30.1
+      version: 7.30.1
     urlpattern-polyfill:
       specifier: ^10.1.0
       version: 10.1.0
@@ -1776,13 +1779,6 @@ importers:
       '@fedify/fedify':
         specifier: workspace:^
         version: link:../fedify
-      es-toolkit:
-        specifier: 'catalog:'
-        version: 1.46.1
-    devDependencies:
-      '@fedify/fixture':
-        specifier: workspace:^
-        version: link:../fixture
       '@fedify/vocab':
         specifier: workspace:^
         version: link:../vocab
@@ -1792,6 +1788,16 @@ importers:
       '@js-temporal/polyfill':
         specifier: 'catalog:'
         version: 0.5.1
+      '@opentelemetry/api':
+        specifier: 'catalog:'
+        version: 1.9.1
+      es-toolkit:
+        specifier: 'catalog:'
+        version: 1.46.1
+    devDependencies:
+      '@fedify/fixture':
+        specifier: workspace:^
+        version: link:../fixture
       '@std/assert':
         specifier: 'catalog:'
         version: '@jsr/std__assert@1.0.13'
@@ -1901,6 +1907,9 @@ importers:
       pkijs:
         specifier: 'catalog:'
         version: 3.3.3
+      undici:
+        specifier: 'catalog:'
+        version: 7.30.1
     devDependencies:
       '@fedify/fixture':
         specifier: workspace:*
@@ -12485,6 +12494,10 @@ packages:
 
   undici@7.16.0:
     resolution: {integrity: sha512-QEg3HPMll0o3t2ourKwOeUAZ159Kn9mx5pnzHRQO8+Wixmh88YdZRiIwat0iNzNNXn0yoEtXJqFpyW7eM8BV7g==}
+    engines: {node: '>=20.18.1'}
+
+  undici@7.30.1:
+    resolution: {integrity: sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg==}
     engines: {node: '>=20.18.1'}
 
   unenv@1.10.0:
@@ -25577,6 +25590,8 @@ snapshots:
   undici@6.22.0: {}
 
   undici@7.16.0: {}
+
+  undici@7.30.1: {}
 
   unenv@1.10.0:
     dependencies:

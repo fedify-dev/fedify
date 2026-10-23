@@ -96,8 +96,10 @@
     "npm:@nurodev/astro-bun@^2.1.2": "2.1.2_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
     "npm:@nuxt/kit@4": "4.4.2",
     "npm:@nuxt/schema@4": "4.4.2",
+    "npm:@opentelemetry/api@1.9": "1.9.1",
     "npm:@opentelemetry/api@^1.9.0": "1.9.1",
     "npm:@opentelemetry/api@^1.9.1": "1.9.1",
+    "npm:@opentelemetry/api@~1.9.1": "1.9.1",
     "npm:@opentelemetry/context-async-hooks@^2.7.1": "2.7.1_@opentelemetry+api@1.9.1",
     "npm:@opentelemetry/core@^2.7.1": "2.7.1_@opentelemetry+api@1.9.1",
     "npm:@opentelemetry/sdk-metrics@2.7.1": "2.7.1_@opentelemetry+api@1.9.1",
@@ -178,6 +180,7 @@
     "npm:structured-field-values@^2.0.4": "2.0.4",
     "npm:tsdown@0.22": "0.22.0_tsx@4.21.0",
     "npm:tsx@^4.21.0": "4.21.0",
+    "npm:undici@^7.30.1": "7.30.1",
     "npm:uri-template-router@1": "1.0.0",
     "npm:url-template@^3.1.1": "3.1.1",
     "npm:valibot@^1.4.0": "1.4.0",
@@ -871,7 +874,8 @@
         "vitest",
         "wrangler",
         "zod@3.25.76"
-      ]
+      ],
+      "deprecated": true
     },
     "@cloudflare/workerd-darwin-64@1.20250906.0": {
       "integrity": "sha512-E+X/YYH9BmX0ew2j/mAWFif2z05NMNuhCTlNYEGLkqMe99K15UewBqajL9pMcMUKxylnlrEoK3VNxl33DkbnPA==",
@@ -7005,7 +7009,7 @@
         "glob-to-regexp",
         "sharp@0.33.5",
         "stoppable",
-        "undici@7.24.8",
+        "undici@7.30.1",
         "workerd",
         "ws",
         "youch@4.1.0-beta.10",
@@ -8990,8 +8994,8 @@
     "undici@6.25.0": {
       "integrity": "sha512-ZgpWDC5gmNiuY9CnLVXEH8rl50xhRCuLNA97fAUnKi8RRuV4E6KG31pDTsLVUKnohJE0I3XDrTeEydAXRw47xg=="
     },
-    "undici@7.24.8": {
-      "integrity": "sha512-6KQ/+QxK49Z/p3HO6E5ZCZWNnCasyZLa5ExaVYyvPxUwKtbCPMKELJOqh7EqOle0t9cH/7d2TaaTRRa6Nhs4YQ=="
+    "undici@7.30.1": {
+      "integrity": "sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg=="
     },
     "unenv@1.10.0": {
       "integrity": "sha512-wY5bskBQFL9n3Eca5XnhH6KbUo/tfvkwm9OpcdCvLaeA7piBNbavbOKJySEwQ1V0RH6HvNlSAFRTpvTqgKRQXQ==",
@@ -9739,7 +9743,7 @@
       "npm:@nestjs/common@^11.0.1",
       "npm:@nestjs/core@11.1.4",
       "npm:@nestjs/platform-express@11.1.4",
-      "npm:@opentelemetry/api@^1.9.1",
+      "npm:@opentelemetry/api@~1.9.1",
       "npm:@opentelemetry/context-async-hooks@^2.7.1",
       "npm:@opentelemetry/core@^2.7.1",
       "npm:@opentelemetry/sdk-metrics@2.7.1",
@@ -10011,7 +10015,8 @@
           "npm:byte-encodings@^1.0.11",
           "npm:fetch-mock@^12.5.4",
           "npm:jsonld@9",
-          "npm:pkijs@^3.2.5"
+          "npm:pkijs@^3.2.5",
+          "npm:undici@^7.30.1"
         ],
         "packageJson": {
           "dependencies": [

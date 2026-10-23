@@ -274,7 +274,31 @@ Mostly useful for testing purposes.
 
 Turned off by default.
 
+When this option is turned off, Fedify resolves the hostname of every URL it
+fetches, checks that all of the resolved addresses are public, and connects
+only to the addresses it checked, so that a hostname cannot answer with
+a public address for the check and a private address for the connection
+(DNS rebinding).  Pinning connections to the checked addresses is possible
+only on Node.js (through an [undici] dispatcher) and Bun:
+
+ -  On Bun, deployments that set proxy environment variables should use
+    Bun 1.4.3 or later; see [*Bun behind an HTTP
+    proxy*](./deploy.md#bun-behind-an-http-proxy).  Bun versions before
+    1.3.11 cannot fetch from HTTPS servers on non-default ports; see
+    [*HTTPS servers on non-default ports with
+    Bun*](./deploy.md#https-servers-on-non-default-ports-with-bun).
+ -  On Deno, `fetch()` has no option to specify a resolver or a dispatcher, so
+    Fedify cannot close the gap between the check and the connection.
+    Deno added a custom resolver only to its Rust API ([denoland/deno#17165],
+    [denoland/deno#27740]).  Deploy with `--deny-net` listing the private
+    address ranges, as described in [*Restricting outbound connections on
+    Deno*](./deploy.md#restricting-outbound-connections-on-deno).  For new and
+    long-lived deployments, we recommend Node.js or Bun instead of Deno.
+
 [SSRF]: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+[undici]: https://undici.nodejs.org/
+[denoland/deno#17165]: https://github.com/denoland/deno/issues/17165
+[denoland/deno#27740]: https://github.com/denoland/deno/pull/27740
 
 ### `benchmarkMode`
 
