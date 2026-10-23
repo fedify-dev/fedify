@@ -1,11 +1,17 @@
 import { test } from "@fedify/fixture";
 import { UrlError } from "@fedify/vocab-runtime";
+import {
+  openDirectFetch,
+  openPublicFetch,
+  type PublicFetchSession,
+} from "@fedify/vocab-runtime/internal";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { assertEquals, assertInstanceOf } from "@std/assert";
 import fetchMock from "fetch-mock";
-import dns from "node:dns/promises";
 import {
   getNodeInfo,
+  getNodeInfoInternal,
+  type GetNodeInfoOptions,
   parseInboundService,
   parseNodeInfo,
   parseOutboundService,
@@ -16,10 +22,37 @@ import {
 } from "./client.ts";
 import type {
   InboundService,
+  JsonValue,
   NodeInfo,
   OutboundService,
   Protocol,
 } from "./types.ts";
+
+// fetch-mock routes match hostnames, but on runtimes that pin connections
+// the request URL has the resolved IP address instead.  Tests of the response
+// handling therefore skip address validation, and tests of the address policy
+// let only example.com through without it:
+function getNodeInfoDirect(
+  url: URL | string,
+  options?: GetNodeInfoOptions,
+): Promise<NodeInfo | JsonValue | undefined> {
+  return getNodeInfoInternal(url, options, { openHop: openDirectFetch });
+}
+
+function getNodeInfoValidated(
+  url: URL | string,
+  options?: GetNodeInfoOptions,
+): Promise<NodeInfo | JsonValue | undefined> {
+  return getNodeInfoInternal(url, options, {
+    openHop: (hopUrl) =>
+      new URL(hopUrl).hostname === "example.com"
+        ? openDirectFetch(hopUrl)
+        : openPublicFetch(hopUrl, {
+          lookup: () =>
+            Promise.resolve([{ address: "93.184.215.14", family: 4 }]),
+        }),
+  });
+}
 
 test("getNodeInfo()", async (t) => {
   fetchMock.spyGlobal();
@@ -54,15 +87,17 @@ test("getNodeInfo()", async (t) => {
   };
 
   await t.step("indirect", async () => {
-    const info = await getNodeInfo("https://example.com/");
+    const info = await getNodeInfoDirect("https://example.com/");
     assertEquals(info, expected);
 
-    const raw = await getNodeInfo("https://example.com/", { parse: "none" });
+    const raw = await getNodeInfoDirect("https://example.com/", {
+      parse: "none",
+    });
     assertEquals(raw, rawExpected);
   });
 
   await t.step("direct", async () => {
-    const info = await getNodeInfo(
+    const info = await getNodeInfoDirect(
       "https://example.com/nodeinfo/2.1",
       { direct: true },
     );
@@ -75,7 +110,7 @@ test("getNodeInfo()", async (t) => {
   });
 
   await t.step("indirect: no links", async () => {
-    const info = await getNodeInfo("https://example.com/");
+    const info = await getNodeInfoDirect("https://example.com/");
     assertEquals(info, undefined);
   });
 
@@ -85,17 +120,17 @@ test("getNodeInfo()", async (t) => {
   });
 
   await t.step("indirect: 404", async () => {
-    const info = await getNodeInfo("https://example.com/");
+    const info = await getNodeInfoDirect("https://example.com/");
     assertEquals(info, undefined);
   });
 
   await t.step("direct: 404", async () => {
-    const info = await getNodeInfo(
+    const info = await getNodeInfoDirect(
       "https://example.com/nodeinfo/2.0",
       { direct: true },
     );
     assertEquals(info, undefined);
-    const info2 = await getNodeInfo(
+    const info2 = await getNodeInfoDirect(
       "https://example.com/404",
       { direct: true },
     );
@@ -126,7 +161,9 @@ test("getNodeInfo() blocks SSRF", async (t) => {
       return { body: { secret: "INTERNAL_DATA_LEAKED" } };
     });
 
-    const info = await getNodeInfo("https://example.com/", { parse: "none" });
+    const info = await getNodeInfoValidated("https://example.com/", {
+      parse: "none",
+    });
     assertEquals(info, undefined);
     assertEquals(internalFetched, false);
   });
@@ -144,7 +181,9 @@ test("getNodeInfo() blocks SSRF", async (t) => {
       },
     });
 
-    const info = await getNodeInfo("https://example.com/", { parse: "none" });
+    const info = await getNodeInfoValidated("https://example.com/", {
+      parse: "none",
+    });
     assertEquals(info, undefined);
   });
 
@@ -170,7 +209,9 @@ test("getNodeInfo() blocks SSRF", async (t) => {
       return { body: { secret: "INTERNAL_DATA_LEAKED" } };
     });
 
-    const info = await getNodeInfo("https://example.com/", { parse: "none" });
+    const info = await getNodeInfoValidated("https://example.com/", {
+      parse: "none",
+    });
     assertEquals(info, undefined);
     assertEquals(internalFetched, false);
   });
@@ -183,7 +224,7 @@ test("getNodeInfo() blocks SSRF", async (t) => {
       return { body: { software: { name: "x", version: "1.0.0" } } };
     });
 
-    const info = await getNodeInfo("http://127.0.0.1:8080/nodeinfo", {
+    const info = await getNodeInfoValidated("http://127.0.0.1:8080/nodeinfo", {
       direct: true,
       parse: "none",
     });
@@ -1061,27 +1102,19 @@ test("getNodeInfo() bounds both discovery and document responses", async () => {
   }
 });
 
-test("getNodeInfo() logs DNS failures as such", {
-  // The validator skips DNS when Deno has no network permission.
-  ignore: "Deno" in globalThis &&
-    (await Deno.permissions.query({ name: "net" })).state !== "granted",
-}, async (t) => {
+test("getNodeInfo() logs DNS failures as such", async (t) => {
   for (const result of ["throws", "empty", "private"] as const) {
     await t.step(result, async () => {
-      // Stubbing works only because vocab-runtime's url.ts uses the default
-      // node:dns/promises import; see the FIXME there.
-      const originalLookup = dns.lookup;
-      dns.lookup = (() =>
+      const lookup = () =>
         result === "throws"
           ? Promise.reject(new Error("Resolver unavailable"))
           : Promise.resolve(
             result === "empty" ? [] : [{ address: "127.0.0.1", family: 4 }],
-          )) as typeof dns.lookup;
+          );
       const records: LogRecord[] = [];
       await configure({
         sinks: {
-          buffer: (record) =>
-            records.push(record),
+          buffer: (record) => records.push(record),
         },
         loggers: [
           { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
@@ -1091,7 +1124,9 @@ test("getNodeInfo() logs DNS failures as such", {
       });
       try {
         assertEquals(
-          await getNodeInfo("https://dns-failure.invalid/"),
+          await getNodeInfoInternal("https://dns-failure.invalid/", {}, {
+            openHop: (url) => openPublicFetch(url, { lookup }),
+          }),
           undefined,
         );
         const url = "https://dns-failure.invalid/.well-known/nodeinfo";
@@ -1110,8 +1145,439 @@ test("getNodeInfo() logs DNS failures as such", {
         assertEquals(error.reason, result === "private" ? "disallowed" : "dns");
       } finally {
         await reset();
-        dns.lookup = originalLookup;
       }
     });
+  }
+});
+
+interface FakeResponse {
+  readonly status?: number;
+  readonly headers?: Record<string, string>;
+  readonly body?: string;
+  /** The `url` of the response, as a pinned fetch reports it. */
+  readonly url?: string;
+  /** Makes cancelling the body fail. */
+  readonly cancelFails?: boolean;
+  /** Makes cancelling the body never settle. */
+  readonly cancelNeverSettles?: boolean;
+}
+
+interface HopRecorder {
+  readonly events: string[];
+  readonly openHop: (url: string) => Promise<PublicFetchSession>;
+  /**
+   * Asserts that every opened session is closed, and that every response
+   * body was consumed or cancelled before its session was closed.
+   */
+  assertInvariants(): void;
+}
+
+// A fake server that records the lifecycle of each session and response.
+// Unlike real sessions, closing a fake session never cancels bodies, so that
+// the caller's own cleanup is observed:
+function recordHops(respond: (url: URL) => FakeResponse): HopRecorder {
+  const events: string[] = [];
+  const unsettled: string[] = [];
+  let opens = 0;
+  let closes = 0;
+  let responses = 0;
+  return {
+    events,
+    // deno-lint-ignore require-await
+    async openHop(url) {
+      opens++;
+      events.push(`open ${url}`);
+      const states: { id: number; settled: boolean }[] = [];
+      let closed = false;
+      return {
+        url: new URL(url),
+        // deno-lint-ignore require-await
+        async fetch(input) {
+          if (closed) throw new TypeError("The fetch session is closed.");
+          const target = new URL(input instanceof Request ? input.url : input);
+          const id = ++responses;
+          events.push(`fetch ${target.href} #${id}`);
+          const fake = respond(target);
+          const state = { id, settled: false };
+          states.push(state);
+          let sent = false;
+          const body = new ReadableStream<Uint8Array>({
+            pull(controller) {
+              if (!sent && fake.body != null && fake.body !== "") {
+                sent = true;
+                controller.enqueue(new TextEncoder().encode(fake.body));
+                return;
+              }
+              state.settled = true;
+              events.push(`consumed #${id}`);
+              controller.close();
+            },
+            cancel() {
+              state.settled = true;
+              events.push(`cancel #${id}`);
+              if (fake.cancelFails) throw new Error("Cancellation failed");
+              if (fake.cancelNeverSettles) return new Promise(() => {});
+            },
+          }, { highWaterMark: 0 });
+          const response = new Response(body, {
+            status: fake.status ?? 200,
+            headers: fake.headers,
+          });
+          if (fake.url != null) {
+            Object.defineProperty(response, "url", { value: fake.url });
+          }
+          return response;
+        },
+        // deno-lint-ignore require-await
+        async close() {
+          if (closed) return;
+          closed = true;
+          closes++;
+          for (const state of states) {
+            if (!state.settled) unsettled.push(`#${state.id}`);
+          }
+          events.push(`close ${url}`);
+        },
+      };
+    },
+    assertInvariants() {
+      assertEquals(closes, opens);
+      assertEquals(unsettled, []);
+    },
+  };
+}
+
+test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
+  const wellKnown = "https://example.com/.well-known/nodeinfo";
+  const wellKnown2 = "https://example.com/.well-known/nodeinfo2";
+  const documentUrl = "https://example.com/nodeinfo/2.1";
+  const rawDocument = {
+    software: { name: "foo", version: "1.2.3" },
+    protocols: ["activitypub"],
+    usage: { users: {}, localPosts: 0, localComments: 0 },
+  };
+  const descriptor = JSON.stringify({
+    links: [{
+      rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
+      href: documentUrl,
+    }],
+  });
+
+  await t.step("redirect", async () => {
+    const recorder = recordHops((url) => {
+      switch (url.href) {
+        case wellKnown:
+          return {
+            status: 302,
+            headers: { Location: "/.well-known/nodeinfo2" },
+            body: "redirecting",
+            // A pinned response's url has the IP address, which must not be
+            // used as the base of the Location:
+            url: "https://93.184.215.14/.well-known/nodeinfo",
+          };
+        case wellKnown2:
+          return { body: descriptor };
+        default:
+          return { body: JSON.stringify(rawDocument) };
+      }
+    });
+    assertEquals(
+      await getNodeInfoInternal("https://example.com/", { parse: "none" }, {
+        openHop: recorder.openHop,
+      }),
+      rawDocument,
+    );
+    assertEquals(recorder.events, [
+      `open ${wellKnown}`,
+      `fetch ${wellKnown} #1`,
+      "cancel #1",
+      `close ${wellKnown}`,
+      `open ${wellKnown2}`,
+      `fetch ${wellKnown2} #2`,
+      "consumed #2",
+      `close ${wellKnown2}`,
+      `open ${documentUrl}`,
+      `fetch ${documentUrl} #3`,
+      "consumed #3",
+      `close ${documentUrl}`,
+    ]);
+    recorder.assertInvariants();
+  });
+
+  await t.step("non-2xx responses", async () => {
+    const recorder = recordHops(() => ({ status: 404, body: "not found" }));
+    assertEquals(
+      await getNodeInfoInternal("https://example.com/", {}, {
+        openHop: recorder.openHop,
+      }),
+      undefined,
+    );
+    assertEquals(
+      await getNodeInfoInternal(documentUrl, { direct: true }, {
+        openHop: recorder.openHop,
+      }),
+      undefined,
+    );
+    assertEquals(recorder.events, [
+      `open ${wellKnown}`,
+      `fetch ${wellKnown} #1`,
+      "cancel #1",
+      `close ${wellKnown}`,
+      `open ${documentUrl}`,
+      `fetch ${documentUrl} #2`,
+      "cancel #2",
+      `close ${documentUrl}`,
+    ]);
+    recorder.assertInvariants();
+  });
+
+  await t.step("too many redirections", async () => {
+    const recorder = recordHops(() => ({
+      status: 302,
+      headers: { Location: "/.well-known/nodeinfo" },
+      body: "redirecting",
+    }));
+    assertEquals(
+      await getNodeInfoInternal("https://example.com/", {}, {
+        openHop: recorder.openHop,
+      }),
+      undefined,
+    );
+    assertEquals(
+      recorder.events.filter((e) => e.startsWith("open ")).length,
+      5,
+    );
+    assertEquals(
+      recorder.events.filter((e) => e.startsWith("cancel ")).length,
+      5,
+    );
+    recorder.assertInvariants();
+  });
+
+  await t.step("failed redirect body cancellation", async () => {
+    const recorder = recordHops((url) => {
+      switch (url.href) {
+        case wellKnown:
+          return {
+            status: 302,
+            headers: { Location: "/.well-known/nodeinfo2" },
+            body: "redirecting",
+            cancelFails: true,
+          };
+        case wellKnown2:
+          return { body: descriptor };
+        default:
+          return { status: 404, body: "not found", cancelFails: true };
+      }
+    });
+    const records: LogRecord[] = [];
+    await configure({
+      sinks: { buffer: (record) => records.push(record) },
+      loggers: [
+        { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
+        { category: ["logtape", "meta"], sinks: [] },
+      ],
+      reset: true,
+    });
+    try {
+      assertEquals(
+        await getNodeInfoInternal("https://example.com/", {}, {
+          openHop: recorder.openHop,
+        }),
+        undefined,
+      );
+      const failures = records.filter((r) =>
+        r.rawMessage ===
+          "Failed to cancel the response body from {url}: {error}"
+      );
+      assertEquals(
+        failures.map((r) => [r.level, r.properties.url]),
+        [["debug", wellKnown], ["debug", documentUrl]],
+      );
+      for (const { properties: { error } } of failures) {
+        assertInstanceOf(error, Error);
+        assertEquals(error.message, "Cancellation failed");
+      }
+    } finally {
+      await reset();
+    }
+    assertEquals(recorder.events, [
+      `open ${wellKnown}`,
+      `fetch ${wellKnown} #1`,
+      "cancel #1",
+      `close ${wellKnown}`,
+      `open ${wellKnown2}`,
+      `fetch ${wellKnown2} #2`,
+      "consumed #2",
+      `close ${wellKnown2}`,
+      `open ${documentUrl}`,
+      `fetch ${documentUrl} #3`,
+      "cancel #3",
+      `close ${documentUrl}`,
+    ]);
+    recorder.assertInvariants();
+  });
+
+  await t.step("never-settling body cancellation", async () => {
+    const recorder = recordHops((url) => {
+      switch (url.href) {
+        case wellKnown:
+          return {
+            status: 302,
+            headers: { Location: "/.well-known/nodeinfo2" },
+            body: "redirecting",
+            cancelNeverSettles: true,
+          };
+        case wellKnown2:
+          return { body: descriptor };
+        default:
+          return { status: 404, body: "not found", cancelNeverSettles: true };
+      }
+    });
+    assertEquals(
+      await settleWithin(
+        getNodeInfoInternal("https://example.com/", {}, {
+          openHop: recorder.openHop,
+        }),
+      ),
+      undefined,
+    );
+    assertEquals(recorder.events, [
+      `open ${wellKnown}`,
+      `fetch ${wellKnown} #1`,
+      "cancel #1",
+      `close ${wellKnown}`,
+      `open ${wellKnown2}`,
+      `fetch ${wellKnown2} #2`,
+      "consumed #2",
+      `close ${wellKnown2}`,
+      `open ${documentUrl}`,
+      `fetch ${documentUrl} #3`,
+      "cancel #3",
+      `close ${documentUrl}`,
+    ]);
+    recorder.assertInvariants();
+  });
+
+  await t.step("failure while consuming", async () => {
+    const recorder = recordHops(() => ({ body: "not json" }));
+    assertEquals(
+      await getNodeInfoInternal("https://example.com/", {}, {
+        openHop: recorder.openHop,
+      }),
+      undefined,
+    );
+    assertEquals(recorder.events, [
+      `open ${wellKnown}`,
+      `fetch ${wellKnown} #1`,
+      "consumed #1",
+      `close ${wellKnown}`,
+    ]);
+    recorder.assertInvariants();
+  });
+});
+
+/**
+ * Rejects if the given promise does not settle within the timeout, so that
+ * a hang fails the test instead of blocking it.
+ */
+async function settleWithin<T>(promise: Promise<T>, ms = 5000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Did not settle within ${ms} ms.`)),
+          ms,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// A body that a real session cannot cancel to completion: fetch-mock returns
+// a clone (a tee) of a Response instance, and the cancellation of a branch of
+// a tee settles only after the other branch is cancelled too.  Its source's
+// cancel callback never settles either:
+function neverCancellableResponse(init: ResponseInit): Response {
+  return new Response(
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("never cancelled"));
+      },
+      cancel: () => new Promise(() => {}),
+    }),
+    init,
+  );
+}
+
+test("getNodeInfo() does not wait for cancelling response bodies", async (t) => {
+  const rawDocument = {
+    software: { name: "foo", version: "1.2.3" },
+    protocols: ["activitypub"],
+    usage: { users: {}, localPosts: 0, localComments: 0 },
+  };
+  fetchMock.mockGlobal();
+  try {
+    await t.step("redirect", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "https://example.com/.well-known/nodeinfo",
+        () =>
+          neverCancellableResponse({
+            status: 302,
+            headers: { Location: "/.well-known/nodeinfo2" },
+          }),
+      );
+      fetchMock.get(
+        "https://example.com/.well-known/nodeinfo2",
+        () =>
+          Response.json({
+            links: [{
+              rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
+              href: "https://example.com/nodeinfo/2.1",
+            }],
+          }),
+      );
+      fetchMock.get(
+        "https://example.com/nodeinfo/2.1",
+        () => Response.json(rawDocument),
+      );
+      assertEquals(
+        await settleWithin(
+          getNodeInfoDirect("https://example.com/", { parse: "none" }),
+        ),
+        rawDocument,
+      );
+    });
+
+    await t.step("non-2xx responses", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        "https://example.com/.well-known/nodeinfo",
+        () => neverCancellableResponse({ status: 404 }),
+      );
+      fetchMock.get(
+        "https://example.com/nodeinfo/2.1",
+        () => neverCancellableResponse({ status: 404 }),
+      );
+      assertEquals(
+        await settleWithin(getNodeInfoDirect("https://example.com/")),
+        undefined,
+      );
+      assertEquals(
+        await settleWithin(
+          getNodeInfoDirect("https://example.com/nodeinfo/2.1", {
+            direct: true,
+          }),
+        ),
+        undefined,
+      );
+    });
+  } finally {
+    fetchMock.hardReset();
   }
 });

@@ -4,6 +4,7 @@
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
+    "./internal": "./src/internal.ts",
     "./jsonld": "./src/jsonld.ts",
     "./temporal": "./src/temporal.ts"
   },
@@ -20,7 +21,8 @@
     "byte-encodings": "npm:byte-encodings@^1.0.11",
     "fetch-mock": "npm:fetch-mock@^12.5.4",
     "jsonld": "npm:jsonld@^9.0.0",
-    "pkijs": "npm:pkijs@^3.2.5"
+    "pkijs": "npm:pkijs@^3.2.5",
+    "undici": "npm:undici@^7.30.1"
   },
   "exclude": [
     "dist",
@@ -29,6 +31,7 @@
   "publish": {
     "exclude": [
       "**/*.test.ts",
+      "src/**/testdata/",
       "tsdown.config.ts"
     ]
   },

@@ -8,13 +8,18 @@ import {
   logRequest,
   type RemoteDocument,
   UrlError,
-  validatePublicUrl,
 } from "@fedify/vocab-runtime";
+import {
+  openDirectFetch,
+  openPublicFetch,
+  type PublicFetchSession,
+} from "@fedify/vocab-runtime/internal";
 import { getLogger } from "@logtape/logtape";
 import type { TracerProvider } from "@opentelemetry/api";
 import { curry } from "es-toolkit";
 import {
-  doubleKnock,
+  type DoubleKnockOpenHop,
+  doubleKnockScoped,
   type HttpMessageSignaturesSpecDeterminer,
 } from "../sig/http.ts";
 import { validateCryptoKey } from "../sig/key.ts";
@@ -61,8 +66,51 @@ export interface GetAuthenticatedDocumentLoaderOptions
  */
 export function getAuthenticatedDocumentLoader(
   identity: { keyId: URL; privateKey: CryptoKey },
+  options: GetAuthenticatedDocumentLoaderOptions = {},
+): DocumentLoader {
+  return createAuthenticatedDocumentLoader(identity, options);
+}
+
+/**
+ * The dependencies of {@link createAuthenticatedDocumentLoader}, for tests.
+ */
+export interface AuthenticatedDocumentLoaderDependencies {
+  /**
+   * Opens a fetch session for each hop, instead of `openPublicFetch()` (or
+   * `openDirectFetch()` if private addresses are allowed).
+   */
+  readonly openHop?: DoubleKnockOpenHop;
+}
+
+/**
+ * The placeholder that the alternate document callback of
+ * `getRemoteDocument()` returns, so that the alternate document is loaded
+ * after the current hop is closed.
+ */
+const ALTERNATE_PLACEHOLDER: RemoteDocument = Object.freeze({
+  contextUrl: null,
+  document: null,
+  documentUrl: "about:blank",
+});
+
+type LoadResult =
+  | { readonly document: RemoteDocument }
+  | { readonly alternateUrl: string };
+
+/**
+ * The implementation of {@link getAuthenticatedDocumentLoader}.  This is not
+ * exported from any entry point.
+ * @param identity The identity to get the document loader for.
+ * @param options The options for the document loader.
+ * @param deps The dependencies, for tests.
+ * @returns The authenticated document loader.
+ * @throws {TypeError} If the key is invalid or unsupported.
+ */
+export function createAuthenticatedDocumentLoader(
+  identity: { keyId: URL; privateKey: CryptoKey },
   { allowPrivateAddress, userAgent, specDeterminer, tracerProvider }:
     GetAuthenticatedDocumentLoaderOptions = {},
+  deps: AuthenticatedDocumentLoaderDependencies = {},
 ): DocumentLoader {
   validateCryptoKey(identity.privateKey);
   async function load(
@@ -73,7 +121,7 @@ export function getAuthenticatedDocumentLoader(
   ): Promise<RemoteDocument> {
     options?.signal?.throwIfAborted();
     let currentUrl = new URL(url).href;
-    await validateUrl(currentUrl);
+    validateUrl(currentUrl);
     visited.add(currentUrl);
     const originalRequest = createActivityPubRequest(currentUrl, { userAgent });
     function follow(nextUrl: string): void {
@@ -92,7 +140,7 @@ export function getAuthenticatedDocumentLoader(
       }
       redirected++;
     }
-    const response = await doubleKnock(
+    const result = await doubleKnockScoped<LoadResult>(
       originalRequest,
       identity,
       {
@@ -100,21 +148,76 @@ export function getAuthenticatedDocumentLoader(
         log: curry(logRequest)(logger),
         tracerProvider,
         signal: options?.signal,
-        validateRedirect: async (nextUrl) => {
+        validateRedirect: (nextUrl) => {
           follow(nextUrl);
-          await validateUrl(nextUrl);
+          // Addresses are validated when the next hop is opened:
+          validateUrl(nextUrl);
           visited.add(nextUrl);
           currentUrl = nextUrl;
         },
       },
+      (hopUrl) => openHop(hopUrl, options?.signal),
+      async (response) => {
+        let alternateUrl: string | undefined;
+        const document = await getRemoteDocument(
+          currentUrl,
+          response,
+          (url) => {
+            alternateUrl = url;
+            return Promise.resolve(ALTERNATE_PLACEHOLDER);
+          },
+        );
+        if (alternateUrl == null) return { document };
+        // A Link header alternate leaves the body unread.  getRemoteDocument()
+        // has already started cancelling it then; otherwise, start it here
+        // without awaiting, since the cancellation of a tee branch (e.g., a
+        // body cloned by a fetch mock) may never settle:
+        if (!response.bodyUsed && response.body?.locked !== true) {
+          response.body?.cancel().catch((error) => {
+            logger.debug(
+              "Failed to cancel the response body from {url}: {error}",
+              { url: currentUrl, error },
+            );
+          });
+        }
+        return { alternateUrl };
+      },
     );
-    return getRemoteDocument(currentUrl, response, (alternateUrl) => {
-      follow(alternateUrl);
-      return load(alternateUrl, options, redirected, visited);
-    });
+    if ("document" in result) return result.document;
+    // The alternate document is loaded after the current hop is closed:
+    follow(result.alternateUrl);
+    return load(result.alternateUrl, options, redirected, visited);
   }
 
-  async function validateUrl(url: string): Promise<void> {
+  function openUnvalidatedHop(
+    url: string,
+    signal?: AbortSignal,
+  ): Promise<PublicFetchSession> {
+    if (deps.openHop != null) return deps.openHop(url);
+    return allowPrivateAddress
+      ? openDirectFetch(url)
+      : openPublicFetch(url, { signal });
+  }
+
+  async function openHop(
+    url: string,
+    signal?: AbortSignal,
+  ): Promise<PublicFetchSession> {
+    try {
+      return await openUnvalidatedHop(url, signal);
+    } catch (error) {
+      if (error instanceof UrlError) {
+        if (error.reason === "dns") {
+          logger.debug("DNS lookup failed for {url}", { url, error });
+        } else {
+          logger.error("Disallowed private URL: {url}", { url, error });
+        }
+      }
+      throw error;
+    }
+  }
+
+  function validateUrl(url: string): void {
     const parsedUrl = new URL(url);
     const protocol = parsedUrl.protocol;
     if (protocol !== "http:" && protocol !== "https:") {
@@ -124,20 +227,6 @@ export function getAuthenticatedDocumentLoader(
     // private-address opt-in must not permit credentials on any followed URL.
     if (parsedUrl.username !== "" || parsedUrl.password !== "") {
       throw new UrlError("URLs with credentials are not allowed");
-    }
-    if (!allowPrivateAddress) {
-      try {
-        await validatePublicUrl(url);
-      } catch (error) {
-        if (error instanceof UrlError) {
-          if (error.reason === "dns") {
-            logger.debug("DNS lookup failed for {url}", { url, error });
-          } else {
-            logger.error("Disallowed private URL: {url}", { url, error });
-          }
-        }
-        throw error;
-      }
     }
   }
   return (url, options) => load(url, options);
