@@ -180,6 +180,7 @@ import {
   getEmptyAuthenticationEvidence,
   type InboxAuthenticationEvidence,
   type InboxPrincipal,
+  toProofPrincipal,
 } from "./inbox-authentication.ts";
 import {
   buildVerifiedActivityView,
@@ -6238,12 +6239,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         if (result?.verified === true && result.method === "proof") {
           documentSigners = result.keys.flatMap((key) => {
             const signer = getProofSigner(key);
-            return signer == null ? [] : [{
-              kind: signer.kind,
-              id: signer.id,
-              mechanism: "objectIntegrityProofs" as const,
-              keyId: signer.keyId,
-            }];
+            return signer == null ? [] : [toProofPrincipal(signer)];
           });
         }
       } else {
@@ -6260,12 +6256,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         { recipient, activity: json },
       );
       activity = verified.object;
-      documentSigners = verified.signers.map((signer) => ({
-        kind: signer.kind,
-        id: signer.id,
-        mechanism: "objectIntegrityProofs" as const,
-        keyId: signer.keyId,
-      }));
+      documentSigners = verified.signers.map(toProofPrincipal);
       viewSource = {
         policy: "standard",
         source: "activity",

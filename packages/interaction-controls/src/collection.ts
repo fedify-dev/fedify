@@ -55,7 +55,7 @@ export type AuthoritativeObjectResolution<T extends ASObject> =
       | UnverifiableFailure
       | Extract<
         InteractionRequestVerificationFailure,
-        { readonly type: "credentialsInUrl" | "invalidInteractingObject" }
+        { readonly type: "credentials-in-url" | "invalid-interacting-object" }
       >;
   };
 
@@ -96,7 +96,7 @@ export async function resolveAuthoritativeObject<T extends ASObject>(
   if (hasCredentials(id)) {
     return {
       ok: false,
-      failure: { category: "invalid", type: "credentialsInUrl", url: id },
+      failure: { category: "invalid", type: "credentials-in-url", url: id },
     };
   }
   const tracker = trackLoaders(options.documentLoader, options.contextLoader);
@@ -174,7 +174,7 @@ export async function resolveAuthoritativeObject<T extends ASObject>(
         ok: false,
         failure: {
           category: "invalid",
-          type: "invalidInteractingObject",
+          type: "invalid-interacting-object",
           reason: "decoding",
           cause: error,
         },
@@ -223,7 +223,7 @@ export async function resolveAuthoritativeObject<T extends ASObject>(
     if (decoding != null) {
       return {
         category: "invalid",
-        type: "invalidInteractingObject",
+        type: "invalid-interacting-object",
         reason: "decoding",
         cause: decoding.error,
       };
@@ -231,7 +231,7 @@ export async function resolveAuthoritativeObject<T extends ASObject>(
     if (rejections.length > 0) {
       return {
         category: "invalid",
-        type: "invalidInteractingObject",
+        type: "invalid-interacting-object",
         reason: rejections[rejections.length - 1],
       };
     }

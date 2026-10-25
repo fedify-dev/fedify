@@ -6308,6 +6308,7 @@ test("handleInbox() nonce consumption on valid signed request", async () => {
 
 test("handleInbox() nonce replay prevention", async () => {
   const [meterProvider, recorder] = createTestMeterProvider();
+  const [tracerProvider, spanExporter] = createTestTracerProvider();
   const activity = new Create({
     id: new URL("https://example.com/activities/nonce-3"),
     actor: new URL("https://example.com/person2"),
@@ -6333,6 +6334,7 @@ test("handleInbox() nonce replay prevention", async () => {
   const federation = createFederation<void>({
     kv: new MemoryKvStore(),
     meterProvider,
+    tracerProvider,
   });
   const context = createRequestContext({
     federation,
@@ -6370,6 +6372,7 @@ test("handleInbox() nonce replay prevention", async () => {
     signatureTimeWindow: { minutes: 5 },
     skipSignatureVerification: false,
     meterProvider,
+    tracerProvider,
     inboxChallengePolicy: {
       enabled: true,
       requestNonce: true,
@@ -6383,6 +6386,11 @@ test("handleInbox() nonce replay prevention", async () => {
     reason: { type: "invalidNonce" },
   });
   assertEquals(report.attempts.at(-1)?.status, "verified");
+  assertEquals(
+    spanExporter.getSpans("activitypub.inbox")[0]
+      .attributes["activitypub.verification.failure_reason"],
+    "invalidNonce",
+  );
   // Should return a fresh challenge with a new nonce
   const acceptSig = response.headers.get("Accept-Signature");
   assert(acceptSig != null, "Must emit fresh Accept-Signature challenge");

@@ -174,12 +174,12 @@ export interface QuoteRequestValidationOptions {
    *
    *  -  `"strict"` (default): if both are present they must agree, and the
    *     reference must equal the target.
-   *  -  `"preferQuote"`: `quote` must equal the target if present, otherwise
+   *  -  `"prefer-quote"`: `quote` must equal the target if present, otherwise
    *     `quoteUrl` must; a conflicting `quoteUrl` is ignored.
    *  -  `"any"`: either `quote` or `quoteUrl` equal to the target suffices,
    *     even when the two disagree.
    */
-  readonly quoteReference?: "strict" | "preferQuote" | "any";
+  readonly quoteReference?: "strict" | "prefer-quote" | "any";
 
   /**
    * Which `attributedTo` entries of the quote post may match the requester:
@@ -304,7 +304,7 @@ export type InteractionRequestVerificationFailure =
      * @since 2.5.0
      */
     readonly category: "invalid";
-    readonly type: "credentialsInUrl";
+    readonly type: "credentials-in-url";
     readonly url: URL;
   }
   | {
@@ -321,7 +321,7 @@ export type InteractionRequestVerificationFailure =
      * @since 2.5.0
      */
     readonly category: "invalid";
-    readonly type: "invalidInteractingObject";
+    readonly type: "invalid-interacting-object";
     readonly reason: "credentials" | "id" | "type" | "attribution" | "decoding";
     readonly cause?: unknown;
   }
@@ -334,7 +334,7 @@ export type InteractionRequestVerificationFailure =
      * @since 2.5.0
      */
     readonly category: "invalid";
-    readonly type: "ambiguousRequest";
+    readonly type: "ambiguous-request";
     readonly property: "type" | "id" | "actor" | "object" | "instrument";
   }
   | {
@@ -346,7 +346,7 @@ export type InteractionRequestVerificationFailure =
      * @since 2.5.0
      */
     readonly category: "unauthorized";
-    readonly type: "unauthenticatedRequester";
+    readonly type: "unauthenticated-requester";
     readonly requester?: URL;
   };
 

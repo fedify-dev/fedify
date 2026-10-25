@@ -241,7 +241,7 @@ test("quoteInteraction can prefer quote over a conflicting quoteUrl", async () =
 
   const lenient = await quoteInteraction.verifyRequest(context, {
     request,
-    quoteReference: "preferQuote",
+    quoteReference: "prefer-quote",
   });
   assert.equal(lenient.verified, true);
 });
@@ -258,7 +258,7 @@ test("quoteInteraction can accept either quote reference", async () => {
 
   const preferQuote = await quoteInteraction.verifyRequest(context, {
     request,
-    quoteReference: "preferQuote",
+    quoteReference: "prefer-quote",
   });
   assert.deepEqual(preferQuote.verified ? null : preferQuote.failure, {
     category: "invalid",

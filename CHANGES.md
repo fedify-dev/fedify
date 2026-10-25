@@ -29,8 +29,8 @@ To be released.
     activities are still rejected with `400 Bad Request`.  An activity whose
     `actor` cannot be read, such as an anonymous actor, is never treated as
     having no actor.  Rejected deliveries are reported with the new
-    `noAuthenticatedPrincipal` reason in `onRequestFinished` reports.
-    [[#1289], [#1290], [#1299]]
+    `no-authenticated-principal` reason in `onRequestFinished` reports.
+    [[#1289], [#1290], [#1299], [#1318], [#1328]]
  -  Changed the inbox to interpret each incoming activity with one set of
     JSON-LD context documents throughout signature verification and dispatch,
     and to keep that interpretation, along with the authentication evidence,
@@ -48,12 +48,13 @@ To be released.
     `idempotency` strategy, as direct processing already did, instead of always
     deduplicating them per origin.  Activities recorded by workers of older
     versions are still recognized.  [[#1290], [#1299]]
- -  Added the `activityOriginMismatch` reason to rejected `InboxAuthentication`
-    decisions in `onRequestFinished` reports.  Inbox deliveries rejected
-    because the activity's ID does not have the same origin as its actors now
-    report this reason, along with the activity ID and actor IDs, instead of
-    `verificationFailed`.  The `activitypub.verification.failure_reason` span
-    attribute uses the same value.  \[[GHSA-4qhx-hhwf-8685]]
+ -  Added the `activity-origin-mismatch` reason to rejected
+    `InboxAuthentication` decisions in `onRequestFinished` reports.  Inbox
+    deliveries rejected because the activity's ID does not have the same origin
+    as its actors now report this reason, along with the activity ID and actor
+    IDs, instead of `verificationFailed`.  The
+    `activitypub.verification.failure_reason` span attribute uses the same
+    value.  \[[GHSA-4qhx-hhwf-8685], [#1318], [#1328]]
  -  Changed compound portable-object verification to check each map's proof
     policy before resolving its key or verifying its signature, avoiding work
     for maps that will be rejected.  Policy-rejected maps now appear in
@@ -78,6 +79,8 @@ To be released.
 [#1289]: https://github.com/fedify-dev/fedify/issues/1289
 [#1290]: https://github.com/fedify-dev/fedify/issues/1290
 [#1299]: https://github.com/fedify-dev/fedify/pull/1299
+[#1318]: https://github.com/fedify-dev/fedify/issues/1318
+[#1328]: https://github.com/fedify-dev/fedify/pull/1328
 
 ### @fedify/cli
 
@@ -188,9 +191,10 @@ To be released.
     attribute someone else's collection to themselves that way.  A request
     without an actor is no longer accepted on the strength of the collection's
     `attributedTo` alone; without `authentication`, it fails with
-    `missingActor`.  New failure types `credentialsInUrl`,
-    `invalidInteractingObject`, `ambiguousRequest`, and
-    `unauthenticatedRequester` describe the new checks.  [[#1290], [#1299]]
+    `missingActor`.  New failure types `credentials-in-url`,
+    `invalid-interacting-object`, `ambiguous-request`, and
+    `unauthenticated-requester` describe the new checks.
+    [[#1290], [#1299], [#1318], [#1328]]
 
 [#1206]: https://github.com/fedify-dev/fedify/issues/1206
 [#1245]: https://github.com/fedify-dev/fedify/pull/1245

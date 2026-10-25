@@ -131,6 +131,7 @@ import {
 import {
   createAuthenticationEvidence,
   type InboxPrincipal,
+  toProofPrincipal,
 } from "./inbox-authentication.ts";
 import {
   buildVerifiedActivityView,
@@ -2230,7 +2231,7 @@ async function handleInboxInternal<TContextData>(
       documentSigners = [{
         kind: "actor",
         id: ldSigKey.ownerId,
-        mechanism: "linkedDataSignatures",
+        mechanism: "linked-data-signatures",
         keyId: ldSigKey.id,
       }];
     }
@@ -2746,7 +2747,7 @@ async function handleInboxInternal<TContextData>(
     requestSigners = [{
       kind: "actor",
       id: activity.actorId,
-      mechanism: "httpSignatures",
+      mechanism: "http-signatures",
       keyId: httpSigKey.id,
     }];
   }
@@ -2763,7 +2764,7 @@ async function handleInboxInternal<TContextData>(
       if (deferredLdSignatureError != null) throw deferredLdSignatureError;
       observation.authentication = {
         status: "rejected",
-        reason: { type: "noAuthenticatedPrincipal" },
+        reason: { type: "no-authenticated-principal" },
       };
       logger.error(
         "The activity {activityId} declares no actor, and no principal is " +
@@ -2789,7 +2790,7 @@ async function handleInboxInternal<TContextData>(
       observation.authentication = {
         status: "rejected",
         reason: {
-          type: "activityOriginMismatch",
+          type: "activity-origin-mismatch",
           activityId: new URL(activity.id!.href),
           actorIds: check.principals.map((principal) => principal.id),
         },
@@ -2933,7 +2934,7 @@ async function handleInboxInternal<TContextData>(
     observation.authentication = {
       status: "rejected",
       reason: {
-        type: "activityOriginMismatch",
+        type: "activity-origin-mismatch",
         activityId: new URL(activity.id.href),
         actorIds: activity.actorIds.map((id) => new URL(id.href)),
       },
@@ -4274,12 +4275,7 @@ const MIN_COMPONENTS = [
 function toProofPrincipals(
   signers: readonly ProofSigner[],
 ): InboxPrincipal[] {
-  return signers.map((signer) => ({
-    kind: signer.kind,
-    id: signer.id,
-    mechanism: "objectIntegrityProofs",
-    keyId: signer.keyId,
-  }));
+  return signers.map(toProofPrincipal);
 }
 
 /**
@@ -4294,7 +4290,7 @@ function getHttpKeyPrincipal(key: CryptographicKey): InboxPrincipal | null {
       return {
         kind: "actor",
         id: parseIri(evidence.ownerId),
-        mechanism: "httpSignatures",
+        mechanism: "http-signatures",
         keyId: key.id,
       };
     } catch {
@@ -4305,7 +4301,7 @@ function getHttpKeyPrincipal(key: CryptographicKey): InboxPrincipal | null {
   return {
     kind: "actor",
     id: key.ownerId,
-    mechanism: "httpSignatures",
+    mechanism: "http-signatures",
     keyId: key.id,
   };
 }

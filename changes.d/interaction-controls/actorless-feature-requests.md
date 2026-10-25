@@ -3,6 +3,8 @@ links:
   '#1289': https://github.com/fedify-dev/fedify/issues/1289
   '#1290': https://github.com/fedify-dev/fedify/issues/1290
   '#1299': https://github.com/fedify-dev/fedify/pull/1299
+  '#1318': https://github.com/fedify-dev/fedify/issues/1318
+  '#1328': https://github.com/fedify-dev/fedify/pull/1328
 ---
  -  `featureInteraction.verifyRequest()` can now verify the [FEP-7aa9]
     `FeatureRequest` activities Mastodon sends without an `actor`.  Pass the
@@ -19,8 +21,9 @@ links:
     attribute someone else's collection to themselves that way.  A request
     without an actor is no longer accepted on the strength of the collection's
     `attributedTo` alone; without `authentication`, it fails with
-    `missingActor`.  New failure types `credentialsInUrl`,
-    `invalidInteractingObject`, `ambiguousRequest`, and
-    `unauthenticatedRequester` describe the new checks.  [[#1290], [#1299]]
+    `missingActor`.  New failure types `credentials-in-url`,
+    `invalid-interacting-object`, `ambiguous-request`, and
+    `unauthenticated-requester` describe the new checks.
+    [[#1290], [#1299], [#1318], [#1328]]
 
 [FEP-7aa9]: https://w3id.org/fep/7aa9

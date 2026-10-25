@@ -1,4 +1,8 @@
-import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import { Create, Person } from "@fedify/vocab";
 import { exportDidKey, parseIri } from "@fedify/vocab-runtime";
 import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
@@ -24,9 +28,11 @@ const loaders = {
 };
 function setup(skipSignatureVerification = false) {
   const reports: InboxRequestReport[] = [];
+  const [tracerProvider, spanExporter] = createTestTracerProvider();
   const federation = createFederation<void>({
     kv: new MemoryKvStore(),
     skipSignatureVerification,
+    tracerProvider,
     documentLoaderFactory: () => mockDocumentLoader,
     contextLoaderFactory: () => mockDocumentLoader,
   });
@@ -40,7 +46,7 @@ function setup(skipSignatureVerification = false) {
   ).onRequestFinished((_ctx, report) => {
     reports.push(report);
   });
-  return { federation, setters, reports };
+  return { federation, setters, reports, spanExporter };
 }
 async function payload(
   id = "https://example.com/create",
@@ -326,7 +332,7 @@ test("onRequestFinished retains HTTP keys and separates ownership rejection", as
 });
 
 test("onRequestFinished reports an activity ID on another origin than its actor", async () => {
-  const { federation, setters, reports } = setup();
+  const { federation, setters, reports, spanExporter } = setup();
   let dispatched = false;
   setters.on(Create, () => {
     dispatched = true;
@@ -344,7 +350,7 @@ test("onRequestFinished reports an activity ID on another origin than its actor"
   deepStrictEqual(reports[0].authentication, {
     status: "rejected",
     reason: {
-      type: "activityOriginMismatch",
+      type: "activity-origin-mismatch",
       activityId: new URL("https://other.example/create"),
       actorIds: [new URL("https://example.com/person2")],
     },
@@ -356,6 +362,11 @@ test("onRequestFinished reports an activity ID on another origin than its actor"
     reason: "authentication",
   });
   strictEqual(reports[0].attempts.at(-1)?.status, "verified");
+  strictEqual(
+    spanExporter.getSpans("activitypub.inbox")[0]
+      .attributes["activitypub.verification.failure_reason"],
+    "activity-origin-mismatch",
+  );
 });
 
 test("onRequestFinished retains LDS crypto success before HTTP fallback", async () => {

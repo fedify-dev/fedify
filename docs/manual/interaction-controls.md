@@ -321,7 +321,7 @@ federation
 With `authentication`, the helper also checks that the request it verifies is
 the one Fedify authenticated, counting every `actor`, `object`, and
 `instrument` value, including those typed parsing drops: a request with more
-than one `object` or `instrument` is rejected as `ambiguousRequest`.  A request
+than one `object` or `instrument` is rejected as `ambiguous-request`.  A request
 that declares an actor is accepted only if that actor was authenticated.
 Without `authentication`, a request without an actor is rejected as
 `missingActor`, and the value counts are checked on the parsed request only.
@@ -379,7 +379,7 @@ meet these checks, so `quoteInteraction.verifyRequest()` takes options to
 relax them:
 
 `quoteReference`
-:   `"preferQuote"` checks `quote` and ignores a conflicting `quoteUrl`.
+:   `"prefer-quote"` checks `quote` and ignores a conflicting `quoteUrl`.
     `"any"` accepts the request if either `quote` or `quoteUrl` refers to the
     target.  The default is `"strict"`.
 

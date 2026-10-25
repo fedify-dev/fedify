@@ -3,6 +3,8 @@ links:
   '#1289': https://github.com/fedify-dev/fedify/issues/1289
   '#1290': https://github.com/fedify-dev/fedify/issues/1290
   '#1299': https://github.com/fedify-dev/fedify/pull/1299
+  '#1318': https://github.com/fedify-dev/fedify/issues/1318
+  '#1328': https://github.com/fedify-dev/fedify/pull/1328
 ---
  -  Added `InboxContext.authentication`, which tells inbox listeners who Fedify
     authenticated for an incoming activity independently of its declared
@@ -24,8 +26,8 @@ links:
     activities are still rejected with `400 Bad Request`.  An activity whose
     `actor` cannot be read, such as an anonymous actor, is never treated as
     having no actor.  Rejected deliveries are reported with the new
-    `noAuthenticatedPrincipal` reason in `onRequestFinished` reports.
-    [[#1289], [#1290], [#1299]]
+    `no-authenticated-principal` reason in `onRequestFinished` reports.
+    [[#1289], [#1290], [#1299], [#1318], [#1328]]
 
  -  Changed the inbox to interpret each incoming activity with one set of
     JSON-LD context documents throughout signature verification and dispatch,

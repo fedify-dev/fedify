@@ -63,7 +63,7 @@ export type InboxAuthentication =
          * [FEP-fe34]: https://w3id.org/fep/fe34
          * @since 2.5.0
          */
-        readonly type: "activityOriginMismatch";
+        readonly type: "activity-origin-mismatch";
         readonly activityId: URL;
         readonly actorIds: readonly URL[];
       }
@@ -73,7 +73,7 @@ export type InboxAuthentication =
          * for it, although its listener allows activities without an actor.
          * @since 2.5.0
          */
-        readonly type: "noAuthenticatedPrincipal";
+        readonly type: "no-authenticated-principal";
       };
   }
   | { readonly status: "skipped" }

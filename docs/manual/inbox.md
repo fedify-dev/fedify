@@ -424,7 +424,7 @@ authenticated, called *principals*, are available to the listener as
 :   The actors whose keys made the verified Linked Data Signature or Object
     Integrity Proofs of the activity document.  When there are several
     proofs, all of their signers are listed.  A proof by the DID of an
-    [FEP-ef61] portable actor is listed as a `portableAuthority` principal,
+    [FEP-ef61] portable actor is listed as a `portable-authority` principal,
     which authenticates the portable actors of that DID.
 
 `originAuthenticated`

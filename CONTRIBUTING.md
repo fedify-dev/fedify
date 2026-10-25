@@ -232,6 +232,39 @@ Add JSDoc to public APIs.  Update the documentation when behavior or signatures
 change, and include an example when the API is not self-explanatory.  Check the
 affected examples before submitting the change.
 
+#### Naming
+
+Follow the usual JavaScript naming conventions: `camelCase` for functions,
+methods, properties, and variables, and `PascalCase` for classes and types.
+Apply these additional rules when designing public APIs:
+
+ -  Treat acronyms as ordinary words: use `UrlError` and `getHttpSignatures`,
+    rather than `URLError` and `getHTTPSignatures`.  This simplifies the word
+    boundary rules for mechanically converting names to `snake_case` or
+    `kebab-case`.
+ -  Use `kebab-case` for new Fedify-defined enum-like string values and tagged
+    union discriminators, for example `"username-password"` and
+    `"missing-actor"`.  Single-word values need no change.  Preserve strings
+    defined by external standards or APIs, including vocabulary property
+    references such as `"canQuote"`.
+ -  Reserve predicate prefixes such as `is`, `does`, and `are` for predicate
+    functions and methods.  Omit them from boolean properties and constants:
+    use `isOkay(): boolean` for a predicate, but `xxx.okay` rather than
+    `xxx.isOkay` for a boolean property.
+ -  Prefer metaphorical names that let a value stand for the concept it
+    models.  `Actor` is usually better than `ActorInfo`: the API presents the
+    value as an actor, rather than emphasizing that it holds information
+    about one.
+
+Local variables are not public API, so these API-specific rules need not be
+applied as strictly to their names.
+
+These rules guide new API design.  They do not authorize renaming released
+values outside the compatibility plan or changing internal persistence and
+queue formats.  Telemetry values that mirror a public API tag follow that
+tag; other OpenTelemetry and structured log vocabularies retain their own
+conventions.
+
 
 Testing
 -------
