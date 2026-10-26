@@ -21,7 +21,7 @@ for (const member of workspace) {
 
 await $`deno cache ${files}`;
 
-// Write a freshness stamp so the `deno-cache` deps provider in mise.toml can
+// Write a freshness stamp so the explicit `deno:cache` task in mise.toml can
 // skip re-caching when no deno.json/deno.lock has changed (see `outputs`).
 const stampDir = join(root, "node_modules", ".cache");
 await Deno.mkdir(stampDir, { recursive: true });
