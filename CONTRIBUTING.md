@@ -504,6 +504,12 @@ Documentation
 Use the same style in repository documentation, issue descriptions, pull
 request descriptions, and comments unless a section below says otherwise.
 
+When adding features or changing user-visible behavior, update the
+documentation and any affected agent skills in the same change.  Check the
+user-facing skills under *claude-plugin/skills/* and the contributor skills
+under *.agents/skills/*, and keep the relevant API guidance, command examples,
+and workflows consistent with the implementation.
+
 ### Markdown style
 
 Most Markdown formatting is enforced by [Hongdown].  Follow these conventions
@@ -579,7 +585,7 @@ A feature pull request should include:
 
  -  Tests for the new behavior.
  -  The implementation.
- -  Documentation for public API changes.
+ -  Documentation and updates to affected agent skills.
  -  Any example changes needed to keep the examples working.
  -  A Sacho changelog fragment.
 

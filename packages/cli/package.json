@@ -4,7 +4,8 @@
   "type": "module",
   "files": [
     "README.md",
-    "dist/"
+    "dist/",
+    "skills/"
   ],
   "bin": {
     "fedify": "./dist/mod.js"
@@ -12,17 +13,18 @@
   "scripts": {
     "build:self": "tsdown",
     "build": "pnpm --filter @fedify/cli... run build:self",
-    "prepack": "pnpm build",
+    "prepack": "pnpm build && node scripts/pack-skills.mjs pre",
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
-    "test": "node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**'",
+    "test": "node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**' scripts/pack-skills.test.mjs",
     "test-init": "deno task test-init",
     "pretest:bun": "pnpm build",
     "test:bun": "bun test --timeout 60000",
     "run": "pnpm build && node --disable-warning=ExperimentalWarning dist/mod.js",
     "runi": "tsdown && node --disable-warning=ExperimentalWarning dist/mod.js",
     "run:bun": "pnpm build && bun dist/mod.js",
-    "runi:bun": "tsdown && bun dist/mod.js"
+    "runi:bun": "tsdown && bun dist/mod.js",
+    "postpack": "node scripts/pack-skills.mjs post"
   },
   "engines": {
     "node": ">=20.0.0",
@@ -119,5 +121,13 @@
     "@types/pngjs": "^6.0.5",
     "tsdown": "catalog:",
     "typescript": "catalog:"
+  },
+  "agents": {
+    "skills": [
+      {
+        "name": "fedify-cli",
+        "path": "./skills/fedify-cli"
+      }
+    ]
   }
 }

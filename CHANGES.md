@@ -84,6 +84,10 @@ To be released.
 
 ### @fedify/cli
 
+ -  Added a `fedify-cli` Agent Skill for command-line ActivityPub diagnostics
+    and testing, including servers built without Fedify. Install it through
+    the Claude Code plugin, the `@fedify/cli` npm package, or a manual
+    download.  [[#1329], [#1330]]
  -  Changed debug logs for suppressed recursive lookup errors to preserve the
     original error as a cause alongside the failed target.  [[#901], [#1265]]
  -  Changed the `fedify nodeinfo` favicon selector to pick a usable bitmap
@@ -103,6 +107,8 @@ To be released.
 [#1187]: https://github.com/fedify-dev/fedify/pull/1187
 [#1265]: https://github.com/fedify-dev/fedify/pull/1265
 [#1296]: https://github.com/fedify-dev/fedify/pull/1296
+[#1329]: https://github.com/fedify-dev/fedify/issues/1329
+[#1330]: https://github.com/fedify-dev/fedify/pull/1330
 
 ### @fedify/debugger
 

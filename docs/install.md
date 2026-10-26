@@ -335,31 +335,95 @@ the [*Linting*](./manual/lint.md) chapter.
 Agentic skill
 -------------
 
-_This skill is available since Fedify 2.2.0._
+*The `fedify` skill is available since Fedify 2.2.0, and the `fedify-cli`
+skill since Fedify 2.5.0.*
 
-Fedify ships a [Markdown skill file][SKILL.md] that AI coding assistants such
-as [Claude Code], [Codex], or [OpenCode] can load to learn Fedify's APIs,
-common pitfalls, and recommended patterns.  The file lives inside the
-`@fedify/fedify` package itself, so the only remaining step is exposing it
-to your agent's skills directory.
+Fedify provides two skills for AI coding assistants such as [Claude Code],
+[Codex], and [OpenCode]:
 
-[SKILL.md]: https://github.com/fedify-dev/fedify/blob/main/claude-plugin/skills/fedify/SKILL.md
+ -  [`fedify`][SKILL.md], shipped in `@fedify/fedify`, covers the framework's
+    APIs, common pitfalls, and recommended patterns.
+ -  [`fedify-cli`][CLI SKILL.md], shipped in `@fedify/cli` since Fedify 2.5.0,
+    covers command-line diagnostics and testing, including servers built
+    without Fedify.
+
+Expose the skills you need to your agent's skills directory using one of the
+methods below. Installing the CLI executable globally does not install its
+skill.
+
 [Claude Code]: https://claude.com/product/claude-code
 [Codex]: https://developers.openai.com/codex
 [OpenCode]: https://opencode.ai/
+[SKILL.md]: https://github.com/fedify-dev/fedify/blob/main/claude-plugin/skills/fedify/SKILL.md
+[CLI SKILL.md]: https://github.com/fedify-dev/fedify/blob/main/claude-plugin/skills/fedify-cli/SKILL.md
 
 ### Claude Code plugin
 
 Install the Fedify plugin from the Claude Code marketplace.  The plugin works
-with any runtime and adds six slash commands, two specialized agents, and the
-full Fedify skill:
+with any runtime and includes the framework and CLI skills, task-specific
+slash commands, and two specialized agents:
 
 ~~~~
 /plugin marketplace add fedify-dev/fedify
 /plugin install fedify@fedify
 ~~~~
 
-### Node.js/Bun
+### pnpm 12.11.0 or later
+
+Use pnpm's [built-in Agent Skills support][pnpm skills]. Install the package
+as a direct dependency in the project where your agent works. For the
+framework skill, use `pnpm add @fedify/fedify`; for the CLI skill:
+
+~~~~ sh
+pnpm add -D @fedify/cli
+~~~~
+
+Set the destination directories in *pnpm-workspace.yaml*. For example, to
+make both Claude Code and Codex discover approved skills:
+
+~~~~ yaml
+skills:
+  dirs:
+    - .claude/skills
+    - .agents/skills
+~~~~
+
+Run `pnpm approve` and approve skills for `@fedify/fedify`, `@fedify/cli`, or
+both, according to the direct dependencies you installed. Approval is saved
+in *pnpm-workspace.yaml* and covers all skills in future versions of the
+approved package. No `skills-npm` dependency or `prepare` script is needed.
+
+pnpm links the skills into the chosen directories with names such as
+*pnpm-@fedify+fedify-fedify/* and *pnpm-@fedify+cli-fedify-cli/*. Global
+installs, `pnpm dlx`, and `pnpm deploy` do not link skills. If you use only a
+global CLI, use the manual installation below instead.
+
+[pnpm skills]: https://pnpm.io/agent-skills
+
+### npm, Yarn, Bun, and older pnpm
+
+Install `@fedify/fedify` for the framework skill, or add `@fedify/cli` as a
+dev dependency for the CLI skill:
+
+::: code-group
+
+~~~~ sh [npm]
+npm add -D @fedify/cli
+~~~~
+
+~~~~ sh [pnpm before 12.11.0]
+pnpm add -D @fedify/cli
+~~~~
+
+~~~~ sh [Yarn]
+yarn add -D @fedify/cli
+~~~~
+
+~~~~ sh [Bun]
+bun add -D @fedify/cli
+~~~~
+
+:::
 
 Use [`skills-npm`], a third-party tool by Anthony Fu (it is not a Fedify
 package), that scans *node\_modules* for packages exposing the `agents.skills`
@@ -402,28 +466,41 @@ directory on every install.
     }
     ~~~~
 
-3.  Reinstall once.  The Fedify skill appears at *.claude/skills/fedify/*
-    (and similar locations for other supported agents).
+3.  Reinstall once. The installed packages' skills appear at
+    *.claude/skills/fedify/* and/or *.claude/skills/fedify-cli/* (and similar
+    locations for other supported agents).
 
 The same script picks up other Fedify packages and any third-party npm
 packages that adopt the convention.
 
 [`skills-npm`]: https://github.com/antfu/skills-npm
 
-### Deno
+### Deno and standalone CLI installations
 
-Install the skill by hand:
+For Deno, Homebrew, Scoop, mise, standalone binaries, or a global npm/Bun
+installation, download the skills by hand. Choose the framework skill, the
+CLI skill, or both:
 
-1.  Pick your agent's skills directory.  For Claude Code, this is
-    *.claude/skills/fedify/*.
+1.  Pick your agent's skills directory. For Claude Code, use
+    *.claude/skills/*; for Codex, use *.agents/skills/*.
 
-2.  Download *SKILL.md* from the Fedify repository:
+2.  Download each desired *SKILL.md* into its own subdirectory. For Claude
+    Code:
 
     ~~~~ sh
     mkdir -p .claude/skills/fedify
-    curl -L -o .claude/skills/fedify/SKILL.md \
+    curl -fL -o .claude/skills/fedify/SKILL.md \
       https://raw.githubusercontent.com/fedify-dev/fedify/main/claude-plugin/skills/fedify/SKILL.md
     ~~~~
 
-3.  Either commit the file or add it to *.gitignore*, depending on your
+
+    ~~~~ sh
+    mkdir -p .claude/skills/fedify-cli
+    curl -fL -o .claude/skills/fedify-cli/SKILL.md \
+      https://raw.githubusercontent.com/fedify-dev/fedify/main/claude-plugin/skills/fedify-cli/SKILL.md
+    ~~~~
+
+    Substitute *.agents/skills/* for *.claude/skills/* when using Codex.
+
+3.  Either commit the files or add them to *.gitignore*, depending on your
     team's preference.
