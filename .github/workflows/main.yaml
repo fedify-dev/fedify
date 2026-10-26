@@ -269,6 +269,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
+    - run: mise run deno:cache
     - run: mise run --skip-deps test:temporal-polyfill
 
   lint:
