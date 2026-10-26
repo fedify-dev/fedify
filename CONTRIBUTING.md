@@ -108,7 +108,9 @@ Development environment
 
 Fedify is a TypeScript monorepo.  Deno is the primary development environment,
 and the project also tests supported packages on Node.js and Bun.  [mise]
-installs the required tool versions and runs repository tasks.
+installs the required tool versions and runs repository tasks.  Install
+mise before bootstrapping; it provisions Node.js and the tools declared in
+*mise.toml*, so Node.js needs no separate installation.
 
 Run these commands after cloning the repository:
 
@@ -120,11 +122,20 @@ mise install
 The `mise install` post-install hook runs `mise deps`, registers Sacho's Git
 merge drivers, and installs Sacho's commit hooks.  It also installs the Git
 pre-commit hook when no hook is already present.  The `mise deps` command
-generates code, installs dependencies, and builds the packages.  You normally
-need to run `mise install` only once per checkout.
+installs dependencies, generates vocabulary code, and builds the packages
+using Node.js.  It does not prepare a Deno cache.  Run `mise run deno:cache`
+after installation to prepare imports for the Deno language server.  Deno
+workflow tasks also prepare this cache automatically.  You normally need to
+run `mise install` only once per checkout.
 
 Install or refresh the pre-commit hook explicitly with
 `mise run hooks:install`.
+
+To bootstrap without installing Deno, set `MISE_DISABLE_TOOLS=deno` before
+running `mise install` (for example, `$env.MISE_DISABLE_TOOLS = "deno"` in
+PowerShell).  Deno is still needed for the current formatting, linting, type
+checking, and Deno compatibility tasks; those tools are being migrated
+separately.
 
 Run development workflows through mise.  Do not call `npm` or `pnpm` directly
 for repository tasks.  Start by inspecting the available commands:
@@ -177,6 +188,47 @@ set of packages, rebuild only those packages, without the `@fedify/` prefix:
 ~~~~ bash
 mise run prepare-each fedify vocab
 ~~~~
+
+### Running TypeScript scripts on Node.js
+
+Development tooling uses Node.js 22.18 or later, provided by mise.  Run
+TypeScript scripts with
+`node --experimental-strip-types path/to/script.ts`.  This removes types
+without type checking.  Imports by workspace package name resolve through npm
+`exports`, which point to *dist/* and require the imported packages to be
+built first with `mise run build` or `mise run prepare-each <packages>`.
+Scripts that import source files by relative path can run before those
+packages are built, as the vocabulary generator does.  Use explicit *.ts*
+extensions for relative imports and `import type` for type-only names. Resolve
+dependencies through npm manifests, not Deno import maps or `tsconfig.json`
+path aliases.  Native stripping does not support JSX, enums, parameter
+properties, or namespaces with runtime code.  Existing tests that need
+transformations use `--experimental-transform-types`; scripts needing other
+transformations must choose an explicit runner rather than relying on Deno
+resolution.
+
+The vocabulary generator imports `@fedify/vocab-tools` source by relative
+path so it can run before any package has been built.  It uses the pinned
+dprint TypeScript plugin with Deno's preset only for generated vocabulary
+code, preserving the current format until the formatter migration.  Keep the
+plugin version in *packages/vocab/package.json* and the root *deno.json* in
+sync with the formatter embedded in the Deno version in *mise.toml*.
+
+Deno compatibility work has explicit preparation and validation commands:
+
+~~~~ bash
+mise run deno:cache
+mise run codegen:check:deno
+~~~~
+
+The first command caches workspace exports for Deno and its language server;
+the second checks generated vocabulary formatting and Deno types.  Tasks
+that use Deno, including `check`, `cli`, `test:deno`, and `test:examples`,
+prepare the cache automatically.  Run `mise run deno:cache` explicitly
+before using `mise run --skip-deps` with a Deno task, since that option
+omits task dependencies.
+The existing Deno `compile` tasks still generate vocabulary, but no longer
+cache or type-check it as a side effect.
 
 ### Running the CLI
 
@@ -386,9 +438,17 @@ mise run test:examples -- astro sveltekit-sample
 Dependencies
 ------------
 
-The repository commits both *deno.lock* and *pnpm-lock.yaml*.  Use `mise deps`
-after adding, updating, or removing a dependency, and commit the lockfile
-changes that it produces.
+The repository commits both *deno.lock* and *pnpm-lock.yaml*.  After adding,
+updating, or removing a dependency, run both commands:
+
+~~~~ bash
+mise deps
+mise run deno:cache
+~~~~
+
+`mise deps` installs npm dependencies and updates *pnpm-lock.yaml*;
+`mise run deno:cache` resolves Deno workspace imports and updates
+*deno.lock*.  Review and commit the lockfile changes they produce.
 
 A dependency used by code that runs on Deno and Node.js or Bun must be declared
 in both places:
