@@ -48,6 +48,8 @@
     "temporal-polyfill": "catalog:"
   },
   "devDependencies": {
+    "@dprint/formatter": "0.6.0",
+    "@dprint/typescript": "0.96.1",
     "@fedify/fixture": "workspace:*",
     "@types/node": "catalog:",
     "fast-check": "catalog:",
@@ -56,7 +58,7 @@
     "typescript": "catalog:"
   },
   "scripts": {
-    "build:self": "deno task compile && tsdown",
+    "build:self": "node --experimental-strip-types scripts/codegen.ts && tsdown",
     "build": "pnpm --filter @fedify/vocab... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
