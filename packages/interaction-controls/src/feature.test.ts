@@ -139,13 +139,13 @@ async function evidenceFor(
     requestSigners: requestSigners.map((id) => ({
       kind: "actor",
       id,
-      mechanism: "httpSignatures",
+      mechanism: "http-signatures",
       keyId: new URL(`${id.href}#main-key`),
     })),
     documentSigners: documentSigners.map((id) => ({
       kind: "actor",
       id,
-      mechanism: "linkedDataSignatures",
+      mechanism: "linked-data-signatures",
       keyId: new URL(`${id.href}#main-key`),
     })),
     originAuthenticated: [],
@@ -239,7 +239,7 @@ test("featureInteraction requires authentication for actorless requests", async 
   assert.equal(someoneElse.verified, false);
   assert.deepEqual(someoneElse.failure, {
     category: "unauthorized",
-    type: "unauthenticatedRequester",
+    type: "unauthenticated-requester",
     requester: actor,
   });
 
@@ -249,7 +249,7 @@ test("featureInteraction requires authentication for actorless requests", async 
     authentication: await evidenceFor(document, [carol], [actor]),
   });
   assert.equal(relayed.verified, false);
-  assert.equal(relayed.failure.type, "unauthenticatedRequester");
+  assert.equal(relayed.failure.type, "unauthenticated-requester");
 });
 
 test("featureInteraction requires the request's actor to be authenticated", async () => {
@@ -270,7 +270,7 @@ test("featureInteraction requires the request's actor to be authenticated", asyn
     },
   );
   assert.equal(result.verified, false);
-  assert.equal(result.failure.type, "unauthenticatedRequester");
+  assert.equal(result.failure.type, "unauthenticated-requester");
 });
 
 test("featureInteraction ignores embedded collections", async () => {
@@ -320,7 +320,7 @@ test("featureInteraction ignores resolved interacting objects", async () => {
     },
   );
   assert.equal(result.verified, false);
-  assert.equal(result.failure.type, "unauthenticatedRequester");
+  assert.equal(result.failure.type, "unauthenticated-requester");
 });
 
 test("featureInteraction denies mismatched collection owners", async () => {
@@ -404,7 +404,7 @@ for (
       assert.equal(result.verified, false);
       assert.deepEqual(result.failure, {
         category: "invalid",
-        type: "invalidInteractingObject",
+        type: "invalid-interacting-object",
         reason: "attribution",
       });
     }
@@ -451,7 +451,7 @@ for (
     assert.equal(result.verified, false);
     assert.deepEqual(result.failure, {
       category: "invalid",
-      type: "ambiguousRequest",
+      type: "ambiguous-request",
       property,
     });
   });
@@ -483,7 +483,7 @@ test("featureInteraction binds authentication to the verified request", async ()
     assert.equal(result.verified, false);
     assert.deepEqual(result.failure, {
       category: "invalid",
-      type: "ambiguousRequest",
+      type: "ambiguous-request",
       property,
     });
   }
@@ -575,7 +575,7 @@ test("featureInteraction rejects collection URLs with credentials", async () => 
     },
   );
   assert.equal(result.verified, false);
-  assert.equal(result.failure.type, "credentialsInUrl");
+  assert.equal(result.failure.type, "credentials-in-url");
   assert.ok(!fetched.includes(instrument));
 });
 
@@ -664,9 +664,9 @@ test("featureInteraction rejects malformed collections", async () => {
       },
     );
     assert.equal(result.verified, false, JSON.stringify(extra));
-    assert.equal(result.failure.type, "invalidInteractingObject");
+    assert.equal(result.failure.type, "invalid-interacting-object");
     assert.equal(
-      result.failure.type === "invalidInteractingObject" &&
+      result.failure.type === "invalid-interacting-object" &&
         result.failure.reason,
       "decoding",
     );
@@ -740,7 +740,7 @@ test("featureInteraction authenticates fetched requests by their origin", async 
       request: new URL(url),
     });
     assert.equal(result.verified, false);
-    assert.equal(result.failure.type, "unauthenticatedRequester");
+    assert.equal(result.failure.type, "unauthenticated-requester");
   }
 });
 
@@ -1031,9 +1031,9 @@ for (
         authentication: {
           ...await evidenceFor(document, []),
           documentSigners: [{
-            kind: "portableAuthority",
+            kind: "portable-authority",
             id: new URL(portableDid),
-            mechanism: "objectIntegrityProofs",
+            mechanism: "object-integrity-proofs",
             keyId: null,
           }],
         },
@@ -1049,7 +1049,7 @@ for (
       assert.equal(result.verified, false);
       assert.deepEqual(result.failure, {
         category: "invalid",
-        type: "invalidInteractingObject",
+        type: "invalid-interacting-object",
         reason: "attribution",
       });
     }

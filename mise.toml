@@ -20,7 +20,7 @@ pnpm = "10.28.0"
 # check-each, test-each, check-versions) so they run identically on Windows,
 # macOS, and Linux without Bash.
 "aqua:nushell/nushell" = "0.114.0"
-"github:dahlia/sacho" = "0.3.2"
+"github:dahlia/sacho" = "0.3.3"
 
 # Dependency providers <https://mise.jdx.dev/dev-tools/deps.html>
 #

@@ -1,3 +1,4 @@
+import type { ProofSigner } from "../sig/proof.ts";
 import {
   getCanonicalPortableId,
   getPortableDid,
@@ -15,32 +16,32 @@ export interface InboxPrincipal {
    *
    *  -  `"actor"`: an actor whose ownership of the verifying key Fedify
    *     confirmed with the actor's own document.
-   *  -  `"portableAuthority"`: a DID whose verification method made a valid
+   *  -  `"portable-authority"`: a DID whose verification method made a valid
    *     Object Integrity Proof.  It authenticates the [FEP-ef61] portable
    *     actors of that DID, and nothing else.
    *
    * [FEP-ef61]: https://w3id.org/fep/ef61
    */
-  readonly kind: "actor" | "portableAuthority";
+  readonly kind: "actor" | "portable-authority";
 
-  /** The actor ID, or the DID if {@link kind} is `"portableAuthority"`. */
+  /** The actor ID, or the DID if {@link kind} is `"portable-authority"`. */
   readonly id: URL;
 
   /**
    * How the principal was authenticated:
    *
-   *  -  `"httpSignatures"`: it signed the HTTP request.
-   *  -  `"linkedDataSignatures"`: it made the Linked Data Signature of the
+   *  -  `"http-signatures"`: it signed the HTTP request.
+   *  -  `"linked-data-signatures"`: it made the Linked Data Signature of the
    *     activity.
-   *  -  `"objectIntegrityProofs"`: it made an Object Integrity Proof of the
+   *  -  `"object-integrity-proofs"`: it made an Object Integrity Proof of the
    *     activity.
    *  -  `"origin"`: the activity was fetched again from the actor's own web
    *     origin, which happens only for `Context.routeActivity()`.
    */
   readonly mechanism:
-    | "httpSignatures"
-    | "linkedDataSignatures"
-    | "objectIntegrityProofs"
+    | "http-signatures"
+    | "linked-data-signatures"
+    | "object-integrity-proofs"
     | "origin";
 
   /** The key or verification method that authenticated the principal. */
@@ -188,7 +189,7 @@ export function principalAuthenticates(
   principal: InboxPrincipal,
   actorId: URL,
 ): boolean {
-  if (principal.kind === "portableAuthority") {
+  if (principal.kind === "portable-authority") {
     if (!isPortableId(actorId)) return false;
     const did = getPortableDid(actorId);
     return did != null && did === getPortableDid(principal.id);
@@ -236,12 +237,17 @@ export function isActorAuthenticated(
 
 /**
  * A {@link InboxPrincipal} as stored in a queued message.
+ * The wire spellings remain independent of the public API spellings.
  * @internal
  */
 export interface SerializedInboxPrincipal {
-  readonly kind: InboxPrincipal["kind"];
+  readonly kind: "actor" | "portableAuthority";
   readonly id: string;
-  readonly mechanism: InboxPrincipal["mechanism"];
+  readonly mechanism:
+    | "httpSignatures"
+    | "linkedDataSignatures"
+    | "objectIntegrityProofs"
+    | "origin";
   readonly keyId: string | null;
 }
 
@@ -258,13 +264,61 @@ export interface SerializedInboxAuthentication {
   readonly originAuthenticated: readonly SerializedInboxPrincipal[];
 }
 
+const SERIALIZED_KINDS = {
+  actor: "actor",
+  "portable-authority": "portableAuthority",
+} as const satisfies Record<
+  InboxPrincipal["kind"],
+  SerializedInboxPrincipal["kind"]
+>;
+const PUBLIC_KINDS = {
+  actor: "actor",
+  portableAuthority: "portable-authority",
+} as const satisfies Record<
+  SerializedInboxPrincipal["kind"],
+  InboxPrincipal["kind"]
+>;
+const SERIALIZED_MECHANISMS = {
+  "http-signatures": "httpSignatures",
+  "linked-data-signatures": "linkedDataSignatures",
+  "object-integrity-proofs": "objectIntegrityProofs",
+  origin: "origin",
+} as const satisfies Record<
+  InboxPrincipal["mechanism"],
+  SerializedInboxPrincipal["mechanism"]
+>;
+const PUBLIC_MECHANISMS = {
+  httpSignatures: "http-signatures",
+  linkedDataSignatures: "linked-data-signatures",
+  objectIntegrityProofs: "object-integrity-proofs",
+  origin: "origin",
+} as const satisfies Record<
+  SerializedInboxPrincipal["mechanism"],
+  InboxPrincipal["mechanism"]
+>;
+
+/**
+ * Converts an internal proof signer to the public authentication principal.
+ * @param signer The authenticated signer.
+ * @returns The public principal.
+ * @internal
+ */
+export function toProofPrincipal(signer: ProofSigner): InboxPrincipal {
+  return {
+    kind: PUBLIC_KINDS[signer.kind],
+    id: signer.id,
+    mechanism: "object-integrity-proofs",
+    keyId: signer.keyId,
+  };
+}
+
 function serializePrincipal(
   principal: InboxPrincipal,
 ): SerializedInboxPrincipal {
   return {
-    kind: principal.kind,
+    kind: SERIALIZED_KINDS[principal.kind],
     id: principal.id.href,
-    mechanism: principal.mechanism,
+    mechanism: SERIALIZED_MECHANISMS[principal.mechanism],
     keyId: principal.keyId?.href ?? null,
   };
 }
@@ -284,21 +338,17 @@ export function serializeAuthentication(
   };
 }
 
-const KINDS = new Set(["actor", "portableAuthority"]);
-const MECHANISMS = new Set([
-  "httpSignatures",
-  "linkedDataSignatures",
-  "objectIntegrityProofs",
-  "origin",
-]);
-
 function deserializePrincipals(value: unknown): InboxPrincipal[] | null {
   if (!Array.isArray(value)) return null;
   const principals: InboxPrincipal[] = [];
   for (const item of value) {
     if (
-      item == null || typeof item !== "object" || !KINDS.has(item.kind) ||
-      !MECHANISMS.has(item.mechanism) || typeof item.id !== "string" ||
+      item == null || typeof item !== "object" ||
+      !(typeof item.kind === "string" &&
+        Object.hasOwn(PUBLIC_KINDS, item.kind)) ||
+      !(typeof item.mechanism === "string" &&
+        Object.hasOwn(PUBLIC_MECHANISMS, item.mechanism)) ||
+      typeof item.id !== "string" ||
       !URL.canParse(item.id) ||
       (item.keyId != null &&
         (typeof item.keyId !== "string" || !URL.canParse(item.keyId)))
@@ -306,9 +356,11 @@ function deserializePrincipals(value: unknown): InboxPrincipal[] | null {
       return null;
     }
     principals.push(Object.freeze({
-      kind: item.kind,
+      kind: PUBLIC_KINDS[item.kind as SerializedInboxPrincipal["kind"]],
       id: new URL(item.id),
-      mechanism: item.mechanism,
+      mechanism: PUBLIC_MECHANISMS[
+        item.mechanism as SerializedInboxPrincipal["mechanism"]
+      ],
       keyId: item.keyId == null ? null : new URL(item.keyId),
     }));
   }

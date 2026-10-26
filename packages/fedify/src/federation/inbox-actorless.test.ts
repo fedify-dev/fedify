@@ -1,5 +1,14 @@
-import { mockDocumentLoader, test } from "@fedify/fixture";
-import { Create, FeatureRequest, Person } from "@fedify/vocab";
+import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
+import {
+  Create,
+  CryptographicKey,
+  FeatureRequest,
+  Person,
+} from "@fedify/vocab";
 import {
   type DocumentLoader,
   encodeMultibase,
@@ -17,6 +26,7 @@ import {
   rsaPrivateKey2,
   rsaPrivateKey3,
   rsaPublicKey2,
+  rsaPublicKey3,
 } from "../testing/keys.ts";
 import type { InboxContext } from "./context.ts";
 import {
@@ -24,6 +34,8 @@ import {
   isActorAuthenticated,
 } from "./inbox-authentication.ts";
 import { MemoryKvStore } from "./kv.ts";
+import { KvKeyCache } from "./keycache.ts";
+import type { InboxRequestReport } from "./inbox-report.ts";
 import { expandDocument } from "./inbox-view.ts";
 import { createFederation, type InboxContextImpl } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
@@ -84,6 +96,7 @@ class CapturingQueue implements MessageQueue {
 
 interface SetupOptions {
   readonly unavailable?: readonly string[];
+  readonly kv?: MemoryKvStore;
   readonly allowActorless?: boolean;
   readonly queue?: CapturingQueue;
   readonly contextLoads?: string[];
@@ -92,6 +105,8 @@ interface SetupOptions {
 
 function setup(options: SetupOptions = {}) {
   const received: Received[] = [];
+  const reports: InboxRequestReport[] = [];
+  const [tracerProvider, spanExporter] = createTestTracerProvider();
   let mutableLoads = 0;
   // A remote context whose meaning changes every time it is loaded:
   const loader: DocumentLoader = async (url, loaderOptions) => {
@@ -147,7 +162,8 @@ function setup(options: SetupOptions = {}) {
     return await mockDocumentLoader(url, loaderOptions);
   };
   const federation = createFederation<void>({
-    kv: new MemoryKvStore(),
+    kv: options.kv ?? new MemoryKvStore(),
+    tracerProvider,
     documentLoaderFactory: () => loader,
     contextLoaderFactory: () => loader,
     authenticatedDocumentLoaderFactory: () => loader,
@@ -176,8 +192,11 @@ function setup(options: SetupOptions = {}) {
         rawActivity: (ctx as InboxContextImpl<void>).activity,
       });
     }, { allowActorless: options.allowActorless ?? true })
-    .on(Create, () => {});
-  return { federation, received };
+    .on(Create, () => {})
+    .onRequestFinished((_ctx, report) => {
+      reports.push(report);
+    });
+  return { federation, received, reports, spanExporter };
 }
 
 function post(body: unknown): Request {
@@ -305,7 +324,7 @@ test("Actorless FeatureRequest authenticated by HTTP Signatures", async () => {
   assertEquals(authentication.documentSigners, []);
   assertEquals(
     authentication.requestSigners.map((p) => [p.kind, p.id.href, p.mechanism]),
-    [["actor", SIGNER.href, "httpSignatures"]],
+    [["actor", SIGNER.href, "http-signatures"]],
   );
   assert(isActorAuthenticated(authentication, SIGNER));
   assertFalse(
@@ -328,7 +347,7 @@ test("Actorless FeatureRequest authenticated by Linked Data Signatures", async (
       p.id.href,
       p.mechanism,
     ]),
-    [[SIGNER.href, "linkedDataSignatures"]],
+    [[SIGNER.href, "linked-data-signatures"]],
   );
   // The original signed payload is kept for forwarding:
   assertEquals(received[0].rawActivity, document);
@@ -349,7 +368,7 @@ test("Actorless FeatureRequest authenticated by Object Integrity Proofs", async 
       p.mechanism,
       p.keyId?.href,
     ]),
-    [["actor", SIGNER.href, "objectIntegrityProofs", ED25519_KEY.href]],
+    [["actor", SIGNER.href, "object-integrity-proofs", ED25519_KEY.href]],
   );
 });
 
@@ -376,7 +395,7 @@ test("Actorless activities need an authenticated principal", async () => {
 });
 
 test("Actorless activities need the same origin as their signer", async () => {
-  const { federation, received } = setup();
+  const { federation, received, reports, spanExporter } = setup();
   const response = await federation.fetch(
     await postSigned(
       featureRequestDocument({ id: "https://other.example/requests/1" }),
@@ -385,6 +404,56 @@ test("Actorless activities need the same origin as their signer", async () => {
   );
   assertEquals(response.status, 401);
   assertEquals(received, []);
+  assertEquals(reports[0].authentication, {
+    status: "rejected",
+    reason: {
+      type: "activity-origin-mismatch",
+      activityId: new URL("https://other.example/requests/1"),
+      actorIds: [SIGNER],
+    },
+  });
+  assertEquals(
+    spanExporter.getSpans("activitypub.inbox")[0]
+      .attributes["activitypub.verification.failure_reason"],
+    "activity-origin-mismatch",
+  );
+});
+
+test("Actorless activities reject a verified key with no authenticated principal", async () => {
+  const kv = new MemoryKvStore();
+  // A valid cached key can verify the request without identifying an owner.
+  // This exercises the post-verification public rejection, rather than the
+  // earlier path for an unsigned or cryptographically invalid request.
+  await new KvKeyCache(kv, ["_fedify", "publicKey"], {
+    contextLoader: mockDocumentLoader,
+  }).set(
+    RSA_KEY,
+    new CryptographicKey({
+      id: RSA_KEY,
+      publicKey: rsaPublicKey3.publicKey,
+    }),
+  );
+  const { federation, received, reports, spanExporter } = setup({ kv });
+  const response = await federation.fetch(
+    await postSigned(featureRequestDocument()),
+    { contextData: undefined },
+  );
+  assertEquals(response.status, 401);
+  assertEquals(
+    await response.text(),
+    "No principal is authenticated for the activity.",
+  );
+  assertEquals(received, []);
+  assertEquals(reports[0].authentication, {
+    status: "rejected",
+    reason: { type: "no-authenticated-principal" },
+  });
+  assertEquals(reports[0].attempts.at(-1)?.status, "verified");
+  assertEquals(
+    spanExporter.getSpans("activitypub.inbox")[0]
+      .attributes["activitypub.verification.failure_reason"],
+    "no-authenticated-principal",
+  );
 });
 
 for (
@@ -553,7 +622,7 @@ test("Activities with an actor expose their evidence", async () => {
       p.mechanism,
       p.keyId?.href,
     ]),
-    [[SIGNER.href, "httpSignatures", RSA_KEY.href]],
+    [[SIGNER.href, "http-signatures", RSA_KEY.href]],
   );
 });
 
@@ -578,7 +647,7 @@ test("An author's proof is preferred to a relay's Linked Data Signature", async 
       p.id.href,
       p.mechanism,
     ]),
-    [[SIGNER.href, "objectIntegrityProofs"]],
+    [[SIGNER.href, "object-integrity-proofs"]],
   );
 });
 
@@ -629,7 +698,7 @@ test("Context.routeActivity() exposes the evidence of verified proofs", async ()
       p.id.href,
       p.mechanism,
     ]),
-    [[SIGNER.href, "objectIntegrityProofs"]],
+    [[SIGNER.href, "object-integrity-proofs"]],
   );
   assertEquals(received[0].authentication.originAuthenticated, []);
 });
@@ -652,7 +721,7 @@ test("An author's aliased proof is preferred to a relay's signature", async () =
       p.id.href,
       p.mechanism,
     ]),
-    [[SIGNER.href, "objectIntegrityProofs"]],
+    [[SIGNER.href, "object-integrity-proofs"]],
   );
 });
 

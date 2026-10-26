@@ -435,7 +435,7 @@ async function verifyRequest<
           requestId: request.id,
           failure: {
             category: "unauthorized",
-            type: "unauthenticatedRequester",
+            type: "unauthenticated-requester",
           },
         };
       }
@@ -463,7 +463,7 @@ async function verifyRequest<
         requestId: request.id,
         failure: {
           category: "unauthorized",
-          type: "unauthenticatedRequester",
+          type: "unauthenticated-requester",
           requester: request.actorId,
         },
       };
@@ -596,7 +596,7 @@ async function verifyRequest<
         ? { category: "invalid", type: "missingActor" }
         : {
           category: "unauthorized",
-          type: "unauthenticatedRequester",
+          type: "unauthenticated-requester",
           ...(owner == null ? {} : { requester: owner }),
         },
     };
@@ -1119,7 +1119,7 @@ function bindRequest(
     ) {
       return {
         category: "invalid",
-        type: "ambiguousRequest",
+        type: "ambiguous-request",
         property: "object",
       };
     }
@@ -1129,7 +1129,7 @@ function bindRequest(
     ) {
       return {
         category: "invalid",
-        type: "ambiguousRequest",
+        type: "ambiguous-request",
         property: "instrument",
       };
     }
@@ -1137,14 +1137,14 @@ function bindRequest(
   }
   const root = getRootNode(evidence.expanded);
   if (root == null) {
-    return { category: "invalid", type: "ambiguousRequest", property: "id" };
+    return { category: "invalid", type: "ambiguous-request", property: "id" };
   }
   if (!hasType(root, typeId.href)) {
-    return { category: "invalid", type: "ambiguousRequest", property: "type" };
+    return { category: "invalid", type: "ambiguous-request", property: "type" };
   }
   const rootId = resolveNodeId(root, evidence.baseUrl);
   if (rootId == null || !sameId(rootId, request.id)) {
-    return { category: "invalid", type: "ambiguousRequest", property: "id" };
+    return { category: "invalid", type: "ambiguous-request", property: "id" };
   }
   // The decoder resolves references against the given base URL, or against
   // the object's own ID:
@@ -1156,7 +1156,11 @@ function bindRequest(
       sameId(resolveNodeId(actor, base), request.actorIds[i])
     )
   ) {
-    return { category: "invalid", type: "ambiguousRequest", property: "actor" };
+    return {
+      category: "invalid",
+      type: "ambiguous-request",
+      property: "actor",
+    };
   }
   for (
     const [iri, property, missing, id] of [
@@ -1167,7 +1171,7 @@ function bindRequest(
     const values = getPropertyValues(root, iri);
     if (values.length < 1) return { category: "invalid", type: missing };
     if (values.length !== 1 || !sameId(resolveNodeId(values[0], base), id)) {
-      return { category: "invalid", type: "ambiguousRequest", property };
+      return { category: "invalid", type: "ambiguous-request", property };
     }
   }
   return null;
