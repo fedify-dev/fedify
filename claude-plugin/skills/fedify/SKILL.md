@@ -391,7 +391,12 @@ CLI helpers
 -----------
 
 The `fedify` CLI (distributed as *@fedify/cli*) covers bootstrapping and
-debugging:
+debugging. For command examples, output interpretation, and federation
+diagnostics, use the separate `fedify-cli` skill, distributed through the
+Claude Code plugin and the `@fedify/cli` npm package. The CLI also works with
+ActivityPub servers built without Fedify.
+
+The CLI includes:
 
  -  `fedify init`: scaffold a new project (pick web framework, package
     manager, KV store, and message queue).
