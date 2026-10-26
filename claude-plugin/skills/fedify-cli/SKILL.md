@@ -89,17 +89,27 @@ instance and does not establish that a particular actor or inbox works.
 2.  Run `lookup` on that `self` URL. If this works while the handle fails,
     focus on WebFinger discovery, redirects, and the advertised link.
 
-3.  Compare the normal parsed output with the raw document:
+3.  Choose a JSON output format after a successful lookup:
 
     ~~~~ sh
     fedify lookup --raw https://example.com/users/alice
     fedify nodeinfo --raw example.com
     ~~~~
 
-    `lookup` normally prints a vocabulary object, not JSON. `--raw` prints
-    fetched JSON; `--compact` and `--expand` select JSON-LD forms. These
-    three format options are mutually exclusive. A raw document can help
-    distinguish a fetch problem from a JSON-LD or vocabulary parsing error.
+    `lookup` normally prints a vocabulary object. Its `--raw` option
+    serializes the parsed object back to JSON-LD. `--compact` and `--expand`
+    select other JSON-LD forms. These three format options are mutually
+    exclusive, and all require successful parsing. To investigate a parsing
+    failure, request the resource directly with an ActivityPub `Accept`
+    header:
+
+    ~~~~ sh
+    curl -i -H 'Accept: application/activity+json' https://example.com/users/alice
+    ~~~~
+
+    Inspect the status, `Content-Type`, and response body. This unsigned
+    request may receive a different response from a server that requires
+    signed fetch.
 
 4.  Record the exact command, CLI version, exit status, and error. Check
     DNS/TLS, HTTP errors, redirects, and content negotiation as indicated by
@@ -178,8 +188,8 @@ Compare WebFinger `self` links, actor IDs, and any advertised `movedTo` or
 `alsoKnownAs` relationships. A matching display name is not evidence that two
 actors are the same identity. This is an inspection workflow; it does not
 move accounts or send a `Move` activity. For a reproducible diagnostic
-artifact, `lookup --raw --output actor.json <actor-url>` saves one fetched
-document. Review private content before sharing it, and remember that a
+artifact, `lookup --raw --output actor.json <actor-url>` saves the parsed
+actor as JSON-LD. Review private content before sharing it, and remember that a
 multi-target output uses separators rather than forming a JSON array.
 
 ### Separate portable identity from gateway availability
