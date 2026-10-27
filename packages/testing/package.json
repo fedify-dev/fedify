@@ -59,7 +59,6 @@
   "devDependencies": {
     "@fedify/fixture": "workspace:^",
     "@standard-schema/spec": "catalog:",
-    "@std/assert": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

@@ -2,7 +2,7 @@ import { suite } from "@alinea/suite";
 import { AmqpMessageQueue } from "@fedify/amqp/mq";
 import { getRandomKey, testMessageQueue, waitFor } from "@fedify/testing";
 import * as temporal from "@js-temporal/polyfill";
-import { assert, assertEquals, assertFalse, assertGreater } from "@std/assert";
+import { deepStrictEqual, ok } from "node:assert/strict";
 import { setTimeout as delay } from "node:timers/promises";
 // @deno-types="npm:@types/amqplib"
 import { type Channel, type ChannelModel, connect } from "amqplib";
@@ -16,7 +16,7 @@ const test = AMQP_URL ? unitTest : unitTest.skip;
 
 unitTest("AmqpMessageQueue declares non-atomic batch enqueueing", () => {
   const mq = new AmqpMessageQueue({} as ChannelModel);
-  assertFalse(mq.atomicEnqueueMany);
+  ok(!(mq.atomicEnqueueMany));
 });
 
 class FakeDepthChannel {
@@ -121,12 +121,12 @@ unitTest(
       delay: Temporal.Duration.from({ milliseconds: 3_000 }),
     });
 
-    assertEquals(await mq.getDepth(), {
+    deepStrictEqual(await mq.getDepth(), {
       queued: 3,
       ready: 0,
       delayed: 3,
     });
-    assertGreater(conn.maxActiveChecks, 1);
+    ok((conn.maxActiveChecks) > (1));
   },
 );
 
@@ -141,7 +141,7 @@ unitTest("AmqpMessageQueue sets delayed queue expiry", async () => {
     delay: Temporal.Duration.from({ milliseconds: 1_000 }),
   });
 
-  assertEquals(conn.queueExpires.get("delayed_1000"), 61_000);
+  deepStrictEqual(conn.queueExpires.get("delayed_1000"), 61_000);
 });
 
 unitTest(
@@ -158,9 +158,9 @@ unitTest(
       delay: Temporal.Duration.from({ milliseconds: 1_000 }),
     });
 
-    assertEquals(conn.messageCounts.get("delayed_1000"), 1);
-    assertEquals(conn.queueExpires.get("delayed_1000"), undefined);
-    assertGreater(conn.channelCount, 1);
+    deepStrictEqual(conn.messageCounts.get("delayed_1000"), 1);
+    deepStrictEqual(conn.queueExpires.get("delayed_1000"), undefined);
+    ok((conn.channelCount) > (1));
   },
 );
 
@@ -178,12 +178,12 @@ unitTest("AmqpMessageQueue reuses depth probe channels", async () => {
   }
   conn.channelCount = 0;
 
-  assertEquals(await mq.getDepth(), {
+  deepStrictEqual(await mq.getDepth(), {
     queued: 12,
     ready: 0,
     delayed: 12,
   });
-  assert(
+  ok(
     conn.channelCount <= 9,
     `expected at most 9 depth probe channels, got ${conn.channelCount}`,
   );
@@ -204,7 +204,7 @@ unitTest(
       });
     }
 
-    assertEquals(await mq.getDepth(), {
+    deepStrictEqual(await mq.getDepth(), {
       queued: 4097,
       ready: 0,
       delayed: 4097,
@@ -230,7 +230,7 @@ unitTest(
       });
       Date.now = () => started + 62_000;
 
-      assertEquals(await mq.getDepth(), {
+      deepStrictEqual(await mq.getDepth(), {
         queued: 1,
         ready: 0,
         delayed: 1,
@@ -277,7 +277,7 @@ test(
     const delayedQueuePrefix = getRandomKey("depth_delayed") + "_";
     const mq = new AmqpMessageQueue(conn, { queue, delayedQueuePrefix });
     try {
-      assertEquals(await mq.getDepth(), {
+      deepStrictEqual(await mq.getDepth(), {
         queued: 0,
         ready: 0,
         delayed: 0,
@@ -294,7 +294,7 @@ test(
         }
         await delay(100);
       }
-      assertEquals(await mq.getDepth(), {
+      deepStrictEqual(await mq.getDepth(), {
         queued: 2,
         ready: 1,
         delayed: 1,
@@ -363,7 +363,7 @@ test(
     const queue = `fedify_queue_${randomSuffix}`;
     const delayedQueuePrefix = `fedify_delayed_${randomSuffix}_`;
     const mq = new AmqpMessageQueue(conn, { queue, delayedQueuePrefix });
-    assertFalse(mq.nativeRetrial);
+    ok(!(mq.nativeRetrial));
 
     const controller = new AbortController();
     let i = 0;
@@ -377,14 +377,14 @@ test(
     await mq.enqueue("Hello, world!");
 
     await waitFor(() => i >= 1, 15_000);
-    assertEquals(i, 1);
+    deepStrictEqual(i, 1);
     await delay(5_000);
 
     controller.abort();
     await listening;
     await conn.close();
 
-    assertEquals(i, 1);
+    deepStrictEqual(i, 1);
   },
 );
 
@@ -401,7 +401,7 @@ test(
       delayedQueuePrefix,
       nativeRetrial: true,
     });
-    assert(mq.nativeRetrial);
+    ok(mq.nativeRetrial);
 
     const controller = new AbortController();
     let i = 0;
@@ -420,6 +420,6 @@ test(
     await listening;
     await conn.close();
 
-    assertGreater(i, 1);
+    ok(i > (1));
   },
 );

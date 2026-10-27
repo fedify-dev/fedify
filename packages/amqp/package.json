@@ -58,7 +58,6 @@
     "@alinea/suite": "^0.6.3",
     "@fedify/testing": "workspace:^",
     "@js-temporal/polyfill": "catalog:",
-    "@std/assert": "catalog:",
     "@types/amqplib": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

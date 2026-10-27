@@ -23,13 +23,13 @@ import {
   toCompatibleEf61Id,
 } from "@fedify/vocab-runtime";
 import {
-  assertEquals,
-  assertInstanceOf,
-  assertNotStrictEquals,
-  assertRejects,
-  assertStrictEquals,
-  assertThrows,
-} from "@std/assert";
+  deepStrictEqual,
+  notStrictEqual,
+  ok,
+  rejects,
+  strictEqual,
+  throws,
+} from "node:assert/strict";
 import {
   ed25519PublicKey,
   rsaPrivateKey3,
@@ -57,8 +57,8 @@ test("MockFederation preserves telemetry providers with private-address loaders"
       new URL("https://example.com/"),
       {},
     );
-    assertStrictEquals(context.meterProvider, meterProvider);
-    assertStrictEquals(context.tracerProvider, tracerProvider);
+    strictEqual(context.meterProvider, meterProvider);
+    strictEqual(context.tracerProvider, tracerProvider);
   }
 });
 
@@ -75,12 +75,12 @@ test("MockFederation actor setters support chaining in any order", () => {
     () => setters.authorize(() => true),
   ];
   for (const first of configure) {
-    assertStrictEquals(first(), setters);
+    strictEqual(first(), setters);
     for (const second of configure) {
-      assertStrictEquals(second(), setters);
+      strictEqual(second(), setters);
     }
   }
-  assertStrictEquals(
+  strictEqual(
     setters.setKeyPairsDispatcher(() => [])
       .mapHandle((_ctx, handle) => handle)
       .mapAlias(() => null)
@@ -97,8 +97,8 @@ test("MockFederation object setters support chaining authorize", () => {
     "/notes/{id}",
     () => null,
   );
-  assertStrictEquals(setters.authorize(() => true), setters);
-  assertStrictEquals(
+  strictEqual(setters.authorize(() => true), setters);
+  strictEqual(
     setters.authorize(() => true).authorize(() => false),
     setters,
   );
@@ -123,11 +123,11 @@ for (
         method === "setOrderedCollectionDispatcher"
       ? federation[method]("notes", Note, "/notes/{identifier}", () => null)
       : federation[method]("/users/{identifier}/collection", () => null);
-    assertStrictEquals(setters.setCounter(() => 0), setters);
-    assertStrictEquals(setters.setFirstCursor(() => null), setters);
-    assertStrictEquals(setters.setLastCursor(() => null), setters);
-    assertStrictEquals(setters.authorize(() => true), setters);
-    assertStrictEquals(
+    strictEqual(setters.setCounter(() => 0), setters);
+    strictEqual(setters.setFirstCursor(() => null), setters);
+    strictEqual(setters.setLastCursor(() => null), setters);
+    strictEqual(setters.authorize(() => true), setters);
+    strictEqual(
       setters.authorize(() => true)
         .setCounter(() => 0)
         .setFirstCursor(() => null)
@@ -135,7 +135,7 @@ for (
         .authorize(() => false),
       setters,
     );
-    assertStrictEquals(
+    strictEqual(
       setters.setLastCursor(() => null)
         .setFirstCursor(() => null)
         .setCounter(() => 0)
@@ -171,10 +171,10 @@ test("getSentActivities returns sent activities", async () => {
   );
 
   // Check that the activity was recorded
-  assertEquals(mockFederation.sentActivities.length, 1);
-  assertEquals(mockFederation.sentActivities[0].activity, activity);
-  assertEquals(mockFederation.sentActivities[0].queued, false);
-  assertEquals(mockFederation.sentActivities[0].sentOrder, 1);
+  deepStrictEqual(mockFederation.sentActivities.length, 1);
+  strictEqual(mockFederation.sentActivities[0].activity, activity);
+  deepStrictEqual(mockFederation.sentActivities[0].queued, false);
+  deepStrictEqual(mockFederation.sentActivities[0].sentOrder, 1);
 });
 
 test("reset clears sent activities", async () => {
@@ -197,21 +197,21 @@ test("reset clears sent activities", async () => {
   );
 
   // Verify it was sent
-  assertEquals(mockFederation.sentActivities.length, 1);
-  assertEquals(mockFederation.sentActivities[0].activity, activity);
+  deepStrictEqual(mockFederation.sentActivities.length, 1);
+  strictEqual(mockFederation.sentActivities[0].activity, activity);
 
   // Clear sent activities
   mockFederation.reset();
 
   // Verify they were cleared
-  assertEquals(mockFederation.sentActivities.length, 0);
+  deepStrictEqual(mockFederation.sentActivities.length, 0);
 });
 
 test("MockFederation accepts inbox request observation registration", () => {
   const federation = createFederation<void>();
   const setters = federation.setInboxListeners("/users/{identifier}/inbox");
-  assertStrictEquals(setters.onRequestFinished(() => {}), setters);
-  assertStrictEquals(setters.on(Create, () => {}), setters);
+  strictEqual(setters.onRequestFinished(() => {}), setters);
+  strictEqual(setters.on(Create, () => {}), setters);
 });
 
 test("receiveActivity triggers inbox listeners", async () => {
@@ -245,7 +245,12 @@ test("receiveActivity triggers inbox listeners", async () => {
   await mockFederation.receiveActivity(activity);
 
   // Verify the listener was triggered
-  assertEquals(receivedActivity, activity);
+  const received = receivedActivity as Create | null;
+  ok(received instanceof Create);
+  deepStrictEqual(
+    await received.toJsonLd({ format: "expand" }),
+    await activity.toJsonLd({ format: "expand" }),
+  );
 });
 
 test("postOutboxActivity triggers outbox listeners", async () => {
@@ -288,9 +293,9 @@ test("postOutboxActivity triggers outbox listeners", async () => {
 
   await mockFederation.postOutboxActivity("alice", activity);
 
-  assertEquals(receivedIdentifier, "alice");
-  assertEquals(mockFederation.sentActivities.length, 1);
-  assertEquals(mockFederation.sentActivities[0].activity, activity);
+  deepStrictEqual(receivedIdentifier, "alice");
+  deepStrictEqual(mockFederation.sentActivities.length, 1);
+  strictEqual(mockFederation.sentActivities[0].activity, activity);
 });
 
 test("postOutboxActivity supports forwardActivity", async () => {
@@ -326,8 +331,8 @@ test("postOutboxActivity supports forwardActivity", async () => {
 
   await mockFederation.postOutboxActivity("alice", activity);
 
-  assertEquals(mockFederation.sentActivities.length, 1);
-  assertEquals(mockFederation.sentActivities[0].activity, activity);
+  deepStrictEqual(mockFederation.sentActivities.length, 1);
+  strictEqual(mockFederation.sentActivities[0].activity, activity);
 });
 
 test("postOutboxActivity forwardActivity respects skipIfUnsigned", async () => {
@@ -364,7 +369,7 @@ test("postOutboxActivity forwardActivity respects skipIfUnsigned", async () => {
 
   await mockFederation.postOutboxActivity("alice", activity);
 
-  assertEquals(mockFederation.sentActivities.length, 0);
+  deepStrictEqual(mockFederation.sentActivities.length, 0);
 });
 
 test(
@@ -414,9 +419,9 @@ test(
 
     await mockFederation.postOutboxActivity("alice", activity);
 
-    assertEquals(mockFederation.sentActivities.length, 1);
-    assertEquals(mockFederation.sentActivities[0].activity, activity);
-    assertEquals(mockFederation.sentActivities[0].rawActivity, signedJson);
+    deepStrictEqual(mockFederation.sentActivities.length, 1);
+    strictEqual(mockFederation.sentActivities[0].activity, activity);
+    deepStrictEqual(mockFederation.sentActivities[0].rawActivity, signedJson);
   },
 );
 
@@ -469,9 +474,9 @@ test(
 
     await mockFederation.postOutboxActivity("alice", activity);
 
-    assertEquals(mockFederation.sentActivities.length, 1);
-    assertEquals(mockFederation.sentActivities[0].activity, activity);
-    assertEquals(mockFederation.sentActivities[0].rawActivity, signedJson);
+    deepStrictEqual(mockFederation.sentActivities.length, 1);
+    strictEqual(mockFederation.sentActivities[0].activity, activity);
+    deepStrictEqual(mockFederation.sentActivities[0].rawActivity, signedJson);
   },
 );
 
@@ -530,9 +535,9 @@ test(
 
     await mockFederation.postOutboxActivity("alice", activity);
 
-    assertEquals(mockFederation.sentActivities.length, 1);
-    assertEquals(mockFederation.sentActivities[0].activity, activity);
-    assertEquals(mockFederation.sentActivities[0].rawActivity, proofJson);
+    deepStrictEqual(mockFederation.sentActivities.length, 1);
+    strictEqual(mockFederation.sentActivities[0].activity, activity);
+    deepStrictEqual(mockFederation.sentActivities[0].rawActivity, proofJson);
   },
 );
 
@@ -581,7 +586,7 @@ test(
 
     await mockFederation.postOutboxActivity("alice", activity);
 
-    assertEquals(mockFederation.sentActivities.length, 0);
+    deepStrictEqual(mockFederation.sentActivities.length, 0);
   },
 );
 
@@ -616,7 +621,7 @@ test("postOutboxActivity prefers the most specific listener", async () => {
 
   await mockFederation.postOutboxActivity("alice", activity);
 
-  assertEquals(calls, ["Create"]);
+  deepStrictEqual(calls, ["Create"]);
 });
 
 test(
@@ -647,7 +652,7 @@ test(
 
     await mockFederation.postOutboxActivity("alice", activity);
 
-    assertEquals(calls, ["IntransitiveActivity"]);
+    deepStrictEqual(calls, ["IntransitiveActivity"]);
   },
 );
 
@@ -677,12 +682,15 @@ test("postOutboxActivity rejects actor mismatch before dispatch", async () => {
     actor: new URL("https://example.com/users/bob"),
   });
 
-  await assertRejects(
+  await rejects(
     () => mockFederation.postOutboxActivity("alice", activity),
-    Error,
-    "The activity actor does not match the outbox owner.",
+    (error) =>
+      error instanceof Error &&
+      error.message.includes(
+        "The activity actor does not match the outbox owner.",
+      ),
   );
-  assertEquals(called, false);
+  deepStrictEqual(called, false);
 });
 
 test("postOutboxActivity routes owner mismatch through onError", async () => {
@@ -714,12 +722,18 @@ test("postOutboxActivity routes owner mismatch through onError", async () => {
     actor: new URL("https://example.com/users/bob"),
   });
 
-  await assertRejects(
+  await rejects(
     () => mockFederation.postOutboxActivity("alice", activity),
-    Error,
+    (error) =>
+      error instanceof Error &&
+      error.message.includes(
+        "The activity actor does not match the outbox owner.",
+      ),
+  );
+  deepStrictEqual(
+    handled,
     "The activity actor does not match the outbox owner.",
   );
-  assertEquals(handled, "The activity actor does not match the outbox owner.");
 });
 
 test("postOutboxActivity routes missing actor through onError", async () => {
@@ -750,12 +764,13 @@ test("postOutboxActivity routes missing actor through onError", async () => {
     id: new URL("https://example.com/activities/1"),
   });
 
-  await assertRejects(
+  await rejects(
     () => mockFederation.postOutboxActivity("alice", activity),
-    Error,
-    "The posted activity has no actor.",
+    (error) =>
+      error instanceof Error &&
+      error.message.includes("The posted activity has no actor."),
   );
-  assertEquals(handled, "The posted activity has no actor.");
+  deepStrictEqual(handled, "The posted activity has no actor.");
 });
 
 test("postOutboxActivity onError can forward after validation failure", async () => {
@@ -789,14 +804,17 @@ test("postOutboxActivity onError can forward after validation failure", async ()
     actor: new URL("https://example.com/users/bob"),
   });
 
-  await assertRejects(
+  await rejects(
     () => mockFederation.postOutboxActivity("alice", activity),
-    Error,
-    "The activity actor does not match the outbox owner.",
+    (error) =>
+      error instanceof Error &&
+      error.message.includes(
+        "The activity actor does not match the outbox owner.",
+      ),
   );
-  assertEquals(mockFederation.sentActivities.length, 1);
-  assertEquals(mockFederation.sentActivities[0].activity, activity);
-  assertEquals(mockFederation.sentActivities[0].rawActivity != null, true);
+  deepStrictEqual(mockFederation.sentActivities.length, 1);
+  strictEqual(mockFederation.sentActivities[0].activity, activity);
+  deepStrictEqual(mockFederation.sentActivities[0].rawActivity != null, true);
 });
 
 test("postOutboxActivity missing owner does not invoke onError", async () => {
@@ -819,12 +837,13 @@ test("postOutboxActivity missing owner does not invoke onError", async () => {
     actor: new URL("https://example.com/users/alice"),
   });
 
-  await assertRejects(
+  await rejects(
     () => mockFederation.postOutboxActivity("alice", activity),
-    Error,
-    'Actor "alice" not found.',
+    (error) =>
+      error instanceof Error &&
+      error.message.includes('Actor "alice" not found.'),
   );
-  assertEquals(handled, false);
+  deepStrictEqual(handled, false);
 });
 
 test(
@@ -858,7 +877,7 @@ test(
 
     await mockFederation.postOutboxActivity("alice", activity);
 
-    assertEquals(called, true);
+    deepStrictEqual(called, true);
   },
 );
 
@@ -879,12 +898,13 @@ test("postOutboxActivity rejects missing actors before dispatch", async () => {
     actor: new URL("https://example.com/users/alice"),
   });
 
-  await assertRejects(
+  await rejects(
     () => mockFederation.postOutboxActivity("alice", activity),
-    Error,
-    'Actor "alice" not found.',
+    (error) =>
+      error instanceof Error &&
+      error.message.includes('Actor "alice" not found.'),
   );
-  assertEquals(called, false);
+  deepStrictEqual(called, false);
 });
 
 test("postOutboxActivity enforces authorize predicate", async () => {
@@ -914,12 +934,12 @@ test("postOutboxActivity enforces authorize predicate", async () => {
     actor: new URL("https://example.com/users/alice"),
   });
 
-  await assertRejects(
+  await rejects(
     () => mockFederation.postOutboxActivity("alice", activity),
-    Error,
-    "Unauthorized.",
+    (error) =>
+      error instanceof Error && error.message.includes("Unauthorized."),
   );
-  assertEquals(called, false);
+  deepStrictEqual(called, false);
 });
 
 test("postOutboxActivity authorize predicate can inspect posted body", async () => {
@@ -955,13 +975,13 @@ test("postOutboxActivity authorize predicate can inspect posted body", async () 
 
   await mockFederation.postOutboxActivity("alice", activity);
 
-  assertEquals(seenBody.length > 0, true);
-  assertEquals(
+  deepStrictEqual(seenBody.length > 0, true);
+  deepStrictEqual(
     seenBody.includes('"https://www.w3.org/ns/activitystreams#actor"'),
     true,
   );
-  assertEquals(seenBody.includes("alice"), true);
-  assertEquals(called, true);
+  deepStrictEqual(seenBody.includes("alice"), true);
+  deepStrictEqual(called, true);
 });
 
 test("postOutboxActivity falls back to dispatcher authorize predicate", async () => {
@@ -993,12 +1013,12 @@ test("postOutboxActivity falls back to dispatcher authorize predicate", async ()
     actor: new URL("https://example.com/users/alice"),
   });
 
-  await assertRejects(
+  await rejects(
     () => mockFederation.postOutboxActivity("alice", activity),
-    Error,
-    "Unauthorized.",
+    (error) =>
+      error instanceof Error && error.message.includes("Unauthorized."),
   );
-  assertEquals(called, false);
+  deepStrictEqual(called, false);
 });
 
 test(
@@ -1028,12 +1048,15 @@ test(
       actor: new URL("https://example.com/users/alice"),
     });
 
-    await assertRejects(
+    await rejects(
       () => mockFederation.postOutboxActivity("alice", activity),
-      Error,
-      "MockFederation.postOutboxActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before posting activities.",
+      (error) =>
+        error instanceof Error &&
+        error.message.includes(
+          "MockFederation.postOutboxActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before posting activities.",
+        ),
     );
-    assertEquals(authorizeCalled, false);
+    deepStrictEqual(authorizeCalled, false);
   },
 );
 
@@ -1054,10 +1077,13 @@ test("postOutboxActivity fails fast without outbox listeners", async () => {
     actor: new URL("https://example.com/users/alice"),
   });
 
-  await assertRejects(
+  await rejects(
     () => mockFederation.postOutboxActivity("alice", activity),
-    Error,
-    "MockFederation.postOutboxActivity(): setOutboxListeners() is not initialized.",
+    (error) =>
+      error instanceof Error &&
+      error.message.includes(
+        "MockFederation.postOutboxActivity(): setOutboxListeners() is not initialized.",
+      ),
   );
 });
 
@@ -1074,10 +1100,13 @@ test("postOutboxActivity with only dispatcher still fails fast", async () => {
     actor: new URL("https://example.com/users/alice"),
   });
 
-  await assertRejects(
+  await rejects(
     () => mockFederation.postOutboxActivity("alice", activity),
-    Error,
-    "MockFederation.postOutboxActivity(): setOutboxListeners() is not initialized.",
+    (error) =>
+      error instanceof Error &&
+      error.message.includes(
+        "MockFederation.postOutboxActivity(): setOutboxListeners() is not initialized.",
+      ),
   );
 });
 
@@ -1100,7 +1129,7 @@ test("postOutboxActivity without matching listener is a no-op", async () => {
 
   await mockFederation.postOutboxActivity("alice", activity);
 
-  assertEquals(mockFederation.sentActivities.length, 0);
+  deepStrictEqual(mockFederation.sentActivities.length, 0);
 });
 
 test(
@@ -1130,10 +1159,13 @@ test(
       actor: new URL("https://example.com/users/bob"),
     });
 
-    await assertRejects(
+    await rejects(
       () => mockFederation.postOutboxActivity("alice", activity),
-      Error,
-      "The activity actor does not match the outbox owner.",
+      (error) =>
+        error instanceof Error &&
+        error.message.includes(
+          "The activity actor does not match the outbox owner.",
+        ),
     );
   },
 );
@@ -1167,12 +1199,11 @@ test("postOutboxActivity invokes outbox error handler", async () => {
     actor: new URL("https://example.com/users/alice"),
   });
 
-  await assertRejects(
+  await rejects(
     () => mockFederation.postOutboxActivity("alice", activity),
-    Error,
-    "Boom",
+    (error) => error instanceof Error && error.message.includes("Boom"),
   );
-  assertEquals(handled, "Boom");
+  deepStrictEqual(handled, "Boom");
 });
 
 test("setOutboxListeners rejects duplicate listeners for the same type", () => {
@@ -1183,10 +1214,7 @@ test("setOutboxListeners rejects duplicate listeners for the same type", () => {
 
   listeners.on(Create, () => {});
 
-  assertThrows(
-    () => listeners.on(Create, () => {}),
-    TypeError,
-  );
+  throws(() => listeners.on(Create, () => {}), TypeError);
 });
 
 test("setOutboxListeners rejects duplicate registration", () => {
@@ -1196,10 +1224,11 @@ test("setOutboxListeners rejects duplicate registration", () => {
 
   mockFederation.setOutboxListeners("/users/{identifier}/outbox");
 
-  assertThrows(
+  throws(
     () => mockFederation.setOutboxListeners("/users/{identifier}/outbox"),
-    TypeError,
-    "Outbox listeners already set.",
+    (error) =>
+      error instanceof TypeError &&
+      error.message.includes("Outbox listeners already set."),
   );
 });
 
@@ -1208,13 +1237,14 @@ test("setOutboxListeners requires a leading slash", () => {
     contextData: { test: "data" },
   });
 
-  assertThrows(
+  throws(
     () =>
       mockFederation.setOutboxListeners(
         "users/{identifier}/outbox" as `${string}{identifier}${string}`,
       ),
-    TypeError,
-    "Path must start with a slash.",
+    (error) =>
+      error instanceof TypeError &&
+      error.message.includes("Path must start with a slash."),
   );
 });
 
@@ -1223,14 +1253,15 @@ test("setOutboxDispatcher requires a leading slash", () => {
     contextData: { test: "data" },
   });
 
-  assertThrows(
+  throws(
     () =>
       mockFederation.setOutboxDispatcher(
         "users/{identifier}/outbox",
         () => ({ items: [] }),
       ),
-    TypeError,
-    "Path must start with a slash.",
+    (error) =>
+      error instanceof TypeError &&
+      error.message.includes("Path must start with a slash."),
   );
 });
 
@@ -1243,10 +1274,13 @@ test("setOutboxListeners validates dispatcher path compatibility", () => {
     items: [],
   }));
 
-  assertThrows(
+  throws(
     () => mockFederation.setOutboxListeners("/actors/{identifier}/outbox"),
-    TypeError,
-    "Outbox listener path and outbox dispatcher path must match.",
+    (error) =>
+      error instanceof TypeError &&
+      error.message.includes(
+        "Outbox listener path and outbox dispatcher path must match.",
+      ),
   );
 });
 
@@ -1257,13 +1291,16 @@ test("setOutboxDispatcher validates listener path compatibility", () => {
 
   mockFederation.setOutboxListeners("/users/{identifier}/outbox");
 
-  assertThrows(
+  throws(
     () =>
       mockFederation.setOutboxDispatcher("/actors/{identifier}/outbox", () => ({
         items: [],
       })),
-    TypeError,
-    "Outbox listener path and outbox dispatcher path must match.",
+    (error) =>
+      error instanceof TypeError &&
+      error.message.includes(
+        "Outbox listener path and outbox dispatcher path must match.",
+      ),
   );
 });
 
@@ -1272,20 +1309,26 @@ test("setOutboxListeners validates path variables", () => {
     contextData: { test: "data" },
   });
 
-  assertThrows(
+  throws(
     () =>
       mockFederation.setOutboxListeners(
         "/users/outbox" as `${string}{identifier}${string}`,
       ),
-    TypeError,
-    "Path for outbox must have exactly one variable named identifier.",
+    (error) =>
+      error instanceof TypeError &&
+      error.message.includes(
+        "Path for outbox must have exactly one variable named identifier.",
+      ),
   );
 
-  assertThrows(
+  throws(
     () =>
       mockFederation.setOutboxListeners("/users/{identifier}/outbox/{extra}"),
-    TypeError,
-    "Path for outbox must have exactly one variable named identifier.",
+    (error) =>
+      error instanceof TypeError &&
+      error.message.includes(
+        "Path for outbox must have exactly one variable named identifier.",
+      ),
   );
 });
 
@@ -1323,7 +1366,7 @@ test("mock outbox context tracks delivery state", async () => {
 
   await mockFederation.postOutboxActivity("alice", activity);
 
-  assertEquals(deliveryStates, [false, true]);
+  deepStrictEqual(deliveryStates, [false, true]);
 });
 
 test("createOutboxContext exposes identifier", () => {
@@ -1334,8 +1377,8 @@ test("createOutboxContext exposes identifier", () => {
     identifier: "alice",
   });
 
-  assertEquals((ctx as OutboxContext<void>).identifier, "alice");
-  assertEquals(ctx.clone(undefined).identifier, "alice");
+  deepStrictEqual((ctx as OutboxContext<void>).identifier, "alice");
+  deepStrictEqual(ctx.clone(undefined).identifier, "alice");
 });
 
 test("MockContext tracks sent activities", async () => {
@@ -1363,8 +1406,8 @@ test("MockContext tracks sent activities", async () => {
   );
 
   // Check that the activity was recorded in the federation
-  assertEquals(mockFederation.sentActivities.length, 1);
-  assertEquals(mockFederation.sentActivities[0].activity, activity);
+  deepStrictEqual(mockFederation.sentActivities.length, 1);
+  strictEqual(mockFederation.sentActivities[0].activity, activity);
 });
 
 test("MockContext URI methods should work correctly", () => {
@@ -1375,33 +1418,33 @@ test("MockContext URI methods should work correctly", () => {
   );
 
   // Test URI generation methods
-  assertEquals(
+  deepStrictEqual(
     mockContext.getActorUri("alice").href,
     "https://example.com/users/alice",
   );
-  assertEquals(
+  deepStrictEqual(
     mockContext.getInboxUri("alice").href,
     "https://example.com/users/alice/inbox",
   );
-  assertEquals(mockContext.getInboxUri().href, "https://example.com/inbox");
-  assertEquals(
+  deepStrictEqual(mockContext.getInboxUri().href, "https://example.com/inbox");
+  deepStrictEqual(
     mockContext.getOutboxUri("alice").href,
     "https://example.com/users/alice/outbox",
   );
-  assertEquals(
+  deepStrictEqual(
     mockContext.getFollowingUri("alice").href,
     "https://example.com/users/alice/following",
   );
-  assertEquals(
+  deepStrictEqual(
     mockContext.getFollowersUri("alice").href,
     "https://example.com/users/alice/followers",
   );
 
   const actorUri = new URL("https://example.com/users/alice");
   const parsed = mockContext.parseUri(actorUri);
-  assertEquals(parsed?.type, "actor");
+  deepStrictEqual(parsed?.type, "actor");
   if (parsed?.type === "actor") {
-    assertEquals(parsed.identifier, "alice");
+    deepStrictEqual(parsed.identifier, "alice");
   }
 });
 
@@ -1449,47 +1492,47 @@ test("MockContext URI methods respect registered paths", () => {
   );
 
   // Test that URIs use the registered paths
-  assertEquals(
+  deepStrictEqual(
     context.getNodeInfoUri().href,
     "https://example.com/.well-known/nodeinfo",
   );
-  assertEquals(
+  deepStrictEqual(
     context.getActorUri("alice").href,
     "https://example.com/actors/alice",
   );
-  assertEquals(
+  deepStrictEqual(
     context.getObjectUri(Note, { id: "123" }).href,
     "https://example.com/notes/123",
   );
-  assertEquals(
+  deepStrictEqual(
     context.getInboxUri("alice").href,
     "https://example.com/actors/alice/inbox",
   );
-  assertEquals(
+  deepStrictEqual(
     context.getInboxUri().href,
     "https://example.com/shared-inbox",
   );
-  assertEquals(
+  deepStrictEqual(
     context.getOutboxUri("alice").href,
     "https://example.com/actors/alice/outbox",
   );
-  assertEquals(
+  deepStrictEqual(
     context.getFollowingUri("alice").href,
     "https://example.com/actors/alice/following",
   );
-  assertEquals(
+  deepStrictEqual(
     context.getFollowersUri("alice").href,
     "https://example.com/actors/alice/followers",
   );
-  assertEquals(
+  deepStrictEqual(
     context.getLikedUri("alice").href,
     "https://example.com/actors/alice/liked",
   );
-  assertEquals(
+  deepStrictEqual(
     context.getFeaturedUri("alice").href,
     "https://example.com/actors/alice/featured",
   );
-  assertEquals(
+  deepStrictEqual(
     context.getFeaturedTagsUri("alice").href,
     "https://example.com/actors/alice/tags",
   );
@@ -1504,7 +1547,7 @@ test("MockContext getOutboxUri respects outbox listener path", () => {
     undefined,
   );
 
-  assertEquals(
+  deepStrictEqual(
     context.getOutboxUri("alice").href,
     "https://example.com/actors/alice/outbox",
   );
@@ -1519,7 +1562,7 @@ test("MockContext getOutboxUri supports reserved expansion", () => {
     undefined,
   );
 
-  assertEquals(
+  deepStrictEqual(
     context.getOutboxUri("alice/profile").href,
     "https://example.com/actors/alice/profile/outbox",
   );
@@ -1534,7 +1577,7 @@ test("MockContext getOutboxUri supports path-segment expansion", () => {
     undefined,
   );
 
-  assertEquals(
+  deepStrictEqual(
     context.getOutboxUri("alice/profile").href,
     "https://example.com/actors/alice%2Fprofile/outbox",
   );
@@ -1542,10 +1585,13 @@ test("MockContext getOutboxUri supports path-segment expansion", () => {
 
 test("MockContext rejects query expansion for outbox paths", () => {
   const mockFederation = createFederation<void>();
-  assertThrows(
+  throws(
     () => mockFederation.setOutboxListeners("/actors/outbox{?identifier}"),
-    TypeError,
-    "Path for outbox cannot use query or fragment expansion for identifier.",
+    (error) =>
+      error instanceof TypeError &&
+      error.message.includes(
+        "Path for outbox cannot use query or fragment expansion for identifier.",
+      ),
   );
 });
 
@@ -1558,7 +1604,7 @@ test("MockContext reserved expansion encodes non-reserved characters", () => {
     undefined,
   );
 
-  assertEquals(
+  deepStrictEqual(
     context.getOutboxUri("alice profile/notes").href,
     "https://example.com/actors/alice%20profile/notes/outbox",
   );
@@ -1581,10 +1627,13 @@ test("receiveActivity throws error when contextData not initialized", async () =
   });
 
   // Should throw error
-  await assertRejects(
+  await rejects(
     () => mockFederation.receiveActivity(activity),
-    Error,
-    "MockFederation.receiveActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before receiving activities.",
+    (error) =>
+      error instanceof Error &&
+      error.message.includes(
+        "MockFederation.receiveActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before receiving activities.",
+      ),
   );
 });
 
@@ -1611,10 +1660,13 @@ test("postOutboxActivity throws error when contextData not initialized", async (
     actor: new URL("https://example.com/users/alice"),
   });
 
-  await assertRejects(
+  await rejects(
     () => mockFederation.postOutboxActivity("alice", activity),
-    Error,
-    "MockFederation.postOutboxActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before posting activities.",
+    (error) =>
+      error instanceof Error &&
+      error.message.includes(
+        "MockFederation.postOutboxActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before posting activities.",
+      ),
   );
 });
 
@@ -1653,17 +1705,17 @@ test("MockFederation distinguishes between immediate and queued activities", asy
   );
 
   // Check activity details
-  assertEquals(mockFederation.sentActivities.length, 2);
-  assertEquals(mockFederation.sentActivities[0].activity, activity1);
-  assertEquals(mockFederation.sentActivities[1].activity, activity2);
+  deepStrictEqual(mockFederation.sentActivities.length, 2);
+  strictEqual(mockFederation.sentActivities[0].activity, activity1);
+  strictEqual(mockFederation.sentActivities[1].activity, activity2);
 
   // Both should be marked as sent via queue
-  assertEquals(mockFederation.sentActivities[0].queued, true);
-  assertEquals(mockFederation.sentActivities[1].queued, true);
-  assertEquals(mockFederation.sentActivities[0].queue, "outbox");
-  assertEquals(mockFederation.sentActivities[1].queue, "outbox");
-  assertEquals(mockFederation.sentActivities[0].sentOrder, 1);
-  assertEquals(mockFederation.sentActivities[1].sentOrder, 2);
+  deepStrictEqual(mockFederation.sentActivities[0].queued, true);
+  deepStrictEqual(mockFederation.sentActivities[1].queued, true);
+  deepStrictEqual(mockFederation.sentActivities[0].queue, "outbox");
+  deepStrictEqual(mockFederation.sentActivities[1].queue, "outbox");
+  deepStrictEqual(mockFederation.sentActivities[0].sentOrder, 1);
+  deepStrictEqual(mockFederation.sentActivities[1].sentOrder, 2);
 });
 
 test("MockFederation without queue sends all activities immediately", async () => {
@@ -1687,13 +1739,13 @@ test("MockFederation without queue sends all activities immediately", async () =
   );
 
   // Check activity details
-  assertEquals(mockFederation.sentActivities.length, 1);
-  assertEquals(mockFederation.sentActivities[0].activity, activity);
+  deepStrictEqual(mockFederation.sentActivities.length, 1);
+  strictEqual(mockFederation.sentActivities[0].activity, activity);
 
   // Should be marked as sent immediately
-  assertEquals(mockFederation.sentActivities[0].queued, false);
-  assertEquals(mockFederation.sentActivities[0].queue, undefined);
-  assertEquals(mockFederation.sentActivities[0].sentOrder, 1);
+  deepStrictEqual(mockFederation.sentActivities[0].queued, false);
+  deepStrictEqual(mockFederation.sentActivities[0].queue, undefined);
+  deepStrictEqual(mockFederation.sentActivities[0].sentOrder, 1);
 });
 
 test("MockContext.getActor() calls registered actor dispatcher", async () => {
@@ -1720,10 +1772,10 @@ test("MockContext.getActor() calls registered actor dispatcher", async () => {
 
   const actor = await context.getActor("alice");
 
-  assertEquals(actor instanceof Person, true);
-  assertEquals(actor?.preferredUsername, "alice");
-  assertEquals(actor?.name, "Test User alice");
-  assertEquals(actor?.id?.href, "https://example.com/users/alice");
+  deepStrictEqual(actor instanceof Person, true);
+  deepStrictEqual(actor?.preferredUsername, "alice");
+  deepStrictEqual(actor?.name, "Test User alice");
+  deepStrictEqual(actor?.id?.href, "https://example.com/users/alice");
 });
 
 test("MockContext.getObject() calls registered object dispatcher", async () => {
@@ -1751,9 +1803,9 @@ test("MockContext.getObject() calls registered object dispatcher", async () => {
     postId: "123",
   });
 
-  assertEquals(note instanceof Note, true);
-  assertEquals(note?.content, "Post 123 by alice");
-  assertEquals(note?.id?.href, "https://example.com/users/alice/posts/123");
+  deepStrictEqual(note instanceof Note, true);
+  deepStrictEqual(note?.content, "Post 123 by alice");
+  deepStrictEqual(note?.id?.href, "https://example.com/users/alice/posts/123");
 });
 
 test("MockContext.getActor() returns null when no dispatcher registered", async () => {
@@ -1764,7 +1816,7 @@ test("MockContext.getActor() returns null when no dispatcher registered", async 
   );
 
   const actor = await context.getActor("alice");
-  assertEquals(actor, null);
+  deepStrictEqual(actor, null);
 });
 
 test("MockContext.getObject() returns null when no dispatcher registered", async () => {
@@ -1778,7 +1830,7 @@ test("MockContext.getObject() returns null when no dispatcher registered", async
     identifier: "alice",
     postId: "123",
   });
-  assertEquals(note, null);
+  deepStrictEqual(note, null);
 });
 
 test("MockContext.getActorKeyPairs() calls registered key pairs dispatcher", async () => {
@@ -1824,20 +1876,23 @@ test("MockContext.getActorKeyPairs() calls registered key pairs dispatcher", asy
 
   const keyPairs = await context.getActorKeyPairs("alice");
 
-  assertEquals(keyPairs.length, 1);
-  assertEquals(
+  deepStrictEqual(keyPairs.length, 1);
+  deepStrictEqual(
     keyPairs[0].keyId.href,
     "https://example.com/users/alice#main-key",
   );
-  assertEquals(keyPairs[0].privateKey, keyPair.privateKey);
-  assertEquals(keyPairs[0].publicKey, keyPair.publicKey);
-  assertEquals(keyPairs[0].cryptographicKey.id?.href, keyPairs[0].keyId.href);
-  assertEquals(
+  strictEqual(keyPairs[0].privateKey, keyPair.privateKey);
+  strictEqual(keyPairs[0].publicKey, keyPair.publicKey);
+  deepStrictEqual(
+    keyPairs[0].cryptographicKey.id?.href,
+    keyPairs[0].keyId.href,
+  );
+  deepStrictEqual(
     keyPairs[0].cryptographicKey.ownerId?.href,
     "https://example.com/users/alice",
   );
-  assertEquals(keyPairs[0].multikey.id?.href, keyPairs[0].keyId.href);
-  assertEquals(
+  deepStrictEqual(keyPairs[0].multikey.id?.href, keyPairs[0].keyId.href);
+  deepStrictEqual(
     keyPairs[0].multikey.controllerId?.href,
     "https://example.com/users/alice",
   );
@@ -1850,7 +1905,7 @@ test("MockFederation actor setters chain from mapPortableActorId()", () => {
     .setActorDispatcher("/users/{identifier}", () => null)
     .mapPortableActorId(() => null)
     .setKeyPairsDispatcher(keyPairsDispatcher);
-  assertEquals(
+  strictEqual(
     (mockFederation as unknown as { actorKeyPairsDispatcher: unknown })
       .actorKeyPairsDispatcher,
     keyPairsDispatcher,
@@ -1865,7 +1920,7 @@ test("MockContext.getActorKeyPairs() returns empty array when no dispatcher regi
   );
 
   const keyPairs = await context.getActorKeyPairs("alice");
-  assertEquals(keyPairs, []);
+  deepStrictEqual(keyPairs, []);
 });
 
 // A Standard Schema that only accepts numbers; mirrors a strict task schema.
@@ -1893,12 +1948,13 @@ test("MockContext.enqueueTask rejects a payload the schema refuses", async () =>
     new URL("https://example.com"),
     undefined,
   );
-  await assertRejects(
+  await rejects(
     () => context.enqueueTask(task, "not a number" as unknown as number),
-    TypeError,
-    "Task data failed schema validation",
+    (error) =>
+      error instanceof TypeError &&
+      error.message.includes("Task data failed schema validation"),
   );
-  assertEquals(called, 0); // production fails fast at enqueue; so must the mock
+  deepStrictEqual(called, 0); // production fails fast at enqueue; so must the mock
 });
 
 test("MockContext.enqueueTask passes the schema's validated output to the handler", async () => {
@@ -1928,7 +1984,7 @@ test("MockContext.enqueueTask passes the schema's validated output to the handle
   );
   await context.enqueueTask(task, "hi");
   // The handler observes the validated output, not the raw "hi".
-  assertEquals(received, "HI");
+  deepStrictEqual(received, "HI");
 });
 
 test("MockContext.enqueueTaskMany validates the whole batch before any handler runs", async () => {
@@ -1947,12 +2003,13 @@ test("MockContext.enqueueTaskMany validates the whole batch before any handler r
   // The second item is invalid: production validates every payload before
   // enqueuing anything, so the whole batch rejects with no effect.  The
   // mock must not let the first handler run before the batch is vetted.
-  await assertRejects(
+  await rejects(
     () => context.enqueueTaskMany(task, [1, "two" as unknown as number]),
-    TypeError,
-    "Task data failed schema validation",
+    (error) =>
+      error instanceof TypeError &&
+      error.message.includes("Task data failed schema validation"),
   );
-  assertEquals(seen, []);
+  deepStrictEqual(seen, []);
 });
 
 test("MockContext.enqueueTask rejects a handle from another federation", async () => {
@@ -1976,21 +2033,23 @@ test("MockContext.enqueueTask rejects a handle from another federation", async (
     new URL("https://example.com"),
     undefined,
   );
-  await assertRejects(
+  await rejects(
     () => context.enqueueTask(foreign, 1),
-    TypeError,
-    "is not defined on this federation",
+    (error) =>
+      error instanceof TypeError &&
+      error.message.includes("is not defined on this federation"),
   );
-  assertEquals(called, 0);
+  deepStrictEqual(called, 0);
 });
 
 test("MockFederation.setHashlinkMediaDispatcher()", () => {
   const federation = createFederation<void>();
   federation.setHashlinkMediaDispatcher(() => null);
-  assertThrows(
+  throws(
     () => federation.setHashlinkMediaDispatcher(() => null),
-    TypeError,
-    "Hashlink media dispatcher already set.",
+    (error) =>
+      error instanceof TypeError &&
+      error.message.includes("Hashlink media dispatcher already set."),
   );
 });
 
@@ -2021,14 +2080,13 @@ test("MockContext uses the injected portable verifier for lookup", async () => {
     new URL("https://example.com"),
     undefined,
   );
-  assertInstanceOf(await context.lookupObject(compatibleId), Note);
-  assertEquals(loaded, [compatibleId.href]);
-  assertEquals(verified, [document]);
-  assertInstanceOf(
-    await context.clone(undefined).lookupObject(compatibleId),
-    Note,
+  ok((await context.lookupObject(compatibleId)) instanceof Note);
+  deepStrictEqual(loaded, [compatibleId.href]);
+  deepStrictEqual(verified, [document]);
+  ok(
+    (await context.clone(undefined).lookupObject(compatibleId)) instanceof Note,
   );
-  assertEquals(verified.length, 2);
+  deepStrictEqual(verified.length, 2);
   let overrides = 0;
   await context.lookupObject(compatibleId, {
     verifyPortableObject: () => {
@@ -2036,15 +2094,15 @@ test("MockContext uses the injected portable verifier for lookup", async () => {
       return Promise.resolve({ verified: true });
     },
   });
-  assertEquals(overrides, 1);
-  assertEquals(verified.length, 2);
-  assertEquals(
+  deepStrictEqual(overrides, 1);
+  deepStrictEqual(verified.length, 2);
+  deepStrictEqual(
     await context.lookupObject(compatibleId, {
       verifyPortableObject: () => Promise.resolve({ verified: false }),
     }),
     null,
   );
-  assertEquals(
+  deepStrictEqual(
     await createFederation<void>().createContext(
       new URL("https://example.com"),
       undefined,
@@ -2076,26 +2134,25 @@ test("MockContext portable lookup uses a per-call loader", async () => {
       },
     });
   };
-  assertEquals(
+  deepStrictEqual(
     await context.lookupObject(compatibleId, { documentLoader }),
     null,
   );
-  assertEquals(loaded, 0);
-  assertInstanceOf(
-    await context.lookupObject(compatibleId, {
+  deepStrictEqual(loaded, 0);
+  ok(
+    (await context.lookupObject(compatibleId, {
       documentLoader,
       verifyPortableObject: () => Promise.resolve({ verified: true }),
-    }),
-    Note,
+    })) instanceof Note,
   );
-  assertEquals(loaded, 1);
-  assertEquals(
+  deepStrictEqual(loaded, 1);
+  deepStrictEqual(
     await context.lookupObject("@alice@example.com", {
       documentLoader,
     }),
     null,
   );
-  assertEquals(
+  deepStrictEqual(
     await context.lookupObject("https://example.com/users/alice", {
       documentLoader,
     }),
@@ -2111,27 +2168,27 @@ test("MockContext carries an explicit portable request to dispatchers", async ()
   };
   const federation = createFederation<void>();
   federation.setActorDispatcher("/users/{identifier}", (ctx) => {
-    assertStrictEquals(ctx.portableRequest, portableRequest);
+    strictEqual(ctx.portableRequest, portableRequest);
     return new Person({ id: ctx.getPortableActorUri("alice", did) });
   });
   federation.setObjectDispatcher(Note, "/notes/{id}", (ctx) => {
-    assertStrictEquals(ctx.portableRequest, portableRequest);
+    strictEqual(ctx.portableRequest, portableRequest);
     return new Note({ id: ctx.getPortableObjectUri(Note, { id: "1" }, did) });
   });
   const request = new Request("https://example.com/.well-known/apgateway/test");
   const context = federation.createContext(request, undefined, {
     portableRequest,
   });
-  assertStrictEquals(context.portableRequest, portableRequest);
-  assertStrictEquals(context.clone(undefined).portableRequest, portableRequest);
-  assertStrictEquals(context.clone(undefined).request, request);
-  assertInstanceOf(await context.getActor("alice"), Person);
-  assertInstanceOf(await context.getObject(Note, { id: "1" }), Note);
-  assertEquals(
+  strictEqual(context.portableRequest, portableRequest);
+  strictEqual(context.clone(undefined).portableRequest, portableRequest);
+  strictEqual(context.clone(undefined).request, request);
+  ok((await context.getActor("alice")) instanceof Person);
+  ok((await context.getObject(Note, { id: "1" })) instanceof Note);
+  deepStrictEqual(
     federation.createContext(new URL(request.url), undefined).portableRequest,
     undefined,
   );
-  assertEquals(
+  deepStrictEqual(
     federation.createContext(request, undefined).portableRequest,
     undefined,
   );
@@ -2139,12 +2196,12 @@ test("MockContext carries an explicit portable request to dispatchers", async ()
     input: URL | Request,
     options?: { portableRequest?: typeof portableRequest },
   ) => federation.createContext(input, undefined, options);
-  assertStrictEquals(createWithUnion(request).request, request);
+  strictEqual(createWithUnion(request).request, request);
   const unionContext = createWithUnion(request, { portableRequest });
-  assertStrictEquals(unionContext.request, request);
-  assertStrictEquals(unionContext.portableRequest, portableRequest);
-  assertInstanceOf(await unionContext.getActor("alice"), Person);
-  assertInstanceOf(await unionContext.getObject(Note, { id: "1" }), Note);
+  strictEqual(unionContext.request, request);
+  strictEqual(unionContext.portableRequest, portableRequest);
+  ok((await unionContext.getActor("alice")) instanceof Person);
+  ok((await unionContext.getObject(Note, { id: "1" })) instanceof Note);
 });
 
 test("MockFederation.fetch() dispatches hashlink media", async () => {
@@ -2161,34 +2218,34 @@ test("MockFederation.fetch() dispatches hashlink media", async () => {
   let calls = 0;
   federation.setHashlinkMediaDispatcher((ctx, media) => {
     calls++;
-    assertStrictEquals(ctx.request, request);
-    assertEquals(ctx.data, { id: 42 });
-    assertEquals(ctx.portableRequest, undefined);
-    assertEquals(media.hashlink, `hl:${digest}`);
-    assertEquals(media.digestMultibase, digest);
-    assertEquals(media.algorithm, "sha2-256");
-    assertEquals(media.digest.length, 32);
-    assertEquals(media.multihash.length, 34);
+    strictEqual(ctx.request, request);
+    deepStrictEqual(ctx.data, { id: 42 });
+    deepStrictEqual(ctx.portableRequest, undefined);
+    deepStrictEqual(media.hashlink, `hl:${digest}`);
+    deepStrictEqual(media.digestMultibase, digest);
+    deepStrictEqual(media.algorithm, "sha2-256");
+    deepStrictEqual(media.digest.length, 32);
+    deepStrictEqual(media.multihash.length, 34);
     return expected;
   });
-  assertStrictEquals(
+  strictEqual(
     await federation.fetch(request, { contextData: { id: 42 } }),
     expected,
   );
-  assertEquals(calls, 1);
-  assertEquals(
+  deepStrictEqual(calls, 1);
+  deepStrictEqual(
     (await federation.fetch(new Request(`${path}/extra`), {
       contextData: { id: 42 },
     })).status,
     400,
   );
-  assertEquals(calls, 1);
+  deepStrictEqual(calls, 1);
   const method = await federation.fetch(
     new Request(`${path}/extra`, { method: "POST" }),
     { contextData: { id: 42 } },
   );
-  assertEquals(method.status, 405);
-  assertEquals(method.headers.get("Allow"), "GET, HEAD");
+  deepStrictEqual(method.status, 405);
+  deepStrictEqual(method.headers.get("Allow"), "GET, HEAD");
 });
 
 test("MockFederation.fetch() handles hashlink variants and misses", async () => {
@@ -2201,35 +2258,35 @@ test("MockFederation.fetch() handles hashlink variants and misses", async () => 
   let calls = 0;
   federation.setHashlinkMediaDispatcher((_ctx, media) => {
     calls++;
-    assertEquals(media.hashlink, `hl:${digest}`);
+    deepStrictEqual(media.hashlink, `hl:${digest}`);
     return null;
   });
-  assertStrictEquals(
+  strictEqual(
     await federation.fetch(new Request(`${base}HL%3A${digest}?download=1`), {
       contextData: undefined,
       onNotFound: () => missing,
     }),
     missing,
   );
-  assertEquals(calls, 1);
+  deepStrictEqual(calls, 1);
   const malformed = await federation.fetch(new Request(`${base}hl:%ZZ`), {
     contextData: undefined,
   });
-  assertEquals(malformed.status, 400);
-  assertEquals(calls, 1);
+  deepStrictEqual(malformed.status, 400);
+  deepStrictEqual(calls, 1);
   const malformedHead = await federation.fetch(
     new Request(`${base}hl:%ZZ`, { method: "HEAD" }),
     { contextData: undefined },
   );
-  assertEquals(malformedHead.status, 400);
-  assertEquals(malformedHead.body, null);
-  assertEquals(
+  deepStrictEqual(malformedHead.status, 400);
+  deepStrictEqual(malformedHead.body, null);
+  deepStrictEqual(
     (await federation.fetch(new Request(`${base}did:key:zabc/notes/1`), {
       contextData: undefined,
     })).status,
     404,
   );
-  assertEquals(
+  deepStrictEqual(
     (await createFederation<void>().fetch(new Request(`${base}hl:${digest}`), {
       contextData: undefined,
     })).status,
@@ -2263,12 +2320,12 @@ test("MockFederation.fetch() removes a HEAD response body", async () => {
     }),
     { contextData: undefined },
   );
-  assertEquals(response.status, 206);
-  assertEquals(response.statusText, "Partial Content");
-  assertEquals(response.headers.get("Content-Type"), "text/plain");
-  assertEquals(response.body, null);
+  deepStrictEqual(response.status, 206);
+  deepStrictEqual(response.statusText, "Partial Content");
+  deepStrictEqual(response.headers.get("Content-Type"), "text/plain");
+  deepStrictEqual(response.body, null);
   await new Promise((resolve) => setTimeout(resolve, 0));
-  assertEquals(cancelled, true);
+  deepStrictEqual(cancelled, true);
 });
 
 test("MockContext builds portable IDs", async (t) => {
@@ -2344,8 +2401,8 @@ test("MockContext builds portable IDs", async (t) => {
   };
   for (const [name, [helper, path]] of Object.entries(helpers)) {
     await t.step(name, () => {
-      assertEquals(formatIri(helper(did)), `ap+ef61://${did}${path}`);
-      assertEquals(
+      deepStrictEqual(formatIri(helper(did)), `ap+ef61://${did}${path}`);
+      deepStrictEqual(
         formatIri(helper(did.replace("did:key:", "DID:KEY:"))),
         `ap+ef61://${did}${path}`,
       );
@@ -2357,7 +2414,7 @@ test("MockContext builds portable IDs", async (t) => {
           "did:key:z",
         ]
       ) {
-        assertThrows(() => helper(authority), TypeError, undefined, authority);
+        throws(() => helper(authority), TypeError, authority);
       }
     });
   }
@@ -2377,8 +2434,8 @@ test("MockContext.parseUri() recognizes portable IDs on request", async () => {
     ),
   ];
   for (const uri of portableIds) {
-    assertEquals(context.parseUri(uri), null, uri.href);
-    assertEquals(
+    deepStrictEqual(context.parseUri(uri), null, uri.href);
+    deepStrictEqual(
       context.parseUri(uri, { portable: true }),
       { type: "actor", identifier: "alice", authority: did },
       uri.href,
@@ -2395,10 +2452,10 @@ test("MockContext.parseUri() recognizes portable IDs on request", async () => {
     new URL("https://gateway.example/.well-known/apgateway/did:/users/alice"),
   ];
   for (const uri of malformed) {
-    assertEquals(context.parseUri(uri, { portable: true }), null, uri.href);
+    deepStrictEqual(context.parseUri(uri, { portable: true }), null, uri.href);
   }
-  assertEquals(context.parseUri(null, { portable: true }), null);
-  assertEquals(
+  deepStrictEqual(context.parseUri(null, { portable: true }), null);
+  deepStrictEqual(
     context.parseUri(new URL("https://example.com/users/alice"), {
       portable: true,
     }),
@@ -2428,18 +2485,19 @@ test("MockContext.getObject() suppresses tombstones unless passed through", asyn
 
   const defaultPromise = ctx.getObject(Note, { id: "deleted" });
   const defaultResult: Note | null = await defaultPromise;
-  assertEquals(defaultResult, null);
+  deepStrictEqual(defaultResult, null);
   const suppressed: Note | null = await ctx.getObject(Note, {
     id: "deleted",
   }, { tombstone: "suppress" });
-  assertEquals(suppressed, null);
-  assertInstanceOf(
-    await ctx.getObject(Note, { id: "deleted" }, { tombstone: "passthrough" }),
-    Tombstone,
+  deepStrictEqual(suppressed, null);
+  ok(
+    (await ctx.getObject(Note, { id: "deleted" }, {
+      tombstone: "passthrough",
+    })) instanceof Tombstone,
   );
-  assertInstanceOf(await ctx.getObject(Note, { id: "1" }), Note);
+  ok((await ctx.getObject(Note, { id: "1" })) instanceof Note);
   // A tombstone that is an instance of the requested class is returned:
-  assertInstanceOf(await ctx.getObject(ASObject, { id: "1" }), Tombstone);
+  ok((await ctx.getObject(ASObject, { id: "1" })) instanceof Tombstone);
 });
 
 test("MockFederation custom collection setters chain mapPortableOwner()", () => {
@@ -2450,17 +2508,17 @@ test("MockFederation custom collection setters chain mapPortableOwner()", () => 
     "/users/{identifier}/bookmarks",
     () => ({ items: [] }),
   );
-  assertEquals(setters.mapPortableOwner(() => null), setters);
+  strictEqual(setters.mapPortableOwner(() => null), setters);
   const ordered = federation.setOrderedCollectionDispatcher(
     "pins",
     Note,
     "/users/{identifier}/pins",
     () => ({ items: [] }),
   );
-  assertEquals(ordered.mapPortableOwner(() => null), ordered);
+  strictEqual(ordered.mapPortableOwner(() => null), ordered);
   // The other setters return the same setters, so that they chain in any
   // order:
-  assertEquals(
+  strictEqual(
     ordered
       .setFirstCursor(() => "0")
       .setLastCursor(() => "1")
@@ -2487,11 +2545,11 @@ test("RequestContext.isSignedByAudience() in test contexts", async (t) => {
       data: undefined,
       federation,
     });
-    assertEquals(
+    deepStrictEqual(
       await unsigned.isSignedByAudience(new Note({ to: PUBLIC_COLLECTION })),
       true,
     );
-    assertEquals(
+    deepStrictEqual(
       await unsigned.isSignedByAudience(new Note({ to: portableId })),
       false,
     );
@@ -2501,12 +2559,12 @@ test("RequestContext.isSignedByAudience() in test contexts", async (t) => {
       federation,
       getSignedKeyOwner: () => Promise.resolve(signer),
     });
-    assertEquals(
+    deepStrictEqual(
       await signed.isSignedByAudience(new Note({ to: portableId })),
       true,
     );
     // Malformed portable IDs are skipped rather than thrown on:
-    assertEquals(
+    deepStrictEqual(
       await signed.isSignedByAudience(
         new Note({
           tos: [
@@ -2521,11 +2579,11 @@ test("RequestContext.isSignedByAudience() in test contexts", async (t) => {
       ),
       true,
     );
-    assertEquals(
+    deepStrictEqual(
       await signed.isSignedByAudience(new Note({ cc: followers })),
       false,
     );
-    assertEquals(
+    deepStrictEqual(
       await signed.isSignedByAudience(new Note({ cc: followers }), {
         isMember: (addressee) => addressee.href === followers.href,
       }),
@@ -2535,11 +2593,11 @@ test("RequestContext.isSignedByAudience() in test contexts", async (t) => {
 
   await t.step("MockContext", async () => {
     const context = federation.createContext(url, undefined);
-    assertEquals(
+    deepStrictEqual(
       await context.isSignedByAudience(new Note({ cc: PUBLIC_COLLECTION })),
       true,
     );
-    assertEquals(
+    deepStrictEqual(
       await context.isSignedByAudience(new Note({ to: portableId })),
       false,
     );
@@ -2609,15 +2667,19 @@ for (const passContext of [false, true]) {
     const requests = await withActorFetch(() =>
       federation.receiveActivity(activity)
     );
-    assertEquals(requests, [localActorUrl]);
-    assertInstanceOf(actor, Person);
-    assertEquals(actor.id?.href, localActorUrl);
-    assertInstanceOf(received[0], Follow);
-    assertNotStrictEquals(received[0], activity);
-    assertStrictEquals(received[0], received[1]);
-    assertEquals(activity.actorId?.href, localActorUrl);
+    deepStrictEqual(requests, [localActorUrl]);
+    ok(actor instanceof Person);
+    deepStrictEqual(actor.id?.href, localActorUrl);
+    ok((received[0]) instanceof Follow);
+    notStrictEqual(received[0], activity);
+    strictEqual(received[0], received[1]);
+    deepStrictEqual(activity.actorId?.href, localActorUrl);
     // The listener's lazy lookup must not populate the caller's actor cache.
-    await assertRejects(() => activity.getActor(), UrlError, "Localhost");
+    await rejects(
+      () => activity.getActor(),
+      (error) =>
+        error instanceof UrlError && error.message.includes("Localhost"),
+    );
   });
 }
 
@@ -2635,7 +2697,11 @@ for (const allowPrivateAddress of [undefined, false]) {
         received = follow;
         document = (await ctx.documentLoader(localActorUrl)).document;
         contextDocument = (await ctx.contextLoader(localActorUrl)).document;
-        await assertRejects(() => follow.getActor(), UrlError, "Localhost");
+        await rejects(
+          () => follow.getActor(),
+          (error) =>
+            error instanceof UrlError && error.message.includes("Localhost"),
+        );
       },
     );
     const requests = await withActorFetch(async () => {
@@ -2644,10 +2710,10 @@ for (const allowPrivateAddress of [undefined, false]) {
       await ctx.documentLoader(localActorUrl);
       await ctx.contextLoader(localActorUrl);
     });
-    assertEquals(requests, []);
-    assertStrictEquals(received, activity);
-    assertEquals(document, {});
-    assertEquals(contextDocument, {});
+    deepStrictEqual(requests, []);
+    strictEqual(received, activity);
+    deepStrictEqual(document, {});
+    deepStrictEqual(contextDocument, {});
   });
 }
 
@@ -2659,9 +2725,9 @@ test("createContext allows private actor lookup", async () => {
   const requests = await withActorFetch(async () => {
     actor = await activity.getActor(ctx);
   });
-  assertEquals(requests, [localActorUrl]);
-  assertInstanceOf(actor, Person);
-  assertEquals(actor.id?.href, localActorUrl);
+  deepStrictEqual(requests, [localActorUrl]);
+  ok(actor instanceof Person);
+  deepStrictEqual(actor.id?.href, localActorUrl);
 });
 
 test("receiveActivity preserves embedded objects and supports lookup with context", async () => {
@@ -2685,10 +2751,10 @@ test("receiveActivity preserves embedded objects and supports lookup with contex
   const requests = await withActorFetch(() =>
     federation.receiveActivity(activity)
   );
-  assertEquals(requests, [localActorUrl]);
-  assertStrictEquals(embedded, follow);
-  assertInstanceOf(actor, Person);
-  assertEquals(actor.id?.href, localActorUrl);
+  deepStrictEqual(requests, [localActorUrl]);
+  strictEqual(embedded, follow);
+  ok(actor instanceof Person);
+  deepStrictEqual(actor.id?.href, localActorUrl);
 });
 
 test("receiveActivity respects an explicit getter document loader", async () => {
@@ -2717,10 +2783,10 @@ test("receiveActivity respects an explicit getter document loader", async () => 
   const requests = await withActorFetch(() =>
     federation.receiveActivity(createLocalFollow())
   );
-  assertEquals(requests, []);
-  assertEquals(loaderRequests, [localActorUrl]);
-  assertInstanceOf(actor, Person);
-  assertEquals(actor.id?.href, localActorUrl);
+  deepStrictEqual(requests, []);
+  deepStrictEqual(loaderRequests, [localActorUrl]);
+  ok(actor instanceof Person);
+  deepStrictEqual(actor.id?.href, localActorUrl);
 });
 
 test("receiveActivity preserves an unconfigured activity's own loaders", async () => {
@@ -2740,8 +2806,8 @@ test("receiveActivity preserves an unconfigured activity's own loaders", async (
   const requests = await withActorFetch(() =>
     federation.receiveActivity(activity)
   );
-  assertEquals(requests, [localActorUrl]);
-  assertInstanceOf(actor, Person);
+  deepStrictEqual(requests, [localActorUrl]);
+  ok(actor instanceof Person);
 });
 
 test("receiveActivity does not clone without listeners or context data", async () => {
@@ -2759,14 +2825,14 @@ test("receiveActivity does not clone without listeners or context data", async (
       Follow,
       () => Promise.resolve(),
     );
-    await assertRejects(
+    await rejects(
       () => federation.receiveActivity(activity),
-      Error,
-      "contextData",
+      (error) =>
+        error instanceof Error && error.message.includes("contextData"),
     );
   });
-  assertEquals(requests, []);
-  assertEquals(clones, 0);
+  deepStrictEqual(requests, []);
+  deepStrictEqual(clones, 0);
 });
 
 test("receiveActivity preserves parsed JSON-LD extension properties", async () => {
@@ -2790,9 +2856,9 @@ test("receiveActivity preserves parsed JSON-LD extension properties", async () =
   const requests = await withActorFetch(() =>
     federation.receiveActivity(activity)
   );
-  assertEquals(requests, []);
-  assertEquals(receivedJson, json);
-  assertEquals(await activity.toJsonLd(), json);
+  deepStrictEqual(requests, []);
+  deepStrictEqual(receivedJson, json);
+  deepStrictEqual(await activity.toJsonLd(), json);
 });
 
 test("MockFederation explicit loaders take precedence over private-address defaults", () => {
@@ -2809,7 +2875,7 @@ test("MockFederation explicit loaders take precedence over private-address defau
       new URL("https://example.com/"),
       {},
     );
-    assertStrictEquals(context.documentLoader, documentLoader);
-    assertStrictEquals(context.contextLoader, contextLoader);
+    strictEqual(context.documentLoader, documentLoader);
+    strictEqual(context.contextLoader, contextLoader);
   }
 });

@@ -3,7 +3,6 @@
   "version": "2.5.0",
   "license": "MIT",
   "imports": {
-    "@std/assert": "jsr:@std/assert@^1.0.13",
     "es-toolkit": "npm:es-toolkit@^1.46.1"
   },
   "exports": {

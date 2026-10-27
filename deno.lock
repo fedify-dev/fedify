@@ -34,7 +34,6 @@
     "jsr:@standard-schema/spec@^1.1.0": "1.1.0",
     "jsr:@std/assert@0.224": "0.224.0",
     "jsr:@std/assert@0.226": "0.226.0",
-    "jsr:@std/assert@^1.0.13": "1.0.19",
     "jsr:@std/async@0.224": "0.224.2",
     "jsr:@std/bytes@^1.0.6": "1.0.6",
     "jsr:@std/data-structures@0.224": "0.224.1",
@@ -382,12 +381,6 @@
       "integrity": "0dfb5f7c7723c18cec118e080fec76ce15b4c31154b15ad2bd74822603ef75b3",
       "dependencies": [
         "jsr:@std/internal@1"
-      ]
-    },
-    "@std/assert@1.0.19": {
-      "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
-      "dependencies": [
-        "jsr:@std/internal@^1.0.12"
       ]
     },
     "@std/async@0.224.2": {
@@ -16758,7 +16751,6 @@
       "jsr:@optique/discover@^1.3.2",
       "jsr:@optique/run@^1.3.2",
       "jsr:@standard-schema/spec@^1.1.0",
-      "jsr:@std/assert@^1.0.13",
       "jsr:@std/fs@^1.0.3",
       "jsr:@std/path@^1.0.6",
       "jsr:@std/testing@0.224",
@@ -16910,7 +16902,6 @@
       },
       "packages/denokv": {
         "dependencies": [
-          "jsr:@std/assert@^1.0.13",
           "npm:es-toolkit@^1.46.1"
         ]
       },
