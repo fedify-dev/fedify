@@ -330,7 +330,7 @@ index too.  Keep the original TTL columns and calendar semantics.
 
 See <https://fedify.dev/manual/kv.md> and <https://fedify.dev/manual/mq.md>.
 
-[expiry expression index]: https://fedify.dev/manual/kv#postgresql-expiry-index
+[expiry expression index]: https://fedify.dev/manual/kv.md#postgresql-expiry-index
 
 
 Observability
