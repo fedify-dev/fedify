@@ -59,7 +59,6 @@
     "@fedify/testing": "workspace:^",
     "@js-temporal/polyfill": "catalog:",
     "@std/assert": "catalog:",
-    "@std/async": "catalog:",
     "@types/amqplib": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

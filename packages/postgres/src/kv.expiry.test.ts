@@ -1,7 +1,7 @@
 import { test } from "@fedify/fixture";
 import { PostgresKvStore } from "@fedify/postgres/kv";
 import * as temporal from "@js-temporal/polyfill";
-import { delay } from "@std/async/delay";
+import { setTimeout as delay } from "node:timers/promises";
 import assert from "node:assert/strict";
 import process from "node:process";
 import postgres from "postgres";

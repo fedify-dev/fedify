@@ -3,7 +3,7 @@ import { AmqpMessageQueue } from "@fedify/amqp/mq";
 import { getRandomKey, testMessageQueue, waitFor } from "@fedify/testing";
 import * as temporal from "@js-temporal/polyfill";
 import { assert, assertEquals, assertFalse, assertGreater } from "@std/assert";
-import { delay } from "@std/async/delay";
+import { setTimeout as delay } from "node:timers/promises";
 // @deno-types="npm:@types/amqplib"
 import { type Channel, type ChannelModel, connect } from "amqplib";
 import process from "node:process";

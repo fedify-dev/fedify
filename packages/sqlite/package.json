@@ -75,7 +75,6 @@
     "@fedify/fixture": "workspace:^",
     "@fedify/testing": "workspace:^",
     "@js-temporal/polyfill": "catalog:",
-    "@std/async": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

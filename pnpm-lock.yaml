@@ -96,9 +96,6 @@ catalogs:
     '@std/assert':
       specifier: jsr:^1.0.13
       version: 1.0.13
-    '@std/async':
-      specifier: jsr:^1.0.13
-      version: 1.0.13
     '@sveltejs/kit':
       specifier: ^2.0.0 || ^3.0.0
       version: 2.36.2
@@ -1021,7 +1018,7 @@ importers:
         version: 24.19.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1047,15 +1044,12 @@ importers:
       '@std/assert':
         specifier: 'catalog:'
         version: '@jsr/std__assert@1.0.13'
-      '@std/async':
-        specifier: 'catalog:'
-        version: '@jsr/std__async@1.0.13'
       '@types/amqplib':
         specifier: 'catalog:'
         version: 0.10.8
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1071,7 +1065,7 @@ importers:
         version: 7.0.7(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@netlify/blobs@10.7.9)(@types/node@24.19.0)(db0@0.3.4(@electric-sql/pglite@0.5.8)(better-sqlite3@12.9.0)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260511.1)(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.3(@types/node@24.19.0))(pg@8.22.0)(postgres@3.4.7))(mysql2@3.22.3(@types/node@24.19.0)))(ioredis@5.10.1)(jiti@2.6.1)(rollup@4.60.2)(terser@5.46.1)(tsx@4.21.0)(yaml@2.9.0)
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1084,7 +1078,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1106,7 +1100,7 @@ importers:
         version: 7.8.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1260,7 +1254,7 @@ importers:
         version: 6.0.5
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1285,7 +1279,7 @@ importers:
         version: 24.19.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1319,7 +1313,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1341,7 +1335,7 @@ importers:
         version: 1.2.19(@types/react@19.1.8)
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1366,7 +1360,7 @@ importers:
         version: 24.19.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1391,7 +1385,7 @@ importers:
         version: 24.19.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1476,7 +1470,7 @@ importers:
         version: 4.20250617.4
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -1510,7 +1504,7 @@ importers:
         version: 0.5.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1532,7 +1526,7 @@ importers:
         version: 24.19.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1551,7 +1545,7 @@ importers:
         version: link:../fixture
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1594,7 +1588,7 @@ importers:
         version: 24.19.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1616,7 +1610,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1641,7 +1635,7 @@ importers:
         version: 24.19.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1681,7 +1675,7 @@ importers:
         version: 1.66.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1715,7 +1709,7 @@ importers:
         version: 0.5.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1752,7 +1746,7 @@ importers:
         version: 0.2.2
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1792,7 +1786,7 @@ importers:
         version: 27.5.1(@swc/core@1.15.47)(@types/node@24.19.0)(db0@0.3.4(@electric-sql/pglite@0.5.8)(better-sqlite3@12.9.0)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260511.1)(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.3(@types/node@24.19.0))(pg@8.22.0)(postgres@3.4.7))(mysql2@3.22.3(@types/node@24.19.0)))(ioredis@5.10.1)(picomatch@4.0.5)(rollup@4.60.2)
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1811,7 +1805,7 @@ importers:
         version: link:../fixture
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1842,7 +1836,7 @@ importers:
         version: 24.19.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1876,7 +1870,7 @@ importers:
         version: 0.5.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1905,12 +1899,9 @@ importers:
       '@js-temporal/polyfill':
         specifier: 'catalog:'
         version: 0.5.1
-      '@std/async':
-        specifier: 'catalog:'
-        version: '@jsr/std__async@1.0.13'
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1944,7 +1935,7 @@ importers:
         version: 24.19.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1969,7 +1960,7 @@ importers:
         version: link:../vocab-runtime
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1994,7 +1985,7 @@ importers:
         version: 1.15.11
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -2023,12 +2014,9 @@ importers:
       '@js-temporal/polyfill':
         specifier: 'catalog:'
         version: 0.5.1
-      '@std/async':
-        specifier: 'catalog:'
-        version: '@jsr/std__async@1.0.13'
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -2044,7 +2032,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -2081,7 +2069,7 @@ importers:
         version: '@jsr/std__assert@1.0.13'
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -2096,7 +2084,7 @@ importers:
         version: 24.19.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -2157,7 +2145,7 @@ importers:
         version: 12.6.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -2203,7 +2191,7 @@ importers:
         version: 12.6.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -2237,7 +2225,7 @@ importers:
         version: 24.19.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -2268,7 +2256,7 @@ importers:
         version: 12.6.0
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -5188,9 +5176,6 @@ packages:
 
   '@jsr/std__assert@1.0.13':
     resolution: {integrity: sha512-rZ44REoi2/p+gqu8OfkcNeaTOSiG1kD6v8gyA0YjkXsOkDsiGw9g8h7JuGC/OD7GgOVgTEY+9Cih49Y18rkrCQ==, tarball: https://npm.jsr.io/~/11/@jsr/std__assert/1.0.13.tgz}
-
-  '@jsr/std__async@1.0.13':
-    resolution: {integrity: sha512-GEApyNtzauJ0kEZ/GxebSkdEN0t29qJtkw+WEvzYTwkL6fHX8cq3YWzRjCqHu+4jMl+rpHiwyr/lfitNInntzA==, tarball: https://npm.jsr.io/~/11/@jsr/std__async/1.0.13.tgz}
 
   '@jsr/std__internal@1.0.8':
     resolution: {integrity: sha512-C0HSkIOA4gZPhLT2YXBXYF51YTpWXWHYUgzs3PhRCVbeVpbJ3Iomghu/ylIG+SsIDGDwxUkSCvfOOveRNS/mKg==, tarball: https://npm.jsr.io/~/11/@jsr/std__internal/1.0.8.tgz}
@@ -21682,8 +21667,6 @@ snapshots:
     dependencies:
       '@jsr/std__internal': 1.0.8
 
-  '@jsr/std__async@1.0.13': {}
-
   '@jsr/std__internal@1.0.8': {}
 
   '@kwsites/file-exists@1.1.1':
@@ -26171,7 +26154,7 @@ snapshots:
       - react-native-b4a
       - supports-color
 
-  '@stackbit/cms-contentful@0.4.56(debug@4.4.1)':
+  '@stackbit/cms-contentful@0.4.56(debug@4.4.1)(graphql@16.14.2)':
     dependencies:
       '@contentful/rich-text-types': 15.15.1
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
@@ -26185,6 +26168,7 @@ snapshots:
       - bare-buffer
       - debug
       - encoding
+      - graphql
       - react-native-b4a
       - supports-color
 
@@ -26260,28 +26244,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@stackbit/cms-git@0.4.18':
-    dependencies:
-      '@stackbit/artisanal-names': 1.0.1
-      '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(graphql@16.14.2)
-      '@stackbit/sdk': 2.0.1
-      '@stackbit/types': 1.0.1
-      '@stackbit/utils': 0.4.19
-      axios: 0.24.0
-      fs-extra: 11.3.6
-      git-url-parse: 13.1.1
-      lodash: 4.18.1
-      micromatch: 4.0.8
-      slugify: 1.6.9
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - debug
-      - encoding
-      - react-native-b4a
-      - supports-color
-
-  '@stackbit/cms-git@0.4.18(debug@4.4.1)':
+  '@stackbit/cms-git@0.4.18(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)':
     dependencies:
       '@stackbit/artisanal-names': 1.0.1
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
@@ -26295,12 +26258,43 @@ snapshots:
       micromatch: 4.0.8
       slugify: 1.6.9
     transitivePeerDependencies:
+      - '@types/react'
       - bare-abort-controller
       - bare-buffer
+      - bufferutil
+      - canvas
       - debug
       - encoding
+      - graphql
       - react-native-b4a
       - supports-color
+      - utf-8-validate
+
+  '@stackbit/cms-git@0.4.18(@types/react@19.1.8)(graphql@16.14.2)':
+    dependencies:
+      '@stackbit/artisanal-names': 1.0.1
+      '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(graphql@16.14.2)
+      '@stackbit/sdk': 2.0.1
+      '@stackbit/types': 1.0.1
+      '@stackbit/utils': 0.4.19
+      axios: 0.24.0
+      fs-extra: 11.3.6
+      git-url-parse: 13.1.1
+      lodash: 4.18.1
+      micromatch: 4.0.8
+      slugify: 1.6.9
+    transitivePeerDependencies:
+      - '@types/react'
+      - bare-abort-controller
+      - bare-buffer
+      - bufferutil
+      - canvas
+      - debug
+      - encoding
+      - graphql
+      - react-native-b4a
+      - supports-color
+      - utf-8-validate
 
   '@stackbit/cms-sanity@0.2.56(@types/react@19.1.8)':
     dependencies:
@@ -26329,7 +26323,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@stackbit/cms-sanity@0.2.56(@types/react@19.1.8)(debug@4.4.1)':
+  '@stackbit/cms-sanity@0.2.56(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)':
     dependencies:
       '@sanity/block-tools': 2.36.6
       '@sanity/client': 3.4.1
@@ -26352,6 +26346,7 @@ snapshots:
       - canvas
       - debug
       - encoding
+      - graphql
       - react-native-b4a
       - supports-color
       - utf-8-validate
@@ -26362,7 +26357,7 @@ snapshots:
       '@stackbit/artisanal-names': 1.0.1
       '@stackbit/cms-contentful': 0.4.56
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(graphql@16.14.2)
-      '@stackbit/cms-git': 0.4.18
+      '@stackbit/cms-git': 0.4.18(@types/react@19.1.8)(graphql@16.14.2)
       '@stackbit/cms-sanity': 0.2.56(@types/react@19.1.8)
       '@stackbit/sdk': 2.0.1
       '@stackbit/types': 1.0.1
@@ -26396,14 +26391,14 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@stackbit/dev-common@0.5.51(@types/react@19.1.8)(debug@4.4.1)':
+  '@stackbit/dev-common@0.5.51(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)':
     dependencies:
       '@iarna/toml': 2.2.5
       '@stackbit/artisanal-names': 1.0.1
-      '@stackbit/cms-contentful': 0.4.56(debug@4.4.1)
+      '@stackbit/cms-contentful': 0.4.56(debug@4.4.1)(graphql@16.14.2)
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
-      '@stackbit/cms-git': 0.4.18(debug@4.4.1)
-      '@stackbit/cms-sanity': 0.2.56(@types/react@19.1.8)(debug@4.4.1)
+      '@stackbit/cms-git': 0.4.18(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
+      '@stackbit/cms-sanity': 0.2.56(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
       '@stackbit/sdk': 2.0.1
       '@stackbit/types': 1.0.1
       '@stackbit/utils': 0.4.19
@@ -26432,6 +26427,7 @@ snapshots:
       - canvas
       - debug
       - encoding
+      - graphql
       - react-native-b4a
       - supports-color
       - utf-8-validate
@@ -26439,8 +26435,8 @@ snapshots:
   '@stackbit/dev@1.0.35(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)':
     dependencies:
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
-      '@stackbit/cms-git': 0.4.18(debug@4.4.1)
-      '@stackbit/dev-common': 0.5.51(@types/react@19.1.8)(debug@4.4.1)
+      '@stackbit/cms-git': 0.4.18(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
+      '@stackbit/dev-common': 0.5.51(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
       '@stackbit/sdk': 2.0.1
       axios: 0.25.0(debug@4.4.1)
       chalk: 4.1.2
@@ -26474,7 +26470,7 @@ snapshots:
   '@stackbit/dev@1.0.35(@types/react@19.1.8)(graphql@16.14.2)':
     dependencies:
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(graphql@16.14.2)
-      '@stackbit/cms-git': 0.4.18
+      '@stackbit/cms-git': 0.4.18(@types/react@19.1.8)(graphql@16.14.2)
       '@stackbit/dev-common': 0.5.51(@types/react@19.1.8)
       '@stackbit/sdk': 2.0.1
       axios: 0.25.0
@@ -38557,7 +38553,7 @@ snapshots:
       minimist: 1.2.8
       strip-bom: 3.0.0
 
-  tsdown@0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)):
+  tsdown@0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34):
     dependencies:
       ansis: 4.3.0
       cac: 7.0.0
