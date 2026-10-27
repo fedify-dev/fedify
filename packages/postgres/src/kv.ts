@@ -35,6 +35,8 @@ export interface PostgresKvStoreOptions {
    * This skips only the table's schema DDL.  Driver-specific runtime setup,
    * such as detecting whether the driver serializes JSON parameters on its
    * own, still runs before the first key is read or written.
+   * It also skips automatic expiry-index provisioning.  See the PostgreSQL
+   * key–value store migration guide for the index to add to your own DDL.
    * @default `false`
    */
   readonly initialized?: boolean;
@@ -96,9 +98,7 @@ export class PostgresKvStore implements KvStore {
     // detached SQL error would still abort it and could hide a rollback.
     // Reserved clients may run manual transactions without savepoint().
     // Cleanup locks remain held until the caller ends the transaction.
-    const callerOwned = ("savepoint" in this.#sql &&
-      typeof this.#sql.savepoint === "function") ||
-      ("release" in this.#sql && typeof this.#sql.release === "function");
+    const callerOwned = this.#callerOwned();
     if (this.#expiring) return callerOwned ? this.#expiring : undefined;
     if (performance.now() < this.#nextExpiry) return;
     this.#expiring = (async () => {
@@ -127,6 +127,10 @@ export class PostgresKvStore implements KvStore {
     // Resolve the logical table through its row type so partitions and
     // inheritance children share one lock, respecting identifier transforms.
     // The bigint lock namespace is separate from the queue's two-int locks.
+    // The immutable UTC expression is only an index search key.  Recheck the
+    // original session-calendar predicate before LIMIT and again on deletion;
+    // calendar/DST differences may delay reclamation, never logical expiry.
+    // Keep UTC literal so generic plans can match the expression index.
     // CTIDs overlap across child tables, so check tableoid too.  Keep the CTID
     // array to allow TID lookups instead of a second full-table join scan.
     const [result] = await this.#sql<{ count: number }[]>`
@@ -140,7 +144,10 @@ export class PostgresKvStore implements KvStore {
         SELECT tableoid AS relation, ctid AS tid
         FROM ${this.#sql(this.#tableName)}
         WHERE (SELECT acquired FROM sweep_lock)
-          AND ttl IS NOT NULL AND created + ttl < statement_timestamp()
+          AND ttl IS NOT NULL
+          AND timezone('UTC', timezone('UTC', created) + ttl)
+            < statement_timestamp()
+          AND created + ttl < statement_timestamp()
         LIMIT ${expiryBatchSize} FOR UPDATE SKIP LOCKED
       ), deleted AS (
         DELETE FROM ${this.#sql(this.#tableName)}
@@ -311,6 +318,9 @@ export class PostgresKvStore implements KvStore {
         tableName: this.#tableName,
       });
       if (!this.#skipDdl) await this.#initializeTable();
+      if (!this.#skipDdl && !this.#callerOwned()) {
+        await this.#initializeExpiryIndex();
+      }
       this.#driverSerializesJson = await driverSerializesJson(this.#sql);
       this.#initialized = true;
       logger.debug("Initialized the key–value store table {tableName}.", {
@@ -354,6 +364,116 @@ export class PostgresKvStore implements KvStore {
           ALTER TABLE ${this.#sql(this.#tableName)} SET LOGGED;
         `;
       }
+    }
+  }
+
+  #callerOwned(): boolean {
+    return ("savepoint" in this.#sql &&
+      typeof this.#sql.savepoint === "function") ||
+      ("release" in this.#sql && typeof this.#sql.release === "function");
+  }
+
+  async #initializeExpiryIndex(): Promise<void> {
+    try {
+      await this.#sql.begin("isolation level read committed", async (sql) => {
+        await sql`SET LOCAL lock_timeout = '250ms'`;
+        await sql`SET LOCAL statement_timeout = '2s'`;
+        // Resolve identifiers through the driver once.  DDL below is quoted
+        // by PostgreSQL, without applying identifier transforms a second time.
+        const [table] = await sql`
+          SELECT c.oid, c.relkind, c.relrowsecurity,
+            pg_has_role(current_user, c.relowner, 'USAGE') AS owner,
+            EXISTS (SELECT 1 FROM pg_inherits WHERE inhparent = c.oid) AS children,
+            format('%I.%I', n.nspname, c.relname) AS name,
+            'idx_fedify_kv_expiry_' || substr(md5(
+              format('%I.%I', n.nspname, c.relname)
+            ), 1, 16) AS idx
+          FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE c.oid = (SELECT typrelid FROM pg_type
+            WHERE oid = pg_typeof(NULL::${sql(this.#tableName)})::oid)
+        `;
+        const indexed = async () => {
+          const [result] = await sql`
+            SELECT EXISTS (
+              SELECT 1 FROM pg_index i
+              JOIN pg_class c ON c.oid = i.indexrelid
+              JOIN pg_am a ON a.oid = c.relam
+              JOIN pg_opclass o ON o.oid = i.indclass[0]
+              WHERE i.indrelid = ${table.oid}::oid
+                AND i.indisvalid AND i.indisready AND i.indislive
+                AND a.amname = 'btree' AND i.indkey[0] = 0
+                AND o.opcdefault AND o.opcintype = 'timestamptz'::regtype
+                AND pg_get_indexdef(i.indexrelid, 1, false) IN (
+                  ${"timezone('UTC'::text, (timezone('UTC'::text, created) + ttl))"},
+                  ${"(((created AT TIME ZONE 'UTC'::text) + ttl) AT TIME ZONE 'UTC'::text)"}
+                )
+                AND (i.indpred IS NULL OR
+                  pg_get_expr(i.indpred, i.indrelid) = '(ttl IS NOT NULL)')
+            ) AS present
+          `;
+          return result.present;
+        };
+        if (await indexed()) return;
+        const manual = () =>
+          logger.warn(
+            "Provision the expiry index for {tableName} manually; see {guide}.",
+            {
+              tableName: table.name,
+              guide: "https://fedify.dev/manual/kv#postgresql-expiry-index",
+            },
+          );
+        if (
+          !table.owner || table.relrowsecurity ||
+          (table.relkind !== "r" && table.relkind !== "p") ||
+          (table.relkind === "r" && table.children)
+        ) {
+          manual();
+          return;
+        }
+        const empty = async () => {
+          const [result] = await sql.unsafe(
+            `SELECT NOT EXISTS (SELECT 1 FROM ${table.name} LIMIT 1) AS empty`,
+          );
+          return result.empty;
+        };
+        // Never queue a write-blocking lock against a populated legacy table.
+        if (!await empty()) {
+          manual();
+          return;
+        }
+        const [lock] = await sql`
+          SELECT pg_try_advisory_xact_lock(
+            (hashtext('fedify.postgres.kv.index')::bigint << 32) |
+            ${table.oid}::bigint
+          ) AS acquired
+        `;
+        if (!lock.acquired) return;
+        await sql.unsafe(`LOCK TABLE ${table.name} IN SHARE MODE`);
+        // READ COMMITTED gives this recheck a fresh snapshot after the lock.
+        if (await indexed()) return;
+        if (!await empty()) {
+          manual();
+          return;
+        }
+        const [ddl] = await sql`
+          SELECT format(
+            'CREATE INDEX %I ON %s ((timezone(''UTC'', timezone(''UTC'', created) + ttl))) WHERE ttl IS NOT NULL',
+            ${table.idx}::text, ${table.name}::text
+          ) AS command
+        `;
+        await sql.unsafe(ddl.command);
+      });
+    } catch (error) {
+      // This private transaction has rolled back.  Optional index setup must
+      // not abort a caller's transaction or disable an otherwise usable store.
+      logger.warn(
+        "Failed to provision the expiry index for {tableName}: {error}. See {guide}.",
+        {
+          tableName: this.#tableName,
+          error,
+          guide: "https://fedify.dev/manual/kv#postgresql-expiry-index",
+        },
+      );
     }
   }
 

@@ -34,6 +34,12 @@ next initialization converts that table to logged storage.  PostgreSQL rewrites
 the table and takes an `ACCESS EXCLUSIVE` lock during this one-time migration,
 so schedule the upgrade accordingly for a large or busy table.
 
+Expiry cleanup can use an expression index without changing the table schema.
+New empty tables receive it automatically with a pooled client.  Existing
+populated tables and deployments using `initialized: true` need an explicit
+index migration.  See the [expiry-index guide] for concurrent index creation,
+rolling upgrades, and calendar-time semantics.
+
 [JSR badge]: https://jsr.io/badges/@fedify/postgres
 [JSR]: https://jsr.io/@fedify/postgres
 [npm badge]: https://img.shields.io/npm/v/@fedify/postgres?logo=npm
@@ -43,6 +49,7 @@ so schedule the upgrade accordingly for a large or busy table.
 [`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue
 [`PostgresKvStore`]: https://jsr.io/@fedify/postgres/doc/~/PostgresKvStore
 [`PostgresMessageQueue`]: https://jsr.io/@fedify/postgres/doc/~/PostgresMessageQueue
+[expiry-index guide]: https://fedify.dev/manual/kv#postgresql-expiry-index
 
 
 Installation
