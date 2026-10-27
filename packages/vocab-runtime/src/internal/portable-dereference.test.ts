@@ -4,14 +4,48 @@ import type { DocumentLoader } from "../docloader.ts";
 import { parseIri, withGatewayHints } from "../url.ts";
 import { createScopedContextLoader } from "./jsonld-cache.ts";
 import {
+  copyPortableProvenance,
   createSnapshotContextLoader,
   getPortableGatewayCandidates,
   getReferrerGateways,
+  isInPortableChain,
   isPortableIri,
   recordPortableReferrer,
+  retargetPortableReferrer,
 } from "./portable-dereference.ts";
 
 const hrefs = (urls: URL[]) => urls.map((url) => url.href);
+
+test("retargetPortableReferrer() only reconnects existing provenance", () => {
+  const id = parseIri("ap://did:key:z6Mkabc/actor");
+  const parent = { id, gateways: [new URL("https://original.example")] };
+  const copiedParent = { id, gateways: [new URL("https://copy.example")] };
+  const source = {};
+  const copy = {};
+  let calls = 0;
+  retargetPortableReferrer(copy, () => {
+    calls++;
+    return copiedParent;
+  });
+  deepStrictEqual(calls, 0);
+  ok(!isInPortableChain(copy));
+  recordPortableReferrer(parent, source, "https://example.com/property");
+  copyPortableProvenance(source, copy);
+  retargetPortableReferrer(copy, () => undefined);
+  deepStrictEqual(hrefs(getReferrerGateways(copy, id)!), [
+    "https://original.example/",
+  ]);
+  retargetPortableReferrer(copy, (original) => {
+    ok(original === parent);
+    return copiedParent;
+  });
+  deepStrictEqual(hrefs(getReferrerGateways(copy, id)!), [
+    "https://copy.example/",
+  ]);
+  deepStrictEqual(hrefs(getReferrerGateways(source, id)!), [
+    "https://original.example/",
+  ]);
+});
 
 test("isPortableIri()", () => {
   ok(isPortableIri(parseIri("ap://did:key:z6Mkabc/actor")));

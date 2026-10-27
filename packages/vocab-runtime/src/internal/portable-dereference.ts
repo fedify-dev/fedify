@@ -199,6 +199,27 @@ export function copyPortableProvenance(from: object, to: object): void {
 }
 
 /**
+ * Reconnects an existing historical referrer to its independent graph copy.
+ * Does not create provenance or add verification or collection-context evidence.
+ * An unresolved referrer remains external history. Like the other provenance
+ * helpers, this is for generated vocabulary code, not a public trust API.
+ * @internal
+ */
+export function retargetPortableReferrer(
+  copy: object,
+  resolve: (original: object) => object | undefined,
+): void {
+  const provenance = provenances.get(copy);
+  if (provenance?.referrer == null) return;
+  const object = resolve(provenance.referrer.object);
+  if (object == null) return;
+  provenances.set(copy, {
+    ...provenance,
+    referrer: { ...provenance.referrer, object },
+  });
+}
+
+/**
  * Recognizes an FEP-ef61 compatible identifier to dereference as a portable
  * object.
  *

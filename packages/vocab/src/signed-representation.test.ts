@@ -193,6 +193,27 @@ test("a clone does not inherit a retained signed representation", async () => {
   deepStrictEqual(embedded.content, "Changed");
 });
 
+test("deepClone() drops retained signed representations at every level", async () => {
+  const note = retainedNote();
+  const original = new Create({ object: note });
+  retainSignedRepresentation(original, {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Create",
+    content: "Retained root only",
+  });
+  const copied = original.deepClone();
+  const json = await new Create({ object: copied }).toJsonLd(options) as {
+    object: { content?: unknown; object: Record<string, unknown> };
+  };
+  deepStrictEqual(json.object.content, undefined);
+  deepStrictEqual(json.object.object.content, "Hello");
+  deepStrictEqual(json.object.object.proof, undefined);
+  const originalJson = await new Create({ object: note }).toJsonLd(options) as {
+    object: unknown;
+  };
+  deepStrictEqual(originalJson.object, securedNote);
+});
+
 test("every generated default context keeps placeholders recoverable", async () => {
   interface VocabClass {
     new (values: { id?: URL | null }): { toJsonLd(): Promise<unknown> };

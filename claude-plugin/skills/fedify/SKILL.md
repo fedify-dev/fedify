@@ -265,6 +265,14 @@ in-tree *src/webfinger*.
 
 `fromJsonLd()` and `toJsonLd()` are asynchronous; always `await` them.
 
+`clone()` is shallow: it copies property arrays but shares nested vocabulary
+objects and URLs.  In Fedify 2.5.0 and later, use synchronous `deepClone()` to
+resolve nested properties without hydrating the source's objects.  Replacement
+values are copied too.  Each copied node keeps its own default loaders and
+verifier; second-argument options override only the root.  The copy drops cached
+JSON-LD and retained signed representations, so retain the received document
+when its exact representation matters and sign copies again when needed.
+
 > [!WARNING]
 > `crossOrigin: "trust"` on vocabulary deserialization trusts embedded
 > objects without re-fetching.  Treat it as you would

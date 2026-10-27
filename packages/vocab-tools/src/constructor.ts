@@ -219,8 +219,8 @@ export async function* generateCloner(
    * object.  Hydrating a top-level property of the clone does not update this
    * instance's property.
    *
-   * To resolve properties without sharing nested objects, serialize and
-   * re-parse the instance before hydration rather than using this method.
+   * To resolve properties without sharing nested objects, use
+   * {@link ${type.name}.deepClone} before hydration.
    * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
    * for details, including how cached JSON-LD affects serialization.
    *
@@ -360,5 +360,59 @@ export async function* generateCloner(
   yield `
     return clone;
   }
+  `.trimEnd() + "\n";
+}
+
+export async function* generateDeepCloner(
+  typeUri: string,
+  types: Record<string, TypeSchema>,
+): AsyncIterable<string> {
+  const type = types[typeUri];
+  yield `
+  /**
+   * Copies this instance and its nested vocabulary objects, optionally
+   * replacing property values. Replacement values are copied too.
+   *
+   * Property arrays, URLs and byte arrays are independent of the source.
+   * Repeated references remain shared within the copy. References to this
+   * source in replacement values receive a separate copy of its pre-update
+   * values, rather than referring back to the updated root.
+   * Other scalar values, including opaque cryptographic keys, are shared.
+   *
+   * Each copied object retains its own default loaders, tracer, verifier
+   * and base URL. Options override defaults only on the root instance.
+   * This method does not fetch or serialize objects. Cached JSON-LD and
+   * retained signed representations are not copied; unknown JSON-LD
+   * properties and original formatting are not preserved. Sign the copy
+   * again if it needs a valid proof.
+   *
+   * Trust and portable provenance follow clone() rules at every level.
+   * Historical referrers within the graph are copied without replacements;
+   * referrers outside the graph still point at the original external objects.
+   * Custom clone() overrides must return fresh, compatible instances and
+   * remain responsible for their own constructor and cloning side effects.
+   *
+   * @param values The values to replace before copying the graph.
+   * @param options Root loader and verifier overrides. Undefined options
+   *                retain the corresponding defaults.
+   * @returns An independent copy of the stored vocabulary graph.
+   * @since 2.5.0
+   */
+  ${emitOverride(typeUri, types)} deepClone(values:
   `;
+  for await (const code of generateParametersType(typeUri, types)) yield code;
+  yield `= {}, options: {
+    documentLoader?: DocumentLoader,
+    contextLoader?: DocumentLoader,
+    verifyPortableObject?: PortableObjectVerifier,
+  } = {}): ${type.name} {
+    const cloneOptions = {
+      documentLoader: options.documentLoader ?? this._documentLoader,
+      contextLoader: options.contextLoader ?? this._contextLoader,
+      verifyPortableObject: options.verifyPortableObject ?? this._verifyPortableObject,
+      tracerProvider: this._tracerProvider,
+      baseUrl: this._baseUrl,
+    };
+    return deepCloneGraph(this, this.clone(values, cloneOptions));
+  }\n`;
 }

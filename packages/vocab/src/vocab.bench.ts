@@ -1,4 +1,4 @@
-import { Collection, Object } from "./vocab.ts";
+import { Collection, Create, Note, Object, Person } from "./vocab.ts";
 
 const jsonLd = {
   "@context": [
@@ -201,4 +201,43 @@ Deno.bench("Collection.toJsonLd()", async (b) => {
   b.start();
   await collection.toJsonLd();
   b.end();
+});
+
+const actor = new Person({
+  id: new URL("https://example.com/alice"),
+  name: "Alice",
+});
+const activity = new Create({
+  id: new URL("https://example.com/activities/1"),
+  actor,
+  object: new Note({
+    id: new URL("https://example.com/notes/1"),
+    content: "Hello, world!",
+    attribution: actor,
+    published: Temporal.Instant.from("2026-10-27T00:00:00Z"),
+    to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+  }),
+});
+
+Deno.bench({
+  name: "Create.clone()",
+  group: "activity copy",
+  baseline: true,
+  fn() {
+    activity.clone();
+  },
+});
+Deno.bench({
+  name: "Create.deepClone()",
+  group: "activity copy",
+  fn() {
+    activity.deepClone();
+  },
+});
+Deno.bench({
+  name: "Create JSON-LD round trip",
+  group: "activity copy",
+  async fn() {
+    await Create.fromJsonLd(await activity.toJsonLd());
+  },
 });

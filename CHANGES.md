@@ -213,6 +213,11 @@ To be released.
 
 ### @fedify/vocab
 
+ -  Added `deepClone()` to vocabulary objects to copy nested objects before
+    resolving their properties, keeping the source graph unchanged.  Replacement
+    values are copied too.  Use `clone()` when a shallow copy is sufficient.
+    [[#1243], [#1337]]
+
  -  Added vocabulary support for the [FEP-6757] draft, which marks
     ActivityPub content with explicit copyright license URIs.
     [[#1212], [#1241]]
@@ -233,6 +238,8 @@ To be released.
 [FEP-6757]: https://w3id.org/fep/6757
 [#1212]: https://github.com/fedify-dev/fedify/issues/1212
 [#1241]: https://github.com/fedify-dev/fedify/pull/1241
+[#1243]: https://github.com/fedify-dev/fedify/issues/1243
+[#1337]: https://github.com/fedify-dev/fedify/pull/1337
 
 ### @fedify/vocab-runtime
 
