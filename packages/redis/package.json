@@ -82,7 +82,6 @@
     "ioredis": "catalog:"
   },
   "devDependencies": {
-    "@std/async": "catalog:",
     "@fedify/fixture": "workspace:^",
     "@fedify/testing": "workspace:^",
     "@js-temporal/polyfill": "catalog:",
