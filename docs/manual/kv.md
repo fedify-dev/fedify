@@ -349,8 +349,10 @@ WHERE indrelid = 'public.fedify_kv_v2'::regclass
 ~~~~
 
 After confirming that an invalid index is the one created by your migration,
-drop it with `DROP INDEX CONCURRENTLY public.fedify_kv_expiry` outside a
-transaction and retry the build and `ANALYZE`.  Automatic initialization never
+run `DROP INDEX CONCURRENTLY <schema>.<index_name>` outside a transaction.
+Replace `<schema>` and `<index_name>` with the schema and index name you chose
+for the migration, quoting each identifier as needed.  Then rerun the index
+build, followed by `ANALYZE`.  Automatic initialization never
 replaces conflicting or invalid indexes.  It accepts an existing valid index if
 it uses the expression above or its `AT TIME ZONE` equivalent, and has either
 no predicate or `WHERE ttl IS NOT NULL`.
