@@ -646,3 +646,95 @@ test(
     }
   },
 );
+
+for (const shape of ["unique", "multi-key"] as const) {
+  test(
+    `PostgresKvStore provisions a dedicated expiry index beside a ${shape} index`,
+    { skip },
+    async () => {
+      if (!dbUrl) return;
+      const db = database({ max: 1 });
+      const { sql, tableName } = db;
+      const existing = `existing_expiry_${
+        crypto.randomUUID().replaceAll("-", "")
+      }`;
+      const store = new PostgresKvStore(db.observed, { tableName });
+      try {
+        await legacyTable(sql, tableName);
+        if (shape === "unique") {
+          await sql`CREATE UNIQUE INDEX ${sql(existing)} ON ${sql(tableName)}
+            ((timezone('UTC', timezone('UTC', created) + ttl)))
+            WHERE ttl IS NOT NULL`;
+        } else {
+          await sql`CREATE INDEX ${sql(existing)} ON ${sql(tableName)}
+            ((timezone('UTC', timezone('UTC', created) + ttl)), key)
+            WHERE ttl IS NOT NULL`;
+        }
+        await store.initialize();
+        const all = await indexes(sql, tableName);
+        assert.equal(
+          all.length,
+          2,
+          "provision the intended index without replacing the existing one",
+        );
+        const [dedicated] = await sql`
+          SELECT c.relname AS name FROM pg_index i
+          JOIN pg_class c ON c.oid = i.indexrelid
+          WHERE i.indrelid = ${tableName}::regclass
+            AND NOT i.indisprimary AND NOT i.indisunique AND i.indnatts = 1
+        `;
+        assert(
+          dedicated,
+          "cleanup needs its own non-unique single-attribute index",
+        );
+        await sql`INSERT INTO ${sql(tableName)} (key, value, created, ttl)
+          SELECT ARRAY[n::text], '1', statement_timestamp() + n * INTERVAL '1 second',
+            INTERVAL '1 day' FROM generate_series(1, 80000) n`;
+        await sql`ANALYZE ${sql(tableName)}`;
+        await store.delete(["missing"]);
+        await db.complete();
+        for (const mode of ["force_custom_plan", "force_generic_plan"]) {
+          await sql.unsafe(`SET plan_cache_mode = ${mode}`);
+          const result = await db.explain();
+          const [{ Plan: plan }] = result[0]["QUERY PLAN"];
+          const nodes: Record<string, unknown>[] = [];
+          const visit = (node: Record<string, unknown>) => {
+            nodes.push(node);
+            for (
+              const child of (node.Plans ?? []) as Record<string, unknown>[]
+            ) visit(child);
+          };
+          visit(plan);
+          assert(
+            nodes.some((node) =>
+              String(node["Index Cond"]).includes("timezone('UTC'")
+            ),
+            JSON.stringify(plan),
+          );
+          assert(
+            !nodes.some((node) => node["Node Type"] === "Seq Scan"),
+            JSON.stringify(plan),
+          );
+          assert(
+            Number(plan["Shared Hit Blocks"]) < 1000,
+            JSON.stringify(plan),
+          );
+        }
+        // Provisioning never drops or weakens an operator-owned constraint.
+        if (shape === "unique") {
+          await sql`INSERT INTO ${sql(tableName)} VALUES
+            (ARRAY['first'], '1', '2000-01-01', INTERVAL '1 day')`;
+          await assert.rejects(
+            sql`INSERT INTO ${sql(tableName)} VALUES
+              (ARRAY['duplicate'], '1', '2000-01-01', INTERVAL '1 day')`,
+            (error: unknown) =>
+              error instanceof postgres.PostgresError && error.code === "23505",
+          );
+        }
+      } finally {
+        await store.drop();
+        await sql.end();
+      }
+    },
+  );
+}

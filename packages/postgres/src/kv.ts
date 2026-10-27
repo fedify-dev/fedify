@@ -401,6 +401,7 @@ export class PostgresKvStore implements KvStore {
               JOIN pg_opclass o ON o.oid = i.indclass[0]
               WHERE i.indrelid = ${table.oid}::oid
                 AND i.indisvalid AND i.indisready AND i.indislive
+                AND NOT i.indisunique AND i.indnatts = 1
                 AND a.amname = 'btree' AND i.indkey[0] = 0
                 AND o.opcdefault AND o.opcintype = 'timestamptz'::regtype
                 AND pg_get_indexdef(i.indexrelid, 1, false) IN (
