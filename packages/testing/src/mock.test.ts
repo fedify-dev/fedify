@@ -218,6 +218,7 @@ test("receiveActivity triggers inbox listeners", async () => {
   // Provide contextData through constructor
   const mockFederation = createFederation<{ test: string }>({
     contextData: { test: "data" },
+    documentLoader: mockDocumentLoader,
   });
   let receivedActivity: Create | null = null;
 
@@ -247,6 +248,7 @@ test("receiveActivity triggers inbox listeners", async () => {
   // Verify the listener was triggered
   const received = receivedActivity as Create | null;
   ok(received instanceof Create);
+  notStrictEqual(received, activity);
   deepStrictEqual(
     await received.toJsonLd({ format: "expand" }),
     await activity.toJsonLd({ format: "expand" }),
