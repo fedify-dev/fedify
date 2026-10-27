@@ -12,6 +12,7 @@ experimental = true
 
 [tools]
 bun = "1.2.22"
+# Keep the generated-code formatter @dprint/typescript in sync with Deno.
 deno = "2.9.7"
 node = "22"
 pnpm = "10.28.0"
@@ -30,54 +31,11 @@ pnpm = "10.28.0"
 # `postinstall` hook below also runs them, so a fresh checkout is fully set up
 # by a single `mise install`.
 
-# Generate the ActivityPub vocabulary types from their YAML definitions.
-[deps.codegen]
-auto = true
-env = { DENO_LOG = "error" }
-sources = [
-  # loadSchemaFiles() matches /\.ya?ml$/i, so track both extensions: a schema
-  # added or renamed with the .yml spelling must still invalidate this cache.
-  "packages/vocab/src/**/*.yaml",
-  "packages/vocab/src/**/*.yml",
-  "packages/vocab/scripts/codegen.ts",
-  # The generator itself: changes to @fedify/vocab-tools (its code or its
-  # schema) change the generated vocab.ts, so track its sources too.
-  "packages/vocab-tools/src/**/*.ts",
-  "packages/vocab-tools/src/**/*.yaml",
-  "packages/vocab-tools/src/**/*.yml",
-]
-outputs = ["packages/vocab/src/vocab.ts"]
-run = "deno --quiet task -f @fedify/vocab compile"
-
-# Pre-cache every workspace member's Deno exports (writes a freshness stamp).
-[deps.deno-cache]
-auto = true
-depends = ["codegen"]
-sources = [
-  "deno.lock",
-  "deno.json",
-  "packages/*/deno.json",
-  "examples/*/deno.json",
-  "examples/*/*/deno.json",
-  "test/smoke/harness/deno.json",
-]
-outputs = ["node_modules/.cache/fedify-deno-precache.stamp"]
-run = "deno run --allow-read --allow-env --allow-run --allow-write scripts/install.ts"
-
-# Install Node.js dependencies with pnpm.  pnpm's root `prepare` lifecycle
-# script builds all packages, so this also produces the initial dist/ output.
-# Depend on `deno-cache` (which depends on `codegen`) so the providers run
-# serially (codegen, then the Deno pre-cache, then pnpm install).  This ensures
-# generated sources exist before pnpm's prepare lifecycle builds the packages.
-#
-# This is a custom provider (not named `pnpm`, which is a reserved built-in
-# provider whose freshness only watches the root package.json and lockfile) so
-# its freshness tracks every workspace manifest.  Otherwise a change to a
-# `packages/*/package.json` or to `pnpm-workspace.yaml` (e.g. before the lockfile
-# is regenerated) would be missed and `mise deps` would wrongly skip the install.
+# Install dependencies first. pnpm links every workspace before the root prepare
+# lifecycle builds packages; vocab's build generates its sources using Node.js.
+# Keep native dependency lifecycle scripts enabled.
 [deps.pnpm-install]
 auto = true
-depends = ["deno-cache"]
 sources = [
   "package.json",
   "pnpm-workspace.yaml",
@@ -89,6 +47,26 @@ sources = [
 ]
 outputs = ["node_modules/.modules.yaml"]
 run = "pnpm install"
+
+# Source imports let the generator run before any package has dist/ output.
+# On a fresh install, prepare already generated vocab.ts; this self-skips.
+[deps.codegen]
+auto = true
+depends = ["pnpm-install"]
+sources = [
+  # Match loadSchemaFiles()'s case-insensitive /\.ya?ml$/ expression.
+  "packages/vocab/src/**/*.[yY][aA][mM][lL]",
+  "packages/vocab/src/**/*.[yY][mM][lL]",
+  "packages/vocab/scripts/**/*.ts",
+  "packages/vocab/package.json",
+  "packages/vocab-tools/src/**/*.ts",
+  "packages/vocab-tools/src/**/*.[yY][aA][mM][lL]",
+  "packages/vocab-tools/src/**/*.[yY][mM][lL]",
+  # codec.ts and property.ts embed the generator's package metadata.
+  "packages/vocab-tools/deno.json",
+]
+outputs = ["packages/vocab/src/vocab.ts"]
+run = "node --experimental-strip-types packages/vocab/scripts/codegen.ts"
 
 # Hooks <https://mise.jdx.dev/hooks.html>
 #
@@ -133,12 +111,46 @@ if $nu.os-info.name != 'windows' {
 # Code generation
 [tasks.codegen]
 description = "Generate ActivityPub vocabulary types from YAML definitions"
-# Delegate to the [deps.codegen] provider above rather than repeating its
-# sources/outputs here, so the freshness inputs live in one place.  --force
-# re-runs the provider even when mise considers it fresh; the codegen script
-# itself still self-skips when vocab.ts is already up to date, so an explicit
-# `mise run codegen` stays fast.
-run = "mise deps --force codegen"
+# Auto dependency providers install the generator dependencies first. Calling
+# the script directly avoids forcing a new pnpm install for an explicit run.
+run = "node --experimental-strip-types packages/vocab/scripts/codegen.ts"
+
+# Deno entry points depend on this task explicitly while tooling is migrated.
+# Keep it out of automatic dependency providers so Node-only bootstrap stays
+# usable without Deno.
+[tasks."deno:cache"]
+description = "Prepare workspace exports for Deno compatibility work"
+env = { DENO_LOG = "error" }
+sources = [
+  "deno.lock",
+  "deno.json",
+  "packages/*/deno.json",
+  "examples/*/deno.json",
+  "examples/*/*/deno.json",
+  "test/smoke/harness/deno.json",
+  # Deno also resolves dependencies declared in workspace npm manifests.
+  "package.json",
+  "packages/*/package.json",
+  "examples/*/package.json",
+  "examples/*/*/package.json",
+  "test/smoke/harness/package.json",
+  "scripts/install.ts",
+  "packages/vocab/src/vocab.ts",
+]
+outputs = ["node_modules/.cache/fedify-deno-precache.stamp"]
+run = "deno run --allow-read --allow-env --allow-run --allow-write scripts/install.ts"
+
+[tasks."codegen:check:deno"]
+depends = ["deno:cache"]
+description = "Validate generated vocabulary formatting and Deno types"
+run = [
+  "deno fmt --check packages/vocab/src/vocab.ts",
+  "deno check packages/vocab/src/vocab.ts",
+]
+
+[tasks."test:codegen"]
+description = "Test code generation freshness, locking, and failure handling"
+run = "node --experimental-strip-types --test packages/vocab/scripts/codegen.test.ts"
 
 # Build
 #
@@ -194,6 +206,7 @@ depends = [
   "check:fixture-usage",
   "check:node-modules",
   "test:docs-contributors",
+  "test:codegen",
 ]
 run = "sacho check"
 
@@ -207,16 +220,18 @@ fi
 '''
 
 [tasks."check:fmt"]
+depends = ["deno:cache"]
 description = "Check code formatting"
 run = "deno fmt --check"
 
 [tasks."check:lint"]
+depends = ["deno:cache"]
 description = "Check code linting"
 run = "deno --quiet lint"
 
 [tasks."check:types"]
 description = "Check TypeScript types"
-depends = ["codegen"]
+depends = ["deno:cache", "codegen"]
 env = { DENO_LOG = "error" }
 run = "deno --quiet run --allow-read --allow-env --allow-run --allow-sys scripts/check_types.ts"
 
@@ -225,6 +240,7 @@ description = "Check Markdown formatting"
 run = "hongdown --check"
 
 [tasks.check-versions]
+depends = ["deno:cache"]
 description = "Check that all package versions are consistent across the monorepo"
 usage = """
 flag "--fix" help="Automatically fix package metadata version mismatches"
@@ -238,18 +254,22 @@ deno run --allow-read --allow-write scripts/check_versions.ts ...$fix_args ...$s
 '''
 
 [tasks."check:fixture-usage"]
+depends = ["deno:cache"]
 description = "Ensure @fedify/fixture is only used in **/*.test.ts files"
 run = "deno run --allow-read scripts/check_fixture_usage.ts"
 
 [tasks."check:workspace-protocol"]
+depends = ["deno:cache"]
 description = "Check for invalid workspace: specifiers without version (*, ^, ~)"
 run = "deno run --allow-read scripts/check_workspace_protocol.ts"
 
 [tasks.fmt]
+depends = ["deno:cache"]
 description = "Format the codebase"
 run = ["deno fmt", "hongdown --write", "sacho fmt"]
 
 [tasks.check-each]
+depends = ["deno:cache"]
 description = "Check code quality for specific package(s)"
 usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
 shell = "nu -c"
@@ -284,6 +304,7 @@ node scripts/test_testing_pack.mjs
 """
 
 [tasks."test:deno"]
+depends = ["deno:cache"]
 wait_for = ["build"]
 description = "Run the test suite using Deno"
 run = "deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel"
@@ -319,10 +340,11 @@ depends = [
 
 [tasks."test:temporal-polyfill"]
 description = "Check Temporal polyfill packaging"
-depends = ["build"]
+depends = ["deno:cache", "build"]
 run = "deno run --allow-read --allow-write --allow-run scripts/check_temporal_polyfill.ts"
 
 [tasks.test-each]
+depends = ["deno:cache"]
 description = "Run tests for a specific package across all environments"
 usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
 shell = "nu -c"
@@ -349,32 +371,34 @@ description = "Run tests for all example projects"
 # `build` produces @fedify/lint's dist/oxlint.js loader and provisions the
 # prebuilt oxlint native binary into node_modules (via the pnpm deps provider) —
 # both are needed by the lint/oxlint example.
-depends = ["build"]
+depends = ["deno:cache", "build"]
 run = "deno run -A examples/test-examples/mod.ts"
 
 [tasks."test:astro-compat"]
 description = "Test @fedify/astro against supported Astro and runtime versions"
-depends = ["build"]
+depends = ["deno:cache", "build"]
 run = "deno run -A packages/astro/compat/run.ts"
 
 [tasks."test:sveltekit-compat"]
 description = "Check @fedify/sveltekit consumer types against SvelteKit 2 and 3"
-depends = ["build"]
+depends = ["deno:cache", "build"]
 run = "deno run -A packages/sveltekit/compat/run.ts"
 
 [tasks."test:monitoring"]
+depends = ["deno:cache"]
 description = "Validate the monitoring example configuration"
 run = "deno run -A examples/monitoring/validate.ts"
 
 [tasks."test:init"]
 description = "Run tests for the init package"
-depends = ["build"]
+depends = ["deno:cache", "build"]
 run = "deno task -f @fedify/init test-init"
 
 # Snapshot updates
 # Note: vocab uses @std/testing/snapshot which only works on Deno
 # vocab-tools has separate snapshots for each runtime
 [tasks."test:deno:update_snapshots"]
+depends = ["deno:cache"]
 description = "Update test snapshots for Deno"
 run = [
   "deno task -f @fedify/vocab-tools test -- --update",
@@ -416,19 +440,23 @@ run = "pnpm -C docs preview"
 
 # Benchmarks
 [tasks.bench]
+depends = ["deno:cache"]
 description = "Run benchmarks"
 run = "deno task -f @fedify/fedify bench"
 
 # CLI and utilities
 [tasks.cli]
+depends = ["deno:cache"]
 description = "Run the Fedify CLI tool"
 run = "deno task -f @fedify/cli run"
 
 [tasks.tunnel]
+depends = ["deno:cache"]
 description = "Tunnel port with the Fedify CLI"
 run = "deno task -f @fedify/cli run tunnel"
 
 [tasks.update-init-deps]
+depends = ["deno:cache"]
 description = "Update third-party dependency versions in fedify init templates"
 run = "deno task -f @fedify/init update-init-deps"
 

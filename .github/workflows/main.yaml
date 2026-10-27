@@ -14,6 +14,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  bootstrap:
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      MISE_DISABLE_TOOLS: deno
+    steps:
+    - uses: actions/checkout@v6
+    - uses: jdx/mise-action@v4
+      with:
+        version: 2026.6.12
+        install: false
+        cache: false
+    # Provision only the harness runtime before checking the fresh checkout.
+    # The harness then runs mise install with its normal postinstall hook.
+    - run: mise --no-hooks exec --no-deps node -- node scripts/test_bootstrap.mjs
+
   test:
     runs-on: ubuntu-latest
     permissions:
@@ -78,9 +99,10 @@ jobs:
     - uses: ./.github/actions/setup-mise
     - name: Enable RabbitMQ consistent hash exchange plugin
       run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
-    # Dependencies (codegen, install, and the build via pnpm's `prepare`) are
-    # already provisioned by the setup-mise action's `mise deps`; `--skip-deps`
-    # runs only the test task itself.
+    # setup-mise installs dependencies, generates vocabulary and builds packages.
+    # --skip-deps omits task dependencies, so prepare and validate Deno here.
+    - run: mise run deno:cache
+    - run: mise run codegen:check:deno
     - run: mise run --skip-deps test:deno -- --coverage=.cov --junit-path=.test-report.xml
       env:
         RUST_BACKTRACE: ${{ runner.debug }}
@@ -247,6 +269,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
+    - run: mise run deno:cache
     - run: mise run --skip-deps test:temporal-polyfill
 
   lint:

@@ -13,6 +13,7 @@
     "jsr:@deno/esbuild-plugin@^1.2.0": "1.2.1",
     "jsr:@deno/loader@0.4": "0.4.0",
     "jsr:@deno/loader@~0.3.10": "0.3.14",
+    "jsr:@dprint/formatter@0.6.0": "0.6.0",
     "jsr:@fresh/build-id@1": "1.0.1",
     "jsr:@fresh/core@2": "2.3.3",
     "jsr:@fresh/core@^2.1.4": "2.3.3",
@@ -82,6 +83,8 @@
     "npm:@cloudflare/vitest-pool-workers@~0.8.31": "0.8.71_vitest@3.2.4_@cloudflare+workers-types@4.20260511.1",
     "npm:@cloudflare/workers-types@^4.20260511.1": "4.20260511.1",
     "npm:@deno/astro-adapter@0.6": "0.6.0_@opentelemetry+api@1.9.1_astro@7.0.9_@netlify+blobs@11.0.3",
+    "npm:@dprint/formatter@0.6.0": "0.6.0",
+    "npm:@dprint/typescript@0.96.1": "0.96.1",
     "npm:@electric-sql/pglite@~0.5.8": "0.5.8",
     "npm:@fxts/core@^1.21.1": "1.26.0",
     "npm:@hongminhee/localtunnel@0.5": "0.5.0",
@@ -251,6 +254,9 @@
     },
     "@deno/loader@0.4.0": {
       "integrity": "6c1b18cfa18592740613ce79e15625c24268d60dbfc54bebfb5153bf512c536b"
+    },
+    "@dprint/formatter@0.6.0": {
+      "integrity": "5dbc82694d60b969817ebee572eb0a3cd2cb41c000c4d9f09804d334d70923db"
     },
     "@fresh/build-id@1.0.1": {
       "integrity": "12a2ec25fd52ae9ec68c26848a5696cd1c9b537f7c983c7e56e4fb1e7e816c20",
@@ -1101,6 +1107,12 @@
         "ky",
         "undici@6.25.0"
       ]
+    },
+    "@dprint/formatter@0.6.0": {
+      "integrity": "sha512-otnYh2jmGWbekYkAd4xiF416lpdZwNCbhkDrLQcAanvvutp0PhTNSJrwJ4DKBEu6xtP36NUX70t9YQw3oC/ONg=="
+    },
+    "@dprint/typescript@0.96.1": {
+      "integrity": "sha512-mz/nINSFQh1R5i2Qy90SWOCCK4SgNGRkNhCZba7LYmUkE4Zi8/45p8l8pqc9yN1fb4XY5Muhrzdh5Q3jFsYimw=="
     },
     "@electric-sql/pglite@0.5.8": {
       "integrity": "sha512-n9tsbUOhwx2epK1V0ZG9Ar4SHWUju04dhmzZXiSBXwBoleOvIfals33NAaWgagQVAL4Rbvx/Ptsu3P+pA09f6Q=="
@@ -16757,6 +16769,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@david/dax@~0.46.1",
+      "jsr:@dprint/formatter@0.6.0",
       "jsr:@hongminhee/localtunnel@0.3",
       "jsr:@hono/hono@^4.8.3",
       "jsr:@logtape/file@^2.2.0",
@@ -16774,6 +16787,7 @@
       "jsr:@std/testing@0.224",
       "jsr:@std/yaml@^1.0.8",
       "npm:@cloudflare/workers-types@^4.20260511.1",
+      "npm:@dprint/typescript@0.96.1",
       "npm:@electric-sql/pglite@~0.5.8",
       "npm:@fxts/core@^1.21.1",
       "npm:@js-temporal/polyfill@~0.5.1",
@@ -17052,6 +17066,8 @@
         ],
         "packageJson": {
           "dependencies": [
+            "npm:@dprint/formatter@0.6.0",
+            "npm:@dprint/typescript@0.96.1",
             "npm:jsonld@9"
           ]
         }

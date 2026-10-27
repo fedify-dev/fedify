@@ -2155,6 +2155,12 @@ importers:
         specifier: 'catalog:'
         version: 1.0.1
     devDependencies:
+      '@dprint/formatter':
+        specifier: 0.6.0
+        version: 0.6.0
+      '@dprint/typescript':
+        specifier: 0.96.1
+        version: 0.96.1
       '@fedify/fixture':
         specifier: workspace:*
         version: link:../fixture
@@ -3076,6 +3082,12 @@ packages:
 
   '@docsearch/sidepanel-js@4.6.3':
     resolution: {integrity: sha512-grGSmvXzG0if+mrzdIKykvpIAuEQ9u0sEJ2eLRRCaQfJvsWqh2C2/aY04bIzWvDh7myi5rvl8D+tUNsVrjYQ3A==}
+
+  '@dprint/formatter@0.6.0':
+    resolution: {integrity: sha512-otnYh2jmGWbekYkAd4xiF416lpdZwNCbhkDrLQcAanvvutp0PhTNSJrwJ4DKBEu6xtP36NUX70t9YQw3oC/ONg==}
+
+  '@dprint/typescript@0.96.1':
+    resolution: {integrity: sha512-mz/nINSFQh1R5i2Qy90SWOCCK4SgNGRkNhCZba7LYmUkE4Zi8/45p8l8pqc9yN1fb4XY5Muhrzdh5Q3jFsYimw==}
 
   '@dxup/nuxt@0.4.1':
     resolution: {integrity: sha512-gtYffW6OfWNvoLW+XD3Mx/K8uUq08PMGLYJoDxc92EzZAWqR0FhcR5iaLm5r/OxyGTKz+P5f5Y7Aoir9+SjYaw==}
@@ -19950,6 +19962,10 @@ snapshots:
   '@docsearch/js@4.6.3': {}
 
   '@docsearch/sidepanel-js@4.6.3': {}
+
+  '@dprint/formatter@0.6.0': {}
+
+  '@dprint/typescript@0.96.1': {}
 
   '@dxup/nuxt@0.4.1(magicast@0.5.2)(typescript@6.0.3)':
     dependencies:
