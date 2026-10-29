@@ -300,28 +300,30 @@ windowsTest(
 test("explicit npm test cases avoid other runtimes while the public CLI checks them", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fedify runtime probes "));
   const log = join(dir, "probes.log");
-  const execute = fileURLToPath(new URL("./test/execute.ts", import.meta.url));
   const invoke = promisify(execFile);
-  const windows = process.platform === "win32";
+  const fixture = join(dir, "runtime-probes.mjs");
   try {
-    for (const command of ["deno", "bun"]) {
-      await writeFile(
-        join(dir, command + (windows ? ".cmd" : "")),
-        windows
-          ? `@echo off\r\necho ${command}>>"${log}"\r\nexit /b 99\r\n`
-          : `#!/bin/sh\nprintf '${command}\\n' >> '${
-            log.replaceAll("'", "'\\''")
-          }'\nexit 99\n`,
-        { mode: 0o755 },
-      );
-    }
-    const env = {
-      ...process.env,
-      PATH: dir + (windows ? ";" : ":") + process.env.PATH,
-    };
+    // Observe runtime checks without depending on Windows shell-shim support.
+    await writeFile(
+      fixture,
+      `
+      import { runtimes } from ${
+        JSON.stringify(new URL("./lib.ts", import.meta.url).href)
+      };
+      const log = ${JSON.stringify(log)};
+      for (const name of ['deno', 'bun']) {
+        runtimes[name].checkCommand = [process.execPath, '-e',
+          'require("node:fs").appendFileSync(' + JSON.stringify(log) +
+          ', ' + JSON.stringify(name + '\\n') + '); process.exit(99);'];
+      }
+      await import(${
+        JSON.stringify(new URL("./test/execute.ts", import.meta.url).href)
+      });
+      `,
+    );
     const args = [
       "--experimental-transform-types",
-      execute,
+      fixture,
       "init",
       join(dir, "app"),
       "-w",
@@ -335,13 +337,18 @@ test("explicit npm test cases avoid other runtimes while the public CLI checks t
       "--dry-run",
     ];
     await invoke(nodeExecutable, args, {
-      env: { ...env, FEDIFY_TEST_MODE: "true" },
+      env: { ...process.env, FEDIFY_TEST_MODE: "true" },
     });
     await rejects(readFile(log), { code: "ENOENT" });
     await rejects(
-      invoke(nodeExecutable, args, { env: { ...env, FEDIFY_TEST_MODE: "" } }),
+      invoke(nodeExecutable, args, {
+        env: { ...process.env, FEDIFY_TEST_MODE: "" },
+      }),
     );
-    equal((await readFile(log, "utf8")).includes("deno"), true);
+    deepStrictEqual((await readFile(log, "utf8")).trim().split("\n").sort(), [
+      "bun",
+      "deno",
+    ]);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
