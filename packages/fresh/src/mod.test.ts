@@ -1,7 +1,9 @@
 import type { Federation } from "@fedify/fedify";
 import { integrateFetchOptions, integrateHandler } from "@fedify/fresh";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { ok, strictEqual } from "node:assert/strict";
 import type { Context } from "fresh";
+import { resetFreshDeprecationWarningForTesting } from "./deprecation.ts";
 
 function createMockContext<TState>(
   overrides: Partial<Context<TState>> = {},
@@ -12,6 +14,59 @@ function createMockContext<TState>(
     ...overrides,
   } as Context<TState>;
 }
+
+async function captureDeprecationWarnings(
+  fn: () => void | Promise<void>,
+): Promise<LogRecord[]> {
+  const records: LogRecord[] = [];
+  await reset();
+  resetFreshDeprecationWarningForTesting();
+  try {
+    await configure({
+      sinks: { capture: (record) => records.push(record) },
+      loggers: [
+        {
+          category: ["fedify", "fresh"],
+          lowestLevel: "warning",
+          sinks: ["capture"],
+        },
+        { category: ["logtape", "meta"], sinks: [] },
+      ],
+    });
+    await fn();
+    return records;
+  } finally {
+    await reset();
+    resetFreshDeprecationWarningForTesting();
+  }
+}
+
+Deno.test("deprecation warning - integrateFetchOptions() warns once", async () => {
+  const records = await captureDeprecationWarnings(() => {
+    integrateFetchOptions(createMockContext());
+    integrateFetchOptions(createMockContext());
+  });
+
+  strictEqual(records.length, 1);
+  strictEqual(records[0].level, "warning");
+  const message = records[0].message.join(" ");
+  ok(message.includes("@fedify/fresh"));
+  ok(message.includes("deprecated"));
+  ok(message.includes("1326"));
+});
+
+Deno.test("deprecation warning - integrateHandler() warns once", async () => {
+  const federation = {
+    fetch: () => Promise.resolve(new Response("ok")),
+  } as unknown as Federation<void>;
+
+  const records = await captureDeprecationWarnings(async () => {
+    const handler = integrateHandler(federation, () => undefined);
+    await handler(createMockContext());
+  });
+
+  strictEqual(records.length, 1);
+});
 
 Deno.test("integrateFetchOptions() - onNotFound delegates to ctx.next with correct receiver", async () => {
   const notFoundResponse = new Response("Not Found", { status: 404 });
