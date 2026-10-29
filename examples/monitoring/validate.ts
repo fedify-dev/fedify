@@ -1,6 +1,13 @@
-import { dirname, fromFileUrl, join } from "@std/path";
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
+import {
+  commandOutput,
+  registerCleanup,
+} from "../../scripts/tooling_process.ts";
 
-const exampleDir = dirname(fromFileUrl(import.meta.url));
+const exampleDir = dirname(fileURLToPath(import.meta.url));
 const composeFile = join(exampleDir, "compose.yaml");
 const prometheusConfig = join(exampleDir, "prometheus.yaml");
 const prometheusRules = join(exampleDir, "prometheus-rules.yaml");
@@ -13,14 +20,15 @@ const dashboardFile = join(
   "fedify-overview.json",
 );
 const sampleMetrics = join(exampleDir, "sample-metrics.ts");
-const validateScript = join(exampleDir, "validate.ts");
 
 const projectName = "fedify-monitoring-validate";
-const smoke = Deno.args.includes("--smoke");
+const smoke = process.argv.includes("--smoke");
+const configOnly = process.argv.includes("--config-only");
 const requestTimeoutMs = 5_000;
 
 interface RunOptions {
   cwd?: string;
+  cleanup?: boolean;
   noThrow?: boolean;
   quiet?: boolean;
 }
@@ -33,12 +41,10 @@ async function run(
 ): Promise<string> {
   console.log(`\n> ${label}`);
   console.log(`  ${command} ${args.join(" ")}`);
-  const output = await new Deno.Command(command, {
-    args,
+  const output = await commandOutput(command, args, {
     cwd: options.cwd,
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
+    cleanup: options.cleanup,
+  });
   const stdout = new TextDecoder().decode(output.stdout);
   const stderr = new TextDecoder().decode(output.stderr);
   if (!output.success && !options.noThrow) {
@@ -59,16 +65,14 @@ async function checkTools(): Promise<void> {
 }
 
 async function staticChecks(): Promise<void> {
-  await run("Deno check sample metric generator", Deno.execPath(), [
-    "check",
-    "--config",
-    join(exampleDir, "deno.json"),
-    sampleMetrics,
-  ]);
-  await run("Deno check validation script", Deno.execPath(), [
-    "check",
-    validateScript,
-  ]);
+  if (!configOnly) {
+    await run("Deno check sample metric generator", "deno", [
+      "check",
+      "--config",
+      join(exampleDir, "deno.json"),
+      sampleMetrics,
+    ]);
+  }
   await run("Docker Compose config", "docker", [
     "compose",
     "-f",
@@ -196,7 +200,7 @@ function collectDashboardExpressions(value: unknown): string[] {
 }
 
 async function checkDashboardQueries(): Promise<void> {
-  const dashboard = JSON.parse(await Deno.readTextFile(dashboardFile));
+  const dashboard = JSON.parse(await readFile(dashboardFile, "utf8"));
   const expressions = [...new Set(collectDashboardExpressions(dashboard))];
   if (expressions.length < 1) {
     throw new Error("No Prometheus expressions found in the Grafana dashboard");
@@ -205,23 +209,10 @@ async function checkDashboardQueries(): Promise<void> {
   console.log(`Grafana dashboard queries: ${expressions.length} valid`);
 }
 
-type SmokeSignal = "SIGINT" | "SIGTERM";
-
-function addSmokeSignalListener(
-  signal: SmokeSignal,
-  listener: () => void,
-): boolean {
-  if (Deno.build.os === "windows" && signal === "SIGTERM") return false;
-  Deno.addSignalListener(signal, listener);
-  return true;
-}
-
 async function smokeChecks(): Promise<void> {
-  let cleanedUp = false;
-  const stopSmokeStack = async (options: RunOptions = {}) => {
-    if (cleanedUp) return;
-    cleanedUp = true;
-    await run("Stop smoke stack", "docker", [
+  let cleanupPromise: Promise<string> | undefined;
+  const stopSmokeStack = (options: RunOptions = {}) => {
+    return cleanupPromise ??= run("Stop smoke stack", "docker", [
       "compose",
       "-p",
       projectName,
@@ -230,23 +221,13 @@ async function smokeChecks(): Promise<void> {
       "down",
       "--remove-orphans",
       "--volumes",
-    ], { noThrow: true, ...options });
+    ], { noThrow: true, cleanup: true, ...options });
   };
-  const cleanupAfterSignal = (signal: SmokeSignal, code: number) => {
-    void (async () => {
-      console.error(`\nReceived ${signal}; cleaning up smoke stack.`);
-      await stopSmokeStack();
-      Deno.exit(code);
-    })();
-  };
-  const onSigint = () => cleanupAfterSignal("SIGINT", 130);
-  const onSigterm = () => cleanupAfterSignal("SIGTERM", 143);
-
   await stopSmokeStack({ quiet: true });
-  cleanedUp = false;
-
-  const sigintRegistered = addSmokeSignalListener("SIGINT", onSigint);
-  const sigtermRegistered = addSmokeSignalListener("SIGTERM", onSigterm);
+  cleanupPromise = undefined;
+  const unregisterCleanup = registerCleanup(async () => {
+    await stopSmokeStack();
+  });
 
   try {
     await run("Start smoke stack", "docker", [
@@ -297,9 +278,11 @@ async function smokeChecks(): Promise<void> {
         );
     });
   } finally {
-    if (sigintRegistered) Deno.removeSignalListener("SIGINT", onSigint);
-    if (sigtermRegistered) Deno.removeSignalListener("SIGTERM", onSigterm);
-    await stopSmokeStack();
+    try {
+      await stopSmokeStack();
+    } finally {
+      unregisterCleanup();
+    }
   }
 }
 
@@ -310,5 +293,5 @@ try {
   console.log("\nMonitoring example validation passed.");
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
-  Deno.exit(1);
+  process.exitCode ??= 1;
 }

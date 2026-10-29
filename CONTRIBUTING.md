@@ -106,11 +106,13 @@ accept the proposal before starting a substantial implementation.
 Development environment
 -----------------------
 
-Fedify is a TypeScript monorepo.  Deno is the primary development environment,
-and the project also tests supported packages on Node.js and Bun.  [mise]
-installs the required tool versions and runs repository tasks.  Install
-mise before bootstrapping; it provisions Node.js and the tools declared in
-*mise.toml*, so Node.js needs no separate installation.
+Fedify is a TypeScript monorepo.  Node.js runs dependency installation, code
+generation, builds, maintenance scripts, and test harnesses.  Formatting,
+linting, type checking, and the local CLI still use Deno.  Supported packages
+are tested on Deno, Node.js, and Bun.  [mise] installs the required tool
+versions and runs repository tasks.  Install mise before bootstrapping; it
+provisions Node.js and the tools declared in *mise.toml*, so Node.js needs no
+separate installation.
 
 Run these commands after cloning the repository:
 
@@ -132,7 +134,7 @@ Install or refresh the pre-commit hook explicitly with
 `mise run hooks:install`.
 
 To bootstrap without installing Deno, set `MISE_DISABLE_TOOLS=deno` before
-running `mise install` (for example, `$env.MISE_DISABLE_TOOLS = "deno"` in
+running `mise install` (for example, `$env:MISE_DISABLE_TOOLS = "deno"` in
 PowerShell).  Deno is still needed for the current formatting, linting, type
 checking, and Deno compatibility tasks; those tools are being migrated
 separately.
@@ -194,18 +196,20 @@ mise run prepare-each fedify vocab
 Development tooling uses Node.js 22.18 or later, provided by mise.  Run
 TypeScript scripts with
 `node --experimental-strip-types path/to/script.ts`.  This removes types
-without type checking.  Imports by workspace package name resolve through npm
-`exports`, which point to *dist/* and require the imported packages to be
-built first with `mise run build` or `mise run prepare-each <packages>`.
-Scripts that import source files by relative path can run before those
-packages are built, as the vocabulary generator does.  Use explicit *.ts*
-extensions for relative imports and `import type` for type-only names. Resolve
-dependencies through npm manifests, not Deno import maps or `tsconfig.json`
-path aliases.  Native stripping does not support JSX, enums, parameter
-properties, or namespaces with runtime code.  Existing tests that need
-transformations use `--experimental-transform-types`; scripts needing other
-transformations must choose an explicit runner rather than relying on Deno
-resolution.
+without type checking.  Imports by workspace package name resolve through the
+`exports` field in each package's *package.json*, which points to *dist/* and
+require the imported packages to be built first with `mise run build` or
+`mise run prepare-each <packages>`. Scripts that import source files by
+relative path can run before those packages are built, as the vocabulary
+generator does.  Use explicit *.ts* extensions for relative imports and
+`import type` for type-only names. Resolve dependencies through npm manifests,
+not Deno import maps or `tsconfig.json` path aliases.  Native stripping does
+not support JSX, enums, parameter properties, or namespaces with runtime code.
+Existing tests that need transformations use `--experimental-transform-types`.
+The initializer test harness uses the same flag for itself and its initializer
+subprocess.  The Astro compatibility harness also uses it when importing
+initializer source.  Scripts needing other transformations must choose an
+explicit runner rather than relying on Deno resolution.
 
 The vocabulary generator imports `@fedify/vocab-tools` source by relative
 path so it can run before any package has been built.  It uses the pinned
@@ -223,10 +227,11 @@ mise run codegen:check:deno
 
 The first command caches workspace exports for Deno and its language server;
 the second checks generated vocabulary formatting and Deno types.  Tasks
-that use Deno, including `check`, `cli`, `test:deno`, and `test:examples`,
-prepare the cache automatically.  Run `mise run deno:cache` explicitly
-before using `mise run --skip-deps` with a Deno task, since that option
-omits task dependencies.
+that use Deno, including `check`, `cli`, and `test:deno`, prepare the cache
+automatically.  The Node.js initializer and example harnesses prepare it only
+when selected Deno targets need workspace imports.  Run `mise run deno:cache`
+explicitly before using `mise run --skip-deps` with a Deno task, since that
+option omits task dependencies.
 The existing Deno `compile` tasks still generate vocabulary, but no longer
 cache or type-check it as a side effect.
 
@@ -407,8 +412,9 @@ notes.
 
 ### Testing the initializer
 
-The `test:init` task exercises `fedify init` across web frameworks, package
-managers, key-value stores, and message queues:
+The `test:init` task runs on Node.js and exercises `fedify init` across web
+frameworks, package managers, key-value stores, and message queues.  The default
+matrix includes Deno targets, so it also requires Deno:
 
 ~~~~ bash
 mise run test:init
@@ -417,9 +423,12 @@ mise run test:init
 Pass options after `--` to limit the matrix:
 
 ~~~~ bash
+mise run test:init -- -w hono -p npm -k in-memory -m in-process
 mise run test:init -- -w hono -p deno
-mise run test:init -- -w hono -w express -p deno -p npm -k denokv -m denokv
 ~~~~
+
+The first command selects only Node.js targets and needs no Deno executable or
+cache.  Deno targets remain available through `-p deno`.
 
 The test artifacts are written under */tmp/fedify-init/&lt;run-id&gt;/* on Unix.
 The internal `test-init` command uses `FEDIFY_TEST_MODE` to select local
@@ -427,11 +436,21 @@ workspace packages and is not part of the public CLI.
 
 ### Testing examples
 
-Run all example tests, or name the examples that your change affects:
+The example harness runs on Node.js.  Run all example tests, or name the
+examples that your change affects:
 
 ~~~~ bash
 mise run test:examples
 mise run test:examples -- astro sveltekit-sample
+~~~~
+
+The full suite includes Deno applications and requires Deno.  Selecting only
+Node.js or Bun examples needs no Deno executable or cache.
+
+Maintenance script and harness regression tests run on Node.js with:
+
+~~~~ bash
+mise run test:tooling
 ~~~~
 
 

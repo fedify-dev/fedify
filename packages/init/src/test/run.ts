@@ -1,4 +1,3 @@
-import { always, filter, map, pipe, tap, unless } from "@fxts/core";
 import { optionNames } from "@optique/core";
 import { join } from "node:path";
 import { printMessage } from "../utils.ts";
@@ -6,34 +5,41 @@ import createTestApp, { filterOptions, generateTestCases } from "./create.ts";
 import runServerAndLookupUser from "./lookup.ts";
 import type { InitTestData } from "./types.ts";
 
-const runTests =
-  (dry: boolean) =>
-  <T extends InitTestData>({ testDirPrefix, dryRun, hydRun, ...options }: T) =>
-    pipe(
-      options,
-      printStartMessage(dry),
-      generateTestCases,
-      filter(filterOptions),
-      map(createTestApp(join(testDirPrefix, getMid(dryRun, hydRun, dry)), dry)),
-      Array.fromAsync<string>,
-      unless(always(dry), runServerAndLookupUser),
-    );
-export default runTests;
+interface TestRunners {
+  create: ReturnType<typeof createTestApp>;
+  lookup: typeof runServerAndLookupUser;
+}
 
-const printStartMessage: (dry: boolean) => <T>(t: T) => T = (dry: boolean) =>
-  tap(
-    () =>
-      printMessage`\n
+const runTests =
+  (dry: boolean, runners?: TestRunners) =>
+  async <T extends InitTestData>(
+    { testDirPrefix, dryRun, hydRun, ...options }: T,
+  ): Promise<boolean> => {
+    printMessage`\n
 Init ${dry ? "Dry" : "Hyd"} Test start!
 Options: ${
-        optionNames([
-          "Web Framework",
-          "Package Manager",
-          "KV Store",
-          "Message Queue",
-        ])
-      }`,
-  );
+      optionNames([
+        "Web Framework",
+        "Package Manager",
+        "KV Store",
+        "Message Queue",
+      ])
+    }`;
+    const create = runners?.create ??
+      createTestApp(join(testDirPrefix, getMid(dryRun, hydRun, dry)), dry);
+    const dirs: string[] = [];
+    for (const testCase of generateTestCases(options)) {
+      if (filterOptions(testCase)) dirs.push(await create(testCase));
+    }
+    const generated = dirs.every(Boolean);
+    // Retain failed generations in the aggregate even though they have no app to
+    // start.  Continue testing successful generations to report all failures.
+    const lookup = dry
+      ? true
+      : await (runners?.lookup ?? runServerAndLookupUser)(dirs);
+    return generated && lookup;
+  };
+export default runTests;
 
 const getMid = (dryRun: boolean, hydRun: boolean, dry: boolean) =>
   dryRun === hydRun ? dry ? "dry" : "hyd" : "";

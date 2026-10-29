@@ -1,6 +1,18 @@
-import { dirname, fromFileUrl, join, resolve } from "@std/path";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import process from "node:process";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { commandOutput } from "../../../scripts/tooling_process.ts";
 
-const compatDir = dirname(fromFileUrl(import.meta.url));
+const compatDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(compatDir, "../../..");
 const cases = [
   { kit: "2.0.0", svelte: "^4.0.0", vite: "^5.0.0", plugin: "^3.0.0" },
@@ -8,15 +20,15 @@ const cases = [
   { kit: "3.0.0", svelte: "^5.57.1", vite: "^8.0.12", plugin: "^7.0.0" },
 ];
 
-const tempDir = await Deno.makeTempDir({ prefix: "fedify-sveltekit-compat-" });
+const tempDir = await mkdtemp(join(tmpdir(), "fedify-sveltekit-compat-"));
 try {
   const tarballs = await packFedifyPackages(tempDir);
-  const consumer = await Deno.readTextFile(join(compatDir, "consumer.ts"));
+  const consumer = await readFile(join(compatDir, "consumer.ts"), "utf8");
   for (const testCase of cases) {
     console.log(`Checking SvelteKit ${testCase.kit} consumer types...`);
     const dir = join(tempDir, testCase.kit);
-    await Deno.mkdir(dir);
-    await Deno.writeTextFile(
+    await mkdir(dir);
+    await writeFile(
       join(dir, "package.json"),
       JSON.stringify({
         name: "fedify-sveltekit-type-consumer",
@@ -35,7 +47,7 @@ try {
         pnpm: { overrides: Object.fromEntries(tarballs) },
       }),
     );
-    await Deno.writeTextFile(
+    await writeFile(
       join(dir, "tsconfig.json"),
       JSON.stringify({
         compilerOptions: {
@@ -50,8 +62,8 @@ try {
         files: ["consumer.mts", "consumer.cts"],
       }),
     );
-    await Deno.writeTextFile(join(dir, "consumer.mts"), consumer);
-    await Deno.writeTextFile(join(dir, "consumer.cts"), consumer);
+    await writeFile(join(dir, "consumer.mts"), consumer);
+    await writeFile(join(dir, "consumer.cts"), consumer);
     // Install packed artifacts rather than workspace links so declarations
     // resolve SvelteKit from this consumer, not the workspace's pinned 2.x.
     await run([
@@ -64,7 +76,7 @@ try {
     console.log(`Passed SvelteKit ${testCase.kit} (ESM and CommonJS).`);
   }
 } finally {
-  await Deno.remove(tempDir, { recursive: true });
+  await rm(tempDir, { recursive: true });
 }
 
 async function packFedifyPackages(dir: string): Promise<Map<string, string>> {
@@ -82,7 +94,7 @@ async function packFedifyPackages(dir: string): Promise<Map<string, string>> {
   ) {
     const packageDir = join(repoRoot, "packages", name);
     const outputDir = join(dir, "packages", name);
-    await Deno.mkdir(outputDir, { recursive: true });
+    await mkdir(outputDir, { recursive: true });
     await run([
       "pnpm",
       "pack",
@@ -90,8 +102,8 @@ async function packFedifyPackages(dir: string): Promise<Map<string, string>> {
       "--pack-destination",
       outputDir,
     ], packageDir);
-    for await (const entry of Deno.readDir(outputDir)) {
-      if (entry.isFile && entry.name.endsWith(".tgz")) {
+    for (const entry of await readdir(outputDir, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name.endsWith(".tgz")) {
         tarballs.set(`@fedify/${name}`, `file:${join(outputDir, entry.name)}`);
       }
     }
@@ -103,12 +115,9 @@ async function packFedifyPackages(dir: string): Promise<Map<string, string>> {
 }
 
 async function run(args: string[], cwd: string): Promise<void> {
-  const result = await new Deno.Command(args[0], {
-    args: args.slice(1),
-    cwd,
-    stdout: "inherit",
-    stderr: "inherit",
-  }).output();
+  const result = await commandOutput(args[0], args.slice(1), { cwd });
+  process.stdout.write(result.stdout);
+  process.stderr.write(result.stderr);
   if (!result.success) {
     throw new Error(`Command failed (${result.code}): ${args.join(" ")}`);
   }

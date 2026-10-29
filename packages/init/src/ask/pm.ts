@@ -5,17 +5,14 @@ import process from "node:process";
 import { PACKAGE_MANAGER } from "../const.ts";
 import {
   checkAllRuntimes,
+  checkRuntimeVersion,
   getInstallUrl,
   isPackageManagerAvailable,
   isTest,
+  resolveRequiredVersion,
   runtimes,
 } from "../lib.ts";
-import type {
-  PackageManager,
-  Runtime,
-  RuntimeCheck,
-  WebFramework,
-} from "../types.ts";
+import type { PackageManager, RuntimeCheck, WebFramework } from "../types.ts";
 import { printErrorMessage } from "../utils.ts";
 import webFrameworks from "../webframeworks/mod.ts";
 import { pmToRt } from "../webframeworks/utils.ts";
@@ -40,7 +37,24 @@ const fillPackageManager: //
   (options: T) => //
   Promise<Omit<T, "packageManager"> & { packageManager: PackageManager }> = //
   async ({ packageManager, ...options }) => {
-    const choices = await calculateChoices(options.webFramework);
+    // An explicit matrix case only needs its selected runtime.  Keep full
+    // availability checks for the public CLI and interactive selection.
+    const runtime = packageManager == null ? undefined : pmToRt(packageManager);
+    const choices = isTest(options) && packageManager != null && runtime != null
+      ? [
+        await choicePackageManager(
+          options.webFramework,
+          packageManager,
+          await checkRuntimeVersion({
+            ...runtimes[runtime],
+            minVersion: resolveRequiredVersion(
+              runtime,
+              webFrameworks[options.webFramework].minRuntimeVersions?.[runtime],
+            ),
+          }),
+        ),
+      ]
+      : await calculateChoices(options.webFramework);
     if (packageManager != null) {
       const choice = choices.find(({ value }) => value === packageManager)!;
       if (choice.disabled == null) {
@@ -59,7 +73,9 @@ const calculateChoices = async (wf: WebFramework) => {
     webFrameworks[wf].minRuntimeVersions,
   );
   const choices = await Promise.all(
-    PACKAGE_MANAGER.map(choicePackageManager(wf, runtimeChecks)),
+    PACKAGE_MANAGER.map((pm) =>
+      choicePackageManager(wf, pm, runtimeChecks[pmToRt(pm)])
+    ),
   );
   if (choices.every((choice) => choice.disabled)) {
     printErrorMessage`No package manager with a supported runtime is available for ${
@@ -78,28 +94,29 @@ const askPackageManager = (
     choices,
   });
 
-const choicePackageManager =
-  (wf: WebFramework, runtimeChecks: Record<Runtime, RuntimeCheck>) =>
-  async (value: PackageManager) => {
-    const check = runtimeChecks[pmToRt(value)];
-    const label = runtimes[pmToRt(value)].label;
-    const disabled = !isWfSupportsPm(wf, value)
-      ? `not supported with ${webFrameworks[wf].label}`
-      : check.status === "unsupported"
-      ? `requires ${label} ${check.required} or later (detected: ${check.detected})`
-      : check.status === "missing"
-      ? `requires ${label} which is not installed`
-      : check.status === "malformed"
-      ? `could not detect ${label} version`
-      : pmToRt(value) === "node" && !await isPackageManagerAvailable(value)
-      ? `is not installed; install it from ${getInstallUrl(value)}`
-      : "";
-    return disabled === "" ? { name: value, value } : {
-      name: value,
-      value,
-      disabled,
-    };
+const choicePackageManager = async (
+  wf: WebFramework,
+  value: PackageManager,
+  check: RuntimeCheck,
+) => {
+  const label = runtimes[pmToRt(value)].label;
+  const disabled = !isWfSupportsPm(wf, value)
+    ? `not supported with ${webFrameworks[wf].label}`
+    : check.status === "unsupported"
+    ? `requires ${label} ${check.required} or later (detected: ${check.detected})`
+    : check.status === "missing"
+    ? `requires ${label} which is not installed`
+    : check.status === "malformed"
+    ? `could not detect ${label} version`
+    : pmToRt(value) === "node" && !await isPackageManagerAvailable(value)
+    ? `is not installed; install it from ${getInstallUrl(value)}`
+    : "";
+  return disabled === "" ? { name: value, value } : {
+    name: value,
+    value,
+    disabled,
   };
+};
 
 const isWfSupportsPm = (
   wf: WebFramework,

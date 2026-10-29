@@ -66,12 +66,7 @@
         "codegen"
       ]
     },
-    "test-init": {
-      "command": "FEDIFY_TEST_MODE=true deno run --allow-all src/init/test/mod.ts test-init",
-      "dependencies": [
-        "codegen"
-      ]
-    }
+    "test-init": "node --experimental-transform-types ../init/src/test/mod.ts test-init"
   },
   "fmt": {
     "exclude": [
