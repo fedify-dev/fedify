@@ -116,6 +116,7 @@
     "npm:@types/amqplib@*": "0.10.8",
     "npm:@types/amqplib@~0.10.7": "0.10.8",
     "npm:@types/babel__core@^7.20.5": "7.20.5",
+    "npm:@types/cross-spawn@^6.0.6": "6.0.6",
     "npm:@types/emscripten@^1.41.1": "1.41.5",
     "npm:@types/eslint@9": "9.6.1",
     "npm:@types/estree@^1.0.8": "1.0.9",
@@ -5950,6 +5951,12 @@
     },
     "@types/cors@2.8.19": {
       "integrity": "sha512-mFNylyeyqN93lfe/9CSxOGREz8cpzAhH+E93xJ4xWQf62V8sQ/24reV2nyzUWM6H6Xji+GGHpkbLe7pVoUEskg==",
+      "dependencies": [
+        "@types/node@24.12.2"
+      ]
+    },
+    "@types/cross-spawn@6.0.6": {
+      "integrity": "sha512-fXRhhUkG4H3TQk5dBhQ7m/JDdSNHKwR2BBia62lhwEIq9xGiQKLxd6LymNhn47SjXhsUEPmxi+PKw2OkW4LLjA==",
       "dependencies": [
         "@types/node@24.12.2"
       ]
