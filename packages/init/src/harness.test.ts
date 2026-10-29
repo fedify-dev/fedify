@@ -106,6 +106,38 @@ test("generation and lookup failures propagate through the aggregate", async () 
   );
 });
 
+test("initializer harness exits according to the aggregate result", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify aggregate exit "));
+  const fixture = join(dir, "runner.mjs");
+  try {
+    for (const [result, expected] of [[true, 0], [false, 1]] as const) {
+      await writeFile(
+        fixture,
+        `
+        import { main } from ${
+          JSON.stringify(new URL("./test/mod.ts", import.meta.url).href)
+        };
+        await main(async () => ${result});
+        `,
+      );
+      const code = await new Promise<number>((resolve, reject) => {
+        execFile(nodeExecutable, [
+          "--experimental-transform-types",
+          fixture,
+          "test-init",
+        ], (error) => {
+          if (error == null) resolve(0);
+          else if (typeof error.code === "number") resolve(error.code);
+          else reject(error);
+        });
+      });
+      equal(code, expected);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("an entirely filtered matrix fails without generating any apps", async () => {
   for (const dry of [true, false]) {
     let generated = 0;
