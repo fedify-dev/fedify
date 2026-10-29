@@ -2,7 +2,14 @@ import { nodeExecutable } from "./test/node.ts";
 import { deepStrictEqual, equal, rejects } from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
@@ -31,6 +38,25 @@ const options: InitTestData = {
   testDirPrefix: "/unused",
   runId: "regression",
 };
+
+test("initializer harness runs through a symlinked directory", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify init entry "));
+  try {
+    await symlink(
+      fileURLToPath(new URL("./test/", import.meta.url)),
+      join(dir, "linked"),
+      "junction",
+    );
+    const { stdout } = await promisify(execFile)(nodeExecutable, [
+      "--experimental-transform-types",
+      join(dir, "linked", "mod.ts"),
+      "--help",
+    ]);
+    equal(stdout.includes("fedify-test-init"), true);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 
 test("initializer generation executes the Node source entry", () => {
   const command = [
