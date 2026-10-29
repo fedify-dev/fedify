@@ -151,3 +151,56 @@ test("signal termination retains the conventional exit status", {
   equal(result.code, 143);
   equal(result.success, false);
 });
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  test(`a second ${signal} exits during a hung resource cleanup`, {
+    skip: process.platform === "win32",
+  }, async () => {
+    const dir = await mkdtemp(join(tmpdir(), "fedify repeated signal "));
+    const fixture = join(dir, "signal.mjs");
+    await writeFile(
+      fixture,
+      `
+      import { registerCleanup } from ${
+        JSON.stringify(import.meta.resolve("./tooling_process.ts"))
+      };
+      registerCleanup(async () => {
+        console.log('cleaning');
+        await new Promise(() => {});
+      });
+      console.log('ready');
+      setInterval(() => {}, 1000);
+    `,
+    );
+    const child = startCommand(nodeExecutable, [
+      "--experimental-strip-types",
+      fixture,
+    ]);
+    const reader = child.stdout.getReader();
+    const stderr = new Response(child.stderr).text();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const decoder = new TextDecoder();
+      equal(decoder.decode((await reader.read()).value).trim(), "ready");
+      child.child.kill(signal);
+      equal(decoder.decode((await reader.read()).value).trim(), "cleaning");
+      child.child.kill(signal);
+      const status = await Promise.race([
+        child.status,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error("Second signal ignored")),
+            5_000,
+          );
+        }),
+      ]);
+      equal(status.code, signal === "SIGINT" ? 130 : 143);
+    } finally {
+      if (timer != null) clearTimeout(timer);
+      await child.stop();
+      reader.releaseLock();
+      await stderr;
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+}
