@@ -1,5 +1,5 @@
 import { testMessageQueue } from "@fedify/testing";
-import { assertEquals } from "@std/assert";
+import { deepStrictEqual } from "node:assert/strict";
 import { DenoKvMessageQueue, DenoKvStore } from "./mod.ts";
 
 Deno.test("DenoKvStore", async (t) => {
@@ -8,12 +8,12 @@ Deno.test("DenoKvStore", async (t) => {
 
   await t.step("get()", async () => {
     await kv.set(["foo", "bar"], "foobar");
-    assertEquals(await store.get(["foo", "bar"]), "foobar");
+    deepStrictEqual(await store.get(["foo", "bar"]), "foobar");
   });
 
   await t.step("set()", async () => {
     await store.set(["foo", "baz"], "baz");
-    assertEquals((await kv.get<string>(["foo", "baz"])).value, "baz");
+    deepStrictEqual((await kv.get<string>(["foo", "baz"])).value, "baz");
   });
 
   await t.step("stored null is distinct from a missing key", async () => {
@@ -21,36 +21,36 @@ Deno.test("DenoKvStore", async (t) => {
     const child = ["null-value", "child"] as const;
     await store.set(key, null);
     await store.set(child, null);
-    assertEquals(await store.get(key), null);
-    assertEquals(await store.get(["missing"]), undefined);
-    assertEquals(
+    deepStrictEqual(await store.get(key), null);
+    deepStrictEqual(await store.get(["missing"]), undefined);
+    deepStrictEqual(
       await Array.fromAsync(store.list(key)),
       [{ key, value: null }, { key: child, value: null }],
     );
-    assertEquals(await store.cas(key, undefined, "wrong"), false);
-    assertEquals(await store.cas(key, null, "replaced"), true);
-    assertEquals(await store.get(key), "replaced");
-    assertEquals(await store.cas(["missing"], null, "wrong"), false);
+    deepStrictEqual(await store.cas(key, undefined, "wrong"), false);
+    deepStrictEqual(await store.cas(key, null, "replaced"), true);
+    deepStrictEqual(await store.get(key), "replaced");
+    deepStrictEqual(await store.cas(["missing"], null, "wrong"), false);
     await store.delete(key);
     await store.delete(child);
   });
 
   await t.step("delete()", async () => {
     await store.delete(["foo", "baz"]);
-    assertEquals((await kv.get<string>(["foo", "baz"])).value, null);
+    deepStrictEqual((await kv.get<string>(["foo", "baz"])).value, null);
   });
 
   await t.step("cas()", async () => {
     await store.set(["foo", "bar"], "foobar");
-    assertEquals(await store.cas(["foo", "bar"], "bar", "baz"), false);
-    assertEquals(await store.get(["foo", "bar"]), "foobar");
-    assertEquals(await store.cas(["foo", "bar"], "foobar", "baz"), true);
-    assertEquals(await store.get(["foo", "bar"]), "baz");
+    deepStrictEqual(await store.cas(["foo", "bar"], "bar", "baz"), false);
+    deepStrictEqual(await store.get(["foo", "bar"]), "foobar");
+    deepStrictEqual(await store.cas(["foo", "bar"], "foobar", "baz"), true);
+    deepStrictEqual(await store.get(["foo", "bar"]), "baz");
     await store.delete(["foo", "bar"]);
-    assertEquals(await store.cas(["foo", "bar"], "foobar", "baz"), false);
-    assertEquals(await store.get(["foo", "bar"]), undefined);
-    assertEquals(await store.cas(["foo", "bar"], undefined, "baz"), true);
-    assertEquals(await store.get(["foo", "bar"]), "baz");
+    deepStrictEqual(await store.cas(["foo", "bar"], "foobar", "baz"), false);
+    deepStrictEqual(await store.get(["foo", "bar"]), undefined);
+    deepStrictEqual(await store.cas(["foo", "bar"], undefined, "baz"), true);
+    deepStrictEqual(await store.get(["foo", "bar"]), "baz");
   });
 
   await t.step("list()", async () => {
@@ -64,8 +64,8 @@ Deno.test("DenoKvStore", async (t) => {
       entries.push(entry);
     }
 
-    assertEquals(entries.length, 3);
-    assertEquals(
+    deepStrictEqual(entries.length, 3);
+    deepStrictEqual(
       entries.find((e) => e.key[1] === "a")?.value,
       "value-a",
     );
@@ -86,8 +86,8 @@ Deno.test("DenoKvStore", async (t) => {
       entries.push(entry);
     }
 
-    assertEquals(entries.length, 1);
-    assertEquals(entries[0].value, "value-a");
+    deepStrictEqual(entries.length, 1);
+    deepStrictEqual(entries[0].value, "value-a");
 
     // Cleanup
     await store.delete(["a"]);
@@ -109,13 +109,13 @@ Deno.test("DenoKvStore", async (t) => {
       }
 
       // Should have exactly 3 entries, not 4 (no duplicate of ["exact"])
-      assertEquals(entries.length, 3);
+      deepStrictEqual(entries.length, 3);
 
       // Count how many times the exact prefix key appears
       const exactKeyCount =
         entries.filter((e) => e.key.length === 1 && e.key[0] === "exact")
           .length;
-      assertEquals(
+      deepStrictEqual(
         exactKeyCount,
         1,
         "Exact prefix key should appear only once",
@@ -141,7 +141,7 @@ Deno.test("DenoKvStore", async (t) => {
       entries.push(entry);
     }
 
-    assertEquals(entries.length, 3);
+    deepStrictEqual(entries.length, 3);
 
     // Cleanup
     await store.delete(["a"]);

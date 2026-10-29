@@ -3,7 +3,6 @@
   "version": "2.5.0",
   "license": "MIT",
   "imports": {
-    "@std/assert": "jsr:@std/assert@^1.0.13",
     "@sveltejs/kit": "npm:@sveltejs/kit@^2.0.0"
   },
   "exports": {

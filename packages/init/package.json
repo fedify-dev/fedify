@@ -57,7 +57,6 @@
     "jsonc-parser": "^3.3.1"
   },
   "devDependencies": {
-    "@std/assert": "catalog:",
     "@types/node": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

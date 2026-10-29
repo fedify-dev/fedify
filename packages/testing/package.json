@@ -59,8 +59,6 @@
   "devDependencies": {
     "@fedify/fixture": "workspace:^",
     "@standard-schema/spec": "catalog:",
-    "@std/assert": "catalog:",
-    "@std/async": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

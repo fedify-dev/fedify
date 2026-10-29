@@ -1,7 +1,7 @@
 import { PlatformDatabase } from "#sqlite";
 import { SqliteKvStore } from "@fedify/sqlite/kv";
 import * as temporal from "@js-temporal/polyfill";
-import { delay } from "@std/async/delay";
+import { setTimeout as delay } from "node:timers/promises";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
