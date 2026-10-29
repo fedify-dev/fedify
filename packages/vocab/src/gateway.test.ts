@@ -6,6 +6,7 @@ import {
 import {
   type DocumentLoader,
   FetchError,
+  formatIri,
   getDocumentLoader,
   parseIri,
   type PortableObjectVerification,
@@ -1062,6 +1063,81 @@ test("getFirst() passes the referrer chain and collection context", async () => 
   ok(referrer?.referrer?.referrer?.referrer?.object === create);
 });
 
+test("deepClone() preserves historical ancestry independently of replacements", async () => {
+  const context = Object.freeze({});
+  const documentLoader = createLoader({
+    [gatewayUrl("https://gw.example", "/actor/outbox")]: portableCollection(
+      "/actor/outbox",
+      {
+        attributedTo: `ap://${did}/actor`,
+        first: {
+          id: `ap://${did}/actor/outbox?page=1`,
+          type: "OrderedCollectionPage",
+          // An existing mismatch must not be rewritten to match root overrides.
+          partOf: `ap://${did}/other/outbox`,
+          next: `ap://${did}/actor/outbox?page=2`,
+        },
+      },
+    ),
+    [gatewayUrl("https://gw.example", "/actor/outbox?page=2")]: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: `ap://${did}/actor/outbox?page=2`,
+      type: "OrderedCollectionPage",
+    },
+    [gatewayUrl("https://gw.example", "/actor")]: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: `ap://${did}/actor`,
+      type: "Person",
+      name: "Fetched actor",
+    },
+  });
+  const verifier = createRecordingVerifier(() => ({
+    verified: true,
+    collectionContext: context,
+  }));
+  const options = {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    gateways: ["https://gw.example"],
+    verifyPortableObject: verifier,
+  };
+  const actor = await Person.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: `ap://${did}/actor`,
+    type: "Person",
+    outbox: `ap://${did}/actor/outbox`,
+  }, { contextLoader: mockDocumentLoader });
+  const outbox = await actor.getOutbox(options);
+  assertInstanceOf(outbox, OrderedCollection);
+  // Record first -> outbox provenance before copying.
+  const first = await outbox.getFirst(options);
+  assertInstanceOf(first, CollectionPage);
+  const copy = outbox.deepClone({
+    id: parseIri(`ap://${did}/other/outbox`),
+    attribution: parseIri(`ap://${did}/different-actor`),
+  });
+  const copiedFirst = await copy.getFirst(options);
+  assertInstanceOf(copiedFirst, CollectionPage);
+  ok(copiedFirst !== first);
+  await copiedFirst.getNext(options);
+  const referrer = verifier.calls.at(-1)!.options.referrer;
+  ok(referrer?.object === copiedFirst);
+  const history = referrer.referrer;
+  ok(history?.object instanceof OrderedCollection);
+  ok(history.object !== copy && history.object !== outbox);
+  deepStrictEqual(history.id, outbox.id);
+  deepStrictEqual(history.acceptance, undefined);
+  deepStrictEqual(history.collectionContext, undefined);
+  deepStrictEqual(history.object.attributionId, outbox.attributionId);
+  deepStrictEqual(copiedFirst.partOfId, first.partOfId);
+  ok(copiedFirst.partOfId!.href !== history.id!.href);
+  // External ancestry is retained, while in-graph history can hydrate safely.
+  ok(history.referrer?.object === actor);
+  await history.object.getAttribution(options);
+  const originalJson = await outbox.toJsonLd() as Record<string, unknown>;
+  deepStrictEqual(originalJson.attributedTo, formatIri(outbox.attributionId!));
+});
+
 test("accessors do not trust objects embedded in unsecured collections", async () => {
   const itemPath = "/objects/1";
   const documentLoader = createLoader({
@@ -1116,14 +1192,14 @@ test("accessors do not trust objects embedded in unsecured collections", async (
   // again (and fail here, since nothing can be fetched):
   const outbox3 = await (await createPerson()).getOutbox(options);
   assertInstanceOf(outbox3, Collection);
-  const items3 = await Array.fromAsync(
-    outbox3.clone().getItems({
+  for (const copy of [outbox3.clone(), outbox3.deepClone()]) {
+    const items3 = await Array.fromAsync(copy.getItems({
       ...options,
       documentLoader: createLoader({}),
       suppressError: true,
-    }),
-  );
-  deepStrictEqual(items3, []);
+    }));
+    deepStrictEqual(items3, []);
+  }
 });
 
 function createRedirectingLoader(

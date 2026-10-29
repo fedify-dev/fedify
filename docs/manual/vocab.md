@@ -951,31 +951,73 @@ if its cached JSON-LD contains an embedded object with its own `@context`, the
 accessor re-parses that object on each call.  Hydrating that returned object
 does not update the nested instance stored in the source or clone.
 
-If you need to preserve the received representation while resolving properties,
-keep the received JSON-LD document.  To resolve properties in a separate object
-graph, serialize and re-parse the object before hydrating any properties rather
-than using `clone()`:
+### Deep copies
+
+*This API is available since Fedify 2.5.0.*
+
+Use `deepClone()` when you need to resolve properties without hydrating nested
+objects held by the source.  It copies the stored vocabulary graph, including
+any objects you supply as replacement values.  For example, you can inspect a
+quote request through a copy while keeping the original to echo in a response:
 
 ~~~~ typescript twoslash
-import { Create } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
-declare const original: Create;
-declare const documentLoader: DocumentLoader;
-declare const contextLoader: DocumentLoader;
+import { Accept, QuoteRequest } from "@fedify/vocab";
+declare const request: QuoteRequest;
 // ---cut-before---
-const options = { documentLoader, contextLoader };
-const copy = await Create.fromJsonLd(await original.toJsonLd(), options);
-// Resolve properties on copy while keeping original separate:
-const note = await copy.getObject(options);
-if (note != null) await note.getAttribution(options);
+const resolving = request.deepClone();
+const instrument = await resolving.getInstrument();
+if (instrument != null) await instrument.getAttribution();
+
+// The response embeds the original, whose nested objects were not hydrated:
+const response = new Accept({ object: request });
 ~~~~
 
-This round trip separates nested vocabulary objects; it does not preserve the
-original JSON bytes.  Pass any custom loaders again, as in the example above.
-The copy also does not inherit trust in embedded objects.  Under the
-[origin-based security model](#origin-based-security-model), accessors may fetch
-cross-origin objects again, even if the original already hydrated them.  The
-fetched data may have changed, or the fetch may fail.
+Like `clone()`, `deepClone()` accepts constructor-compatible replacement values,
+such as `request.deepClone({ summary: "Updated" })`.  Nested vocabulary objects,
+URLs and byte arrays are copied; immutable scalar values and opaque
+cryptographic keys are shared.  Repeated references to one object remain shared
+within the copy.  If the graph refers back to the source itself, including when
+you pass the source as a replacement value, that reference becomes a separate
+copy of the source's pre-update values.  It does not point at the updated root.
+
+Each copied object retains its own default document loader, context loader,
+tracer, portable-object verifier and base URL.  The optional second argument
+accepts the same loader and verifier options as `clone()`, but it overrides
+only the root's defaults.  An option left `undefined` keeps the root's existing
+default for that option.  By contrast, `clone()` uses only the options passed
+to it.
+
+The copy retains embedded-object trust and the portable restrictions that
+`clone()` preserves, but does not inherit positive verification evidence.
+Historical portable referrers within the graph are copied without applying
+replacement values; referrers outside the graph continue to point at the
+original external objects.
+
+`deepClone()` does not fetch remote objects or serialize and re-parse JSON-LD.
+It walks the entire stored graph synchronously.  Prefer `clone()` when a
+shallow copy is sufficient.  When copying a subclass, `deepClone()` calls its
+`clone()` override.  Such overrides must return fresh, compatible instances
+and are responsible for their own side effects.
+
+Property arrays keep their length and holes when copied.  Large sparse
+arrays with ordinary data entries use a snapshot of their existing indices.
+Entries added after that snapshot are not visited, while deleted entries are
+skipped.  Keep property arrays stable during copying, including inside custom
+`clone()` overrides, to preserve isolation of the copied graph.  Indexed
+getters, array subclasses and custom species use the existing array operations
+when detected; Proxy traps can observe different reads and reflection
+operations.
+
+Trust for constructor-supplied objects follows the length of the stored
+array.  Building that trust does not read non-scalar plural input getters once
+per slot.  Sparse arrays can still be expensive to traverse through accessors
+or to serialize.
+
+Cached JSON-LD and retained signed representations are discarded at every
+copied node.  The copy therefore reflects modeled property values, not unknown
+JSON-LD properties or the original document's formatting.  Sign the copy again
+if it needs a valid proof.  To preserve the exact received representation,
+keep the received JSON-LD document and use the copy only for inspection.
 
 
 Looking up remote objects

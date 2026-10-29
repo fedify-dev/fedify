@@ -442,7 +442,11 @@ async function* generateProperty(
         }
         let v = this.${await getFieldName(property.uri)}[0];
         if (!(v instanceof URL) &&
-            !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
+            !(0 < (this.${await getFieldName(
+        property.uri,
+        "#_trust",
+      )}[vocabTrustPrefix] ?? 0) ||
+              this.${await getFieldName(property.uri, "#_trust")}.has(0))) {
           if (v.id == null) {
             if (isUnsecuredPortableObject(this)) {
               warnUnverifiableEmbeddedObject(this, ${
@@ -514,7 +518,11 @@ async function* generateProperty(
               mustDereferencePortableObject(
                 this, ${trustOwner}, v.id, options,
               )) &&
-            !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
+            !(0 < (this.${await getFieldName(
+        property.uri,
+        "#_trust",
+      )}[vocabTrustPrefix] ?? 0) ||
+              this.${await getFieldName(property.uri, "#_trust")}.has(0))) {
           if (options.crossOrigin === "throw") {
             throw new Error(
               "The property object's @id (" + v.id.href + ") has a different " +
@@ -611,7 +619,11 @@ async function* generateProperty(
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
           if (!(v instanceof URL) &&
-              !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
+              !(i < (this.${await getFieldName(
+        property.uri,
+        "#_trust",
+      )}[vocabTrustPrefix] ?? 0) ||
+              this.${await getFieldName(property.uri, "#_trust")}.has(i))) {
             if (v.id == null) {
               if (isUnsecuredPortableObject(this)) {
                 warnUnverifiableEmbeddedObject(this, ${
@@ -689,7 +701,11 @@ async function* generateProperty(
                 mustDereferencePortableObject(
                   this, ${trustOwner}, v.id, options,
                 )) &&
-              !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
+              !(i < (this.${await getFieldName(
+        property.uri,
+        "#_trust",
+      )}[vocabTrustPrefix] ?? 0) ||
+              this.${await getFieldName(property.uri, "#_trust")}.has(i))) {
             if (options.crossOrigin === "throw") {
               throw new Error(
                 "The property object's @id (" + v.id.href + ") has a different " +

@@ -1,8 +1,17 @@
 import { generateDecoder, generateEncoder } from "./codec.ts";
-import { generateCloner, generateConstructor } from "./constructor.ts";
+import {
+  generateCloner,
+  generateConstructor,
+  generateDeepCloner,
+} from "./constructor.ts";
+import {
+  generateDeepCloneDescriptor,
+  generateDeepCloneHelpers,
+} from "./deep-clone.ts";
 import { generateFields } from "./field.ts";
 import { generateInspector, generateInspectorPostClass } from "./inspector.ts";
 import { generateProperties } from "./property.ts";
+import { generatePropertyArrayHelpers } from "./property-array.ts";
 import {
   type PropertySchema,
   type TypeSchema,
@@ -36,6 +45,7 @@ const PORTABLE_DEREFERENCE_IMPORTS = [
   "parseCompatibleEf61Reference",
   "type PortableResponseClaim",
   "recordPortableReferrer",
+  "retargetPortableReferrer",
   "rejectMalformedCompatibleReference",
   "warnUnverifiableEmbeddedObject",
 ].join(",\n    ");
@@ -192,6 +202,12 @@ async function* generateClass(
   for await (const code of generateFields(typeUri, types)) yield code;
   for await (const code of generateConstructor(typeUri, types)) yield code;
   for await (const code of generateCloner(typeUri, types)) yield code;
+  for await (const code of generateDeepCloner(typeUri, types)) {
+    yield code.replace(/[ \t]+$/gm, "");
+  }
+  for await (const code of generateDeepCloneDescriptor(typeUri, types)) {
+    yield code.replace(/[ \t]+$/gm, "");
+  }
   for await (const code of generateProperties(typeUri, types, moduleVarNames)) {
     yield code;
   }
@@ -330,6 +346,8 @@ function inspectIri(iri: URL): string {
   try { return formatIri(iri); } catch { return iri.href; }
 }
 `;
+  yield generatePropertyArrayHelpers();
+  yield generateDeepCloneHelpers();
   yield `
 function isValidLanguageTag(language: string): boolean {
   try {

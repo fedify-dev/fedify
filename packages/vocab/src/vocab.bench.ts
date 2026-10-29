@@ -1,4 +1,4 @@
-import { Collection, Object } from "./vocab.ts";
+import { Collection, Create, Note, Object, Person } from "./vocab.ts";
 
 const jsonLd = {
   "@context": [
@@ -202,3 +202,65 @@ Deno.bench("Collection.toJsonLd()", async (b) => {
   await collection.toJsonLd();
   b.end();
 });
+
+const actor = new Person({
+  id: new URL("https://example.com/alice"),
+  name: "Alice",
+});
+const activity = new Create({
+  id: new URL("https://example.com/activities/1"),
+  actor,
+  object: new Note({
+    id: new URL("https://example.com/notes/1"),
+    content: "Hello, world!",
+    attribution: actor,
+    published: Temporal.Instant.from("2026-10-27T00:00:00Z"),
+    to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+  }),
+});
+
+Deno.bench({
+  name: "Create.clone()",
+  group: "activity copy",
+  baseline: true,
+  fn() {
+    activity.clone();
+  },
+});
+Deno.bench({
+  name: "Create.deepClone()",
+  group: "activity copy",
+  fn() {
+    activity.deepClone();
+  },
+});
+Deno.bench({
+  name: "Create JSON-LD round trip",
+  group: "activity copy",
+  async fn() {
+    await Create.fromJsonLd(await activity.toJsonLd());
+  },
+});
+
+// Low-only entries also exercise output arrays with long trailing holes.
+for (const position of [0, 99_999]) {
+  const names = new Array<string>(100_000);
+  names[position] = "Sparse";
+  const note = new Note({ names });
+  for (const method of ["clone", "deepClone"] as const) {
+    Deno.bench({
+      name: `Note.${method}() sparse names at ${position}`,
+      group: "sparse property copy",
+      fn() {
+        note[method]();
+      },
+    });
+  }
+  Deno.bench({
+    name: `new Note() sparse names at ${position}`,
+    group: "sparse property copy",
+    fn() {
+      new Note({ names });
+    },
+  });
+}

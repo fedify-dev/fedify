@@ -69,6 +69,40 @@ async function* generateParametersType(
   if (parentheses) yield "}\n";
 }
 
+function generateValidatedArrayCopy(
+  name: string,
+  typeNames: string,
+  typeGuards: string,
+): string {
+  return `
+    let copied!: (${typeNames})[];
+    let valid = false;
+    if (Array.isArray(values.${name})) {
+      const array = values.${name};
+      const test = (v: ${typeNames}): boolean => ${typeGuards};
+      let checked: VocabArrayValidation | undefined;
+      if (array.length < vocabSparseArrayMinimumLength
+          ? array.every(test)
+          : (checked = vocabValidatePropertyArray(array, test)).valid) {
+        const input = values.${name};
+        if (input.length < vocabSparseArrayMinimumLength && !checked?.sparse) {
+          copied = input.slice();
+          valid = true;
+        } else {
+          const result = vocabCopyValidatedPropertyArray(
+            input, test, checked ?? { valid: true, sparse: false },
+          );
+          if (result.ok) {
+            copied = result.array;
+            valid = true;
+          }
+        }
+      }
+    }
+    if (valid) {
+  `.trimEnd() + "\n";
+}
+
 export async function* generateConstructor(
   typeUri: string,
   types: Record<string, TypeSchema>,
@@ -175,17 +209,18 @@ export async function* generateConstructor(
           }
         `;
       }
+      yield generateValidatedArrayCopy(
+        property.pluralName,
+        typeNames,
+        typeGuards,
+      );
       yield `
-          if (Array.isArray(values.${property.pluralName}) &&
-              values.${property.pluralName}.every(v => ${typeGuards})) {
             // @ts-ignore: type is checked above.
-            this.${fieldName} = values.${property.pluralName}.slice();
+            this.${fieldName} = copied;
       `;
       if (!allScalarTypes) {
         yield `
-            for (let i = 0; i < values.${property.pluralName}.length; i++) {
-              this.${trustFieldName}.add(i);
-            }
+            vocabSetTrustPrefix(this.${trustFieldName}, this.${fieldName}.length);
         `;
       }
       yield `
@@ -219,8 +254,8 @@ export async function* generateCloner(
    * object.  Hydrating a top-level property of the clone does not update this
    * instance's property.
    *
-   * To resolve properties without sharing nested objects, serialize and
-   * re-parse the instance before hydration rather than using this method.
+   * To resolve properties without sharing nested objects, use
+   * {@link ${type.name}.deepClone} before hydration.
    * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
    * for details, including how cached JSON-LD affects serialization.
    *
@@ -272,9 +307,12 @@ export async function* generateCloner(
     const fieldName = await getFieldName(property.uri);
     const trustFieldName = await getFieldName(property.uri, "#_trust");
     const allScalarTypes = areAllScalarTypes(property.range, types);
-    yield `clone.${fieldName} = this.${fieldName}.slice();`;
+    yield `clone.${fieldName} = this.${fieldName}.length < vocabSparseArrayMinimumLength
+      ? this.${fieldName}.slice() : vocabCopyPropertyArray(this.${fieldName});`;
     if (!allScalarTypes) {
-      yield `clone.${trustFieldName} = new Set(this.${trustFieldName});`;
+      yield `clone.${trustFieldName} = vocabCopyTrustSet(
+        this.${trustFieldName}, clone.${trustFieldName},
+      );`;
     }
     if (hasSingularAccessor(property)) {
       let typeGuards = getTypeGuards(
@@ -297,7 +335,8 @@ export async function* generateCloner(
             clone.${fieldName} = [values.${property.singularName}];
       `;
       if (!allScalarTypes) {
-        yield `clone.${trustFieldName} = new Set([0]);`;
+        yield `clone.${trustFieldName} = new Set();
+          clone.${trustFieldName}[vocabTrustPrefix] = 1;`;
       }
       yield `
           } else {
@@ -332,18 +371,19 @@ export async function* generateCloner(
           }
         `;
       }
+      yield generateValidatedArrayCopy(
+        property.pluralName,
+        typeNames,
+        typeGuards,
+      );
       yield `
-          if (Array.isArray(values.${property.pluralName}) &&
-              values.${property.pluralName}.every(v => ${typeGuards})) {
             // @ts-ignore: type is checked above.
-            clone.${fieldName} = values.${property.pluralName}.slice();
+            clone.${fieldName} = copied;
       `;
       if (!allScalarTypes) {
         yield `
             clone.${trustFieldName} = new Set();
-            for (let i = 0; i < values.${property.pluralName}.length; i++) {
-              clone.${trustFieldName}.add(i);
-            }
+            vocabSetTrustPrefix(clone.${trustFieldName}, clone.${fieldName}.length);
         `;
       }
       yield `
@@ -360,5 +400,65 @@ export async function* generateCloner(
   yield `
     return clone;
   }
+  `.trimEnd() + "\n";
+}
+
+export async function* generateDeepCloner(
+  typeUri: string,
+  types: Record<string, TypeSchema>,
+): AsyncIterable<string> {
+  const type = types[typeUri];
+  yield `
+  /**
+   * Copies this instance and its nested vocabulary objects, optionally
+   * replacing property values. Replacement values are copied too.
+   *
+   * Property arrays, URLs and byte arrays are independent of the source.
+   * Repeated references remain shared within the copy. References to this
+   * source in replacement values receive a separate copy of its pre-update
+   * values, rather than referring back to the updated root.
+   * Other scalar values, including opaque cryptographic keys, are shared.
+   *
+   * Each copied object retains its own default loaders, tracer, verifier
+   * and base URL. Options override defaults only on the root instance.
+   * This method does not fetch or serialize objects. Cached JSON-LD and
+   * retained signed representations are not copied; unknown JSON-LD
+   * properties and original formatting are not preserved. Sign the copy
+   * again if it needs a valid proof.
+   *
+   * Trust and portable provenance follow clone() rules at every level.
+   * Historical referrers within the graph are copied without replacements;
+   * referrers outside the graph still point at the original external objects.
+   * Custom clone() overrides must return fresh, compatible instances and
+   * remain responsible for their own constructor and cloning side effects.
+   * Large sparse property arrays with ordinary data entries are copied using
+   * a snapshot of their length and present indices. Entries added after a
+   * snapshot are not visited; deleted entries are skipped, and values changed
+   * after the snapshot are read when reached. Custom
+   * clone() overrides must avoid structurally changing a field being copied
+   * if they need all its nested objects to be independent of the source.
+   *
+   * @param values The values to replace before copying the graph.
+   * @param options Root loader and verifier overrides. Undefined options
+   *                retain the corresponding defaults.
+   * @returns An independent copy of the stored vocabulary graph.
+   * @since 2.5.0
+   */
+  ${emitOverride(typeUri, types)} deepClone(values:
   `;
+  for await (const code of generateParametersType(typeUri, types)) yield code;
+  yield `= {}, options: {
+    documentLoader?: DocumentLoader,
+    contextLoader?: DocumentLoader,
+    verifyPortableObject?: PortableObjectVerifier,
+  } = {}): ${type.name} {
+    const cloneOptions = {
+      documentLoader: options.documentLoader ?? this._documentLoader,
+      contextLoader: options.contextLoader ?? this._contextLoader,
+      verifyPortableObject: options.verifyPortableObject ?? this._verifyPortableObject,
+      tracerProvider: this._tracerProvider,
+      baseUrl: this._baseUrl,
+    };
+    return deepCloneGraph(this, this.clone(values, cloneOptions));
+  }\n`;
 }
