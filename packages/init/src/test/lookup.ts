@@ -72,7 +72,7 @@ export default async function runServerAndLookupUser(
   Failed: ${String(failCount)}\n\n`;
 
   printFailedCases(valid, results);
-  return results.every(Boolean);
+  return valid.length > 0 && results.every(Boolean);
 }
 
 export const parseLookupCase = (dir: string): LookupCase =>
