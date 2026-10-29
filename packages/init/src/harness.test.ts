@@ -106,6 +106,39 @@ test("generation and lookup failures propagate through the aggregate", async () 
   );
 });
 
+test("an entirely filtered matrix fails without generating any apps", async () => {
+  for (const dry of [true, false]) {
+    let generated = 0;
+    equal(
+      await runTests(dry, {
+        create: () => {
+          generated++;
+          return Promise.resolve("/generated");
+        },
+        lookup: () => Promise.resolve(true),
+      })({ ...options, webFramework: ["next"], kvStore: ["denokv"] }),
+      false,
+    );
+    equal(generated, 0);
+  }
+});
+
+test("lookup fails when no eligible directories remain", async () => {
+  const skipped = join(tmpdir(), "next", "npm", "in-memory", "in-process");
+  const eligible = join(tmpdir(), "hono", "npm", "in-memory", "in-process");
+  const tested: string[] = [];
+  const testApp = (dir: string) => {
+    tested.push(dir);
+    return Promise.resolve(true);
+  };
+  for (const dirs of [[], [""], [skipped]]) {
+    equal(await lookup(dirs, testApp), false);
+    deepStrictEqual(tested, []);
+  }
+  equal(await lookup([skipped, eligible], testApp), true);
+  deepStrictEqual(tested, [eligible]);
+});
+
 test("an actual failed generation returns a failed result", async () => {
   const prefix = await mkdtemp(join(tmpdir(), "fedify failed generation "));
   const testCase = ["hono", "npm", "in-memory", "in-process"] as const;

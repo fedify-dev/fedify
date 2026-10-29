@@ -31,7 +31,7 @@ Options: ${
     for (const testCase of generateTestCases(options)) {
       if (filterOptions(testCase)) dirs.push(await create(testCase));
     }
-    const generated = dirs.every(Boolean);
+    const generated = dirs.length > 0 && dirs.every(Boolean);
     // Retain failed generations in the aggregate even though they have no app to
     // start.  Continue testing successful generations to report all failures.
     const lookup = dry
