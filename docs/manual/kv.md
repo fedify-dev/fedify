@@ -536,7 +536,7 @@ const federation = createFederation<void>({
 ~~~~
 
 [deno-announcement]: https://deno.com/blog/cloudflare
-[`WorkersKvStore`]: https://jsr.io/@fedify/cfworkers/doc/kv/~/WorkersKvStore
+[`WorkersKvStore`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersKvStore
 [#1336]: https://github.com/fedify-dev/fedify/issues/1336
 [`DenoKvStore`]: https://jsr.io/@fedify/denokv/doc/~/DenoKvStore
 [Deno]: https://deno.com/
