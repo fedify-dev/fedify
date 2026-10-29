@@ -28,8 +28,10 @@ The initializer supports the following project configurations:
  -  **Web frameworks**: Bare-bones, [Astro], [Elysia], [Express], [Hono],
     [Next.js], [Nitro], [Nuxt], [SolidStart], [SvelteKit]
  -  **Package managers**: Deno, pnpm, Bun, Yarn, npm
- -  **Key-value stores**: In-Memory, Redis, PostgreSQL, Deno KV (Deno only)
- -  **Message queues**: In-Process, Redis, PostgreSQL, AMQP, Deno KV (Deno only)
+ -  **Key-value stores**: In-Memory, Redis, PostgreSQL, Deno KV (deprecated;
+    Deno only)
+ -  **Message queues**: In-Process, Redis, PostgreSQL, AMQP, Deno KV
+    (deprecated; Deno only)
 
 [Astro]: https://astro.build/
 [Elysia]: https://elysiajs.com/

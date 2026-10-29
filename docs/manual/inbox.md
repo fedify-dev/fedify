@@ -761,8 +761,9 @@ const federation = createFederation({
 > suitable for development and testing.  For production use, you should
 > consider using a more robust message queue, such as [`RedisMessageQueue`]
 > from the [`@fedify/redis`] package or [`MysqlMessageQueue`] from the
-> [`@fedify/mysql`] package. For existing Deno applications,
-> [`DenoKvMessageQueue`] from the [`@fedify/denokv`] package is also available.
+> [`@fedify/mysql`] package.  For existing Deno applications,
+> `DenoKvMessageQueue` from *@fedify/denokv* is also available, but it is
+> deprecated since Fedify 2.5.0 and will be removed in Fedify 3.0.0.
 >
 > For more information, see the [*Message queue* section](./mq.md).
 
@@ -804,8 +805,6 @@ duplicate retry mechanisms and leverages the backend's optimized retry features.
 [`@fedify/redis`]: https://github.com/fedify-dev/fedify/tree/main/packages/redis
 [`MysqlMessageQueue`]: https://jsr.io/@fedify/mysql/doc/mq/~/MysqlMessageQueue
 [`@fedify/mysql`]: https://github.com/fedify-dev/fedify/tree/main/packages/mysql
-[`DenoKvMessageQueue`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvMessageQueue
-[`@fedify/denokv`]: https://github.com/fedify-dev/fedify/tree/main/packages/denokv
 
 
 Activity idempotency

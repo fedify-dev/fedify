@@ -129,6 +129,7 @@
       }
     },
     "object": "new DenoKvMessageQueue(await Deno.openKv())",
+    "deprecated": true,
     "denoUnstable": [
       "kv"
     ]

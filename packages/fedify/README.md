@@ -109,7 +109,7 @@ Here is the list of packages:
 | [@fedify/backfill](/packages/backfill/)                         | [JSR][jsr:@fedify/backfill]             | [npm][npm:@fedify/backfill]             | ActivityPub backfill support             |
 | [@fedify/cfworkers](/packages/cfworkers/)                       | [JSR][jsr:@fedify/cfworkers]            | [npm][npm:@fedify/cfworkers]            | Cloudflare Workers integration           |
 | [@fedify/debugger](/packages/debugger/)                         | [JSR][jsr:@fedify/debugger]             | [npm][npm:@fedify/debugger]             | Embedded ActivityPub debug dashboard     |
-| [@fedify/denokv](/packages/denokv/)                             | [JSR][jsr:@fedify/denokv]               |                                         | Deno KV integration                      |
+| [@fedify/denokv](/packages/denokv/)                             | [JSR][jsr:@fedify/denokv]               |                                         | Deno KV integration (deprecated)         |
 | [@fedify/elysia](/packages/elysia/)                             |                                         | [npm][npm:@fedify/elysia]               | Elysia integration                       |
 | [@fedify/express](/packages/express/)                           | [JSR][jsr:@fedify/express]              | [npm][npm:@fedify/express]              | Express integration                      |
 | [@fedify/fastify](/packages/fastify/)                           | [JSR][jsr:@fedify/fastify]              | [npm][npm:@fedify/fastify]              | Fastify integration                      |

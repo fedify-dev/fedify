@@ -244,8 +244,9 @@ project.  It will ask you a few questions to set up the project:
     or [Astro]
  -  Package manager: [Deno], [Bun], [npm], [pnpm], or [Yarn]
  -  Message queue: In-Process, [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
-    or [Deno KV] (if Deno)
- -  Key–value store: In-Memory, [Redis], [PostgreSQL], or [Deno KV] (if Deno)
+    or [Deno KV] (deprecated; if Deno)
+ -  Key–value store: In-Memory, [Redis], [PostgreSQL], or [Deno KV]
+    (deprecated; if Deno)
 
 > [!TIP]
 > Projects created with `fedify init` automatically include [`@fedify/lint`]
@@ -314,7 +315,7 @@ option.  The available options are:
     restarts.  This is useful for testing and development purposes.
  -  `redis`: [Redis]
  -  `postgres`: [PostgreSQL]
- -  `denokv`: [Deno KV] (if Deno)
+ -  `denokv`: [Deno KV] (deprecated; if Deno)
 
 ### `-m`/`--message-queue`: Message queue
 
@@ -326,7 +327,15 @@ option.  The available options are:
  -  `redis`: [Redis]
  -  `postgres`: [PostgreSQL]
  -  `amqp`: [AMQP] (e.g., [RabbitMQ])
- -  `denokv`: [Deno KV] (if Deno)
+ -  `denokv`: [Deno KV] (deprecated; if Deno)
+
+> [!WARNING]
+> `denokv` is deprecated since Fedify 2.5.0 and will be removed in Fedify
+> 3.0.0.  The initializer still generates a working project when it is
+> selected, but new projects should use SQLite for local or single-node
+> deployments.  See [#1336] for the removal plan.
+
+[#1336]: https://github.com/fedify-dev/fedify/issues/1336
 
 ### `--dry-run`: Preview without creating files
 

@@ -68,13 +68,14 @@ const noticeUnmatched = <
 >({ kvStore: kv, packageManager: pm }: T) =>
   printErrorMessage`Error: Key-value store '${kv}' is not compatible with package manager '${pm}'`;
 
-const choiceKvStore = (pm: PackageManager) => (kv: KvStore) => ({
-  name: isKvSupportsPm({ kvStore: kv, packageManager: pm })
-    ? kv
-    : `${kv} (not supported with ${pm})`,
-  value: kv,
-  disabled: !isKvSupportsPm({ kvStore: kv, packageManager: pm }),
-});
+export const choiceKvStore = (pm: PackageManager) => (kv: KvStore) => {
+  const supported = isKvSupportsPm({ kvStore: kv, packageManager: pm });
+  return {
+    name: kvStores[kv].deprecated ? `${kv} (deprecated)` : kv,
+    value: kv,
+    disabled: supported ? false : `(not supported with ${pm})`,
+  };
+};
 
 const isKvSupportsPm = <
   T extends { kvStore: KvStore; packageManager: PackageManager },

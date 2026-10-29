@@ -1,4 +1,5 @@
 import { testMessageQueue } from "@fedify/testing";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { deepStrictEqual } from "node:assert/strict";
 import { DenoKvMessageQueue, DenoKvStore } from "./mod.ts";
 
@@ -184,5 +185,45 @@ Deno.test("DenoKvMessageQueue", async () => {
     } catch {
       // Ignore cleanup errors
     }
+  }
+});
+
+Deno.test("DenoKvStore and DenoKvMessageQueue warn about deprecation", async () => {
+  const records: LogRecord[] = [];
+  await configure({
+    sinks: { buffer: (record) => records.push(record) },
+    loggers: [
+      {
+        category: ["fedify", "denokv", "deprecated"],
+        sinks: ["buffer"],
+        lowestLevel: "warning",
+      },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+    reset: true,
+  });
+  try {
+    const kv = await Deno.openKv(":memory:");
+    try {
+      new DenoKvStore(kv);
+      new DenoKvStore(kv);
+      new DenoKvMessageQueue(kv);
+      new DenoKvMessageQueue(kv);
+    } finally {
+      kv.close();
+    }
+    const warnings = records.filter((record) => record.level === "warning");
+    deepStrictEqual(warnings.length, 4);
+    const messages = warnings.map((record) => JSON.stringify(record.message));
+    deepStrictEqual(
+      messages.map((message) => message.includes("DenoKvStore")),
+      [true, true, false, false],
+    );
+    deepStrictEqual(
+      messages.map((message) => message.includes("DenoKvMessageQueue")),
+      [false, false, true, true],
+    );
+  } finally {
+    await reset();
   }
 });

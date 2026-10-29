@@ -58,49 +58,6 @@ const federation = createFederation<void>({
 });
 ~~~~
 
-### `DenoKvMessageQueue` (Deno only)
-
-To use the [`DenoKvMessageQueue`], you need to install the *@fedify/denokv*
-package first:
-
-::: code-group
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/denokv
-~~~~
-
-:::
-
-[`DenoKvMessageQueue`] is a message queue implementation for [Deno] runtime that
-uses Deno's built-in [`Deno.openKv()`] API. It provides persistent storage and
-good performance for Deno environments.  It's suitable for production use in
-Deno applications.
-
-Best for
-:   Production use in Deno environments.
-
-Pros
-:   Persistent, scalable, easy to set up, native retry with exponential backoff.
-
-Cons
-:   Only available in Deno runtime.  Deno KV limits a message to 64 KiB, so an
-    incoming activity too large for it is processed immediately instead of
-    being enqueued (since Fedify 2.5.0).
-
-~~~~ typescript
-import { createFederation } from "@fedify/fedify";
-import { DenoKvMessageQueue } from "@fedify/denokv";
-
-const kv = await Deno.openKv();
-const federation = createFederation<void>({
-  queue: new DenoKvMessageQueue(kv),  // [!code highlight]
-  // ... other options
-});
-~~~~
-
-[`DenoKvMessageQueue`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvMessageQueue
-[`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
-
 ### [`RedisMessageQueue`]
 
 To use [`RedisMessageQueue`], you need to install the *@fedify/redis* package:
@@ -513,6 +470,16 @@ const federation = createFederation<void>({
 
 ### `DenoKvMessageQueue` (Deno only)
 
+> [!WARNING]
+> `DenoKvMessageQueue` is deprecated since Fedify 2.5.0.
+> [Deno's team is joining Cloudflare][deno-announcement], and Deno KV is built
+> primarily for Deno Deploy, which is shutting down.  Fedify keeps supporting
+> `@fedify/denokv` throughout the 2.x series, but the package will be removed
+> in Fedify 3.0.0.  Use [`SqliteMessageQueue`] for local or single-node
+> deployments, or [`PostgresMessageQueue`], [`RedisMessageQueue`],
+> [`MysqlMessageQueue`], [`AmqpMessageQueue`], or [`WorkersMessageQueue`] for
+> production.  See [#1336] for the removal plan.
+
 To use the [`DenoKvMessageQueue`], you need to install the *@fedify/denokv*
 package first:
 
@@ -530,13 +497,15 @@ good performance for Deno environments.  It can be used in existing Deno
 applications.
 
 Best for
-:   Existing Deno applications.
+:   Existing Deno applications.  Not recommended for new projects.
 
 Pros
 :   Persistent, scalable, easy to set up, native retry with exponential backoff.
 
 Cons
-:   Only available in Deno runtime.
+:   Only available in Deno runtime, and deprecated since Fedify 2.5.0.  Deno KV
+    limits a message to 64 KiB, so an incoming activity too large for it is
+    processed immediately instead of being enqueued (since Fedify 2.5.0).
 
 ~~~~ typescript
 import { createFederation } from "@fedify/fedify";
@@ -548,6 +517,12 @@ const federation = createFederation<void>({
   // ... other options
 });
 ~~~~
+
+[deno-announcement]: https://deno.com/blog/cloudflare
+[`WorkersMessageQueue`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersMessageQueue
+[#1336]: https://github.com/fedify-dev/fedify/issues/1336
+[`DenoKvMessageQueue`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvMessageQueue
+[`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
 
 ### `WorkersMessageQueue` (Cloudflare Workers only)
 
@@ -706,7 +681,6 @@ export default {
 > };
 > ~~~~
 
-[`WorkersMessageQueue`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersMessageQueue
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Cloudflare Queues]: https://developers.cloudflare.com/queues/
 

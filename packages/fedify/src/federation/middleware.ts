@@ -641,7 +641,7 @@ export interface FederationQueueOptions {
 }
 
 /**
- * Prefixes for namespacing keys in the Deno KV store.
+ * Prefixes for namespacing keys in the key–value store.
  */
 export interface FederationKvPrefixes {
   /**

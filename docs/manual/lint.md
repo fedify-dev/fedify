@@ -26,6 +26,7 @@ The plugin includes rules that check for:
  -  Correct URL patterns for actor collections
  -  Public key and assertion method requirements
  -  Collection filtering implementation
+ -  Deprecated Deno KV adapter usage
 
 [`@fedify/lint`]: https://jsr.io/@fedify/lint
 [ESLint]: https://eslint.org/
@@ -1711,6 +1712,82 @@ federation.setFollowersDispatcher(
 ~~~~
 
 [*Filtering by server*]: ./collections.md#filtering-by-server
+
+### `deno-kv-store-deprecated`
+
+Warns when `DenoKvStore` from the deprecated *@fedify/denokv* package is
+imported or used.
+
+**When this rule applies:**
+Code imports `DenoKvStore` from `@fedify/denokv` (including aliases,
+`import type`, and named re-exports), or imports the package namespace
+(`import * as denokv from "@fedify/denokv"`).  A namespace import is reported
+as a whole because the rule does not resolve which member the code uses.
+Dynamic `import()` calls and `export * from "@fedify/denokv"` are not
+covered.
+
+**Why it matters:**
+Deno KV was built primarily for Deno Deploy, which is shutting down.
+`@fedify/denokv` remains supported throughout Fedify 2.x, but it will be
+removed in Fedify 3.0.0.  Use `SqliteKvStore` from *@fedify/sqlite* for local
+or single-node deployments, or `PostgresKvStore`, `RedisKvStore`,
+`MysqlKvStore`, or `WorkersKvStore` for production.
+
+~~~~ typescript
+// ❌ Bad: importing the deprecated adapter
+import { DenoKvStore } from "@fedify/denokv";
+
+// ✅ Good: using SQLite instead
+import { SqliteKvStore } from "@fedify/sqlite";
+~~~~
+
+> [!NOTE]
+> Deno Lint reports plugin rules as errors and has no warning level, so this
+> rule fails `deno lint` rather than warning.  Exclude
+> `fedify-lint/deno-kv-store-deprecated` through `lint.rules.exclude` while
+> you migrate.  The ESLint `strict` configuration also enables it as an error.
+
+See [#1336] for the removal plan.
+
+[#1336]: https://github.com/fedify-dev/fedify/issues/1336
+
+### `deno-kv-message-queue-deprecated`
+
+Warns when `DenoKvMessageQueue` from the deprecated *@fedify/denokv* package
+is imported or used.
+
+**When this rule applies:**
+Code imports `DenoKvMessageQueue` from `@fedify/denokv` (including aliases,
+`import type`, and named re-exports), or imports the package namespace
+(`import * as denokv from "@fedify/denokv"`).  A namespace import is reported
+as a whole because the rule does not resolve which member the code uses.
+Dynamic `import()` calls and `export * from "@fedify/denokv"` are not
+covered.
+
+**Why it matters:**
+Deno KV was built primarily for Deno Deploy, which is shutting down.
+`@fedify/denokv` remains supported throughout Fedify 2.x, but it will be
+removed in Fedify 3.0.0.  Use `SqliteMessageQueue` from *@fedify/sqlite* for
+local or single-node deployments, or `PostgresMessageQueue`,
+`RedisMessageQueue`, `MysqlMessageQueue`, `AmqpMessageQueue`, or
+`WorkersMessageQueue` for production.
+
+~~~~ typescript
+// ❌ Bad: importing the deprecated adapter
+import { DenoKvMessageQueue } from "@fedify/denokv";
+
+// ✅ Good: using SQLite instead
+import { SqliteMessageQueue } from "@fedify/sqlite";
+~~~~
+
+> [!NOTE]
+> Deno Lint reports plugin rules as errors and has no warning level, so this
+> rule fails `deno lint` rather than warning.  Exclude
+> `fedify-lint/deno-kv-message-queue-deprecated` through `lint.rules.exclude`
+> while you migrate.  The ESLint `strict` configuration also enables it as an
+> error.
+
+See [#1336] for the removal plan.
 
 
 Example

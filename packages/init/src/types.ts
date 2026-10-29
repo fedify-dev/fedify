@@ -164,6 +164,8 @@ export interface MessageQueueDescription {
   object: string;
   /** Deno unstable feature flags required (e.g., `["kv"]`). */
   denoUnstable?: string[];
+  /** Whether this message queue is deprecated but still selectable. */
+  deprecated?: boolean;
   /** Environment variables required, keyed by name to default value. */
   env?: Record<string, string>;
 }
@@ -187,6 +189,8 @@ export interface KvStoreDescription {
   object: string;
   /** Deno unstable feature flags required (e.g., `["kv"]`). */
   denoUnstable?: string[];
+  /** Whether this key-value store is deprecated but still selectable. */
+  deprecated?: boolean;
   /** Environment variables required, keyed by name to default value. */
   env?: Record<string, string>;
 }

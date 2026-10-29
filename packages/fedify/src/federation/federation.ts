@@ -1041,8 +1041,8 @@ export interface FederationOptions<TContextData> {
   kv: KvStore;
 
   /**
-   * Prefixes for namespacing keys in the Deno KV store.  By default, all keys
-   * are prefixed with `["_fedify"]`.
+   * Prefixes for namespacing keys in the key–value store.  By default, all
+   * keys are prefixed with `["_fedify"]`.
    */
   kvPrefixes?: Partial<FederationKvPrefixes>;
 

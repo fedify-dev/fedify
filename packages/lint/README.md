@@ -142,6 +142,21 @@ gateway-compatible IDs.
     calls `sendActivity` or `forwardActivity` and does not wait for the result
     (ESLint and Oxlint only)
 
+### Deprecation rules
+
+ -  **`deno-kv-store-deprecated`**: Warns when the deprecated `DenoKvStore`
+    from *@fedify/denokv* is imported or used
+ -  **`deno-kv-message-queue-deprecated`**: Warns when the deprecated
+    `DenoKvMessageQueue` from *@fedify/denokv* is imported or used
+
+`@fedify/denokv` is deprecated since Fedify 2.5.0 and will be removed in
+Fedify 3.0.0.  ESLint and Oxlint report these rules as warnings in the
+recommended configuration.  Deno Lint has no warning level and reports every
+plugin rule as an error; see the [linting manual] for how to exclude them with
+`rules.exclude`.
+
+[linting manual]: https://fedify.dev/manual/lint#turning-rules-off
+
 
 Installation
 ------------
@@ -398,8 +413,6 @@ plugin name `fedify-lint` as the prefix:
 
 `rules.tags` and `rules.include` apply to Deno's built-in rules, not plugin
 rules. See the [linting manual] for more details.
-
-[linting manual]: https://fedify.dev/manual/lint#turning-rules-off
 
 ### Running Deno Lint
 
