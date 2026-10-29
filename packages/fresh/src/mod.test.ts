@@ -15,25 +15,29 @@ function createMockContext<TState>(
   } as Context<TState>;
 }
 
+async function configureWarningCapture(records: LogRecord[]): Promise<void> {
+  await configure({
+    sinks: { capture: (record) => records.push(record) },
+    loggers: [
+      {
+        category: ["fedify", "fresh"],
+        lowestLevel: "warning",
+        sinks: ["capture"],
+      },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+  });
+}
+
 async function captureDeprecationWarnings(
-  fn: () => void | Promise<void>,
+  fn: (records: LogRecord[]) => void | Promise<void>,
 ): Promise<LogRecord[]> {
   const records: LogRecord[] = [];
   await reset();
   resetFreshDeprecationWarningForTesting();
   try {
-    await configure({
-      sinks: { capture: (record) => records.push(record) },
-      loggers: [
-        {
-          category: ["fedify", "fresh"],
-          lowestLevel: "warning",
-          sinks: ["capture"],
-        },
-        { category: ["logtape", "meta"], sinks: [] },
-      ],
-    });
-    await fn();
+    await configureWarningCapture(records);
+    await fn(records);
     return records;
   } finally {
     await reset();
@@ -60,12 +64,30 @@ Deno.test("deprecation warning - integrateHandler() warns once", async () => {
     fetch: () => Promise.resolve(new Response("ok")),
   } as unknown as Federation<void>;
 
-  const records = await captureDeprecationWarnings(async () => {
+  const records = await captureDeprecationWarnings(async (records) => {
     const handler = integrateHandler(federation, () => undefined);
+    strictEqual(records.length, 1);
     await handler(createMockContext());
   });
 
   strictEqual(records.length, 1);
+});
+
+Deno.test("deprecation warning - waits for a warning sink", async () => {
+  await reset();
+  resetFreshDeprecationWarningForTesting();
+  try {
+    integrateFetchOptions(createMockContext());
+
+    const records: LogRecord[] = [];
+    await configureWarningCapture(records);
+    integrateFetchOptions(createMockContext());
+
+    strictEqual(records.length, 1);
+  } finally {
+    await reset();
+    resetFreshDeprecationWarningForTesting();
+  }
 });
 
 Deno.test("integrateFetchOptions() - onNotFound delegates to ctx.next with correct receiver", async () => {

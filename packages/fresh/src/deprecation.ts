@@ -11,6 +11,7 @@ let warned = false;
  */
 export function warnFreshDeprecated(): void {
   if (warned) return;
+  if (!logger.isEnabledFor("warning")) return;
   warned = true;
   logger.warn(
     "The @fedify/fresh integration is deprecated and Fresh is not " +
