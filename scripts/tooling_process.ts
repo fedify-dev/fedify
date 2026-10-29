@@ -29,14 +29,16 @@ const cleanups = new Set<() => Promise<void>>();
 let stopping = false;
 
 function onSignal(signal: NodeJS.Signals): void {
-  if (stopping) return;
+  const code = signal === "SIGINT" ? 130 : 143;
+  // A repeated signal lets the user escape cleanup that is not finishing.
+  if (stopping) process.exit(code);
   stopping = true;
-  process.exitCode = signal === "SIGINT" ? 130 : 143;
+  process.exitCode = code;
   void Promise.allSettled([
     ...[...active].map((child) => child.stop()),
     ...[...cleanups].map((cleanup) => cleanup()),
   ]).then(() => {
-    process.exit(signal === "SIGINT" ? 130 : 143);
+    process.exit(code);
   });
 }
 
