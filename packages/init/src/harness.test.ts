@@ -312,9 +312,11 @@ test("explicit npm test cases avoid other runtimes while the public CLI checks t
       };
       const log = ${JSON.stringify(log)};
       for (const name of ['deno', 'bun']) {
+        const version = (name === 'deno' ? 'deno ' : '') + runtimes[name].minVersion;
         runtimes[name].checkCommand = [process.execPath, '-e',
-          'require("node:fs").appendFileSync(' + JSON.stringify(log) +
-          ', ' + JSON.stringify(name + '\\n') + '); process.exit(99);'];
+          'setTimeout(() => { require("node:fs").appendFileSync(' + JSON.stringify(log) +
+          ', ' + JSON.stringify(name + '\\n') + '); console.log(' + JSON.stringify(version) + '); }, ' +
+          (name === 'bun' ? 250 : 0) + ');'];
       }
       await import(${
         JSON.stringify(new URL("./test/execute.ts", import.meta.url).href)
@@ -340,11 +342,9 @@ test("explicit npm test cases avoid other runtimes while the public CLI checks t
       env: { ...process.env, FEDIFY_TEST_MODE: "true" },
     });
     await rejects(readFile(log), { code: "ENOENT" });
-    await rejects(
-      invoke(nodeExecutable, args, {
-        env: { ...process.env, FEDIFY_TEST_MODE: "" },
-      }),
-    );
+    await invoke(nodeExecutable, args, {
+      env: { ...process.env, FEDIFY_TEST_MODE: "" },
+    });
     deepStrictEqual((await readFile(log, "utf8")).trim().split("\n").sort(), [
       "bun",
       "deno",
