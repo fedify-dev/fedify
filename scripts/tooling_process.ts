@@ -1,3 +1,4 @@
+// @ts-types="npm:@types/cross-spawn@^6.0.6"
 import spawn from "cross-spawn";
 import { type ChildProcess, execFile } from "node:child_process";
 import process from "node:process";
