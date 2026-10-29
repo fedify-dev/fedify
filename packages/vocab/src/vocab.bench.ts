@@ -241,3 +241,26 @@ Deno.bench({
     await Create.fromJsonLd(await activity.toJsonLd());
   },
 });
+
+// Low-only entries also exercise output arrays with long trailing holes.
+for (const position of [0, 99_999]) {
+  const names = new Array<string>(100_000);
+  names[position] = "Sparse";
+  const note = new Note({ names });
+  for (const method of ["clone", "deepClone"] as const) {
+    Deno.bench({
+      name: `Note.${method}() sparse names at ${position}`,
+      group: "sparse property copy",
+      fn() {
+        note[method]();
+      },
+    });
+  }
+  Deno.bench({
+    name: `new Note() sparse names at ${position}`,
+    group: "sparse property copy",
+    fn() {
+      new Note({ names });
+    },
+  });
+}

@@ -69,6 +69,40 @@ async function* generateParametersType(
   if (parentheses) yield "}\n";
 }
 
+function generateValidatedArrayCopy(
+  name: string,
+  typeNames: string,
+  typeGuards: string,
+): string {
+  return `
+    let copied!: (${typeNames})[];
+    let valid = false;
+    if (Array.isArray(values.${name})) {
+      const array = values.${name};
+      const test = (v: ${typeNames}): boolean => ${typeGuards};
+      let checked: VocabArrayValidation | undefined;
+      if (array.length < vocabSparseArrayMinimumLength
+          ? array.every(test)
+          : (checked = vocabValidatePropertyArray(array, test)).valid) {
+        const input = values.${name};
+        if (input.length < vocabSparseArrayMinimumLength && !checked?.sparse) {
+          copied = input.slice();
+          valid = true;
+        } else {
+          const result = vocabCopyValidatedPropertyArray(
+            input, test, checked ?? { valid: true, sparse: false },
+          );
+          if (result.ok) {
+            copied = result.array;
+            valid = true;
+          }
+        }
+      }
+    }
+    if (valid) {
+  `.trimEnd() + "\n";
+}
+
 export async function* generateConstructor(
   typeUri: string,
   types: Record<string, TypeSchema>,
@@ -175,17 +209,18 @@ export async function* generateConstructor(
           }
         `;
       }
+      yield generateValidatedArrayCopy(
+        property.pluralName,
+        typeNames,
+        typeGuards,
+      );
       yield `
-          if (Array.isArray(values.${property.pluralName}) &&
-              values.${property.pluralName}.every(v => ${typeGuards})) {
             // @ts-ignore: type is checked above.
-            this.${fieldName} = values.${property.pluralName}.slice();
+            this.${fieldName} = copied;
       `;
       if (!allScalarTypes) {
         yield `
-            for (let i = 0; i < values.${property.pluralName}.length; i++) {
-              this.${trustFieldName}.add(i);
-            }
+            vocabSetTrustPrefix(this.${trustFieldName}, this.${fieldName}.length);
         `;
       }
       yield `
@@ -272,9 +307,12 @@ export async function* generateCloner(
     const fieldName = await getFieldName(property.uri);
     const trustFieldName = await getFieldName(property.uri, "#_trust");
     const allScalarTypes = areAllScalarTypes(property.range, types);
-    yield `clone.${fieldName} = this.${fieldName}.slice();`;
+    yield `clone.${fieldName} = this.${fieldName}.length < vocabSparseArrayMinimumLength
+      ? this.${fieldName}.slice() : vocabCopyPropertyArray(this.${fieldName});`;
     if (!allScalarTypes) {
-      yield `clone.${trustFieldName} = new Set(this.${trustFieldName});`;
+      yield `clone.${trustFieldName} = vocabCopyTrustSet(
+        this.${trustFieldName}, clone.${trustFieldName},
+      );`;
     }
     if (hasSingularAccessor(property)) {
       let typeGuards = getTypeGuards(
@@ -297,7 +335,8 @@ export async function* generateCloner(
             clone.${fieldName} = [values.${property.singularName}];
       `;
       if (!allScalarTypes) {
-        yield `clone.${trustFieldName} = new Set([0]);`;
+        yield `clone.${trustFieldName} = new Set();
+          clone.${trustFieldName}[vocabTrustPrefix] = 1;`;
       }
       yield `
           } else {
@@ -332,18 +371,19 @@ export async function* generateCloner(
           }
         `;
       }
+      yield generateValidatedArrayCopy(
+        property.pluralName,
+        typeNames,
+        typeGuards,
+      );
       yield `
-          if (Array.isArray(values.${property.pluralName}) &&
-              values.${property.pluralName}.every(v => ${typeGuards})) {
             // @ts-ignore: type is checked above.
-            clone.${fieldName} = values.${property.pluralName}.slice();
+            clone.${fieldName} = copied;
       `;
       if (!allScalarTypes) {
         yield `
             clone.${trustFieldName} = new Set();
-            for (let i = 0; i < values.${property.pluralName}.length; i++) {
-              clone.${trustFieldName}.add(i);
-            }
+            vocabSetTrustPrefix(clone.${trustFieldName}, clone.${fieldName}.length);
         `;
       }
       yield `
@@ -391,6 +431,12 @@ export async function* generateDeepCloner(
    * referrers outside the graph still point at the original external objects.
    * Custom clone() overrides must return fresh, compatible instances and
    * remain responsible for their own constructor and cloning side effects.
+   * Large sparse property arrays with ordinary data entries are copied using
+   * a snapshot of their length and present indices. Entries added after a
+   * snapshot are not visited; deleted entries are skipped, and values changed
+   * after the snapshot are read when reached. Custom
+   * clone() overrides must avoid structurally changing a field being copied
+   * if they need all its nested objects to be independent of the source.
    *
    * @param values The values to replace before copying the graph.
    * @param options Root loader and verifier overrides. Undefined options

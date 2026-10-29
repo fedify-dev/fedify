@@ -30,7 +30,7 @@ export async function generateField(
     const trustFieldName = await getFieldName(property.uri, `${prefix}_trust`);
     return `
       ${fieldName}: (${typeNames} | URL)[] = [];
-      ${trustFieldName}: Set<number> = new Set();
+      ${trustFieldName}: VocabTrustSet = new Set();
     `;
   }
 }

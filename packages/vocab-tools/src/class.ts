@@ -11,6 +11,7 @@ import {
 import { generateFields } from "./field.ts";
 import { generateInspector, generateInspectorPostClass } from "./inspector.ts";
 import { generateProperties } from "./property.ts";
+import { generatePropertyArrayHelpers } from "./property-array.ts";
 import {
   type PropertySchema,
   type TypeSchema,
@@ -345,6 +346,7 @@ function inspectIri(iri: URL): string {
   try { return formatIri(iri); } catch { return iri.href; }
 }
 `;
+  yield generatePropertyArrayHelpers();
   yield generateDeepCloneHelpers();
   yield `
 function isValidLanguageTag(language: string): boolean {

@@ -272,6 +272,10 @@ values are copied too.  Each copied node keeps its own default loaders and
 verifier; second-argument options override only the root.  The copy drops cached
 JSON-LD and retained signed representations, so retain the received document
 when its exact representation matters and sign copies again when needed.
+Keep property arrays stable during copying, including inside custom `clone()`
+overrides: `deepClone()` snapshots the existing indices of large sparse arrays.
+Entries added during copying are not visited, so their nested objects may
+remain shared.  Copying preserves array length and holes.
 
 > [!WARNING]
 > `crossOrigin: "trust"` on vocabulary deserialization trusts embedded

@@ -148,10 +148,25 @@ export async function* generateDeepCloneDescriptor(
   for (const property of properties) {
     const field = await getFieldName(property.uri);
     yield `
-      for (let i = 0; i < node.${field}.length; i++) {
-        const value = node.${field}[i];
-        if (value != null && typeof value === "object") {
-          node.${field}[i] = context.value(value);
+      {
+        const array = node.${field};
+        const snapshot = array.length < vocabSparseArrayMinimumLength
+          ? undefined : vocabSparseArraySnapshot(array);
+        if (snapshot != null) {
+          for (const i of snapshot.indices) {
+            if (!globalThis.Object.hasOwn(array, i)) continue;
+            const value = array[i];
+            if (value != null && typeof value === "object") {
+              array[i] = context.value(value);
+            }
+          }
+        } else {
+          for (let i = 0; i < node.${field}.length; i++) {
+            const value = node.${field}[i];
+            if (value != null && typeof value === "object") {
+              node.${field}[i] = context.value(value);
+            }
+          }
         }
       }
     `;

@@ -999,6 +999,20 @@ shallow copy is sufficient.  When copying a subclass, `deepClone()` calls its
 `clone()` override.  Such overrides must return fresh, compatible instances
 and are responsible for their own side effects.
 
+Property arrays keep their length and holes when copied.  Large sparse
+arrays with ordinary data entries use a snapshot of their existing indices.
+Entries added after that snapshot are not visited, while deleted entries are
+skipped.  Keep property arrays stable during copying, including inside custom
+`clone()` overrides, to preserve isolation of the copied graph.  Indexed
+getters, array subclasses and custom species use the existing array operations
+when detected; Proxy traps can observe different reads and reflection
+operations.
+
+Trust for constructor-supplied objects follows the length of the stored
+array.  Building that trust does not read non-scalar plural input getters once
+per slot.  Sparse arrays can still be expensive to traverse through accessors
+or to serialize.
+
 Cached JSON-LD and retained signed representations are discarded at every
 copied node.  The copy therefore reflects modeled property values, not unknown
 JSON-LD properties or the original document's formatting.  Sign the copy again

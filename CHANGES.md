@@ -216,7 +216,10 @@ To be released.
  -  Added `deepClone()` to vocabulary objects to copy nested objects before
     resolving their properties, keeping the source graph unchanged.  Replacement
     values are copied too.  Use `clone()` when a shallow copy is sufficient.
-    [[#1243], [#1337]]
+    Large sparse property arrays retain their length and holes without creating
+    per-slot trust bookkeeping.  Keep arrays stable while copying; newly added
+    entries may not be visited.  Accessor and serialization traversal costs are
+    unchanged.  [[#1243], [#1337]]
 
  -  Added vocabulary support for the [FEP-6757] draft, which marks
     ActivityPub content with explicit copyright license URIs.
