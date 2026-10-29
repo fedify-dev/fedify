@@ -1,7 +1,6 @@
 import { run } from "@optique/run";
 import process from "node:process";
-import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { isMain } from "../../../../scripts/tooling_main.ts";
 import { testInitCommand } from "../command.ts";
 import runTestInit from "./action.ts";
 import { TestInterruptedError } from "./cancel.ts";
@@ -19,9 +18,6 @@ export async function main(action: typeof runTestInit = runTestInit) {
   }
 }
 
-if (
-  process.argv[1] != null &&
-  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
-) {
+if (isMain(import.meta.url)) {
   await main();
 }

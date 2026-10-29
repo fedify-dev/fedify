@@ -135,6 +135,37 @@ test("scanner CLIs report violations and succeed after correction", async () => 
   });
 });
 
+test("scanner CLI runs through a symlinked directory", async () => {
+  await withProject(async (root) => {
+    await writeFile(
+      join(root, "packages", "fedify", "src", "violation.ts"),
+      'import "@fedify/fixture";',
+    );
+    await symlink(join(root, "scripts"), join(root, "linked"), "junction");
+    const result = await runScript(root, "../linked/check_fixture_usage.ts");
+    deepStrictEqual(result.code, 1);
+    match(result.stderr, /violation\.ts/);
+  });
+});
+
+test("scanner CLI runs through a symlinked entry file", {
+  skip: process.platform === "win32",
+}, async () => {
+  await withProject(async (root) => {
+    await writeFile(
+      join(root, "packages", "fedify", "src", "violation.ts"),
+      'import "@fedify/fixture";',
+    );
+    await symlink(
+      join(root, "scripts", "check_fixture_usage.ts"),
+      join(root, "scripts", "linked.ts"),
+    );
+    const result = await runScript(root, "linked.ts");
+    deepStrictEqual(result.code, 1);
+    match(result.stderr, /violation\.ts/);
+  });
+});
+
 test("package table CLI keeps table and link formats separate", async () => {
   await withProject(async (root) => {
     const table = await runScript(root, "generate_packages_table.ts", [
