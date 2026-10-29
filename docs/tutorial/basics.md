@@ -126,6 +126,9 @@ content (formatted for readability):[^2]
 > approach.
 
 > [!NOTE]
+> The Deno tabs use `node:sqlite`, which requires Deno 2.2.0 or later.
+
+> [!NOTE]
 > If you use Deno 2.7.0 or later, you do not need any extra setting for
 > [`Temporal`].  If you use Deno earlier than 2.7.0, add `"temporal"` to the
 > [`"unstable"`] field in *deno.json*.
