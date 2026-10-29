@@ -212,7 +212,7 @@ export function verifyRuntimeVersion(detected: string, required: string) {
  * Runs a runtime's version command and classifies the result as `"ok"`,
  * `"unsupported"`, `"missing"`, or `"malformed"` against its `minVersion`.
  */
-async function checkRuntimeVersion(
+export async function checkRuntimeVersion(
   { checkCommand, outputPattern, minVersion }: {
     checkCommand: [string, ...string[]];
     outputPattern: RegExp;

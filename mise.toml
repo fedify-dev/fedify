@@ -207,6 +207,7 @@ depends = [
   "check:node-modules",
   "test:docs-contributors",
   "test:codegen",
+  "test:tooling",
 ]
 run = "sacho check"
 
@@ -240,7 +241,6 @@ description = "Check Markdown formatting"
 run = "hongdown --check"
 
 [tasks.check-versions]
-depends = ["deno:cache"]
 description = "Check that all package versions are consistent across the monorepo"
 usage = """
 flag "--fix" help="Automatically fix package metadata version mismatches"
@@ -250,18 +250,16 @@ shell = "nu -c"
 run = '''
 let fix_args = if (($env.usage_fix? | default "false") == "true") { ["--fix"] } else { [] }
 let skip_next_args = if (($env.usage_skip_next? | default "false") == "true") { ["--skip-next"] } else { [] }
-deno run --allow-read --allow-write scripts/check_versions.ts ...$fix_args ...$skip_next_args
+node --experimental-strip-types scripts/check_versions.ts ...$fix_args ...$skip_next_args
 '''
 
 [tasks."check:fixture-usage"]
-depends = ["deno:cache"]
 description = "Ensure @fedify/fixture is only used in **/*.test.ts files"
-run = "deno run --allow-read scripts/check_fixture_usage.ts"
+run = "node --experimental-strip-types scripts/check_fixture_usage.ts"
 
 [tasks."check:workspace-protocol"]
-depends = ["deno:cache"]
 description = "Check for invalid workspace: specifiers without version (*, ^, ~)"
-run = "deno run --allow-read scripts/check_workspace_protocol.ts"
+run = "node --experimental-strip-types scripts/check_workspace_protocol.ts"
 
 [tasks.fmt]
 depends = ["deno:cache"]
@@ -340,8 +338,8 @@ depends = [
 
 [tasks."test:temporal-polyfill"]
 description = "Check Temporal polyfill packaging"
-depends = ["deno:cache", "build"]
-run = "deno run --allow-read --allow-write --allow-run scripts/check_temporal_polyfill.ts"
+depends = ["build"]
+run = "node --experimental-strip-types scripts/check_temporal_polyfill.ts"
 
 [tasks.test-each]
 depends = ["deno:cache"]
@@ -371,28 +369,28 @@ description = "Run tests for all example projects"
 # `build` produces @fedify/lint's dist/oxlint.js loader and provisions the
 # prebuilt oxlint native binary into node_modules (via the pnpm deps provider) —
 # both are needed by the lint/oxlint example.
-depends = ["deno:cache", "build"]
-run = "deno run -A examples/test-examples/mod.ts"
+depends = ["build"]
+run = "node --experimental-strip-types examples/test-examples/mod.ts"
 
 [tasks."test:astro-compat"]
 description = "Test @fedify/astro against supported Astro and runtime versions"
-depends = ["deno:cache", "build"]
-run = "deno run -A packages/astro/compat/run.ts"
+depends = ["build"]
+run = "node --experimental-transform-types packages/astro/compat/run.ts"
 
 [tasks."test:sveltekit-compat"]
 description = "Check @fedify/sveltekit consumer types against SvelteKit 2 and 3"
-depends = ["deno:cache", "build"]
-run = "deno run -A packages/sveltekit/compat/run.ts"
+depends = ["build"]
+run = "node --experimental-strip-types packages/sveltekit/compat/run.ts"
 
 [tasks."test:monitoring"]
-depends = ["deno:cache"]
 description = "Validate the monitoring example configuration"
-run = "deno run -A examples/monitoring/validate.ts"
+run = "node --experimental-strip-types examples/monitoring/validate.ts"
 
 [tasks."test:init"]
+env = { FEDIFY_TEST_MODE = "true" }
 description = "Run tests for the init package"
-depends = ["deno:cache", "build"]
-run = "deno task -f @fedify/init test-init"
+depends = ["build"]
+run = "node --experimental-transform-types packages/init/src/test/mod.ts test-init"
 
 # Snapshot updates
 # Note: vocab uses @std/testing/snapshot which only works on Deno
@@ -456,9 +454,8 @@ description = "Tunnel port with the Fedify CLI"
 run = "deno task -f @fedify/cli run tunnel"
 
 [tasks.update-init-deps]
-depends = ["deno:cache"]
 description = "Update third-party dependency versions in fedify init templates"
-run = "deno task -f @fedify/init update-init-deps"
+run = "node --experimental-strip-types packages/init/scripts/update_init_deps.ts"
 
 [tasks."hooks:install"]
 description = "Install Git hooks for pre-commit checks"
@@ -478,3 +475,19 @@ open packages/fedify/deno.json |
 mise run check-versions --fix
 mise run fmt
 """
+
+[tasks."test:tooling"]
+description = "Test Node.js maintenance scripts and harness utilities"
+run = 'node --experimental-transform-types --test "scripts/*.test.ts" "examples/test-examples/*.test.ts" "packages/init/src/harness.test.ts"'
+
+[tasks."generate:packages-table"]
+description = "Generate package tables and links for release announcements"
+run = "node --experimental-strip-types scripts/generate_packages_table.ts"
+
+[tasks.sponsors]
+description = "Update sponsor lists in the supplied Markdown files"
+run = "node --experimental-strip-types scripts/sponsors.ts"
+
+[tasks."test:tooling:no-deno"]
+description = "Verify Node-only tooling with Deno blocked and an empty cache"
+run = "node scripts/test_tooling_no_deno.mjs"

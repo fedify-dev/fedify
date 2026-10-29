@@ -1,7 +1,9 @@
+import { nodeExecutable } from "./node.ts";
 import $ from "@david/dax";
 import { join } from "@fxts/core";
 import { values } from "@optique/core";
 import { join as joinPath, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   getDevCommand,
   kvStores,
@@ -16,6 +18,7 @@ import type {
 } from "../types.ts";
 import { printErrorMessage, printMessage } from "../utils.ts";
 import webFrameworks from "../webframeworks/mod.ts";
+import { TestInterruptedError } from "./cancel.ts";
 import { replacePortInApp, reservePort } from "./port.ts";
 import { serverClosure, STARTUP_TIMEOUT, waitForServer } from "./server.ts";
 
@@ -46,7 +49,8 @@ const BANNED_LOOKUP_CASES: LookupCasePattern[] = Object.keys(
  */
 export default async function runServerAndLookupUser(
   dirs: string[],
-): Promise<void> {
+  test: (dir: string) => Promise<boolean> = testApp,
+): Promise<boolean> {
   const valid = dirs.filter(Boolean).filter(isTestable);
   printSkippedCases(dirs);
 
@@ -57,7 +61,7 @@ export default async function runServerAndLookupUser(
   printMessage``;
   printMessage`Lookup Test start for ${String(valid.length)} app(s)!`;
 
-  const results = await Array.fromAsync(valid, testApp);
+  const results = await Array.fromAsync(valid, test);
 
   const successCount = results.filter(Boolean).length;
   const failCount = results.length - successCount;
@@ -68,6 +72,7 @@ export default async function runServerAndLookupUser(
   Failed: ${String(failCount)}\n\n`;
 
   printFailedCases(valid, results);
+  return results.every(Boolean);
 }
 
 export const parseLookupCase = (dir: string): LookupCase =>
@@ -135,9 +140,12 @@ async function testApp(dir: string): Promise<boolean> {
     dir,
     getDevCommand(pm),
     port,
-    sendLookup,
+    (port, signal) => sendLookup(port, undefined, signal),
     release,
-  ).catch(() => false);
+  ).catch((error) => {
+    if (error instanceof TestInterruptedError) throw error;
+    return false;
+  });
 
   printMessage`    Lookup ${result ? "successful" : "failed"} for ${
     values([wf, pm, kv, mq])
@@ -152,13 +160,19 @@ ${joinPath(dir, "err.txt")}\n`;
   return result;
 }
 
-async function sendLookup(port: number): Promise<boolean> {
+export async function sendLookup(
+  port: number,
+  cliEntry = fileURLToPath(
+    new URL("../../../cli/dist/mod.js", import.meta.url),
+  ),
+  signal?: AbortSignal,
+): Promise<boolean> {
   const serverUrl = `http://localhost:${port}`;
   const lookupTarget = `${serverUrl}/users/${HANDLE}`;
   // Wait for server to be ready
   printMessage`    Waiting for server to start at ${serverUrl}...`;
 
-  const isReady = await waitForServer(serverUrl);
+  const isReady = await waitForServer(serverUrl, STARTUP_TIMEOUT, signal);
 
   if (!isReady) {
     printErrorMessage`Server did not start within ${String(STARTUP_TIMEOUT)}ms`;
@@ -169,14 +183,15 @@ async function sendLookup(port: number): Promise<boolean> {
 
   // Run lookup command from original directory
   try {
-    const res = await $`deno task cli lookup ${lookupTarget} -p`
+    let command = $`${nodeExecutable} ${cliEntry} lookup ${lookupTarget} -p`
       .stdin("null")
       .stdout("piped")
       .stderr("piped")
-      .noThrow()
-      .spawn();
+      .noThrow();
+    if (signal != null) command = command.signal(signal);
+    const res = await command.spawn();
 
-    return res.stdout.includes(`id: URL '${lookupTarget}',`);
+    return res.code === 0 && res.stdout.includes(`id: URL '${lookupTarget}',`);
   } catch (error) {
     if (error instanceof Error) {
       printErrorMessage`${error.message}`;

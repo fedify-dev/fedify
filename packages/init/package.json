@@ -57,7 +57,9 @@
     "jsonc-parser": "^3.3.1"
   },
   "devDependencies": {
+    "@types/cross-spawn": "catalog:",
     "@types/node": "catalog:",
+    "cross-spawn": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
@@ -68,6 +70,6 @@
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
     "test": "node --test --experimental-transform-types 'src/**/*.test.ts'",
-    "test-init": "deno task test-init"
+    "test-init": "node --experimental-transform-types src/test/mod.ts test-init"
   }
 }

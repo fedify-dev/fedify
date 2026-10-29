@@ -10,23 +10,27 @@
  * Reviewers must NOT treat a passing run as proof of safety; code
  * review and the published package contents remain the source of truth.
  */
-import { expandGlobSync } from "@std/fs/expand-glob";
-import {
-  dirname,
-  fromFileUrl,
-  join,
-  relative,
-  resolve,
-  SEPARATOR,
-} from "@std/path";
+import { readdirSync } from "node:fs";
+import { dirname, join, relative, resolve, sep } from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
+import { fileSystem, isNotFound } from "./tooling_fs.ts";
+import { isMain } from "./tooling_main.ts";
 
-const projectRoot = resolve(dirname(fromFileUrl(import.meta.url)), "..");
+const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-const expandGlobPattern = (pattern: string) =>
-  Array.from(
-    expandGlobSync(pattern, { root: projectRoot, includeDirs: false }),
-    (file) => relative(projectRoot, file.path),
-  );
+// The sole wildcard allowlist entry matches direct children, including dotfiles.
+const expandGlobPattern = (pattern: string) => {
+  const directory = dirname(pattern);
+  try {
+    return readdirSync(resolve(projectRoot, directory), { withFileTypes: true })
+      .filter((entry) => !entry.isDirectory())
+      .map((entry) => join(directory, entry.name));
+  } catch (error) {
+    if (isNotFound(error)) return [];
+    throw error;
+  }
+};
 
 /**
  * Files exempt from the "@fedify/fixture imports must live in *.test.ts"
@@ -79,17 +83,17 @@ const IMPORT_PATTERN =
 /** Walk each directory separately so a vanished child cannot end the scan. */
 async function* walkPackages(directory: string): AsyncGenerator<string> {
   try {
-    for await (const entry of Deno.readDir(directory)) {
+    for await (const entry of fileSystem.readDir(directory)) {
       if (entry.name === ".vocab-codegen.lock") continue;
       const path = join(directory, entry.name);
-      if (entry.isDirectory) {
+      if (entry.isDirectory()) {
         yield* walkPackages(path);
       } else {
         yield path;
       }
     }
   } catch (error) {
-    if (!(error instanceof Deno.errors.NotFound)) throw error;
+    if (!isNotFound(error)) throw error;
   }
 }
 
@@ -100,19 +104,18 @@ export async function checkFixtureUsage(
   const packagesDir = resolve(projectRoot, "packages");
   const allowed = new Set(ALLOWLIST);
   const violations: string[] = [];
-  const sourcePattern = new RegExp(`${SEPARATOR}src${SEPARATOR}`);
 
   for await (const path of walkPackages(packagesDir)) {
-    if (!path.endsWith(".ts") || !sourcePattern.test(path)) continue;
+    if (!path.endsWith(".ts") || !path.split(sep).includes("src")) continue;
     const rel = relative(projectRoot, path);
     if (rel.endsWith(".test.ts") || rel.endsWith(".bench.ts")) continue;
     if (allowed.has(rel)) continue;
 
     let content: string;
     try {
-      content = await Deno.readTextFile(path);
+      content = await fileSystem.readTextFile(path);
     } catch (error) {
-      if (error instanceof Deno.errors.NotFound) continue;
+      if (isNotFound(error)) continue;
       throw error;
     }
     if (IMPORT_PATTERN.test(content)) violations.push(rel);
@@ -120,9 +123,9 @@ export async function checkFixtureUsage(
   return violations;
 }
 
-if (import.meta.main) {
-  const projectRoot = resolve(dirname(fromFileUrl(import.meta.url)), "..");
+if (isMain(import.meta.url)) {
+  const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
   const violations = await checkFixtureUsage(projectRoot);
   for (const path of violations) console.error(path);
-  if (violations.length > 0) Deno.exit(1);
+  if (violations.length > 0) process.exitCode = 1;
 }

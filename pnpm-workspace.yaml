@@ -52,6 +52,7 @@ packages:
   - examples/nuxt
   - examples/solidstart
   - examples/sveltekit-sample
+  - examples/test-examples
 
 allowBuilds:
   '@netlify/content-engine': true
@@ -77,6 +78,9 @@ packageExtensions:
       ansi-escapes: ^4.3.2
 
 catalog:
+  "cross-spawn": ^7.0.6
+  "@types/cross-spawn": ^6.0.6
+  "yaml": ^2.9.0
   "@adonisjs/assembler": ^8.0.0
   "@adonisjs/core": ^7.4.0
   "@astrojs/netlify": ^6.6.5

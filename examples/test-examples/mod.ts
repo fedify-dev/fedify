@@ -2,12 +2,12 @@
  * Test runner for Fedify example projects.
  *
  * For server-based examples, starts the server, creates a public tunnel with
- * `fedify tunnel` (via `deno task cli tunnel`), and verifies federation is
+ * `fedify tunnel` (via the built CLI), and verifies federation is
  * working via `fedify lookup`.  For script-based examples, runs them directly
  * and checks the exit code.
  *
  * Usage (from repository root):
- *   deno run --allow-all examples/test-examples/mod.ts [options] [examples...]
+ *   mise run test:examples -- [options] [examples...]
  *
  * Options:
  *   --timeout MS   Server readiness timeout in ms (default: 10000)
@@ -17,19 +17,29 @@
  * are tested.  Otherwise all examples are tested.
  *
  * Example:
- *   deno run --allow-all examples/test-examples/mod.ts express koa
- *   deno run --allow-all examples/test-examples/mod.ts --debug hono-sample
+ *   mise run test:examples -- express koa
+ *   mise run test:examples -- --debug hono-sample
  */
 
-import $, { type CommandChild } from "@david/dax";
+import $ from "@david/dax";
 import { openTunnel, type Tunnel } from "@hongminhee/localtunnel";
 import { configure, getConsoleSink, getLogger } from "@logtape/logtape";
-import { fromFileUrl, join } from "@std/path";
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
+import process from "node:process";
+import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
+import { isMain } from "../../scripts/tooling_main.ts";
+import {
+  registerCleanup,
+  startCommand,
+  type ToolingProcess,
+} from "../../scripts/tooling_process.ts";
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
-const EXAMPLES_DIR = fromFileUrl(new URL("../", import.meta.url));
-const REPO_ROOT = fromFileUrl(new URL("../../", import.meta.url));
+const EXAMPLES_DIR = fileURLToPath(new URL("../", import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
 // ─── Logging ──────────────────────────────────────────────────────────────────
 //
@@ -40,7 +50,8 @@ const REPO_ROOT = fromFileUrl(new URL("../../", import.meta.url));
 // Library-internal fedify logs are intentionally excluded so they don't flood
 // the output.  Pass --debug to lower the level from "info" to "debug".
 
-const debugMode = Deno.args.includes("--debug") || Deno.args.includes("-d");
+const debugMode = process.argv.slice(2).includes("--debug") ||
+  process.argv.slice(2).includes("-d");
 
 await configure({
   sinks: { console: getConsoleSink() },
@@ -410,8 +421,8 @@ export function getRegisteredExampleNames(): Set<string> {
 export async function scanUnregisteredExamples(): Promise<string[]> {
   const registeredNames = getRegisteredExampleNames();
   const unregistered: string[] = [];
-  for await (const entry of Deno.readDir(EXAMPLES_DIR)) {
-    if (!entry.isDirectory) continue;
+  for (const entry of await readdir(EXAMPLES_DIR, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
     if (entry.name === "test-examples") continue;
     if (!registeredNames.has(entry.name)) {
       unregistered.push(entry.name);
@@ -441,8 +452,8 @@ function drainLogging(
   stream: ReadableStream<Uint8Array>,
   chunks: string[],
   streamLogger: ReturnType<typeof getLogger>,
-): void {
-  (async () => {
+): Promise<void> {
+  return (async () => {
     const reader = stream.getReader();
     const decoder = new TextDecoder();
     try {
@@ -456,6 +467,8 @@ function drainLogging(
       }
     } catch {
       // Stream may error when the process is killed.
+    } finally {
+      reader.releaseLock();
     }
   })();
 }
@@ -464,15 +477,22 @@ function drainLogging(
  * Polls `url` every 500 ms until the server responds with any HTTP status.
  * Returns true if ready before `timeoutMs`, false otherwise.
  */
-async function waitForServer(url: string, timeoutMs: number): Promise<boolean> {
+async function waitForServer(
+  url: string,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
+  while (Date.now() < deadline && !signal?.aborted) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(2_000) });
+      const timeout = AbortSignal.timeout(2_000);
+      const res = await fetch(url, {
+        signal: signal == null ? timeout : AbortSignal.any([timeout, signal]),
+      });
       await res.body?.cancel();
       return true;
     } catch {
-      await new Promise((r) => setTimeout(r, 500));
+      await delay(500, undefined, { signal }).catch(() => {});
     }
   }
   return false;
@@ -507,23 +527,6 @@ async function killPortUsers(port: number): Promise<void> {
     } catch {
       // Already gone.
     }
-  }
-}
-
-/**
- * Sends SIGKILL to `child` immediately.  A rejection handler is attached to
- * the CommandChild promise (which extends Promise<CommandResult>) so that the
- * eventual rejection from the killed process does not surface as an unhandled
- * promise rejection.  We intentionally do **not** await the promise because
- * dax keeps it pending until all piped streams are fully consumed, which may
- * never happen once the process is forcibly killed.
- */
-function forceKillChild(child: CommandChild): void {
-  child.catch(() => {});
-  try {
-    child.kill("SIGKILL");
-  } catch {
-    // Process already exited.
   }
 }
 
@@ -638,12 +641,12 @@ async function testServerExample(
 
   serverLogger.info("Starting {name}", { name, cmd: startCmd.join(" "), cwd });
 
-  let serverChild: CommandChild;
+  let serverChild: ToolingProcess;
   try {
-    let cmd = $`${startCmd}`.cwd(cwd).stdout("piped").stderr("piped")
-      .noThrow();
-    if (serverEnv) cmd = cmd.env(serverEnv);
-    serverChild = cmd.spawn();
+    serverChild = startCommand(startCmd[0], startCmd.slice(1), {
+      cwd,
+      env: serverEnv,
+    });
   } catch (e) {
     const error = `Command not found: ${startCmd[0]}`;
     serverLogger.error("{error}", { error });
@@ -653,8 +656,20 @@ async function testServerExample(
 
   const stdoutChunks: string[] = [];
   const stderrChunks: string[] = [];
-  drainLogging(serverChild.stdout(), stdoutChunks, serverLogger);
-  drainLogging(serverChild.stderr(), stderrChunks, serverLogger);
+  const stdoutDone = drainLogging(
+    serverChild.stdout,
+    stdoutChunks,
+    serverLogger,
+  );
+  const stderrDone = drainLogging(
+    serverChild.stderr,
+    stderrChunks,
+    serverLogger,
+  );
+  const shutdown = new AbortController();
+  const unregisterTunnel = registerCleanup(async () => {
+    await activeTunnel?.close();
+  });
 
   const collectServerOutput = () =>
     stdoutChunks.join("") + stderrChunks.join("");
@@ -667,7 +682,10 @@ async function testServerExample(
     );
     serverLogger.debug("Polling {url}", { url: readyUrl });
 
-    const ready = await waitForServer(readyUrl, timeoutMs);
+    const ready = await Promise.race([
+      waitForServer(readyUrl, timeoutMs, shutdown.signal),
+      serverChild.status.then(() => false),
+    ]);
     if (!ready) {
       const error = `Server did not become ready within ${timeoutMs} ms`;
       serverLogger.error("{error}", { error });
@@ -698,7 +716,9 @@ async function testServerExample(
     console.log(c.dim(`  running    : fedify lookup ${handle} -d`));
     serverLogger.info("Running fedify lookup {handle}", { handle });
 
-    const lookup = await $`deno task cli lookup ${handle} -d`
+    const lookup = await $`${process.execPath} ${
+      join(REPO_ROOT, "packages/cli/dist/mod.js")
+    } lookup ${handle} -d`
       .cwd(REPO_ROOT)
       .stdout("piped")
       .stderr("piped")
@@ -716,18 +736,20 @@ async function testServerExample(
     const error = `fedify lookup exited with code ${lookup.code}`;
     serverLogger.error("{error}", { error });
     return { name, status: "fail", error, output: lookupOutput };
+  } catch (cause) {
+    const error = cause instanceof Error ? cause.message : String(cause);
+    serverLogger.error("{error}", { error });
+    return { name, status: "fail", error, output: collectServerOutput() };
   } finally {
-    // Close tunnel first (it holds a connection to the server).
-    if (activeTunnel != null) {
-      serverLogger.debug("Closing tunnel");
-      await activeTunnel.close();
+    shutdown.abort();
+    unregisterTunnel();
+    try {
+      if (activeTunnel != null) await activeTunnel.close();
+    } finally {
+      await serverChild.stop();
+      await Promise.all([stdoutDone, stderrDone]);
+      await killPortUsers(port);
     }
-    serverLogger.debug("Force-killing server process");
-    forceKillChild(serverChild);
-
-    // Kill any lingering processes still bound to the port.
-    serverLogger.debug("Killing remaining processes on port {port}", { port });
-    await killPortUsers(port);
   }
 }
 
@@ -824,10 +846,10 @@ async function main(): Promise<void> {
   let defaultTimeoutMs = 10_000;
   const filterNames = new Set<string>();
 
-  for (let i = 0; i < Deno.args.length; i++) {
-    const arg = Deno.args[i];
-    if (arg === "--timeout" && i + 1 < Deno.args.length) {
-      defaultTimeoutMs = Number(Deno.args[++i]);
+  for (let i = 0; i < process.argv.slice(2).length; i++) {
+    const arg = process.argv.slice(2)[i];
+    if (arg === "--timeout" && i + 1 < process.argv.slice(2).length) {
+      defaultTimeoutMs = Number(process.argv.slice(2)[++i]);
     } else if (arg.startsWith("--timeout=")) {
       defaultTimeoutMs = Number(arg.slice("--timeout=".length));
     } else if (arg === "--debug" || arg === "-d") {
@@ -839,6 +861,25 @@ async function main(): Promise<void> {
 
   const shouldRun = (name: string) =>
     filterNames.size === 0 || filterNames.has(name);
+
+  const selected = [
+    ...SERVER_EXAMPLES,
+    ...SCRIPT_EXAMPLES,
+    ...MULTI_HANDLE_EXAMPLES,
+  ]
+    .filter((example) => shouldRun(example.name));
+  for (const name of filterNames) {
+    if (!getRegisteredExampleNames().has(name)) {
+      throw new TypeError(`Unknown example: ${name}`);
+    }
+  }
+  if (
+    selected.some((example) =>
+      ("startCmd" in example ? example.startCmd : example.cmd)[0] === "deno"
+    )
+  ) {
+    await $`mise run deno:cache`.cwd(REPO_ROOT);
+  }
 
   // ── Banner ───────────────────────────────────────────────────────────────
   console.log(c.bold("Fedify Example Test Runner"));
@@ -943,14 +984,14 @@ async function main(): Promise<void> {
       const preview = r.output.trim().split("\n").slice(-20).join("\n");
       if (preview) console.log(c.dim(preview));
     }
-    Deno.exit(1);
+    process.exit(1);
   }
 
-  Deno.exit(0);
+  process.exit(0);
 }
 
 // Run the test runner only when this module is executed directly, so that
 // mod.test.ts can import the registry helpers above without side effects.
-if (import.meta.main) {
+if (isMain(import.meta.url)) {
   await main();
 }

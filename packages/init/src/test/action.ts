@@ -1,6 +1,4 @@
-import { pipe, tap, when } from "@fxts/core";
 import type { TestInitCommand } from "../command.ts";
-import { set } from "../utils.ts";
 import { checkRequiredDbs } from "./db.ts";
 import { fillEmptyOptions } from "./fill.ts";
 import runTests from "./run.ts";
@@ -11,20 +9,20 @@ import {
   logTestDir,
 } from "./utils.ts";
 
-const runTestInit = (options: TestInitCommand) =>
-  pipe(
-    options,
-    set("runId", genRunId),
-    set("testDirPrefix", genTestDirPrefix),
-    tap(emptyTestDir),
-    fillEmptyOptions,
-    tap(checkRequiredDbs),
-    tap(logTestDir),
-    tap(when(isDryRun, runTests(true))),
-    tap(when(isHydRun, runTests(false))),
-  );
-
-const isDryRun = <T extends { dryRun: boolean }>({ dryRun }: T) => dryRun;
-const isHydRun = <T extends { hydRun: boolean }>({ hydRun }: T) => hydRun;
-
-export default runTestInit;
+export default async function runTestInit(
+  options: TestInitCommand,
+): Promise<boolean> {
+  const runId = genRunId();
+  const data = fillEmptyOptions({
+    ...options,
+    runId,
+    testDirPrefix: genTestDirPrefix({ runId }),
+  });
+  await emptyTestDir(data);
+  await checkRequiredDbs(data);
+  logTestDir(data);
+  let success = true;
+  if (data.dryRun) success = await runTests(true)(data) && success;
+  if (data.hydRun) success = await runTests(false)(data) && success;
+  return success;
+}

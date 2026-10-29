@@ -1,17 +1,27 @@
 import { run } from "@optique/run";
 import process from "node:process";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { testInitCommand } from "../command.ts";
 import runTestInit from "./action.ts";
+import { TestInterruptedError } from "./cancel.ts";
 
-async function main() {
+export async function main(action: typeof runTestInit = runTestInit) {
   const result = run(testInitCommand, {
     programName: "fedify-test-init",
     help: "both",
   });
-  await runTestInit(result);
-  // Force exit: dax's piped stdout/stderr streams keep internal async ops
-  // alive after SIGKILL, preventing the event loop from draining naturally.
-  process.exit(0);
+  try {
+    process.exitCode = await action(result) ? 0 : 1;
+  } catch (error) {
+    if (!(error instanceof TestInterruptedError)) throw error;
+    process.exitCode = error.exitCode;
+  }
 }
 
-await main();
+if (
+  process.argv[1] != null &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+) {
+  await main();
+}

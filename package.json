@@ -4,7 +4,12 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@optique/core": "catalog:",
+    "@optique/run": "catalog:",
+    "yaml": "catalog:",
+    "cross-spawn": "catalog:",
+    "@types/cross-spawn": "catalog:"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -13,5 +18,6 @@
     "patchedDependencies": {
       "@netlify/blobs@11.0.3": "patches/@netlify__blobs@11.0.3.patch"
     }
-  }
+  },
+  "type": "module"
 }

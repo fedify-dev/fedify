@@ -1,5 +1,8 @@
-import { dirname, join, normalize, resolve } from "@std/path";
-import { parse as parseYaml } from "@std/yaml";
+import { readFile } from "node:fs/promises";
+import { dirname, join, normalize, resolve } from "node:path";
+import process from "node:process";
+import { isMain } from "./tooling_main.ts";
+import { parse as parseYaml } from "yaml";
 import workspaceMetadata from "../deno.json" with { type: "json" };
 
 interface PackageInfo {
@@ -20,8 +23,9 @@ async function getPackages(): Promise<PackageInfo[]> {
 
   // Add pnpm workspace packages not already in deno.json workspace
   try {
-    const pnpmWorkspace = await Deno.readTextFile(
+    const pnpmWorkspace = await readFile(
       join(projectRoot, "pnpm-workspace.yaml"),
+      "utf8",
     );
     const pnpmConfig = parseYaml(pnpmWorkspace) as { packages?: string[] };
     if (pnpmConfig.packages) {
@@ -51,7 +55,7 @@ async function getPackages(): Promise<PackageInfo[]> {
 
     // Check deno.json (for JSR publishing)
     try {
-      const denoJson = JSON.parse(await Deno.readTextFile(denoJsonPath));
+      const denoJson = JSON.parse(await readFile(denoJsonPath, "utf8"));
       if (denoJson.name) {
         name = denoJson.name;
         hasJsr = true;
@@ -62,7 +66,7 @@ async function getPackages(): Promise<PackageInfo[]> {
 
     // Check package.json (for npm publishing)
     try {
-      const packageJson = JSON.parse(await Deno.readTextFile(packageJsonPath));
+      const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
       if (packageJson.name && !packageJson.private) {
         hasNpm = true;
         // Use package.json name if deno.json doesn't have one
@@ -138,12 +142,12 @@ function generateLinks(
   return lines.join("\n");
 }
 
-if (import.meta.main) {
-  const args = Deno.args;
+if (isMain(import.meta.url)) {
+  const args = process.argv.slice(2);
 
   if (args.includes("--help") || args.includes("-h")) {
     console.log(
-      "Usage: deno run -A scripts/generate_packages_table.ts [--format=<table|links|all>] <version> [short_version]",
+      "Usage: node --experimental-strip-types scripts/generate_packages_table.ts [--format=<table|links|all>] <version> [short_version]",
     );
     console.log("");
     console.log("Generates a Markdown table of packages for PR comments.");
@@ -160,7 +164,7 @@ if (import.meta.main) {
     console.log(
       "  short_version    Version without build metadata (optional, derived from version if not provided)",
     );
-    Deno.exit(0);
+    process.exit(0);
   }
 
   // Parse format option
@@ -170,7 +174,7 @@ if (import.meta.main) {
     format = formatArg.split("=")[1];
     if (!["table", "links", "all"].includes(format)) {
       console.error(`Invalid format: ${format}`);
-      Deno.exit(1);
+      process.exit(1);
     }
   }
 
@@ -180,9 +184,9 @@ if (import.meta.main) {
   if (positionalArgs.length < 1) {
     console.error("Error: version argument is required");
     console.error(
-      "Usage: deno run -A scripts/generate_packages_table.ts [--format=<table|links|all>] <version> [short_version]",
+      "Usage: node --experimental-strip-types scripts/generate_packages_table.ts [--format=<table|links|all>] <version> [short_version]",
     );
-    Deno.exit(1);
+    process.exit(1);
   }
 
   const version = positionalArgs[0];
