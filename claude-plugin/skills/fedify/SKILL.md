@@ -311,6 +311,12 @@ in development or tests.
 | *@fedify/denokv*    | yes       | yes            |
 | *@fedify/cfworkers* | yes       | yes            |
 
+For `PostgresKvStore`, existing populated tables and externally managed DDL
+(`initialized: true`) need the [expiry expression index] to accelerate cleanup.
+Run concurrent index creation outside a transaction, followed by `ANALYZE`.
+The migration can precede an application upgrade; old writers maintain the
+index too.  Keep the original TTL columns and calendar semantics.
+
 > [!WARNING]
 > `PostgresMessageQueue` and similar implementations require connection
 > pooling sized for parallel consumers; a single shared connection will
@@ -323,6 +329,8 @@ in development or tests.
 > breaks idempotency tracking.  See <https://fedify.dev/manual/deploy.md>.
 
 See <https://fedify.dev/manual/kv.md> and <https://fedify.dev/manual/mq.md>.
+
+[expiry expression index]: https://fedify.dev/manual/kv.md#postgresql-expiry-index
 
 
 Observability

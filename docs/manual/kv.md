@@ -265,7 +265,101 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+#### PostgreSQL expiry index
+
+*This optimization is available since Fedify 2.5.0.*
+
+Expiry cleanup can use a B-tree expression index that stores a UTC-calendar
+expiration timestamp for each entry with a TTL.  The index build populates
+keys for existing rows; no new table column, trigger, or separate backfill is
+needed.  PostgreSQL maintains the index on every insert and update, including
+those from older Fedify versions.
+
+With a pooled client, automatic initialization attempts to add the index to an
+empty table.  It skips populated tables, tables with row-level security, and
+ordinary inheritance parents.  It also skips index provisioning with
+`initialized: true`, a transaction client, or a reserved connection.  Missing
+ownership, lock contention, or an index-build failure leaves the store usable
+without the optimization.  Ordinary table initialization still follows the
+existing `initialized` and `unlogged` options.
+
+For an existing table, or when you manage DDL yourself, run this migration as
+the table owner, outside a transaction block.  Replace `public.fedify_kv_v2`
+with your actual schema and table, and choose an unused index name in that
+schema.  Quote mixed-case or special identifiers, for example
+`"Cache"."Federation keys"`.  Use the literal `'UTC'` in both function calls:
+
+~~~~ sql
+CREATE INDEX CONCURRENTLY fedify_kv_expiry
+ON public.fedify_kv_v2
+  ((timezone('UTC', timezone('UTC', created) + ttl)))
+WHERE ttl IS NOT NULL;
+
+ANALYZE public.fedify_kv_v2;
+~~~~
+
+The concurrent build permits ordinary writes while it runs, but needs time,
+disk space, and database resources.  `ANALYZE` collects expression statistics
+so the planner can choose the index when few or no entries have expired.
+If the role lacks privileges, PostgreSQL skips `ANALYZE` with only a warning,
+so run it as a role allowed to analyze the table.  Keep normal
+autovacuum and analyze maintenance enabled as the table grows.
+
+The index can be created before or after an application upgrade.  Old and new
+versions can share the table, and downgrading does not require removing the
+index.  Without the index, the new cleanup query remains correct but may scan
+the full table.  An index also adds write and storage costs, including fewer
+opportunities for HOT updates.  Once the index exists, a write whose expiration
+timestamp falls outside PostgreSQL's supported timestamp range fails
+atomically, including writes from older application versions.  An existing
+overflowing row can also prevent index creation; correct such data before
+retrying the migration.
+
+Logical TTL checks in `get()`, `list()`, and `cas()` still evaluate
+`created + ttl` in the connection's `TimeZone`.  Cleanup uses the UTC index to
+find candidates and rechecks that original predicate before deleting them.
+This preserves PostgreSQL's calendar-month, calendar-day, and DST behavior.
+For calendar intervals in a non-UTC session, a different UTC-calendar result
+can delay physical deletion or make cleanup visit a candidate before it
+logically expires; the recheck prevents early deletion.  Reads and CAS still
+observe the original logical expiry.  Cleanup's 1,000-row limit bounds the rows
+selected and deleted, not the index entries examined.
+
+For traditional inheritance, build the index and run `ANALYZE` on the parent
+and on each child, including children added later.  An index on the parent
+does not cover inherited children.
+
+For a populated partitioned table, PostgreSQL does not support
+`CREATE INDEX CONCURRENTLY` on the parent.  Create the parent index with
+`CREATE INDEX ... ON ONLY`, build matching indexes concurrently on each leaf,
+and attach them with `ALTER INDEX ... ATTACH PARTITION`.  Repeat the parent
+and attachment steps at each intermediate partitioning level.  After all
+attachments, verify that the root index is valid, then run `ANALYZE` on the
+root and each leaf partition.  Autovacuum does not analyze partitioned
+parents.  New partitions then receive matching indexes automatically.  See
+PostgreSQL's [partitioned index procedure] for the full workflow.
+
+A failed concurrent build can leave an invalid index.  Inspect its state:
+
+~~~~ sql
+SELECT indexrelid::regclass AS index_name, indisvalid
+FROM pg_index
+WHERE indrelid = 'public.fedify_kv_v2'::regclass
+  AND NOT indisprimary;
+~~~~
+
+After confirming that an invalid index is the one created by your migration,
+run `DROP INDEX CONCURRENTLY <schema>.<index_name>` outside a transaction.
+Replace `<schema>` and `<index_name>` with the schema and index name you chose
+for the migration, quoting each identifier as needed.  Then rerun the index
+build, followed by `ANALYZE`.  Automatic initialization never
+replaces conflicting or invalid indexes.  It accepts an existing valid,
+non-unique, single-attribute B-tree index if it uses the expression above or
+its `AT TIME ZONE` equivalent, and has either no predicate or
+`WHERE ttl IS NOT NULL`.
+
 [`PostgresKvStore`]: https://jsr.io/@fedify/postgres/doc/kv/~/PostgresKvStore
+[partitioned index procedure]: https://www.postgresql.org/docs/current/ddl-partitioning.html#DDL-PARTITIONING-DECLARATIVE-MAINTENANCE
 
 ### [`PgliteKvStore`]
 
