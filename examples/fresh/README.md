@@ -6,11 +6,12 @@ application.
 
 > [!WARNING]
 > This integration remains supported throughout the Fedify 2.x series, but
-> Fresh is not recommended for new projects.  Deno's team will end its own
-> development of the Deno runtime after another year of bug fixes and security
-> updates, and this example targets Fresh 2.x, which runs on Deno.  Fresh has
-> announced plans for non-Deno runtimes in Fresh 3, but that support is not yet
-> released or stable enough for this integration and its example.
+> Fresh is not recommended for new projects.  Deno's team will provide bug
+> fixes and security updates for the Deno runtime until October 2027, then end
+> its own development of the runtime, and this example targets Fresh 2.x, which
+> runs on Deno.  Fresh has announced plans for non-Deno runtimes in Fresh 3, but
+> that support is not yet released or stable enough for this integration and
+> its example.
 >
 > The integration is tentatively planned for removal in Fedify 3.0.0; see
 > [#1326] for the removal plan and the reassessment it requires.  That plan may
