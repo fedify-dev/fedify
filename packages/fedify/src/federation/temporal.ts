@@ -1,13 +1,10 @@
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
+import { normalizeDateTimeLiteral } from "@fedify/vocab-runtime/temporal";
 import { getNormalizationContextLoader } from "../sig/ld.ts";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value != null && !Array.isArray(value);
-}
-
-function normalizeDateTimeLiteral(value: string): string {
-  return value.substring(19).match(/[Z+-]/) ? value : value + "Z";
 }
 
 function isMalformedDateTimeLiteral(value: unknown): boolean {

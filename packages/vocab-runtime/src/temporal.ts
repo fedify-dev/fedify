@@ -72,3 +72,21 @@ export function isTemporalDuration(value: unknown): value is Temporal.Duration {
     value.toString !== Object.prototype.toString
   );
 }
+
+/**
+ * Normalizes an `xsd:dateTime` literal so that `Temporal.Instant.from()` can
+ * parse it, by treating a literal without a UTC offset as UTC.
+ *
+ * The offset is looked up in the part of the literal that follows the
+ * date-time separator, so that literals of any length are handled, including
+ * those that omit seconds as Activity Streams 2.0 allows.
+ *
+ * @param value The date-time literal to normalize.
+ * @returns The literal with `Z` appended if it has a time part without
+ *          a UTC offset; otherwise the literal unchanged.
+ */
+export function normalizeDateTimeLiteral(value: string): string {
+  const timeStart = value.search(/[Tt ]/);
+  if (timeStart < 0) return value;
+  return /[Zz+-]/.test(value.substring(timeStart)) ? value : value + "Z";
+}

@@ -212,11 +212,7 @@ const scalarTypes: Record<string, ScalarType> = {
         `;
     },
     decoder(v) {
-      return `Temporal.Instant.from(
-        ${v}["@value"].substring(19).match(/[Z+-]/)
-          ? ${v}["@value"]
-          : ${v}["@value"] + "Z"
-      )`;
+      return `Temporal.Instant.from(normalizeDateTimeLiteral(${v}["@value"]))`;
     },
   },
   "http://www.w3.org/2001/XMLSchema#duration": {

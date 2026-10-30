@@ -117,3 +117,30 @@ test(
     );
   },
 );
+
+test(
+  "hasMalformedKnownTemporalLiteral() accepts date-times without seconds",
+  async () => {
+    for (
+      const published of [
+        "2024-01-01T10:00Z",
+        "2024-01-01T10:00+09:00",
+        "2024-01-01T10:00-05:00",
+        "2024-01-01T10:00",
+      ]
+    ) {
+      assertFalse(
+        await hasMalformedKnownTemporalLiteral(
+          {
+            "https://www.w3.org/ns/activitystreams#published": [{
+              "@value": published,
+              "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+            }],
+          },
+          undefined,
+        ),
+        published,
+      );
+    }
+  },
+);

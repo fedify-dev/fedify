@@ -158,6 +158,7 @@ export async function* generateClasses(
   yield `import {
     isTemporalDuration,
     isTemporalInstant,
+    normalizeDateTimeLiteral,
 } from "@fedify/vocab-runtime/temporal";\n`;
   yield `
 function canDecodeIri(iri: string): boolean {
