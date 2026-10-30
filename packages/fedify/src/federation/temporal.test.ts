@@ -117,3 +117,59 @@ test(
     );
   },
 );
+
+test(
+  "hasMalformedKnownTemporalLiteral() accepts date-times without seconds",
+  async () => {
+    for (
+      const published of [
+        "2024-01-01T10:00Z",
+        "2024-01-01T10:00+09:00",
+        "2024-01-01T10:00-05:00",
+        "2024-01-01T10:00",
+        "2024-01-01T10:00.5Z",
+        "2024-01-01T10:00.5+09:00",
+        "2024-01-01T10:00.5-05:00",
+        "2024-01-01T10:00.5",
+      ]
+    ) {
+      assertFalse(
+        await hasMalformedKnownTemporalLiteral(
+          {
+            "https://www.w3.org/ns/activitystreams#published": [{
+              "@value": published,
+              "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+            }],
+          },
+          undefined,
+        ),
+        published,
+      );
+    }
+  },
+);
+
+test(
+  "hasMalformedKnownTemporalLiteral() mirrors the as:closed decoder for " +
+    "date-times without seconds",
+  async () => {
+    const closed = (value: string) => ({
+      "https://www.w3.org/ns/activitystreams#closed": [{
+        "@value": value,
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+      }],
+    });
+    assertFalse(
+      await hasMalformedKnownTemporalLiteral(
+        closed("2024-01-01T10:00.5Z"),
+        undefined,
+      ),
+    );
+    assert(
+      await hasMalformedKnownTemporalLiteral(
+        closed("2024-02-31T10:00.5Z"),
+        undefined,
+      ),
+    );
+  },
+);

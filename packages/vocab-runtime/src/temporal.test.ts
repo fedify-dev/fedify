@@ -1,7 +1,11 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { strictEqual } from "node:assert";
 import { test } from "node:test";
-import { isTemporalDuration, isTemporalInstant } from "./temporal.ts";
+import {
+  isTemporalDuration,
+  isTemporalInstant,
+  normalizeDateTimeLiteral,
+} from "./temporal.ts";
 
 test("isTemporalInstant() accepts polyfill instances", () => {
   strictEqual(
@@ -118,4 +122,61 @@ test("isTemporalDuration() rejects default Object.prototype.toString", () => {
     sign: 0,
   };
   strictEqual(isTemporalDuration(decoy), false);
+});
+
+test("normalizeDateTimeLiteral() keeps literals with a UTC offset", () => {
+  const literals = [
+    "2024-01-01T10:00Z",
+    "2024-01-01T10:00+09:00",
+    "2024-01-01T10:00-05:00",
+    "2024-01-01T10:00:00Z",
+    "2024-01-01T10:00:00+09:00",
+    "2024-01-01T10:00:00-05:00",
+    "2024-01-01T10:00:00+0900",
+    "2024-01-01T10:00:00.123456789Z",
+    "2024-01-01t10:00z",
+    "2024-01-01 10:00:00Z",
+  ];
+  for (const literal of literals) {
+    strictEqual(normalizeDateTimeLiteral(literal), literal);
+    strictEqual(typeof Temporal.Instant.from(literal), "object");
+  }
+});
+
+test("normalizeDateTimeLiteral() treats literals without an offset as UTC", () => {
+  const literals = [
+    "2024-01-01T10:00",
+    "2024-01-01T10:00:00",
+    "2024-01-01T10:00:00.123",
+    "2025-01-01 12:34:56",
+  ];
+  for (const literal of literals) {
+    strictEqual(normalizeDateTimeLiteral(literal), `${literal}Z`);
+    strictEqual(
+      typeof Temporal.Instant.from(normalizeDateTimeLiteral(literal)),
+      "object",
+    );
+  }
+});
+
+test("normalizeDateTimeLiteral() keeps literals without a time part", () => {
+  strictEqual(normalizeDateTimeLiteral("2024-01-01"), "2024-01-01");
+});
+
+test("normalizeDateTimeLiteral() inserts omitted seconds before a fraction", () => {
+  const literals = [
+    ["2024-01-01T10:00.5Z", "2024-01-01T10:00:00.5Z"],
+    ["2024-01-01T10:00.5+09:00", "2024-01-01T10:00:00.5+09:00"],
+    ["2024-01-01T10:00.5-05:00", "2024-01-01T10:00:00.5-05:00"],
+    ["2024-01-01T10:00.5", "2024-01-01T10:00:00.5Z"],
+    ["2024-01-01T10:00.123456789Z", "2024-01-01T10:00:00.123456789Z"],
+  ] as const;
+  for (const [literal, normalized] of literals) {
+    strictEqual(normalizeDateTimeLiteral(literal), normalized);
+    strictEqual(typeof Temporal.Instant.from(normalized), "object");
+  }
+  strictEqual(
+    normalizeDateTimeLiteral("2024-01-01T10:00:00.5Z"),
+    "2024-01-01T10:00:00.5Z",
+  );
 });

@@ -2599,3 +2599,42 @@ for (const typeUri in types) {
     deepStrictEqual(cls.typeId, new URL(type.uri));
   });
 }
+
+test("Note.fromJsonLd() accepts date-times without seconds", async () => {
+  const cases: readonly (readonly [string, string])[] = [
+    ["2024-01-01T10:00Z", "2024-01-01T10:00:00Z"],
+    ["2024-01-01T10:00+09:00", "2024-01-01T01:00:00Z"],
+    ["2024-01-01T10:00-05:00", "2024-01-01T15:00:00Z"],
+    ["2024-01-01T10:00", "2024-01-01T10:00:00Z"],
+    ["2024-01-01T10:00.5Z", "2024-01-01T10:00:00.5Z"],
+    ["2024-01-01T10:00.5+09:00", "2024-01-01T01:00:00.5Z"],
+    ["2024-01-01T10:00.5-05:00", "2024-01-01T15:00:00.5Z"],
+    ["2024-01-01T10:00.5", "2024-01-01T10:00:00.5Z"],
+  ];
+  for (const [published, expected] of cases) {
+    const note = await Note.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      published,
+    }, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    deepStrictEqual(note.published, Temporal.Instant.from(expected));
+  }
+});
+
+test("Note.fromJsonLd() rejects date-times that Temporal cannot parse", async () => {
+  await rejects(
+    () =>
+      Note.fromJsonLd({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Note",
+        published: "Sat, 01 Jan 2024 10:00:00 GMT",
+      }, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      }),
+    RangeError,
+  );
+});
