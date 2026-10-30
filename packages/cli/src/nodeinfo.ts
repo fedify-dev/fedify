@@ -22,6 +22,7 @@ import type { ChalkInstance } from "chalk";
 import { isICO, parseICO } from "icojs";
 import { defaultFormats, defaultPlugins, intToRGBA } from "jimp";
 import { Buffer } from "node:buffer";
+import { readFile } from "node:fs/promises";
 import os from "node:os";
 import process from "node:process";
 import ora from "ora";
@@ -33,6 +34,7 @@ import { colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "nodeinfo"]);
 const MAX_FAVICON_REDIRECTS = 5;
+const SVG_SNIFF_LENGTH = 1024;
 
 async function fetchFaviconResource(
   url: URL | string,
@@ -73,6 +75,38 @@ type JimpImage = Awaited<ReturnType<typeof Jimp.read>>;
 type ImageBuffer = ArrayBuffer | Uint8Array;
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+type ResvgModule = typeof import("@resvg/resvg-wasm");
+
+let svgRasterizer: Promise<ResvgModule> | undefined;
+
+function loadSvgRasterizer(): Promise<ResvgModule> {
+  return svgRasterizer ??= (async () => {
+    const resvg = await import("@resvg/resvg-wasm");
+    const wasmUrl = import.meta.resolve("@resvg/resvg-wasm/index_bg.wasm");
+    await resvg.initWasm(await readFile(new URL(wasmUrl)));
+    return resvg;
+  })();
+}
+
+export async function rasterizeSvg(buffer: ImageBuffer): Promise<Uint8Array> {
+  const svg = toUint8Array(buffer);
+  const { Resvg } = await loadSvgRasterizer();
+  const { width, height } = new Resvg(svg);
+  return new Resvg(svg, {
+    fitTo: {
+      mode: width >= height ? "width" : "height",
+      value: DEFAULT_IMAGE_WIDTH,
+    },
+  }).render().asPng();
+}
+
+function isSvg(buffer: ImageBuffer): boolean {
+  const text = new TextDecoder().decode(
+    toUint8Array(buffer).subarray(0, SVG_SNIFF_LENGTH),
+  );
+  return /<svg[\s/>]/i.test(text);
+}
 
 function toUint8Array(buffer: ImageBuffer): Uint8Array {
   return buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
@@ -244,7 +278,7 @@ export async function runNodeInfo(
       );
       if (response.ok) {
         const contentType = response.headers.get("Content-Type");
-        let buffer: ArrayBuffer = await response.arrayBuffer();
+        let buffer: ImageBuffer = await response.arrayBuffer();
         if (
           contentType === "image/vnd.microsoft.icon" ||
           contentType === "image/x-icon" ||
@@ -255,6 +289,8 @@ export async function runNodeInfo(
             throw new Error("No images found in the ICO file.");
           }
           buffer = images[0].buffer;
+        } else if (contentType === "image/svg+xml" || isSvg(buffer)) {
+          buffer = await rasterizeSvg(buffer);
         }
         const image = await readImage(buffer);
         const colorSupport = checkTerminalColorSupport();
@@ -388,6 +424,7 @@ export async function getFaviconUrl(
     userAgent,
   );
   const text = await response.text();
+  let svgCandidate: URL | undefined;
   for (const match of text.matchAll(LINK_REGEXP)) {
     const attrs: Record<string, string> = {};
     for (const attrMatch of match[1].matchAll(LINK_ATTRS_REGEXP)) {
@@ -407,12 +444,17 @@ export async function getFaviconUrl(
     ) continue;
     if ("href" in attrs) {
       const parsedUrl = new URL(attrs.href, finalUrl);
-      if (parsedUrl.pathname.toLowerCase().endsWith(".svg")) continue;
-      if (attrs.type?.toLowerCase()?.trim() === "image/svg+xml") continue;
+      if (
+        parsedUrl.pathname.toLowerCase().endsWith(".svg") ||
+        attrs.type?.toLowerCase()?.trim() === "image/svg+xml"
+      ) {
+        svgCandidate ??= parsedUrl;
+        continue;
+      }
       return parsedUrl;
     }
   }
-  return new URL("/favicon.ico", finalUrl);
+  return svgCandidate ?? new URL("/favicon.ico", finalUrl);
 }
 
 function checkTerminalColorSupport(): "truecolor" | "256color" | "none" {

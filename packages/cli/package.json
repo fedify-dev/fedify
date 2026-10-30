@@ -93,6 +93,7 @@
     "@logtape/file": "catalog:",
     "@logtape/logtape": "catalog:",
     "@poppanator/http-constants": "^1.1.1",
+    "@resvg/resvg-wasm": "^2.6.2",
     "byte-encodings": "catalog:",
     "chalk": "^5.6.2",
     "cli-highlight": "^2.1.11",

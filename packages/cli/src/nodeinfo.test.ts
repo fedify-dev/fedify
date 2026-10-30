@@ -6,6 +6,7 @@ import {
   getAsciiArt,
   getFaviconUrl,
   Jimp,
+  rasterizeSvg,
   readImage,
   rgbTo256Color,
   runNodeInfo,
@@ -74,7 +75,7 @@ const HTML_WITH_SVG_ONLY = `
 </html>
 `;
 
-test("getFaviconUrl - svg icons only falls back to /favicon.ico", async () => {
+test("getFaviconUrl - svg icon is selected when no bitmap exists", async () => {
   fetchMock.spyGlobal();
 
   fetchMock.get("https://8.8.8.8/", {
@@ -83,7 +84,7 @@ test("getFaviconUrl - svg icons only falls back to /favicon.ico", async () => {
   });
 
   const result = await getFaviconUrl("https://8.8.8.8/");
-  assert.equal(result.href, "https://8.8.8.8/favicon.ico");
+  assert.equal(result.href, "https://8.8.8.8/icon.svg");
 });
 
 const HTML_WITH_UPPERCASE_SVG_ONLY = `
@@ -97,7 +98,7 @@ const HTML_WITH_UPPERCASE_SVG_ONLY = `
 </html>
 `;
 
-test("getFaviconUrl - uppercase svg icons only falls back to /favicon.ico", async () => {
+test("getFaviconUrl - uppercase svg icon is selected", async () => {
   fetchMock.spyGlobal();
 
   fetchMock.get("https://8.8.8.8/", {
@@ -106,7 +107,7 @@ test("getFaviconUrl - uppercase svg icons only falls back to /favicon.ico", asyn
   });
 
   const result = await getFaviconUrl("https://8.8.8.8/");
-  assert.equal(result.href, "https://8.8.8.8/favicon.ico");
+  assert.equal(result.href, "https://8.8.8.8/icon.SVG");
 });
 
 const HTML_WITH_UPPERCASE_SVG_WITH_QUERY = `
@@ -120,7 +121,7 @@ const HTML_WITH_UPPERCASE_SVG_WITH_QUERY = `
 </html>
 `;
 
-test("getFaviconUrl - uppercase svg icons with query and hash fall back to /favicon.ico", async () => {
+test("getFaviconUrl - uppercase svg icon with query and hash is selected", async () => {
   fetchMock.spyGlobal();
 
   fetchMock.get("https://8.8.8.8/", {
@@ -129,7 +130,7 @@ test("getFaviconUrl - uppercase svg icons with query and hash fall back to /favi
   });
 
   const result = await getFaviconUrl("https://8.8.8.8/");
-  assert.equal(result.href, "https://8.8.8.8/favicon.ico");
+  assert.equal(result.href, "https://8.8.8.8/icon.SVG?v=1#icon");
 });
 
 const HTML_WITH_SVG_TYPE_ONLY = `
@@ -143,7 +144,7 @@ const HTML_WITH_SVG_TYPE_ONLY = `
 </html>
 `;
 
-test("getFaviconUrl - svg icons with type attribute only falls back to /favicon.ico", async () => {
+test("getFaviconUrl - svg icon with type attribute only is selected", async () => {
   fetchMock.spyGlobal();
 
   fetchMock.get("https://example.com/", {
@@ -152,7 +153,7 @@ test("getFaviconUrl - svg icons with type attribute only falls back to /favicon.
   });
 
   const result = await getFaviconUrl("https://example.com/");
-  assert.equal(result.href, "https://example.com/favicon.ico");
+  assert.equal(result.href, "https://example.com/icon");
 });
 
 const HTML_WITH_SIZES_ANY_ICON = `
@@ -465,6 +466,20 @@ async function runNodeInfoWithFavicon(): Promise<void> {
   });
 }
 
+async function captureOutput(run: () => Promise<void>): Promise<string> {
+  const originalLog = console.log;
+  const output: string[] = [];
+  console.log = (...values: unknown[]) => {
+    output.push(values.join(" "));
+  };
+  try {
+    await run();
+  } finally {
+    console.log = originalLog;
+  }
+  return output.join("\n");
+}
+
 test("getFaviconUrl rejects a private page before fetch", async () => {
   await withMockFetch(
     { "http://127.0.0.1:9000/": () => new Response("") },
@@ -549,13 +564,8 @@ test("nodeinfo renders a public favicon", async () => {
       headers: { "Content-Type": "image/png" },
     });
 
-  const originalLog = console.log;
-  const output: string[] = [];
-  console.log = (...values: unknown[]) => {
-    output.push(values.join(" "));
-  };
-  try {
-    await withMockFetch(routes, async (calls) => {
+  const output = await captureOutput(() =>
+    withMockFetch(routes, async (calls) => {
       await runNodeInfoWithFavicon();
       assert.deepEqual(calls.map((call) => call.url), [
         "https://8.8.8.8/.well-known/nodeinfo",
@@ -564,11 +574,43 @@ test("nodeinfo renders a public favicon", async () => {
         "https://8.8.8.8/icon.png",
       ]);
       assert.ok(calls.every((call) => call.redirect === "manual"));
-    });
-  } finally {
-    console.log = originalLog;
-  }
-  assert.match(output.join("\n"), /█/);
+    })
+  );
+  assert.match(output, /█/);
+});
+
+test("nodeinfo renders an SVG favicon", async () => {
+  const routes = nodeInfoRoutes('<link rel="icon" href="/icon.svg">');
+  routes["https://8.8.8.8/icon.svg"] = () =>
+    new Response(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4">' +
+        '<rect width="4" height="4"/></svg>',
+      { headers: { "Content-Type": "image/svg+xml" } },
+    );
+  const output = await captureOutput(() =>
+    withMockFetch(routes, runNodeInfoWithFavicon)
+  );
+  assert.match(output, /█/);
+});
+
+test("nodeinfo falls back when an SVG favicon cannot be rendered", async () => {
+  const routes = nodeInfoRoutes('<link rel="icon" href="/icon.svg">');
+  routes["https://8.8.8.8/icon.svg"] = () =>
+    new Response("<svg", { headers: { "Content-Type": "image/svg+xml" } });
+  const output = await captureOutput(() =>
+    withMockFetch(routes, runNodeInfoWithFavicon)
+  );
+  assert.match(output, /test v1\.0\.0/);
+});
+
+test("rasterizeSvg - limits the size of a large SVG", async () => {
+  const png = await rasterizeSvg(
+    new TextEncoder().encode(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="256"/>',
+    ),
+  );
+  const image = await readImage(png);
+  assert.deepEqual([image.width, image.height], [38, 19]);
 });
 
 test("getFaviconUrl resolves fallback from final page URL", async () => {
