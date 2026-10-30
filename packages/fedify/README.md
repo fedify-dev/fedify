@@ -243,7 +243,7 @@ Encyclia, Robin Riley, box464, Evan Prodromou, taye, okin, yamanoku, malte, Rafa
 
 ### One-time donations
 
-Robin Riley, malte, Nils Bergmann, Markus P, Rameez, Guest, Guest, 1, Guest, Guest, Guest, Guest, Guest, Guest, Guest, Guest, Guest
+Robin Riley, malte, Nils Bergmann, Markus P, Rameez, Guest, Guest, 1, Guest, Guest, Guest, Guest, Guest, Guest, Guest, Guest, Guest, 1, 1, Wil
 
 <!-- /DO NOT EDIT -->
 
