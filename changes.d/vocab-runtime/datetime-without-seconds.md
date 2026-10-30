@@ -6,4 +6,5 @@ links:
  -  Added `normalizeDateTimeLiteral()` to `@fedify/vocab-runtime/temporal` so
     that generated vocabulary code and `@fedify/fedify` interpret `xsd:dateTime`
     literals the same way.  It treats a literal without a UTC offset as UTC and
-    handles literals without seconds.  [[#1339], [#1347] by ChanHaeng Lee]
+    handles literals without seconds, including those with a fraction.
+    [[#1339], [#1347] by ChanHaeng Lee]

@@ -207,8 +207,11 @@ const scalarTypes: Record<string, ScalarType> = {
       return `typeof ${v} === "object" && "@type" in ${v}
         && "@value" in ${v} && typeof ${v}["@value"] === "string"
         && ${v}["@type"] === "http://www.w3.org/2001/XMLSchema#dateTime"
-        // Check if the value is a valid RFC 3339 date-time string
-        && new Date(${v}["@value"]).toString() !== "Invalid Date"
+        // Date rejects a fraction right after the minutes, hence the normalized
+        // form; the raw form keeps other date-like values failing at decoding
+        && (new Date(${v}["@value"]).toString() !== "Invalid Date"
+          || new Date(normalizeDateTimeLiteral(${v}["@value"])).toString()
+            !== "Invalid Date")
         `;
     },
     decoder(v) {

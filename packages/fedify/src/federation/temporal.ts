@@ -66,7 +66,10 @@ function hasMalformedExpandedQuestionClosedLiteral(value: unknown): boolean {
   // that pass the Date gate and then fail Temporal.Instant.from() still raise
   // RangeError and therefore belong in this boundary recovery path.
   if (value["@type"] !== XSD_DATE_TIME_IRI) return false;
-  if (new Date(literal).toString() === "Invalid Date") return false;
+  if (
+    new Date(literal).toString() === "Invalid Date" &&
+    new Date(normalizeDateTimeLiteral(literal)).toString() === "Invalid Date"
+  ) return false;
   return isMalformedDateTimeLiteral(literal);
 }
 

@@ -162,3 +162,21 @@ test("normalizeDateTimeLiteral() treats literals without an offset as UTC", () =
 test("normalizeDateTimeLiteral() keeps literals without a time part", () => {
   strictEqual(normalizeDateTimeLiteral("2024-01-01"), "2024-01-01");
 });
+
+test("normalizeDateTimeLiteral() inserts omitted seconds before a fraction", () => {
+  const literals = [
+    ["2024-01-01T10:00.5Z", "2024-01-01T10:00:00.5Z"],
+    ["2024-01-01T10:00.5+09:00", "2024-01-01T10:00:00.5+09:00"],
+    ["2024-01-01T10:00.5-05:00", "2024-01-01T10:00:00.5-05:00"],
+    ["2024-01-01T10:00.5", "2024-01-01T10:00:00.5Z"],
+    ["2024-01-01T10:00.123456789Z", "2024-01-01T10:00:00.123456789Z"],
+  ] as const;
+  for (const [literal, normalized] of literals) {
+    strictEqual(normalizeDateTimeLiteral(literal), normalized);
+    strictEqual(typeof Temporal.Instant.from(normalized), "object");
+  }
+  strictEqual(
+    normalizeDateTimeLiteral("2024-01-01T10:00:00.5Z"),
+    "2024-01-01T10:00:00.5Z",
+  );
+});
