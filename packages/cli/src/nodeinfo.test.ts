@@ -74,7 +74,7 @@ const HTML_WITH_SVG_ONLY = `
 </html>
 `;
 
-test("getFaviconUrl - svg icons only falls back to /favicon.ico", async () => {
+test("getFaviconUrl - svg icon is selected when no bitmap exists", async () => {
   fetchMock.spyGlobal();
 
   fetchMock.get("https://8.8.8.8/", {
@@ -83,7 +83,7 @@ test("getFaviconUrl - svg icons only falls back to /favicon.ico", async () => {
   });
 
   const result = await getFaviconUrl("https://8.8.8.8/");
-  assert.equal(result.href, "https://8.8.8.8/favicon.ico");
+  assert.equal(result.href, "https://8.8.8.8/icon.svg");
 });
 
 const HTML_WITH_UPPERCASE_SVG_ONLY = `
@@ -97,7 +97,7 @@ const HTML_WITH_UPPERCASE_SVG_ONLY = `
 </html>
 `;
 
-test("getFaviconUrl - uppercase svg icons only falls back to /favicon.ico", async () => {
+test("getFaviconUrl - uppercase svg icon is selected", async () => {
   fetchMock.spyGlobal();
 
   fetchMock.get("https://8.8.8.8/", {
@@ -106,7 +106,7 @@ test("getFaviconUrl - uppercase svg icons only falls back to /favicon.ico", asyn
   });
 
   const result = await getFaviconUrl("https://8.8.8.8/");
-  assert.equal(result.href, "https://8.8.8.8/favicon.ico");
+  assert.equal(result.href, "https://8.8.8.8/icon.SVG");
 });
 
 const HTML_WITH_UPPERCASE_SVG_WITH_QUERY = `
@@ -120,7 +120,7 @@ const HTML_WITH_UPPERCASE_SVG_WITH_QUERY = `
 </html>
 `;
 
-test("getFaviconUrl - uppercase svg icons with query and hash fall back to /favicon.ico", async () => {
+test("getFaviconUrl - uppercase svg icon with query and hash is selected", async () => {
   fetchMock.spyGlobal();
 
   fetchMock.get("https://8.8.8.8/", {
@@ -129,7 +129,7 @@ test("getFaviconUrl - uppercase svg icons with query and hash fall back to /favi
   });
 
   const result = await getFaviconUrl("https://8.8.8.8/");
-  assert.equal(result.href, "https://8.8.8.8/favicon.ico");
+  assert.equal(result.href, "https://8.8.8.8/icon.SVG?v=1#icon");
 });
 
 const HTML_WITH_SVG_TYPE_ONLY = `
@@ -143,7 +143,7 @@ const HTML_WITH_SVG_TYPE_ONLY = `
 </html>
 `;
 
-test("getFaviconUrl - svg icons with type attribute only falls back to /favicon.ico", async () => {
+test("getFaviconUrl - svg icon with type attribute only is selected", async () => {
   fetchMock.spyGlobal();
 
   fetchMock.get("https://example.com/", {
@@ -152,7 +152,7 @@ test("getFaviconUrl - svg icons with type attribute only falls back to /favicon.
   });
 
   const result = await getFaviconUrl("https://example.com/");
-  assert.equal(result.href, "https://example.com/favicon.ico");
+  assert.equal(result.href, "https://example.com/icon");
 });
 
 const HTML_WITH_SIZES_ANY_ICON = `
