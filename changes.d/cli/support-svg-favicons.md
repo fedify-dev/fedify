@@ -1,8 +1,9 @@
 ---
 links:
   '#1238': https://github.com/fedify-dev/fedify/issues/1238
+  '#1346': https://github.com/fedify-dev/fedify/pull/1346
 ---
  -  Added SVG favicon support to `fedify nodeinfo`.  SVG icons are now
     rasterized and shown as terminal art instead of being skipped, so servers
     that only declare an SVG favicon get an icon too.  Bitmap icons are still
-    preferred when a page declares both.  [[#1238] by Lee Jeongmin]
+    preferred when a page declares both.  [[#1238], [#1346] by Lee Jeongmin]
