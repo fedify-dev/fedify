@@ -151,7 +151,10 @@ Test the example with `mise test:examples`
 Register the new example in `examples/test-examples/mod.ts`.  Read the
 comments above the example registry arrays in that file to determine
 which array is appropriate and what fields are required.  Follow the
-patterns of existing entries.
+patterns of existing entries.  The harness runs on Node.js, and each example
+runs with its registered command.  The full suite includes Deno applications
+and requires Deno; selecting only Node.js or Bun examples needs no Deno
+executable or cache.
 
 Before running the tests, ensure that the tunneling service is usable.  
 The tests use the tunneling service `pinggy.io` to make the example app
@@ -162,7 +165,7 @@ While developing the example, run only the new example to iterate
 quickly:
 
 ~~~~ bash
-mise test:examples framework
+mise run test:examples -- framework
 ~~~~
 
 where `framework` is the `name` field of the registered entry.  Pass
@@ -172,7 +175,7 @@ After the example is complete, run the full suite once to confirm nothing
 is broken:
 
 ~~~~ bash
-mise test:examples
+mise run test:examples
 ~~~~
 
 If the `test:examples` cannot be run, just run the server and test with curl:
@@ -188,6 +191,6 @@ Lint, format, and final checks
 Add keywords related to the framework in `.hongdown.toml` and `cspell.json` in
 root path.
 
-After implementation, run `mise run fmt && mise check`.
+After implementation, run `mise run fmt && mise run check`.
 If there are lint or format errors, fix them and run the command again until
 there are no errors.

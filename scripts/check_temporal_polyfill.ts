@@ -8,9 +8,22 @@
 // under the TypeScript module resolution modes used by modern app templates.
 // The consumer projects use the repository root's @types/node and typescript.
 
+import { spawn } from "node:child_process";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
+import process from "node:process";
+import { isNotFound } from "./tooling_fs.ts";
 
-const root = Deno.cwd();
+const root = process.cwd();
 
 const packages = [
   "cli",
@@ -45,16 +58,16 @@ const forbiddenDeclarationText = [
 
 async function* walk(dir: string): AsyncGenerator<string> {
   try {
-    for await (const entry of Deno.readDir(dir)) {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
       const path = `${dir}/${entry.name}`;
-      if (entry.isDirectory) {
+      if (entry.isDirectory()) {
         yield* walk(path);
-      } else if (entry.isFile) {
+      } else if (entry.isFile()) {
         yield path;
       }
     }
   } catch (error) {
-    if (error instanceof Deno.errors.NotFound) return;
+    if (isNotFound(error)) return;
     throw error;
   }
 }
@@ -65,10 +78,10 @@ const depsHint = "Run `mise deps` first.";
 
 async function exists(path: string): Promise<boolean> {
   try {
-    await Deno.stat(path);
+    await stat(path);
     return true;
   } catch (error) {
-    if (error instanceof Deno.errors.NotFound) return false;
+    if (isNotFound(error)) return false;
     throw error;
   }
 }
@@ -122,7 +135,7 @@ for (const pkg of packages) {
       continue;
     }
 
-    const text = await Deno.readTextFile(file);
+    const text = await readFile(file, "utf8");
     if (file.endsWith(".cjs")) {
       for (const forbidden of forbiddenCjsRequires) {
         if (text.includes(forbidden)) {
@@ -153,35 +166,32 @@ async function prepareTypeConsumerProject(
   compilerOptions: Record<string, unknown>,
   sourceFile: string,
 ): Promise<string> {
-  await Deno.mkdir(join(root, "tmp"), { recursive: true });
-  const dir = await Deno.makeTempDir({
-    dir: join(root, "tmp"),
-    prefix: `temporal-polyfill-${name}-`,
-  });
-  const symlinkType = Deno.build.os === "windows" ? "junction" : "dir";
-  await Deno.mkdir(join(dir, "node_modules", "@fedify"), { recursive: true });
+  await mkdir(join(root, "tmp"), { recursive: true });
+  const dir = await mkdtemp(join(root, "tmp", `temporal-polyfill-${name}-`));
+  const symlinkType = process.platform === "win32" ? "junction" : "dir";
+  await mkdir(join(dir, "node_modules", "@fedify"), { recursive: true });
   for (const pkg of typeConsumerPackages) {
     // Symlink the package root so package.json exports resolve to the dist
     // artifacts produced by the earlier build check.
-    await Deno.symlink(
+    await symlink(
       join(root, "packages", pkg),
       join(dir, "node_modules", "@fedify", pkg),
-      { type: symlinkType },
+      symlinkType,
     );
   }
   // Link the repository's pinned @types/node the same way an app template
   // installs it, so `types: ["node"]` never depends on an ancestor directory.
-  await Deno.mkdir(join(dir, "node_modules", "@types"), { recursive: true });
-  await Deno.symlink(
+  await mkdir(join(dir, "node_modules", "@types"), { recursive: true });
+  await symlink(
     nodeTypesDir,
     join(dir, "node_modules", "@types", "node"),
-    { type: symlinkType },
+    symlinkType,
   );
-  await Deno.writeTextFile(
+  await writeFile(
     join(dir, "package.json"),
     `${JSON.stringify({ type: "module", private: true }, null, 2)}\n`,
   );
-  await Deno.writeTextFile(
+  await writeFile(
     join(dir, "tsconfig.json"),
     `${
       JSON.stringify(
@@ -202,7 +212,7 @@ async function prepareTypeConsumerProject(
       )
     }\n`,
   );
-  await Deno.writeTextFile(
+  await writeFile(
     join(dir, sourceFile),
     `
       import { Object as ActivityObject } from "@fedify/vocab";
@@ -265,25 +275,30 @@ async function checkTypeConsumerProject(
     sourceFile,
   );
   try {
-    const command = new Deno.Command(
-      "node",
-      {
-        args: [tsc, "-p", "tsconfig.json"],
+    const result = await new Promise<{
+      code: number | null;
+      stdout: string;
+      stderr: string;
+    }>((resolve, reject) => {
+      const child = spawn(process.execPath, [tsc, "-p", "tsconfig.json"], {
         cwd: dir,
-        stdout: "piped",
-        stderr: "piped",
-      },
-    );
-    const result = await command.output();
-    if (!result.success) {
-      const decoder = new TextDecoder();
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.setEncoding("utf8").on("data", (chunk) => stdout += chunk);
+      child.stderr.setEncoding("utf8").on("data", (chunk) => stderr += chunk);
+      child.once("error", reject);
+      child.once("close", (code) => resolve({ code, stdout, stderr }));
+    });
+    if (result.code !== 0) {
       console.error(`TypeScript ${name} consumer check failed.`);
-      console.error(decoder.decode(result.stdout));
-      console.error(decoder.decode(result.stderr));
+      console.error(result.stdout);
+      console.error(result.stderr);
       failures++;
     }
   } finally {
-    await Deno.remove(dir, { recursive: true });
+    await rm(dir, { recursive: true });
   }
 }
 
@@ -298,4 +313,4 @@ await checkTypeConsumerProject(
   "index.mts",
 );
 
-if (failures > 0) Deno.exit(1);
+if (failures > 0) process.exitCode = 1;

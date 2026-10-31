@@ -1,3 +1,7 @@
+import { open, readFile } from "node:fs/promises";
+import process from "node:process";
+import { isMain } from "./tooling_main.ts";
+
 interface Member {
   readonly MemberId: number;
   readonly createdAt: string;
@@ -177,15 +181,29 @@ function interpolate(text: string, members: MemberList): string {
   });
 }
 
-async function main(): Promise<void> {
-  const members = await fetchMembers();
-  for (const f of Deno.args) {
-    const content = await Deno.readTextFile(f);
-    const newContent = interpolate(content, members);
-    await Deno.writeTextFile(f, newContent, { create: false });
+/** Overwrite a sponsor file without creating a missing destination. */
+export async function overwriteExistingFile(
+  path: string,
+  content: string,
+): Promise<void> {
+  const file = await open(path, "r+");
+  try {
+    await file.truncate(0);
+    await file.writeFile(content, "utf8");
+  } finally {
+    await file.close();
   }
 }
 
-if (import.meta.main) {
+async function main(): Promise<void> {
+  const members = await fetchMembers();
+  for (const f of process.argv.slice(2)) {
+    const content = await readFile(f, "utf8");
+    const newContent = interpolate(content, members);
+    await overwriteExistingFile(f, newContent);
+  }
+}
+
+if (isMain(import.meta.url)) {
   await main();
 }

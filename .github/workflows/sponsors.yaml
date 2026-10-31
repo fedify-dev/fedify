@@ -22,10 +22,10 @@ jobs:
     - uses: qoomon/actions--setup-git@v1
     - run: |
         set -e
-        deno run \
-          --allow-net=opencollective.com \
-          --allow-read=packages/fedify/README.md,SPONSORS.md \
-          --allow-write=packages/fedify/README.md,SPONSORS.md \
+        node --experimental-strip-types --experimental-permission \
+          --allow-fs-read=scripts \
+          --allow-fs-read=packages/fedify/README.md --allow-fs-read=SPONSORS.md \
+          --allow-fs-write=packages/fedify/README.md --allow-fs-write=SPONSORS.md \
           scripts/sponsors.ts \
           packages/fedify/README.md \
           SPONSORS.md

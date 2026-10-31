@@ -17,7 +17,7 @@
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
     "test": "node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**' scripts/pack-skills.test.mjs",
-    "test-init": "deno task test-init",
+    "test-init": "node --experimental-transform-types ../init/src/test/mod.ts test-init",
     "pretest:bun": "pnpm build",
     "test:bun": "bun test --timeout 60000",
     "run": "pnpm build && node --disable-warning=ExperimentalWarning dist/mod.js",

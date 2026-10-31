@@ -34,6 +34,7 @@ jobs:
     # Provision only the harness runtime before checking the fresh checkout.
     # The harness then runs mise install with its normal postinstall hook.
     - run: mise --no-hooks exec --no-deps node -- node scripts/test_bootstrap.mjs
+    - run: mise run test:tooling:no-deno
 
   test:
     runs-on: ubuntu-latest
@@ -269,7 +270,6 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
-    - run: mise run deno:cache
     - run: mise run --skip-deps test:temporal-polyfill
 
   lint:

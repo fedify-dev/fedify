@@ -48,24 +48,33 @@ docker compose -f examples/monitoring/compose.yaml down
 Validate the example
 --------------------
 
-The repository includes a validation script for the monitoring files:
+The repository includes a Node.js validation script for the monitoring files:
 
 ~~~~ sh
 mise run test:monitoring
 ~~~~
 
-That command checks the Deno scripts, Docker Compose file, Prometheus config,
-Prometheus alert rules and rule tests, and OpenTelemetry Collector config.
+That command requires host Deno to type-check the sample metric generator.
+It also checks the Docker Compose file, Prometheus config, Prometheus alert
+rules and rule tests, and OpenTelemetry Collector config using Docker.
+
+To run only the Docker configuration checks without a host Deno installation:
+
+~~~~ sh
+mise run test:monitoring -- --config-only
+~~~~
 
 To also start the stack and verify that Prometheus, Grafana, the Collector
 target, the provisioned dashboard, and the sample Fedify metrics are reachable:
 
 ~~~~ sh
-deno run -A examples/monitoring/validate.ts --smoke
+mise run test:monitoring -- --smoke
 ~~~~
 
 The smoke test uses a separate Compose project name and tears the stack down
-afterward.
+afterward.  The sample metric generator still runs on Deno inside its
+container.  Combine `--config-only` with `--smoke` to skip host Deno type
+checking while retaining the container checks.
 
 
 Connect a Fedify app

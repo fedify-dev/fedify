@@ -44,27 +44,50 @@ export async function waitForPortRelease(
   return false;
 }
 
-/**
- * Attempt to kill any process listening on the given port using lsof.
- */
+/** Attempt to stop remaining listeners using the platform's process tools. */
 export async function killProcessOnPort(port: number): Promise<void> {
+  const windows = process.platform === "win32";
   try {
-    const pids = await new Promise<string>((resolve, reject) => {
-      execFile("lsof", ["-t", `-i:${port}`, "-sTCP:LISTEN"], (err, stdout) => {
-        if (err) reject(err);
-        else resolve(stdout);
-      });
+    const output = await new Promise<string>((resolve, reject) => {
+      execFile(
+        windows ? "netstat" : "lsof",
+        windows ? ["-ano", "-p", "tcp"] : ["-t", `-i:${port}`, "-sTCP:LISTEN"],
+        { timeout: 1000, windowsHide: true },
+        (error, stdout) => error ? reject(error) : resolve(stdout),
+      );
     });
-    for (const pid of pids.trim().split("\n").filter(Boolean)) {
-      try {
-        process.kill(parseInt(pid, 10), "SIGKILL");
-      } catch {
-        // Process may have already exited
+    const pids = windows
+      ? parseWindowsListeners(output, port)
+      : output.trim().split(/\s+/).filter((pid) => /^\d+$/.test(pid));
+    for (const pid of new Set(pids)) {
+      if (windows) {
+        await new Promise<void>((resolve) => {
+          execFile("taskkill", ["/pid", pid, "/t", "/f"], {
+            timeout: 1000,
+            windowsHide: true,
+          }, () => resolve());
+        });
+      } else {
+        try {
+          process.kill(Number(pid), "SIGKILL");
+        } catch {
+          // The listener may already have exited.
+        }
       }
     }
   } catch {
-    // lsof not available or no process found—ignore
+    // The process tool may be unavailable, or there may be no listeners.
   }
+}
+
+export function parseWindowsListeners(output: string, port: number): string[] {
+  return output.split(/\r?\n/).flatMap((line) => {
+    const [protocol, localAddress, , state, pid] = line.trim().split(/\s+/);
+    return protocol === "TCP" && localAddress?.endsWith(`:${port}`) &&
+        state === "LISTENING" && /^\d+$/.test(pid)
+      ? [pid]
+      : [];
+  });
 }
 
 /**
@@ -161,7 +184,9 @@ export async function ensurePortReleased(port: number): Promise<void> {
   if (!released) {
     printMessage`    Port ${String(port)} still in use—force-killing...`;
     await killProcessOnPort(port);
-    await waitForPortRelease(port, 3000);
+    if (!(await waitForPortRelease(port, 3000))) {
+      throw new Error(`Port ${port} is still in use after server cleanup`);
+    }
   }
 }
 

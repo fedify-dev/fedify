@@ -1,3 +1,5 @@
+import process from "node:process";
+import { nodeExecutable } from "./node.ts";
 import $ from "@david/dax";
 import { filter, isEmpty, pipe, toArray } from "@fxts/core";
 import { values } from "@optique/core";
@@ -10,7 +12,6 @@ import {
   symlink,
 } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
-import process from "node:process";
 import packageManagers from "../json/pm.json" with { type: "json" };
 import { getBuildCommand, kvStores, messageQueues } from "../lib.ts";
 import type {
@@ -34,10 +35,12 @@ const createTestApp = (testDirPrefix: string, dry: boolean) =>
 async (
   options: GeneratedType<ReturnType<typeof generateTestCases>>,
 ): Promise<string> => {
+  if (!dry && options[1] === "deno") await ensureDenoWorkspaceCache();
   const testDir = join(testDirPrefix, ...options);
   const vals = values(testDir.split(sep).slice(-4));
   const result = await $`${toArray(genInitCommand(testDir, dry, options))}`
     .cwd(join(import.meta.dirname!, "..", ".."))
+    .env("FEDIFY_TEST_MODE", "true")
     .stdin("null")
     .stdout("piped")
     .stderr("piped")
@@ -68,15 +71,14 @@ ${join(testDir, "err.txt")}\n`;
 
 export default createTestApp;
 
-function* genInitCommand(
+export function* genInitCommand(
   testDir: string,
   dry: boolean,
   [webFramework, packageManager, kvStore, messageQueue]: //
     GeneratedType<ReturnType<typeof generateTestCases>>,
 ) {
-  yield "deno";
-  yield "run";
-  yield "-A";
+  yield nodeExecutable;
+  yield "--experimental-transform-types";
   yield "src/test/execute.ts";
   yield "init";
   yield testDir;
@@ -227,4 +229,13 @@ export function filterOptions(
     kvStores[kv].packageManagers,
     messageQueues[mq].packageManagers,
   ].every((pms) => pms.includes(pm));
+}
+
+let denoWorkspaceCache: Promise<unknown> | undefined;
+
+function ensureDenoWorkspaceCache(): Promise<unknown> {
+  return denoWorkspaceCache ??= $`mise run deno:cache`
+    .cwd(join(import.meta.dirname!, "..", "..", "..", ".."))
+    .stdin("null")
+    .spawn();
 }
