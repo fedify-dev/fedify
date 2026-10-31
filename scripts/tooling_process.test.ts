@@ -76,6 +76,64 @@ test("stopping a command waits for its output and kills descendants", async () =
   }
 });
 
+test(
+  "stopping a command is bounded when an escaped descendant holds its pipes",
+  {
+    skip: process.platform === "win32",
+  },
+  async () => {
+    const dir = await mkdtemp(join(tmpdir(), "fedify escaped process "));
+    const pidFile = join(dir, "escaped.pid");
+    const fixture = join(dir, "parent.cjs");
+    await writeFile(
+      fixture,
+      `
+    const { spawn } = require('node:child_process');
+    const escaped = spawn(process.execPath, ['-e',
+      'console.log("ready"); setInterval(() => {}, 1000);'
+    ], { detached: true, stdio: 'inherit' });
+    require('node:fs').writeFileSync(${
+        JSON.stringify(pidFile)
+      }, String(escaped.pid));
+    process.on('SIGTERM', () => {});
+    setInterval(() => {}, 1000);
+  `,
+    );
+    const child = startCommand(nodeExecutable, [fixture]);
+    const reader = child.stdout.getReader();
+    const stderr = new Response(child.stderr).text();
+    void stderr.catch(() => {});
+    let escapedPid: number | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await reader.read();
+      escapedPid = Number(await readFile(pidFile, "utf8"));
+      await Promise.race([
+        (async () => {
+          await child.stop();
+          equal((await child.status).code, 137);
+        })(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error("Shutdown did not finish")),
+            5_000,
+          );
+        }),
+      ]);
+      await rejects(reader.read(), { name: "AbortError" });
+      await rejects(stderr, { name: "AbortError" });
+    } finally {
+      if (timer != null) clearTimeout(timer);
+      // The fixture deliberately escaped the owned process group.
+      if (escapedPid != null) process.kill(-escapedPid, "SIGKILL");
+      await child.stop();
+      reader.releaseLock();
+      await stderr.catch(() => {});
+      await rm(dir, { recursive: true, force: true });
+    }
+  },
+);
+
 test("Windows command shims preserve spaces and shell metacharacters", {
   skip: process.platform !== "win32",
 }, async () => {

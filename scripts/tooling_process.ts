@@ -107,10 +107,15 @@ async function stopTree(
   }
   if (process.platform === "win32") {
     await new Promise<void>((resolve) => {
-      execFile("taskkill", ["/pid", String(child.pid), "/t", "/f"], () => {
-        child.kill("SIGKILL");
-        resolve();
-      });
+      execFile(
+        "taskkill",
+        ["/pid", String(child.pid), "/t", "/f"],
+        { timeout: 1_000 },
+        () => {
+          child.kill("SIGKILL");
+          resolve();
+        },
+      );
     });
   } else {
     const kill = (signal: NodeJS.Signals) => {
@@ -123,21 +128,30 @@ async function stopTree(
     kill("SIGTERM");
     // A parent can exit while a descendant retains the output pipes. Wait for
     // close, not exit, before deciding the whole command has finished.
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      await Promise.race([
-        status.catch(() => {}),
-        new Promise<void>((resolve) => {
-          timer = setTimeout(resolve, 1_000);
-        }),
-      ]);
-    } finally {
-      if (timer != null) clearTimeout(timer);
-    }
+    await waitForClose(status);
     // Kill remaining group members even if the original parent has exited.
     kill("SIGKILL");
   }
-  await status.catch(() => {});
+  if (!await waitForClose(status)) {
+    // An escaped descendant can keep inherited pipes open after the owned
+    // process group has died. Release those handles instead of waiting forever.
+    child.stdout?.destroy();
+    child.stderr?.destroy();
+  }
+}
+
+async function waitForClose(status: Promise<CommandStatus>): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      status.then(() => true, () => true),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(false), 1_000);
+      }),
+    ]);
+  } finally {
+    if (timer != null) clearTimeout(timer);
+  }
 }
 
 /** Collect both streams before returning the command's exit status. */
