@@ -396,7 +396,6 @@ description = "Validate the monitoring example configuration"
 run = "node --experimental-strip-types examples/monitoring/validate.ts"
 
 [tasks."test:init"]
-env = { FEDIFY_TEST_MODE = "true" }
 description = "Run tests for the init package"
 depends = ["build"]
 run = "node --experimental-transform-types packages/init/src/test/mod.ts test-init"
