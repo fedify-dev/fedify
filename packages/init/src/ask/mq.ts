@@ -71,14 +71,17 @@ const noticeUnmatched = <
   printErrorMessage`Error: Message queue '${mq}' is not compatible with package manager '${pm}'`;
 };
 
-const choiceMessageQueue =
-  (packageManager: PackageManager) => (messageQueue: MessageQueue) => ({
-    name: isMqSupportsPm({ messageQueue, packageManager })
-      ? messageQueue
-      : `${messageQueue} (not supported with ${packageManager})`,
-    value: messageQueue,
-    disabled: !isMqSupportsPm({ messageQueue, packageManager }),
-  });
+export const choiceMessageQueue =
+  (packageManager: PackageManager) => (messageQueue: MessageQueue) => {
+    const supported = isMqSupportsPm({ messageQueue, packageManager });
+    return {
+      name: messageQueues[messageQueue].deprecated
+        ? `${messageQueue} (deprecated)`
+        : messageQueue,
+      value: messageQueue,
+      disabled: supported ? false : `(not supported with ${packageManager})`,
+    };
+  };
 
 const isMqSupportsPm = <
   T extends { messageQueue: MessageQueue; packageManager: PackageManager },

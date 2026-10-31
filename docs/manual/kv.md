@@ -490,6 +490,15 @@ const federation = createFederation<void>({
 
 ### `DenoKvStore` (Deno only)
 
+> [!WARNING]
+> `DenoKvStore` is deprecated since Fedify 2.5.0.
+> [Deno's team is joining Cloudflare][deno-announcement], and Deno KV is built
+> primarily for Deno Deploy, which is shutting down.  Fedify keeps supporting
+> `@fedify/denokv` throughout the 2.x series, but the package will be removed
+> in Fedify 3.0.0. Use [`SqliteKvStore`] for local or single-node deployments,
+> or [`PostgresKvStore`], [`RedisKvStore`], [`MysqlKvStore`], or
+> [`WorkersKvStore`] for production.  See [#1336] for the removal plan.
+
 To use the [`DenoKvStore`], you need to install the *@fedify/denokv* package
 first:
 
@@ -507,13 +516,13 @@ performance for Deno environments.  It can be used in existing Deno
 applications.
 
 Best for
-:   Existing Deno applications.
+:   Existing Deno applications.  Not recommended for new projects.
 
 Pros
 :   Persistent storage, good performance, easy to set up.
 
 Cons
-:   Only available in Deno runtime.
+:   Only available in Deno runtime, and deprecated since Fedify 2.5.0.
 
 ~~~~ typescript
 import { createFederation } from "@fedify/fedify";
@@ -526,6 +535,9 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+[deno-announcement]: https://deno.com/blog/cloudflare
+[`WorkersKvStore`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersKvStore
+[#1336]: https://github.com/fedify-dev/fedify/issues/1336
 [`DenoKvStore`]: https://jsr.io/@fedify/denokv/doc/~/DenoKvStore
 [Deno]: https://deno.com/
 [`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
@@ -604,7 +616,6 @@ export default {
 > object.  See the [*Builder pattern for structuring*
 > section](./federation.md#builder-pattern-for-structuring) for details.
 
-[`WorkersKvStore`]: https://jsr.io/@fedify/cfworkers/doc/kv/~/WorkersKvStore
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Cloudflare Workers KV]: https://developers.cloudflare.com/kv/
 

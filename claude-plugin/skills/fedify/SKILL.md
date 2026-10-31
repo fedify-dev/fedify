@@ -320,8 +320,11 @@ in development or tests.
 | *@fedify/mysql*     | yes       | yes            |
 | *@fedify/redis*     | yes       | yes            |
 | *@fedify/amqp*      | no        | yes            |
-| *@fedify/denokv*    | yes       | yes            |
 | *@fedify/cfworkers* | yes       | yes            |
+
+Do not choose *@fedify/denokv* for new projects: it is deprecated since
+Fedify 2.5.0 and will be removed in Fedify 3.0.0.  It remains supported for
+existing Deno applications throughout the 2.x series.
 
 For `PostgresKvStore`, existing populated tables and externally managed DDL
 (`initialized: true`) need the [expiry expression index] to accelerate cleanup.

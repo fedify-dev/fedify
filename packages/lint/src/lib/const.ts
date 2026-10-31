@@ -170,4 +170,8 @@ export const RULE_IDS = {
   outboxListenerDeliveryNotAwaited: "outbox-listener-delivery-not-awaited",
   mediaUploaderObjectUriRequired: "media-uploader-object-uri-required",
   mediaUploaderAuthorizationRequired: "media-uploader-authorization-required",
+
+  // Deprecation rules
+  denoKvStoreDeprecated: "deno-kv-store-deprecated",
+  denoKvMessageQueueDeprecated: "deno-kv-message-queue-deprecated",
 } as const;

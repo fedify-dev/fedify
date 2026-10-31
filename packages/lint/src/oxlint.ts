@@ -87,6 +87,10 @@ import {
   eslint as collectionFiltering,
 } from "./rules/collection-filtering-not-implemented.ts";
 import {
+  eslint as denoKvMessageQueueDeprecated,
+} from "./rules/deno-kv-message-queue-deprecated.ts";
+import { eslint as denoKvStoreDeprecated } from "./rules/deno-kv-store-deprecated.ts";
+import {
   eslint as mediaUploaderAuthorizationRequired,
 } from "./rules/media-uploader-authorization-required.ts";
 import {
@@ -134,6 +138,8 @@ const rules: Record<
   [RULE_IDS.mediaUploaderObjectUriRequired]: mediaUploaderObjectUriRequired,
   [RULE_IDS.mediaUploaderAuthorizationRequired]:
     mediaUploaderAuthorizationRequired,
+  [RULE_IDS.denoKvStoreDeprecated]: denoKvStoreDeprecated,
+  [RULE_IDS.denoKvMessageQueueDeprecated]: denoKvMessageQueueDeprecated,
 };
 
 /**

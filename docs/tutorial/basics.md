@@ -71,8 +71,7 @@ bun add @fedify/fedify @fedify/sqlite
 ~~~~ sh [Deno]
 mkdir follow-server
 cd follow-server/
-echo '{ "unstable": ["kv"] }' > deno.json
-deno add jsr:@fedify/fedify
+deno add jsr:@fedify/fedify jsr:@fedify/sqlite
 ~~~~
 
 :::
@@ -111,9 +110,9 @@ content (formatted for readability):[^2]
 
 ~~~~ json [Deno]
 {
-  "unstable": ["kv"],
   "imports": {
-    "@fedify/fedify": "jsr:@fedify/fedify@^1.1.0"
+    "@fedify/fedify": "jsr:@fedify/fedify@^2.4.5",
+    "@fedify/sqlite": "jsr:@fedify/sqlite@^2.4.5"
   }
 }
 ~~~~
@@ -125,6 +124,9 @@ content (formatted for readability):[^2]
 > *package.json* file to use [ESM] imports. While Fedify also supports
 > [CommonJS] for legacy compatibility, ESM is the preferred and recommended
 > approach.
+
+> [!NOTE]
+> The Deno tabs use `node:sqlite`, which requires Deno 2.2.0 or later.
 
 > [!NOTE]
 > If you use Deno 2.7.0 or later, you do not need any extra setting for
@@ -970,7 +972,7 @@ federation
   });
 ~~~~
 
-~~~~ typescript{13-14,17-37} twoslash [Deno]
+~~~~ typescript{16-17,20-40} twoslash [Deno]
 import {
   exportJwk,
   generateCryptoKeyPair,
@@ -980,7 +982,10 @@ import {
 import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 // ---cut-before---
-const kv = await Deno.openKv();  // Open the key–value store
+import { DatabaseSync } from "node:sqlite";
+import { SqliteKvStore } from "@fedify/sqlite";
+
+const kv = new SqliteKvStore(new DatabaseSync("kv.sqlite"));
 
 federation
   .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
@@ -1004,11 +1009,11 @@ federation
       privateKey: JsonWebKey;
       publicKey: JsonWebKey;
     }>(["key"]);
-    if (entry == null || entry.value == null) {
+    if (entry == null) {
       // Generate a new key pair at the first time:
       const { privateKey, publicKey } =
         await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
-      // Store the generated key pair to the Deno KV database in JWK format:
+      // Store the generated key pair to the SQLite database in JWK format:
       await kv.set(
         ["key"],
         {
@@ -1018,9 +1023,9 @@ federation
       );
       return [{ privateKey, publicKey }];
     }
-    // Load the key pair from the Deno KV database:
-    const privateKey = await importJwk(entry.value.privateKey, "private");
-    const publicKey =  await importJwk(entry.value.publicKey, "public");
+    // Load the key pair from the SQLite database:
+    const privateKey = await importJwk(entry.privateKey, "private");
+    const publicKey =  await importJwk(entry.publicKey, "public");
     return [{ privateKey, publicKey }];
   });
 ~~~~
@@ -1037,7 +1042,7 @@ dispatched again, the key pairs dispatcher loads the key pair from the key–val
 store.
 
 > [!NOTE]
-> This tutorial uses SQLite for Node.js and Bun, and Deno KV for Deno.
+> This tutorial uses SQLite in every runtime, including Deno.
 > You can use any database you prefer to store the key pair.  See the
 > [*Key–value stores* section](../manual/kv.md) for other options.
 
@@ -1258,17 +1263,20 @@ Bun.serve({
 });
 ~~~~
 
-~~~~ typescript{2-16} twoslash [Deno]
+~~~~ typescript{4-19} twoslash [Deno]
 import type { Federation } from "@fedify/fedify";
+import { DatabaseSync } from "node:sqlite";
+import { SqliteKvStore } from "@fedify/sqlite";
 const federation = null as unknown as Federation<void>;
-const kv = await Deno.openKv();
+const kv = new SqliteKvStore(new DatabaseSync("kv.sqlite"));
 // ---cut-before---
 Deno.serve(async (request) => {
   const url = new URL(request.url);
   // The home page:
   if (url.pathname === "/") {
     const followers: string[] = [];
-    for await (const entry of kv.list<string>({ prefix: ["followers"] })) {
+    for await (const entry of kv.list(["followers"])) {
+      if (typeof entry.value !== "string") continue;
       if (followers.includes(entry.value)) continue;
       followers.push(entry.value);
     }

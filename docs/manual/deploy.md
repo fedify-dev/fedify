@@ -178,7 +178,7 @@ backend before you take traffic:
 | MySQL/MariaDB                      | `MysqlKvStore`    | `MysqlMessageQueue`    | You already run MySQL or MariaDB      |
 | SQLite                             | `SqliteKvStore`   | `SqliteMessageQueue`   | Single-node/embedded deployments      |
 | RabbitMQ                           | —                 | `AmqpMessageQueue`     | Existing AMQP infrastructure          |
-| Deno KV                            | `DenoKvStore`     | `DenoKvMessageQueue`   | Deno Deploy                           |
+| Deno KV (deprecated)               | `DenoKvStore`     | `DenoKvMessageQueue`   | Existing Deno Deploy applications     |
 | Cloudflare KV + Queues             | `WorkersKvStore`  | `WorkersMessageQueue`  | Cloudflare Workers                    |
 | Netlify Database + Async Workloads | `PostgresKvStore` | `NetlifyMessageQueue`  | Netlify Functions                     |
 
@@ -1068,6 +1068,12 @@ distribution and built-in persistence through Deno KV.
 > should plan to migrate; the team announced migration support for paying
 > customers moving to Cloudflare Workers.
 
+The [`@fedify/denokv`] package is deprecated since Fedify 2.5.0 and will be
+removed in Fedify 3.0.0.  It remains supported throughout the 2.x series for
+existing Deno Deploy applications, but new deployments should use
+`PostgresKvStore` and `PostgresMessageQueue` or the Cloudflare Workers
+adapters instead.  See [#1336] for the removal plan.
+
 For existing Deno Deploy applications, the [`@fedify/denokv`] package provides
 `DenoKvStore` and `DenoKvMessageQueue` backed by Deno KV:
 
@@ -1092,6 +1098,7 @@ Deno KV's built-in exponential-backoff mechanism.
 
 [Deno Deploy]: https://deno.com/deploy
 [`@fedify/denokv`]: https://jsr.io/@fedify/denokv
+[#1336]: https://github.com/fedify-dev/fedify/issues/1336
 
 ### Netlify Functions
 

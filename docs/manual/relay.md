@@ -118,8 +118,8 @@ Deno.serve((request) => relay.fetch(request));
 > [!WARNING]
 > `MemoryKvStore` is for development only. For production, use a persistent
 > store like `RedisKvStore` from *@fedify/redis*, `PostgresKvStore` from
-> *@fedify/postgres*, `MysqlKvStore` from *@fedify/mysql*, or `DenoKvStore`
-> from *@fedify/denokv*.
+> *@fedify/postgres*, `MysqlKvStore` from *@fedify/mysql*, or `SqliteKvStore`
+> from *@fedify/sqlite*.
 >
 > See the [*Key–value store* section](./kv.md) for details.
 
@@ -396,8 +396,7 @@ Each follower entry contains the following.
 
 > [!NOTE]
 > The `listFollowers()` method requires a `KvStore` implementation that
-> supports listing by prefix (Redis, PostgreSQL, SQLite, Deno KV all support
-> this).
+> supports listing by prefix (Redis, PostgreSQL, and SQLite support this).
 
 
 Storage requirements

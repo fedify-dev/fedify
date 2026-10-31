@@ -68,6 +68,12 @@ import {
   deno as collectionFiltering,
 } from "./rules/collection-filtering-not-implemented.ts";
 import {
+  deno as denoKvMessageQueueDeprecated,
+} from "./rules/deno-kv-message-queue-deprecated.ts";
+import {
+  deno as denoKvStoreDeprecated,
+} from "./rules/deno-kv-store-deprecated.ts";
+import {
   deno as mediaUploaderAuthorizationRequired,
 } from "./rules/media-uploader-authorization-required.ts";
 import {
@@ -117,6 +123,8 @@ const plugin: Deno.lint.Plugin = {
     [RULE_IDS.mediaUploaderObjectUriRequired]: mediaUploaderObjectUriRequired,
     [RULE_IDS.mediaUploaderAuthorizationRequired]:
       mediaUploaderAuthorizationRequired,
+    [RULE_IDS.denoKvStoreDeprecated]: denoKvStoreDeprecated,
+    [RULE_IDS.denoKvMessageQueueDeprecated]: denoKvMessageQueueDeprecated,
   },
 };
 

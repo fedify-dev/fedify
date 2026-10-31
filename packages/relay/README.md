@@ -287,7 +287,6 @@ The relay requires a key–value store to persist the following data.
 Any `KvStore` implementation from Fedify can be used, including the following.
 
  -  `MemoryKvStore` (for development/testing)
- -  `DenoKvStore` (Deno KV)
  -  `RedisKvStore` (Redis)
  -  `PostgresKvStore` (PostgreSQL)
  -  `MysqlKvStore` (MySQL/MariaDB)

@@ -61,3 +61,25 @@ export const COLLECTION_FILTERING_NOT_IMPLEMENTED_ERROR =
   "Collection dispatcher should implement filtering to avoid large response " +
   "payloads. Add a fourth parameter (filter) to handle filtering. " +
   "See: https://fedify.dev/manual/collections#filtering-by-server";
+
+/**
+ * Error message for the deno-kv-store-deprecated rule.
+ */
+export const DENO_KV_STORE_DEPRECATED =
+  "`DenoKvStore` from `@fedify/denokv` is deprecated since Fedify 2.5.0 and " +
+  "will be removed in Fedify 3.0.0.  Use `SqliteKvStore` from " +
+  "`@fedify/sqlite` for local or single-node deployments, or " +
+  "`PostgresKvStore`, `RedisKvStore`, `MysqlKvStore`, or `WorkersKvStore` " +
+  "for production.  See https://github.com/fedify-dev/fedify/issues/1336 " +
+  "for the removal plan.";
+
+/**
+ * Error message for the deno-kv-message-queue-deprecated rule.
+ */
+export const DENO_KV_MESSAGE_QUEUE_DEPRECATED =
+  "`DenoKvMessageQueue` from `@fedify/denokv` is deprecated since Fedify " +
+  "2.5.0 and will be removed in Fedify 3.0.0.  Use `SqliteMessageQueue` from " +
+  "`@fedify/sqlite` for local or single-node deployments, or " +
+  "`PostgresMessageQueue`, `RedisMessageQueue`, `MysqlMessageQueue`, " +
+  "`AmqpMessageQueue`, or `WorkersMessageQueue` for production.  See " +
+  "https://github.com/fedify-dev/fedify/issues/1336 for the removal plan.";

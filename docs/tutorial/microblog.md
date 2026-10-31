@@ -185,14 +185,14 @@ Select *Hono*, *npm*, *in-process*, and *in-memory* in order:
   postgres
   mysql
   amqp
-- denokv (not supported with npm) (disabled)
+- denokv (deprecated) (not supported with npm)
 
 ? Choose the key-value store to use
 ❯ in-memory
   redis
   postgres
   mysql
-- denokv (not supported with npm) (disabled)
+- denokv (deprecated) (not supported with npm)
 ~~~~
 
 > [!NOTE]

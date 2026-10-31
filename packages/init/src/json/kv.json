@@ -101,6 +101,7 @@
       }
     },
     "object": "new DenoKvStore(await Deno.openKv())",
+    "deprecated": true,
     "denoUnstable": [
       "kv"
     ]

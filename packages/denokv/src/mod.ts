@@ -9,6 +9,13 @@
  *
  * @module
  * @since 1.9.0
+ * @deprecated Deno KV was built primarily for Deno Deploy, which is shutting
+ *             down.  Fedify keeps supporting `@fedify/denokv` throughout the
+ *             2.x series, but this package will be removed in Fedify 3.0.0.
+ *             Use `@fedify/sqlite` for local or single-node deployments, or
+ *             `@fedify/postgres`, `@fedify/redis`, `@fedify/mysql`, or
+ *             `@fedify/cfworkers` for production deployments.  See
+ *             <https://github.com/fedify-dev/fedify/issues/1336> for details.
  */
 import type {
   KvKey,
@@ -19,12 +26,42 @@ import type {
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
 } from "@fedify/fedify/federation";
+import { getLogger } from "@logtape/logtape";
 import { isEqual } from "es-toolkit";
+
+const logger = getLogger(["fedify", "denokv", "deprecated"]);
+
+const DEPRECATION_MESSAGE =
+  "Fedify keeps supporting `@fedify/denokv` throughout the 2.x series, but " +
+  "Deno KV was built primarily for Deno Deploy, which is shutting down.  See " +
+  "https://github.com/fedify-dev/fedify/issues/1336 for the removal plan.";
+
+const STORE_DEPRECATION_MESSAGE =
+  "The `DenoKvStore` class from `@fedify/denokv` is deprecated and will be " +
+  "removed in Fedify 3.0.0.  Use `SqliteKvStore` from `@fedify/sqlite` for " +
+  "local or single-node deployments, or `PostgresKvStore`, `RedisKvStore`, " +
+  "`MysqlKvStore`, or `WorkersKvStore` for production.  " + DEPRECATION_MESSAGE;
+
+const QUEUE_DEPRECATION_MESSAGE =
+  "The `DenoKvMessageQueue` class from `@fedify/denokv` is deprecated and " +
+  "will be removed in Fedify 3.0.0.  Use `SqliteMessageQueue` from " +
+  "`@fedify/sqlite` for local or single-node deployments, or " +
+  "`PostgresMessageQueue`, `RedisMessageQueue`, `MysqlMessageQueue`, " +
+  "`AmqpMessageQueue`, or `WorkersMessageQueue` for production.  " +
+  DEPRECATION_MESSAGE;
 
 /**
  * Represents a key–value store implementation using Deno's KV store.
  *
  * @since 1.9.0
+ * @deprecated Deno KV was built primarily for Deno Deploy, which is shutting
+ *             down.  Fedify keeps supporting `@fedify/denokv` throughout the
+ *             2.x series, but this class will be removed in Fedify 3.0.0.
+ *             Use `SqliteKvStore` from `@fedify/sqlite` for local or
+ *             single-node deployments, or `PostgresKvStore`,
+ *             `RedisKvStore`, `MysqlKvStore`, or `WorkersKvStore` for
+ *             production deployments.  See
+ *             <https://github.com/fedify-dev/fedify/issues/1336> for details.
  */
 export class DenoKvStore implements KvStore {
   #kv: Deno.Kv;
@@ -32,8 +69,11 @@ export class DenoKvStore implements KvStore {
   /**
    * Constructs a new {@link DenoKvStore} adapter with the given Deno KV store.
    * @param kv The Deno KV store to use.
+   * @deprecated Use `SqliteKvStore` from `@fedify/sqlite` or a production
+   *             backend instead.  This class will be removed in Fedify 3.0.0.
    */
   constructor(kv: Deno.Kv) {
+    logger.warn(STORE_DEPRECATION_MESSAGE);
     this.#kv = kv;
   }
 
@@ -137,6 +177,10 @@ interface WrappedMessage {
 /**
  * Options for {@link DenoKvMessageQueue}.
  * @since 2.0.0
+ * @deprecated `@fedify/denokv` will be removed in Fedify 3.0.0.  Use
+ *             `SqliteMessageQueue` from `@fedify/sqlite` or a production
+ *             message queue instead.  See
+ *             <https://github.com/fedify-dev/fedify/issues/1336> for details.
  */
 export interface DenoKvMessageQueueOptions {
   /**
@@ -151,6 +195,14 @@ export interface DenoKvMessageQueueOptions {
  * Represents a message queue adapter that uses Deno KV store.
  *
  * @since 1.9.0
+ * @deprecated Deno KV was built primarily for Deno Deploy, which is shutting
+ *             down.  Fedify keeps supporting `@fedify/denokv` throughout the
+ *             2.x series, but this class will be removed in Fedify 3.0.0.
+ *             Use `SqliteMessageQueue` from `@fedify/sqlite` for local or
+ *             single-node deployments, or `PostgresMessageQueue`,
+ *             `RedisMessageQueue`, `MysqlMessageQueue`, `AmqpMessageQueue`,
+ *             or `WorkersMessageQueue` for production deployments.  See
+ *             <https://github.com/fedify-dev/fedify/issues/1336> for details.
  */
 export class DenoKvMessageQueue implements MessageQueue, Disposable {
   #kv: Deno.Kv;
@@ -174,8 +226,12 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
    * store.
    * @param kv The Deno KV store to use.
    * @param options Options for the message queue.
+   * @deprecated Use `SqliteMessageQueue` from `@fedify/sqlite` or a
+   *             production message queue instead.  This class will be
+   *             removed in Fedify 3.0.0.
    */
   constructor(kv: Deno.Kv, options: DenoKvMessageQueueOptions = {}) {
+    logger.warn(QUEUE_DEPRECATION_MESSAGE);
     this.#kv = kv;
     this.#orderingLockPrefix = options.orderingLockPrefix ??
       ["__fedify_ordering_lock__"];

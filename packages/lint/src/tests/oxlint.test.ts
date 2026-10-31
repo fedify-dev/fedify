@@ -79,3 +79,63 @@ test(
     );
   },
 );
+
+const DENOKV_BAD_CODE = `import { DenoKvStore } from "@fedify/denokv";
+
+console.log(DenoKvStore);
+`;
+
+test(
+  "oxlint plugin: deno-kv-store-deprecated fires on import",
+  { ignore: oxlintUnavailable },
+  () => {
+    const { status, diagnostics, stderr } = runOxlint(
+      DENOKV_BAD_CODE,
+      { rules: { "@fedify/lint/deno-kv-store-deprecated": "error" } },
+      "code.ts",
+    );
+
+    ok(
+      status !== 0,
+      `Expected non-zero exit, got ${status}. stderr: ${stderr}`,
+    );
+
+    const codes = diagnostics.map((d) => d.code ?? "");
+    ok(
+      codes.some((code) => code.includes("deno-kv-store-deprecated")),
+      `Expected @fedify/lint(deno-kv-store-deprecated) diagnostic, got: ${
+        codes.join(", ") || "(none)"
+      }`,
+    );
+  },
+);
+
+const DENOKV_NAMESPACE_CODE = `import * as denokv from "@fedify/denokv";
+
+console.log(denokv.DenoKvStore);
+`;
+
+test(
+  "oxlint plugin: deno-kv-store-deprecated reports namespace imports",
+  { ignore: oxlintUnavailable },
+  () => {
+    const { status, diagnostics, stderr } = runOxlint(
+      DENOKV_NAMESPACE_CODE,
+      { rules: { "@fedify/lint/deno-kv-store-deprecated": "error" } },
+      "code.ts",
+    );
+
+    ok(
+      status !== 0,
+      `Expected non-zero exit, got ${status}. stderr: ${stderr}`,
+    );
+
+    const codes = diagnostics.map((d) => d.code ?? "");
+    ok(
+      codes.some((code) => code.includes("deno-kv-store-deprecated")),
+      `Expected @fedify/lint(deno-kv-store-deprecated) diagnostic, got: ${
+        codes.join(", ") || "(none)"
+      }`,
+    );
+  },
+);

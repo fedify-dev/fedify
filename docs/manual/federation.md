@@ -54,8 +54,10 @@ provides [`PostgresKvStore`] class, which is a PostgreSQL-backed implementation
 for production use, and [`@fedify/mysql`] provides [`MysqlKvStore`] class, which
 is a MySQL/MariaDB-backed implementation for production use.
 
-For Deno applications, the separate [`@fedify/denokv`] package provides
-`DenoKvStore`, a Deno KV-backed implementation available only in Deno.
+The [`@fedify/denokv`] package provides `DenoKvStore` for existing Deno
+applications, but it is deprecated since Fedify 2.5.0 and will be removed in
+Fedify 3.0.0.  Prefer `SqliteKvStore` from [`@fedify/sqlite`] for local or
+single-node deployments.
 
 Further details are explained in the [*Key–value store* section](./kv.md).
 
@@ -66,6 +68,7 @@ Further details are explained in the [*Key–value store* section](./kv.md).
 [`@fedify/mysql`]: https://github.com/fedify-dev/fedify/tree/main/packages/mysql
 [`MysqlKvStore`]: https://jsr.io/@fedify/mysql/doc/kv/~/MysqlKvStore
 [`@fedify/denokv`]: https://github.com/fedify-dev/fedify/tree/main/packages/denokv
+[`@fedify/sqlite`]: https://github.com/fedify-dev/fedify/tree/main/packages/sqlite
 
 ### `kvPrefixes`
 
@@ -221,8 +224,10 @@ MySQL/MariaDB-backed implementation for production use, and [`@fedify/amqp`]
 provides [`AmqpMessageQueue`] class, which is an AMQP broker-backed
 implementation for production use.
 
-For Deno applications, [`@fedify/denokv`] provides `DenoKvMessageQueue`, a
-Deno KV-backed implementation available only in Deno.
+For existing Deno applications, [`@fedify/denokv`] provides
+`DenoKvMessageQueue`, but it is deprecated since Fedify 2.5.0 and will be
+removed in Fedify 3.0.0.  Prefer `SqliteMessageQueue` from
+[`@fedify/sqlite`] for local or single-node deployments.
 
 Further details are explained in the [*Message queue* section](./mq.md).
 

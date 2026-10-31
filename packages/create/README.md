@@ -32,8 +32,9 @@ The tool supports the same project configurations as `fedify init`:
 
  -  **Web frameworks**: [Hono], [Nitro], [Next.js], [Elysia], [Express]
  -  **Package managers**: Deno, pnpm, Bun, Yarn, npm
- -  **Key-value stores**: Redis, PostgreSQL, Deno KV (Deno only)
- -  **Message queues**: Redis, PostgreSQL, AMQP, Deno KV (Deno only)
+ -  **Key-value stores**: Redis, PostgreSQL, Deno KV (deprecated; Deno only)
+ -  **Message queues**: Redis, PostgreSQL, AMQP, Deno KV (deprecated; Deno
+    only)
 
 See the [`@fedify/init`] package or the [Fedify CLI docs] for details on
 available options (`-p`, `-w`, `-k`, `-m`, `--dry-run`).

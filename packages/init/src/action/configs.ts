@@ -43,17 +43,39 @@ const logger = getLogger(["fedify", "init", "action", "configs"]);
  * @param param0 - Destructured initialization data containing KV, MQ, initializer, and directory
  * @returns Configuration object with path and Deno-specific settings
  */
-export const loadDenoConfig = (data: InitCommandData) => ({
-  path: "deno.json",
-  data: {
-    ...pick(["compilerOptions", "tasks"], data.initializer),
-    ...getUnstable(data),
-    nodeModulesDir: "auto",
-    imports: joinDepsReg("deno")(getDependencies(data)),
-    lint: { plugins: ["jsr:@fedify/lint"] },
-    ...(data.testMode && !data.dryRun ? { links: getLinks(data) } : {}),
-  },
-});
+export const loadDenoConfig = (data: InitCommandData) => {
+  const lintExcludes = getDenoKvLintExcludes(data);
+  return {
+    path: "deno.json",
+    data: {
+      ...pick(["compilerOptions", "tasks"], data.initializer),
+      ...getUnstable(data),
+      nodeModulesDir: "auto",
+      imports: joinDepsReg("deno")(getDependencies(data)),
+      lint: {
+        plugins: ["jsr:@fedify/lint"],
+        ...(lintExcludes.length > 0
+          ? { rules: { exclude: lintExcludes } }
+          : {}),
+      },
+      ...(data.testMode && !data.dryRun ? { links: getLinks(data) } : {}),
+    },
+  };
+};
+
+/**
+ * Deno Lint reports every plugin rule as an error, so `denokv` selections
+ * would fail `deno lint` without opting out of the deprecation rules.  The
+ * interactive prompt already labels the option as deprecated.
+ */
+const getDenoKvLintExcludes = (
+  { kvStore, messageQueue }: Pick<InitCommandData, "kvStore" | "messageQueue">,
+): string[] => [
+  ...(kvStore === "denokv" ? ["fedify-lint/deno-kv-store-deprecated"] : []),
+  ...(messageQueue === "denokv"
+    ? ["fedify-lint/deno-kv-message-queue-deprecated"]
+    : []),
+];
 
 const getUnstable = <T extends Pick<InitCommandData, "kv" | "mq">>({
   kv: { denoUnstable: kv = [] },
