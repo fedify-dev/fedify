@@ -19,7 +19,6 @@
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check src/**/*.ts",
     "run": "deno run --allow-all src/mod.ts",
-    "test-init": "node --experimental-transform-types src/test/mod.ts test-init",
     "update-init-deps": "node --experimental-strip-types scripts/update_init_deps.ts"
   },
   "fmt": {

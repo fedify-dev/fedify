@@ -69,7 +69,6 @@
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
-    "test": "node --test --experimental-transform-types 'src/**/*.test.ts'",
-    "test-init": "node --experimental-transform-types src/test/mod.ts test-init"
+    "test": "node --test --experimental-transform-types 'src/**/*.test.ts'"
   }
 }

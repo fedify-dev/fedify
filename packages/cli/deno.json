@@ -65,8 +65,7 @@
       "dependencies": [
         "codegen"
       ]
-    },
-    "test-init": "node --experimental-transform-types ../init/src/test/mod.ts test-init"
+    }
   },
   "fmt": {
     "exclude": [
