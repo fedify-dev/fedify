@@ -4,7 +4,8 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "yaml": "catalog:"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

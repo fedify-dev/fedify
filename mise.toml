@@ -207,6 +207,7 @@ depends = [
   "check:node-modules",
   "test:docs-contributors",
   "test:codegen",
+  "test:changelog-pr-refs",
 ]
 run = "sacho check"
 
@@ -257,6 +258,14 @@ deno run --allow-read --allow-write scripts/check_versions.ts ...$fix_args ...$s
 depends = ["deno:cache"]
 description = "Ensure @fedify/fixture is only used in **/*.test.ts files"
 run = "deno run --allow-read scripts/check_fixture_usage.ts"
+
+[tasks."check:changelog-pr-refs"]
+description = "Check that changelog entries added by a pull request reference it"
+run = "node --experimental-strip-types scripts/check_changelog_pr_refs.ts"
+
+[tasks."test:changelog-pr-refs"]
+description = "Test the changelog pull request reference check"
+run = "node --experimental-strip-types --test scripts/check_changelog_pr_refs.test.ts"
 
 [tasks."check:workspace-protocol"]
 depends = ["deno:cache"]
