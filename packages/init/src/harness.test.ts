@@ -189,7 +189,7 @@ test("an actual failed generation returns a failed result", async () => {
 test("lookup requires a successful exit even with expected stdout", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fedify lookup "));
   const server = createServer((_request, response) => response.end("ready"));
-  await new Promise<void>((resolve) => server.listen(0, "localhost", resolve));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
   if (address == null || typeof address === "string") {
     throw new Error("No address");
