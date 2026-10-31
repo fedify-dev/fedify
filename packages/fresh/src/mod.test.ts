@@ -1,7 +1,9 @@
 import type { Federation } from "@fedify/fedify";
 import { integrateFetchOptions, integrateHandler } from "@fedify/fresh";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { ok, strictEqual } from "node:assert/strict";
 import type { Context } from "fresh";
+import { resetFreshDeprecationWarningForTesting } from "./deprecation.ts";
 
 function createMockContext<TState>(
   overrides: Partial<Context<TState>> = {},
@@ -12,6 +14,81 @@ function createMockContext<TState>(
     ...overrides,
   } as Context<TState>;
 }
+
+async function configureWarningCapture(records: LogRecord[]): Promise<void> {
+  await configure({
+    sinks: { capture: (record) => records.push(record) },
+    loggers: [
+      {
+        category: ["fedify", "fresh"],
+        lowestLevel: "warning",
+        sinks: ["capture"],
+      },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+  });
+}
+
+async function captureDeprecationWarnings(
+  fn: (records: LogRecord[]) => void | Promise<void>,
+): Promise<LogRecord[]> {
+  const records: LogRecord[] = [];
+  await reset();
+  resetFreshDeprecationWarningForTesting();
+  try {
+    await configureWarningCapture(records);
+    await fn(records);
+    return records;
+  } finally {
+    await reset();
+    resetFreshDeprecationWarningForTesting();
+  }
+}
+
+Deno.test("deprecation warning - integrateFetchOptions() warns once", async () => {
+  const records = await captureDeprecationWarnings(() => {
+    integrateFetchOptions(createMockContext());
+    integrateFetchOptions(createMockContext());
+  });
+
+  strictEqual(records.length, 1);
+  strictEqual(records[0].level, "warning");
+  const message = records[0].message.join(" ");
+  ok(message.includes("@fedify/fresh"));
+  ok(message.includes("deprecated"));
+  ok(message.includes("1326"));
+});
+
+Deno.test("deprecation warning - integrateHandler() warns once", async () => {
+  const federation = {
+    fetch: () => Promise.resolve(new Response("ok")),
+  } as unknown as Federation<void>;
+
+  const records = await captureDeprecationWarnings(async (records) => {
+    const handler = integrateHandler(federation, () => undefined);
+    strictEqual(records.length, 1);
+    await handler(createMockContext());
+  });
+
+  strictEqual(records.length, 1);
+});
+
+Deno.test("deprecation warning - waits for a warning sink", async () => {
+  await reset();
+  resetFreshDeprecationWarningForTesting();
+  try {
+    integrateFetchOptions(createMockContext());
+
+    const records: LogRecord[] = [];
+    await configureWarningCapture(records);
+    integrateFetchOptions(createMockContext());
+
+    strictEqual(records.length, 1);
+  } finally {
+    await reset();
+    resetFreshDeprecationWarningForTesting();
+  }
+});
 
 Deno.test("integrateFetchOptions() - onNotFound delegates to ctx.next with correct receiver", async () => {
   const notFoundResponse = new Response("Not Found", { status: 404 });

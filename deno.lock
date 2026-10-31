@@ -16943,7 +16943,8 @@
       },
       "packages/fresh": {
         "dependencies": [
-          "jsr:@fresh/core@^2.1.4"
+          "jsr:@fresh/core@^2.1.4",
+          "jsr:@logtape/logtape@^2.2.0"
         ]
       },
       "packages/init": {

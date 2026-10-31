@@ -4,6 +4,7 @@
   "license": "MIT",
   "imports": {
     "@fresh/core": "jsr:@fresh/core@^2.1.4",
+    "@logtape/logtape": "jsr:@logtape/logtape@^2.2.0",
     "fresh": "jsr:@fresh/core@^2.1.4"
   },
   "exports": {
