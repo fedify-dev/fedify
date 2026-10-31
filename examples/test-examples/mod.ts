@@ -50,8 +50,8 @@ const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 // Library-internal fedify logs are intentionally excluded so they don't flood
 // the output.  Pass --debug to lower the level from "info" to "debug".
 
-const debugMode = process.argv.slice(2).includes("--debug") ||
-  process.argv.slice(2).includes("-d");
+const args = process.argv.slice(2);
+const debugMode = args.includes("--debug") || args.includes("-d");
 
 await configure({
   sinks: { console: getConsoleSink() },
@@ -846,10 +846,10 @@ async function main(): Promise<void> {
   let defaultTimeoutMs = 10_000;
   const filterNames = new Set<string>();
 
-  for (let i = 0; i < process.argv.slice(2).length; i++) {
-    const arg = process.argv.slice(2)[i];
-    if (arg === "--timeout" && i + 1 < process.argv.slice(2).length) {
-      defaultTimeoutMs = Number(process.argv.slice(2)[++i]);
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--timeout" && i + 1 < args.length) {
+      defaultTimeoutMs = Number(args[++i]);
     } else if (arg.startsWith("--timeout=")) {
       defaultTimeoutMs = Number(arg.slice("--timeout=".length));
     } else if (arg === "--debug" || arg === "-d") {
