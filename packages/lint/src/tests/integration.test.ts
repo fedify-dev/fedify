@@ -56,8 +56,8 @@ function testEslint(code: string) {
     plugins: { "@fedify/lint": eslintPlugin },
     rules: eslintPlugin.configs.recommended.rules,
     languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "module",
+      ecmaVersion: 2022 as const,
+      sourceType: "module" as const,
       parser,
     },
   }];

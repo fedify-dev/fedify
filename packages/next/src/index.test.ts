@@ -75,8 +75,8 @@ test("Non-federation request delegation", async () => {
   assert.strictEqual(isFederationRequest(request), false);
   assert.strictEqual(isFederationRequest(request2), false);
 
-  const response1 = await middleware(request);
-  const response2 = await middleware(request2);
+  const response1 = await middleware(request) as Response;
+  const response2 = await middleware(request2) as Response;
 
   assert.strictEqual(await response1.text(), "Default response");
   assert.strictEqual(await response2.text(), "Custom middleware response");
