@@ -279,6 +279,15 @@ Deno can check, such as Deno-only packages, scripts that run on Deno, and
 *scripts/check\_types\_ownership.ts*, with the reason.  Add a file there only
 when the Node.js-based check cannot cover it.
 
+The task also checks the published declarations of every package: it
+generates small consumer projects that import each export by package name,
+as an ES module and, where the package supports `require()`, as a CommonJS
+module, and type-checks them with `skipLibCheck` disabled for Fedify's own
+declarations.  Declaration defects found when the check was introduced are
+listed, with reasons, in `KNOWN_DECLARATION_PROBLEMS` in
+*scripts/check\_types.ts*; remove an entry when fixing its defect, since a
+stale entry fails the check.
+
 ### Running the CLI
 
 Use the `cli` task to run the local Fedify CLI through Deno:

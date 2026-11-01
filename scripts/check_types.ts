@@ -13,12 +13,23 @@
  *  -  every TypeScript file in the covered paths belongs to a project, or to
  *     another check through *scripts/check\_types\_ownership.ts*;
  *  -  only the projects allowed there load Deno's ambient types, and their
- *     files access the `Deno` global at run time only where allowed.
+ *     files access the `Deno` global at run time only where allowed;
+ *  -  the built declarations of every published package type-check when a
+ *     consumer imports each of its exports by package name, as an ES module
+ *     and, where the package supports it, as a CommonJS module.
  *
  * Deno-specific code keeps its own check, `mise run check:types:deno`.
  * @module
  */
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { availableParallelism } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
@@ -150,6 +161,174 @@ export function isOwnDiagnostic(diagnostic: Diagnostic): boolean {
   const segments = diagnostic.file.split("/");
   return !segments.includes("node_modules") && !segments.includes("dist") &&
     !diagnostic.file.startsWith("../");
+}
+
+/** The directory, under node_modules, that holds the generated consumers. */
+export const DECLARATION_CONSUMERS =
+  "node_modules/.cache/fedify-check-types/declarations";
+
+/** A public declaration defect that predates this check and is tracked. */
+export interface KnownDeclarationProblem {
+  /** Glob matching the repository-relative file of the diagnostic. */
+  readonly file: string;
+  /** The TypeScript diagnostic code, such as `TS2307`. */
+  readonly code: string;
+  /** A pattern the diagnostic's message must match, naming the defect. */
+  readonly message: RegExp;
+  /** What is wrong, so the entry can be removed once it is fixed. */
+  readonly reason: string;
+}
+
+/**
+ * Defects in published declarations that the declaration check found when it
+ * was introduced.  Fixing them changes what users install, so they are fixed
+ * separately, with changelog entries, on the branches the fixes belong to.
+ * An entry that no longer matches a diagnostic fails the check, so remove it
+ * along with the fix.
+ */
+export const KNOWN_DECLARATION_PROBLEMS: readonly KnownDeclarationProblem[] = [
+  {
+    file: `${DECLARATION_CONSUMERS}/nestjs/cjs/index.cts`,
+    code: "TS2307",
+    message: /Cannot find module '@fedify\/nestjs'/,
+    reason: "packages/nestjs/package.json maps require.types to " +
+      "dist/index.d.ts, which the build does not emit.",
+  },
+  {
+    file: "packages/fedify/dist/runtime/mod.d.cts",
+    code: "TS2304",
+    message: /Cannot find name '__(?:reExport|exportAll)'/,
+    reason: "The CommonJS declarations of @fedify/fedify/runtime export " +
+      "rolldown's runtime helpers, which they do not declare.",
+  },
+  {
+    file: "packages/vocab-runtime/dist/jsonld.d.*ts",
+    code: "TS7016",
+    message: /declaration file for module 'jsonld'/,
+    reason: "@fedify/vocab-runtime/jsonld's declarations import the jsonld " +
+      "package, which has no type declarations.",
+  },
+];
+
+/** Whether an exports target, or any nested condition, has a condition. */
+function hasCondition(target: unknown, condition: string): boolean {
+  if (target == null || typeof target !== "object") return false;
+  return condition in target ||
+    Object.values(target).some((value) => hasCondition(value, condition));
+}
+
+/** A published package's exports to import from consumers. */
+export interface DeclarationEntries {
+  /** The package directory name under *packages/*. */
+  readonly dir: string;
+  readonly esm: readonly string[];
+  readonly cjs: readonly string[];
+}
+
+/**
+ * Lists the type-bearing exports of a package manifest.  Private packages,
+ * packages without an exports map (executables), the manifest itself, and
+ * wildcard data exports are skipped.
+ */
+export function listDeclarationEntries(
+  dir: string,
+  manifest: { name: string; private?: boolean; exports?: unknown },
+): DeclarationEntries | undefined {
+  if (manifest.private || manifest.exports == null) return undefined;
+  if (typeof manifest.exports !== "object") return undefined;
+  const esm: string[] = [];
+  const cjs: string[] = [];
+  for (const [subpath, target] of Object.entries(manifest.exports)) {
+    if (subpath === "./package.json" || subpath.includes("*")) continue;
+    const specifier = manifest.name + subpath.slice(1);
+    esm.push(specifier);
+    if (hasCondition(target, "require")) cjs.push(specifier);
+  }
+  return { dir, esm, cjs };
+}
+
+/** Whether a declaration-check diagnostic belongs to first-party code. */
+export function isDeclarationDiagnostic(
+  diagnostic: Diagnostic,
+  firstPartyDirs: readonly string[],
+): boolean {
+  const { file } = diagnostic;
+  if (file == null) return true;
+  return file.startsWith(`${DECLARATION_CONSUMERS}/`) ||
+    firstPartyDirs.some((dir) => file.startsWith(`${dir}/dist/`));
+}
+
+function diagnosticCode(diagnostic: Diagnostic): string | undefined {
+  return /\b(TS\d+):/.exec(diagnostic.text)?.[1];
+}
+
+/** Splits declaration diagnostics into known problems and new errors. */
+export function classifyDeclarationDiagnostics(
+  diagnostics: readonly Diagnostic[],
+  known: readonly KnownDeclarationProblem[],
+): { errors: Diagnostic[]; matched: Set<KnownDeclarationProblem> } {
+  const errors: Diagnostic[] = [];
+  const matched = new Set<KnownDeclarationProblem>();
+  for (const diagnostic of diagnostics) {
+    const problem = known.find((entry) =>
+      diagnostic.file != null &&
+      globToRegExp(entry.file).test(diagnostic.file) &&
+      diagnosticCode(diagnostic) === entry.code &&
+      entry.message.test(diagnostic.text)
+    );
+    if (problem == null) errors.push(diagnostic);
+    else matched.add(problem);
+  }
+  return { errors, matched };
+}
+
+/**
+ * Generates consumer projects that import the given packages' exports by
+ * package name, one ES module and one CommonJS project per package, and
+ * returns their repository-relative configuration paths.
+ */
+export function writeDeclarationConsumers(
+  entries: readonly DeclarationEntries[],
+  consumers: string = DECLARATION_CONSUMERS,
+  packagesDir: string = "packages",
+): string[] {
+  const base = join(root, consumers);
+  rmSync(base, { recursive: true, force: true });
+  const scope = join(base, "node_modules", "@fedify");
+  mkdirSync(scope, { recursive: true });
+  const projects: string[] = [];
+  for (const entry of entries) {
+    // Junctions need no privileges on Windows; elsewhere they are symlinks.
+    symlinkSync(
+      join(root, packagesDir, entry.dir),
+      join(scope, entry.dir),
+      "junction",
+    );
+    for (const format of ["esm", "cjs"] as const) {
+      const specifiers = entry[format];
+      if (specifiers.length < 1) continue;
+      const dir = join(base, entry.dir, format);
+      mkdirSync(dir, { recursive: true });
+      const file = format === "esm" ? "index.mts" : "index.cts";
+      writeFileSync(
+        join(dir, file),
+        specifiers.map((specifier, i) =>
+          format === "esm"
+            ? `import * as m${i} from "${specifier}";\nexport { m${i} };\n`
+            : `import m${i} = require("${specifier}");\nexport { m${i} };\n`
+        ).join(""),
+      );
+      writeFileSync(
+        join(dir, "tsconfig.json"),
+        JSON.stringify({
+          extends: toPosix(relative(dir, join(root, "tsconfig.node.json"))),
+          files: [file],
+        }),
+      );
+      projects.push(toPosix(relative(root, join(dir, "tsconfig.json"))));
+    }
+  }
+  return projects;
 }
 
 /** The result of checking one project. */
@@ -517,7 +696,7 @@ async function main(args: readonly string[]): Promise<number> {
     matchesAny(file, COVERED_PATHS) &&
     (!selected || packageDirs.some((dir) => file.startsWith(`${dir}/`)))
   );
-  const problems = [
+  const problems: string[] = [
     ...findCoverageProblems({
       requiredFiles,
       projects: new Map(results.map((result) => [
@@ -537,12 +716,77 @@ async function main(args: readonly string[]): Promise<number> {
     }),
     ...guardDenoAccesses(results),
   ];
+  problems.push(
+    ...await checkDeclarations(packageDirs, workspacePackages, {
+      concurrency,
+      reportStale: !selected,
+    }),
+  );
   if (problems.length > 0) {
     failed = true;
     console.error("");
     for (const problem of problems) console.error(problem);
   }
   return failed ? 1 : 0;
+}
+
+/** Type-checks published declarations through generated consumers. */
+async function checkDeclarations(
+  packageDirs: readonly string[],
+  firstPartyDirs: readonly string[],
+  options: { concurrency: number; reportStale: boolean },
+): Promise<string[]> {
+  const entries = packageDirs.flatMap((dir) => {
+    const manifest = JSON.parse(
+      readFileSync(join(root, dir, "package.json"), "utf8"),
+    );
+    return listDeclarationEntries(dir.slice("packages/".length), manifest) ??
+      [];
+  });
+  const consumers = writeDeclarationConsumers(entries);
+  const problems: string[] = [];
+  const matched = new Set<KnownDeclarationProblem>();
+  const results = await mapConcurrent(
+    consumers,
+    options.concurrency,
+    async (project) => {
+      const result = await checkProject(project);
+      const diagnostics = result.diagnostics.filter((diagnostic) =>
+        isDeclarationDiagnostic(diagnostic, firstPartyDirs)
+      );
+      const classified = classifyDeclarationDiagnostics(
+        diagnostics,
+        KNOWN_DECLARATION_PROBLEMS,
+      );
+      if (![0, 1, 2].includes(result.code)) {
+        classified.errors.push({
+          text: `tsc exited with code ${result.code}.`,
+        });
+      }
+      const status = classified.errors.length > 0 ? "FAIL" : "ok";
+      console.log(`${status} ${project}`);
+      return { project, ...classified };
+    },
+  );
+  for (const result of results) {
+    for (const problem of result.matched) matched.add(problem);
+    if (result.errors.length < 1) continue;
+    problems.push(
+      `${result.project}:\n${
+        result.errors.map((error) => error.text).join("\n")
+      }`,
+    );
+  }
+  if (options.reportStale) {
+    for (const problem of KNOWN_DECLARATION_PROBLEMS) {
+      if (matched.has(problem)) continue;
+      problems.push(
+        `The known declaration problem in ${problem.file} (${problem.code}) ` +
+          "no longer occurs; remove it from KNOWN_DECLARATION_PROBLEMS.",
+      );
+    }
+  }
+  return problems;
 }
 
 if (isMain(import.meta.url)) {

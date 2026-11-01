@@ -5,13 +5,18 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   checkProject,
+  classifyDeclarationDiagnostics,
   type CoverageInput,
   discoverProjects,
   findCoverageProblems,
   findDenoAccesses,
   globToRegExp,
+  isDeclarationDiagnostic,
   isOwnDiagnostic,
+  type KnownDeclarationProblem,
+  listDeclarationEntries,
   parseCompilerOutput,
+  writeDeclarationConsumers,
 } from "./check_types.ts";
 import { DENO_CHECK, type Ownership } from "./check_types_ownership.ts";
 
@@ -283,5 +288,130 @@ describe("environment presets", () => {
       ),
       [],
     );
+  });
+});
+
+describe("listDeclarationEntries()", () => {
+  it("lists type-bearing exports and the CommonJS ones", () => {
+    deepStrictEqual(
+      listDeclarationEntries("a", {
+        name: "@fedify/a",
+        exports: {
+          ".": { import: "./dist/mod.js", require: "./dist/mod.cjs" },
+          "./esm": "./dist/esm.js",
+          "./nested": { types: { require: "./dist/n.d.cts" } },
+          "./fixtures/*": "./dist/fixtures/*",
+          "./package.json": "./package.json",
+        },
+      }),
+      {
+        dir: "a",
+        esm: ["@fedify/a", "@fedify/a/esm", "@fedify/a/nested"],
+        cjs: ["@fedify/a", "@fedify/a/nested"],
+      },
+    );
+  });
+
+  it("skips private packages and executables", () => {
+    equal(
+      listDeclarationEntries("a", { name: "a", private: true, exports: {} }),
+      undefined,
+    );
+    equal(
+      listDeclarationEntries("cli", { name: "cli", exports: "./dist/mod.js" }),
+      undefined,
+    );
+  });
+});
+
+describe("classifyDeclarationDiagnostics()", () => {
+  const known: KnownDeclarationProblem = {
+    file: "packages/a/dist/mod.d.*ts",
+    code: "TS7016",
+    message: /module 'untyped'/,
+    reason: "Known.",
+  };
+
+  it("separates known problems from new errors", () => {
+    const result = classifyDeclarationDiagnostics([
+      {
+        file: "packages/a/dist/mod.d.cts",
+        text: "packages/a/dist/mod.d.cts(1,1): error TS7016: Could not " +
+          "find a declaration file for module 'untyped'.",
+      },
+      {
+        file: "packages/a/dist/mod.d.ts",
+        text: "packages/a/dist/mod.d.ts(2,1): error TS2304: Missing.",
+      },
+    ], [known]);
+    deepStrictEqual(result.errors.map((error) => error.file), [
+      "packages/a/dist/mod.d.ts",
+    ]);
+    deepStrictEqual([...result.matched], [known]);
+  });
+
+  it("does not let a known problem hide another one in the same file", () => {
+    const result = classifyDeclarationDiagnostics([{
+      file: "packages/a/dist/mod.d.ts",
+      text: "packages/a/dist/mod.d.ts(3,1): error TS7016: Could not find a " +
+        "declaration file for module 'other'.",
+    }], [known]);
+    equal(result.errors.length, 1);
+    deepStrictEqual([...result.matched], []);
+  });
+
+  it("counts only first-party declarations and consumers", () => {
+    ok(isDeclarationDiagnostic(
+      { file: "packages/a/dist/mod.d.ts", text: "" },
+      ["packages/a"],
+    ));
+    ok(
+      !isDeclarationDiagnostic(
+        { file: "node_modules/.pnpm/x/index.d.ts", text: "" },
+        ["packages/a"],
+      ),
+    );
+  });
+});
+
+describe("writeDeclarationConsumers()", () => {
+  it("detects a broken public declaration", async () => {
+    const cache = join(root, "node_modules", ".cache");
+    await mkdir(cache, { recursive: true });
+    const dir = await mkdtemp(join(cache, "fedify-check-types-test-"));
+    const fixture = relative(root, dir).split(sep).join("/");
+    try {
+      const pkg = join(dir, "packages", "broken");
+      await mkdir(join(pkg, "dist"), { recursive: true });
+      await writeFile(
+        join(pkg, "package.json"),
+        JSON.stringify({
+          name: "@fedify/broken",
+          type: "module",
+          exports: { ".": "./dist/mod.js" },
+        }),
+      );
+      await writeFile(
+        join(pkg, "dist", "mod.js"),
+        "export function api() {}\n",
+      );
+      await writeFile(
+        join(pkg, "dist", "mod.d.ts"),
+        "export declare function api(): MissingPublicType;\n",
+      );
+      const [project] = writeDeclarationConsumers(
+        [{ dir: "broken", esm: ["@fedify/broken"], cjs: [] }],
+        `${fixture}/consumers`,
+        `${fixture}/packages`,
+      );
+      const result = await checkProject(project);
+      const errors = result.diagnostics.filter((diagnostic) =>
+        isDeclarationDiagnostic(diagnostic, [`${fixture}/packages/broken`])
+      );
+      equal(errors.length, 1);
+      match(errors[0].text, /Cannot find name 'MissingPublicType'/);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
   });
 });
