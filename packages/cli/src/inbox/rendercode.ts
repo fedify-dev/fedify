@@ -1,5 +1,5 @@
 import type { Activity } from "@fedify/vocab";
-import { getStatusText } from "@poppanator/http-constants";
+import { getStatusText } from "@poppanator/http-constants/functions";
 import { getContextLoader } from "../docloader.ts";
 
 export function renderRequest(request: Request): Promise<string> {

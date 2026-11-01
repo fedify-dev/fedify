@@ -1,7 +1,7 @@
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
 import { test } from "@fedify/fixture";
 import { strict as assert } from "node:assert";
-import { Elysia, NotFoundError } from "elysia";
+import { type AnyElysia, Elysia, NotFoundError } from "elysia";
 import { fedify } from "./index.ts";
 
 for (const aot of [true, false]) {
@@ -166,7 +166,9 @@ for (const aot of [true, false]) {
     test(`Elysia preserves parent error hooks (aot=${aot}, depth=${depth})`, async () => {
       const fed = createFederation<void>({ kv: new MemoryKvStore() });
       fed.setActorDispatcher("/users/{identifier}", () => null);
-      let app = new Elysia({ aot }).use(fedify(fed, () => undefined));
+      let app: AnyElysia = new Elysia({ aot }).use(
+        fedify(fed, () => undefined),
+      );
       for (let level = 0; level < depth; level++) {
         app = new Elysia({ aot }).use(app);
       }

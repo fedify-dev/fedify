@@ -19,6 +19,7 @@ import type {
 } from "./result/model.ts";
 import { metricUnit } from "./result/expect/metrics.ts";
 import { describeError } from "../utils.ts";
+import type { FetchFunction } from "./fetch.ts";
 
 const ZERO_BASE_LATENCY_ALLOWANCE_MS = 1;
 
@@ -142,7 +143,7 @@ export interface StopTargetProcessOptions {
 
 /** Dependencies for waiting until a benchmark target is ready. */
 export interface WaitReadyUrlDeps {
-  readonly fetch?: typeof fetch;
+  readonly fetch?: FetchFunction;
   readonly sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
   readonly signal?: AbortSignal;
 }

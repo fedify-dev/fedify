@@ -16,6 +16,7 @@ import type { ErrorBucket, LatencyMs } from "../result/model.ts";
 import type { ScenarioMeasurement } from "../result/build.ts";
 import type { ScenarioType } from "../scenario/types.ts";
 import type { RunContext, ScenarioRunner, ValidateContext } from "./runner.ts";
+import type { FetchFunction } from "../fetch.ts";
 
 /** The `mixed` scenario runner. */
 export const mixedRunner: ScenarioRunner = {
@@ -225,7 +226,7 @@ function scaledLoad(
   };
 }
 
-function limitedFetch(fetchImpl: typeof fetch, maxInFlight?: number) {
+function limitedFetch(fetchImpl: FetchFunction, maxInFlight?: number) {
   if (maxInFlight == null) return fetchImpl;
   const limiter = createLimiter(maxInFlight);
   const limited = async (
@@ -239,7 +240,7 @@ function limitedFetch(fetchImpl: typeof fetch, maxInFlight?: number) {
       release();
     }
   };
-  return limited as typeof fetch;
+  return limited;
 }
 
 export function createLimiter(maxInFlight: number): {

@@ -30,6 +30,7 @@ import {
   sendRequest,
   validateInboxSelector,
 } from "./runner.ts";
+import type { FetchFunction } from "../fetch.ts";
 
 const SUPPORTED_FAULTS = [
   "invalid-signature",
@@ -386,7 +387,7 @@ interface RemoteFaultObservation {
 
 async function waitForRemoteFault(options: {
   readonly target: URL;
-  readonly fetch: typeof fetch;
+  readonly fetch: FetchFunction;
   readonly baseline: Awaited<ReturnType<typeof fetchServerSnapshot>>;
   readonly fault: RemoteFailureFault;
   readonly clock: Clock;

@@ -2,8 +2,22 @@
 // bindings where needed.  Do not duplicate it with hand-written queue mocks
 // in ../src/mod.test.ts.
 import { env } from "cloudflare:test";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type MockInstance, vi } from "vitest";
 import { WorkersMessageQueue } from "../src/mod.ts";
+
+// WorkersMessageQueue ignores the results of Queue.send() and
+// Queue.sendBatch(), so the mocks below resolve to undefined; the casts only
+// satisfy the declared result types.
+const sendResult = async () => undefined as unknown as QueueSendResponse;
+const sendBatchResult = async () =>
+  undefined as unknown as QueueSendBatchResponse;
+
+// KVNamespace.get() is overloaded, and vi.spyOn() infers the last overload,
+// so spell out the text overload these tests stub.
+const spyOnKvGet = (kv: KVNamespace<string>) =>
+  vi.spyOn(kv, "get") as unknown as MockInstance<
+    (key: string) => Promise<string | null>
+  >;
 
 // Mock Temporal.Duration for testing in Cloudflare Workers environment
 const mockDuration = (seconds: number) => ({
@@ -18,7 +32,7 @@ describe("WorkersMessageQueue", () => {
   it("enqueue() sends message to queue", async () => {
     const sendSpy = vi
       .spyOn(env.Q1, "send")
-      .mockImplementation(async () => {});
+      .mockImplementation(sendResult);
 
     const queue = new WorkersMessageQueue(env.Q1);
     await queue.enqueue({ foo: 1, bar: 2 });
@@ -38,7 +52,7 @@ describe("WorkersMessageQueue", () => {
   it("enqueue() with delay", async () => {
     const sendSpy = vi
       .spyOn(env.Q1, "send")
-      .mockImplementation(async () => {});
+      .mockImplementation(sendResult);
 
     const queue = new WorkersMessageQueue(env.Q1);
     await queue.enqueue(
@@ -61,7 +75,7 @@ describe("WorkersMessageQueue", () => {
   it("enqueue() with ordering key", async () => {
     const sendSpy = vi
       .spyOn(env.Q1, "send")
-      .mockImplementation(async () => {});
+      .mockImplementation(sendResult);
 
     const queue = new WorkersMessageQueue(env.Q1);
     await queue.enqueue({ foo: 1 }, { orderingKey: "test-key" });
@@ -81,7 +95,7 @@ describe("WorkersMessageQueue", () => {
   it("enqueueMany() sends batch of messages", async () => {
     const sendBatchSpy = vi
       .spyOn(env.Q1, "sendBatch")
-      .mockImplementation(async () => {});
+      .mockImplementation(sendBatchResult);
 
     const queue = new WorkersMessageQueue(env.Q1);
     await queue.enqueueMany([{ a: 1 }, { b: 2 }, { c: 3 }]);
@@ -111,7 +125,7 @@ describe("WorkersMessageQueue", () => {
   it("enqueueMany() with ordering key", async () => {
     const sendBatchSpy = vi
       .spyOn(env.Q1, "sendBatch")
-      .mockImplementation(async () => {});
+      .mockImplementation(sendBatchResult);
 
     const queue = new WorkersMessageQueue(env.Q1);
     await queue.enqueueMany([{ a: 1 }, { b: 2 }], { orderingKey: "batch-key" });
@@ -137,7 +151,7 @@ describe("WorkersMessageQueue", () => {
   it("enqueueMany() splits batches at the 100-message limit", async () => {
     const sendBatchSpy = vi
       .spyOn(env.Q1, "sendBatch")
-      .mockImplementation(async () => {});
+      .mockImplementation(sendBatchResult);
 
     const queue = new WorkersMessageQueue(env.Q1);
     const messages = Array.from({ length: 101 }, (_, id) => ({ id }));
@@ -161,7 +175,7 @@ describe("WorkersMessageQueue", () => {
     async (_label, character, repetitions) => {
       const sendBatchSpy = vi
         .spyOn(env.Q1, "sendBatch")
-        .mockImplementation(async () => {});
+        .mockImplementation(sendBatchResult);
 
       const queue = new WorkersMessageQueue(env.Q1);
       const messages = Array.from({ length: 3 }, (_, id) => ({
@@ -194,7 +208,7 @@ describe("WorkersMessageQueue", () => {
   it("enqueueMany() preserves options across split batches", async () => {
     const sendBatchSpy = vi
       .spyOn(env.Q1, "sendBatch")
-      .mockImplementation(async () => {});
+      .mockImplementation(sendBatchResult);
 
     const queue = new WorkersMessageQueue(env.Q1);
     const messages = Array.from({ length: 3 }, (_, id) => ({
@@ -222,7 +236,7 @@ describe("WorkersMessageQueue", () => {
   it("enqueueMany() does not send an empty batch", async () => {
     const sendBatchSpy = vi
       .spyOn(env.Q1, "sendBatch")
-      .mockImplementation(async () => {});
+      .mockImplementation(sendBatchResult);
 
     const queue = new WorkersMessageQueue(env.Q1);
     await queue.enqueueMany([]);
@@ -236,8 +250,8 @@ describe("WorkersMessageQueue", () => {
     it("round-trips a message through enqueue() and processMessage()", async () => {
       const sendSpy = vi
         .spyOn(env.Q1, "send")
-        .mockImplementation(async () => {});
-      const getSpy = vi.spyOn(env.KV1, "get").mockResolvedValue(null);
+        .mockImplementation(sendResult);
+      const getSpy = spyOnKvGet(env.KV1).mockResolvedValue(null);
       const putSpy = vi.spyOn(env.KV1, "put").mockResolvedValue(undefined);
       const deleteSpy = vi.spyOn(env.KV1, "delete").mockResolvedValue(undefined);
 
@@ -275,8 +289,8 @@ describe("WorkersMessageQueue", () => {
     it("round-trips a message through enqueueMany() and processMessage()", async () => {
       const sendBatchSpy = vi
         .spyOn(env.Q1, "sendBatch")
-        .mockImplementation(async () => {});
-      const getSpy = vi.spyOn(env.KV1, "get").mockResolvedValue(null);
+        .mockImplementation(sendBatchResult);
+      const getSpy = spyOnKvGet(env.KV1).mockResolvedValue(null);
       const putSpy = vi.spyOn(env.KV1, "put").mockResolvedValue(undefined);
       const deleteSpy = vi.spyOn(env.KV1, "delete").mockResolvedValue(undefined);
 
@@ -286,7 +300,7 @@ describe("WorkersMessageQueue", () => {
 
       expect(sendBatchSpy).toHaveBeenCalledTimes(1);
 
-      const requests = sendBatchSpy.mock.calls[0][0];
+      const requests = [...sendBatchSpy.mock.calls[0][0]];
       const firstRequestMessage = requests[0].body;
 
       const result = await queue.processMessage(firstRequestMessage);
@@ -361,7 +375,7 @@ describe("WorkersMessageQueue", () => {
     });
 
     it("acquires lock and processes message with ordering key", async () => {
-      const getSpy = vi.spyOn(env.KV1, "get").mockResolvedValue(null);
+      const getSpy = spyOnKvGet(env.KV1).mockResolvedValue(null);
       const putSpy = vi.spyOn(env.KV1, "put").mockResolvedValue(undefined);
       const deleteSpy = vi.spyOn(env.KV1, "delete").mockResolvedValue(undefined);
 
@@ -442,7 +456,7 @@ describe("WorkersMessageQueue", () => {
     });
       
     it("returns shouldProcess=false when lock exists", async () => {
-      const getSpy = vi.spyOn(env.KV1, "get").mockResolvedValue("locked");
+      const getSpy = spyOnKvGet(env.KV1).mockResolvedValue("locked");
 
       const queue = new WorkersMessageQueue(env.Q1, { orderingKv: env.KV1 });
       const result = await queue.processMessage({
@@ -458,7 +472,7 @@ describe("WorkersMessageQueue", () => {
     });
 
     it("uses custom ordering key prefix", async () => {
-      const getSpy = vi.spyOn(env.KV1, "get").mockResolvedValue(null);
+      const getSpy = spyOnKvGet(env.KV1).mockResolvedValue(null);
       const putSpy = vi.spyOn(env.KV1, "put").mockResolvedValue(undefined);
 
       const queue = new WorkersMessageQueue(env.Q1, {
@@ -482,7 +496,7 @@ describe("WorkersMessageQueue", () => {
     });
 
     it("uses custom lock TTL (minimum 60 seconds)", async () => {
-      const getSpy = vi.spyOn(env.KV1, "get").mockResolvedValue(null);
+      const getSpy = spyOnKvGet(env.KV1).mockResolvedValue(null);
       const putSpy = vi.spyOn(env.KV1, "put").mockResolvedValue(undefined);
 
       const queue = new WorkersMessageQueue(env.Q1, {
@@ -505,7 +519,7 @@ describe("WorkersMessageQueue", () => {
     });
 
     it("enforces minimum 60 second TTL", async () => {
-      const getSpy = vi.spyOn(env.KV1, "get").mockResolvedValue(null);
+      const getSpy = spyOnKvGet(env.KV1).mockResolvedValue(null);
       const putSpy = vi.spyOn(env.KV1, "put").mockResolvedValue(undefined);
 
       const queue = new WorkersMessageQueue(env.Q1, {

@@ -1,5 +1,5 @@
-import type { KVNamespace, Queue } from "@cloudflare/workers-types/experimental";
-
+// KVNamespace and Queue are globals provided by @cloudflare/workers-types,
+// which is a global declaration file without named exports to import from.
 declare module "cloudflare:test" {
   interface ProvidedEnv {
     KV1: KVNamespace<string>;

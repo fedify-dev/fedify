@@ -8,6 +8,8 @@
  * @module
  */
 
+import type { FetchFunction } from "../fetch.ts";
+
 /** The result of probing a target for benchmark mode. */
 export interface BenchmarkProbe {
   /** Whether the target advertises benchmark mode. */
@@ -29,7 +31,7 @@ export const STATS_PATH = "/.well-known/fedify/bench/stats";
  */
 export async function probeBenchmarkMode(
   target: URL,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: FetchFunction = fetch,
 ): Promise<BenchmarkProbe> {
   try {
     // Do not follow redirects: a public target whose `stats` endpoint redirects

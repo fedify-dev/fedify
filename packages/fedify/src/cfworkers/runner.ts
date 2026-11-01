@@ -9,8 +9,14 @@ export interface TestDefinition {
   name: string;
   ignore?: boolean;
   fn: (
-    // deno-lint-ignore no-explicit-any
-    ctx: { name: string; origin: string; step: any },
+    ctx: {
+      name: string;
+      origin: string;
+      // deno-lint-ignore no-explicit-any
+      step: any;
+      env: unknown;
+      messageBatches: MessageBatch[];
+    },
   ) => void | Promise<void>;
 }
 
