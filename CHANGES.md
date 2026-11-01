@@ -13,7 +13,10 @@ To be released.
  -  Fixed inbox handling that treated valid date-times without seconds, such
     as `2024-01-01T10:00Z` or `2024-01-01T10:00.5Z`, as permanently malformed.
     Activity Streams 2.0 allows seconds to be omitted, so activities with such
-    date-times are no longer rejected or dropped.
+    date-times are no longer rejected or dropped.  Activities whose
+    `Question.closed` is a date-like but impossible value, such as
+    `2024-02-31T10:00.5Z`, are now treated as malformed instead of being
+    accepted with `closed` discarded.
     [[#1339], [#1347] by ChanHaeng Lee\]
 
 [#1339]: https://github.com/fedify-dev/fedify/issues/1339
@@ -24,7 +27,9 @@ To be released.
  -  Fixed parsing of date-times without seconds, such as `2024-01-01T10:00Z`,
     `2024-01-01T10:00+09:00`, or `2024-01-01T10:00.5Z`, which Activity Streams
     2.0 allows.  They raised a `RangeError`, or were ignored in
-    `Question.closed` when they had a fraction.
+    `Question.closed` when they had a fraction.  Date-like but impossible
+    values in `Question.closed`, such as `2024-02-31T10:00.5Z`, now raise a
+    `RangeError` instead of being silently dropped.
     [[#1339], [#1347] by ChanHaeng Lee\]
 
 ### @fedify/vocab-runtime
