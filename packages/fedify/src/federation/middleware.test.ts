@@ -5194,10 +5194,7 @@ test("ContextImpl.sendActivity()", async (t) => {
     });
     const replayed = queue.messages.at(-1);
     assert(replayed != null && replayed.type === "outbox");
-    assertEquals(
-      (replayed.activity as Record<string, unknown>)["@context"],
-      oldJson["@context"],
-    );
+    assertEquals(detachSignature(replayed.activity), oldJson);
   });
 
   queue.clear();
