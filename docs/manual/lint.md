@@ -616,8 +616,9 @@ human-readable profile page.
 
 **When this rule applies:**
 The actor dispatcher is configured with `setActorDispatcher()`, but the actor
-object doesn't include a `url` or `urls` property.  Unlike `id`, there is no
-expected `Context` getter to compare against, so any URL is accepted.
+object doesn't include a `url` or `urls` property, or sets it to `null` or an
+empty `urls` array.  Unlike `id`, there is no expected `Context` getter to
+compare against, so any URL is accepted.
 
 **Why it matters:**
 Remote fediverse software uses the actor's `url` as the link to its

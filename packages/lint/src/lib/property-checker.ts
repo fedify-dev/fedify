@@ -25,32 +25,33 @@ import type {
   ReturnStatement,
   SpreadElement,
   Statement,
-  WithIdentifierKey,
 } from "./types.ts";
-import { cases, eq } from "./utils.ts";
+import { cases } from "./utils.ts";
+
+const getKeyName = (node: Property): string | null => {
+  if (node.computed) return null;
+  const key = node.key;
+  if (key.type === "Identifier") return key.name;
+  if (key.type === "Literal" && typeof key.value === "string") {
+    return key.value;
+  }
+  return null;
+};
 
 /**
- * Checks if a node has a key with a specific name.
+ * Checks if a node has a key with a specific name, whether the key is written
+ * as an identifier (`url`) or as a non-computed string literal (`"url"`).
  */
-const hasKeyName =
-  <T extends string>(propertyName: T) =>
-  (node: Property): node is Property & WithIdentifierKey<T> =>
-    pipe(
-      node,
-      prop("key"),
-      allOf(
-        isNodeType("Identifier"),
-        pipeLazy(prop("name"), eq(propertyName)) as (node: Node) => boolean,
-      ),
-    ) as boolean;
+const hasKeyName = (propertyName: string) => (node: Property): boolean =>
+  getKeyName(node) === propertyName;
 
 /**
- * Checks if a node is a Property with an Identifier key of a specific name.
+ * Checks if a node is a Property with a specific key name.
  */
-export const isPropertyWithName = <T extends string>(propertyName: T) =>
+export const isPropertyWithName = (propertyName: string) =>
 (
   node: Property | SpreadElement,
-): node is Property & WithIdentifierKey<T> =>
+): node is Property =>
   allOf(
     isNodeType("Property"),
     hasKeyName(propertyName),
@@ -130,6 +131,28 @@ const isTombstoneExpression = (node: Expression): boolean =>
   node.type === "NewExpression" &&
   node.callee.type === "Identifier" &&
   node.callee.name === "Tombstone";
+
+/**
+ * Checks whether a property initializer visibly carries a value.
+ *
+ * A `null` literal or an empty array literal means there is no value for
+ * rules that require a profile URL, even though the property key is present.
+ * TypeScript wrappers such as `as`, `satisfies`, and non-null assertions are
+ * unwrapped first.
+ */
+export const isNonEmptyInitializer = (
+  node: Expression | AssignmentPattern,
+): boolean => {
+  const value = node.type === "AssignmentPattern"
+    ? node.right as Expression
+    : node;
+  const expression = unwrapTypeScriptExpression(value);
+  if (isNullLiteral(expression)) return false;
+  if (expression.type === "ArrayExpression") {
+    return expression.elements.length > 0;
+  }
+  return true;
+};
 
 // Check if both branches have the property
 const checkBranchWith =

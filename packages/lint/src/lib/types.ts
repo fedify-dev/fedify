@@ -115,6 +115,12 @@ export interface PropertyConfig {
    * when the default wording would not mention a property-specific detail.
    */
   recommendation?: string;
+  /**
+   * Whether a present property must also have a statically visible non-empty
+   * initializer.  Used by `url`, where `null` and an empty `urls` array mean
+   * there is no profile URL even though the property key exists.
+   */
+  requireNonEmptyValue?: boolean;
   /** Nested property configuration, if this property is nested inside another */
   nested?: NestedPropertyConfig;
   /** Whether this is a key-related property (uses getActorKeyPairs) */
@@ -130,8 +136,4 @@ export interface MethodCallContext {
   idName: string;
   methodName: string;
   requiresIdentifier: boolean;
-}
-
-export interface WithIdentifierKey<T extends string> {
-  key: Identifier & { name: T };
 }

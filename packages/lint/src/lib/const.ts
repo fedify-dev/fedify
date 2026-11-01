@@ -140,6 +140,7 @@ export const properties = {
     recommendation:
       "Set `url` (or the plural `urls` initializer) to the actor's " +
       "human-readable profile URL.",
+    requireNonEmptyValue: true,
   },
 } as const satisfies Record<string, PropertyConfig>;
 

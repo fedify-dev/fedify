@@ -397,6 +397,32 @@ test("Integration: ❌ actor-profile-url-required - missing url property", () =>
   ));
 
 test(
+  "Integration: ✅ actor-profile-url-required - quoted url property",
+  () =>
+    pipe(
+      COMPLETE_VALID_CODE,
+      replace(
+        'url: new URL("/@johndoe", ctx.origin),',
+        '"url": new URL("/@johndoe", ctx.origin),',
+      ),
+      assertNoErrors,
+    ),
+);
+
+test(
+  "Integration: ❌ actor-profile-url-required - empty urls array",
+  () =>
+    pipe(
+      COMPLETE_VALID_CODE,
+      replace(
+        'url: new URL("/@johndoe", ctx.origin),',
+        "urls: [],",
+      ),
+      assertHasError("actor-profile-url-required"),
+    ),
+);
+
+test(
   "Integration: ❌ actor-inbox-property-required - missing inbox property",
   () =>
     pipe(

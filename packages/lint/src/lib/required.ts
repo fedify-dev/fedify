@@ -11,6 +11,7 @@ import {
 import {
   createPropertyChecker,
   createPropertySearcher,
+  isNonEmptyInitializer,
 } from "./property-checker.ts";
 import { trackFederationVariables } from "./tracker.ts";
 import type {
@@ -74,11 +75,14 @@ function createRequiredRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
     );
     const actorDispatchers: FunctionNode[] = [];
 
-    const propertyChecker = createPropertyChecker(Boolean)(
+    const valueChecker = config.requireNonEmptyValue
+      ? isNonEmptyInitializer
+      : Boolean;
+    const propertyChecker = createPropertyChecker(valueChecker)(
       config.path,
     );
     const pluralPropertyChecker = config.pluralName == null ? null : (
-      createPropertyChecker(Boolean)([
+      createPropertyChecker(valueChecker)([
         ...config.path.slice(0, -1),
         config.pluralName,
       ])

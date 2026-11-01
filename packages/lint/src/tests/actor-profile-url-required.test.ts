@@ -26,12 +26,106 @@ federation.setActorDispatcher(
 );
 `;
 
+const blockBody = (body: string) => `
+federation.setActorDispatcher(
+  "/users/{identifier}",
+  (ctx, identifier) => {
+    ${body}
+  },
+);
+`;
+
 runTests(ruleName, {
   ...createDirectActorPropertyRequiredRuleTests("url", {
     singular: PROFILE_URL,
     plural: `[${PROFILE_URL}]`,
   }, config),
   ...createRequiredEdgeCaseTests("url", config),
+
+  // ✅ Good - quoted property keys are still recognized
+  "quoted url property": [
+    lintTest({
+      code: conciseBody(
+        `new Person({ "url": ${PROFILE_URL}, name: "John Doe" })`,
+      ),
+      rule,
+      ruleName,
+    }),
+    true,
+  ],
+
+  // ✅ Good - quoted plural key is still recognized
+  "quoted plural urls property": [
+    lintTest({
+      code: conciseBody(
+        `new Person({ "urls": [${PROFILE_URL}], name: "John Doe" })`,
+      ),
+      rule,
+      ruleName,
+    }),
+    true,
+  ],
+
+  // ❌ Bad - a null URL is not a profile URL
+  "null url": [
+    lintTest({
+      code: conciseBody(`new Person({ url: null, name: "John Doe" })`),
+      rule,
+      ruleName,
+      expectedError,
+    }),
+    false,
+  ],
+
+  // ❌ Bad - TypeScript assertions do not hide a null URL
+  "null url with TypeScript assertion": [
+    lintTest({
+      code: conciseBody(
+        `new Person({ url: null as URL | null, name: "John Doe" })`,
+      ),
+      rule,
+      ruleName,
+      expectedError,
+    }),
+    false,
+  ],
+
+  // ❌ Bad - an empty urls array has no profile URL
+  "empty urls array": [
+    lintTest({
+      code: conciseBody(`new Person({ urls: [], name: "John Doe" })`),
+      rule,
+      ruleName,
+      expectedError,
+    }),
+    false,
+  ],
+
+  // ❌ Bad - TypeScript assertions do not hide an empty urls array
+  "empty urls array with TypeScript assertion": [
+    lintTest({
+      code: conciseBody(
+        `new Person({ urls: [] as URL[], name: "John Doe" })`,
+      ),
+      rule,
+      ruleName,
+      expectedError,
+    }),
+    false,
+  ],
+
+  // ✅ Good - a shorthand url property still counts
+  "shorthand url property": [
+    lintTest({
+      code: blockBody(
+        `const url = ${PROFILE_URL};
+    return new Person({ url, name: "John Doe" });`,
+      ),
+      rule,
+      ruleName,
+    }),
+    true,
+  ],
 
   // ✅ Good - concise-body dispatcher returning an actor with a singular URL
   "concise-body dispatcher with url": [
