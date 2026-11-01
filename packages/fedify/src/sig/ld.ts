@@ -2,6 +2,7 @@ import { Activity, CryptographicKey, getTypeId, Object } from "@fedify/vocab";
 import {
   type DocumentLoader,
   getDocumentLoader,
+  preloadedContexts,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
@@ -628,38 +629,76 @@ const signatureDefiningContexts: ReadonlySet<string> = new Set([
   "https://w3id.org/identity/v1",
   "https://w3id.org/security/v1",
 ]);
+// Preloaded contexts that do not define `signature`.  Unrecognized remote
+// contexts stay out of this set, since resolving them requires a loader that
+// attachSignature() does not have.
+const signatureFreeContexts: ReadonlySet<string> = getSignatureFreeContexts();
 
-function definesSignatureTerm(context: unknown): boolean {
-  if (typeof context === "string") {
-    return signatureDefiningContexts.has(context);
-  }
-  if (Array.isArray(context)) {
-    let defined = false;
-    for (const entry of context) {
-      if (entry == null) {
-        defined = false;
-      } else if (typeof entry === "string") {
-        if (signatureDefiningContexts.has(entry)) defined = true;
-      } else if (typeof entry === "object") {
-        const record = entry as Record<string, unknown>;
-        if (
-          globalThis.Object.prototype.hasOwnProperty.call(record, "signature")
-        ) {
-          defined = record["signature"] != null;
-        }
-      }
+function getSignatureFreeContexts(): ReadonlySet<string> {
+  const urls = new Set<string>();
+  for (
+    const [url, document] of globalThis.Object.entries(preloadedContexts)
+  ) {
+    if (typeof document !== "object" || document == null) continue;
+    const context = (document as Record<string, unknown>)["@context"];
+    if (
+      typeof context !== "object" || context == null || Array.isArray(context)
+    ) {
+      continue;
     }
-    return defined;
-  }
-  if (typeof context === "object" && context != null) {
     const record = context as Record<string, unknown>;
-    return globalThis.Object.prototype.hasOwnProperty.call(
-      record,
-      "signature",
-    ) &&
-      record["signature"] != null;
+    if (
+      !globalThis.Object.prototype.hasOwnProperty.call(record, "signature")
+    ) {
+      urls.add(url);
+    }
   }
-  return false;
+  return urls;
+}
+
+type SignatureTermState = "defined" | "absent" | "unknown";
+type ContextEntryEffect = "defines" | "resets" | "absent" | "unknown";
+
+function getContextEntryEffect(entry: unknown): ContextEntryEffect {
+  if (entry == null) return "resets";
+  if (typeof entry === "string") {
+    if (signatureDefiningContexts.has(entry)) return "defines";
+    if (signatureFreeContexts.has(entry)) return "absent";
+    return "unknown";
+  }
+  if (typeof entry !== "object") return "absent";
+  const record = entry as Record<string, unknown>;
+  if (globalThis.Object.prototype.hasOwnProperty.call(record, "signature")) {
+    return record["signature"] == null ? "resets" : "defines";
+  }
+  if (globalThis.Object.prototype.hasOwnProperty.call(record, "@import")) {
+    return "unknown";
+  }
+  return "absent";
+}
+
+function getSignatureTermState(context: unknown): SignatureTermState {
+  if (context == null) return "absent";
+  if (!Array.isArray(context)) {
+    const effect = getContextEntryEffect(context);
+    return effect === "defines"
+      ? "defined"
+      : effect === "unknown"
+      ? "unknown"
+      : "absent";
+  }
+  let state: SignatureTermState = "absent";
+  for (const entry of context) {
+    const effect = getContextEntryEffect(entry);
+    if (effect === "defines") {
+      state = "defined";
+    } else if (effect === "resets") {
+      state = "absent";
+    } else if (effect === "unknown" && state !== "defined") {
+      state = "unknown";
+    }
+  }
+  return state;
 }
 
 function prepareSignatureDocument(jsonLd: unknown): unknown {
@@ -671,7 +710,9 @@ function prepareSignatureDocument(jsonLd: unknown): unknown {
   // would invalidate it, so leave proof-bearing documents unchanged.
   if (document["proof"] != null) return { ...document };
   const context = document["@context"];
-  if (definesSignatureTerm(context)) return { ...document };
+  // An unknown remote context may already define `signature`, possibly as a
+  // protected term, so leave it unchanged rather than risk redefining it.
+  if (getSignatureTermState(context) !== "absent") return { ...document };
   return {
     ...document,
     "@context": context == null
@@ -705,7 +746,8 @@ export interface Signature {
  * Without that definition, expanding the attached signature would produce a
  * blank node predicate, which is not valid RDF.  Documents that already carry
  * a `proof` are left unchanged, since a new context definition would invalidate
- * the proof.
+ * the proof.  Documents whose context includes an unrecognized remote context
+ * are also left unchanged, since that context may already define `signature`.
  * @param jsonLd The JSON-LD document to attach the signature to.  It is not
  *               modified.
  * @param signature The signature to attach.
@@ -753,7 +795,8 @@ export interface CreateSignatureOptions {
  * If the document's context does not define the `signature` property, the
  * signature is computed over the document with a minimal inline definition
  * added.  Use {@link attachSignature} to attach the signature to that exact
- * document.  Documents that already carry a `proof` are hashed unchanged.
+ * document.  Documents that already carry a `proof`, or whose context includes
+ * an unrecognized remote context, are hashed unchanged.
  * @param jsonLd The JSON-LD document to sign.
  * @param privateKey The private key to sign the document.
  * @param keyId The ID of the public key that corresponds to the private key.
