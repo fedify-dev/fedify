@@ -65,6 +65,8 @@ function hasMalformedExpandedQuestionClosedLiteral(value: unknown): boolean {
   // literals
   // that pass the Date gate and then fail Temporal.Instant.from() still raise
   // RangeError and therefore belong in this boundary recovery path.
+  // Keep in lockstep with the xsd:dateTime dataCheck() in
+  // packages/vocab-tools/src/type.ts.
   if (value["@type"] !== XSD_DATE_TIME_IRI) return false;
   if (
     new Date(literal).toString() === "Invalid Date" &&

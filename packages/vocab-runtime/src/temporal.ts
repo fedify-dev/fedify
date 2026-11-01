@@ -1,5 +1,6 @@
 /**
- * Type guards for `Temporal` namespace objects.
+ * Type guards for `Temporal` namespace objects and normalization of
+ * `xsd:dateTime` literals.
  *
  * Fedify accepts both runtime polyfills (e.g. `@js-temporal/polyfill`,
  * `temporal-polyfill`) and the host's native `Temporal` implementation

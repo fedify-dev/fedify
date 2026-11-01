@@ -204,6 +204,8 @@ const scalarTypes: Record<string, ScalarType> = {
       return `${v}.toString()`;
     },
     dataCheck(v) {
+      // Keep in lockstep with hasMalformedExpandedQuestionClosedLiteral() in
+      // packages/fedify/src/federation/temporal.ts.
       return `typeof ${v} === "object" && "@type" in ${v}
         && "@value" in ${v} && typeof ${v}["@value"] === "string"
         && ${v}["@type"] === "http://www.w3.org/2001/XMLSchema#dateTime"
