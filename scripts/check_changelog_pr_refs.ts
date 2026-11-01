@@ -345,6 +345,10 @@ async function git(projectRoot: string, args: string[]): Promise<string> {
     const { stdout } = await execFileAsync("git", args, {
       cwd: projectRoot,
       encoding: "utf8",
+      // Hooks export Git variables that can override the requested repository.
+      env: Object.fromEntries(
+        Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
+      ),
       // The changelog can outgrow the default limit of 1 MiB:
       maxBuffer: Infinity,
     });
