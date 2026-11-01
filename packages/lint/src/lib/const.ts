@@ -129,6 +129,18 @@ export const properties = {
     requiresIdentifier: false,
     pluralName: "preferredUsernames",
   },
+  url: {
+    name: "url",
+    path: ["url"],
+    setter: "setActorDispatcher",
+    requiresIdentifier: false,
+    pluralName: "urls",
+    reason:
+      "remote fediverse software uses it as the link to the actor's profile page",
+    recommendation:
+      "Set `url` (or the plural `urls` initializer) to the actor's " +
+      "human-readable profile URL.",
+  },
 } as const satisfies Record<string, PropertyConfig>;
 
 /**
@@ -149,6 +161,7 @@ export const RULE_IDS = {
   actorPublicKeyRequired: "actor-public-key-required",
   actorAssertionMethodRequired: "actor-assertion-method-required",
   actorPreferredUsernameRequired: "actor-preferred-username-required",
+  actorProfileUrlRequired: "actor-profile-url-required",
 
   // Mismatch rules
   actorIdMismatch: "actor-id-mismatch",

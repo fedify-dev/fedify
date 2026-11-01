@@ -116,6 +116,7 @@ test("loadDenoConfig keeps unstable.temporal before Deno 2.7.0", () => {
 test("loadDenoConfig excludes denokv deprecation lint rules", () => {
   const config = loadDenoConfig(createInitData()).data;
   assert.deepStrictEqual(config.lint.rules?.exclude, [
+    "fedify-lint/actor-profile-url-required",
     "fedify-lint/deno-kv-store-deprecated",
     "fedify-lint/deno-kv-message-queue-deprecated",
   ]);
@@ -128,11 +129,12 @@ test("loadDenoConfig excludes only the selected denokv rule", () => {
     mq: messageQueues["in-process"],
   }).data;
   assert.deepStrictEqual(config.lint.rules?.exclude, [
+    "fedify-lint/actor-profile-url-required",
     "fedify-lint/deno-kv-store-deprecated",
   ]);
 });
 
-test("loadDenoConfig leaves lint rules alone for supported backends", () => {
+test("loadDenoConfig keeps excluding advisory rules for supported backends", () => {
   const config = loadDenoConfig({
     ...createInitData(),
     kvStore: "redis",
@@ -140,7 +142,9 @@ test("loadDenoConfig leaves lint rules alone for supported backends", () => {
     kv: kvStores.redis,
     mq: messageQueues["in-process"],
   }).data;
-  assert.strictEqual(config.lint.rules, undefined);
+  assert.deepStrictEqual(config.lint.rules?.exclude, [
+    "fedify-lint/actor-profile-url-required",
+  ]);
 });
 
 test("loadDenoConfig uses npm for Astro Fedify adapters", async () => {

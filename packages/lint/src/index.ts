@@ -58,6 +58,9 @@ import {
   eslint as actorPreferredUsernameRequired,
 } from "./rules/actor-preferred-username-required.ts";
 import {
+  eslint as actorProfileUrlRequired,
+} from "./rules/actor-profile-url-required.ts";
+import {
   eslint as actorPublicKeyRequired,
 } from "./rules/actor-public-key-required.ts";
 import {
@@ -121,6 +124,7 @@ const rules: Record<
   [RULE_IDS.actorPublicKeyRequired]: actorPublicKeyRequired,
   [RULE_IDS.actorAssertionMethodRequired]: actorAssertionMethodRequired,
   [RULE_IDS.actorPreferredUsernameRequired]: actorPreferredUsernameRequired,
+  [RULE_IDS.actorProfileUrlRequired]: actorProfileUrlRequired,
   [RULE_IDS.collectionFilteringNotImplemented]: collectionFiltering,
   [RULE_IDS.outboxListenerDeliveryRequired]: outboxListenerDeliveryRequired,
   [RULE_IDS.outboxListenerDeliveryNotAwaited]: outboxListenerDeliveryNotAwaited,

@@ -90,6 +90,10 @@ To be released.
     download.  [[#1329], [#1330]]
  -  Changed debug logs for suppressed recursive lookup errors to preserve the
     original error as a cause alongside the failed target.  [[#901], [#1265]]
+ -  Changed `fedify init` to exclude the `actor-profile-url-required` lint
+    rule from generated Deno projects, because Deno Lint reports plugin rules
+    as errors and the default scaffold has no profile page.
+    [[#894], [#1352]]
  -  Changed `fedify init` to label the `denokv` key-value store and message
     queue as `denokv (deprecated)` in the interactive prompts.  The option
     stays selectable, `-k denokv` and `-m denokv` still work, and the generated
@@ -107,6 +111,7 @@ To be released.
     reporting the resource as not found.  [[#897], [#1296] by Jae-Hyuk-Jang\]
 
 [#893]: https://github.com/fedify-dev/fedify/issues/893
+[#894]: https://github.com/fedify-dev/fedify/issues/894
 [#897]: https://github.com/fedify-dev/fedify/issues/897
 [#901]: https://github.com/fedify-dev/fedify/issues/901
 [#1187]: https://github.com/fedify-dev/fedify/pull/1187
@@ -116,6 +121,7 @@ To be released.
 [#1330]: https://github.com/fedify-dev/fedify/pull/1330
 [#1335]: https://github.com/fedify-dev/fedify/issues/1335
 [#1340]: https://github.com/fedify-dev/fedify/pull/1340
+[#1352]: https://github.com/fedify-dev/fedify/pull/1352
 
 ### @fedify/debugger
 
@@ -160,6 +166,10 @@ To be released.
 
 ### @fedify/init
 
+ -  Changed generated Deno projects to exclude the
+    `actor-profile-url-required` lint rule, because Deno Lint reports plugin
+    rules as errors and the default scaffold has no profile page.
+    [[#894], [#1352]]
  -  Changed the interactive `fedify init` prompts to label the `denokv`
     key-value store and message queue as `denokv (deprecated)`.  The option
     stays selectable, `-k denokv` and `-m denokv` still work, and generated
@@ -246,6 +256,10 @@ To be released.
 
 ### @fedify/lint
 
+ -  Added the `actor-profile-url-required` lint rule, which warns when an
+    actor dispatcher's return value does not include a `url` (or `urls`)
+    profile URL.  The diagnostic explains the interoperability benefit without
+    treating the actor document as invalid.  [[#894], [#1352]]
  -  Added the `deno-kv-store-deprecated` and
     `deno-kv-message-queue-deprecated` rules, which warn when code imports or
     uses `DenoKvStore` or `DenoKvMessageQueue` from the deprecated

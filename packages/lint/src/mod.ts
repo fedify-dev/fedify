@@ -50,6 +50,9 @@ import {
   deno as actorPreferredUsernameRequired,
 } from "./rules/actor-preferred-username-required.ts";
 import {
+  deno as actorProfileUrlRequired,
+} from "./rules/actor-profile-url-required.ts";
+import {
   deno as actorPublicKeyRequired,
 } from "./rules/actor-public-key-required.ts";
 import {
@@ -118,6 +121,7 @@ const plugin: Deno.lint.Plugin = {
     [RULE_IDS.actorPublicKeyRequired]: actorPublicKeyRequired,
     [RULE_IDS.actorAssertionMethodRequired]: actorAssertionMethodRequired,
     [RULE_IDS.actorPreferredUsernameRequired]: actorPreferredUsernameRequired,
+    [RULE_IDS.actorProfileUrlRequired]: actorProfileUrlRequired,
     [RULE_IDS.collectionFilteringNotImplemented]: collectionFiltering,
     [RULE_IDS.outboxListenerDeliveryRequired]: outboxListenerDeliveryRequired,
     [RULE_IDS.mediaUploaderObjectUriRequired]: mediaUploaderObjectUriRequired,

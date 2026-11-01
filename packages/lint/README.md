@@ -82,6 +82,10 @@ federation code:
  -  **`actor-id-required`**: Ensures all actors have an `id` property
  -  **`actor-id-mismatch`**: Validates that actor IDs match the expected URI
     from `Context.getActorUri()`
+ -  **`actor-preferred-username-required`**: Ensures actors expose a stable
+    `preferredUsername`
+ -  **`actor-profile-url-required`**: Ensures actors include a `url` (or
+    `urls`) pointing to their human-readable profile page
  -  **`actor-public-key-required`**: Ensures actors have public keys for
     HTTP Signatures
  -  **`actor-assertion-method-required`**: Validates assertion methods for

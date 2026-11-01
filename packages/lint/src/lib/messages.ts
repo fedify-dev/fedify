@@ -11,10 +11,12 @@ export const actorPropertyRequired = ({
   path,
   getter,
   requiresIdentifier = true,
+  reason,
+  recommendation: recommendationOverride,
 }: PropertyConfig): string => {
   const propertyPath = path.join(".");
 
-  const recommendation = getter == null
+  const defaultRecommendation = getter == null
     ? `Set the \`${propertyPath}\` property directly on the actor object.`
     : `Use \`${
       getExpectedCall({
@@ -26,8 +28,11 @@ export const actorPropertyRequired = ({
       })
     }\` for the \`${propertyPath}\` property URI.`;
 
+  const recommendation = recommendationOverride ?? defaultRecommendation;
+  const reasonClause = reason == null ? "" : ` because ${reason}`;
+
   return `When \`${setter}\` is configured, the \`${propertyPath}\` ` +
-    `property is recommended. ${recommendation}`;
+    `property is recommended${reasonClause}. ${recommendation}`;
 };
 
 /**

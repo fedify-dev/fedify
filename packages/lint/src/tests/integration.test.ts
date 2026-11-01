@@ -147,6 +147,7 @@ federation
       id: ctx.getActorUri(identifier),
       name: "John Doe",
       preferredUsername: identifier,
+      url: new URL("/@johndoe", ctx.origin),
       summary: "A test actor for comprehensive lint rule validation",
       inbox: ctx.getInboxUri(identifier),
       endpoints: new Endpoints({
@@ -383,6 +384,16 @@ test("Integration: ❌ actor-preferred-username-required - missing preferred-use
       "// preferredUsername: identifier, // REMOVED",
     ),
     assertHasError("actor-preferred-username-required"),
+  ));
+
+test("Integration: ❌ actor-profile-url-required - missing url property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      'url: new URL("/@johndoe", ctx.origin),',
+      "// url: REMOVED",
+    ),
+    assertHasError("actor-profile-url-required"),
   ));
 
 test(
