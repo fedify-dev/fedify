@@ -66,6 +66,105 @@ runTests(ruleName, {
     true,
   ],
 
+  // ✅ Good - a computed string-literal key is statically known
+  "computed quoted url property": [
+    lintTest({
+      code: conciseBody(
+        `new Person({ ["url"]: ${PROFILE_URL}, name: "John Doe" })`,
+      ),
+      rule,
+      ruleName,
+    }),
+    true,
+  ],
+
+  // ✅ Good - a computed string-literal plural key is statically known
+  "computed quoted plural urls property": [
+    lintTest({
+      code: conciseBody(
+        `new Person({ ["urls"]: [${PROFILE_URL}], name: "John Doe" })`,
+      ),
+      rule,
+      ruleName,
+    }),
+    true,
+  ],
+
+  // ❌ Bad - a computed identifier key stays dynamic
+  "computed identifier key is not resolved": [
+    lintTest({
+      code: blockBody(
+        `const key = "url";
+    return new Person({ [key]: ${PROFILE_URL}, name: "John Doe" });`,
+      ),
+      rule,
+      ruleName,
+      expectedError,
+    }),
+    false,
+  ],
+
+  // ❌ Bad - an explicitly undefined URL is not a profile URL
+  "undefined url": [
+    lintTest({
+      code: conciseBody(
+        `new Person({ url: undefined, name: "John Doe" })`,
+      ),
+      rule,
+      ruleName,
+      expectedError,
+    }),
+    false,
+  ],
+
+  // ❌ Bad - an explicitly undefined plural URL is not a profile URL
+  "undefined urls": [
+    lintTest({
+      code: conciseBody(
+        `new Person({ urls: undefined, name: "John Doe" })`,
+      ),
+      rule,
+      ruleName,
+      expectedError,
+    }),
+    false,
+  ],
+
+  // ❌ Bad - a void expression has no profile URL
+  "void url": [
+    lintTest({
+      code: conciseBody(`new Person({ url: void 0, name: "John Doe" })`),
+      rule,
+      ruleName,
+      expectedError,
+    }),
+    false,
+  ],
+
+  // ❌ Bad - a void plural expression has no profile URL
+  "void urls": [
+    lintTest({
+      code: conciseBody(`new Person({ urls: void 0, name: "John Doe" })`),
+      rule,
+      ruleName,
+      expectedError,
+    }),
+    false,
+  ],
+
+  // ❌ Bad - TypeScript assertions do not hide undefined
+  "undefined url with TypeScript assertion": [
+    lintTest({
+      code: conciseBody(
+        `new Person({ url: undefined as URL | undefined, name: "John Doe" })`,
+      ),
+      rule,
+      ruleName,
+      expectedError,
+    }),
+    false,
+  ],
+
   // ❌ Bad - a null URL is not a profile URL
   "null url": [
     lintTest({

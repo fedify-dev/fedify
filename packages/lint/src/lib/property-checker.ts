@@ -29,9 +29,8 @@ import type {
 import { cases } from "./utils.ts";
 
 const getKeyName = (node: Property): string | null => {
-  if (node.computed) return null;
   const key = node.key;
-  if (key.type === "Identifier") return key.name;
+  if (key.type === "Identifier" && !node.computed) return key.name;
   if (key.type === "Literal" && typeof key.value === "string") {
     return key.value;
   }
@@ -40,7 +39,8 @@ const getKeyName = (node: Property): string | null => {
 
 /**
  * Checks if a node has a key with a specific name, whether the key is written
- * as an identifier (`url`) or as a non-computed string literal (`"url"`).
+ * as an identifier (`url`) or as a string literal (`"url"` or `["url"]`).
+ * Computed identifier keys stay dynamic and are not matched.
  */
 const hasKeyName = (propertyName: string) => (node: Property): boolean =>
   getKeyName(node) === propertyName;
@@ -127,6 +127,10 @@ const unwrapTypeScriptExpression = (node: Expression): Expression => {
 const isNullLiteral = (node: Expression): boolean =>
   node.type === "Literal" && node.value === null;
 
+const isUndefinedExpression = (node: Expression): boolean =>
+  (node.type === "Identifier" && node.name === "undefined") ||
+  (node.type === "UnaryExpression" && node.operator === "void");
+
 const isTombstoneExpression = (node: Expression): boolean =>
   node.type === "NewExpression" &&
   node.callee.type === "Identifier" &&
@@ -135,10 +139,10 @@ const isTombstoneExpression = (node: Expression): boolean =>
 /**
  * Checks whether a property initializer visibly carries a value.
  *
- * A `null` literal or an empty array literal means there is no value for
- * rules that require a profile URL, even though the property key is present.
- * TypeScript wrappers such as `as`, `satisfies`, and non-null assertions are
- * unwrapped first.
+ * A `null` literal, `undefined`, `void`, or an empty array literal means
+ * there is no value for rules that require a profile URL, even though the
+ * property key is present.  TypeScript wrappers such as `as`, `satisfies`,
+ * and non-null assertions are unwrapped first.
  */
 export const isNonEmptyInitializer = (
   node: Expression | AssignmentPattern,
@@ -147,7 +151,9 @@ export const isNonEmptyInitializer = (
     ? node.right as Expression
     : node;
   const expression = unwrapTypeScriptExpression(value);
-  if (isNullLiteral(expression)) return false;
+  if (isNullLiteral(expression) || isUndefinedExpression(expression)) {
+    return false;
+  }
   if (expression.type === "ArrayExpression") {
     return expression.elements.length > 0;
   }

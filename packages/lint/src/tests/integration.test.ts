@@ -410,6 +410,32 @@ test(
 );
 
 test(
+  "Integration: ✅ actor-profile-url-required - computed quoted url property",
+  () =>
+    pipe(
+      COMPLETE_VALID_CODE,
+      replace(
+        'url: new URL("/@johndoe", ctx.origin),',
+        '["url"]: new URL("/@johndoe", ctx.origin),',
+      ),
+      assertNoErrors,
+    ),
+);
+
+test(
+  "Integration: ❌ actor-profile-url-required - undefined url",
+  () =>
+    pipe(
+      COMPLETE_VALID_CODE,
+      replace(
+        'url: new URL("/@johndoe", ctx.origin),',
+        "url: undefined,",
+      ),
+      assertHasError("actor-profile-url-required"),
+    ),
+);
+
+test(
   "Integration: ❌ actor-profile-url-required - empty urls array",
   () =>
     pipe(
