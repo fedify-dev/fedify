@@ -217,6 +217,10 @@ test("handleActor()", async () => {
           "@type": "@id",
         },
         discoverable: "toot:discoverable",
+        attributionDomains: {
+          "@id": "toot:attributionDomains",
+          "@container": "@set",
+        },
         indexable: "toot:indexable",
         memorial: "toot:memorial",
         suspended: "toot:suspended",
@@ -326,6 +330,10 @@ test("handleActor()", async () => {
           "@type": "@id",
         },
         discoverable: "toot:discoverable",
+        attributionDomains: {
+          "@id": "toot:attributionDomains",
+          "@container": "@set",
+        },
         indexable: "toot:indexable",
         memorial: "toot:memorial",
         suspended: "toot:suspended",

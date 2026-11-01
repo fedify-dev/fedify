@@ -14,7 +14,9 @@ Walk through:
     object or `FederationBuilder`, including the `{identifier}` path
     parameter.
 2.  Returning a `Person`, `Service`, or other `Actor` vocabulary object
-    with the required fields (`id`, `inbox`, `publicKey`, etc.).
+    with the required fields (`id`, `inbox`, `publicKey`, etc.).  Set
+    `attributionDomains` to bare host names when the actor should be
+    credited on Mastodon link previews; Fedify does not normalize them.
 3.  Chaining `.setKeyPairsDispatcher()` to supply RSA and Ed25519 keys.
 4.  Optionally configuring `mapActorAlias()` for handle-based or
     fixed-path aliases.

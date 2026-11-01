@@ -60,6 +60,13 @@ To be released.
     for maps that will be rejected.  Policy-rejected maps now appear in
     `onRequestFinished` verification reports with their policy failure and no
     signature checks.  [[#1177], [#1264]]
+ -  Changed compound proof verification to accept `"@container": "@set"` term
+    definitions in actor contexts when deciding whether embedded portable keys
+    are covered by the actor's proof.  A `@set` container only forces expanded
+    values into arrays, so it does not make key expansion ambiguous; `@list`
+    and other containers remain rejected.  This keeps portable actors that
+    publish container terms such as Mastodon's `attributionDomains`
+    verifiable.  [[#1234], [#1353]]
  -  Fixed log entries emitted during an individual outbound activity delivery
     or inbound activity processing carrying the enclosing HTTP request's or
     queue worker's `traceId`/`spanId` instead of the delivery or processing
@@ -75,12 +82,14 @@ To be released.
 [#1030]: https://github.com/fedify-dev/fedify/issues/1030
 [#1177]: https://github.com/fedify-dev/fedify/issues/1177
 [#1205]: https://github.com/fedify-dev/fedify/pull/1205
+[#1234]: https://github.com/fedify-dev/fedify/issues/1234
 [#1264]: https://github.com/fedify-dev/fedify/pull/1264
 [#1289]: https://github.com/fedify-dev/fedify/issues/1289
 [#1290]: https://github.com/fedify-dev/fedify/issues/1290
 [#1299]: https://github.com/fedify-dev/fedify/pull/1299
 [#1318]: https://github.com/fedify-dev/fedify/issues/1318
 [#1328]: https://github.com/fedify-dev/fedify/pull/1328
+[#1353]: https://github.com/fedify-dev/fedify/pull/1353
 
 ### @fedify/cli
 
@@ -287,6 +296,17 @@ To be released.
     entries may not be visited.  Accessor and serialization traversal costs are
     unchanged.  [[#1243], [#1337]]
 
+ -  Added the `attributionDomains` property to `Application`, `Group`,
+    `Organization`, `Person`, and `Service`, so applications can publish the
+    domains an actor claims for Mastodon's `fediverse:creator` link credits
+    without subclassing the actor types.  Each value is a bare host name
+    without a scheme, port, path, or leading `*.`; Fedify treats the values as
+    opaque strings and does not normalize them.  Actor serialization and
+    `Update` documents that embed an actor now compact the property as
+    `attributionDomains` instead of `toot:attributionDomains`, which is the key
+    Mastodon reads when it refreshes an account, and parsing accepts both
+    a single string value and an array of strings.  [[#1234], [#1353]]
+
  -  Added vocabulary support for the [FEP-6757] draft, which marks
     ActivityPub content with explicit copyright license URIs.
     [[#1212], [#1241]]
@@ -327,6 +347,11 @@ To be released.
 
 ### @fedify/vocab-tools
 
+ -  Added `@container` support to embedded `defaultContext` term definitions
+    in the vocabulary schema.  Terms such as Mastodon's `attributionDomains`
+    can now use `"@container": "@set"` or `"@container": "@list"` to match
+    their published JSON-LD contexts, while existing term definitions keep
+    validating as before.  [[#1234], [#1353]]
  -  Added non-functional `redundantProperties` support with ordered fallback
     to the first non-empty value set, preserving lists and graphs without
     merging synonyms.  Added `redundantPropertiesWrite: canonical` to write

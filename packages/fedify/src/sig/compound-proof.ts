@@ -1319,6 +1319,8 @@ function isKeyIdOf(id: string, portableId: string): boolean {
  * Checks whether a `@context` value defines no keyword aliases and no scoped
  * contexts: only references to contexts and term definitions that map terms
  * to IRIs, optionally with an `@id` or `@vocab` type coercion or a datatype.
+ * A `@set` container is accepted because it only forces expanded values into
+ * arrays, which expansion does anyway; `@list` and other containers are not.
  */
 function isSimpleContext(context: CompoundProofJsonValue | undefined): boolean {
   if (typeof context === "string") return true;
@@ -1330,9 +1332,15 @@ function isSimpleContext(context: CompoundProofJsonValue | undefined): boolean {
     if (term.startsWith("@")) return false;
     if (typeof definition === "string") return !definition.startsWith("@");
     if (!isCompoundProofJsonObject(definition)) return false;
-    const { "@id": id, "@type": type, ...rest } = definition;
+    const {
+      "@id": id,
+      "@type": type,
+      "@container": container,
+      ...rest
+    } = definition;
     return Object.keys(rest).length < 1 &&
       typeof id === "string" && !id.startsWith("@") &&
+      (container === undefined || container === "@set") &&
       (type === undefined || type === "@id" || type === "@vocab" ||
         typeof type === "string" && !type.startsWith("@"));
   });
