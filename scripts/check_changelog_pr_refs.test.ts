@@ -413,7 +413,16 @@ describe("checkChangelogPrRefs()", () => {
         "-c",
         "gc.auto=0",
         ...args,
-      ], { cwd: root, encoding: "utf8" });
+      ], {
+        cwd: root,
+        encoding: "utf8",
+        // A commit hook's Git environment must not escape into the fixture.
+        env: Object.fromEntries(
+          Object.entries(process.env).filter(([key]) =>
+            !key.startsWith("GIT_")
+          ),
+        ),
+      });
       return stdout.trim();
     } catch (error) {
       throw new Error((error as { stderr?: string }).stderr ?? String(error));
@@ -464,6 +473,33 @@ describe("checkChangelogPrRefs()", () => {
       await rm(root, { recursive: true, force: true });
     }
   }
+
+  it("ignores repository-local Git variables inherited from hooks", async () => {
+    const foreign = await mkdtemp(join(tmpdir(), "fedify-foreign-git-"));
+    const blocker = join(foreign, "not-a-directory");
+    await writeFile(blocker, "block inherited Git paths");
+    const keys = [
+      "GIT_DIR",
+      "GIT_COMMON_DIR",
+      "GIT_WORK_TREE",
+      "GIT_INDEX_FILE",
+      "GIT_OBJECT_DIRECTORY",
+    ];
+    const previous = keys.map((key) => process.env[key]);
+    try {
+      for (const key of keys) process.env[key] = join(blocker, key);
+      const result = await withRepository(async (root) => {
+        await commit(root, { "src/foo.ts": "export {};\n" });
+      });
+      deepStrictEqual(result, { fragments: [], violations: [] });
+    } finally {
+      for (const [index, key] of keys.entries()) {
+        if (previous[index] == null) delete process.env[key];
+        else process.env[key] = previous[index];
+      }
+      await rm(foreign, { recursive: true, force: true });
+    }
+  });
 
   it("passes a pull request without changelog fragments", async () => {
     const result = await withRepository(async (root) => {

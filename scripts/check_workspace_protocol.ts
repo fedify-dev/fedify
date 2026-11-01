@@ -8,8 +8,11 @@
  * It replaces the previous Bash + `find` + `jq` implementation so the check
  * runs identically on Windows, macOS, and Linux without external tools.
  */
-import { walk } from "@std/fs/walk";
-import { dirname, fromFileUrl, relative, resolve } from "@std/path";
+import { dirname, join, relative, resolve } from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
+import { fileSystem, isNotFound } from "./tooling_fs.ts";
+import { isMain } from "./tooling_main.ts";
 
 const DEPENDENCY_FIELDS = [
   "dependencies",
@@ -19,30 +22,33 @@ const DEPENDENCY_FIELDS = [
 ] as const;
 
 /** Walk package manifests without entering temporary codegen locks. */
-export function walkPackageManifests(projectRoot: string) {
-  return walk(projectRoot, {
-    includeDirs: false,
-    // Match the path separator with a character class so these patterns stay
-    // valid on Windows too, where @std/path's SEPARATOR is a backslash and
-    // would corrupt a dynamically built RegExp (e.g. `(?:^|\)package\.json$`).
-    match: [/(?:^|[/\\])package\.json$/],
-    skip: [
-      /(?:^|[/\\])node_modules(?:[/\\]|$)/,
-      /(?:^|[/\\])\.git(?:[/\\]|$)/,
-      // Codegen removes its lock on completion, even when generation is skipped.
-      /(?:^|[/\\])\.vocab-codegen\.lock(?:[/\\]|$)/,
-    ],
-  });
+export async function* walkPackageManifests(
+  projectRoot: string,
+): AsyncGenerator<{ path: string }> {
+  try {
+    for await (const entry of fileSystem.readDir(projectRoot)) {
+      if (
+        ["node_modules", ".git", ".vocab-codegen.lock"].includes(entry.name)
+      ) {
+        continue;
+      }
+      const path = join(projectRoot, entry.name);
+      if (entry.isDirectory()) yield* walkPackageManifests(path);
+      else if (entry.name === "package.json") yield { path };
+    }
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+  }
 }
 
-if (import.meta.main) {
-  const projectRoot = resolve(dirname(fromFileUrl(import.meta.url)), "..");
+if (isMain(import.meta.url)) {
+  const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
   let found = false;
   for await (const entry of walkPackageManifests(projectRoot)) {
     let manifest: Record<string, unknown>;
     try {
-      const parsed = JSON.parse(await Deno.readTextFile(entry.path));
+      const parsed = JSON.parse(await fileSystem.readTextFile(entry.path));
       // A package.json could be `null`, a string, a number, or an array; skip
       // anything that is not a plain object so the field lookups below are safe.
       if (
@@ -85,8 +91,8 @@ if (import.meta.main) {
   if (found) {
     console.error("");
     console.error("Valid formats: workspace:*, workspace:^, workspace:~");
-    Deno.exit(1);
+    process.exitCode = 1;
   }
 
-  console.log("All workspace: specifiers are valid");
+  if (!found) console.log("All workspace: specifiers are valid");
 }

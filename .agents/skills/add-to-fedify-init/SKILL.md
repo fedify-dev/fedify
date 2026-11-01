@@ -3,7 +3,7 @@ name: add-to-fedify-init
 description: >-
   This skill is used to add an integration package to the @fedify/init
   package so that users can select the new framework via the `fedify init`
-  command, and to test it with `mise test:init`.
+  command, and to test it with `mise run test:init`.
 argument-hint: "Provide the name of the web framework to register in @fedify/init."
 ---
 
@@ -16,7 +16,7 @@ Follow these steps in order to register the integration package in
 `@fedify/init` and verify it works.
 
 1.  Add to `@fedify/init`
-2.  Test with `mise test:init`
+2.  Test with `mise run test:init`
 3.  Lint, format, and final checks
 
 
@@ -77,39 +77,42 @@ the `readTemplate` function defined in `packages/init/src/lib.ts` and add
 them to the `WebFrameworkDescription.init().files` object.
 
 
-Test with `mise test:init`
---------------------------
+Test with `mise run test:init`
+------------------------------
 
-Run `mise test:init` to verify that the new package is generated and runs
+Run `mise run test:init` to verify that the new package is generated and runs
 correctly.  If a test fails, the output and error file paths are printed;
 read them to diagnose the issue.
 
-Running `mise test:init` without arguments tests all option combinations
-and can take a very long time.  Use appropriate options to narrow the test
-scope.
+The harness runs on Node.js, while generated projects use their selected
+runtime.  Running `mise run test:init` without arguments includes Deno targets
+and requires Deno.  It tests all option combinations and can take a very long
+time.  Use appropriate options to narrow the test scope.  To test only Node.js
+targets without Deno, select `-p npm -k in-memory -m in-process` along with the
+framework.
 
 Immediately remove test paths after completing the tests and analyzing any
 resulting errors.
 
 At a minimum, test the following three combinations.
 
- -  `mise test:init -w framework -m in-process -k in-memory --no-dry-run`:
+ -  `mise run test:init -- -w framework -m in-process -k in-memory --no-dry-run`:
     Tests the new framework with the in-memory KV store and in-process message
     queue, which are the most basic options.  This combination verify that the
     newly created package can be used without issues by minimizing dependencies
     on other environments.
- -  `mise test:init -w framework`: Tests all package manager, KV store,
+ -  `mise run test:init -- -w framework`: Tests all package manager, KV store,
     and message queue combinations with the framework selected.  If a
     required database is not installed or running, this combinations are
     useless. Therefore, if the test output indicates that the databases are
     not running, don't use this combination ever again for the session.  
     Instead, use the previous one or the next one.
- -  `mise test:init -m in-process -k in-memory --no-dry-run`: Fixes the
+ -  `mise run test:init -- -m in-process -k in-memory --no-dry-run`: Fixes the
     KV store and message queue and tests all web framework and package
     manager combinations.  This test is mandatory if you modified logic
     beyond just writing the `WebFrameworkDescription` object.
 
-For details on options, run `mise test:init --help`.
+For details on options, run `mise run test:init -- --help`.
 
 Some frameworks or combinations may be untestable.  Analyze the test
 results; if there are impossible combinations, identify the reason and add
@@ -124,6 +127,6 @@ Lint, format, and final checks
 Add keywords related to the framework in `.hongdown.toml` and `cspell.json` in
 root path.
 
-After implementation, run `mise run fmt && mise check`.
+After implementation, run `mise run fmt && mise run check`.
 If there are lint or format errors, fix them and run the command again until
 there are no errors.

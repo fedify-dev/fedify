@@ -123,13 +123,13 @@ jobs:
 
         {
           echo 'table<<EOFTABLE'
-          deno run -A scripts/generate_packages_table.ts --format=table "$VERSION" "$SHORT_VERSION"
+          node --experimental-strip-types scripts/generate_packages_table.ts --format=table "$VERSION" "$SHORT_VERSION"
           echo 'EOFTABLE'
         } >> $GITHUB_OUTPUT
 
         {
           echo 'links<<EOFLINKS'
-          deno run -A scripts/generate_packages_table.ts --format=links "$VERSION" "$SHORT_VERSION"
+          node --experimental-strip-types scripts/generate_packages_table.ts --format=links "$VERSION" "$SHORT_VERSION"
           echo 'EOFLINKS'
         } >> $GITHUB_OUTPUT
 

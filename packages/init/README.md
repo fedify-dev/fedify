@@ -72,13 +72,16 @@ import { initCommand, runInit } from "@fedify/init";
 Test
 ----
 
-The `test-init` task is useful for contributors working on `@fedify/init`,
+The `test:init` task is useful for contributors working on `@fedify/init`,
 especially when adding support for a new framework/library or modifying the
 scaffolding logic.  It tests the project initialization by running
-`fedify init` across all combinations of supported options on temporary
+`fedify init` across all combinations of supported options in temporary
 directories, verifying that the generated projects are valid.
 
-To run the test, use the mise task from the repository root:
+The harness runs on Node.js 22.18 or later, using
+`--experimental-transform-types` for the initializer source.  The default
+matrix includes Deno projects and requires Deno as well.  To run it, use the
+mise task from the repository root:
 
 ~~~~ sh
 mise run test:init
@@ -87,8 +90,13 @@ mise run test:init
 You can also filter specific options to test a subset of combinations:
 
 ~~~~ sh
-mise run test:init -w hono -p deno
+mise run test:init -- -w hono -p npm -k in-memory -m in-process
+mise run test:init -- -w hono -p deno
 ~~~~
 
+The first command tests only Node.js targets and needs no Deno executable or
+cache.  The second tests the Hono targets that use Deno.
+
 Use `--no-dry-run` to test with actual file creation and dependency
-installation, or `--no-hyd-run` to only log outputs without creating files.
+installation, or `--no-hyd-run` to preview generation without scaffolding apps
+or installing dependencies.  The harness writes log files for both modes.

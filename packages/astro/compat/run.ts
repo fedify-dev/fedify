@@ -1,5 +1,21 @@
-import { copy } from "@std/fs";
-import { dirname, fromFileUrl, join, resolve } from "@std/path";
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { createServer } from "node:net";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
+import {
+  commandOutput,
+  startCommand,
+} from "../../../scripts/tooling_process.ts";
 
 interface CompatibilityCase {
   astro: string;
@@ -15,13 +31,13 @@ const DEFAULT_CASES: CompatibilityCase[] = [
   { astro: "^7.0.0", adapter: "^11.0.0", runtime: "bun" },
 ];
 
-const compatDir = dirname(fromFileUrl(import.meta.url));
+const compatDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(compatDir, "../../..");
 
 await main();
 
 async function main(): Promise<void> {
-  const selected = parseArgs(Deno.args);
+  const selected = parseArgs(process.argv.slice(2));
   const cases = selected == null ? DEFAULT_CASES : [selected];
   for (const testCase of cases) await testCompatibility(testCase);
 }
@@ -56,17 +72,17 @@ async function testCompatibility(testCase: CompatibilityCase): Promise<void> {
   const label =
     `Astro ${testCase.astro}, ${adapterName} ${testCase.adapter}, ${testCase.runtime}`;
   console.log(`Testing ${label}...`);
-  const tempDir = await Deno.makeTempDir({ prefix: "fedify-astro-compat-" });
-  const port = reservePort();
+  const tempDir = await mkdtemp(join(tmpdir(), "fedify-astro-compat-"));
+  const port = await reservePort();
   let testFailed = false;
   try {
     const tarballs = await packFedifyPackages(tempDir);
-    await Deno.writeTextFile(
+    await writeFile(
       join(tempDir, "astro.config.mjs"),
       await getAstroConfig(testCase, port),
     );
-    await copy(join(compatDir, "src"), join(tempDir, "src"));
-    await Deno.writeTextFile(
+    await cp(join(compatDir, "src"), join(tempDir, "src"), { recursive: true });
+    await writeFile(
       join(tempDir, "package.json"),
       JSON.stringify(
         {
@@ -104,7 +120,7 @@ async function testCompatibility(testCase: CompatibilityCase): Promise<void> {
     testFailed = true;
     throw error;
   } finally {
-    if (Deno.env.get("KEEP_ASTRO_COMPAT") == null) {
+    if (process.env.KEEP_ASTRO_COMPAT == null) {
       await removeTempDir(tempDir, testFailed);
     } else {
       console.log(`Kept compatibility fixture at ${tempDir}.`);
@@ -114,7 +130,7 @@ async function testCompatibility(testCase: CompatibilityCase): Promise<void> {
 
 async function removeTempDir(tempDir: string, testFailed: boolean) {
   try {
-    await Deno.remove(tempDir, { recursive: true });
+    await rm(tempDir, { recursive: true });
   } catch (error) {
     if (!testFailed) throw error;
     console.error(
@@ -141,7 +157,7 @@ async function getAstroConfig(
   port: number,
 ): Promise<string> {
   if (!testCase.astro.startsWith("^7.")) {
-    return await Deno.readTextFile(join(compatDir, "astro.config.mjs.tpl"));
+    return await readFile(join(compatDir, "astro.config.mjs.tpl"), "utf8");
   }
   const astroDescription = (
     await import("../../init/src/webframeworks/astro.ts")
@@ -190,7 +206,7 @@ async function packFedifyPackages(
   for (const packageName of packages) {
     const packageDir = join(repoRoot, "packages", packageName);
     const outputDir = join(tempDir, "packages", packageName);
-    await Deno.mkdir(outputDir, { recursive: true });
+    await mkdir(outputDir, { recursive: true });
     await run(
       [
         "pnpm",
@@ -202,10 +218,10 @@ async function packFedifyPackages(
       packageDir,
     );
     const packageJson = JSON.parse(
-      await Deno.readTextFile(join(packageDir, "package.json")),
+      await readFile(join(packageDir, "package.json"), "utf8"),
     );
-    for await (const entry of Deno.readDir(outputDir)) {
-      if (entry.isFile && entry.name.endsWith(".tgz")) {
+    for (const entry of await readdir(outputDir, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name.endsWith(".tgz")) {
         tarballs.set(
           packageJson.name,
           `file:./packages/${packageName}/${entry.name}`,
@@ -221,20 +237,27 @@ async function exerciseServer(
   runtime: "node" | "deno" | "bun",
   port: number,
 ): Promise<void> {
-  const command = new Deno.Command(runtime, {
-    args: runtime === "deno"
+  const child = startCommand(
+    runtime === "node" ? process.execPath : runtime,
+    runtime === "deno"
       ? ["run", "-A", "dist/server/entry.mjs"]
       : ["dist/server/entry.mjs"],
-    cwd: dir,
-    env: { HOST: "127.0.0.1", PORT: String(port) },
-    stdout: "piped",
-    stderr: "piped",
-  });
-  const process = command.spawn();
-  const stdoutPromise = new Response(process.stdout).text();
-  const stderrPromise = new Response(process.stderr).text();
+    {
+      cwd: dir,
+      env: { HOST: "127.0.0.1", PORT: String(port) },
+    },
+  );
+  const stdoutPromise = new Response(child.stdout).text();
+  const stderrPromise = new Response(child.stderr).text();
   try {
-    await waitUntilReady(`http://127.0.0.1:${port}/users/alice`);
+    await Promise.race([
+      waitUntilReady(`http://127.0.0.1:${port}/users/alice`),
+      child.status.then((status) => {
+        throw new Error(
+          `Server exited before validation (code ${status.code})`,
+        );
+      }),
+    ]);
     const html = await fetch(`http://127.0.0.1:${port}/users/alice`, {
       headers: { Accept: "text/html" },
     });
@@ -300,7 +323,7 @@ async function exerciseServer(
       await notAcceptable.body?.cancel();
     }
   } catch (error) {
-    await stopProcess(process);
+    await child.stop();
     const [stdout, stderr] = await Promise.all([
       stdoutPromise,
       stderrPromise,
@@ -309,57 +332,31 @@ async function exerciseServer(
     console.error(stderr);
     throw error;
   } finally {
-    await Promise.all([stopProcess(process), stdoutPromise, stderrPromise]);
+    await Promise.all([child.stop(), stdoutPromise, stderrPromise]);
   }
 }
 
-async function stopProcess(process: Deno.ChildProcess): Promise<void> {
-  const status = process.status;
-  try {
-    process.kill(Deno.build.os === "windows" ? "SIGKILL" : "SIGTERM");
-  } catch {
-    await status;
-    return;
-  }
-  if (Deno.build.os === "windows") {
-    await status;
-    return;
-  }
-
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  let exited: boolean;
-  try {
-    exited = await Promise.race([
-      status.then(() => true),
-      new Promise<false>((resolve) => {
-        timeoutId = setTimeout(() => resolve(false), 1_000);
-      }),
-    ]);
-  } finally {
-    if (timeoutId != null) clearTimeout(timeoutId);
-  }
-  if (!exited) {
-    try {
-      process.kill("SIGKILL");
-    } catch {
-      // The server may have exited after the grace period elapsed.
-    }
-  }
-  await status;
-}
-
-function reservePort(): number {
-  const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
-  const port = (listener.addr as Deno.NetAddr).port;
-  listener.close();
-  return port;
+async function reservePort(): Promise<number> {
+  const server = createServer();
+  return await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (address == null || typeof address === "string") {
+        server.close();
+        reject(new Error("Cannot reserve compatibility port"));
+        return;
+      }
+      server.close((error) => error ? reject(error) : resolve(address.port));
+    });
+  });
 }
 
 async function waitUntilReady(url: string): Promise<void> {
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { signal: AbortSignal.timeout(2_000) });
       await response.body?.cancel();
       return;
     } catch {
@@ -370,12 +367,7 @@ async function waitUntilReady(url: string): Promise<void> {
 }
 
 async function run(command: string[], cwd: string): Promise<void> {
-  const output = await new Deno.Command(command[0], {
-    args: command.slice(1),
-    cwd,
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
+  const output = await commandOutput(command[0], command.slice(1), { cwd });
   if (!output.success) {
     const decoder = new TextDecoder();
     throw new Error(

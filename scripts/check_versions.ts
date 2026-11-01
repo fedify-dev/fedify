@@ -1,7 +1,11 @@
 import { message, object, option, optionNames } from "@optique/core";
 import { run } from "@optique/run";
-import { dirname, fromFileUrl, join, normalize, resolve } from "@std/path";
-import { parse } from "@std/yaml";
+import { readFile, writeFile } from "node:fs/promises";
+import { dirname, join, normalize, resolve } from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
+import { isNotFound } from "./tooling_fs.ts";
+import { parse } from "yaml";
 import workspaceMetadata from "../deno.json" with { type: "json" };
 import fedifyMetadata from "../packages/fedify/deno.json" with { type: "json" };
 
@@ -27,9 +31,10 @@ const { fix, skipNext } = run(
   },
 );
 
-const workspaceMembers = workspaceMetadata.workspace;
-const pnpmWorkspace = await Deno.readTextFile(
-  fromFileUrl(import.meta.resolve("../pnpm-workspace.yaml")),
+const workspaceMembers = [...workspaceMetadata.workspace];
+const pnpmWorkspace = await readFile(
+  fileURLToPath(import.meta.resolve("../pnpm-workspace.yaml")),
+  "utf8",
 );
 const projectRoot = dirname(import.meta.dirname!);
 const normalizedWorkspaceMembers = workspaceMembers.map((member) =>
@@ -51,7 +56,7 @@ for (const member of workspaceMembers) {
   const denoJsonPath = join(memberPath, "deno.json");
   let denoJson: string | undefined;
   try {
-    denoJson = await Deno.readTextFile(denoJsonPath);
+    denoJson = await readFile(denoJsonPath, "utf8");
   } catch {
     denoJson = undefined;
   }
@@ -69,7 +74,7 @@ for (const member of workspaceMembers) {
         );
         if (fix) {
           deno.version = version;
-          await Deno.writeTextFile(
+          await writeFile(
             denoJsonPath,
             JSON.stringify(deno, null, 2) + "\n",
           );
@@ -84,7 +89,7 @@ for (const member of workspaceMembers) {
   const pkgJsonPath = join(memberPath, "package.json");
   let pkgJson: string;
   try {
-    pkgJson = await Deno.readTextFile(pkgJsonPath);
+    pkgJson = await readFile(pkgJsonPath, "utf8");
   } catch {
     continue;
   }
@@ -101,7 +106,7 @@ for (const member of workspaceMembers) {
       );
       if (fix) {
         pkg.version = version;
-        await Deno.writeTextFile(
+        await writeFile(
           pkgJsonPath,
           JSON.stringify(pkg, null, 2) + "\n",
         );
@@ -116,9 +121,9 @@ if (!skipNext) {
   const nextVersionPath = join(projectRoot, "changes.d", "next.txt");
   let nextVersion: string | undefined;
   try {
-    nextVersion = (await Deno.readTextFile(nextVersionPath)).trim();
+    nextVersion = (await readFile(nextVersionPath, "utf8")).trim();
   } catch (error) {
-    if (!(error instanceof Deno.errors.NotFound)) throw error;
+    if (!isNotFound(error)) throw error;
   }
   if (nextVersion != null && version !== nextVersion) {
     mismatched++;
@@ -145,4 +150,4 @@ if (fixed > 0) {
   }
 }
 
-if (mismatched > fixed) Deno.exit(1);
+if (mismatched > fixed) process.exitCode = 1;

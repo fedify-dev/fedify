@@ -18,7 +18,6 @@ jobs:
       with:
         persist-credentials: false
     - uses: ./.github/actions/setup-mise
-    - run: mise run deno:cache
     - run: mise run --skip-deps test:sveltekit-compat
 
   test-astro-compat:
@@ -28,7 +27,6 @@ jobs:
       with:
         persist-credentials: false
     - uses: ./.github/actions/setup-mise
-    - run: mise run deno:cache
     - run: mise run --skip-deps test:astro-compat
 
   build-astro:

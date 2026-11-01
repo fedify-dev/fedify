@@ -8,11 +8,13 @@
  *   - packages/init/src/json/mq.json   (message queue dependencies)
  *
  * Usage:
- *   deno run -A scripts/update_init_deps.ts
+ *   node --experimental-strip-types scripts/update_init_deps.ts
  */
-import { dirname, fromFileUrl, join } from "@std/path";
+import { readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const scriptDir = dirname(fromFileUrl(import.meta.url));
+const scriptDir = dirname(fileURLToPath(import.meta.url));
 const jsonDir = join(scriptDir, "..", "src", "json");
 
 // --- Registry helpers --------------------------------------------------------
@@ -107,14 +109,14 @@ async function getLatestVersion(
 // --- File update helpers -----------------------------------------------------
 
 async function readJson(path: string): Promise<Record<string, unknown>> {
-  return JSON.parse(await Deno.readTextFile(path));
+  return JSON.parse(await readFile(path, "utf8"));
 }
 
 async function writeJson(
   path: string,
   data: Record<string, unknown>,
 ): Promise<void> {
-  await Deno.writeTextFile(path, JSON.stringify(data, null, 2) + "\n");
+  await writeFile(path, JSON.stringify(data, null, 2) + "\n");
 }
 
 // --- deps.json ---------------------------------------------------------------
@@ -197,4 +199,4 @@ async function main(): Promise<void> {
   console.log("Done.");
 }
 
-main();
+await main();

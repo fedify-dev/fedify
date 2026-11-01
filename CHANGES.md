@@ -144,15 +144,6 @@ To be released.
     deployments.  Instantiating `DenoKvStore` or `DenoKvMessageQueue` now logs
     a deprecation warning.  [[#1335], [#1340]]
 
-### @fedify/init
-
- -  Changed the interactive `fedify init` prompts to label the `denokv`
-    key-value store and message queue as `denokv (deprecated)`.  The option
-    stays selectable, `-k denokv` and `-m denokv` still work, and generated
-    Deno projects keep the unstable flag and exclude the corresponding
-    `@fedify/lint` deprecation rule so that `deno lint` succeeds.
-    [[#1335], [#1340]]
-
 ### @fedify/fresh
 
  -  Changed the Fresh integration documentation to discourage Fresh for new
@@ -166,6 +157,15 @@ To be released.
 
 [#1327]: https://github.com/fedify-dev/fedify/issues/1327
 [#1341]: https://github.com/fedify-dev/fedify/pull/1341
+
+### @fedify/init
+
+ -  Changed the interactive `fedify init` prompts to label the `denokv`
+    key-value store and message queue as `denokv (deprecated)`.  The option
+    stays selectable, `-k denokv` and `-m denokv` still work, and generated
+    Deno projects keep the unstable flag and exclude the corresponding
+    `@fedify/lint` deprecation rule so that `deno lint` succeeds.
+    [[#1335], [#1340]]
 
 ### @fedify/interaction-controls
 

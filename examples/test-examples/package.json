@@ -1,0 +1,10 @@
+{
+  "name": "@fedify/example-test-harness",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@david/dax": "npm:dax@^0.46.1",
+    "@hongminhee/localtunnel": "^0.5.0",
+    "@logtape/logtape": "catalog:"
+  }
+}
