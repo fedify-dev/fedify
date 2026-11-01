@@ -140,7 +140,8 @@
       "./packages/elysia/src/fallback.test.ts",
       "./packages/init/src/templates/**",
       "./packages/nestjs/src/**/*.test.ts",
-      "./packages/next/**"
+      "./packages/next/**",
+      "./scripts/check_changelog_pr_refs.test.ts"
     ]
   }
 }
