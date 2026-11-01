@@ -83,7 +83,11 @@ for (
       }
       class AppModule implements NestModule {
         configure(consumer: MiddlewareConsumer) {
-          consumer.apply(integrateFederation(fed, () => undefined)).forRoutes(
+          // The factory receives Express's request object, so Express APIs
+          // such as req.get() must type-check here:
+          consumer.apply(
+            integrateFederation(fed, (req) => void req.get("host")),
+          ).forRoutes(
             { path: "users/:identifier", method: RequestMethod.GET },
             { path: "users/:identifier", method: RequestMethod.HEAD },
           );
