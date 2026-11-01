@@ -357,6 +357,17 @@ To be released.
     entries may not be visited.  Accessor and serialization traversal costs are
     unchanged.  [[#1243], [#1337]]
 
+ -  Added `getRawPropertyValues()` and `getRawPropertyValue()` functions,
+    which read a property of a vocabulary object by its full IRI and return
+    its values in expanded JSON-LD.  They let applications read properties
+    that Fedify has no accessor for, such as an extension used by only a few
+    peers, without depending on the JSON-LD serialization cache: unknown
+    properties are now retained when an object is decoded, including embedded
+    objects, and survive `clone()` and `deepClone()`.  For properties Fedify
+    does support, the functions return the current typed values encoded back
+    into JSON-LD.  The values are not verified, so validate them before use.
+    [[#1272], [#1356]]
+
  -  Added the `attributionDomains` property to `Application`, `Group`,
     `Organization`, `Person`, and `Service`, so applications can publish the
     domains an actor claims for Mastodon's `fediverse:creator` link credits
@@ -389,7 +400,9 @@ To be released.
 [#1212]: https://github.com/fedify-dev/fedify/issues/1212
 [#1241]: https://github.com/fedify-dev/fedify/pull/1241
 [#1243]: https://github.com/fedify-dev/fedify/issues/1243
+[#1272]: https://github.com/fedify-dev/fedify/issues/1272
 [#1337]: https://github.com/fedify-dev/fedify/pull/1337
+[#1356]: https://github.com/fedify-dev/fedify/pull/1356
 
 ### @fedify/vocab-runtime
 
@@ -410,8 +423,6 @@ To be released.
 
 [#1229]: https://github.com/fedify-dev/fedify/issues/1229
 [#1231]: https://github.com/fedify-dev/fedify/pull/1231
-[#1272]: https://github.com/fedify-dev/fedify/issues/1272
-[#1356]: https://github.com/fedify-dev/fedify/pull/1356
 
 ### @fedify/vocab-tools
 
@@ -436,6 +447,13 @@ To be released.
     `https://w3id.org/identity/v1`.  Previously, such a property compacted to
     a prefixed name like `dc:license` without the extra context.
     [[#1212], [#1241]]
+ -  Generated vocabulary modules now export `getRawPropertyValues()` and
+    `getRawPropertyValue()`, which read any property of a generated object
+    by its full IRI, and their root classes implement `VocabularyObject` from
+    `@fedify/vocab-runtime`.  Decoding retains the properties a class does not
+    know, so third-party vocabulary modules get the same access to
+    unsupported properties as `@fedify/vocab`.  The functions accept objects
+    from any generated module.  [[#1272], [#1356]]
  -  Made the generated `xsd:string` decoder skip JSON-LD values whose `@value`
     is not a string instead of placing them in string accessors.  Malformed
     remote values no longer leak numbers or booleans into properties such as
