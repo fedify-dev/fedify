@@ -1782,6 +1782,80 @@ federation.setFollowersDispatcher(
 
 [*Filtering by server*]: ./collections.md#filtering-by-server
 
+### `raw-property-iri-invalid`
+
+Warns when statically known property IRIs passed to `getRawPropertyValues()`
+or `getRawPropertyValue()` are invalid or use a scheme other than
+`http:`/`https:`.  Named imports, aliases, and namespace imports are
+supported; shadowed local bindings are ignored.  See [*Reading unsupported
+properties*](./vocab.md#reading-unsupported-properties) for these functions.
+
+Raw-property helpers require full IRIs.  Empty strings, JSON-LD keywords,
+blank node identifiers, bare terms, relative references, and other invalid
+IRI strings throw `TypeError` at runtime.  IRIs with other schemes are
+accepted at runtime but both log a warning and trigger this rule: compact
+IRIs such as `as:content` are looked up literally, and prefixes are never
+expanded.  For well-known prefixes, the report includes the full IRI, which
+ESLint also offers as an editor suggestion.
+
+~~~~ typescript
+import { getRawPropertyValues } from "@fedify/vocab";
+
+// Reported: a bare term throws TypeError.
+await getRawPropertyValues(note, "content");
+
+// Reported: a compact IRI is looked up literally.
+await getRawPropertyValues(note, "as:content");
+
+// Use the full property IRI.
+await getRawPropertyValues(note, "https://www.w3.org/ns/activitystreams#content");
+~~~~
+
+The rule checks string literals, templates without expressions, global
+`new URL("…")` calls without a base argument, and `const` bindings to those
+forms.  Dynamic values and `new URL(relative, base)` are ignored.
+
+By default, only imports from `@fedify/vocab` are inspected, including
+`jsr:`/`npm:` and versioned specifiers.  The deprecated
+`@fedify/fedify/vocab` re-export is also inspected.  For other vocabulary
+modules generated with `@fedify/vocab-tools`, add their exact import
+specifiers to `modules`.
+The option adds to the defaults.  List each custom specifier form you use,
+such as both `@example/vocab` and `npm:@example/vocab`.
+
+~~~~ typescript
+// eslint.config.ts
+import { plugin } from "@fedify/lint";
+
+export default [{
+  plugins: { "@fedify/lint": plugin },
+  rules: {
+    "@fedify/lint/raw-property-iri-invalid": ["warn", {
+      modules: ["@example/vocab"],
+    }],
+  },
+}];
+~~~~
+
+Oxlint 1.31.0 or later is required to pass rule options:
+
+~~~~ jsonc
+// .oxlintrc.json
+{
+  "jsPlugins": ["@fedify/lint/oxlint"],
+  "rules": {
+    "@fedify/lint/raw-property-iri-invalid": ["warn", {
+      "modules": ["@example/vocab"]
+    }]
+  }
+}
+~~~~
+
+Deno Lint plugin rules cannot receive options, so this rule inspects only
+the default `@fedify/vocab` module specifiers there.  Like other Deno Lint
+plugin rules, its reports are errors.  ESLint's recommended configuration
+enables it as a warning; the strict configuration enables it as an error.
+
 ### `deno-kv-store-deprecated`
 
 Warns when `DenoKvStore` from the deprecated *@fedify/denokv* package is

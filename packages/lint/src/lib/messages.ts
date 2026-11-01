@@ -88,3 +88,12 @@ export const DENO_KV_MESSAGE_QUEUE_DEPRECATED =
   "`PostgresMessageQueue`, `RedisMessageQueue`, `MysqlMessageQueue`, " +
   "`AmqpMessageQueue`, or `WorkersMessageQueue` for production.  See " +
   "https://github.com/fedify-dev/fedify/issues/1336 for the removal plan.";
+
+/** Messages for invalid or likely abbreviated raw-property IRIs. */
+export const RAW_PROPERTY_IRI_MESSAGES = {
+  invalid:
+    'Raw property IRI "{{value}}" must be a full, syntactically valid IRI; this value throws TypeError at runtime.',
+  nonHttp:
+    'Raw property IRI "{{value}}" uses a non-HTTP scheme. Prefixes are not expanded.{{hint}}',
+  expandPrefix: 'Use the full IRI "{{replacement}}".',
+};

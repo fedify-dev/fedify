@@ -21,6 +21,7 @@ The plugin includes rules that check for:
  -  Correct URL patterns for actor collections
  -  Public key and assertion method requirements
  -  Collection filtering implementation
+ -  Full property IRIs for raw-property helpers (`raw-property-iri-invalid`)
 
 [JSR badge]: https://jsr.io/badges/@fedify/lint
 [JSR]: https://jsr.io/@fedify/lint
@@ -145,6 +146,11 @@ gateway-compatible IDs.
  -  **`outbox-listener-delivery-not-awaited`**: Warns when an outbox listener
     calls `sendActivity` or `forwardActivity` and does not wait for the result
     (ESLint and Oxlint only)
+ -  **`raw-property-iri-invalid`**: Warns when a property IRI passed to
+    `getRawPropertyValues()` or `getRawPropertyValue()` is not a full
+    `http:` or `https:` IRI, e.g., a term or a compact IRI like `as:content`;
+    the `modules` option, available in ESLint and Oxlint only, adds other
+    generated vocabulary modules to `@fedify/vocab`
 
 ### Deprecation rules
 

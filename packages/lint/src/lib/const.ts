@@ -185,6 +185,8 @@ export const RULE_IDS = {
   mediaUploaderObjectUriRequired: "media-uploader-object-uri-required",
   mediaUploaderAuthorizationRequired: "media-uploader-authorization-required",
 
+  rawPropertyIriInvalid: "raw-property-iri-invalid",
+
   // Deprecation rules
   denoKvStoreDeprecated: "deno-kv-store-deprecated",
   denoKvMessageQueueDeprecated: "deno-kv-message-queue-deprecated",
