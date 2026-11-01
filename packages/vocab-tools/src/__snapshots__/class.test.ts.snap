@@ -20023,7 +20023,8 @@ get licenses(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -31513,7 +31514,8 @@ deepCloneDescriptors.set(this.prototype, {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -67040,7 +67042,8 @@ deepCloneDescriptors.set(this.prototype, {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -68211,7 +68214,8 @@ const base = getDeepCloneDescriptor(this.prototype)!;
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -81080,7 +81084,8 @@ get attributionDomains(): (string)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -81266,7 +81271,8 @@ get attributionDomains(): (string)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -85653,7 +85659,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -105393,7 +105400,8 @@ get attributionDomains(): (string)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -105579,7 +105587,8 @@ get attributionDomains(): (string)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -108465,7 +108474,8 @@ get licenses(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -108494,7 +108504,8 @@ get licenses(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -108523,7 +108534,8 @@ get licenses(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -128339,7 +128351,8 @@ get attributionDomains(): (string)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -128525,7 +128538,8 @@ get attributionDomains(): (string)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -140798,7 +140812,8 @@ get attributionDomains(): (string)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -140984,7 +140999,8 @@ get attributionDomains(): (string)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -162822,7 +162838,8 @@ get attributionDomains(): (string)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -163008,7 +163025,8 @@ get attributionDomains(): (string)[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -164505,7 +164523,8 @@ get contents(): ((string | LanguageString))[] {
       if (v == null) continue;
     
       const decoded =
-    v["@value"]
+    typeof v === "object" && "@value" in v
+        && typeof v["@value"] === "string" && !("@language" in v) ? v["@value"] : undefined
       ;
     
       if (typeof decoded === "undefined") {

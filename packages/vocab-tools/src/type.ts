@@ -158,6 +158,7 @@ const scalarTypes: Record<string, ScalarType> = {
     decoder(v) {
       return `${v}["@value"]`;
     },
+    skipUnparsable: true,
   },
   "http://www.w3.org/2001/XMLSchema#anyURI": {
     name: "URL",

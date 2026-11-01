@@ -109,6 +109,16 @@ test("attributionDomains omitted when missing or empty", async () => {
   deepStrictEqual(parsed.attributionDomains, []);
 });
 
+test("attributionDomains ignores non-string values", async () => {
+  const person = await Person.fromJsonLd({
+    "@context": [AS, MASTODON],
+    id: aliceId.href,
+    type: "Person",
+    attributionDomains: [42, "blog.example", true, { "@value": null }],
+  });
+  deepStrictEqual(person.attributionDomains, ["blog.example"]);
+});
+
 test("Update serializes the bare attributionDomains key in its object", async () => {
   const alice = new Person({
     id: aliceId,
