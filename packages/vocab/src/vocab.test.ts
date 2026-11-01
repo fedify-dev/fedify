@@ -2620,8 +2620,39 @@ test("Note.fromJsonLd() accepts date-times without seconds", async () => {
       documentLoader: mockDocumentLoader,
       contextLoader: mockDocumentLoader,
     });
-    deepStrictEqual(note.published, Temporal.Instant.from(expected));
+    // deepStrictEqual() cannot tell Temporal.Instant values apart.
+    strictEqual(
+      note.published?.toString(),
+      Temporal.Instant.from(expected).toString(),
+    );
   }
+});
+
+test("Question.fromJsonLd() decodes closed values without seconds", async () => {
+  const parse = (closed: string | boolean) =>
+    Question.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Question",
+      closed,
+    }, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+  const cases: readonly (readonly [string, string])[] = [
+    ["2024-01-01T10:00.5Z", "2024-01-01T10:00:00.5Z"],
+    ["2024-01-01T10:00.5+09:00", "2024-01-01T01:00:00.5Z"],
+  ];
+  for (const [closed, expected] of cases) {
+    const question = await parse(closed);
+    strictEqual(
+      question.closed?.toString(),
+      Temporal.Instant.from(expected).toString(),
+    );
+  }
+  await rejects(() => parse("2024-02-31T10:00.5Z"), RangeError);
+  await rejects(() => parse("Sat, 01 Jan 2024 10:00:00 GMT"), RangeError);
+  strictEqual((await parse(true)).closed, true);
+  strictEqual((await parse("not a date")).closed, null);
 });
 
 test("Note.fromJsonLd() rejects date-times that Temporal cannot parse", async () => {

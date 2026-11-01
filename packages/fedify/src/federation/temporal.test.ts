@@ -171,5 +171,11 @@ test(
         undefined,
       ),
     );
+    assert(
+      await hasMalformedKnownTemporalLiteral(
+        closed("Sat, 01 Jan 2024 10:00:00 GMT"),
+        undefined,
+      ),
+    );
   },
 );
