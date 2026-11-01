@@ -634,16 +634,49 @@ function definesSignatureTerm(context: unknown): boolean {
     return signatureDefiningContexts.has(context);
   }
   if (Array.isArray(context)) {
-    return context.some((entry) => {
-      if (typeof entry === "string") {
-        return signatureDefiningContexts.has(entry);
+    let defined = false;
+    for (const entry of context) {
+      if (entry == null) {
+        defined = false;
+      } else if (typeof entry === "string") {
+        if (signatureDefiningContexts.has(entry)) defined = true;
+      } else if (typeof entry === "object") {
+        const record = entry as Record<string, unknown>;
+        if (
+          globalThis.Object.prototype.hasOwnProperty.call(record, "signature")
+        ) {
+          defined = record["signature"] != null;
+        }
       }
-      return typeof entry === "object" && entry != null &&
-        Object.prototype.hasOwnProperty.call(entry, "signature");
-    });
+    }
+    return defined;
   }
-  return typeof context === "object" && context != null &&
-    Object.prototype.hasOwnProperty.call(context, "signature");
+  if (typeof context === "object" && context != null) {
+    const record = context as Record<string, unknown>;
+    return globalThis.Object.prototype.hasOwnProperty.call(
+      record,
+      "signature",
+    ) &&
+      record["signature"] != null;
+  }
+  return false;
+}
+
+function prepareSignatureDocument(jsonLd: unknown): unknown {
+  if (typeof jsonLd !== "object" || jsonLd == null || Array.isArray(jsonLd)) {
+    return jsonLd;
+  }
+  const document = jsonLd as Record<string, unknown>;
+  const context = document["@context"];
+  if (definesSignatureTerm(context)) return { ...document };
+  return {
+    ...document,
+    "@context": context == null
+      ? [signatureTermDefinition]
+      : Array.isArray(context)
+      ? [...context, signatureTermDefinition]
+      : [context, signatureTermDefinition],
+  };
 }
 
 /**
@@ -685,18 +718,10 @@ export function attachSignature(
     );
   }
   const document = jsonLd as Record<string, unknown>;
-  const output: { signature: Signature } & Record<string, unknown> = {
-    ...document,
-    signature,
-  };
-  const context = document["@context"];
-  if (!definesSignatureTerm(context)) {
-    output["@context"] = context == null
-      ? [signatureTermDefinition]
-      : Array.isArray(context)
-      ? [...context, signatureTermDefinition]
-      : [context, signatureTermDefinition];
-  }
+  const output = prepareSignatureDocument(document) as {
+    signature: Signature;
+  } & Record<string, unknown>;
+  output.signature = signature;
   return output;
 }
 
@@ -719,6 +744,11 @@ export interface CreateSignatureOptions {
 
 /**
  * Creates a LD signature for the given JSON-LD document.
+ *
+ * If the document's context does not define the `signature` property, the
+ * signature is computed over the document with a minimal inline definition
+ * added.  Use {@link attachSignature} to attach the signature to that exact
+ * document.
  * @param jsonLd The JSON-LD document to sign.
  * @param privateKey The private key to sign the document.
  * @param keyId The ID of the public key that corresponds to the private key.
@@ -750,7 +780,10 @@ export async function createSignature(
     { "@context": "https://w3id.org/identity/v1", ...options },
     contextLoader,
   );
-  const docHash = await hashJsonLd(jsonLd, contextLoader);
+  const docHash = await hashJsonLd(
+    prepareSignatureDocument(jsonLd),
+    contextLoader,
+  );
   const message = optionsHash + docHash;
   const encoder = new TextEncoder();
   const messageBytes = encoder.encode(message);

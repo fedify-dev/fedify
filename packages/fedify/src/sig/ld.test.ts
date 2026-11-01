@@ -107,6 +107,19 @@ test("attachSignature()", () => {
       signature: sig,
     },
   );
+  const resetDoc = {
+    "@context": [
+      "https://w3id.org/security/v1",
+      null,
+      "https://www.w3.org/ns/activitystreams",
+    ],
+    id: "https://example.com/1",
+  };
+  assertEquals(attachSignature(resetDoc, sig), {
+    ...resetDoc,
+    "@context": [...resetDoc["@context"], signatureTerm],
+    signature: sig,
+  });
   assertEquals(attachSignature({ id: "https://example.com/1" }, sig), {
     id: "https://example.com/1",
     "@context": [signatureTerm],
@@ -190,6 +203,36 @@ test("signJsonLd() defines the signature term when the context lacks it", async 
     contextLoader: mockDocumentLoader,
   });
   assertEquals(key, rsaPublicKey2);
+});
+
+test("signJsonLd() signs documents that use the signature term", async () => {
+  const signatureTerm = { "signature": "https://w3id.org/security#signature" };
+  for (
+    const object of [
+      { type: "Note", signature: "nested value" },
+      { type: "signature" },
+    ]
+  ) {
+    const doc = {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        { "@vocab": "https://example.com/" },
+      ],
+      id: "https://example.com/1",
+      type: "Create",
+      object,
+    };
+    const signed = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+      contextLoader: mockDocumentLoader,
+    }) as Record<string, unknown>;
+    assertEquals(signed["@context"], [...doc["@context"], signatureTerm]);
+    assertEquals(signed["object"], object);
+    const key = await verifySignature(signed, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    assertEquals(key, rsaPublicKey2);
+  }
 });
 
 const document = {
