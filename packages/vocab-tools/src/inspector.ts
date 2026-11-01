@@ -19,8 +19,8 @@ export async function* generateInspector(
     if (this.id != null) {
       proxy.id = {
         [Symbol.for("Deno.customInspect")]: (
-          inspect: typeof Deno.inspect,
-          options: Deno.InspectOptions,
+          inspect: (value: unknown, options: unknown) => string,
+          options: unknown,
         ): string => "URL " + inspect(inspectIri(this.id!), options),
         [Symbol.for("nodejs.util.inspect.custom")]: (
           _depth: number,
@@ -42,8 +42,8 @@ export async function* generateInspector(
         .map((v: any) => v instanceof URL
           ? {
               [Symbol.for("Deno.customInspect")]: (
-                inspect: typeof Deno.inspect,
-                options: Deno.InspectOptions,
+                inspect: (value: unknown, options: unknown) => string,
+                options: unknown,
               ): string => "URL " + inspect(inspectIri(v), options),
               [Symbol.for("nodejs.util.inspect.custom")]: (
                 _depth: number,
@@ -94,8 +94,8 @@ export async function* generateInspectorPostClass(
 (${className}.prototype as any)[Symbol.for("Deno.customInspect")] =
   function (
     this: ${className},
-    inspect: typeof Deno.inspect,
-    options: Deno.InspectOptions,
+    inspect: (value: unknown, options: unknown) => string,
+    options: unknown,
   ): string {
     const proxy = this._getCustomInspectProxy();
     return ${JSON.stringify(type.name + " ")} + inspect(proxy, options);
