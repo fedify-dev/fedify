@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.node.json",
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
+  "exclude": [
+    "dist",
+    "dist-tests",
+    "node_modules",
+    // Legacy Deno tests importing npm: specifiers; owned by check:types:deno.
+    "old",
+    // Deno benchmarks (Deno.bench); owned by check:types:deno.
+    "src/**/*.bench.ts"
+  ]
+}

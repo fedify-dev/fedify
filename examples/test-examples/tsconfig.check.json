@@ -1,0 +1,6 @@
+// The example test harness, which runs on Node.js with the dependencies
+// declared in its own package.json.
+{
+  "extends": "../../tsconfig.node.json",
+  "include": ["*.ts"]
+}

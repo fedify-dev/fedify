@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.node.json",
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
+  "exclude": [
+    "dist",
+    "dist-tests",
+    "node_modules",
+    // Template app built in a generated project by test:astro-compat.
+    "compat/src"
+  ]
+}

@@ -1,0 +1,5 @@
+// Build and test tooling, which runs on Node.js.
+{
+  "extends": "../../tsconfig.node.json",
+  "include": ["*.ts"]
+}

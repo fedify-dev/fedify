@@ -94,7 +94,7 @@
     "reflect-metadata": "npm:reflect-metadata@^0.2.2",
     "temporal-polyfill": "npm:temporal-polyfill@^1.0.1",
     "tsdown": "npm:tsdown@^0.22.0",
-    "typescript": "npm:typescript@^6.0.0",
+    "typescript": "npm:typescript@^6.0.3",
     "cross-spawn": "npm:cross-spawn@^7.0.6",
     "yaml": "npm:yaml@^2.9.0"
   },
@@ -142,7 +142,8 @@
       "./packages/init/src/templates/**",
       "./packages/nestjs/src/**/*.test.ts",
       "./packages/next/**",
-      "./scripts/check_changelog_pr_refs.test.ts"
+      "./scripts/check_changelog_pr_refs.test.ts",
+      "./scripts/check_types.test.ts"
     ]
   }
 }

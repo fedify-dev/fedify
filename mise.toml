@@ -200,6 +200,7 @@ depends = [
   "check:fmt",
   "check:lint",
   "check:types",
+  "check:types:deno",
   "check:md",
   "check-versions",
   "check:workspace-protocol",
@@ -231,11 +232,23 @@ depends = ["deno:cache"]
 description = "Check code linting"
 run = "deno --quiet lint"
 
+# Type-checks against the built declarations of workspace packages, so it
+# depends on `build` rather than `codegen` (see the note on `build`).
 [tasks."check:types"]
-description = "Check TypeScript types"
+description = "Check TypeScript types with TypeScript on Node.js"
+depends = ["build"]
+usage = 'arg "[packages]" help="Package name(s) to check (without @fedify/ prefix); all projects if omitted" var=#true'
+shell = "nu -c"
+run = """
+let packages = ($env.usage_packages? | default "" | split row " " | where ($it | is-not-empty))
+node --experimental-strip-types scripts/check_types.ts ...$packages
+"""
+
+[tasks."check:types:deno"]
+description = "Check TypeScript types of the Deno workspace with deno check"
 depends = ["deno:cache", "codegen"]
 env = { DENO_LOG = "error" }
-run = "deno --quiet run --allow-read --allow-env --allow-run --allow-sys scripts/check_types.ts"
+run = "deno --quiet run --allow-read --allow-env --allow-run --allow-sys scripts/check_types_deno.ts"
 
 [tasks."check:md"]
 description = "Check Markdown formatting"
@@ -276,7 +289,7 @@ description = "Format the codebase"
 run = ["deno fmt", "hongdown --write", "sacho fmt"]
 
 [tasks.check-each]
-depends = ["deno:cache"]
+depends = ["deno:cache", "build"]
 description = "Check code quality for specific package(s)"
 usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
 shell = "nu -c"
@@ -290,11 +303,12 @@ for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
   }
   deno fmt --check $dir
   deno lint $dir
-  # Guard against an empty glob: `deno check` with no file arguments would
-  # fall back to type-checking the whole workspace, which is slow and not
-  # what a per-package check intends.
-  let ts_files = ((glob $"($dir)/**/*.ts") ++ (glob $"($dir)/**/*.tsx"))
-  if ($ts_files | is-not-empty) { deno check ...$ts_files }
+  # Deno-only packages (no package.json) keep their Deno type check.
+  if ($"($dir)/package.json" | path exists) {
+    node --experimental-strip-types scripts/check_types.ts $pkg
+  } else {
+    deno check $dir
+  }
 }
 '''
 

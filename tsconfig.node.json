@@ -1,0 +1,19 @@
+// Node.js environment: Node.js globals and modules from @types/node.
+// @types/node declares web API values such as fetch and crypto, but not all
+// of their types (e.g. CryptoKey, JsonWebKey, RequestInfo), so the web worker
+// libraries supply those.  They describe web APIs without browser document
+// globals such as window and document, which Node.js does not have, but they
+// do declare worker-scope globals such as self and location that Node.js
+// lacks; those are not rejected.
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": [
+      "esnext",
+      "webworker",
+      "webworker.iterable",
+      "webworker.asynciterable"
+    ],
+    "types": ["node"]
+  }
+}

@@ -104,6 +104,7 @@ jobs:
     # --skip-deps omits task dependencies, so prepare and validate Deno here.
     - run: mise run deno:cache
     - run: mise run codegen:check:deno
+    - run: mise run --skip-deps check:types:deno
     - run: mise run --skip-deps test:deno -- --coverage=.cov --junit-path=.test-report.xml
       env:
         RUST_BACKTRACE: ${{ runner.debug }}

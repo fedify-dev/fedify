@@ -1,0 +1,5 @@
+// The Bun-specific key-value store, checked with Bun's types only.
+{
+  "extends": "../../tsconfig.bun.json",
+  "include": ["src/kv.bun.ts"]
+}

@@ -1,0 +1,29 @@
+// Shared compiler options for the Node.js-based type checks run by
+// `mise run check:types`.  These configurations only type-check; packages are
+// built by tsdown.  Extend an environment preset (tsconfig.node.json,
+// tsconfig.workers.json, or tsconfig.bun.json) rather than this file, so that
+// each program sees only the globals of the runtime it targets.
+//
+// Check configurations are named tsconfig.check.json (and
+// tsconfig.check.<variant>.json) rather than tsconfig.json on purpose: Deno
+// applies a tsconfig.json found next to a deno.json or package.json to
+// `deno check` and `deno test --check`, and tsdown reads it for builds.  The
+// distinct name keeps these settings out of both.
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "lib": ["esnext"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "moduleDetection": "force",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "strict": true,
+    // Third-party declarations are not ours to fix; the public declarations
+    // of our own packages are checked separately with skipLibCheck disabled.
+    "skipLibCheck": true,
+    "types": []
+  }
+}

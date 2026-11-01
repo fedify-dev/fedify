@@ -1,0 +1,17 @@
+// The rules target Deno's lint plugin API as well as ESLint and Oxlint, so
+// their shared AST layer is typed with Deno.lint types.  This is the only
+// package checked with Deno's ambient types; check:types rejects run-time
+// access to the Deno global outside the files listed for it in
+// scripts/check_types_ownership.ts.
+{
+  "extends": "../../tsconfig.node.json",
+  "compilerOptions": {
+    "types": ["node", "deno"]
+  },
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
+  "exclude": [
+    "dist",
+    "dist-tests",
+    "node_modules"
+  ]
+}

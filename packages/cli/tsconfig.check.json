@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.node.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx",
+    // #kv resolves to built JavaScript through package.json imports; map
+    // it to its source for type checking, as deno.json does.
+    "paths": { "#kv": ["./src/kv.node.ts"] }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
+  "exclude": [
+    "dist",
+    "dist-tests",
+    "node_modules",
+    // Bun-only; checked by tsconfig.check.bun.json.
+    "src/kv.bun.ts",
+    // Deno script; owned by check:types:deno.
+    "scripts/pack.ts"
+  ]
+}

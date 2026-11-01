@@ -1,0 +1,16 @@
+// The Vitest tests that run inside the Workers runtime through
+// @cloudflare/vitest-pool-workers, which provides the cloudflare:test module.
+{
+  "extends": "../../tsconfig.workers.json",
+  "compilerOptions": {
+    "types": [
+      "@cloudflare/workers-types/experimental",
+      "@cloudflare/vitest-pool-workers"
+    ]
+  },
+  "include": ["test/**/*.ts"],
+  "exclude": [
+    // Checked against the built package by the package's test script.
+    "test/typecheck"
+  ]
+}
