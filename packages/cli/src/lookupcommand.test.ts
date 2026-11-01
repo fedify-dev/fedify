@@ -8,6 +8,20 @@ import { join } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+// Deno's global, declared structurally so that this test does not depend on
+// Deno's ambient types.  It is only accessed after checking that it exists.
+declare const Deno: {
+  execPath(): string;
+  readonly Command: new (
+    command: string,
+    options: {
+      readonly args: string[];
+      readonly stdout: "piped";
+      readonly stderr: "piped";
+    },
+  ) => { output(): Promise<{ readonly stdout: Uint8Array }> };
+};
+
 // Keep Deno's dependency cache separate from each child's isolated CLI cache.
 const denoDir = "Deno" in globalThis
   ? JSON.parse(

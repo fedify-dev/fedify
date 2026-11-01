@@ -8,6 +8,38 @@ import {
 import { createRequire } from "node:module";
 import type { TestContext as NodeTestContext } from "node:test";
 
+/**
+ * Deno's per-test permission options, declared structurally so that this
+ * module does not depend on Deno's ambient types.
+ */
+type DenoPermissionOptions =
+  | "inherit"
+  | "none"
+  | {
+    readonly [
+      name in
+        | "env"
+        | "ffi"
+        | "import"
+        | "net"
+        | "read"
+        | "run"
+        | "sys"
+        | "write"
+    ]?: "inherit" | boolean | readonly (string | URL)[];
+  };
+
+// Deno's global, declared structurally for the same reason.  It is only
+// accessed after checking that it exists.
+declare const Deno: {
+  test(
+    definition: Omit<TestDefinition, "fn"> & {
+      fn(t: unknown): Promise<void>;
+    },
+  ): void;
+  readonly env: { get(key: string): string | undefined };
+};
+
 /** A test callback that uses only APIs supported by every test runtime. */
 export type TestFunction = (t: TestContext) => void | Promise<void>;
 
@@ -31,10 +63,10 @@ export interface TestContext {
 export interface TestDefinition {
   name: string;
   ignore?: boolean;
-  permissions?: Deno.TestDefinition["permissions"];
-  sanitizeExit?: Deno.TestDefinition["sanitizeExit"];
-  sanitizeOps?: Deno.TestDefinition["sanitizeOps"];
-  sanitizeResources?: Deno.TestDefinition["sanitizeResources"];
+  permissions?: DenoPermissionOptions;
+  sanitizeExit?: boolean;
+  sanitizeOps?: boolean;
+  sanitizeResources?: boolean;
   fn: TestFunction;
 }
 
@@ -67,7 +99,7 @@ export function test(
     const func = def.fn;
     Deno.test({
       ...def,
-      async fn(t: Deno.TestContext) {
+      async fn(t: unknown) {
         const records: LogRecord[] = [];
         await configure({
           sinks: {

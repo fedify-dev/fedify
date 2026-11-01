@@ -10,6 +10,10 @@ import {
 } from "./request.ts";
 import { UrlError } from "./url.ts";
 
+// Deno's global, declared structurally so that this test does not depend on
+// Deno's ambient types.  It is only accessed after checking that it exists.
+declare const Deno: { readonly version: { readonly deno: string } };
+
 test("getUserAgent()", () => {
   if ("Deno" in globalThis) {
     deepStrictEqual(

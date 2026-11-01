@@ -4,6 +4,16 @@
 import dns from "node:dns/promises";
 import { isIP } from "node:net";
 
+// Deno's global, declared structurally so that this module does not depend on
+// Deno's ambient types.  It is only accessed after checking that it exists.
+declare const Deno: {
+  readonly permissions: {
+    query(
+      descriptor: { readonly name: "net" },
+    ): Promise<{ readonly state: string }>;
+  };
+};
+
 /**
  * An address returned by a DNS lookup.  It has the same shape as
  * `ResolvedAddress` of `node:dns`, without depending on its type declarations.

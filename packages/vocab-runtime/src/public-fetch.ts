@@ -14,6 +14,16 @@ import {
   UrlError,
 } from "./url.ts";
 
+// Deno's global, declared structurally so that this module does not depend on
+// Deno's ambient types.  It is only accessed after checking that it exists.
+declare const Deno: {
+  readonly permissions: {
+    query(
+      descriptor: { readonly name: "net" },
+    ): Promise<{ readonly state: string }>;
+  };
+};
+
 const logger = getLogger(["fedify", "runtime", "fetch"]);
 
 /**
