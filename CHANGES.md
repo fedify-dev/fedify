@@ -12,13 +12,13 @@ To be released.
 
  -  Fixed Linked Data Signatures being emitted with a JSON-LD context that no
     longer resolves.  The attached `signature` object now uses
-    `https://w3id.org/security/v1` instead of
-    `https://w3id.org/identity/v1`, which redirects to an unreachable host.
+    <https://w3id.org/security/v1> instead of
+    <https://w3id.org/identity/v1>, which redirects to an unreachable host.
     Documents signed through `signJsonLd()` or `attachSignature()` whose
     context does not define `signature` now also get a minimal inline
     definition of that term, so the signed document remains valid JSON-LD.
-    Incoming signatures that still use `identity/v1` continue to verify.
-    [[#664]]
+    Incoming signatures that still use <https://w3id.org/identity/v1> continue
+    to verify.  [[#664], [#1351]]
  -  Fixed inbox handling that treated valid date-times without seconds, such
     as `2024-01-01T10:00Z` or `2024-01-01T10:00.5Z`, as permanently malformed.
     Activity Streams 2.0 allows seconds to be omitted, so activities with such
@@ -31,6 +31,7 @@ To be released.
 [#664]: https://github.com/fedify-dev/fedify/issues/664
 [#1339]: https://github.com/fedify-dev/fedify/issues/1339
 [#1347]: https://github.com/fedify-dev/fedify/pull/1347
+[#1351]: https://github.com/fedify-dev/fedify/pull/1351
 
 ### @fedify/vocab
 
@@ -41,10 +42,10 @@ To be released.
     values in `Question.closed`, such as `2024-02-31T10:00.5Z`, now raise a
     `RangeError` instead of being silently dropped.
     [[#1339], [#1347] by ChanHaeng Lee\]
- -  Replaced `https://w3id.org/identity/v1` with
-    `https://w3id.org/security/v1` in the default JSON-LD contexts of activity
-    types.  The former no longer resolves, and `security/v1` defines the same
-    terms the signatures use.  [[#664]]
+ -  Replaced <https://w3id.org/identity/v1> with
+    <https://w3id.org/security/v1> in the default JSON-LD contexts of activity
+    types.  The former no longer resolves, and <https://w3id.org/security/v1>
+    defines the same terms the signatures use.  [[#664], [#1351]]
 
 ### @fedify/vocab-runtime
 

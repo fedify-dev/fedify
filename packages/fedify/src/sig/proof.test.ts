@@ -18,6 +18,7 @@ import {
   rsaPublicKey2,
 } from "../testing/keys.ts";
 import type { KeyCache } from "./key.ts";
+import { detachSignature, signJsonLd, verifySignature } from "./ld.ts";
 import {
   createProof,
   signObject,
@@ -345,6 +346,47 @@ test("verifyProof()", async () => {
 
   const wrongProof = proof.clone({ created: Temporal.Now.instant() });
   assertEquals(await verifyProof(jsonLd, wrongProof, options), null);
+});
+
+test("signJsonLd() does not invalidate an existing proof", async () => {
+  const options = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  const note = new Note({
+    id: new URL("https://example.com/notes/1"),
+    attribution: new URL("https://example.com/users/alice"),
+    content: "Hello",
+  });
+  const proof = await createProof(
+    note,
+    ed25519PrivateKey,
+    ed25519PublicKey.id!,
+    options,
+  );
+  const jsonLd = await note.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const withProof: Record<string, unknown> = {
+    ...jsonLd,
+    proof: await proof.toJsonLd({
+      format: "compact",
+      contextLoader: mockDocumentLoader,
+    }),
+  };
+  const signed = await signJsonLd(
+    withProof,
+    rsaPrivateKey2,
+    rsaPublicKey2.id!,
+    options,
+  ) as Record<string, unknown>;
+  assertEquals(signed["@context"], withProof["@context"]);
+  assertEquals(
+    await verifyProof(detachSignature(signed), proof, options),
+    ed25519Multikey,
+  );
+  assertEquals(await verifySignature(signed, options), rsaPublicKey2);
 });
 
 test("verifyObject()", async () => {

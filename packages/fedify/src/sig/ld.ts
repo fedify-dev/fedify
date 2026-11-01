@@ -667,6 +667,9 @@ function prepareSignatureDocument(jsonLd: unknown): unknown {
     return jsonLd;
   }
   const document = jsonLd as Record<string, unknown>;
+  // A proof covers the literal JSON, including the @context.  Adding a term
+  // would invalidate it, so leave proof-bearing documents unchanged.
+  if (document["proof"] != null) return { ...document };
   const context = document["@context"];
   if (definesSignatureTerm(context)) return { ...document };
   return {
@@ -700,7 +703,9 @@ export interface Signature {
  * When the document's context does not already define the `signature`
  * property, the returned document adds a minimal inline context for it.
  * Without that definition, expanding the attached signature would produce a
- * blank node predicate, which is not valid RDF.
+ * blank node predicate, which is not valid RDF.  Documents that already carry
+ * a `proof` are left unchanged, since a new context definition would invalidate
+ * the proof.
  * @param jsonLd The JSON-LD document to attach the signature to.  It is not
  *               modified.
  * @param signature The signature to attach.
@@ -748,7 +753,7 @@ export interface CreateSignatureOptions {
  * If the document's context does not define the `signature` property, the
  * signature is computed over the document with a minimal inline definition
  * added.  Use {@link attachSignature} to attach the signature to that exact
- * document.
+ * document.  Documents that already carry a `proof` are hashed unchanged.
  * @param jsonLd The JSON-LD document to sign.
  * @param privateKey The private key to sign the document.
  * @param keyId The ID of the public key that corresponds to the private key.
