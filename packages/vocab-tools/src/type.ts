@@ -10,6 +10,11 @@ const HEURISTICS_CONTEXTS: string[] = [
   "https://w3id.org/security/multikey/v1",
 ];
 
+// Activities are serialized through the JSON-LD processor rather than the
+// compact fast path, which would embed a separate @context in every nested
+// object and change the wire format of every activity.
+const ACTIVITY_TYPE_URI = "https://www.w3.org/ns/activitystreams#Activity";
+
 interface ScalarType {
   name: string;
   typeGuard(variable: string): string;
@@ -468,6 +473,7 @@ export function isCompactableType(
   typeUri: string,
   types: Record<string, TypeSchema>,
 ): boolean {
+  if (typeUri === ACTIVITY_TYPE_URI) return false;
   if (typeUri in scalarTypes) {
     return scalarTypes[typeUri].compactEncoder != null;
   } else if (typeUri in types) {

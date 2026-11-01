@@ -6,7 +6,7 @@ extends: "https://www.w3.org/ns/activitystreams#Activity"
 entity: true
 description: Indicates that the `actor` has listened to the `object`.
 defaultContext:
-- "https://w3id.org/identity/v1"
 - "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/v1"
 - "https://w3id.org/security/data-integrity/v1"
 properties: []

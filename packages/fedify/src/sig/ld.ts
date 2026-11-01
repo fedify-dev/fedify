@@ -621,12 +621,39 @@ export function assertSafeJsonLd(jsonLd: unknown): void {
   }
 }
 
+const signatureTermDefinition = {
+  "signature": "https://w3id.org/security#signature",
+} as const;
+const signatureDefiningContexts: ReadonlySet<string> = new Set([
+  "https://w3id.org/identity/v1",
+  "https://w3id.org/security/v1",
+]);
+
+function definesSignatureTerm(context: unknown): boolean {
+  if (typeof context === "string") {
+    return signatureDefiningContexts.has(context);
+  }
+  if (Array.isArray(context)) {
+    return context.some((entry) => {
+      if (typeof entry === "string") {
+        return signatureDefiningContexts.has(entry);
+      }
+      return typeof entry === "object" && entry != null &&
+        Object.prototype.hasOwnProperty.call(entry, "signature");
+    });
+  }
+  return typeof context === "object" && context != null &&
+    Object.prototype.hasOwnProperty.call(context, "signature");
+}
+
 /**
  * A signature of a JSON-LD document.
  * @since 1.0.0
  */
 export interface Signature {
-  "@context"?: "https://w3id.org/identity/v1";
+  "@context"?:
+    | "https://w3id.org/identity/v1"
+    | "https://w3id.org/security/v1";
   type: "RsaSignature2017";
   id?: string;
   creator: string;
@@ -636,6 +663,11 @@ export interface Signature {
 
 /**
  * Attaches a LD signature to the given JSON-LD document.
+ *
+ * When the document's context does not already define the `signature`
+ * property, the returned document adds a minimal inline context for it.
+ * Without that definition, expanding the attached signature would produce a
+ * blank node predicate, which is not valid RDF.
  * @param jsonLd The JSON-LD document to attach the signature to.  It is not
  *               modified.
  * @param signature The signature to attach.
@@ -646,13 +678,26 @@ export interface Signature {
 export function attachSignature(
   jsonLd: unknown,
   signature: Signature,
-): { signature: Signature } {
+): { signature: Signature } & Record<string, unknown> {
   if (typeof jsonLd !== "object" || jsonLd == null) {
     throw new TypeError(
       "Failed to attach signature; invalid JSON-LD document.",
     );
   }
-  return { ...jsonLd, signature };
+  const document = jsonLd as Record<string, unknown>;
+  const output: { signature: Signature } & Record<string, unknown> = {
+    ...document,
+    signature,
+  };
+  const context = document["@context"];
+  if (!definesSignatureTerm(context)) {
+    output["@context"] = context == null
+      ? [signatureTermDefinition]
+      : Array.isArray(context)
+      ? [...context, signatureTermDefinition]
+      : [context, signatureTermDefinition];
+  }
+  return output;
 }
 
 /**
@@ -694,11 +739,17 @@ export async function createSignature(
     throw new TypeError("Unsupported algorithm: " + privateKey.algorithm.name);
   }
   const options = {
-    "@context": "https://w3id.org/identity/v1" as const,
     creator: keyId.href,
     created: created?.toString() ?? new Date().toISOString(),
   };
-  const optionsHash = await hashJsonLd(options, contextLoader);
+  // The signature options are hashed against identity/v1 because that is the
+  // context Linked Data Signature verifiers, including Mastodon, reconstruct
+  // when they verify.  The context no longer resolves, so the attached
+  // signature advertises security/v1 instead, which defines the same terms.
+  const optionsHash = await hashJsonLd(
+    { "@context": "https://w3id.org/identity/v1", ...options },
+    contextLoader,
+  );
   const docHash = await hashJsonLd(jsonLd, contextLoader);
   const message = optionsHash + docHash;
   const encoder = new TextEncoder();
@@ -709,6 +760,7 @@ export async function createSignature(
     messageBytes,
   );
   return {
+    "@context": "https://w3id.org/security/v1",
     ...options,
     type: "RsaSignature2017",
     signatureValue: encodeBase64(signature),

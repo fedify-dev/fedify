@@ -1,5 +1,6 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import { CryptographicKey } from "@fedify/vocab";
+import jsonld from "@fedify/vocab-runtime/jsonld";
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertFalse } from "@std/assert/assert-false";
@@ -51,11 +52,14 @@ test("isInvalidUrlTypeError()", () => {
 
 test("attachSignature()", () => {
   const sig: Signature = {
-    "@context": "https://w3id.org/identity/v1",
+    "@context": "https://w3id.org/security/v1",
     type: "RsaSignature2017",
     creator: "https://activitypub.academy/users/brauca_darradiul#main-key",
     created: "2024-09-12T16:50:46Z",
     signatureValue: "asdf",
+  };
+  const signatureTerm = {
+    "signature": "https://w3id.org/security#signature",
   };
   const doc = {
     "@context": "https://www.w3.org/ns/activitystreams",
@@ -63,6 +67,49 @@ test("attachSignature()", () => {
   };
   assertEquals(attachSignature(doc, sig), {
     ...doc,
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      signatureTerm,
+    ],
+    signature: sig,
+  });
+  const arrayDoc = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    id: "https://example.com/1",
+  };
+  assertEquals(attachSignature(arrayDoc, sig), {
+    ...arrayDoc,
+    "@context": [...arrayDoc["@context"], signatureTerm],
+    signature: sig,
+  });
+  for (
+    const context of [
+      ["https://w3id.org/identity/v1", "https://www.w3.org/ns/activitystreams"],
+      ["https://www.w3.org/ns/activitystreams", "https://w3id.org/security/v1"],
+      ["https://www.w3.org/ns/activitystreams", signatureTerm],
+      { "signature": "https://w3id.org/security#signature" },
+    ]
+  ) {
+    const contextDoc = { "@context": context, id: "https://example.com/1" };
+    assertEquals(attachSignature(contextDoc, sig), {
+      ...contextDoc,
+      signature: sig,
+    });
+  }
+  assertEquals(
+    attachSignature({ "@context": null, id: "https://example.com/1" }, sig),
+    {
+      "@context": [signatureTerm],
+      id: "https://example.com/1",
+      signature: sig,
+    },
+  );
+  assertEquals(attachSignature({ id: "https://example.com/1" }, sig), {
+    id: "https://example.com/1",
+    "@context": [signatureTerm],
     signature: sig,
   });
   assertThrows(() => attachSignature(null, sig), TypeError);
@@ -78,6 +125,7 @@ test("createSignature()", async () => {
   const sig = await createSignature(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
     contextLoader: mockDocumentLoader,
   });
+  assertEquals(sig["@context"], "https://w3id.org/security/v1");
   const key = await verifySignature(attachSignature(doc, sig), {
     documentLoader: mockDocumentLoader,
     contextLoader: mockDocumentLoader,
@@ -115,6 +163,33 @@ test("signJsonLd()", async () => {
     contextLoader: mockDocumentLoader,
   });
   assert(verified);
+});
+
+test("signJsonLd() defines the signature term when the context lacks it", async () => {
+  const doc = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://example.com/notes/1",
+    type: "Note",
+    content: "Hello",
+  };
+  const signed = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  assert(Array.isArray(signed["@context"]));
+  assertEquals(
+    (signed["@context"] as unknown[])[1],
+    { "signature": "https://w3id.org/security#signature" },
+  );
+  const quads = await jsonld.canonize(signed, {
+    format: "application/n-quads",
+    documentLoader: mockDocumentLoader,
+  });
+  assert(quads.includes("<https://w3id.org/security#signature>"));
+  const key = await verifySignature(signed, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertEquals(key, rsaPublicKey2);
 });
 
 const document = {

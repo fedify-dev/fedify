@@ -15401,7 +15401,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -16273,7 +16273,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"litepub\\":\\"http://litepub.social/ns#\\",\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"EmojiReact\\":\\"litepub:EmojiReact\\",\\"Emoji\\":\\"toot:Emoji\\"}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"litepub\\":\\"http://litepub.social/ns#\\",\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"EmojiReact\\":\\"litepub:EmojiReact\\",\\"Emoji\\":\\"toot:Emoji\\"}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -21034,7 +21034,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -21381,7 +21381,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -21723,7 +21723,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"fedibird\\":\\"http://fedibird.com/ns#\\",\\"sensitive\\":\\"as:sensitive\\",\\"votersCount\\":{\\"@id\\":\\"toot:votersCount\\",\\"@type\\":\\"http://www.w3.org/2001/XMLSchema#nonNegativeInteger\\"},\\"Emoji\\":\\"toot:Emoji\\",\\"Hashtag\\":\\"as:Hashtag\\",\\"quoteUrl\\":\\"as:quoteUrl\\",\\"_misskey_quote\\":\\"misskey:_misskey_quote\\",\\"quoteUri\\":\\"fedibird:quoteUri\\",\\"emojiReactions\\":{\\"@id\\":\\"fedibird:emojiReactions\\",\\"@type\\":\\"@id\\"}}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"fedibird\\":\\"http://fedibird.com/ns#\\",\\"sensitive\\":\\"as:sensitive\\",\\"votersCount\\":{\\"@id\\":\\"toot:votersCount\\",\\"@type\\":\\"http://www.w3.org/2001/XMLSchema#nonNegativeInteger\\"},\\"Emoji\\":\\"toot:Emoji\\",\\"Hashtag\\":\\"as:Hashtag\\",\\"quoteUrl\\":\\"as:quoteUrl\\",\\"_misskey_quote\\":\\"misskey:_misskey_quote\\",\\"quoteUri\\":\\"fedibird:quoteUri\\",\\"emojiReactions\\":{\\"@id\\":\\"fedibird:emojiReactions\\",\\"@type\\":\\"@id\\"}}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -29009,7 +29009,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -29363,7 +29363,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -31148,7 +31148,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -31495,7 +31495,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -37918,7 +37918,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"fedibird\\":\\"http://fedibird.com/ns#\\",\\"sensitive\\":\\"as:sensitive\\",\\"votersCount\\":{\\"@id\\":\\"toot:votersCount\\",\\"@type\\":\\"http://www.w3.org/2001/XMLSchema#nonNegativeInteger\\"},\\"Emoji\\":\\"toot:Emoji\\",\\"Hashtag\\":\\"as:Hashtag\\",\\"ChatMessage\\":\\"http://litepub.social/ns#ChatMessage\\",\\"quoteUrl\\":\\"as:quoteUrl\\",\\"_misskey_quote\\":\\"misskey:_misskey_quote\\",\\"quoteUri\\":\\"fedibird:quoteUri\\",\\"emojiReactions\\":{\\"@id\\":\\"fedibird:emojiReactions\\",\\"@type\\":\\"@id\\"}}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"fedibird\\":\\"http://fedibird.com/ns#\\",\\"sensitive\\":\\"as:sensitive\\",\\"votersCount\\":{\\"@id\\":\\"toot:votersCount\\",\\"@type\\":\\"http://www.w3.org/2001/XMLSchema#nonNegativeInteger\\"},\\"Emoji\\":\\"toot:Emoji\\",\\"Hashtag\\":\\"as:Hashtag\\",\\"ChatMessage\\":\\"http://litepub.social/ns#ChatMessage\\",\\"quoteUrl\\":\\"as:quoteUrl\\",\\"_misskey_quote\\":\\"misskey:_misskey_quote\\",\\"quoteUri\\":\\"fedibird:quoteUri\\",\\"emojiReactions\\":{\\"@id\\":\\"fedibird:emojiReactions\\",\\"@type\\":\\"@id\\"}}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -38259,7 +38259,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"fedibird\\":\\"http://fedibird.com/ns#\\",\\"sensitive\\":\\"as:sensitive\\",\\"votersCount\\":{\\"@id\\":\\"toot:votersCount\\",\\"@type\\":\\"http://www.w3.org/2001/XMLSchema#nonNegativeInteger\\"},\\"Emoji\\":\\"toot:Emoji\\",\\"Hashtag\\":\\"as:Hashtag\\",\\"ChatMessage\\":\\"http://litepub.social/ns#ChatMessage\\",\\"quoteUrl\\":\\"as:quoteUrl\\",\\"_misskey_quote\\":\\"misskey:_misskey_quote\\",\\"quoteUri\\":\\"fedibird:quoteUri\\"}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"fedibird\\":\\"http://fedibird.com/ns#\\",\\"sensitive\\":\\"as:sensitive\\",\\"votersCount\\":{\\"@id\\":\\"toot:votersCount\\",\\"@type\\":\\"http://www.w3.org/2001/XMLSchema#nonNegativeInteger\\"},\\"Emoji\\":\\"toot:Emoji\\",\\"Hashtag\\":\\"as:Hashtag\\",\\"ChatMessage\\":\\"http://litepub.social/ns#ChatMessage\\",\\"quoteUrl\\":\\"as:quoteUrl\\",\\"_misskey_quote\\":\\"misskey:_misskey_quote\\",\\"quoteUri\\":\\"fedibird:quoteUri\\"}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -38598,7 +38598,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\"}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\"}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -40469,7 +40469,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -40812,7 +40812,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -50522,7 +50522,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -50867,7 +50867,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -51208,7 +51208,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -51549,7 +51549,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -51890,7 +51890,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\"}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\"}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -52229,7 +52229,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -52876,7 +52876,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -72087,7 +72087,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"fedibird\\":\\"http://fedibird.com/ns#\\",\\"sensitive\\":\\"as:sensitive\\",\\"votersCount\\":{\\"@id\\":\\"toot:votersCount\\",\\"@type\\":\\"http://www.w3.org/2001/XMLSchema#nonNegativeInteger\\"},\\"Emoji\\":\\"toot:Emoji\\",\\"Hashtag\\":\\"as:Hashtag\\",\\"quoteUrl\\":\\"as:quoteUrl\\",\\"_misskey_quote\\":\\"misskey:_misskey_quote\\",\\"quoteUri\\":\\"fedibird:quoteUri\\",\\"emojiReactions\\":{\\"@id\\":\\"fedibird:emojiReactions\\",\\"@type\\":\\"@id\\"}}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",{\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"fedibird\\":\\"http://fedibird.com/ns#\\",\\"sensitive\\":\\"as:sensitive\\",\\"votersCount\\":{\\"@id\\":\\"toot:votersCount\\",\\"@type\\":\\"http://www.w3.org/2001/XMLSchema#nonNegativeInteger\\"},\\"Emoji\\":\\"toot:Emoji\\",\\"Hashtag\\":\\"as:Hashtag\\",\\"quoteUrl\\":\\"as:quoteUrl\\",\\"_misskey_quote\\":\\"misskey:_misskey_quote\\",\\"quoteUri\\":\\"fedibird:quoteUri\\",\\"emojiReactions\\":{\\"@id\\":\\"fedibird:emojiReactions\\",\\"@type\\":\\"@id\\"}}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -72712,7 +72712,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -73053,7 +73053,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -75131,7 +75131,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -83102,7 +83102,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -83443,7 +83443,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -84253,7 +84253,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -84599,7 +84599,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",{\\"litepub\\":\\"http://litepub.social/ns#\\",\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"EmojiReact\\":\\"litepub:EmojiReact\\",\\"Emoji\\":\\"toot:Emoji\\"}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",{\\"litepub\\":\\"http://litepub.social/ns#\\",\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"EmojiReact\\":\\"litepub:EmojiReact\\",\\"Emoji\\":\\"toot:Emoji\\"}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -84943,7 +84943,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"sensitive\\":\\"as:sensitive\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"quoteUrl\\":\\"as:quoteUrl\\",\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"votersCount\\":{\\"@id\\":\\"toot:votersCount\\",\\"@type\\":\\"http://www.w3.org/2001/XMLSchema#nonNegativeInteger\\"},\\"Emoji\\":\\"toot:Emoji\\",\\"Hashtag\\":\\"as:Hashtag\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"ChatMessage\\":\\"http://litepub.social/ns#ChatMessage\\",\\"fedibird\\":\\"http://fedibird.com/ns#\\",\\"quoteUri\\":\\"fedibird:quoteUri\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_quote\\":\\"misskey:_misskey_quote\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\",\\"emojiReactions\\":{\\"@id\\":\\"fedibird:emojiReactions\\",\\"@type\\":\\"@id\\"}}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"sensitive\\":\\"as:sensitive\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"quoteUrl\\":\\"as:quoteUrl\\",\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"votersCount\\":{\\"@id\\":\\"toot:votersCount\\",\\"@type\\":\\"http://www.w3.org/2001/XMLSchema#nonNegativeInteger\\"},\\"Emoji\\":\\"toot:Emoji\\",\\"Hashtag\\":\\"as:Hashtag\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"ChatMessage\\":\\"http://litepub.social/ns#ChatMessage\\",\\"fedibird\\":\\"http://fedibird.com/ns#\\",\\"quoteUri\\":\\"fedibird:quoteUri\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_quote\\":\\"misskey:_misskey_quote\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\",\\"emojiReactions\\":{\\"@id\\":\\"fedibird:emojiReactions\\",\\"@type\\":\\"@id\\"}}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -85627,7 +85627,7 @@ instruments?: (Object | URL)[];}
       );
     }
     const docContext = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/data-integrity/v1\\"];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\"];
     const compacted = await jsonld.compact(
       values,
       docContext,
