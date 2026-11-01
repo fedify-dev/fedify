@@ -10,5 +10,7 @@ links:
     context does not define `signature` now also get a minimal inline
     definition of that term, so the signed document remains valid JSON-LD.
     Documents that already carry a `proof` are left unchanged, since a new
-    context definition would invalidate the proof.  Incoming signatures that
-    still use `identity/v1` continue to verify.  [[#664]]
+    context definition would invalidate the proof.  Activities queued for
+    fanout before the upgrade also keep their original proof-covered JSON when
+    replayed.  Incoming signatures that still use `identity/v1` continue to
+    verify.  [[#664]]

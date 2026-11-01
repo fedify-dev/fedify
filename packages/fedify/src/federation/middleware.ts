@@ -718,6 +718,7 @@ export class FederationImpl<TContextData>
       collectionSync: message.collectionSync,
       orderingKey: message.orderingKey,
       context,
+      activityJsonLd: message.activity,
     });
   }
 
@@ -1366,6 +1367,7 @@ export class FederationImpl<TContextData>
       proofCreated = true;
       break;
     }
+    const hadProof = proofCreated;
     if (!proofCreated) {
       for (const { keyId, privateKey } of keys) {
         if (privateKey.algorithm.name === "Ed25519") {
@@ -1377,10 +1379,12 @@ export class FederationImpl<TContextData>
         }
       }
     }
-    let jsonLd = await activity.toJsonLd({
-      format: "compact",
-      contextLoader,
-    });
+    let jsonLd = hadProof && options.activityJsonLd != null
+      ? options.activityJsonLd
+      : await activity.toJsonLd({
+        format: "compact",
+        contextLoader,
+      });
     if (rsaKey == null) {
       logger.warn(
         "No supported key found to create a Linked Data signature for " +
@@ -3452,6 +3456,11 @@ interface SendActivityInternalOptions<TContextData> {
   readonly collectionSync?: string;
   readonly orderingKey?: string;
   readonly context: Context<TContextData>;
+  /**
+   * The JSON-LD document as it was queued, used to preserve proof-covered
+   * bytes when replaying a fanout message created before an upgrade.
+   */
+  readonly activityJsonLd?: unknown;
 }
 
 export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {

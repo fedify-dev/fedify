@@ -5163,6 +5163,41 @@ test("ContextImpl.sendActivity()", async (t) => {
       proofCount++;
     }
     assertEquals(proofCount, 1);
+
+    // Replaying a fanout message created before the context change must keep
+    // the proof-covered context when it is queued for delivery.
+    const oldContext = [
+      "https://w3id.org/identity/v1",
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ];
+    const oldActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/1"),
+      actor: new URL("https://example.com/john"),
+    });
+    const oldSigned = await signObject(
+      oldActivity,
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const oldJson = await oldSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    queue.clear();
+    await federation2.processQueuedTask(undefined, {
+      ...fanoutMsg,
+      id: crypto.randomUUID(),
+      activity: oldJson,
+    });
+    const replayed = queue.messages.at(-1);
+    assert(replayed != null && replayed.type === "outbox");
+    assertEquals(
+      (replayed.activity as Record<string, unknown>)["@context"],
+      oldJson["@context"],
+    );
   });
 
   queue.clear();
