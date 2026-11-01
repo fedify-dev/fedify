@@ -22,6 +22,7 @@ import {
 import {
     isTemporalDuration,
     isTemporalInstant,
+    normalizeDateTimeLiteral,
 } from \\"@fedify/vocab-runtime/temporal\\";
 
 function canDecodeIri(iri: string): boolean {
@@ -10009,11 +10010,7 @@ get urls(): ((URL | Link))[] {
       if (v == null) continue;
     
       const decoded =
-    Temporal.Instant.from(
-        v[\\"@value\\"].substring(19).match(/[Z+-]/)
-          ? v[\\"@value\\"]
-          : v[\\"@value\\"] + \\"Z\\"
-      )
+    Temporal.Instant.from(normalizeDateTimeLiteral(v[\\"@value\\"]))
       ;
     
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
@@ -10319,11 +10316,7 @@ get urls(): ((URL | Link))[] {
       if (v == null) continue;
     
       const decoded =
-    Temporal.Instant.from(
-        v[\\"@value\\"].substring(19).match(/[Z+-]/)
-          ? v[\\"@value\\"]
-          : v[\\"@value\\"] + \\"Z\\"
-      )
+    Temporal.Instant.from(normalizeDateTimeLiteral(v[\\"@value\\"]))
       ;
     
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
@@ -10503,11 +10496,7 @@ get urls(): ((URL | Link))[] {
       if (v == null) continue;
     
       const decoded =
-    Temporal.Instant.from(
-        v[\\"@value\\"].substring(19).match(/[Z+-]/)
-          ? v[\\"@value\\"]
-          : v[\\"@value\\"] + \\"Z\\"
-      )
+    Temporal.Instant.from(normalizeDateTimeLiteral(v[\\"@value\\"]))
       ;
     
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
@@ -10615,11 +10604,7 @@ get urls(): ((URL | Link))[] {
       if (v == null) continue;
     
       const decoded =
-    Temporal.Instant.from(
-        v[\\"@value\\"].substring(19).match(/[Z+-]/)
-          ? v[\\"@value\\"]
-          : v[\\"@value\\"] + \\"Z\\"
-      )
+    Temporal.Instant.from(normalizeDateTimeLiteral(v[\\"@value\\"]))
       ;
     
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
@@ -18875,11 +18860,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
       if (v == null) continue;
     
       const decoded =
-    Temporal.Instant.from(
-        v[\\"@value\\"].substring(19).match(/[Z+-]/)
-          ? v[\\"@value\\"]
-          : v[\\"@value\\"] + \\"Z\\"
-      )
+    Temporal.Instant.from(normalizeDateTimeLiteral(v[\\"@value\\"]))
       ;
     
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
@@ -72339,13 +72320,12 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
     typeof v === \\"object\\" && \\"@type\\" in v
         && \\"@value\\" in v && typeof v[\\"@value\\"] === \\"string\\"
         && v[\\"@type\\"] === \\"http://www.w3.org/2001/XMLSchema#dateTime\\"
-        // Check if the value is a valid RFC 3339 date-time string
-        && new Date(v[\\"@value\\"]).toString() !== \\"Invalid Date\\"
-         ? Temporal.Instant.from(
-        v[\\"@value\\"].substring(19).match(/[Z+-]/)
-          ? v[\\"@value\\"]
-          : v[\\"@value\\"] + \\"Z\\"
-      ) : typeof v === \\"object\\" && \\"@value\\" in v
+        // Date rejects a fraction right after the minutes, hence the normalized
+        // form; the raw form keeps other date-like values failing at decoding
+        && (new Date(v[\\"@value\\"]).toString() !== \\"Invalid Date\\"
+          || new Date(normalizeDateTimeLiteral(v[\\"@value\\"])).toString()
+            !== \\"Invalid Date\\")
+         ? Temporal.Instant.from(normalizeDateTimeLiteral(v[\\"@value\\"])) : typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"boolean\\" ? v[\\"@value\\"] : undefined
       ;
     
@@ -84038,11 +84018,7 @@ proofs?: (DataIntegrityProof | URL)[];deleted?: Temporal.Instant | null;}
       if (v == null) continue;
     
       const decoded =
-    Temporal.Instant.from(
-        v[\\"@value\\"].substring(19).match(/[Z+-]/)
-          ? v[\\"@value\\"]
-          : v[\\"@value\\"] + \\"Z\\"
-      )
+    Temporal.Instant.from(normalizeDateTimeLiteral(v[\\"@value\\"]))
       ;
     
       if (!this._shouldCacheDecodedJsonLd(decoded)) {

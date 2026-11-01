@@ -1,5 +1,6 @@
 /**
- * Type guards for `Temporal` namespace objects.
+ * Type guards for `Temporal` namespace objects and normalization of
+ * `xsd:dateTime` literals.
  *
  * Fedify accepts both runtime polyfills (e.g. `@js-temporal/polyfill`,
  * `temporal-polyfill`) and the host's native `Temporal` implementation
@@ -71,4 +72,22 @@ export function isTemporalDuration(value: unknown): value is Temporal.Duration {
     typeof value.toString === "function" &&
     value.toString !== Object.prototype.toString
   );
+}
+
+/**
+ * Normalizes an `xsd:dateTime` literal into a form that
+ * `Temporal.Instant.from()` accepts.  A literal without a UTC offset is
+ * treated as UTC, and seconds omitted before a fraction, which Activity Streams
+ * 2.0 allows, are filled in.
+ *
+ * @param value The date-time literal to normalize.
+ * @returns The normalized literal.
+ */
+export function normalizeDateTimeLiteral(value: string): string {
+  const timeStart = value.search(/[Tt ]/) + 1;
+  if (timeStart < 1) return value;
+  const date = value.substring(0, timeStart);
+  const time = value.substring(timeStart)
+    .replace(/^(\d{2}:\d{2})(?=\.)/, "$1:00");
+  return date + (/[Zz+-]/.test(time) ? time : time + "Z");
 }

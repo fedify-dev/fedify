@@ -8,6 +8,46 @@ Version 2.0.36
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed inbox handling that treated valid date-times without seconds, such
+    as `2024-01-01T10:00Z` or `2024-01-01T10:00.5Z`, as permanently malformed.
+    Activity Streams 2.0 allows seconds to be omitted, so activities with such
+    date-times are no longer rejected or dropped.  Activities whose
+    `Question.closed` is a date-like but impossible value, such as
+    `2024-02-31T10:00.5Z`, are now treated as malformed instead of being
+    accepted with `closed` discarded.
+    [[#1339], [#1347] by ChanHaeng Lee\]
+
+[#1339]: https://github.com/fedify-dev/fedify/issues/1339
+[#1347]: https://github.com/fedify-dev/fedify/pull/1347
+
+### @fedify/vocab
+
+ -  Fixed parsing of date-times without seconds, such as `2024-01-01T10:00Z`,
+    `2024-01-01T10:00+09:00`, or `2024-01-01T10:00.5Z`, which Activity Streams
+    2.0 allows.  They raised a `RangeError`, or were ignored in
+    `Question.closed` when they had a fraction.  Date-like but impossible
+    values in `Question.closed`, such as `2024-02-31T10:00.5Z`, now raise a
+    `RangeError` instead of being silently dropped.
+    [[#1339], [#1347] by ChanHaeng Lee\]
+
+### @fedify/vocab-runtime
+
+ -  Added `normalizeDateTimeLiteral()` to `@fedify/vocab-runtime/temporal` so
+    that generated vocabulary code and `@fedify/fedify` interpret `xsd:dateTime`
+    literals the same way.  It treats a literal without a UTC offset as UTC and
+    handles literals without seconds, including those with a fraction.
+    [[#1339], [#1347] by ChanHaeng Lee\]
+
+### @fedify/vocab-tools
+
+ -  Fixed generated `xsd:dateTime` decoders failing on date-times without
+    seconds, such as `2024-01-01T10:00Z` or `2024-01-01T10:00.5Z`.  Regenerate
+    your vocabulary code to get the fix.  Generated code now imports
+    `normalizeDateTimeLiteral()` from `@fedify/vocab-runtime/temporal`.
+    [[#1339], [#1347] by ChanHaeng Lee\]
+
 
 Version 2.0.35
 --------------
