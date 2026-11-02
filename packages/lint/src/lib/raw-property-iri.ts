@@ -30,8 +30,6 @@ interface Scope {
 const functions = new Set([
   "getRawPropertyValues",
   "getRawPropertyValue",
-  "withRawProperty",
-  "withRawProperties",
 ]);
 const prefixes: Readonly<Record<string, string>> = {
   as: "https://www.w3.org/ns/activitystreams#",
@@ -293,10 +291,8 @@ export function checkRawPropertyIris(
       return { ...known, value: new URL(known.value).href };
     }
   }
-  function check(node: Ast, key?: string, identifierKey = false): void {
-    const known = key == null
-      ? staticString(node)
-      : { value: key, literal: node };
+  function check(node: Ast): void {
+    const known = staticString(node);
     if (!known) return;
     const value = known.value;
     const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(value);
@@ -335,9 +331,9 @@ export function checkRawPropertyIris(
         value,
         replacement,
         // Never suggest changing a const declaration shared by other uses.
-        suggestionNode: !identifierKey && (known.literal === node ||
+        suggestionNode: known.literal === node ||
             (node.type === "NewExpression" &&
-              (node.arguments as unknown[])[0] === known.literal))
+              (node.arguments as unknown[])[0] === known.literal)
           ? known.literal as unknown as Node
           : undefined,
       });
@@ -361,31 +357,6 @@ export function checkRawPropertyIris(
     }
     if (!functionName || !functions.has(functionName)) continue;
     const argument = ast((call.arguments as unknown[])[1]);
-    if (!argument) continue;
-    if (functionName !== "withRawProperties") {
-      check(argument);
-    } else if (argument.type === "ObjectExpression") {
-      for (const property of argument.properties as Ast[]) {
-        if (property.type !== "Property") continue;
-        const key = ast(property.key);
-        if (key) {
-          check(
-            key,
-            property.computed ? undefined : name(key) ??
-              (key.type === "Literal" && typeof key.value === "number"
-                ? String(key.value)
-                : undefined),
-            !property.computed && key.type === "Identifier",
-          );
-        }
-      }
-    } else if (argument.type === "ArrayExpression") {
-      for (const tuple of argument.elements as unknown[]) {
-        const pair = ast(tuple);
-        if (pair?.type !== "ArrayExpression") continue;
-        const key = ast((pair.elements as unknown[])[0]);
-        if (key) check(key);
-      }
-    }
+    if (argument) check(argument);
   }
 }

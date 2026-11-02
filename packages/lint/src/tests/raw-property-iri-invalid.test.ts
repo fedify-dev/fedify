@@ -57,7 +57,7 @@ const cases: [string, string, string?][] = [
   ],
   [
     "computed namespace",
-    'import * as vocab from "@fedify/vocab"; vocab["withRawProperty"](obj, "content", []);',
+    'import * as vocab from "@fedify/vocab"; vocab["getRawPropertyValue"](obj, "content");',
     "must be a full",
   ],
   [
@@ -132,25 +132,6 @@ const cases: [string, string, string?][] = [
     "type import",
     'import type { getRawPropertyValue } from "@fedify/vocab"; getRawPropertyValue(obj, "content");',
   ],
-  [
-    "object keys",
-    'import { withRawProperties } from "@fedify/vocab"; withRawProperties(obj, { content: [], "https://example/key": [] });',
-    "must be a full",
-  ],
-  [
-    "computed object keys",
-    'import { withRawProperties } from "@fedify/vocab"; const iri = "as:content"; withRawProperties(obj, { [iri]: [] });',
-    "non-HTTP scheme",
-  ],
-  [
-    "dynamic keys",
-    'import { withRawProperties } from "@fedify/vocab"; withRawProperties(obj, { [getIri()]: [], ...other });',
-  ],
-  [
-    "tuple keys",
-    'import { withRawProperties } from "@fedify/vocab"; withRawProperties(obj, [["content", []]]);',
-    "must be a full",
-  ],
   ...[
     "jsr:@fedify/vocab",
     "npm:@fedify/vocab",
@@ -162,9 +143,9 @@ const cases: [string, string, string?][] = [
     source,
   ): [string, string, string] => [
     source,
-    `import { withRawProperty } from ${
+    `import { getRawPropertyValue } from ${
       JSON.stringify(source)
-    }; withRawProperty(obj, "content", []);`,
+    }; getRawPropertyValue(obj, "content");`,
     "must be a full",
   ]),
 ];
@@ -182,11 +163,6 @@ cases.push(
     "prototype prefix",
     `${setup} read(obj, "constructor:property");`,
     "non-HTTP scheme",
-  ],
-  [
-    "numeric object key",
-    'import { withRawProperties } from "@fedify/vocab"; withRawProperties(obj, { 123: [] });',
-    "must be a full",
   ],
   ["IPv6 authority", `${setup} read(obj, "https://[::1]/property");`],
   [
@@ -245,12 +221,11 @@ test("ESLint: compact prefixes offer suggestions, never autofixes", () => {
   );
 });
 
-test("ESLint: template and object-key suggestions produce valid code", () => {
+test("ESLint: template and URL suggestions produce valid code", () => {
   for (
     const code of [
       `${setup} read(obj, \`as:content\`);`,
       `${setup} read(obj, new URL("as:content"));`,
-      'import { withRawProperties } from "@fedify/vocab"; withRawProperties(obj, { "as:content": [] });',
     ]
   ) {
     const [diagnostic] = verify(code);
