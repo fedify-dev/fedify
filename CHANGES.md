@@ -87,7 +87,7 @@ To be released.
  -  Added SVG favicon support to `fedify nodeinfo`.  SVG icons are now
     rasterized and shown as terminal art instead of being skipped, so servers
     that only declare an SVG favicon get an icon too.  Bitmap icons are still
-    preferred when a page declares both.  [[#1238] by Lee Jeongmin\]
+    preferred when a page declares both.  [[#1238], [#1346] by Lee Jeongmin\]
  -  Added a `fedify-cli` Agent Skill for command-line ActivityPub diagnostics
     and testing, including servers built without Fedify. Install it through
     the Claude Code plugin, the `@fedify/cli` npm package, or a manual
@@ -127,6 +127,7 @@ To be released.
 [#1330]: https://github.com/fedify-dev/fedify/pull/1330
 [#1335]: https://github.com/fedify-dev/fedify/issues/1335
 [#1340]: https://github.com/fedify-dev/fedify/pull/1340
+[#1346]: https://github.com/fedify-dev/fedify/pull/1346
 [#1352]: https://github.com/fedify-dev/fedify/pull/1352
 
 ### @fedify/debugger
