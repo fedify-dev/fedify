@@ -249,10 +249,10 @@ mise run check:types
 mise run check:types -- fedify vocab
 ~~~~
 
-It uses TypeScript 7, installed as the `typescript7` alias.  Tools that need
-the TypeScript compiler API, such as tsdown's declaration builds, VitePress
-Twoslash, and typescript-eslint, keep using TypeScript 6 through the
-`typescript` package.
+It uses TypeScript 7, currently the 7.1 beta, installed as the `typescript7`
+alias.  Tools that need the TypeScript compiler API, such as tsdown's
+declaration builds, VitePress Twoslash, and typescript-eslint, keep using
+TypeScript 6 through the `typescript` package.
 
 Each package has a *tsconfig.check.json*, plus _tsconfig.check.\*.json_
 variants for code that targets another runtime, such as Bun-only modules or

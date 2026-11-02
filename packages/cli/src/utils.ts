@@ -85,24 +85,28 @@ export async function matchesActor(
 export const isPromise = <T>(a: unknown): a is Promise<T> =>
   a instanceof Promise;
 
+/**
+ * The object that `set()` returns: the input with the computed property,
+ * wrapped in a promise when the computed value is a promise.
+ */
+type SetResult<K extends PropertyKey, T, S> = S extends Promise<infer U>
+  ? Promise<T & { [P in K]: Awaited<U> }>
+  : T & { [P in K]: S };
+
 export function set<K extends PropertyKey, T extends object, S>(
   key: K,
   f: (value: T) => S,
-): (
-  obj: T,
-) => S extends Promise<infer U> ? Promise<T & { [P in K]: Awaited<U> }>
-  : T & { [P in K]: S } {
+): (obj: T) => SetResult<K, T, S> {
   return ((obj) => {
     const result = f(obj);
     if (isPromise<S extends Promise<infer U> ? U : never>(result)) {
-      return result.then((value) => ({ ...obj, [key]: value })) as S extends
-        Promise<infer U> ? Promise<
-          T & { [P in K]: Awaited<U> }
-        >
-        : never;
+      return result.then((value) => ({ ...obj, [key]: value })) as SetResult<
+        K,
+        T,
+        S
+      >;
     }
-    return ({ ...obj, [key]: result }) as S extends Promise<infer _> ? never
-      : T & { [P in K]: S };
+    return ({ ...obj, [key]: result }) as SetResult<K, T, S>;
   });
 }
 
