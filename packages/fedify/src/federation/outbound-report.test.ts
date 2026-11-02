@@ -1,4 +1,5 @@
 import {
+  createTestMeterProvider,
   createTestTracerProvider,
   mockDocumentLoader,
   test,
@@ -26,6 +27,7 @@ import { MemoryKvStore } from "./kv.ts";
 import {
   ContextImpl,
   createFederation,
+  FederationImpl,
   OutboxContextImpl,
 } from "./middleware.ts";
 import type {
@@ -37,6 +39,7 @@ import type {
   OutboundDeliveryEvent,
   OutboundHttpExchangeReport,
   OutboundObservers,
+  OutboundWorkerReport,
 } from "./mod.ts";
 import type { FanoutMessage, OutboxMessage } from "./queue.ts";
 import {
@@ -3300,6 +3303,409 @@ function continuationMessage(
       : {}),
   };
 }
+
+test("outbound worker-only observers count real sends and report local settlement", async (t) => {
+  for (
+    const mode of [
+      "success",
+      "handled",
+      "native",
+      "gateway",
+      "recovered-preparation",
+    ] as const
+  ) {
+    await t.step(mode, async () => {
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const builder = createFederationBuilder<{ label: string }>();
+      const reports: OutboundWorkerReport[] = [];
+      const contexts: unknown[] = [];
+      const queued: Message[] = [];
+      let replacements = 0;
+      builder.setOutboundObservers({
+        async onWorker(ctx, report) {
+          reports.push(report);
+          contexts.push(ctx.data);
+          await Promise.resolve();
+          throw new Error("worker observer error must not replace settlement");
+        },
+      });
+      const federation = await builder.build({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        manuallyStartQueue: true,
+        tracerProvider,
+        queue: {
+          outbox: {
+            nativeRetrial: mode === "native" ||
+              mode === "recovered-preparation",
+            enqueue(message) {
+              queued.push(message);
+              return Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          },
+        },
+      });
+      builder.setOutboundObservers({
+        onWorker() {
+          replacements++;
+        },
+      });
+      const message = continuationMessage(recipient.inboxId!.href, true);
+      if (mode === "gateway" || mode === "recovered-preparation") {
+        Object.assign(message, {
+          gatewayInboxes: [message.inbox, "https://gateway.example/inbox"],
+        });
+      }
+      if (mode === "recovered-preparation") {
+        let reads = 0;
+        Object.assign(message, {
+          headers: new Proxy({}, {
+            get(target, property, receiver) {
+              if (property === Symbol.iterator && ++reads === 1) {
+                throw new Error("first gateway header preparation");
+              }
+              return Reflect.get(target, property, receiver);
+            },
+          }),
+        });
+      }
+      const data = { label: "worker data" };
+      fetchMock.mockGlobal().post(
+        message.inbox,
+        mode === "success" ? 202 : 503,
+      );
+      if (mode === "gateway" || mode === "recovered-preparation") {
+        fetchMock.post(
+          "https://gateway.example/inbox",
+          mode === "gateway" ? 202 : 503,
+        );
+      }
+      let outward: unknown;
+      try {
+        const processing = federation.processQueuedTask(data, message);
+        if (mode === "native" || mode === "recovered-preparation") {
+          await rejects(processing, (error: unknown) => {
+            outward = error;
+            return error instanceof SendActivityError;
+          });
+        } else await processing;
+        strictEqual(replacements, 0);
+        strictEqual(reports.length, 1);
+        deepStrictEqual(contexts, [data]);
+        const report = reports[0];
+        strictEqual(report.role, "outbox");
+        strictEqual(report.attemptsStarted, mode === "gateway" ? 2 : 1);
+        deepStrictEqual(report.queue, {
+          queueMessageId: message.id,
+          queueAttempt: 0,
+        });
+        deepStrictEqual(report.delivery, message.outbound);
+        deepStrictEqual(report.provenance, message.provenance);
+        strictEqual(report.local.origin, new URL(message.baseUrl).origin);
+        if (mode === "native" || mode === "recovered-preparation") {
+          deepStrictEqual(report.result, { type: "failed", error: outward });
+        } else deepStrictEqual(report.result, { type: "completed" });
+        strictEqual(queued.length, mode === "handled" ? 1 : 0);
+        const workerSpan = exporter.getSpan("activitypub.outbox");
+        ok(workerSpan);
+        deepStrictEqual(report.trace, {
+          traceId: workerSpan.spanContext().traceId,
+          spanId: workerSpan.spanContext().spanId,
+        });
+        ok(Object.isFrozen(report));
+        ok(Object.isFrozen(report.queue));
+        ok(Object.isFrozen(report.result));
+      } finally {
+        fetchMock.hardReset();
+        await tracerProvider.shutdown();
+      }
+    });
+  }
+});
+
+test("outbound worker observers report explicit key and fanout parse failures with zero sends", async (t) => {
+  for (const mode of ["key-import", "activity-parsing", "non-error"] as const) {
+    const phase = mode === "non-error" ? "activity-parsing" : mode;
+    await t.step(mode, async () => {
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+      });
+      const reports: OutboundWorkerReport[] = [];
+      federation.setOutboundObservers({
+        onWorker(_ctx, report) {
+          reports.push(report);
+        },
+      });
+      const original = continuationMessage(recipient.inboxId!.href, true);
+      let loaderCalls = 0;
+      Object.defineProperties(federation, {
+        documentLoaderFactory: {
+          value: () => {
+            loaderCalls++;
+            return mockDocumentLoader;
+          },
+        },
+        contextLoaderFactory: {
+          value: () => {
+            loaderCalls++;
+            if (mode === "non-error") throw NaN;
+            return mockDocumentLoader;
+          },
+        },
+      });
+      const message: Message = phase === "key-import"
+        ? {
+          ...original,
+          keys: [{ keyId: sender.keyId.href, privateKey: { kty: "invalid" } }],
+        }
+        : {
+          type: "fanout",
+          id: original.id,
+          baseUrl: original.baseUrl,
+          keys: [],
+          inboxes: {},
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Person",
+          },
+          activityType: Create.typeId.href,
+          traceContext: {},
+          provenance: original.provenance,
+        };
+      let outward: unknown;
+      await rejects(
+        federation.processQueuedTask(undefined, message),
+        (error: unknown) => {
+          outward = error;
+          return true;
+        },
+      );
+      strictEqual(reports.length, 1);
+      const report = reports[0];
+      strictEqual(report.attemptsStarted, 0);
+      deepStrictEqual(report.result, {
+        type: "preparation-failed",
+        failure: { kind: "local", phase, error: outward },
+        error: outward,
+      });
+      deepStrictEqual(report.provenance, original.provenance);
+      strictEqual(
+        loaderCalls,
+        mode === "non-error" ? 1 : phase === "key-import" ? 0 : 2,
+      );
+      if (phase === "activity-parsing") {
+        strictEqual(report.role, "fanout");
+        strictEqual(report.delivery, undefined);
+      }
+    });
+  }
+});
+
+test("outbound worker reports distinguish fanout child tasks from concrete sends", async (t) => {
+  for (const queued of [false, true]) {
+    await t.step(queued ? "child outbox tasks" : "direct sends", async () => {
+      const fanouts: Message[] = [];
+      const children: Message[] = [];
+      const queue = (messages: Message[]): MessageQueue => ({
+        enqueue(message) {
+          messages.push(message);
+          return Promise.resolve();
+        },
+        listen: () => Promise.resolve(),
+      });
+      const federation = createFederation<{ label: string }>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        manuallyStartQueue: true,
+        queue: {
+          fanout: queue(fanouts),
+          ...(queued ? { outbox: queue(children) } : {}),
+        },
+      });
+      const reports: OutboundWorkerReport[] = [];
+      const contexts: unknown[] = [];
+      federation.setOutboundObservers({
+        onWorker(ctx, report) {
+          reports.push(report);
+          contexts.push(ctx.data);
+        },
+      });
+      const ctx = federation.createContext(new URL("https://example.com"), {
+        label: "producer",
+      });
+      const targets = [
+        recipient,
+        recipient.clone({ inbox: new URL("https://receiver.example/second") }),
+      ];
+      await ctx.sendActivity(sender, targets, activity, {
+        fanout: "force",
+        dispatchId: "original invocation",
+      });
+      strictEqual(reports.length, 0);
+      const task = fanouts[0];
+      ok(task?.type === "fanout");
+      const data = { label: "fanout worker" };
+      fetchMock.mockGlobal().post(recipient.inboxId!.href, 202).post(
+        "https://receiver.example/second",
+        202,
+      );
+      try {
+        await federation.processQueuedTask(data, task);
+        strictEqual(reports.length, 1);
+        strictEqual(reports[0].role, "fanout");
+        strictEqual(reports[0].delivery, undefined);
+        strictEqual(reports[0].attemptsStarted, queued ? 0 : 2);
+        strictEqual(children.length, queued ? 2 : 0);
+        deepStrictEqual(reports[0].queue, { queueMessageId: task.id });
+        deepStrictEqual(reports[0].result, { type: "completed" });
+        strictEqual(reports[0].provenance.dispatchId, "original invocation");
+        deepStrictEqual(contexts, [data]);
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
+test("outbound worker callbacks retain selection, await settlement, and isolate logging failures", async () => {
+  let logs = 0;
+  await configure({
+    reset: true,
+    sinks: {
+      broken() {
+        logs++;
+        throw new Error("logging failure");
+      },
+    },
+    loggers: [{
+      category: ["fedify", "federation", "outbox"],
+      sinks: ["broken"],
+      lowestLevel: "error",
+    }, { category: ["logtape", "meta"], sinks: [] }],
+  });
+  let respond!: () => void;
+  const responseGate = new Promise<void>((resolve) => {
+    respond = resolve;
+  });
+  let fetched!: () => void;
+  const fetching = new Promise<void>((resolve) => {
+    fetched = resolve;
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let entered!: () => void;
+  const observing = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let replacements = 0;
+  let settled = false;
+  const reports: OutboundWorkerReport[] = [];
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    allowPrivateAddress: true,
+  });
+  federation.setOutboundObservers({
+    async onWorker(_ctx, report) {
+      reports.push(report);
+      entered();
+      await gate;
+      throw new Error("observer failure");
+    },
+  });
+  const message = continuationMessage(recipient.inboxId!.href, false);
+  fetchMock.mockGlobal().post(message.inbox, async () => {
+    fetched();
+    await responseGate;
+    return 202;
+  });
+  const processing = federation.processQueuedTask(undefined, message).finally(
+    () => {
+      settled = true;
+    },
+  );
+  try {
+    await fetching;
+    federation.setOutboundObservers({
+      onWorker() {
+        replacements++;
+      },
+    });
+    respond();
+    await observing;
+    strictEqual(settled, false);
+    release();
+    await processing;
+    strictEqual(reports.length, 1);
+    strictEqual(replacements, 0);
+    strictEqual(logs, 1);
+    deepStrictEqual(reports[0].delivery, {
+      broadcast: { type: "unknown" },
+      deliveryId: message.id,
+    });
+  } finally {
+    respond();
+    release();
+    await processing;
+    fetchMock.hardReset();
+    await reset();
+  }
+});
+
+test("outbound worker failure after a completed sender does not rewrite its attempt", async () => {
+  const [meterProvider] = createTestMeterProvider();
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    allowPrivateAddress: true,
+    meterProvider,
+  });
+  ok(federation instanceof FederationImpl);
+  const metrics = federation.metrics;
+  const original = metrics.recordQueueTaskOutcome;
+  const failure = Symbol("worker bookkeeping after sender settlement");
+  Object.defineProperty(metrics, "recordQueueTaskOutcome", {
+    configurable: true,
+    value: (...args: Parameters<typeof original>) => {
+      original.call(metrics, ...args);
+      throw failure;
+    },
+  });
+  const attempts: OutboundAttemptReport[] = [];
+  const workers: OutboundWorkerReport[] = [];
+  const contexts: unknown[] = [];
+  federation.setOutboundObservers({
+    onAttempt(ctx, report) {
+      attempts.push(report);
+      contexts.push(ctx);
+    },
+    onWorker(ctx, report) {
+      workers.push(report);
+      contexts.push(ctx);
+    },
+  });
+  const message = continuationMessage(recipient.inboxId!.href, true);
+  fetchMock.mockGlobal().post(message.inbox, 202);
+  try {
+    await rejects(
+      federation.processQueuedTask(undefined, message),
+      (error: unknown) => error === failure,
+    );
+    strictEqual(attempts.length, 1);
+    strictEqual(attempts[0].outcome.type, "succeeded");
+    strictEqual(workers.length, 1);
+    strictEqual(workers[0].attemptsStarted, 1);
+    deepStrictEqual(workers[0].result, { type: "failed", error: failure });
+    strictEqual(contexts[0], contexts[1]);
+  } finally {
+    Object.defineProperty(metrics, "recordQueueTaskOutcome", {
+      value: original,
+    });
+    fetchMock.hardReset();
+  }
+});
 
 test("outbound worker attempts restore current context without creating loaders", async () => {
   const federation = createFederation<{ label: string }>({

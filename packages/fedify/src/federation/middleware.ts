@@ -9,12 +9,14 @@ import {
 } from "./outbound-provenance.ts";
 import type {
   OutboundInboxRequest,
+  OutboundObservers,
   OutboundProvenance,
 } from "./outbound-report.ts";
 import {
   observeOutboundBroadcast,
   OutboundAttemptObserver,
   OutboundBroadcastObservation,
+  OutboundWorkerObservation,
 } from "./outbound-observation.ts";
 import { InboxObservation } from "./inbox-observation.ts";
 import { type Path, RouterError } from "@fedify/uri-template";
@@ -1247,55 +1249,85 @@ export class FederationImpl<TContextData>
       ...sourceLogContext(provenance),
     }, async () => {
       if (message.type === "fanout") {
+        const observers = this.outboundObservers;
+        const worker = this.#createOutboundWorkerObservation(
+          contextData,
+          message,
+          provenance,
+          observers.onWorker,
+        );
         const common: QueueTaskCommonAttributes = {
           role: "fanout",
           queue: this.fanoutQueue,
           activityType: message.activityType,
         };
-        await this.#runWorkerSpan(
-          "activitypub.fanout",
-          { "activitypub.activity.type": message.activityType },
-          extractedContext,
-          this.#instrumentWorkerBody(common, async (span) => {
-            if (message.activityId != null) {
-              span.setAttribute("activitypub.activity.id", message.activityId);
-            }
-            await this.#listenFanoutMessage(
-              contextData,
-              message,
-              provenance,
-              span,
-              trace.getSpanContext(extractedContext),
-            );
-            return { outcome: "completed" };
-          }, classifyAbortableError),
-        );
+        const execute = () =>
+          this.#runWorkerSpan(
+            "activitypub.fanout",
+            { "activitypub.activity.type": message.activityType },
+            extractedContext,
+            this.#instrumentWorkerBody(common, async (span) => {
+              if (message.activityId != null) {
+                span.setAttribute(
+                  "activitypub.activity.id",
+                  message.activityId,
+                );
+              }
+              await this.#listenFanoutMessage(
+                contextData,
+                message,
+                provenance,
+                span,
+                trace.getSpanContext(extractedContext),
+                observers,
+                worker,
+              );
+              return { outcome: "completed" };
+            }, classifyAbortableError),
+            worker,
+          );
+        await (worker == null ? execute() : worker.run(execute));
       } else if (message.type === "outbox") {
+        const observers = this.outboundObservers;
+        const worker = this.#createOutboundWorkerObservation(
+          contextData,
+          message,
+          provenance,
+          observers.onWorker,
+        );
         const common: QueueTaskCommonAttributes = {
           role: "outbox",
           queue: this.outboxQueue,
           activityType: message.activityType,
         };
-        await this.#runWorkerSpan(
-          "activitypub.outbox",
-          {
-            "activitypub.activity.type": message.activityType,
-            "activitypub.activity.retries": message.attempt,
-          },
-          extractedContext,
-          this.#instrumentWorkerBody(common, async (span) => {
-            if (message.activityId != null) {
-              span.setAttribute("activitypub.activity.id", message.activityId);
-            }
-            await this.#listenOutboxMessage(
-              contextData,
-              message,
-              span,
-              provenance,
-            );
-            return { outcome: "completed" };
-          }, classifyAbortableError),
-        );
+        const execute = () =>
+          this.#runWorkerSpan(
+            "activitypub.outbox",
+            {
+              "activitypub.activity.type": message.activityType,
+              "activitypub.activity.retries": message.attempt,
+            },
+            extractedContext,
+            this.#instrumentWorkerBody(common, async (span) => {
+              if (message.activityId != null) {
+                span.setAttribute(
+                  "activitypub.activity.id",
+                  message.activityId,
+                );
+              }
+              await this.#listenOutboxMessage(
+                contextData,
+                message,
+                span,
+                provenance,
+                observers,
+                worker,
+              );
+              return { outcome: "completed" };
+            }, classifyAbortableError),
+            worker,
+          );
+        await (worker == null ? execute() : worker.run(execute));
       } else if (message.type === "inbox") {
         const common: QueueTaskCommonAttributes = {
           role: "inbox",
@@ -1342,6 +1374,39 @@ export class FederationImpl<TContextData>
     });
   }
 
+  #createOutboundWorkerObservation(
+    contextData: TContextData,
+    message: FanoutMessage | OutboxMessage,
+    provenance: OutboundProvenance,
+    callback: OutboundObservers<TContextData>["onWorker"],
+  ): OutboundWorkerObservation<TContextData> | undefined {
+    if (callback == null) return undefined;
+    let documentLoader: DocumentLoader | undefined;
+    let contextLoader: DocumentLoader | undefined;
+    return new OutboundWorkerObservation(
+      () => {
+        const loaderOptions = this.#getLoaderOptions(message.baseUrl);
+        return new ContextImpl({
+          [outboundProvenance]: provenance,
+          federation: this,
+          url: new URL("/", message.baseUrl),
+          data: contextData,
+          documentLoader: (...args) =>
+            (documentLoader ??= this.documentLoaderFactory(loaderOptions))(
+              ...args,
+            ),
+          contextLoader: (...args) =>
+            (contextLoader ??= this.contextLoaderFactory(loaderOptions))(
+              ...args,
+            ),
+        });
+      },
+      callback,
+      message,
+      provenance,
+    );
+  }
+
   /**
    * Opens a CONSUMER span for a queue worker and scopes the extracted trace
    * context around its body.  The body—typically built by
@@ -1358,12 +1423,14 @@ export class FederationImpl<TContextData>
     spanAttributes: Attributes,
     extractedContext: ReturnType<typeof propagation.extract>,
     instrumentedBody: (span: Span) => () => Promise<void>,
+    worker?: OutboundWorkerObservation<TContextData>,
   ): Promise<void> {
     await this._getTracer().startActiveSpan(
       spanName,
       { kind: SpanKind.CONSUMER, attributes: spanAttributes },
       extractedContext,
       async (span: Span) => {
+        worker?.setSpan(span, trace.getSpanContext(extractedContext));
         const spanCtx = span.spanContext();
         return await withContext(
           { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
@@ -1428,8 +1495,9 @@ export class FederationImpl<TContextData>
     provenance: OutboundProvenance,
     span: Span,
     parentSpanContext: SpanContext | undefined,
+    observers: OutboundObservers<TContextData>,
+    worker?: OutboundWorkerObservation<TContextData>,
   ): Promise<void> {
-    const observers = this.outboundObservers;
     const logger = getLogger(["fedify", "federation", "fanout"]);
     logger.debug(
       "Fanning out activity {activityId} to {inboxes} inbox(es)...",
@@ -1438,34 +1506,47 @@ export class FederationImpl<TContextData>
         inboxes: globalThis.Object.keys(message.inboxes).length,
       },
     );
-    const keys: SenderKeyPair[] = await Promise.all(
-      message.keys.map(async ({ keyId, privateKey }) => ({
-        keyId: new URL(keyId),
-        privateKey: await importJwk(privateKey, "private"),
-      })),
-    );
-    const activity = await Activity.fromJsonLd(message.activity, {
-      contextLoader: this.contextLoaderFactory({
-        allowPrivateAddress: this.allowPrivateAddress,
-        userAgent: this.userAgent,
-      }),
-      documentLoader: this.documentLoaderFactory({
-        allowPrivateAddress: this.allowPrivateAddress,
-        userAgent: this.userAgent,
-      }),
-      tracerProvider: this.tracerProvider,
-    });
-    const context = this.#createContext(
-      new URL(message.baseUrl),
-      data,
-      {
-        [outboundProvenance]: provenance,
+    const importKeys = () =>
+      Promise.all(
+        message.keys.map(async ({ keyId, privateKey }) => ({
+          keyId: new URL(keyId),
+          privateKey: await importJwk(privateKey, "private"),
+        })),
+      );
+    const keys: SenderKeyPair[] = worker == null
+      ? await importKeys()
+      : await worker.prepare("key-import", importKeys);
+    const parseActivity = () =>
+      Activity.fromJsonLd(message.activity, {
+        contextLoader: this.contextLoaderFactory({
+          allowPrivateAddress: this.allowPrivateAddress,
+          userAgent: this.userAgent,
+        }),
         documentLoader: this.documentLoaderFactory({
           allowPrivateAddress: this.allowPrivateAddress,
           userAgent: this.userAgent,
         }),
-      },
-    );
+        tracerProvider: this.tracerProvider,
+      });
+    const activity = worker == null
+      ? await parseActivity()
+      : await worker.prepare("activity-parsing", parseActivity);
+    const createContext = () =>
+      this.#createContext(
+        new URL(message.baseUrl),
+        data,
+        {
+          [outboundProvenance]: provenance,
+          documentLoader: this.documentLoaderFactory({
+            allowPrivateAddress: this.allowPrivateAddress,
+            userAgent: this.userAgent,
+          }),
+        },
+      );
+    const context = worker == null
+      ? createContext()
+      : await worker.prepare("context-preparation", createContext);
+    worker?.useContext(context);
     const observation = await OutboundBroadcastObservation.resumeFanout(
       context,
       observers,
@@ -1479,6 +1560,7 @@ export class FederationImpl<TContextData>
       normalizeExistingProofs: message.normalizeExistingProofs,
       activityJsonLd: message.activity,
       observation,
+      worker,
       context,
     });
   }
@@ -1488,8 +1570,10 @@ export class FederationImpl<TContextData>
     message: OutboxMessage,
     span: Span,
     provenance: OutboundProvenance,
+    observers: OutboundObservers<TContextData>,
+    worker?: OutboundWorkerObservation<TContextData>,
   ): Promise<void> {
-    const { onAttempt, onHttpExchange } = this.outboundObservers;
+    const { onAttempt, onHttpExchange } = observers;
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const logData = {
       keyIds: message.keys.map((pair) => pair.keyId),
@@ -1502,10 +1586,13 @@ export class FederationImpl<TContextData>
     const keys: SenderKeyPair[] = [];
     let rsaKeyPair: SenderKeyPair | null = null;
     for (const { keyId, privateKey } of message.keys) {
-      const pair: SenderKeyPair = {
+      const importPair = async (): Promise<SenderKeyPair> => ({
         keyId: new URL(keyId),
         privateKey: await importJwk(privateKey, "private"),
-      };
+      });
+      const pair = worker == null
+        ? await importPair()
+        : await worker.prepare("key-import", importPair);
       if (
         rsaKeyPair == null &&
         pair.privateKey.algorithm.name === "RSASSA-PKCS1-v1_5"
@@ -1520,7 +1607,7 @@ export class FederationImpl<TContextData>
     let observationContextLoader: DocumentLoader | undefined;
     const observation = OutboundAttemptObserver.resumeOutbox(
       () =>
-        observationContext ??= new ContextImpl({
+        worker?.getContext() ?? (observationContext ??= new ContextImpl({
           [outboundProvenance]: provenance,
           federation: this,
           url: new URL("/", message.baseUrl),
@@ -1534,7 +1621,7 @@ export class FederationImpl<TContextData>
             (observationContextLoader ??= this.contextLoaderFactory(
               loaderOptions,
             ))(...args),
-        }),
+        })),
       onAttempt,
       message,
       provenance,
@@ -1659,6 +1746,7 @@ export class FederationImpl<TContextData>
         span,
         {
           observation,
+          worker,
           provenance,
           keys,
           logData,
@@ -1713,6 +1801,7 @@ export class FederationImpl<TContextData>
         }
       }
       await sendActivity({
+        attemptStarted: worker?.attemptStarted,
         observation,
         allowPrivateAddress: this.allowPrivateAddress,
         keys,
@@ -1721,7 +1810,10 @@ export class FederationImpl<TContextData>
         activityType: message.activityType,
         inbox,
         sharedInbox: message.sharedInbox,
-        headers: new Headers(message.headers),
+        headers: worker == null
+          ? new Headers(message.headers)
+          : await worker.prepare("request-preparation", () =>
+            new Headers(message.headers)),
         specDeterminer: new KvSpecDeterminer(
           this.kv,
           this.kvPrefixes.httpMessageSignaturesSpec,
@@ -2044,6 +2136,7 @@ export class FederationImpl<TContextData>
     span: Span,
     helpers: {
       readonly observation: SendActivityParameters["observation"];
+      readonly worker: OutboundWorkerObservation<TContextData> | undefined;
       readonly provenance: OutboundProvenance;
       readonly keys: readonly SenderKeyPair[];
       readonly logData: Record<string, unknown>;
@@ -2062,6 +2155,7 @@ export class FederationImpl<TContextData>
     const circuitLogger = getLogger(["fedify", "federation", "circuit"]);
     const {
       observation,
+      worker,
       provenance,
       keys,
       logData,
@@ -2169,6 +2263,7 @@ export class FederationImpl<TContextData>
       }
       try {
         await sendActivity({
+          attemptStarted: worker?.attemptStarted,
           observation,
           allowPrivateAddress: this.allowPrivateAddress,
           keys,
@@ -2177,7 +2272,10 @@ export class FederationImpl<TContextData>
           activityType: message.activityType,
           inbox,
           sharedInbox: message.sharedInbox,
-          headers: new Headers(message.headers),
+          headers: worker == null
+            ? new Headers(message.headers)
+            : await worker.prepare("request-preparation", () =>
+              new Headers(message.headers)),
           specDeterminer,
           meterProvider: this.meterProvider,
           tracerProvider: this.tracerProvider,
@@ -3293,6 +3391,7 @@ export class FederationImpl<TContextData>
       orderingKey,
       context: ctx,
       observation,
+      worker,
       provenance = getOutboundProvenance(ctx),
     } = options;
     observation?.setPhase("validation");
@@ -3436,6 +3535,7 @@ export class FederationImpl<TContextData>
             inbox,
             inboxes[inbox].gatewayInboxes,
             {
+              attemptStarted: worker?.attemptStarted,
               observation: delivery,
               allowPrivateAddress: this.allowPrivateAddress,
               keys,
@@ -7635,6 +7735,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
 }
 
 interface SendActivityInternalOptions<TContextData> {
+  readonly worker?: OutboundWorkerObservation<TContextData>;
   readonly provenance?: OutboundProvenance;
   readonly observation?: OutboundBroadcastObservation<TContextData>;
   readonly immediate?: boolean;

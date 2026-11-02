@@ -25,6 +25,7 @@ import type {
   OutboundObservers,
   OutboundPreparationResult,
   OutboundProvenance,
+  OutboundWorkerReport,
 } from "./outbound-report.ts";
 
 type WithoutSource<T> = T extends unknown
@@ -108,7 +109,7 @@ async function notifyObserver<
     | ((context: Context<TContextData>, event: TEvent) => void | Promise<void>)
     | undefined,
   event: TEvent,
-  unit: "broadcast" | "delivery" | "attempt" | "http-exchange",
+  unit: "broadcast" | "delivery" | "attempt" | "http-exchange" | "worker",
 ): Promise<void> {
   if (callback == null) return;
   try {
@@ -117,14 +118,18 @@ async function notifyObserver<
       () => callback(context, event),
     );
   } catch (error) {
-    try {
-      getLogger(["fedify", "federation", "outbox"]).error(
-        "An unexpected error occurred in outbound {unit} observer:\n{error}",
-        { unit, error },
-      );
-    } catch {
-      // A logging sink must not replace the send's result either.
-    }
+    logObserverFailure(unit, error);
+  }
+}
+
+function logObserverFailure(unit: string, error: unknown): void {
+  try {
+    getLogger(["fedify", "federation", "outbox"]).error(
+      "An unexpected error occurred in outbound {unit} observer:\n{error}",
+      { unit, error },
+    );
+  } catch {
+    // A logging sink must not replace the execution's result either.
   }
 }
 
@@ -324,6 +329,129 @@ type AttemptIdentity = Pick<
   "broadcast" | "deliveryId" | "destinationInbox" | "portableInbox"
 >;
 
+function snapshotOutboxIdentity(message: OutboxMessage): AttemptIdentity {
+  return message.outbound == null
+    ? Object.freeze({
+      broadcast: Object.freeze({ type: "unknown" as const }),
+      deliveryId: message.id,
+      ...(message.portableInbox == null
+        ? {}
+        : { portableInbox: message.portableInbox }),
+    })
+    : snapshotDeliveryIdentity(message.outbound);
+}
+
+type WorkerPreparationFailure = Extract<
+  OutboundWorkerReport["result"],
+  { type: "preparation-failed" }
+>["failure"];
+
+/** Per-execution state, independent of concrete attempt/exchange callbacks. */
+export class OutboundWorkerObservation<TContextData> {
+  #attemptsStarted = 0;
+  #trace: OutboundWorkerReport["trace"];
+  #preparationFailure: WorkerPreparationFailure | undefined;
+  readonly #queue: OutboundWorkerReport["queue"];
+  readonly #delivery: AttemptIdentity | undefined;
+  readonly #role: OutboundWorkerReport["role"];
+  #currentContext: Context<TContextData> | undefined;
+
+  constructor(
+    readonly context: () => Context<TContextData>,
+    readonly callback: OutboundObservers<TContextData>["onWorker"],
+    message: FanoutMessage | OutboxMessage,
+    readonly provenance: OutboundProvenance,
+  ) {
+    this.#role = message.type;
+    this.#queue = Object.freeze({
+      queueMessageId: message.id,
+      ...(message.type === "outbox" ? { queueAttempt: message.attempt } : {}),
+    });
+    if (message.type === "outbox") {
+      try {
+        this.#delivery = snapshotOutboxIdentity(message);
+      } catch {
+        // Invalid optional grouping cannot change the worker's own execution.
+        this.#delivery = undefined;
+      }
+    }
+  }
+
+  readonly attemptStarted: () => void = () => {
+    this.#attemptsStarted++;
+  };
+
+  getContext(): Context<TContextData> {
+    return this.#currentContext ??= this.context();
+  }
+
+  useContext(context: Context<TContextData>): void {
+    this.#currentContext = context;
+  }
+
+  setSpan(span: Span, parentSpanContext?: SpanContext): void {
+    this.#trace = snapshotTrace(span, parentSpanContext);
+  }
+
+  async prepare<TResult>(
+    phase: WorkerPreparationFailure["phase"],
+    operation: () => TResult | Promise<TResult>,
+  ): Promise<TResult> {
+    try {
+      const result = await operation();
+      this.#preparationFailure = undefined;
+      return result;
+    } catch (error) {
+      this.#preparationFailure = Object.freeze({ kind: "local", phase, error });
+      throw error;
+    }
+  }
+
+  async run(operation: () => Promise<void>): Promise<void> {
+    try {
+      await operation();
+    } catch (error) {
+      await this.#notify(
+        this.#preparationFailure == null ||
+          !Object.is(this.#preparationFailure.error, error)
+          ? { type: "failed", error }
+          : {
+            type: "preparation-failed",
+            failure: this.#preparationFailure,
+            error,
+          },
+      );
+      throw error;
+    }
+    await this.#notify({ type: "completed" });
+  }
+
+  async #notify(result: OutboundWorkerReport["result"]): Promise<void> {
+    const observedAt = Temporal.Now.instant().epochMilliseconds;
+    try {
+      const context = this.getContext();
+      await notifyObserver(
+        context,
+        this.callback,
+        Object.freeze({
+          role: this.#role,
+          queue: this.#queue,
+          ...(this.#delivery == null ? {} : { delivery: this.#delivery }),
+          attemptsStarted: this.#attemptsStarted,
+          observedAt,
+          ...(this.#trace == null ? {} : { trace: this.#trace }),
+          provenance: this.provenance,
+          local: snapshotLocalContext(context),
+          result: Object.freeze(result),
+        }),
+        "worker",
+      );
+    } catch (error) {
+      logObserverFailure("worker", error);
+    }
+  }
+}
+
 /** Selected callback and restored grouping, shared by concrete gateway attempts. */
 export class OutboundAttemptObserver<TContextData> {
   readonly #queue: OutboundAttemptReport["queue"];
@@ -348,15 +476,7 @@ export class OutboundAttemptObserver<TContextData> {
     onHttpExchange?: OutboundObservers<TContextData>["onHttpExchange"],
   ): OutboundAttemptObserver<TContextData> | undefined {
     if (callback == null && onHttpExchange == null) return undefined;
-    const identity = message.outbound == null
-      ? Object.freeze({
-        broadcast: Object.freeze({ type: "unknown" as const }),
-        deliveryId: message.id,
-        ...(message.portableInbox == null
-          ? {}
-          : { portableInbox: message.portableInbox }),
-      })
-      : snapshotDeliveryIdentity(message.outbound);
+    const identity = snapshotOutboxIdentity(message);
     return new OutboundAttemptObserver(
       context,
       callback,

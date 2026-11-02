@@ -207,6 +207,8 @@ export interface SenderKeyPair {
  * Parameters for {@link sendActivity}.
  */
 export interface SendActivityParameters {
+  /** Count actual sender entry for the current outgoing worker. @internal */
+  readonly attemptStarted?: () => void;
   /** In-process destination observation; never serialized. @internal */
   readonly observation?: {
     startAttempt(inboxUrl: string): OutboundAttemptObservation | undefined;
@@ -303,6 +305,7 @@ export function sendActivity(
   options: SendActivityParameters,
   deps: SendActivityDependencies = {},
 ): Promise<void> {
+  options.attemptStarted?.();
   const attempt = options.observation?.startAttempt(options.inbox.href);
   const parentSpanContext = trace.getSpanContext(context.active());
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();

@@ -298,6 +298,45 @@ export type OutboundHttpExchangeReport =
   };
 
 /**
+ * One fanout or outbox worker execution after its local processing settles.
+ *
+ * Completion does not establish HTTP success or scheduling acceptance. Actions
+ * are reported separately when their observation is implemented.
+ * @since 2.5.0
+ */
+export type OutboundWorkerReport = OutboundSourceMetadata & {
+  /** Current outgoing queue role; inbox/custom-task workers are separate. */
+  readonly role: "fanout" | "outbox";
+  /** Actual task and available Fedify retry counter for this execution. */
+  readonly queue: NonNullable<OutboundAttemptReport["queue"]>;
+  /** Concrete sender entries, independent of enabled attempt/exchange callbacks. */
+  readonly attemptsStarted: number;
+  /** Known outbox obligation; absent for fanout or unavailable metadata. */
+  readonly delivery?: Pick<
+    OutboundAttemptReport,
+    "broadcast" | "deliveryId" | "destinationInbox" | "portableInbox"
+  >;
+  /** Actual local settlement, separate from individual attempts. */
+  readonly result:
+    | { readonly type: "completed" }
+    | { readonly type: "failed"; readonly error: unknown }
+    | {
+      readonly type: "preparation-failed";
+      readonly failure: {
+        readonly kind: "local";
+        readonly phase:
+          | "key-import"
+          | "activity-parsing"
+          | "context-preparation"
+          | "request-preparation";
+        readonly error: unknown;
+      };
+      /** Exact error escaping the worker preparation operation. */
+      readonly error: unknown;
+    };
+};
+
+/**
  * Optional observers of outgoing activity processing.
  *
  * Send, original-payload forwarding, and automatic portable replication producer
@@ -317,6 +356,16 @@ export type OutboundHttpExchangeReport =
  * @since 2.5.0
  */
 export interface OutboundObservers<TContextData> {
+  /**
+   * Observes terminal outgoing worker processing with current context/data.
+   * Errors are isolated; results do not replace attempt outcomes or establish
+   * future backend execution. Scheduling actions are not observed here yet.
+   */
+  readonly onWorker?: (
+    context: Context<TContextData>,
+    report: OutboundWorkerReport,
+  ) => void | Promise<void>;
+
   /**
    * Observes each actual fetch after response headers or rejection, before
    * subsequent challenge/redirect handling. Non-2xx responses are still response
