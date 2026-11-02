@@ -8,6 +8,7 @@ import {
 import { getLogger, withContext } from "@logtape/logtape";
 import {
   type Attributes,
+  context,
   type MeterProvider,
   type Span,
   SpanKind,
@@ -22,6 +23,7 @@ import {
   type HttpMessageSignaturesSpecDeterminer,
 } from "../sig/http.ts";
 import { isPortableUri } from "../sig/portable-key-id.ts";
+import type { OutboundAttemptObservation } from "./outbound-observation.ts";
 import { getDurationMs, getFederationMetrics } from "./metrics.ts";
 import {
   mergeGatewayInboxes,
@@ -205,6 +207,11 @@ export interface SenderKeyPair {
  * Parameters for {@link sendActivity}.
  */
 export interface SendActivityParameters {
+  /** In-process destination observation; never serialized. @internal */
+  readonly observation?: {
+    startAttempt(inboxUrl: string): OutboundAttemptObservation | undefined;
+  };
+
   /**
    * The activity to send.
    */
@@ -296,6 +303,8 @@ export function sendActivity(
   options: SendActivityParameters,
   deps: SendActivityDependencies = {},
 ): Promise<void> {
+  const attempt = options.observation?.startAttempt(options.inbox.href);
+  const parentSpanContext = trace.getSpanContext(context.active());
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   return tracer.startActiveSpan(
@@ -307,6 +316,7 @@ export function sendActivity(
       },
     },
     async (span) => {
+      attempt?.setSpan(span, parentSpanContext);
       if (options.activityId != null) {
         span.setAttribute("activitypub.activity.id", options.activityId);
       }
@@ -318,10 +328,17 @@ export function sendActivity(
         await withContext(
           { traceId: spanContext.traceId, spanId: spanContext.spanId },
           () =>
-            sendActivityInternal({ ...options, tracerProvider }, span, deps),
+            sendActivityInternal(
+              { ...options, tracerProvider },
+              span,
+              deps,
+              attempt,
+            ),
         );
+        await attempt?.succeeded();
       } catch (e) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+        await attempt?.failed(e);
         throw e;
       } finally {
         span.end();
@@ -463,6 +480,7 @@ async function sendActivityInternal(
   }: SendActivityParameters,
   span: Span,
   deps: SendActivityDependencies,
+  attempt?: OutboundAttemptObservation,
 ): Promise<void> {
   const logger = getLogger(["fedify", "federation", "outbox"]);
   const federationMetrics = getFederationMetrics(meterProvider);
@@ -476,17 +494,40 @@ async function sendActivityInternal(
       session = await openUnvalidatedHop(url);
     } catch (error) {
       if (error instanceof UrlError && error.reason === "dns") {
+        attempt?.failure({ kind: "transport", phase: "validation", error });
         logger.error("DNS resolution failed for URL: {url}", { url, error });
         const failure = new FetchError(url, error.message);
         failure.cause = error;
         throw failure;
       }
       if (error instanceof UrlError) {
+        if (error.reason === "disallowed") {
+          attempt?.failure({ kind: "policy", phase: "validation", error });
+        }
         logger.error("Disallowed private URL: {url}", { url, error });
       }
       throw error;
     }
-    return session;
+    if (attempt == null) return session;
+    return {
+      url: session.url,
+      async fetch(input, init) {
+        try {
+          return await session.fetch(input, init);
+        } catch (error) {
+          attempt.failure({ kind: "transport", phase: "request", error });
+          throw error;
+        }
+      },
+      async close() {
+        try {
+          await session.close();
+        } catch (error) {
+          attempt.failure({ kind: "local", phase: "cleanup", error });
+          throw error;
+        }
+      },
+    };
   }
 
   let initialSession: PublicFetchSession;
@@ -514,14 +555,32 @@ async function sendActivityInternal(
     return openHop(url);
   };
   try {
-    headers = new Headers(headers);
-    headers.set("Content-Type", "application/activity+json");
-    const request = new Request(inbox, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(activity),
-      redirect: "manual",
-    });
+    let request: Request;
+    let body: string | undefined;
+    try {
+      headers = new Headers(headers);
+      headers.set("Content-Type", "application/activity+json");
+    } catch (error) {
+      attempt?.failure({ kind: "local", phase: "request-preparation", error });
+      throw error;
+    }
+    try {
+      body = JSON.stringify(activity);
+    } catch (error) {
+      attempt?.failure({ kind: "local", phase: "serialization", error });
+      throw error;
+    }
+    try {
+      request = new Request(inbox, {
+        method: "POST",
+        headers,
+        body,
+        redirect: "manual",
+      });
+    } catch (error) {
+      attempt?.failure({ kind: "local", phase: "request-preparation", error });
+      throw error;
+    }
     let rsaKey: SenderKeyPair | null = null;
     for (const key of keys) {
       if (key.privateKey.algorithm.name === "RSASSA-PKCS1-v1_5") {
@@ -549,22 +608,27 @@ async function sendActivityInternal(
         },
       );
     }
+    const consume = (response: Response) => {
+      attempt?.response(response.status);
+      return consumeSendActivityResponse(response, inbox);
+    };
     let outcome: SendActivityOutcome;
     try {
       outcome = rsaKey == null
         ? await fetchWithValidatedRedirects(
           request,
           openDeliveryHop,
-          (response) => consumeSendActivityResponse(response, inbox),
+          consume,
         )
         : await doubleKnockScoped(
           request,
           rsaKey,
           { tracerProvider, specDeterminer },
           openDeliveryHop,
-          (response) => consumeSendActivityResponse(response, inbox),
+          consume,
         );
     } catch (error) {
+      attempt?.unknown(error);
       // A refused redirect remains a policy error rather than a transport
       // failure, just as a refused initial inbox does.
       const failure = error instanceof FetchError || error instanceof UrlError
@@ -590,7 +654,7 @@ async function sendActivityInternal(
             "{statusText}):\n{error}",
           { activityId, inbox: inbox.href, status, statusText, error },
         );
-        throw new SendActivityError(
+        const failure = new SendActivityError(
           inbox,
           status,
           `Failed to send activity ${activityId} to ${inbox.href} ` +
@@ -598,6 +662,8 @@ async function sendActivityInternal(
           error,
           responseHeaders,
         );
+        attempt?.failure({ kind: "http", phase: "response", error: failure });
+        throw failure;
       }
       deliverySuccess = true;
 

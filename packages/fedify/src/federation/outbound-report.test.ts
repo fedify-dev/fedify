@@ -4,6 +4,7 @@ import {
   test,
 } from "@fedify/fixture";
 import { Create, Person } from "@fedify/vocab";
+import { FetchError, UrlError } from "@fedify/vocab-runtime";
 import { configure, reset } from "@logtape/logtape";
 import {
   isSpanContextValid,
@@ -31,11 +32,16 @@ import type {
   Federation,
   Message,
   MessageQueue,
+  OutboundAttemptReport,
   OutboundBroadcastEvent,
   OutboundDeliveryEvent,
   OutboundObservers,
 } from "./mod.ts";
 import type { FanoutMessage, OutboxMessage } from "./queue.ts";
+import {
+  sendActivity as sendConcreteActivity,
+  SendActivityError,
+} from "./send.ts";
 import { OutboundBroadcastObservation } from "./outbound-observation.ts";
 import { rsaPrivateKey2, rsaPublicKey2 } from "../testing/keys.ts";
 
@@ -153,6 +159,314 @@ test("outbound observation timestamps snapshot each boundary and refresh on fano
     strictEqual("observedAt" in message.inboxes[inbox].outbound!, false);
   } finally {
     Temporal.Now.instant = originalNow;
+  }
+});
+
+test("outbound attempts report ordinary and outbox sends with attempt-only builder registration", async (t) => {
+  for (const kind of ["ordinary", "outbox"] as const) {
+    for (const status of [202, 503, "policy"] as const) {
+      await t.step(`${kind}: ${status}`, async () => {
+        const [tracerProvider, exporter] = createTestTracerProvider();
+        try {
+          const builder = createFederationBuilder<void>();
+          const reports: OutboundAttemptReport[] = [];
+          const contexts: unknown[] = [];
+          let recorded = false;
+          let replacementCalls = 0;
+          builder.setOutboundObservers({
+            async onAttempt(context, report) {
+              contexts.push(context);
+              reports.push(report);
+              await Promise.resolve();
+              recorded = true;
+              throw new Error("observer rejection must be isolated");
+            },
+          });
+          const federation = await builder.build({
+            kv: new MemoryKvStore(),
+            tracerProvider,
+            allowPrivateAddress: status !== "policy",
+          });
+          builder.setOutboundObservers({
+            onAttempt() {
+              replacementCalls++;
+            },
+          });
+          const base = federation.createContext(
+            new URL("https://example.com"),
+            undefined,
+          );
+          ok(base instanceof ContextImpl);
+          const ctx = kind === "ordinary"
+            ? base
+            : base.toOutboxContext("alice", {}, undefined, Create.typeId.href);
+          const target = status === "policy"
+            ? recipient.clone({
+              inbox: new URL("http://127.0.0.1/inbox"),
+            })
+            : recipient;
+          if (status !== "policy") {
+            fetchMock.mockGlobal().post(target.inboxId!.href, status);
+          }
+          const sending = ctx.sendActivity(sender, target, activity, {
+            immediate: true,
+            dispatchId: "application-dispatch",
+          });
+          let outward: unknown;
+          if (status === 202) await sending;
+          else {
+            await rejects(sending, (error: unknown) => {
+              outward = error;
+              return status === "policy"
+                ? error instanceof UrlError
+                : error instanceof SendActivityError &&
+                  error.statusCode === status;
+            });
+          }
+          strictEqual(recorded, true);
+          strictEqual(replacementCalls, 0);
+          strictEqual(reports.length, 1);
+          strictEqual(contexts[0], ctx);
+          const report = reports[0];
+          ok(report.attemptId.length > 0);
+          ok(report.deliveryId.length > 0);
+          ok(report.broadcast.type === "known");
+          strictEqual(report.destinationInbox, target.inboxId!.href);
+          strictEqual(report.inboxUrl, target.inboxId!.href);
+          strictEqual(report.provenance.dispatchId, "application-dispatch");
+          ok(Object.isFrozen(report));
+          ok(Object.isFrozen(report.outcome));
+          ok(Object.isFrozen(report.local));
+          ok(Object.isFrozen(report.provenance));
+          const span = exporter.getSpan("activitypub.send_activity");
+          ok(span);
+          deepStrictEqual(report.trace, {
+            traceId: span.spanContext().traceId,
+            spanId: span.spanContext().spanId,
+          });
+          if (status === 202) {
+            deepStrictEqual(report.outcome, {
+              type: "succeeded",
+              response: { status },
+            });
+          } else {
+            ok(report.outcome.type === "failed");
+            strictEqual(report.outcome.error, outward);
+            strictEqual(report.outcome.failure.error, outward);
+            strictEqual(
+              report.outcome.failure.kind,
+              status === "policy" ? "policy" : "http",
+            );
+            if (status === "policy") {
+              strictEqual(report.outcome.response, undefined);
+            } else deepStrictEqual(report.outcome.response, { status });
+          }
+        } finally {
+          fetchMock.hardReset();
+          await tracerProvider.shutdown();
+        }
+      });
+    }
+  }
+});
+
+test("outbound attempts await the selected observer without inventing pre-entry attempts", async () => {
+  fetchMock.mockGlobal().post(recipient.inboxId!.href, 202);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let entered!: () => void;
+  const observing = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const reports: OutboundAttemptReport[] = [];
+  let replacements = 0;
+  let settled = false;
+  try {
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      allowPrivateAddress: true,
+    });
+    federation.setOutboundObservers({
+      onBroadcast(_ctx, event) {
+        if (event.stage === "started") {
+          federation.setOutboundObservers({
+            onAttempt() {
+              replacements++;
+            },
+          });
+        }
+      },
+      async onAttempt(_ctx, report) {
+        reports.push(report);
+        entered();
+        await gate;
+      },
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com"),
+      undefined,
+    );
+    const sending = ctx.sendActivity(sender, recipient, activity, {
+      immediate: true,
+    })
+      .finally(() => {
+        settled = true;
+      });
+    await observing;
+    strictEqual(settled, false);
+    strictEqual(replacements, 0);
+    release();
+    await sending;
+    strictEqual(reports.length, 1);
+    await ctx.sendActivity(sender, [], activity);
+    await rejects(
+      ctx.sendActivity(sender, recipient, new Create({})),
+      TypeError,
+    );
+    strictEqual(replacements, 0);
+    strictEqual(reports.length, 1);
+  } finally {
+    release();
+    fetchMock.hardReset();
+  }
+});
+
+test("outbound attempts preserve boundary failures and allocate fresh IDs per concrete entry", async (t) => {
+  for (
+    const phase of [
+      "success",
+      "serialization",
+      "dns",
+      "request",
+      "cleanup",
+      "http-cleanup",
+      "signing",
+    ] as const
+  ) {
+    await t.step(phase, async () => {
+      const federation = createFederation<void>(options);
+      const ctx = federation.createContext(
+        new URL("https://example.com"),
+        undefined,
+      );
+      const reports: OutboundAttemptReport[] = [];
+      const deliveries: OutboundDeliveryEvent[] = [];
+      const observation = new OutboundBroadcastObservation(ctx, {
+        onAttempt(_ctx, report) {
+          reports.push(report);
+        },
+        onDelivery(_ctx, event) {
+          deliveries.push(event);
+        },
+      }, "send");
+      const inbox = "https://receiver.example/inbox";
+      await observation.planDestinations({
+        [inbox]: { actorIds: [], sharedInbox: false },
+      });
+      const failure = phase === "dns"
+        ? new UrlError(inbox, { reason: "dns" })
+        : Symbol(phase);
+      const delivery = observation.delivery(inbox)!;
+      let submissions = 0;
+      const send = () =>
+        sendConcreteActivity({
+          observation: delivery,
+          activity: phase === "serialization"
+            ? {
+              toJSON() {
+                throw failure;
+              },
+            }
+            : {},
+          keys: phase === "signing" ? [sender] : [],
+          inbox: new URL(inbox),
+          specDeterminer: {
+            determineSpec() {
+              throw failure;
+            },
+            rememberSpec() {
+              return Promise.resolve();
+            },
+          },
+        }, {
+          openHop(url) {
+            if (phase === "dns") return Promise.reject(failure);
+            return Promise.resolve({
+              url: new URL(url),
+              fetch() {
+                submissions++;
+                return phase === "request"
+                  ? Promise.reject(failure)
+                  : Promise.resolve(
+                    new Response(null, {
+                      status: phase === "http-cleanup" ? 503 : 202,
+                    }),
+                  );
+              },
+              close() {
+                return phase === "cleanup" || phase === "http-cleanup"
+                  ? Promise.reject(failure)
+                  : Promise.resolve();
+              },
+            });
+          },
+        });
+      let outward: unknown;
+      if (phase === "success") {
+        await send();
+        await send();
+        strictEqual(reports.length, 2);
+        notStrictEqual(reports[0].attemptId, reports[1].attemptId);
+        strictEqual(reports[0].deliveryId, reports[1].deliveryId);
+        strictEqual(submissions, 2);
+        return;
+      }
+      await rejects(send(), (error: unknown) => {
+        outward = error;
+        return phase === "serialization"
+          ? error === failure
+          : error instanceof FetchError;
+      });
+      strictEqual(reports.length, 1);
+      const report = reports[0];
+      strictEqual(report.deliveryId, deliveries[0].deliveryId);
+      strictEqual(report.outcome.type, "failed");
+      ok(report.outcome.type === "failed");
+      strictEqual(report.outcome.error, outward);
+      if (phase === "http-cleanup") {
+        deepStrictEqual(report.outcome.failure, {
+          kind: "http",
+          phase: "response",
+        });
+        deepStrictEqual(report.outcome.diagnostics, [{
+          kind: "local",
+          phase: "cleanup",
+          error: failure,
+        }]);
+        deepStrictEqual(report.outcome.response, { status: 503 });
+      } else {
+        deepStrictEqual(report.outcome.failure, {
+          kind: phase === "dns" || phase === "request"
+            ? "transport"
+            : phase === "signing"
+            ? "unknown"
+            : "local",
+          phase: phase === "dns"
+            ? "validation"
+            : phase === "signing"
+            ? "unknown"
+            : phase,
+          error: failure,
+        });
+      }
+      strictEqual(
+        submissions,
+        ["request", "cleanup", "http-cleanup"].includes(phase) ? 1 : 0,
+      );
+      strictEqual("trace" in report, false);
+    });
   }
 });
 

@@ -142,6 +142,71 @@ export type OutboundDeliveryEvent =
     }
   );
 
+type OutboundAttemptFailure =
+  | {
+    readonly kind: "http";
+    readonly phase: "response";
+    readonly error?: unknown;
+  }
+  | {
+    readonly kind: "transport";
+    readonly phase: "validation" | "request";
+    readonly error: unknown;
+  }
+  | {
+    readonly kind: "policy";
+    readonly phase: "validation";
+    readonly error: unknown;
+  }
+  | {
+    readonly kind: "local";
+    readonly phase: "serialization" | "request-preparation" | "cleanup";
+    readonly error: unknown;
+  }
+  | {
+    readonly kind: "unknown";
+    readonly phase: "unknown";
+    readonly error: unknown;
+  };
+
+/**
+ * The terminal result of one ordinary immediate concrete send.
+ *
+ * A send that fails before submitting HTTP still constitutes an attempt.
+ * Forwarding, portable gateways, and queued worker sends are not observed yet.
+ * @since 2.5.0
+ */
+export type OutboundAttemptReport = OutboundSourceMetadata & {
+  /** Fresh opaque identity allocated at concrete sender entry. */
+  readonly attemptId: string;
+  /** The originating invocation, independent of tracing. */
+  readonly broadcast: OutboundDeliveryEvent["broadcast"];
+  /** Destination obligation shared with producer delivery events. */
+  readonly deliveryId: string;
+  /** Original planned inbox, independent of the concrete route. */
+  readonly destinationInbox: string;
+  /** Inbox selected for this invocation of the concrete sender. */
+  readonly inboxUrl: string;
+  /** Settled execution result, separate from producer preparation. */
+  readonly outcome:
+    | {
+      readonly type: "succeeded";
+      /** Final response selected by the sender. */
+      readonly response: { readonly status: number };
+    }
+    | {
+      readonly type: "failed";
+      /** Failure evidence captured before broad sender error wrapping. */
+      readonly failure: OutboundAttemptFailure;
+      /** Exact value escaping the sender, possibly different from failure.error. */
+      readonly error: unknown;
+      /** Final response when the sender reached final-response consumption. */
+      readonly response?: { readonly status: number };
+      /** Additional failures, without replacing the primary evidence. */
+      readonly diagnostics?: readonly OutboundAttemptFailure[];
+    };
+};
+
 /**
  * Optional observers of outgoing activity processing.
  *
@@ -159,6 +224,15 @@ export type OutboundDeliveryEvent =
  * @since 2.5.0
  */
 export interface OutboundObservers<TContextData> {
+  /**
+   * Observes settlement of ordinary immediate sends, including pre-fetch
+   * failures. Callback errors cannot replace the sender's result.
+   */
+  readonly onAttempt?: (
+    context: Context<TContextData>,
+    report: OutboundAttemptReport,
+  ) => void | Promise<void>;
+
   /**
    * Observes invocation entry and the current producer's preparation result.
    * The existing context is passed without loading data for observation.

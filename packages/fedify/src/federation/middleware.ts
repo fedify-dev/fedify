@@ -3404,6 +3404,9 @@ export class FederationImpl<TContextData>
             inbox,
             inboxes[inbox].gatewayInboxes,
             {
+              observation: inboxes[inbox].portableInbox == null
+                ? delivery
+                : undefined,
               allowPrivateAddress: this.allowPrivateAddress,
               keys,
               activity: jsonLd,

@@ -14,6 +14,7 @@ import { getLogger, withContext } from "@logtape/logtape";
 import type { Context } from "./context.ts";
 import type { FanoutMessage, SerializedOutboundDelivery } from "./queue.ts";
 import type {
+  OutboundAttemptReport,
   OutboundBroadcastEvent,
   OutboundDeliveryEvent,
   OutboundObservers,
@@ -102,7 +103,7 @@ async function notifyObserver<
     | ((context: Context<TContextData>, event: TEvent) => void | Promise<void>)
     | undefined,
   event: TEvent,
-  unit: "broadcast" | "delivery",
+  unit: "broadcast" | "delivery" | "attempt",
 ): Promise<void> {
   if (callback == null) return;
   try {
@@ -122,6 +123,111 @@ async function notifyObserver<
   }
 }
 
+function snapshotTrace(
+  span: Span,
+  parentSpanContext?: SpanContext,
+): OutboundBroadcastEvent["trace"] {
+  const spanContext = span.spanContext();
+  // A no-op tracer can return the parent's context instead of creating a span.
+  if (
+    !isSpanContextValid(spanContext) || spanContext.isRemote ||
+    spanContext.traceId === parentSpanContext?.traceId &&
+      spanContext.spanId === parentSpanContext.spanId
+  ) return undefined;
+  return Object.freeze({
+    traceId: spanContext.traceId,
+    spanId: spanContext.spanId,
+  });
+}
+
+type AttemptFailure = Extract<
+  OutboundAttemptReport["outcome"],
+  { type: "failed" }
+>["failure"];
+type AttemptFacts = Pick<
+  OutboundAttemptReport,
+  "attemptId" | "inboxUrl" | "observedAt" | "trace" | "outcome"
+>;
+
+/** State owned by one concrete send, never persisted in queue metadata. */
+export class OutboundAttemptObservation {
+  readonly #attemptId = crypto.randomUUID();
+  readonly #failures: AttemptFailure[] = [];
+  #response: { readonly status: number } | undefined;
+  #trace: OutboundAttemptReport["trace"];
+  #finished = false;
+
+  constructor(
+    readonly inboxUrl: string,
+    readonly report: (facts: AttemptFacts) => Promise<void>,
+  ) {}
+
+  setSpan(span: Span, parentSpanContext?: SpanContext): void {
+    this.#trace = snapshotTrace(span, parentSpanContext);
+  }
+
+  response(status: number): void {
+    this.#response = Object.freeze({ status });
+  }
+
+  failure(failure: AttemptFailure): void {
+    this.#failures.push(Object.freeze(failure));
+  }
+
+  unknown(error: unknown): void {
+    if (
+      !this.#failures.some((failure) =>
+        failure.error === error || failure.phase !== "cleanup"
+      )
+    ) {
+      this.failure({ kind: "unknown", phase: "unknown", error });
+    }
+  }
+
+  succeeded(): Promise<void> {
+    return this.#finish({ type: "succeeded", response: this.#response! });
+  }
+
+  failed(error: unknown): Promise<void> {
+    let failure: AttemptFailure;
+    let diagnostics: AttemptFailure[];
+    if (
+      this.#response != null &&
+      (this.#response.status < 200 || this.#response.status >= 300)
+    ) {
+      failure = this.#failures.find((failure) => failure.kind === "http") ??
+        Object.freeze({ kind: "http", phase: "response" });
+      diagnostics = this.#failures.filter((failure) => failure.kind !== "http");
+    } else {
+      failure = this.#failures.find((failure) => failure.phase !== "cleanup") ??
+        this.#failures[0] ??
+        Object.freeze({ kind: "unknown", phase: "unknown", error });
+      diagnostics = this.#failures.filter((item) => item !== failure);
+    }
+    return this.#finish({
+      type: "failed",
+      failure,
+      error,
+      ...(this.#response == null ? {} : { response: this.#response }),
+      ...(diagnostics.length === 0
+        ? {}
+        : { diagnostics: Object.freeze(diagnostics) }),
+    });
+  }
+
+  #finish(outcome: OutboundAttemptReport["outcome"]): Promise<void> {
+    if (this.#finished) return Promise.resolve();
+    this.#finished = true;
+    return this.report({
+      attemptId: this.#attemptId,
+      inboxUrl: this.inboxUrl,
+      observedAt: Temporal.Now.instant().epochMilliseconds,
+      ...(this.#trace == null ? {} : { trace: this.#trace }),
+      outcome: Object.freeze(outcome),
+    });
+  }
+}
+
 /** One producer's destination, without callbacks or live inputs in queues. */
 class OutboundDeliveryObservation<TContextData> {
   #finished = false;
@@ -135,6 +241,7 @@ class OutboundDeliveryObservation<TContextData> {
     destination: PlannedDestination,
     readonly provenance: OutboundProvenance,
     readonly trace: OutboundBroadcastEvent["trace"],
+    readonly onAttempt: OutboundObservers<TContextData>["onAttempt"],
   ) {
     this.#reference = snapshotDeliveryIdentity(identity);
     this.#plan = Object.freeze({
@@ -143,6 +250,25 @@ class OutboundDeliveryObservation<TContextData> {
       mode: destination.mode ??
         (destination.portableInbox == null ? "ordinary" : "portable-fallback"),
     });
+  }
+
+  startAttempt(inboxUrl: string): OutboundAttemptObservation | undefined {
+    if (this.onAttempt == null) return undefined;
+    return new OutboundAttemptObservation(
+      inboxUrl,
+      (facts) =>
+        notifyObserver(
+          this.context,
+          this.onAttempt,
+          Object.freeze({
+            ...this.#reference,
+            ...facts,
+            provenance: this.provenance,
+            local: snapshotLocalContext(this.context),
+          }),
+          "attempt",
+        ),
+    );
   }
 
   get identity(): SerializedOutboundDelivery {
@@ -222,6 +348,7 @@ export class OutboundBroadcastObservation<TContextData> {
 
   readonly #onBroadcast: OutboundObservers<TContextData>["onBroadcast"];
   readonly #onDelivery: OutboundObservers<TContextData>["onDelivery"];
+  readonly #onAttempt: OutboundObservers<TContextData>["onAttempt"];
   readonly #deliveries = new Map<
     string,
     OutboundDeliveryObservation<TContextData>
@@ -240,6 +367,7 @@ export class OutboundBroadcastObservation<TContextData> {
     this.#broadcast = broadcast;
     this.#onBroadcast = observers.onBroadcast;
     this.#onDelivery = observers.onDelivery;
+    this.#onAttempt = observers.onAttempt;
   }
 
   /** Continue an existing fanout; do not emit a new broadcast invocation. */
@@ -300,6 +428,7 @@ export class OutboundBroadcastObservation<TContextData> {
       destination,
       this.provenance,
       this.#trace,
+      this.#onAttempt,
     );
   }
 
@@ -366,17 +495,7 @@ export class OutboundBroadcastObservation<TContextData> {
 
   /** Attach only the span supplied by this execution, never an ambient fallback. */
   setSpan(span: Span, parentSpanContext?: SpanContext): void {
-    const spanContext = span.spanContext();
-    // A no-op tracer can return the parent's context instead of creating a span.
-    if (
-      !isSpanContextValid(spanContext) || spanContext.isRemote ||
-      spanContext.traceId === parentSpanContext?.traceId &&
-        spanContext.spanId === parentSpanContext.spanId
-    ) return;
-    this.#trace = Object.freeze({
-      traceId: spanContext.traceId,
-      spanId: spanContext.spanId,
-    });
+    this.#trace = snapshotTrace(span, parentSpanContext);
   }
 
   setPhase(phase: PreparationFailure["failure"]["phase"]): void {
@@ -512,7 +631,10 @@ export function observeOutboundBroadcast<TContextData, TResult>(
     return await send(observation, provenance);
   };
   return withContext(sourceLogContext(provenance), () => {
-    if (observers.onBroadcast == null && observers.onDelivery == null) {
+    if (
+      observers.onBroadcast == null && observers.onDelivery == null &&
+      observers.onAttempt == null
+    ) {
       return execute();
     }
     return new OutboundBroadcastObservation(

@@ -667,6 +667,7 @@ export class FederationBuilderImpl<TContextData>
     this.outboundObservers = globalThis.Object.freeze({
       onBroadcast: observers.onBroadcast,
       onDelivery: observers.onDelivery,
+      onAttempt: observers.onAttempt,
     });
   }
 
