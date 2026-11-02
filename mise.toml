@@ -231,7 +231,7 @@ run = "deno fmt --check"
 description = "Check code linting"
 run = [
   "node --experimental-strip-types scripts/check_lint_directives.ts",
-  "pnpm exec oxlint -c .oxlintrc.json . packages/vocab/src/vocab.ts",
+  "pnpm exec oxlint --quiet -c .oxlintrc.json . packages/vocab/src/vocab.ts",
 ]
 
 [tasks.lint]
@@ -317,7 +317,7 @@ for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
     [$dir]
   }
   node --experimental-strip-types scripts/check_lint_directives.ts $dir
-  pnpm exec oxlint -c .oxlintrc.json ...$lint_paths
+  pnpm exec oxlint --quiet -c .oxlintrc.json ...$lint_paths
   # Deno-only packages (no package.json) keep their Deno type check.
   if ($"($dir)/package.json" | path exists) {
     node --experimental-strip-types scripts/check_types.ts $pkg

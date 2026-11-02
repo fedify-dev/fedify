@@ -22,6 +22,8 @@ The root *.oxlintrc.json* is authoritative.  Pass it explicitly with
 and keeps command-line and editor behavior consistent.  Oxlint walks up to the
 nearest config when run inside a package, so an unqualified `oxlint` usually
 finds the root config too, but repository tasks always pass it explicitly.
+`check:lint` and `check-each` use `--quiet` so warning-level rules do not flood
+the gate; `mise run lint` shows them.
 
 [Oxlint]: https://oxc.rs/docs/guide/usage/linter/
 
@@ -111,7 +113,7 @@ not parse.
 Two special cases:
 
  -  *packages/vocab/src/vocab.ts* is generated and gitignored.  Oxlint's
-    directory traversal skips it, so `check:lint` and `check:each vocab` name
+    directory traversal skips it, so `check:lint` and `check-each vocab` name
     it explicitly.
  -  *examples/lint/oxlint* deliberately violates `@fedify/lint` rules.  The
     repository lint task uses the root config, while the example's own
@@ -122,8 +124,11 @@ Additional rules and anti-slop
 ------------------------------
 
 Additional Oxlint rules are added one at a time, each with its own commit and
-a note here.  The current additions are listed in the rule table above as they
-land.
+a note here.  The current additions are:
+
+ -  `eslint/no-await-in-loop` as a warning.  Fedify contains many loops that
+    deliberately await sequentially, especially in tests and protocol code,
+    so this stays advisory rather than failing the gate.
 
 Vendored [anti-slop] rules live in *tools/oxlint/anti-slop/*.  They are copied
 from upstream and recorded in *tools/oxlint/anti-slop/UPSTREAM.md*; update

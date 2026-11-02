@@ -58,6 +58,7 @@
     "react/void-dom-elements-no-children": "error",
     "eslint/no-array-constructor": "error",
     "eslint/no-async-promise-executor": "error",
+    "eslint/no-await-in-loop": "warn",
     "eslint/no-case-declarations": "error",
     "eslint/no-class-assign": "error",
     "eslint/no-compare-neg-zero": "error",
