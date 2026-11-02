@@ -208,11 +208,14 @@ export function checkRawPropertyIris(
       "ClassExpression",
       "ClassDeclaration",
       "StaticBlock",
+      "TSModuleBlock",
     ].includes(node.type);
     const scope: Scope = scoped
       ? {
         parent: outer,
-        functionScope: isFunction || node.type === "StaticBlock",
+        // A TypeScript namespace body is compiled to a function body:
+        functionScope: isFunction || node.type === "StaticBlock" ||
+          node.type === "TSModuleBlock",
         bindings: new Map(),
       }
       : outer;

@@ -185,6 +185,15 @@ cases.push(
     "switch discriminant outside case scope",
     `${setup} const iri = "https://example/p"; switch (read(obj, iri)) { case 0: const iri = "content"; }`,
   ],
+  [
+    "namespace body scope",
+    `${setup} const iri = "https://example/p"; namespace N { export const iri = "content"; var other = 1; } read(obj, iri);`,
+  ],
+  [
+    "inside namespace body",
+    `${setup} namespace N { const iri = "content"; read(obj, iri); }`,
+    "must be a full",
+  ],
   ["IPv6 authority", `${setup} read(obj, "https://[::1]/property");`],
   [
     "escaped template",
