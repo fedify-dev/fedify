@@ -4,6 +4,11 @@ import {
   snapshotLocalContext,
   sourceLogContext,
 } from "./outbound-provenance.ts";
+import {
+  isSpanContextValid,
+  type Span,
+  type SpanContext,
+} from "@opentelemetry/api";
 import { encodeHex } from "byte-encodings/hex";
 import { getLogger, withContext } from "@logtape/logtape";
 import type { Context } from "./context.ts";
@@ -17,7 +22,7 @@ import type {
 } from "./outbound-report.ts";
 
 type WithoutSource<T> = T extends unknown
-  ? Omit<T, "provenance" | "local" | "observedAt">
+  ? Omit<T, "provenance" | "local" | "observedAt" | "trace">
   : never;
 
 type PreparationFailure = Extract<
@@ -129,6 +134,7 @@ class OutboundDeliveryObservation<TContextData> {
     identity: SerializedOutboundDelivery,
     destination: PlannedDestination,
     readonly provenance: OutboundProvenance,
+    readonly trace: OutboundBroadcastEvent["trace"],
   ) {
     this.#reference = snapshotDeliveryIdentity(identity);
     this.#plan = Object.freeze({
@@ -148,6 +154,7 @@ class OutboundDeliveryObservation<TContextData> {
       this.context,
       this.observer,
       Object.freeze({
+        ...(this.trace == null ? {} : { trace: this.trace }),
         observedAt: Temporal.Now.instant().epochMilliseconds,
         provenance: this.provenance,
         local: snapshotLocalContext(this.context),
@@ -168,6 +175,7 @@ class OutboundDeliveryObservation<TContextData> {
       this.context,
       this.observer,
       Object.freeze({
+        ...(this.trace == null ? {} : { trace: this.trace }),
         observedAt: Temporal.Now.instant().epochMilliseconds,
         provenance: this.provenance,
         local: snapshotLocalContext(this.context),
@@ -186,6 +194,7 @@ class OutboundDeliveryObservation<TContextData> {
       this.context,
       this.observer,
       Object.freeze({
+        ...(this.trace == null ? {} : { trace: this.trace }),
         observedAt: Temporal.Now.instant().epochMilliseconds,
         provenance: this.provenance,
         local: snapshotLocalContext(this.context),
@@ -209,6 +218,7 @@ export class OutboundBroadcastObservation<TContextData> {
   #phase: PreparationFailure["failure"]["phase"] = "unknown";
   #planning: PreparationFailure["planning"] = "not-started";
   #destinationCount = 0;
+  #trace: OutboundBroadcastEvent["trace"];
 
   readonly #onBroadcast: OutboundObservers<TContextData>["onBroadcast"];
   readonly #onDelivery: OutboundObservers<TContextData>["onDelivery"];
@@ -237,6 +247,8 @@ export class OutboundBroadcastObservation<TContextData> {
     context: Context<TContextData>,
     observers: OutboundObservers<TContextData>,
     message: FanoutMessage,
+    span?: Span,
+    parentSpanContext?: SpanContext,
   ): Promise<OutboundBroadcastObservation<TContextData> | undefined> {
     if (
       observers.onDelivery == null &&
@@ -251,6 +263,7 @@ export class OutboundBroadcastObservation<TContextData> {
       getOutboundProvenance(context),
       { type: "unknown" },
     );
+    if (span != null) observation.setSpan(span, parentSpanContext);
     observation.#finished = true;
     observation.planned(Object.keys(message.inboxes).length);
     for (const [inbox, destination] of Object.entries(message.inboxes)) {
@@ -286,6 +299,7 @@ export class OutboundBroadcastObservation<TContextData> {
       },
       destination,
       this.provenance,
+      this.#trace,
     );
   }
 
@@ -348,6 +362,21 @@ export class OutboundBroadcastObservation<TContextData> {
       ),
     );
     return result;
+  }
+
+  /** Attach only the span supplied by this execution, never an ambient fallback. */
+  setSpan(span: Span, parentSpanContext?: SpanContext): void {
+    const spanContext = span.spanContext();
+    // A no-op tracer can return the parent's context instead of creating a span.
+    if (
+      !isSpanContextValid(spanContext) || spanContext.isRemote ||
+      spanContext.traceId === parentSpanContext?.traceId &&
+        spanContext.spanId === parentSpanContext.spanId
+    ) return;
+    this.#trace = Object.freeze({
+      traceId: spanContext.traceId,
+      spanId: spanContext.spanId,
+    });
   }
 
   setPhase(phase: PreparationFailure["failure"]["phase"]): void {
@@ -444,6 +473,7 @@ export class OutboundBroadcastObservation<TContextData> {
       this.#onBroadcast,
       Object.freeze({
         ...event,
+        ...(this.#trace == null ? {} : { trace: this.#trace }),
         observedAt: Temporal.Now.instant().epochMilliseconds,
         provenance: this.provenance,
         local: snapshotLocalContext(this.context),

@@ -63,6 +63,7 @@ import {
   metrics,
   propagation,
   type Span,
+  type SpanContext,
   SpanKind,
   SpanStatusCode,
   trace,
@@ -1258,7 +1259,13 @@ export class FederationImpl<TContextData>
             if (message.activityId != null) {
               span.setAttribute("activitypub.activity.id", message.activityId);
             }
-            await this.#listenFanoutMessage(contextData, message, provenance);
+            await this.#listenFanoutMessage(
+              contextData,
+              message,
+              provenance,
+              span,
+              trace.getSpanContext(extractedContext),
+            );
             return { outcome: "completed" };
           }, classifyAbortableError),
         );
@@ -1418,6 +1425,8 @@ export class FederationImpl<TContextData>
     data: TContextData,
     message: FanoutMessage,
     provenance: OutboundProvenance,
+    span: Span,
+    parentSpanContext: SpanContext | undefined,
   ): Promise<void> {
     const observers = this.outboundObservers;
     const logger = getLogger(["fedify", "federation", "fanout"]);
@@ -1460,6 +1469,8 @@ export class FederationImpl<TContextData>
       context,
       observers,
       message,
+      span,
+      parentSpanContext,
     );
     await this.sendActivity(keys, message.inboxes, activity, {
       collectionSync: message.collectionSync,
@@ -5890,6 +5901,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           metadata.name,
           metadata.version,
         );
+        const parentSpanContext = trace.getSpanContext(context.active());
         return tracer.startActiveSpan(
           this.federation.outboxQueue == null || options.immediate
             ? "activitypub.outbox"
@@ -5911,6 +5923,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
             },
           },
           async (span) => {
+            observation?.setSpan(span, parentSpanContext);
             try {
               if (activity.id != null) {
                 span.setAttribute("activitypub.activity.id", activity.id.href);
@@ -7024,6 +7037,7 @@ function forwardActivity<TContextData>(
         metadata.name,
         metadata.version,
       );
+      const parentSpanContext = trace.getSpanContext(context.active());
       return tracer.startActiveSpan(
         ctx.federation.outboxQueue == null || options?.immediate
           ? `activitypub.${loggerCategory}`
@@ -7035,6 +7049,7 @@ function forwardActivity<TContextData>(
           attributes: { "activitypub.activity.type": ctx.activityType },
         },
         async (span) => {
+          observation?.setSpan(span, parentSpanContext);
           try {
             if (ctx.activityId != null) {
               span.setAttribute("activitypub.activity.id", ctx.activityId);
@@ -7479,6 +7494,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
           metadata.name,
           metadata.version,
         );
+        const parentSpanContext = trace.getSpanContext(context.active());
         return tracer.startActiveSpan(
           this.federation.outboxQueue == null || options.immediate
             ? "activitypub.outbox"
@@ -7500,6 +7516,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
             },
           },
           async (span) => {
+            observation?.setSpan(span, parentSpanContext);
             try {
               if (activity.id != null) {
                 span.setAttribute("activitypub.activity.id", activity.id.href);

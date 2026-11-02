@@ -219,6 +219,11 @@ export interface OutboundProvenance {
 interface OutboundSourceMetadata {
   /** Unix milliseconds at observation; wall clocks do not ensure global ordering. */
   readonly observedAt: number;
+  /** Valid IDs of this operation's own span, when one is available. */
+  readonly trace?: {
+    readonly traceId: string;
+    readonly spanId: string;
+  };
   /** Immutable historical cause, distinct from this callback's context. */
   readonly provenance: OutboundProvenance;
   /** URL facts of the current callback context. */

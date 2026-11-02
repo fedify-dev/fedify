@@ -5,7 +5,13 @@ import {
 } from "@fedify/fixture";
 import { Create, Person } from "@fedify/vocab";
 import { configure, reset } from "@logtape/logtape";
-import { SpanStatusCode } from "@opentelemetry/api";
+import {
+  isSpanContextValid,
+  SpanKind,
+  SpanStatusCode,
+  trace,
+  TraceFlags,
+} from "@opentelemetry/api";
 import fetchMock from "fetch-mock";
 import {
   deepStrictEqual,
@@ -196,6 +202,19 @@ test("outbound observers report fresh immutable starts without tracing or extra 
             type: "skipped",
             reason: "no-destinations",
           });
+          for (const event of events) {
+            if (event.stage === "started" || tracerProvider == null) {
+              strictEqual("trace" in event, false);
+            } else {
+              ok(event.trace);
+              ok(
+                isSpanContextValid({
+                  ...event.trace,
+                  traceFlags: TraceFlags.NONE,
+                }),
+              );
+            }
+          }
           ok(events[0].broadcastId.length > 0);
           notStrictEqual(events[0].broadcastId, events[2].broadcastId);
           strictEqual(loads, 0);
@@ -204,6 +223,140 @@ test("outbound observers report fresh immutable starts without tracing or extra 
     }
   } finally {
     await provider.shutdown();
+  }
+});
+
+test("outbound trace snapshots identify producer and fanout spans without changing callbacks", async (t) => {
+  for (
+    const mode of [
+      "send",
+      "outbox-send",
+      "inbox-forward",
+      "outbox-forward",
+    ] as const
+  ) {
+    await t.step(mode, async () => {
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      try {
+        const queued: Message[] = [];
+        const queue: MessageQueue = {
+          enqueue(message) {
+            queued.push(message);
+            return Promise.resolve();
+          },
+          listen: () => Promise.resolve(),
+        };
+        const federation = createFederation<void>({
+          ...options,
+          kv: new MemoryKvStore(),
+          tracerProvider,
+          manuallyStartQueue: true,
+          queue: { fanout: queue, outbox: queue },
+        });
+        const events: (OutboundBroadcastEvent | OutboundDeliveryEvent)[] = [];
+        let replacements = 0;
+        const replacement = () => {
+          replacements++;
+        };
+        const record = async (
+          _ctx: unknown,
+          event: OutboundBroadcastEvent | OutboundDeliveryEvent,
+        ) => {
+          events.push(event);
+          if (event.stage === "started") {
+            federation.setOutboundObservers({
+              onBroadcast: replacement,
+              onDelivery: replacement,
+            });
+          }
+          await Promise.resolve();
+        };
+        const observers = { onBroadcast: record, onDelivery: record };
+        federation.setOutboundObservers(observers);
+        const ctx = federation.createContext(
+          new URL("https://example.com"),
+          undefined,
+        );
+        ok(ctx instanceof ContextImpl);
+        if (mode.endsWith("forward")) {
+          await forwardingContext(
+            federation,
+            mode === "inbox-forward" ? "inbox" : "outbox",
+            forwardingPayload,
+            undefined,
+          ).forwardActivity(sender, recipient, { skipIfUnsigned: true });
+        } else {
+          const producer = mode === "outbox-send"
+            ? ctx.toOutboxContext("alice", {}, undefined, Create.typeId.href)
+            : ctx;
+          await producer.sendActivity(sender, recipient, activity, {
+            fanout: mode === "send" ? "force" : "skip",
+          });
+        }
+        strictEqual(replacements, 0);
+        strictEqual(events[0].stage, "started");
+        strictEqual("trace" in events[0], false);
+        ok(events.length > 2);
+        const producerEvents = events.length;
+        if (mode === "send") {
+          federation.setOutboundObservers(observers);
+          const task = queued.find((message) => message.type === "fanout");
+          ok(task);
+          await federation.processQueuedTask(undefined, structuredClone(task));
+          ok(events.length > producerEvents);
+        }
+        for (const [index, event] of events.entries()) {
+          if (index === 0) continue;
+          ok(event.trace);
+          ok(Object.isFrozen(event.trace));
+          const span = exporter.spans.find((span) =>
+            span.spanContext().spanId === event.trace!.spanId
+          );
+          ok(span);
+          deepStrictEqual(event.trace, {
+            traceId: span.spanContext().traceId,
+            spanId: span.spanContext().spanId,
+          });
+          strictEqual(
+            span.kind,
+            index < producerEvents ? SpanKind.PRODUCER : SpanKind.CONSUMER,
+          );
+        }
+      } finally {
+        await tracerProvider.shutdown();
+      }
+    });
+  }
+});
+
+test("outbound trace snapshots omit invalid and inherited span identities", async () => {
+  const federation = createFederation<void>(options);
+  const ctx = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  const parent = {
+    traceId: "11111111111111111111111111111111",
+    spanId: "2222222222222222",
+    traceFlags: TraceFlags.NONE,
+  };
+  for (
+    const spanContext of [
+      { ...parent, traceId: "00000000000000000000000000000000" },
+      parent,
+      { ...parent, isRemote: true },
+    ]
+  ) {
+    const events: OutboundBroadcastEvent[] = [];
+    const observation = new OutboundBroadcastObservation(ctx, {
+      onBroadcast(_ctx, event) {
+        events.push(event);
+      },
+    }, "send");
+    observation.setSpan(trace.wrapSpanContext(spanContext), parent);
+    await observation.skipped();
+    strictEqual(events.length, 1);
+    strictEqual("trace" in events[0], false);
   }
 });
 
