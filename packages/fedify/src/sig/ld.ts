@@ -671,8 +671,14 @@ function getContextEntryEffect(entry: unknown): ContextEntryEffect {
   if (globalThis.Object.prototype.hasOwnProperty.call(record, "signature")) {
     const definition = record["signature"];
     const contextProtected = record["@protected"] === true;
+    const imported = globalThis.Object.prototype.hasOwnProperty.call(
+      record,
+      "@import",
+    );
     if (definition == null) {
-      return contextProtected ? "defines" : "resets";
+      if (contextProtected) return "defines";
+      // An imported context may protect the term through @protected.
+      return imported ? "unknown" : "resets";
     }
     if (typeof definition === "object" && !Array.isArray(definition)) {
       const term = definition as Record<string, unknown>;
@@ -681,7 +687,9 @@ function getContextEntryEffect(entry: unknown): ContextEntryEffect {
         globalThis.Object.prototype.hasOwnProperty.call(term, "@id") &&
         term["@id"] == null
       ) {
-        return protectedTerm ? "defines" : "resets";
+        if (protectedTerm) return "defines";
+        // An imported context may protect the null definition.
+        return imported ? "unknown" : "resets";
       }
     }
     return "defines";

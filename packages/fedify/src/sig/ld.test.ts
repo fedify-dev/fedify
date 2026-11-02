@@ -291,6 +291,45 @@ test("signJsonLd() respects a protected null signature definition", async () => 
   }
 });
 
+test("signJsonLd() respects protection from imported contexts", async () => {
+  const importUrl = "https://example.com/contexts/imported-protected";
+  const contextLoader = async (url: string) => {
+    if (new URL(url).href === importUrl) {
+      return {
+        contextUrl: null,
+        documentUrl: url,
+        document: {
+          "@context": {
+            "@protected": true,
+            "name": "https://example.com/name",
+          },
+        },
+      };
+    }
+    return await mockDocumentLoader(url);
+  };
+  for (const signature of [null, { "@id": null }]) {
+    const doc = {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        { "@import": importUrl, signature },
+      ],
+      id: "https://example.com/1",
+      type: "Note",
+      name: "Alice",
+    };
+    const signed = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+      contextLoader,
+    }) as Record<string, unknown>;
+    assertEquals(signed["@context"], doc["@context"]);
+    const key = await verifySignature(signed, {
+      documentLoader: mockDocumentLoader,
+      contextLoader,
+    });
+    assertEquals(key, rsaPublicKey2);
+  }
+});
+
 test("signJsonLd() leaves unrecognized remote contexts unchanged", async () => {
   const contextUrl = "https://example.com/contexts/custom";
   const contextLoader = async (url: string) => {
