@@ -59,20 +59,29 @@ async function sendFollow(
 > the *Context* section.
 
 
-Observing outgoing preparation
-------------------------------
+Observing outgoing activities
+-----------------------------
 
 *This API is available since Fedify 2.5.0.*
 
 Use `Federatable.setOutboundObservers()` on a federation builder or a directly
-created federation to observe ordinary `~Context.sendActivity()` invocations:
+created federation to observe sends, original-payload forwarding, and automatic
+portable-inbox replication. Both callbacks are optional:
 
 ~~~~ typescript twoslash
-import type { Federation, OutboundBroadcastEvent } from "@fedify/fedify";
+import type {
+  Federation,
+  OutboundBroadcastEvent,
+  OutboundDeliveryEvent,
+} from "@fedify/fedify";
 declare const federation: Federation<{ requestId: string }>;
 declare function recordBroadcast(
   requestId: string,
   event: OutboundBroadcastEvent,
+): Promise<void>;
+declare function recordDelivery(
+  requestId: string,
+  event: OutboundDeliveryEvent,
 ): Promise<void>;
 // ---cut-before---
 federation.setOutboundObservers({
@@ -82,46 +91,117 @@ federation.setOutboundObservers({
       console.error(event.result.failure.phase, event.result.failure.error);
     }
   },
+  async onDelivery(ctx, event) {
+    await recordDelivery(ctx.data.requestId, event);
+    if (event.stage === "handoff" && event.result.type === "enqueue-failed") {
+      console.error("Queue acceptance is unknown", event.result.error);
+    }
+  },
 });
 ~~~~
 
-Here, `recordBroadcast()` is your application's recording function. The callback
-receives the existing context and application data without loading additional
-data for observation. Each invocation has a fresh `broadcastId`,
-shared by its `started` and `preparation-finished` events. These IDs work
-without OpenTelemetry, including when no tracer provider is configured or
-sampling is disabled.
+Here, `recordBroadcast()` and `recordDelivery()` are your application's
+recording functions. Callbacks receive the existing context and application
+data without loading additional data for observation. The report fields contain
+immutable snapshots of known routing facts; original thrown values remain
+available as `unknown` values.
 
-`started` precedes sender and recipient resolution and signing. The
-`preparation-finished` event contains an `OutboundPreparationResult`:
+### Broadcast lifecycle
+
+Each invocation has a fresh `broadcastId`, shared by its `started` and
+`preparation-finished` events. The `operation` is `send`, `forward`, or
+`portable-replication`. Broadcast and delivery identities work without
+OpenTelemetry, including when no tracer provider is configured or sampling is
+disabled.
+
+`started` precedes failure-prone preparation. The `preparation-finished` event
+contains an `OutboundPreparationResult`:
 
  -  `prepared` means the current producer reached readiness for fanout or
-    delivery. `destinationCount` counts deduplicated destinations, not
-    successful deliveries. Fanout workers still need to prepare deliveries.
- -  `skipped` with reason `no-destinations` means there was nothing to send.
+    delivery. `destinationCount` counts deduplicated destinations or confirmed
+    replication targets, not successful deliveries. Fanout workers still need
+    to prepare deliveries.
+ -  `skipped` records an existing no-send decision: `no-destinations`,
+    `unsigned` when forwarding skips an unsigned payload,
+    `forwarding-disabled`, `forwarding-unavailable` when replication cannot
+    claim targets, or `no-forwarding-targets` when none remain claimed.
  -  `failed` reports the preparation phase, the original thrown value (which
-    need not be an `Error`), and the extent of destination planning.
+    need not be an `Error`), and the extent of destination planning. An
+    incomplete plan's count covers confirmed obligations so far.
+
+The `unsigned` reason reflects the existing `skipIfUnsigned` signature/proof
+shape check; it does not establish authentication.
 
 Preparation readiness does not confirm queue acceptance or successful delivery.
 Immediate sends can already be running when preparation finishes, and a later
-send or enqueue failure does not replace the preparation result.
+send or enqueue failure does not replace the preparation result. A crash or
+nonsettling operation can leave a start without a later result.
+
+### Destination observations
+
+`onDelivery` receives an `OutboundDeliveryEvent` for each established delivery
+obligation. Its `broadcast` reference identifies the invocation, and its
+`deliveryId` groups events for one deduplicated destination or confirmed
+replication target. Different inboxes on the same host remain distinct.
+
+| Stage                              | Meaning                                                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `planned`                          | The destination was established. `actorIds` lists actors already known to share it; `sharedInbox` describes the selected route.             |
+| `handoff`, result `direct`         | Control entered the direct-send path. This does not confirm an HTTP request or remote success.                                              |
+| `handoff`, result `enqueued`       | The enqueue resolved. `queue` identifies `fanout` or `outbox`, and `queueMessageId` identifies the accepted task.                           |
+| `handoff`, result `enqueue-failed` | Enqueue rejected. `acceptance` remains `unknown`, because a backend effect may already have happened; `error` retains the original failure. |
+| `preparation-failed`               | Destination-local setup failed before concrete send entry. This creates no synthetic attempt.                                               |
+
+`destinationInbox` retains the planned destination. For a portable inbox,
+`portableInbox` contains its canonical portable ID. The planned event's `mode`
+is `ordinary`, `portable-fallback`, or `portable-replication`. Alternate
+fallback gateways share one obligation; automatic replication establishes a
+separate obligation for each successfully claimed target.
+
+Several deliveries can share one accepted fanout task and therefore the same
+`queueMessageId`; this task ID is separate from their delivery IDs. Acceptance
+is reported before later bookkeeping, so a metrics or logging failure does not
+turn an accepted enqueue into an enqueue failure.
+
+Recipients filtered out before planning create no delivery. Common producer
+failures are broadcast failures; a destination-local failure is also reported
+for that destination. Earlier handoffs remain valid, and later unvisited
+destinations can remain planned without a handoff. Parallel work can interleave
+callbacks, so IDs provide grouping rather than a total event order.
+
+### Registration and callback behavior
 
 Each registration call replaces all previous outbound observers; pass `{}` to
 clear them. Fedify copies the supplied callbacks, and building a federation
-copies the builder's registration. An active invocation keeps the callback
-selected at entry even if registration changes while it is running.
+copies the builder's registration. An active invocation keeps its selected
+callbacks even if registration changes while it is running. You can register
+only `onBroadcast` or only `onDelivery`.
 
 Callbacks are awaited without a default timeout. Their return values and errors
 cannot veto sending, and callback or error-logging failures do not replace the
 send's original result. Slow callbacks delay processing; a callback that never
-settles delays it indefinitely. If you detach recording work, handle its
-rejections and shutdown yourself; Fedify does not guarantee its persistence.
+settles can delay it indefinitely. Existing portable-forwarding deadlines can
+return control while background preparation, sending, and observation continue;
+a deadline alone does not create a failed preparation result.
 
-Currently this API covers ordinary sends only. Sends through an
-`OutboxContext` override, forwarding, automatic portable replication, workers,
-delivery attempts, HTTP exchanges, and response bodies are not observed yet.
-Incoming C2S `setOutboxListeners()` registration is separate. Mock federations
-accept outbound observer registration but do not execute these observers.
+If you detach recording work, handle its rejections and shutdown yourself;
+Fedify does not guarantee its persistence. Incoming C2S `setOutboxListeners()`
+registration is separate. Mock federations accept outbound observer
+registration but do not execute these observers.
+
+### Current producer scope
+
+Both callbacks cover ordinary `Context.sendActivity()`, the `OutboxContext`
+override, inbox/outbox `forwardActivity()`, and automatic portable replication
+at their producer boundaries. Original-payload forwarding and replication keep
+the received payload unchanged. Delivery IDs currently group producer-local
+events; they are not yet carried through queue continuations or worker replay.
+
+Worker execution, concrete delivery attempts, HTTP exchanges, response bodies,
+explicit cancellation observations, historical provenance, and optional trace
+metadata are not reported yet. A direct handoff, accepted task, or prepared
+producer must not be treated as proof that the remote application applied an
+activity.
 
 
 Specifying a sender

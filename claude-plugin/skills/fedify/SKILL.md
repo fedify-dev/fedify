@@ -244,21 +244,35 @@ deliveries have no retry.
 > those must be distinct activities.  Use a fresh UUID or counter in the
 > fragment.
 
-Use `federation.setOutboundObservers({ onBroadcast(ctx, event) { ... } })`
-(also available on builders) to observe ordinary `Context.sendActivity()` entry
-and preparation results. This replaces the whole observer set; `{}` clears it.
-Registration and builds copy callbacks, and active sends retain their selected
-callback. The callback receives existing context/data without extra loading.
-Events share an independent `broadcastId` and work without OpenTelemetry.
-Narrow `event.stage` before reading `event.result`, then narrow `result.type`
-(`prepared`, `skipped`, or `failed`). Preparation readiness is separate from
-queue acceptance and delivery success. Callbacks are awaited without a timeout;
-errors are isolated, but a nonsettling callback delays execution indefinitely.
-Detached recording must handle its own rejection, shutdown, and persistence.
-Outbox-context overrides, forwarding, portable replication, workers, attempts,
-HTTP exchanges, and response capture are not observed yet. Mock federations
-accept registration without executing observers. Incoming C2S outbox listeners
-use the separate `setOutboxListeners()` API.
+Use
+`federation.setOutboundObservers({ onBroadcast(ctx, event) { ... }, onDelivery(ctx, event) { ... } })`
+(also available on builders) for producer observations of
+ordinary/outbox-context sends, original-payload forwarding, and automatic
+portable replication. Both callbacks are optional. Registration replaces the
+whole set; `{}` clears it. Registration and builds copy callbacks, and active
+executions retain their selection. Callbacks receive existing context/data
+without extra loading and work without OpenTelemetry.
+
+`onBroadcast` groups start and preparation results with an independent
+`broadcastId`; `operation` distinguishes `send`, `forward`, and
+`portable-replication`. Narrow `event.stage` before reading `event.result`, then
+narrow its `type` (`prepared`, `skipped`, or `failed`). `onDelivery` reports
+`planned`, `handoff`, or destination-local `preparation-failed` events with a
+`deliveryId` and known `broadcast` reference. Handoffs distinguish `direct`,
+`enqueued` (with actual queue/task ID), and `enqueue-failed` (acceptance
+unknown). Readiness, queue acceptance, and remote effects are distinct.
+Portable fallback keeps one delivery across alternate gateways; replication
+claims independent targets. Filtered recipients create no planned delivery.
+
+Callbacks are awaited without a default timeout; observer/logging errors are
+isolated. Nonsettling callbacks can delay execution indefinitely. Portable
+forwarding can return at its existing deadline while background work and
+observations continue. Detached recording must handle its own rejection,
+shutdown, and persistence. Delivery IDs currently group producer-local events;
+queue identity propagation/replay, worker execution, attempts, HTTP exchanges,
+response capture, cancellation observations, provenance, and trace metadata are
+not implemented yet. Mock federations accept registration without executing
+observers. Incoming C2S listeners use the separate `setOutboxListeners()` API.
 
 See <https://fedify.dev/manual/send.md>.
 

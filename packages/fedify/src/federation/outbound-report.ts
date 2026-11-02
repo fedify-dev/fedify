@@ -145,9 +145,10 @@ export type OutboundDeliveryEvent =
  * awaited without a default timeout.
  * Their errors, including errors logging observer failures, do not replace the
  * send's result.
- * A callback that never settles delays execution indefinitely. Detached
+ * A callback that never settles can delay execution indefinitely. Detached
  * recording must handle its own rejection and shutdown; no persistence is
- * guaranteed.
+ * guaranteed. Existing portable forwarding deadlines may return while
+ * background preparation, sending, and observer callbacks continue.
  * @template TContextData Application context data.
  * @since 2.5.0
  */
