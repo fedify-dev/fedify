@@ -1,3 +1,4 @@
+import { ResponseBodyPump } from "./outbound-body.ts";
 import type { Recipient } from "@fedify/vocab";
 import { FetchError, UrlError } from "@fedify/vocab-runtime";
 import {
@@ -388,6 +389,9 @@ export async function sendActivityThroughGateways(
 }
 
 const MAX_ERROR_RESPONSE_BODY_BYTES = 1024;
+// Diagnostic previews must not indefinitely delay an already known HTTP failure.
+// This budget is independent of opt-in application response-body capture.
+const ERROR_RESPONSE_BODY_TIMEOUT_MS = 1000;
 
 function getActivityActorId(activity: unknown): string | undefined {
   if (!isRecord(activity)) return undefined;
@@ -419,15 +423,25 @@ async function readLimitedResponseBody(
   if (response.body == null) {
     return "";
   }
-  const reader = response.body.getReader();
+  const pump = new ResponseBodyPump(
+    response.body,
+    ERROR_RESPONSE_BODY_TIMEOUT_MS,
+  );
   const decoder = new TextDecoder();
   const chunks: string[] = [];
   let totalBytes = 0;
   let truncated = false;
+  let timedOut = false;
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      const result = await pump.read();
+      if (result == null) {
+        timedOut = true;
+        break;
+      }
+      const { done, value } = result;
       if (done) break;
+      if (value.length === 0) continue;
       if (totalBytes + value.length > maxBytes) {
         const remaining = maxBytes - totalBytes;
         if (remaining > 0) {
@@ -442,15 +456,13 @@ async function readLimitedResponseBody(
       totalBytes += value.length;
     }
   } finally {
-    // Start cancelling the rest of a truncated body instead of leaving it
-    // unread.  It is not awaited, since the cancellation of a tee branch
-    // (e.g., a body cloned by a fetch mock) may never settle:
-    if (truncated) reader.cancel().catch(() => {});
-    reader.releaseLock();
+    pump.close();
   }
   let result = chunks.join("");
   if (truncated) {
     result += "… (truncated)";
+  } else if (timedOut) {
+    result += "… (timed out)";
   }
   return result;
 }
