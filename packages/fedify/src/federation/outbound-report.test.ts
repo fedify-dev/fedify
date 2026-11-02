@@ -29,6 +29,7 @@ import type {
   OutboundDeliveryEvent,
   OutboundObservers,
 } from "./mod.ts";
+import type { OutboxMessage } from "./queue.ts";
 import { rsaPrivateKey2, rsaPublicKey2 } from "../testing/keys.ts";
 
 const activity = new Create({
@@ -1859,5 +1860,256 @@ test("outbound observers preserve processing of legacy outbox messages", async (
     strictEqual(messages.length, 1);
   } finally {
     fetchMock.hardReset();
+  }
+});
+
+function continuationMessage(
+  inbox: string,
+  observed: boolean,
+  portableInbox?: string,
+): OutboxMessage {
+  return {
+    type: "outbox",
+    id: crypto.randomUUID(),
+    baseUrl: "https://example.com",
+    keys: [],
+    activity: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: activity.id!.href,
+      type: "Create",
+      actor: activity.actorId!.href,
+    },
+    activityId: activity.id!.href,
+    activityType: Create.typeId.href,
+    inbox,
+    sharedInbox: false,
+    started: new Date().toISOString(),
+    attempt: 0,
+    headers: {},
+    orderingKey: "original-order",
+    traceContext: {},
+    ...(portableInbox == null ? {} : { portableInbox }),
+    ...(observed
+      ? {
+        outbound: {
+          broadcast: { type: "known" as const, id: crypto.randomUUID() },
+          deliveryId: crypto.randomUUID(),
+          destinationInbox: inbox,
+          ...(portableInbox == null ? {} : { portableInbox }),
+        },
+      }
+      : {}),
+  };
+}
+
+test("outbound queue identities survive ordinary retries, holds, and native redelivery", async (t) => {
+  for (const observed of [false, true]) {
+    for (const mode of ["retry", "hold", "retry-after", "native"] as const) {
+      await t.step(`${mode}: ${observed ? "identity" : "legacy"}`, async () => {
+        const queued: {
+          message: Message;
+          options: Parameters<MessageQueue["enqueue"]>[1];
+        }[] = [];
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          manuallyStartQueue: true,
+          allowPrivateAddress: true,
+          circuitBreaker: mode === "hold"
+            ? { failureThreshold: 1, recoveryDelay: { hours: 1 } }
+            : false,
+          queue: {
+            outbox: {
+              nativeRetrial: mode === "native",
+              enqueue(message, options) {
+                queued.push({ message, options });
+                return Promise.resolve();
+              },
+              listen: () => Promise.resolve(),
+            },
+          },
+        });
+        const message = continuationMessage(recipient.inboxId!.href, observed);
+        const original = structuredClone(message);
+        const task: OutboxMessage = JSON.parse(JSON.stringify(message));
+        fetchMock.mockGlobal().post(
+          message.inbox,
+          mode === "retry-after"
+            ? { status: 429, headers: { "Retry-After": "3600" } }
+            : 500,
+        );
+        try {
+          if (mode === "native") {
+            await rejects(
+              federation.processQueuedTask(
+                undefined,
+                task,
+              ),
+            );
+            strictEqual(queued.length, 0);
+            fetchMock.hardReset();
+            fetchMock.mockGlobal().post(message.inbox, 202);
+            deepStrictEqual(task, original);
+            const redelivery = {
+              ...structuredClone(task),
+              id: crypto.randomUUID(),
+            };
+            await federation.processQueuedTask(undefined, redelivery);
+            deepStrictEqual(redelivery.outbound, original.outbound);
+            strictEqual("outbound" in redelivery, observed);
+            ok(fetchMock.callHistory.calls().length > 0);
+            strictEqual(queued.length, 0);
+          } else {
+            await federation.processQueuedTask(
+              undefined,
+              task,
+            );
+            strictEqual(queued.length, 1);
+            const next = queued[0].message;
+            ok(next.type === "outbox");
+            deepStrictEqual(next.outbound, original.outbound);
+            strictEqual("outbound" in next, observed);
+            strictEqual(next.attempt, mode === "hold" ? 0 : 1);
+            strictEqual(next.circuitHeld, mode === "hold" ? true : undefined);
+            strictEqual(queued[0].options?.orderingKey, message.orderingKey);
+            ok(queued[0].options?.delay);
+            const requests = fetchMock.callHistory.calls().length;
+            await federation.processQueuedTask(undefined, {
+              ...structuredClone(next),
+              id: crypto.randomUUID(),
+            });
+            strictEqual(queued.length, 2);
+            const replay = queued[1].message;
+            ok(replay.type === "outbox");
+            deepStrictEqual(replay.outbound, original.outbound);
+            strictEqual("outbound" in replay, observed);
+            strictEqual(replay.attempt, mode === "hold" ? 0 : 2);
+            if (mode === "hold") {
+              strictEqual(fetchMock.callHistory.calls().length, requests);
+            }
+          }
+          deepStrictEqual(task, original);
+          deepStrictEqual(message, original);
+        } finally {
+          fetchMock.hardReset();
+        }
+      });
+    }
+  }
+});
+
+test("outbound queue identities retain planned destinations through gateway continuations", async (t) => {
+  const gateways = [
+    "https://gw1.example/inbox",
+    "https://gw2.example/inbox",
+    "https://gw3.example/inbox",
+  ];
+  const portableInbox = "ap+ef61://z6Mktest/inbox";
+  for (const observed of [false, true]) {
+    for (const mode of ["retry", "hold", "defer", "native"] as const) {
+      await t.step(`${mode}: ${observed ? "identity" : "legacy"}`, async () => {
+        const queued: Message[] = [];
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          manuallyStartQueue: true,
+          allowPrivateAddress: true,
+          circuitBreaker: mode === "hold"
+            ? { failureThreshold: 1, recoveryDelay: { hours: 1 } }
+            : false,
+          queue: {
+            outbox: {
+              nativeRetrial: mode === "native",
+              enqueue(message) {
+                queued.push(message);
+                return Promise.resolve();
+              },
+              listen: () => Promise.resolve(),
+            },
+          },
+        });
+        const message = {
+          ...continuationMessage(gateways[0], observed, portableInbox),
+          gatewayInboxes: gateways,
+        };
+        const original = structuredClone(message);
+        const task: OutboxMessage = JSON.parse(JSON.stringify(message));
+        fetchMock.mockGlobal();
+        for (const [index, inbox] of gateways.entries()) {
+          fetchMock.post(
+            inbox,
+            mode !== "native" && index === 0
+              ? 404
+              : mode === "defer"
+              ? { status: 429, headers: { "Retry-After": "3600" } }
+              : 500,
+          );
+        }
+        try {
+          if (mode === "native") {
+            await rejects(
+              federation.processQueuedTask(
+                undefined,
+                task,
+              ),
+            );
+            strictEqual(queued.length, 0);
+            fetchMock.hardReset();
+            fetchMock.mockGlobal().post(gateways[0], 202);
+            deepStrictEqual(task, original);
+            const redelivery = {
+              ...structuredClone(task),
+              id: crypto.randomUUID(),
+            };
+            await federation.processQueuedTask(undefined, redelivery);
+            deepStrictEqual(redelivery.outbound, original.outbound);
+            strictEqual("outbound" in redelivery, observed);
+            ok(fetchMock.callHistory.calls().length > 0);
+            strictEqual(queued.length, 0);
+          } else {
+            await federation.processQueuedTask(
+              undefined,
+              task,
+            );
+            strictEqual(queued.length, 1);
+            const next = queued[0];
+            ok(next.type === "outbox");
+            strictEqual(next.inbox, gateways[1]);
+            deepStrictEqual(next.gatewayInboxes, gateways.slice(1));
+            deepStrictEqual(next.outbound, original.outbound);
+            strictEqual("outbound" in next, observed);
+            strictEqual(next.portableInbox, portableInbox);
+            if (observed) {
+              strictEqual(next.outbound?.destinationInbox, gateways[0]);
+            }
+            strictEqual(next.attempt, mode === "hold" ? 0 : 1);
+            strictEqual(next.circuitHeld, mode === "hold" ? true : undefined);
+            if (mode === "defer") {
+              deepStrictEqual(
+                Object.keys(next.gatewayNotBefore ?? {}),
+                gateways.slice(1),
+              );
+            }
+            const requests = fetchMock.callHistory.calls().length;
+            await federation.processQueuedTask(undefined, {
+              ...structuredClone(next),
+              id: crypto.randomUUID(),
+            });
+            strictEqual(queued.length, 2);
+            const replay = queued[1];
+            ok(replay.type === "outbox");
+            deepStrictEqual(replay.outbound, original.outbound);
+            strictEqual("outbound" in replay, observed);
+            strictEqual(replay.inbox, gateways[1]);
+            strictEqual(replay.attempt, mode === "retry" ? 2 : next.attempt);
+            if (mode !== "retry") {
+              strictEqual(fetchMock.callHistory.calls().length, requests);
+            }
+          }
+          deepStrictEqual(task, original);
+          deepStrictEqual(message, original);
+        } finally {
+          fetchMock.hardReset();
+        }
+      });
+    }
   }
 });
