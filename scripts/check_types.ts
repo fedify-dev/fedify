@@ -339,28 +339,14 @@ export interface ProjectResult extends CompilerOutput {
   readonly errors: readonly Diagnostic[];
 }
 
-/** The directory, under node_modules, that holds incremental build state. */
-export const BUILD_INFO = "node_modules/.cache/fedify-check-types/buildinfo";
-
-/** Returns the incremental build information file for a project. */
-export function buildInfoFile(project: string): string {
-  return join(
-    root,
-    BUILD_INFO,
-    `${toPosix(project).replace(/\//g, "__")}.tsbuildinfo`,
-  );
-}
-
 /**
- * Type-checks a project and lists the files in its program.  Given a build
- * information file, the check is incremental: files whose contents did not
- * change since the last run are not checked again, but their diagnostics are
- * still reported.
+ * Type-checks a project and lists the files in its program.  The check is
+ * deliberately not incremental: TypeScript 7.0's build information can keep
+ * a file marked as clean after a global declaration it depends on changes,
+ * so a warm run could pass where a clean one fails.  See
+ * <https://github.com/microsoft/typescript-go/issues/4664>.
  */
-export async function checkProject(
-  project: string,
-  buildInfo?: string,
-): Promise<ProjectResult> {
+export async function checkProject(project: string): Promise<ProjectResult> {
   const result = await commandOutput(process.execPath, [
     tsc,
     "--project",
@@ -371,9 +357,6 @@ export async function checkProject(
     "--skipLibCheck",
     "false",
     "--listFiles",
-    ...(buildInfo == null
-      ? []
-      : ["--incremental", "--tsBuildInfoFile", buildInfo]),
   ], { cwd: root });
   const output = new TextDecoder().decode(result.stdout) +
     new TextDecoder().decode(result.stderr);
@@ -701,7 +684,7 @@ async function main(args: readonly string[]): Promise<number> {
     projects,
     concurrency,
     async (project) => {
-      const result = await checkProject(project, buildInfoFile(project));
+      const result = await checkProject(project);
       const status = result.errors.length > 0 ? "FAIL" : "ok";
       console.log(`${status} ${project}`);
       return result;
@@ -773,7 +756,7 @@ async function checkDeclarations(
     consumers,
     options.concurrency,
     async (project) => {
-      const result = await checkProject(project, buildInfoFile(project));
+      const result = await checkProject(project);
       const diagnostics = result.diagnostics.filter((diagnostic) =>
         isDeclarationDiagnostic(diagnostic, firstPartyDirs)
       );

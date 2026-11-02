@@ -1,10 +1,9 @@
 import { deepStrictEqual, equal, match, ok } from "node:assert/strict";
-import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
-  buildInfoFile,
   checkProject,
   classifyDeclarationDiagnostics,
   type CoverageInput,
@@ -414,50 +413,5 @@ describe("writeDeclarationConsumers()", () => {
     } finally {
       await rm(dir, { recursive: true });
     }
-  });
-});
-
-describe("checkProject()", () => {
-  it("reports unchanged diagnostics again in an incremental check", async () => {
-    const cache = join(root, "node_modules", ".cache");
-    await mkdir(cache, { recursive: true });
-    const dir = await mkdtemp(join(cache, "fedify-check-types-test-"));
-    try {
-      await writeFile(
-        join(dir, "tsconfig.check.json"),
-        JSON.stringify({
-          extends: relative(dir, join(root, "tsconfig.node.json"))
-            .split(sep).join("/"),
-          include: ["*.ts"],
-        }),
-      );
-      await writeFile(join(dir, "mod.ts"), 'export const n: number = "";\n');
-      const fixture = relative(root, dir).split(sep).join("/");
-      const project = `${fixture}/tsconfig.check.json`;
-      const buildInfo = join(dir, "check.tsbuildinfo");
-      const first = await checkProject(project, buildInfo);
-      ok((await stat(buildInfo)).isFile());
-      const second = await checkProject(project, buildInfo);
-      deepStrictEqual(second.diagnostics, first.diagnostics);
-      deepStrictEqual(second.files, first.files);
-      ok(second.diagnostics.some((d) => /error TS2322/.test(d.text)));
-      ok(second.files.includes(`${fixture}/mod.ts`));
-    } finally {
-      await rm(dir, { recursive: true });
-    }
-  });
-});
-
-describe("buildInfoFile()", () => {
-  it("keeps projects with the same file name apart", () => {
-    const a = buildInfoFile("packages/a/tsconfig.check.json");
-    const b = buildInfoFile("packages/b/tsconfig.check.json");
-    ok(a !== b);
-    ok(a.endsWith(".tsbuildinfo"));
-    ok(
-      relative(root, a).split(sep).join("/").startsWith(
-        "node_modules/.cache/fedify-check-types/buildinfo/",
-      ),
-    );
   });
 });

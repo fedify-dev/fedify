@@ -272,14 +272,12 @@ code that detects Deno declares the part of the `Deno` global it uses at
 module scope instead of loading Deno's types.
 
 Workspace packages resolve through their built declarations, so the task
-builds the packages first.  The check is incremental: it keeps TypeScript's
-build information under *node\_modules/.cache/fedify-check-types/buildinfo/*
-and rechecks only files affected by changes since the last run.  It also fails
-when a TypeScript file under *packages/* or *scripts/* belongs to no
-type-checking project.  Code that only Deno can check, such as Deno-only
-packages, scripts that run on Deno, and `Deno.bench()` benchmarks, is assigned
-to `mise run check:types:deno` in *scripts/check\_types\_ownership.ts*, with
-the reason.  Add a file there only when the Node.js-based check cannot cover it.
+builds the packages first.  It also fails when a TypeScript file under
+*packages/* or *scripts/* belongs to no type-checking project.  Code that only
+Deno can check, such as Deno-only packages, scripts that run on Deno, and
+`Deno.bench()` benchmarks, is assigned to `mise run check:types:deno` in
+*scripts/check\_types\_ownership.ts*, with the reason.  Add a file there only
+when the Node.js-based check cannot cover it.
 
 The task also checks the published declarations of every package: it
 generates small consumer projects that import each export by package name,
