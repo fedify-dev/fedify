@@ -222,6 +222,90 @@ Failures before sender entry, such as queue key import or fanout parsing, and
 worker holds, drops, or deferrals do not create attempts. Attempt reports do not
 establish a worker's scheduling result.
 
+### Worker execution and actions
+
+`onWorker` receives one `OutboundWorkerReport` after a fanout or outbox worker's
+local execution settles, including its existing metrics and cleanup. It receives
+the current worker context and application data. It also works when attempt and
+exchange observers are disabled; inbox and custom-task workers are separate.
+
+`role` identifies `fanout` or `outbox`. `queue` identifies the current task and,
+for outbox tasks, its Fedify retry counter. `attemptsStarted` counts actual
+concrete sender entries: expanding fanout into child tasks counts zero, while
+direct sends and alternate gateways each count when entered. An outbox report's
+`delivery` identifies its obligation when available. Fanout has no single
+`delivery`; its child actions carry their own delivery references.
+
+Narrow `result.type` to read the execution result:
+
+| Type                 | Meaning                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `completed`          | The local worker path returned normally, including handled send failures and abandonment.                                |
+| `failed`             | Processing escaped with the original `error`, even if an earlier attempt succeeded.                                      |
+| `preparation-failed` | Key import, activity parsing, context creation, or request preparation failed; `failure.phase` identifies the operation. |
+
+`actions` records actual local decisions and enqueue settlements independently
+of the result. An empty array means no such action was observed in that
+execution. Narrow an action's `type`, then its `action` when present:
+
+| Type            | Evidence                                                                                                        |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| `scheduled`     | An `enqueue`, `retry`, or `defer` call resolved. `queue` identifies the submitted task and counter.             |
+| `action-failed` | An enqueue rejected, with `acceptance: "unknown"` and the original `error`, or an available `drop` step failed. |
+| `handoff`       | A fanout worker entered a concrete sender (`action: "direct"`); this does not establish HTTP success.           |
+| `abandoned`     | The local path stopped work for the listed routes, with a `reason` such as `permanent-failure`.                 |
+
+Each action's `inboxUrls` contains its affected routes. Gateway abandonment can
+remove one route while another succeeds or is rescheduled. Retry/defer actions
+include the actual ISO 8601 `delay` passed to the queue and any per-route
+`notBefore` constraints retained in the continuation. Child `enqueue` actions
+and direct handoffs include their known `delivery` references. Constructing a
+child or deciding to retry does not itself establish an enqueue.
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+declare const federation: Federation<void>;
+// ---cut-before---
+federation.setOutboundObservers({
+  onWorker(_ctx, report) {
+    console.log(report.role, report.queue.queueMessageId, report.attemptsStarted);
+    if (report.result.type === "preparation-failed") {
+      console.error(report.result.failure.phase, report.result.error);
+    }
+    for (const action of report.actions) {
+      if (action.type === "scheduled") {
+        console.log(action.action, action.queue.queueMessageId, action.inboxUrls);
+        if (action.action === "enqueue") {
+          console.log(action.delivery?.deliveryId);
+        } else {
+          console.log(action.delay, action.notBefore);
+        }
+      } else if (action.type === "action-failed") {
+        console.error(action.action, action.error);
+        if (action.action !== "drop") {
+          console.error("Queue acceptance is unknown", action.queue.queueMessageId);
+        }
+      }
+    }
+  },
+});
+~~~~
+
+Accepted child tasks remain in the report when another child fails or later
+bookkeeping throws. A rejected batch leaves acceptance unknown for every
+submitted child, even if the backend accepted some of them. Fanout replay keeps
+known delivery IDs while creating fresh child task IDs, without another
+broadcast or a change to the producer's preparation result. A later destination
+setup failure can leave earlier direct sends running; the worker report captures
+entries observed by its settlement, while those attempt callbacks may arrive
+later.
+
+Worker settlement does not establish backend acknowledgment, a future native
+retry, or remote application effects. A native rethrow records failure without
+claiming a scheduled continuation; native redelivery can reuse the task and
+Fedify retry counter. See [message queues](./mq.md#observing-outgoing-workers)
+for how this relates to queue processing.
+
 ### Response versus final response
 
 A response means one fetch received HTTP headers. A final response is the
@@ -377,10 +461,10 @@ Each registration call replaces all previous outbound observers; pass `{}` to
 clear them. Fedify copies the supplied callbacks, and building a federation
 copies the builder's registration. An active invocation or worker execution
 keeps its selected callbacks even if registration changes while it is running.
-You can register any callback independently. On attempt/exchange reports,
-`queue` contains the current `queueMessageId` and an available Fedify
-`queueAttempt` counter. Native redelivery can repeat that counter while
-creating fresh attempts.
+You can register any callback independently, including `onWorker` alone. On
+attempt/exchange reports, `queue` contains the current `queueMessageId` and an
+available Fedify `queueAttempt` counter. Native redelivery can repeat that
+counter while creating fresh attempts.
 
 Callbacks are awaited without a default timeout. Their return values and errors
 cannot veto sending, and callback or error-logging failures do not replace the

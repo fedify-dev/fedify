@@ -286,6 +286,29 @@ separately from the outward `outcome.error`; HTTP failure evidence may lack an
 exception. Holds, drops, and failures before sender entry produce no attempt,
 and attempt reports do not establish worker scheduling results.
 
+`onWorker(ctx, report)` reports each settled fanout/outbox execution, including
+its instrumentation, with current worker context/data. It works independently
+of attempt/exchange callbacks. `role` and `queue` identify the current worker;
+`attemptsStarted` counts concrete sender entries, never child enqueues. Narrow
+`result.type`: `completed` is local normal return (including handled failures
+and abandonment), `failed` retains the escaping error, and `preparation-failed`
+identifies the actual preparation phase. Outbox `delivery` identifies its
+obligation; fanout has no single delivery.
+
+Read `actions` separately from the worker result. `scheduled` records a resolved
+`enqueue`, `retry`, or `defer`; its `queue` identifies the actual task/counter.
+Retry/defer includes ISO `delay` and optional per-route `notBefore` constraints.
+`action-failed` retains enqueue rejection with `acceptance: "unknown"`, or a
+failed `drop` step. `handoff`/`direct` records concrete fanout sender entry;
+`abandoned` records a local reason. Each action lists affected `inboxUrls`, so
+gateway outcomes can differ by route. Child enqueues and direct handoffs carry
+known delivery references. Accepted children survive sibling/bookkeeping
+failure; a rejected batch leaves all submitted children uncertain. Replay keeps
+delivery IDs with fresh child task IDs, without another broadcast. Worker
+settlement does not establish backend acknowledgment, a scheduled native retry,
+or remote success; later direct attempts may settle after a setup failure has
+already ended the worker. Do not infer scheduling from an attempt result.
+
 Callbacks are awaited without a default timeout; observer/logging errors are
 isolated. Nonsettling callbacks can delay execution indefinitely. Portable
 forwarding can return at its existing deadline while background work and

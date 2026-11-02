@@ -10,7 +10,12 @@ links:
     send results and exact HTTP exchange counts, including queued retries and
     gateway fallback, and `onHttpExchange` for each actual signed or unsigned
     fetch. Reports distinguish received responses from the selected final
-    response and retain HTTP evidence alongside later local failures. They
+    response and retain HTTP evidence alongside later local failures. Use
+    `onWorker` for fanout/outbox execution results, concrete send counts, and
+    actual child enqueue, retry, deferral, or abandonment actions. Worker
+    reports retain accepted children through partial failures and distinguish
+    unknown queue acceptance from confirmed scheduling; local completion does
+    not establish backend acknowledgment or remote success. Reports
     include observation timestamps and optional operation trace IDs. Callbacks
     receive application context and independent grouping IDs without requiring
     OpenTelemetry; their errors do not replace the original result. Known IDs

@@ -95,7 +95,10 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    * replication preparation, destination planning, and handoffs, including
    * outbox-context operations and fanout continuation handoffs. Separate
    * callbacks report concrete send attempts and actual HTTP exchanges, including
-   * queued retries and gateway fallback. Known IDs, original inbox source, and
+   * queued retries and gateway fallback. Worker reports retain local execution
+   * results and actual enqueue, retry, deferral, and abandonment actions,
+   * separately from attempts and backend acknowledgment.
+   * Known IDs, original inbox source, and
    * application correlation survive queue work; workers use current context data.
    * This is separate from incoming C2S {@link Federatable.setOutboxListeners}.
    * @param observers The optional callbacks to register.

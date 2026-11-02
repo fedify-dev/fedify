@@ -52,15 +52,20 @@ To be released.
     for sends, original-payload forwarding, and automatic portable replication.
     Register `onBroadcast` to record producer starts and preparation results,
     and `onDelivery` for destination planning, direct handoffs, queue acceptance
-    or uncertainty, and local preparation failures. Callbacks receive
-    application context and independent grouping IDs without requiring
+    or uncertainty, and local preparation failures. Use `onAttempt` for concrete
+    send results and exact HTTP exchange counts, including queued retries and
+    gateway fallback, and `onHttpExchange` for each actual signed or unsigned
+    fetch. Reports distinguish received responses from the selected final
+    response and retain HTTP evidence alongside later local failures. They
+    include observation timestamps and optional operation trace IDs. Callbacks
+    receive application context and independent grouping IDs without requiring
     OpenTelemetry; their errors do not replace the original result. Known IDs
     and original inbox source survive queue continuations. Send/forward options
     accept `dispatchId` for application correlation without deduplication,
     limited to 1,024 UTF-8 bytes. Routed inbox reports include `inboxRequestId`
     and informational `requestId`. Missing legacy relationships remain unknown.
-    Readiness and handoff observations do not establish remote delivery success.
-    [[#1316] by Jiwon Kwon\]
+    Readiness and handoff observations do not establish remote delivery
+    success. [[#1316] by Jiwon Kwon\]
  -  Added the `activity-origin-mismatch` reason to rejected
     `InboxAuthentication` decisions in `onRequestFinished` reports.  Inbox
     deliveries rejected because the activity's ID does not have the same origin

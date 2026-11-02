@@ -1297,6 +1297,29 @@ Optimized performance
 :   Backend-specific optimizations for retry logic.
 
 
+Observing outgoing workers
+--------------------------
+
+*This API is available since Fedify 2.5.0.*
+
+Register `onWorker` through `Federatable.setOutboundObservers()` to observe
+local fanout and outbox execution, including calls to
+`Federation.processQueuedTask()`. Reports include the current task, concrete
+send count, local result, and actual child enqueue, retry, deferral, or
+abandonment actions. They receive the current worker context and data, with
+known delivery identities and source metadata restored from the queued message.
+Inbox and custom-task processing use separate mechanisms.
+
+A completed worker report means the local path returned normally; it can include
+a handled send failure or abandonment. An accepted enqueue can survive a later
+worker failure, and a rejected enqueue or batch does not prove the backend
+accepted nothing. Reports do not establish backend acknowledgment or future
+native retry execution. Use attempt observers for concrete send results and
+queue depth for messages still waiting. See
+[worker execution and actions](./send.md#worker-execution-and-actions) for
+report variants and a typed example.
+
+
 Queue depth reporting
 ---------------------
 

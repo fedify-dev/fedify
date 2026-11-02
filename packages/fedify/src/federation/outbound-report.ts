@@ -356,8 +356,11 @@ type OutboundWorkerAction =
 /**
  * One fanout or outbox worker execution after its local processing settles.
  *
- * Completion does not establish HTTP success. Scheduling/drop action evidence
- * is separate from the execution result and backend acknowledgment.
+ * Emitted after the local worker path and its instrumentation settle. A normal
+ * return can include handled send failures or abandonment; completion does not
+ * establish HTTP success or backend acknowledgment. Actions retain local route
+ * decisions and actual enqueue settlement, separately from attempt outcomes.
+ * A native rethrow does not establish a scheduled continuation or future replay.
  * @since 2.5.0
  */
 export type OutboundWorkerReport = OutboundSourceMetadata & {
@@ -367,14 +370,24 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
   readonly queue: NonNullable<OutboundAttemptReport["queue"]>;
   /** Concrete sender entries, independent of enabled attempt/exchange callbacks. */
   readonly attemptsStarted: number;
-  /** Observed scheduling, direct-entry, and local abandonment facts. */
+  /**
+   * Observed enqueue settlement, concrete direct-entry, and local abandonment.
+   * Accepted actions survive later worker failure; rejected batches leave each
+   * submitted child uncertain. Empty when no action was observed by settlement.
+   */
   readonly actions: readonly OutboundWorkerAction[];
-  /** Known outbox obligation; absent for fanout or unavailable metadata. */
+  /**
+   * Outbox obligation, with unavailable legacy relationships omitted.
+   * Fanout has no single delivery; its child actions carry their own references.
+   */
   readonly delivery?: Pick<
     OutboundAttemptReport,
     "broadcast" | "deliveryId" | "destinationInbox" | "portableInbox"
   >;
-  /** Actual local settlement, separate from individual attempts. */
+  /**
+   * Actual local settlement, separate from individual attempts and queue actions.
+   * Preparation failures identify the operation that produced the escaping error.
+   */
   readonly result:
     | { readonly type: "completed" }
     | { readonly type: "failed"; readonly error: unknown }
@@ -401,6 +414,8 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
  * events are observed, including outbox-context operations and fanout
  * continuation handoffs. Concrete attempts and actual fetch exchanges include
  * queue workers, signature challenges, redirects, and alternate gateways.
+ * Worker reports describe local fanout/outbox settlement and actual queue
+ * actions; they do not establish backend acknowledgment or future execution.
  * Known IDs and provenance survive queue continuations; callback context data
  * belongs to the current execution. Each callback is independently optional.
  * Callbacks are awaited without a default timeout.
