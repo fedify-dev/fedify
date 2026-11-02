@@ -1,3 +1,4 @@
+import { projectSenderPayload } from "./outbound-document.ts";
 import { captureResponseBody } from "./outbound-capture.ts";
 import { snapshotHeaders } from "./outbound-headers.ts";
 import {
@@ -163,6 +164,7 @@ type AttemptFacts = Pick<
   | "attemptId"
   | "inboxUrl"
   | "httpExchangeCount"
+  | "senderPayload"
   | "observedAt"
   | "trace"
   | "outcome"
@@ -170,7 +172,7 @@ type AttemptFacts = Pick<
 
 type HeaderPolicies = Pick<
   OutboundObservers<unknown>,
-  "requestHeaders" | "responseHeaders"
+  "requestHeaders" | "responseHeaders" | "senderPayload"
 >;
 
 type ExchangeFacts = Pick<
@@ -216,6 +218,7 @@ export class OutboundAttemptObservation {
   #trace: OutboundAttemptReport["trace"];
   #finished = false;
   #exchangeCount = 0;
+  #senderPayload: OutboundAttemptReport["senderPayload"];
 
   constructor(
     readonly inboxUrl: string,
@@ -225,7 +228,18 @@ export class OutboundAttemptObservation {
       | undefined = undefined,
     readonly headerPolicies: HeaderPolicies = {},
     readonly bodyCapture?: BodyCapture,
-  ) {}
+    readonly senderPayload = false,
+  ) {
+    this.#senderPayload = Object.freeze({
+      stage: "sender-payload",
+      type: "unavailable",
+      reason: senderPayload ? "not-materialized" : "disabled",
+    });
+  }
+
+  snapshotSenderPayload(input: unknown): void {
+    if (this.senderPayload) this.#senderPayload = projectSenderPayload(input);
+  }
 
   setSpan(span: Span, parentSpanContext?: SpanContext): void {
     this.#trace = snapshotTrace(span, parentSpanContext);
@@ -384,6 +398,7 @@ export class OutboundAttemptObservation {
       attemptId: this.#attemptId,
       inboxUrl: this.inboxUrl,
       httpExchangeCount: this.#exchangeCount,
+      senderPayload: this.#senderPayload,
       observedAt: Temporal.Now.instant().epochMilliseconds,
       ...(this.#trace == null ? {} : { trace: this.#trace }),
       outcome: Object.freeze(outcome),
@@ -759,6 +774,7 @@ export class OutboundAttemptObserver<TContextData> {
               ),
           ),
       },
+      this.callback != null && this.headerPolicies.senderPayload === true,
     );
   }
 }
@@ -912,6 +928,7 @@ export class OutboundBroadcastObservation<TContextData> {
     this.#headerPolicies = {
       requestHeaders: observers.requestHeaders,
       responseHeaders: observers.responseHeaders,
+      senderPayload: observers.senderPayload,
     };
   }
 
@@ -940,6 +957,7 @@ export class OutboundBroadcastObservation<TContextData> {
         requestHeaders: observers.requestHeaders,
         responseHeaders: observers.responseHeaders,
         responseBodyCapture: observers.responseBodyCapture,
+        senderPayload: observers.senderPayload,
       },
       "send",
       getOutboundProvenance(context),

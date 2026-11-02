@@ -2649,6 +2649,7 @@ test("portable replication attempts settle independently after the forwarding de
     });
     let replacements = 0;
     federation.setOutboundObservers({
+      senderPayload: true,
       onAttempt(_ctx, report) {
         attempts.push(report);
         if (report.outcome.type === "failed") failed();
@@ -2685,6 +2686,13 @@ test("portable replication attempts settle independently after the forwarding de
     assert(attempts[0].deliveryId !== attempts[1].deliveryId);
     assertEquals(attempts[0].broadcast, attempts[1].broadcast);
     for (const report of attempts) {
+      assertEquals(report.senderPayload.stage, "sender-payload");
+      if (report.senderPayload.type === "unavailable") {
+        assertEquals(report.senderPayload.reason, "privacy-filter-unavailable");
+      } else {
+        assertEquals(report.senderPayload.representation, "privacy-projection");
+        assert(Object.isFrozen(report.senderPayload.value));
+      }
       assertEquals(report.destinationInbox, report.inboxUrl);
       assertEquals(report.portableInbox, `ap+ef61://${did}/users/alice/inbox`);
       assertEquals(

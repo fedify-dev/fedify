@@ -176,6 +176,34 @@ type OutboundAttemptFailure =
     readonly error: unknown;
   };
 
+/** Immutable JSON data in a privacy projection. @since 2.5.0 */
+export type OutboundJsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly OutboundJsonValue[]
+  | { readonly [key: string]: OutboundJsonValue };
+
+/** Attempt input evidence, never proof of a particular exchange's wire body. @since 2.5.0 */
+export type OutboundSenderPayload =
+  & { readonly stage: "sender-payload" }
+  & (
+    | {
+      readonly type: "available";
+      readonly representation: "privacy-projection";
+      readonly redacted: boolean;
+      readonly value: OutboundJsonValue;
+    }
+    | {
+      readonly type: "unavailable";
+      readonly reason:
+        | "disabled"
+        | "not-materialized"
+        | "privacy-filter-unavailable";
+    }
+  );
+
 /** Result of an enabled response-body capture. Absence means disabled. @since 2.5.0 */
 export type OutboundBodyCaptureSummary =
   & {
@@ -304,6 +332,8 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
   readonly inboxUrl: string;
   /** Actual fetch submissions, including challenges and redirects; may be zero. */
   readonly httpExchangeCount: number;
+  /** Opt-in independent sender input projection; unavailable states remain explicit. */
+  readonly senderPayload: OutboundSenderPayload;
   /** Current queue execution; absent on immediate sends. */
   readonly queue?: {
     readonly queueMessageId: string;
@@ -512,6 +542,8 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
  * @since 2.5.0
  */
 export interface OutboundObservers<TContextData> {
+  /** Opt-in privacy-filtered sender input on attempt reports; disabled by default. */
+  readonly senderPayload?: boolean;
   /** Independent opt-in body consumer; explicit byte/time limits are required. */
   readonly responseBodyCapture?: OutboundResponseBodyCapture<TContextData>;
   /**

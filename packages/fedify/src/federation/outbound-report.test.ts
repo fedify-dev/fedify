@@ -29,6 +29,7 @@ import {
   ContextImpl,
   createFederation,
   FederationImpl,
+  InboxContextImpl,
   OutboxContextImpl,
 } from "./middleware.ts";
 import type {
@@ -6066,6 +6067,233 @@ test("outbound capture evidence survives later final response bookkeeping failur
         ),
       );
       strictEqual(attempts[0].httpExchangeCount, 2);
+    });
+  }
+});
+
+test("sender payload projections preserve actual send forward and queued inputs", async (t) => {
+  for (
+    const mode of [
+      "ordinary",
+      "outbox",
+      "queued",
+      "fanout",
+      "forward",
+      "forward-queued",
+    ] as const
+  ) {
+    await t.step(mode, async () => {
+      const tasks: Message[] = [];
+      const queue: MessageQueue = {
+        enqueue(message) {
+          tasks.push(message);
+          return Promise.resolve();
+        },
+        listen: () => Promise.resolve(),
+      };
+      const federation = createFederation<{ label: string }>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        manuallyStartQueue: true,
+        ...(mode === "queued" || mode === "forward-queued" || mode === "fanout"
+          ? {
+            queue: {
+              outbox: queue,
+              ...(mode === "fanout" ? { fanout: queue } : {}),
+            },
+          }
+          : {}),
+      });
+      const reports: OutboundAttemptReport[] = [];
+      const contexts: string[] = [];
+      federation.setOutboundObservers({
+        senderPayload: true,
+        onAttempt(ctx, report) {
+          reports.push(report);
+          contexts.push(ctx.data.label);
+        },
+      });
+      const secret = "https://private.example/recipient";
+      const payload = {
+        ...forwardingPayload,
+        "@context": "https://www.w3.org/ns/activitystreams",
+        bto: [secret],
+        object: { type: "Note", bcc: [secret], content: "visible" },
+      };
+      const original = structuredClone(payload);
+      const outgoing = activity.clone({
+        btos: [new URL(secret)],
+        bccs: [new URL(secret)],
+      });
+      const ctx = mode.startsWith("forward")
+        ? forwardingContext(federation, "inbox", payload, { label: "producer" })
+        : mode === "outbox"
+        ? forwardingContext(federation, "outbox", payload, {
+          label: "producer",
+        })
+        : federation.createContext(new URL("https://example.com"), {
+          label: "producer",
+        });
+      const bodies: unknown[] = [];
+      fetchMock.mockGlobal().post(recipient.inboxId!.href, (call) => {
+        bodies.push(JSON.parse(String(call.options.body)));
+        return 202;
+      });
+      try {
+        if (mode.startsWith("forward")) {
+          ok(ctx instanceof InboxContextImpl);
+          await ctx.forwardActivity(sender, recipient, {
+            skipIfUnsigned: false,
+            immediate: mode === "forward",
+          });
+        } else {
+          ok(ctx instanceof ContextImpl);
+          const senderContext: ContextImpl<{ label: string }> = ctx;
+          await senderContext.sendActivity(sender, recipient, outgoing, {
+            immediate: mode === "ordinary" || mode === "outbox",
+            fanout: mode === "fanout" ? "force" : "skip",
+          });
+        }
+        while (tasks.length) {
+          await federation.processQueuedTask(
+            { label: "worker" },
+            tasks.shift()!,
+          );
+        }
+        strictEqual(reports.length, 1);
+        strictEqual(bodies.length, 1);
+        const document = reports[0].senderPayload;
+        ok(
+          document.type === "available",
+          JSON.stringify({
+            document,
+            context: (bodies[0] as Record<string, unknown>)["@context"],
+          }),
+        );
+        strictEqual(document.stage, "sender-payload");
+        strictEqual(document.redacted, true);
+        strictEqual(JSON.stringify(document.value).includes(secret), false);
+        ok(JSON.stringify(bodies[0]).includes(secret));
+        deepStrictEqual(payload, original);
+        deepStrictEqual(contexts, [
+          mode === "queued" || mode === "forward-queued" || mode === "fanout"
+            ? "worker"
+            : "producer",
+        ]);
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
+test("sender payload availability never changes serialization or redirected bodies", async (t) => {
+  for (
+    const mode of [
+      "disabled",
+      "preparation",
+      "conversion",
+      "getter",
+      "redirect",
+    ] as const
+  ) {
+    await t.step(mode, async () => {
+      const ctx = createFederation<void>(options).createContext(
+        new URL("https://example.com"),
+        undefined,
+      );
+      const reports: OutboundAttemptReport[] = [];
+      const observation = new OutboundBroadcastObservation(ctx, {
+        senderPayload: mode !== "disabled",
+        onAttempt(_ctx, report) {
+          reports.push(report);
+        },
+      }, "send");
+      const inbox = recipient.inboxId!.href;
+      await observation.planDestinations({
+        [inbox]: { actorIds: [], sharedInbox: false },
+      });
+      const payload = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        bcc: ["https://private.example/recipient"],
+        object: { content: "visible" },
+      };
+      let conversions = 0;
+      let getters = 0;
+      const input = mode === "conversion"
+        ? Object.defineProperty({}, "toJSON", {
+          value() {
+            conversions++;
+            return payload;
+          },
+        })
+        : mode === "getter"
+        ? Object.defineProperty({ ...payload }, "object", {
+          enumerable: true,
+          get() {
+            getters++;
+            return payload.object;
+          },
+        })
+        : payload;
+      const requests: { method: string; body: string }[] = [];
+      const failure = new Error("session unavailable before serialization");
+      const sending = sendConcreteActivity({
+        observation: observation.delivery(inbox),
+        activity: input,
+        keys: [],
+        inbox: new URL(inbox),
+      }, {
+        openHop: (url) =>
+          mode === "preparation" ? Promise.reject(failure) : Promise.resolve({
+            url: new URL(url),
+            async fetch(request) {
+              ok(request instanceof Request);
+              requests.push({
+                method: request.method,
+                body: await request.text(),
+              });
+              return new Response(
+                null,
+                mode === "redirect" && requests.length === 1
+                  ? { status: 303, headers: { Location: "/payload-next" } }
+                  : { status: 202 },
+              );
+            },
+            close: () => Promise.resolve(),
+          }),
+      });
+      if (mode === "preparation") {
+        await rejects(sending, (error: unknown) => error === failure);
+      } else await sending;
+      strictEqual(reports.length, 1);
+      const document = reports[0].senderPayload;
+      if (mode === "redirect") {
+        ok(document.type === "available");
+        strictEqual(document.redacted, true);
+        strictEqual(
+          JSON.stringify(document.value).includes("private.example"),
+          false,
+        );
+        strictEqual(requests.length, 2);
+        strictEqual(requests[1].method, "GET");
+        strictEqual(requests[1].body, "");
+        ok(requests[0].body.includes("private.example"));
+      } else {deepStrictEqual(document, {
+          stage: "sender-payload",
+          type: "unavailable",
+          reason: mode === "disabled"
+            ? "disabled"
+            : mode === "preparation"
+            ? "not-materialized"
+            : "privacy-filter-unavailable",
+        });}
+      strictEqual(conversions, mode === "conversion" ? 1 : 0);
+      strictEqual(getters, mode === "getter" ? 1 : 0);
+      if (mode !== "preparation") {
+        strictEqual(requests[0].body, JSON.stringify(payload));
+      }
     });
   }
 });

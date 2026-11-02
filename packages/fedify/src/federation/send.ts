@@ -583,6 +583,7 @@ async function sendActivityInternal(
       throw error;
     }
     try {
+      attempt?.snapshotSenderPayload(activity);
       body = JSON.stringify(activity);
     } catch (error) {
       attempt?.failure({ kind: "local", phase: "serialization", error });
