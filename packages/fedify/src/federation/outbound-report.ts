@@ -59,6 +59,7 @@ export type OutboundPreparationResult =
  * @since 2.5.0
  */
 export type OutboundBroadcastEvent =
+  & OutboundSourceMetadata
   & {
     /** Fresh opaque identity shared by producer events, independent of tracing. */
     readonly broadcastId: string;
@@ -88,6 +89,7 @@ export type OutboundBroadcastEvent =
  * @since 2.5.0
  */
 export type OutboundDeliveryEvent =
+  & OutboundSourceMetadata
   & {
     /** The originating invocation, or unknown for legacy fanout work. */
     readonly broadcast:
@@ -176,4 +178,40 @@ export interface OutboundObservers<TContextData> {
     context: Context<TContextData>,
     event: OutboundDeliveryEvent,
   ) => void | Promise<void>;
+}
+/** URL facts captured independently of a mutable context URL. @since 2.5.0 */
+export interface OutboundLocalContext {
+  /** Scheme and authority of the context URL. */
+  readonly origin: string;
+  /** URL hostname with its optional port. */
+  readonly host: string;
+  /** URL hostname without a port. */
+  readonly hostname: string;
+  /** Configured canonical web origin, falling back to this context's origin. */
+  readonly canonicalOrigin: string;
+}
+
+/** The original routed HTTP inbox request that caused outgoing work. @since 2.5.0 */
+export interface OutboundInboxRequest {
+  /** Fresh server-generated identity, independent of Activity and trace IDs. */
+  readonly inboxRequestId: string;
+  /** Informational logging label; externally controlled and nonunique. */
+  readonly requestId: string;
+  /** Original request URL facts, preserved separately from current context. */
+  readonly context: OutboundLocalContext;
+}
+
+/** Explicit historical cause of outgoing work. @since 2.5.0 */
+export interface OutboundProvenance {
+  /** Absent for independent contexts, programmatic routing, and unknown work. */
+  readonly inboxRequest?: OutboundInboxRequest;
+  /** Original logging label for request-derived work without an inbox cause. */
+  readonly originatingRequestId?: string;
+}
+
+interface OutboundSourceMetadata {
+  /** Immutable historical cause, distinct from this callback's context. */
+  readonly provenance: OutboundProvenance;
+  /** URL facts of the current callback context. */
+  readonly local: OutboundLocalContext;
 }

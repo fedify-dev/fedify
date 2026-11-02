@@ -1,3 +1,8 @@
+import {
+  getOutboundProvenance,
+  snapshotLocalContext,
+  withOutboundSource,
+} from "./outbound-provenance.ts";
 import { encodeHex } from "byte-encodings/hex";
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "./context.ts";
@@ -8,6 +13,9 @@ import type {
   OutboundObservers,
   OutboundPreparationResult,
 } from "./outbound-report.ts";
+
+type WithoutSource<T> = T extends unknown ? Omit<T, "provenance" | "local">
+  : never;
 
 type PreparationFailure = Extract<
   OutboundPreparationResult,
@@ -87,7 +95,7 @@ async function notifyObserver<TContextData, TEvent>(
 ): Promise<void> {
   if (callback == null) return;
   try {
-    await callback(context, event);
+    await withOutboundSource(context, () => callback(context, event));
   } catch (error) {
     try {
       getLogger(["fedify", "federation", "outbox"]).error(
@@ -130,6 +138,8 @@ class OutboundDeliveryObservation<TContextData> {
       this.context,
       this.observer,
       Object.freeze({
+        provenance: getOutboundProvenance(this.context),
+        local: snapshotLocalContext(this.context),
         ...this.#reference,
         ...this.#plan,
         stage: "planned" as const,
@@ -147,6 +157,8 @@ class OutboundDeliveryObservation<TContextData> {
       this.context,
       this.observer,
       Object.freeze({
+        provenance: getOutboundProvenance(this.context),
+        local: snapshotLocalContext(this.context),
         ...this.#reference,
         stage: "handoff" as const,
         result: Object.freeze(result),
@@ -162,6 +174,8 @@ class OutboundDeliveryObservation<TContextData> {
       this.context,
       this.observer,
       Object.freeze({
+        provenance: getOutboundProvenance(this.context),
+        local: snapshotLocalContext(this.context),
         ...this.#reference,
         stage: "preparation-failed" as const,
         failure: Object.freeze({
@@ -405,8 +419,19 @@ export class OutboundBroadcastObservation<TContextData> {
     }
   }
 
-  #notify(event: OutboundBroadcastEvent): Promise<void> {
-    return notifyObserver(this.context, this.#onBroadcast, event, "broadcast");
+  #notify(
+    event: WithoutSource<OutboundBroadcastEvent>,
+  ): Promise<void> {
+    return notifyObserver(
+      this.context,
+      this.#onBroadcast,
+      Object.freeze({
+        ...event,
+        provenance: getOutboundProvenance(this.context),
+        local: snapshotLocalContext(this.context),
+      }),
+      "broadcast",
+    );
   }
 }
 
@@ -420,9 +445,11 @@ export function observeOutboundBroadcast<TContextData, TResult>(
   operation: OutboundBroadcastEvent["operation"] = "send",
 ): Promise<TResult> {
   if (observers.onBroadcast == null && observers.onDelivery == null) {
-    return send();
+    return withOutboundSource(context, () => send());
   }
-  return new OutboundBroadcastObservation(context, observers, operation).run(
-    send,
+  return withOutboundSource(
+    context,
+    () =>
+      new OutboundBroadcastObservation(context, observers, operation).run(send),
   );
 }

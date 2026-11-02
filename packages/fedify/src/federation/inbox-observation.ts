@@ -1,6 +1,8 @@
 import { Activity } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import type { Span } from "@opentelemetry/api";
+import type { OutboundInboxRequest } from "./outbound-report.ts";
+import { withContext } from "@logtape/logtape";
 import type { RequestContext } from "./context.ts";
 import type {
   InboxAuthentication,
@@ -47,7 +49,10 @@ export class InboxObservation {
       }
     },
   };
-  constructor(readonly inbox: InboxRequestReport["inbox"]) {}
+  constructor(
+    readonly inbox: InboxRequestReport["inbox"],
+    readonly source?: OutboundInboxRequest,
+  ) {}
 
   /** Run an ingress operation and project telemetry; fetch owns completion. */
   async run(
@@ -123,6 +128,10 @@ export class InboxObservation {
   ): Promise<void> {
     if (handler == null) return;
     const report: InboxRequestReport = {
+      ...(this.source == null ? {} : {
+        inboxRequestId: this.source.inboxRequestId,
+        requestId: this.source.requestId,
+      }),
       inbox: this.inbox,
       payload: this.payload,
       activity: this.activity,
@@ -131,7 +140,12 @@ export class InboxObservation {
       outcome,
     };
     try {
-      await handler(context, report);
+      await withContext(
+        this.source == null
+          ? {}
+          : { inboxRequestId: this.source.inboxRequestId },
+        () => handler(context, report),
+      );
     } catch (error) {
       try {
         getLogger(["fedify", "federation", "inbox"]).error(

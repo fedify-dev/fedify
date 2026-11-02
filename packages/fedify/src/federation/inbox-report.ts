@@ -132,6 +132,10 @@ export type InboxRequestOutcome =
  * @since 2.4.0
  */
 export interface InboxRequestReport {
+  /** Server-generated identity; present for routed HTTP ingress. @since 2.5.0 */
+  readonly inboxRequestId?: string;
+  /** Informational logging label of that request, not a unique ID. @since 2.5.0 */
+  readonly requestId?: string;
   /** The delivery route, including a portable gateway route. */
   readonly inbox: {
     readonly kind: "personal" | "shared" | "portable";

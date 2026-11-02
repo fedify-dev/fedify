@@ -2384,7 +2384,7 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
           })
           : Promise.resolve();
       };
-      const { federation } = setup({ queue, keyPairs: false });
+      const { federation, reports } = setup({ queue, keyPairs: false });
       const events: OutboundBroadcastEvent[] = [];
       const deliveries: OutboundDeliveryEvent[] = [];
       let ready!: () => void;
@@ -2474,6 +2474,14 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
         }
       }
       assertEquals(events.length, 2);
+      const source = events[0].provenance.inboxRequest;
+      assert(source);
+      assertEquals(source.inboxRequestId, reports[0].inboxRequestId);
+      assertEquals(source.requestId, reports[0].requestId);
+      assertEquals(source.context.origin, LOCAL);
+      for (const event of [...events, ...deliveries]) {
+        assertEquals(event.provenance.inboxRequest, source);
+      }
       // A swallowed enqueue failure keeps its claim; redelivery is not retried.
       federation.setOutboundObservers({
         onDelivery(_ctx, event) {

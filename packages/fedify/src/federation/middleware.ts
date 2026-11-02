@@ -1,4 +1,13 @@
 import {
+  createInboxRequestSource,
+  emptyProvenance,
+  outboundProvenance,
+} from "./outbound-provenance.ts";
+import type {
+  OutboundInboxRequest,
+  OutboundProvenance,
+} from "./outbound-report.ts";
+import {
   observeOutboundBroadcast,
   OutboundBroadcastObservation,
 } from "./outbound-observation.ts";
@@ -3104,13 +3113,17 @@ export class FederationImpl<TContextData>
   #createContext(
     baseUrl: URL,
     contextData: TContextData,
-    opts?: { documentLoader?: DocumentLoader },
+    opts?: {
+      documentLoader?: DocumentLoader;
+      [outboundProvenance]?: OutboundProvenance;
+    },
   ): ContextImpl<TContextData>;
 
   #createContext(
     request: Request,
     contextData: TContextData,
     opts?: {
+      [outboundProvenance]?: OutboundProvenance;
       documentLoader?: DocumentLoader;
       invokedFromActorDispatcher?: { identifier: string };
       invokedFromObjectDispatcher?: {
@@ -3125,6 +3138,7 @@ export class FederationImpl<TContextData>
     urlOrRequest: Request | URL,
     contextData: TContextData,
     opts: {
+      [outboundProvenance]?: OutboundProvenance;
       documentLoader?: DocumentLoader;
       invokedFromActorDispatcher?: { identifier: string };
       invokedFromObjectDispatcher?: {
@@ -3145,6 +3159,7 @@ export class FederationImpl<TContextData>
     }
     const loaderOptions = this.#getLoaderOptions(url.origin);
     const ctxOptions: ContextOptions<TContextData> = {
+      [outboundProvenance]: opts[outboundProvenance],
       url,
       federation: this,
       data: contextData,
@@ -3496,9 +3511,16 @@ export class FederationImpl<TContextData>
     options: FederationFetchOptions<TContextData>,
   ): Promise<Response> {
     const requestId = getRequestId(request);
-    return withContext({ requestId }, async () => {
+    return withContext({
+      requestId,
+      // Each HTTP ingress owns its current identity; async ancestry is not
+      // evidence that this request came from another inbox request.
+      inboxRequestId: undefined,
+      sourceInboxRequestId: undefined,
+      sourceRequestId: undefined,
+    }, async () => {
       const tracer = this._getTracer();
-      const metricState: HttpMetricState = {};
+      const metricState: HttpMetricState = { requestId };
       const metricStart = performance.now();
       return await tracer.startActiveSpan(
         request.method,
@@ -3562,7 +3584,14 @@ export class FederationImpl<TContextData>
                   logger.error(
                     "An error occurred while serving request " +
                       "{method} {url}: {error}",
-                    { method: request.method, url: request.url, error },
+                    {
+                      method: request.method,
+                      url: request.url,
+                      error,
+                      ...(metricState.inboxRequest == null ? {} : {
+                        inboxRequestId: metricState.inboxRequest.inboxRequestId,
+                      }),
+                    },
                   );
                   throw error;
                 }
@@ -3594,6 +3623,9 @@ export class FederationImpl<TContextData>
                 const url = new URL(request.url);
                 const logTpl = "{method} {path}: {status}";
                 const values = {
+                  ...(metricState.inboxRequest == null ? {} : {
+                    inboxRequestId: metricState.inboxRequest.inboxRequestId,
+                  }),
                   method: request.method,
                   path: `${url.pathname}${url.search}`,
                   url: request.url,
@@ -3680,9 +3712,24 @@ export class FederationImpl<TContextData>
     metricState.endpoint = getEndpointCategory(route.name);
     span.updateName(`${request.method} ${route.template}`);
     const routeName = route.name.replace(/:.*$/, "");
+    const source = request.method === "POST" &&
+        (routeName === "inbox" || routeName === "sharedInbox")
+      ? this.#createInboxRequestSource(request, metricState)
+      : undefined;
+    const provenance = globalThis.Object.freeze(
+      source == null
+        ? { originatingRequestId: metricState.requestId }
+        : { inboxRequest: source },
+    );
     let context: RequestContextImpl<TContextData>;
     try {
-      context = this.#createContext(request, contextData);
+      context = withContext(
+        source == null ? {} : { inboxRequestId: source.inboxRequestId },
+        () =>
+          this.#createContext(request, contextData, {
+            [outboundProvenance]: provenance,
+          }),
+      );
     } catch (error) {
       if (
         request.method !== "POST" ||
@@ -3800,36 +3847,42 @@ export class FederationImpl<TContextData>
       const observation = new InboxObservation({
         kind: routeName === "inbox" ? "personal" : "shared",
         recipient,
-      });
+      }, source);
       this.#setInboxCompletion(metricState, observation, () => context);
-      return await observation.run(
-        async () => {
-          if (routeName === "inbox") {
-            context = this.#createContext(request, contextData, {
-              documentLoader: await context.getDocumentLoader({
-                identifier: recipient!,
-              }),
-            });
-          } else if (this.sharedInboxKeyDispatcher != null) {
-            const identity = await this.sharedInboxKeyDispatcher(context);
-            if (identity != null) {
-              context = this.#createContext(request, contextData, {
-                documentLoader:
-                  "identifier" in identity || "username" in identity
-                    ? await context.getDocumentLoader(identity)
-                    : context.getDocumentLoader(identity),
+      return await withContext(
+        { inboxRequestId: source!.inboxRequestId },
+        () =>
+          observation.run(
+            async () => {
+              if (routeName === "inbox") {
+                context = this.#createContext(request, contextData, {
+                  [outboundProvenance]: context[outboundProvenance],
+                  documentLoader: await context.getDocumentLoader({
+                    identifier: recipient!,
+                  }),
+                });
+              } else if (this.sharedInboxKeyDispatcher != null) {
+                const identity = await this.sharedInboxKeyDispatcher(context);
+                if (identity != null) {
+                  context = this.#createContext(request, contextData, {
+                    [outboundProvenance]: context[outboundProvenance],
+                    documentLoader:
+                      "identifier" in identity || "username" in identity
+                        ? await context.getDocumentLoader(identity)
+                        : context.getDocumentLoader(identity),
+                  });
+                }
+              }
+              return await this.#handleInbox(request, {
+                recipient,
+                context,
+                contextData,
+                onNotFound,
+                observation,
               });
-            }
-          }
-          return await this.#handleInbox(request, {
-            recipient,
-            context,
-            contextData,
-            onNotFound,
-            observation,
-          });
-        },
-        span,
+            },
+            span,
+          ),
       );
     }
     switch (routeName) {
@@ -3839,6 +3892,7 @@ export class FederationImpl<TContextData>
           ? route.name.substring(ACTOR_ALIAS_PREFIX.length)
           : route.values.identifier;
         context = this.#createContext(request, contextData, {
+          [outboundProvenance]: context[outboundProvenance],
           invokedFromActorDispatcher: { identifier },
         });
         return await handleActor(request, {
@@ -3855,6 +3909,7 @@ export class FederationImpl<TContextData>
         const callbacks = this.objectCallbacks[typeId];
         const cls = this.objectTypeIds[typeId];
         context = this.#createContext(request, contextData, {
+          [outboundProvenance]: context[outboundProvenance],
           invokedFromObjectDispatcher: { cls, values: route.values },
         });
         return await handleObject(request, {
@@ -3923,6 +3978,7 @@ export class FederationImpl<TContextData>
           const identity = await this.sharedInboxKeyDispatcher(context);
           if (identity != null) {
             context = this.#createContext(request, contextData, {
+              [outboundProvenance]: context[outboundProvenance],
               documentLoader: "identifier" in identity || "username" in identity
                 ? await context.getDocumentLoader(identity)
                 : context.getDocumentLoader(identity),
@@ -4121,11 +4177,15 @@ export class FederationImpl<TContextData>
       }
       return response;
     }
+    const provenance = globalThis.Object.freeze({
+      originatingRequestId: metricState.requestId,
+    });
     if (collectionRoute != null) {
       return await this.#fetchPortableCollection(request, portable, route, {
         onNotFound,
         onUnauthorized,
         contextData,
+        provenance,
       });
     }
     if (isActor) {
@@ -4133,6 +4193,7 @@ export class FederationImpl<TContextData>
         ? route.name.substring(ACTOR_ALIAS_PREFIX.length)
         : route.values.identifier;
       const context = this.#createContext(request, contextData, {
+        [outboundProvenance]: provenance,
         invokedFromActorDispatcher: { identifier },
         portableRequest: portable.portableRequest,
       });
@@ -4157,6 +4218,7 @@ export class FederationImpl<TContextData>
     const callbacks = this.objectCallbacks[typeId];
     const cls = this.objectTypeIds[typeId];
     const context = this.#createContext(request, contextData, {
+      [outboundProvenance]: provenance,
       invokedFromObjectDispatcher: { cls, values: route.values },
       portableRequest: portable.portableRequest,
     });
@@ -4180,6 +4242,7 @@ export class FederationImpl<TContextData>
       onNotFound,
       onUnauthorized,
       contextData,
+      provenance,
     }:
       & Required<
         Pick<
@@ -4187,7 +4250,7 @@ export class FederationImpl<TContextData>
           "onNotFound" | "onUnauthorized"
         >
       >
-      & { contextData: TContextData },
+      & { contextData: TContextData; provenance: OutboundProvenance },
   ): Promise<Response> {
     const logger = getLogger(["fedify", "federation", "collection"]);
     const url = new URL(request.url);
@@ -4196,8 +4259,11 @@ export class FederationImpl<TContextData>
     // that its ID comes from the application's data rather than from
     // the authority of the request, which the portable ID helpers would
     // otherwise default to:
-    const ownerContext = this.#createContext(request, contextData);
+    const ownerContext = this.#createContext(request, contextData, {
+      [outboundProvenance]: provenance,
+    });
     const context = this.#createContext(request, contextData, {
+      [outboundProvenance]: provenance,
       portableRequest: portable.portableRequest,
     });
     const reject = async (reason: string, identifier?: string) => {
@@ -4345,6 +4411,19 @@ export class FederationImpl<TContextData>
     return await onNotFound(request);
   }
 
+  #createInboxRequestSource(
+    request: Request,
+    metricState: HttpMetricState,
+  ): OutboundInboxRequest {
+    const source = createInboxRequestSource(
+      request,
+      metricState.requestId ?? getRequestId(request),
+      this.origin?.webOrigin,
+    );
+    metricState.inboxRequest = source;
+    return source;
+  }
+
   #setInboxCompletion(
     metricState: HttpMetricState,
     observation: InboxObservation,
@@ -4396,6 +4475,9 @@ export class FederationImpl<TContextData>
   ): Promise<Response> {
     const unavailableLoader: DocumentLoader = () => Promise.reject(error);
     const context = new RequestContextImpl({
+      [outboundProvenance]: globalThis.Object.freeze({
+        inboxRequest: metricState.inboxRequest,
+      }),
       url: new URL(request.url),
       request,
       federation: this,
@@ -4403,7 +4485,7 @@ export class FederationImpl<TContextData>
       documentLoader: unavailableLoader,
       contextLoader: unavailableLoader,
     });
-    const observation = new InboxObservation(inbox);
+    const observation = new InboxObservation(inbox, metricState.inboxRequest);
     this.#setInboxCompletion(metricState, observation, () => context);
     return await observation.run(
       () => Promise.reject(error),
@@ -4500,9 +4582,18 @@ export class FederationImpl<TContextData>
     metricState.endpoint = "inbox";
     span.updateName(`${request.method} ${metricState.routeTemplate}`);
     const identifier = route.values.identifier;
+    const source = this.#createInboxRequestSource(request, metricState);
     let context: RequestContextImpl<TContextData>;
     try {
-      context = this.#createContext(request, contextData);
+      context = withContext(
+        { inboxRequestId: source.inboxRequestId },
+        () =>
+          this.#createContext(request, contextData, {
+            [outboundProvenance]: globalThis.Object.freeze({
+              inboxRequest: source,
+            }),
+          }),
+      );
     } catch (error) {
       return await this.#reportInboxPreparationError(
         request,
@@ -4516,118 +4607,123 @@ export class FederationImpl<TContextData>
     const observation = new InboxObservation({
       kind: "portable",
       recipient: identifier,
-    });
+    }, source);
     this.#setInboxCompletion(metricState, observation, () => context);
-    return await observation.run(
-      async () => {
-        // The actor is looked up only by its identifier, as for ordinary inbox
-        // deliveries, so that the identifier alone determines the recipient,
-        // also for inbox listeners and queued deliveries:
-        const actor = this.actorCallbacks?.dispatcher == null
-          ? null
-          : await this.actorCallbacks.dispatcher(context, identifier);
-        const localOrigin = context.canonicalOrigin;
-        const resolution = resolvePortableInboxRecipient(
-          actor == null || actor instanceof Tombstone ? null : actor,
-          {
-            authority: portable.portableRequest.authority,
-            canonicalInboxId: portable.canonicalId,
-            localOrigin,
-          },
-        );
-        if (resolution.status === "rejected") {
-          logger.debug(
-            "Not accepting a delivery to the portable inbox {inbox} on behalf " +
-              "of the actor {identifier}: {reason}.",
-            {
-              inbox: portable.canonicalId,
-              identifier,
-              reason: resolution.reason,
-            },
-          );
-          return await onNotFound(request);
-        }
-        const { recipient } = resolution;
-        // A portable actor does not necessarily have key pairs for authorized
-        // fetch, so fall back to the default document loader without them:
-        if (this.actorCallbacks?.keyPairsDispatcher != null) {
-          context = this.#createContext(request, contextData, {
-            documentLoader: await context.getDocumentLoader({ identifier }),
-          });
-        }
-        const excludedOrigins = [localOrigin, new URL(request.url).origin];
-        return await this.#handleInbox(request, {
-          recipient: identifier,
-          observation,
-          context,
-          contextData,
-          onNotFound,
-          portableInbox: {
-            recipient,
-            forward: (activity, activityId, activityType, signatures) =>
-              observeOutboundBroadcast(
-                context,
-                this.outboundObservers,
-                async (observation) => {
-                  if (this.portableInboxForwarding.maxTargets < 1) {
-                    if (observation != null) {
-                      await observation.skipped("forwarding-disabled");
-                    }
-                    return;
-                  }
-                  if (this.kv.cas == null) {
-                    if (!this.#portableInboxForwardingWarned) {
-                      this.#portableInboxForwardingWarned = true;
-                      logger.warn(
-                        "Activities delivered to FEP-ef61 portable inboxes are not " +
-                          "forwarded to the other gateways, as the key–value store " +
-                          "does not support compare-and-swap (KvStore.cas()), which " +
-                          "is needed to forward each activity at most once.",
-                      );
-                    }
-                    if (observation != null) {
-                      await observation.skipped("forwarding-unavailable");
-                    }
-                    return;
-                  }
-                  await forwardPortableInboxActivity({
-                    recipient,
-                    activity,
-                    activityId,
-                    activityType,
-                    excludedOrigins,
-                    baseUrl: context.origin,
-                    kv: this.kv,
-                    kvPrefix: this.kvPrefixes.portableInboxForwarding,
-                    outboxQueue: this.outboxQueue,
-                    startQueue: this.manuallyStartQueue
-                      ? undefined
-                      : () => this._startQueueInternal(contextData),
-                    allowPrivateAddress: this.allowPrivateAddress,
-                    getKeys: () =>
-                      this.#getPortableGatewayKeyPairs(
-                        context,
-                        identifier,
-                        recipient,
-                      ),
-                    specDeterminer: new KvSpecDeterminer(
-                      this.kv,
-                      this.kvPrefixes.httpMessageSignaturesSpec,
-                      this.firstKnock,
-                      { specTtl: this.httpMessageSignaturesSpecTtl },
-                    ),
-                    signatures,
-                    options: this.portableInboxForwarding,
-                    meterProvider: this.meterProvider,
-                    tracerProvider: this.tracerProvider,
-                  }, observation);
+    return await withContext(
+      { inboxRequestId: source.inboxRequestId },
+      () =>
+        observation.run(
+          async () => {
+            // The actor is looked up only by its identifier, as for ordinary inbox
+            // deliveries, so that the identifier alone determines the recipient,
+            // also for inbox listeners and queued deliveries:
+            const actor = this.actorCallbacks?.dispatcher == null
+              ? null
+              : await this.actorCallbacks.dispatcher(context, identifier);
+            const localOrigin = context.canonicalOrigin;
+            const resolution = resolvePortableInboxRecipient(
+              actor == null || actor instanceof Tombstone ? null : actor,
+              {
+                authority: portable.portableRequest.authority,
+                canonicalInboxId: portable.canonicalId,
+                localOrigin,
+              },
+            );
+            if (resolution.status === "rejected") {
+              logger.debug(
+                "Not accepting a delivery to the portable inbox {inbox} on behalf " +
+                  "of the actor {identifier}: {reason}.",
+                {
+                  inbox: portable.canonicalId,
+                  identifier,
+                  reason: resolution.reason,
                 },
-                "portable-replication",
-              ),
+              );
+              return await onNotFound(request);
+            }
+            const { recipient } = resolution;
+            // A portable actor does not necessarily have key pairs for authorized
+            // fetch, so fall back to the default document loader without them:
+            if (this.actorCallbacks?.keyPairsDispatcher != null) {
+              context = this.#createContext(request, contextData, {
+                [outboundProvenance]: context[outboundProvenance],
+                documentLoader: await context.getDocumentLoader({ identifier }),
+              });
+            }
+            const excludedOrigins = [localOrigin, new URL(request.url).origin];
+            return await this.#handleInbox(request, {
+              recipient: identifier,
+              observation,
+              context,
+              contextData,
+              onNotFound,
+              portableInbox: {
+                recipient,
+                forward: (activity, activityId, activityType, signatures) =>
+                  observeOutboundBroadcast(
+                    context,
+                    this.outboundObservers,
+                    async (observation) => {
+                      if (this.portableInboxForwarding.maxTargets < 1) {
+                        if (observation != null) {
+                          await observation.skipped("forwarding-disabled");
+                        }
+                        return;
+                      }
+                      if (this.kv.cas == null) {
+                        if (!this.#portableInboxForwardingWarned) {
+                          this.#portableInboxForwardingWarned = true;
+                          logger.warn(
+                            "Activities delivered to FEP-ef61 portable inboxes are not " +
+                              "forwarded to the other gateways, as the key–value store " +
+                              "does not support compare-and-swap (KvStore.cas()), which " +
+                              "is needed to forward each activity at most once.",
+                          );
+                        }
+                        if (observation != null) {
+                          await observation.skipped("forwarding-unavailable");
+                        }
+                        return;
+                      }
+                      await forwardPortableInboxActivity({
+                        recipient,
+                        activity,
+                        activityId,
+                        activityType,
+                        excludedOrigins,
+                        baseUrl: context.origin,
+                        kv: this.kv,
+                        kvPrefix: this.kvPrefixes.portableInboxForwarding,
+                        outboxQueue: this.outboxQueue,
+                        startQueue: this.manuallyStartQueue
+                          ? undefined
+                          : () => this._startQueueInternal(contextData),
+                        allowPrivateAddress: this.allowPrivateAddress,
+                        getKeys: () =>
+                          this.#getPortableGatewayKeyPairs(
+                            context,
+                            identifier,
+                            recipient,
+                          ),
+                        specDeterminer: new KvSpecDeterminer(
+                          this.kv,
+                          this.kvPrefixes.httpMessageSignaturesSpec,
+                          this.firstKnock,
+                          { specTtl: this.httpMessageSignaturesSpecTtl },
+                        ),
+                        signatures,
+                        options: this.portableInboxForwarding,
+                        meterProvider: this.meterProvider,
+                        tracerProvider: this.tracerProvider,
+                      }, observation);
+                    },
+                    "portable-replication",
+                  ),
+              },
+            });
           },
-        });
-      },
-      span,
+          span,
+        ),
     );
   }
 
@@ -4736,7 +4832,11 @@ export class FederationImpl<TContextData>
         },
       );
     }
-    const context = this.#createContext(request, contextData);
+    const context = this.#createContext(request, contextData, {
+      [outboundProvenance]: globalThis.Object.freeze({
+        originatingRequestId: metricState.requestId,
+      }),
+    });
     const response = await this.hashlinkMediaDispatcher!(context, media.media);
     // The onNotFound response is returned as is, since integrations may
     // recognize it by its identity:
@@ -4852,6 +4952,8 @@ type FedifyEndpoint =
   | "error";
 
 interface HttpMetricState {
+  requestId?: string;
+  inboxRequest?: OutboundInboxRequest;
   inboxCompletion?: {
     observation: InboxObservation;
     finish(
@@ -4930,6 +5032,7 @@ function getCollectionMetricRoute(routeName: string):
 }
 
 interface ContextOptions<TContextData> {
+  [outboundProvenance]?: OutboundProvenance;
   url: URL;
   federation: FederationImpl<TContextData>;
   data: TContextData;
@@ -4973,6 +5076,7 @@ function createPortableObjectVerifier(
 }
 
 export class ContextImpl<TContextData> implements Context<TContextData> {
+  readonly [outboundProvenance]: OutboundProvenance;
   readonly url: URL;
   readonly federation: FederationImpl<TContextData>;
   readonly data: TContextData;
@@ -4992,9 +5096,11 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       documentLoader,
       contextLoader,
       invokedFromActorKeyPairsDispatcher,
+      [outboundProvenance]: provenance = emptyProvenance,
     }: ContextOptions<TContextData>,
   ) {
     this.url = url;
+    this[outboundProvenance] = provenance;
     this.federation = federation;
     this.data = data;
     this.documentLoader = documentLoader;
@@ -5024,6 +5130,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   clone(data: TContextData): Context<TContextData> {
     return new ContextImpl<TContextData>({
+      [outboundProvenance]: this[outboundProvenance],
       url: this.url,
       federation: this.federation,
       data,
@@ -5042,6 +5149,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     metadata?: InboxContextMetadata,
   ): InboxContextImpl<TContextData> {
     return new InboxContextImpl(recipient, activity, activityId, activityType, {
+      [outboundProvenance]: this[outboundProvenance],
       url: this.url,
       federation: this.federation,
       data: this.data,
@@ -5064,6 +5172,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       activityId,
       activityType,
       {
+        [outboundProvenance]: this[outboundProvenance],
         url: this.url,
         federation: this.federation,
         data: this.data,
@@ -6491,6 +6600,7 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
 
   override clone(data: TContextData): RequestContext<TContextData> {
     return new RequestContextImpl<TContextData>({
+      [outboundProvenance]: this[outboundProvenance],
       url: this.url,
       federation: this.federation,
       data,
@@ -7226,6 +7336,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
       this.activityId,
       this.activityType,
       {
+        [outboundProvenance]: this[outboundProvenance],
         url: this.url,
         federation: this.federation,
         data,
@@ -7401,6 +7512,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
       this.activityId,
       this.activityType,
       {
+        [outboundProvenance]: this[outboundProvenance],
         url: this.url,
         federation: this.federation,
         data,
