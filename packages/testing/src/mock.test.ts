@@ -209,7 +209,10 @@ test("reset clears sent activities", async () => {
 
 test("MockFederation accepts outbound observer registration", () => {
   const federation = createFederation<void>();
-  federation.setOutboundObservers({ onBroadcast: () => {} });
+  federation.setOutboundObservers({
+    onBroadcast: () => {},
+    onDelivery: () => {},
+  });
   federation.setOutboundObservers({});
 });
 

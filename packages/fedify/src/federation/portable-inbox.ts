@@ -375,7 +375,14 @@ export async function forwardPortableInboxActivity<TContextData>(
   for (const { gateway, inbox } of targets) {
     if (await kv.cas(claimKey(gateway), undefined, true, { ttl })) {
       claimed.push(inbox);
-      observation?.planDestination();
+      if (observation != null) {
+        await observation.planDestination(inbox.href, {
+          actorIds: [recipient.actorId.href],
+          sharedInbox: false,
+          portableInbox: recipient.canonicalInboxId,
+          mode: "portable-replication",
+        });
+      }
     }
   }
   observation?.planned(claimed.length);
@@ -606,31 +613,39 @@ async function forwardImmediately<TContextData>(
     try {
       const key = await resolveForwardingKey(parameters);
       observation?.setPhase("request-preparation");
-      const sending = inboxes.map((inbox) =>
-        sendActivity({
-          activity,
-          activityId: activityId.href,
-          activityType,
-          keys: key == null ? [] : [key],
-          inbox,
-          allowPrivateAddress,
-          specDeterminer,
-          meterProvider,
-          tracerProvider,
-        }).catch((error) => {
+      const sending: Promise<void>[] = [];
+      for (const inbox of inboxes) {
+        const delivery = observation?.delivery(inbox.href);
+        let pending: Promise<void>;
+        try {
+          pending = sendActivity({
+            activity,
+            activityId: activityId.href,
+            activityType,
+            keys: key == null ? [] : [key],
+            inbox,
+            allowPrivateAddress,
+            specDeterminer,
+            meterProvider,
+            tracerProvider,
+          });
+        } catch (error) {
+          if (delivery != null) await delivery.failed(error);
+          throw error;
+        }
+        const settled = pending.catch((error) => {
           logger.error(
             "Failed to forward activity {activityId} to {inbox}; it will not " +
               "be forwarded to the inbox again:\n{error}",
             { activityId: activityId.href, inbox: inbox.href, error },
           );
-        })
-      );
-      if (observation != null) {
-        // A logging sink may throw while an earlier send settles. Retain its
-        // rejection until the preparation callback finishes and the sends join.
-        for (const promise of sending) promise.catch(() => {});
-        await observation.prepared("delivery");
+        });
+        // Callback awaiting must not leave an earlier rejection unhandled.
+        if (observation != null) settled.catch(() => {});
+        sending.push(settled);
+        if (delivery != null) await delivery.handoff({ type: "direct" });
       }
+      if (observation != null) await observation.prepared("delivery");
       await Promise.all(sending);
     } catch (error) {
       // Preparation can settle after the deadline has returned to the caller.
@@ -694,28 +709,41 @@ async function enqueueForwarding<TContextData>(
   propagation.inject(context.active(), traceContext);
   let preparedCount = 0;
   await Promise.all(inboxes.map(async (inbox) => {
-    const message: OutboxMessage = {
-      type: "outbox",
-      id: crypto.randomUUID(),
-      baseUrl,
-      keys,
-      activity,
-      activityId: activityId.href,
-      activityType,
-      inbox: inbox.href,
-      sharedInbox: false,
-      started,
-      attempt: 0,
-      headers: {},
-      traceContext,
-    };
+    const delivery = observation?.delivery(inbox.href);
+    let message: OutboxMessage;
+    try {
+      message = {
+        type: "outbox",
+        id: crypto.randomUUID(),
+        baseUrl,
+        keys,
+        activity,
+        activityId: activityId.href,
+        activityType,
+        inbox: inbox.href,
+        sharedInbox: false,
+        started,
+        attempt: 0,
+        headers: {},
+        traceContext,
+      };
+    } catch (error) {
+      if (delivery != null) await delivery.failed(error);
+      throw error;
+    }
     if (observation != null && ++preparedCount === inboxes.length) {
       // Earlier destinations may already be enqueuing; do not wait for their
       // acceptance before reporting the last local message construction.
       await observation.prepared("delivery");
     }
     try {
-      await outboxQueue.enqueue(message);
+      await (observation == null
+        ? outboxQueue.enqueue(message)
+        : observation.enqueue(
+          [{ inbox: inbox.href, queueMessageId: message.id }],
+          "outbox",
+          () => outboxQueue.enqueue(message),
+        ));
     } catch (error) {
       logger.error(
         "Failed to enqueue activity {activityId} to forward to {inbox}; it " +

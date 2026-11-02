@@ -26,6 +26,7 @@ import type {
   Message,
   MessageQueue,
   OutboundBroadcastEvent,
+  OutboundDeliveryEvent,
   OutboundObservers,
 } from "./mod.ts";
 import { rsaPrivateKey2, rsaPublicKey2 } from "../testing/keys.ts";
@@ -525,6 +526,7 @@ test("outbound preparation finishes before immediate sends settle without report
         releaseObserver = resolve;
       });
       const events: OutboundBroadcastEvent[] = [];
+      const deliveries: OutboundDeliveryEvent[] = [];
       const [tracerProvider, spanExporter] = createTestTracerProvider();
       let sendEnded!: () => void;
       const concreteSendEnded = new Promise<void>((resolve) => {
@@ -552,6 +554,9 @@ test("outbound preparation finishes before immediate sends settle without report
           tracerProvider,
         });
         federation.setOutboundObservers({
+          onDelivery(_ctx, event) {
+            deliveries.push(event);
+          },
           async onBroadcast(_ctx, event) {
             events.push(event);
             if (event.stage === "preparation-finished") {
@@ -595,6 +600,13 @@ test("outbound preparation finishes before immediate sends settle without report
         strictEqual(settled, false);
         releaseObserver();
         await result;
+        deepStrictEqual(deliveries.map((event) => event.stage), [
+          "planned",
+          "handoff",
+        ]);
+        const handoff = deliveries[1];
+        ok(handoff.stage === "handoff");
+        deepStrictEqual(handoff.result, { type: "direct" });
         strictEqual(events.length, 2);
       } finally {
         releaseResponse();
@@ -614,6 +626,7 @@ test("outbound preparation preserves earlier handoffs when later destination set
         : "queued messages are not handed off yet",
       async () => {
         const events: OutboundBroadcastEvent[] = [];
+        const deliveries: OutboundDeliveryEvent[] = [];
         const messages: Message[] = [];
         const firstInbox = "https://receiver.example/first-inbox";
         const broken = recipient.clone({
@@ -663,6 +676,9 @@ test("outbound preparation preserves earlier handoffs when later destination set
             }),
           );
           federation.setOutboundObservers({
+            onDelivery(_ctx, event) {
+              deliveries.push(event);
+            },
             onBroadcast(_ctx, event) {
               events.push(event);
             },
@@ -694,6 +710,35 @@ test("outbound preparation preserves earlier handoffs when later destination set
             // Prove the earlier send still reaches fetch after producer failure.
             await fetching;
           }
+          const planned = deliveries.filter((event) =>
+            event.stage === "planned"
+          );
+          strictEqual(planned.length, 2);
+          const first = deliveries.filter((event) =>
+            event.destinationInbox === firstInbox
+          );
+          deepStrictEqual(
+            first.map((event) => event.stage),
+            immediate ? ["planned", "handoff"] : ["planned"],
+          );
+          if (immediate) {
+            const handoff = first[1];
+            ok(handoff.stage === "handoff");
+            deepStrictEqual(handoff.result, { type: "direct" });
+          }
+          const failed = deliveries.find((event) =>
+            event.stage === "preparation-failed"
+          );
+          ok(failed?.stage === "preparation-failed");
+          strictEqual(
+            failed.destinationInbox,
+            "https://receiver.example/second-inbox",
+          );
+          strictEqual(failed.failure.error, originalError);
+          strictEqual(
+            deliveries.filter((event) => event.stage === "handoff").length,
+            immediate ? 1 : 0,
+          );
           strictEqual(events.length, 2);
         } finally {
           fetchMock.hardReset();
@@ -1294,8 +1339,12 @@ test("forwarding observers retain readiness and registration through late immedi
           undefined,
         );
         const events: OutboundBroadcastEvent[] = [];
+        const deliveries: OutboundDeliveryEvent[] = [];
         let replacements = 0;
         federation.setOutboundObservers({
+          onDelivery(_ctx, event) {
+            deliveries.push(event);
+          },
           async onBroadcast(_ctx, event) {
             events.push(event);
             if (event.stage === "preparation-finished") {
@@ -1337,6 +1386,13 @@ test("forwarding observers retain readiness and registration through late immedi
         strictEqual(settled, false);
         release();
         await result;
+        deepStrictEqual(deliveries.map((event) => event.stage), [
+          "planned",
+          "handoff",
+        ]);
+        const handoff = deliveries[1];
+        ok(handoff.stage === "handoff");
+        deepStrictEqual(handoff.result, { type: "direct" });
         strictEqual(events.length, 2);
         strictEqual(replacements, 0);
         for (const event of events) strictEqual(event.operation, "forward");
@@ -1358,4 +1414,252 @@ test("forwarding observers retain readiness and registration through late immedi
       }
     });
   }
+});
+
+test("outbound delivery observers snapshot registration and deduplicated destination facts", async () => {
+  const events: OutboundDeliveryEvent[] = [];
+  const contexts: unknown[] = [];
+  const messages: Message[] = [];
+  let replacements = 0;
+  let mutationApplied: boolean | undefined;
+  const registration: {
+    onDelivery: NonNullable<OutboundObservers<void>["onDelivery"]>;
+  } = {
+    onDelivery(context, event) {
+      contexts.push(context);
+      events.push(event);
+      if (event.stage === "planned") {
+        mutationApplied = Reflect.set(event.actorIds, 0, "changed");
+        federation.setOutboundObservers({
+          onDelivery() {
+            replacements++;
+          },
+        });
+      }
+    },
+  };
+  const builder = createFederationBuilder<void>();
+  builder.setOutboundObservers(registration);
+  // The caller's object and later builder changes cannot replace the snapshot.
+  registration.onDelivery = () => {
+    replacements++;
+  };
+  const federation = await builder.build({
+    ...options,
+    kv: new MemoryKvStore(),
+    manuallyStartQueue: true,
+    queue: {
+      outbox: {
+        enqueue(message) {
+          messages.push(message);
+          return Promise.resolve();
+        },
+        listen: () => Promise.resolve(),
+      },
+    },
+  });
+  builder.setOutboundObservers({});
+  const ctx = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  const shared = new URL("https://receiver.example/shared");
+  const recipients = ["alice", "bob"].map((name) => ({
+    id: new URL(`https://receiver.example/${name}`),
+    inboxId: new URL(`https://receiver.example/${name}/inbox`),
+    endpoints: { sharedInbox: shared },
+  }));
+  await ctx.sendActivity(sender, [...recipients, recipient], activity, {
+    preferSharedInbox: true,
+  });
+  strictEqual(mutationApplied, false);
+  strictEqual(replacements, 0);
+  strictEqual(events.length, 4);
+  for (const context of contexts) strictEqual(context, ctx);
+  const planned = events.filter((event) => event.stage === "planned");
+  strictEqual(planned.length, 2);
+  const sharedPlan = planned.find((event) =>
+    event.destinationInbox === shared.href
+  );
+  ok(sharedPlan?.stage === "planned");
+  deepStrictEqual(
+    sharedPlan.actorIds,
+    recipients.map((recipient) => recipient.id.href),
+  );
+  strictEqual(sharedPlan.sharedInbox, true);
+  strictEqual(sharedPlan.mode, "ordinary");
+  notStrictEqual(planned[0].deliveryId, planned[1].deliveryId);
+  strictEqual(planned[0].broadcast.id, planned[1].broadcast.id);
+  for (const event of events) {
+    ok(Object.isFrozen(event));
+    ok(Object.isFrozen(event.broadcast));
+    const plan = planned.find((plan) => plan.deliveryId === event.deliveryId);
+    ok(plan);
+    strictEqual(event.destinationInbox, plan.destinationInbox);
+    if (event.stage === "handoff") {
+      ok(Object.isFrozen(event.result));
+      const result = event.result;
+      ok(result.type === "enqueued");
+      strictEqual(result.queue, "outbox");
+      const message = messages.find((message) =>
+        message.id === result.queueMessageId
+      );
+      ok(message?.type === "outbox");
+      strictEqual(message.inbox, event.destinationInbox);
+      ok(!message.actorIds?.includes("changed"));
+    }
+  }
+});
+
+test("outbound delivery observers report queue acceptance separately from producer readiness", async (t) => {
+  for (const mode of ["single", "batch", "fanout", "forward"] as const) {
+    for (const rejected of [false, true]) {
+      await t.step(
+        `${mode}: ${rejected ? "rejected" : "accepted"}`,
+        async () => {
+          const failure = Symbol("enqueue failed");
+          const messages: Message[] = [];
+          const queue: MessageQueue = {
+            enqueue(message) {
+              messages.push(message);
+              const fails = rejected &&
+                (mode !== "single" || messages.length === 1);
+              return fails ? Promise.reject(failure) : Promise.resolve();
+            },
+            ...(mode === "batch" || mode === "forward"
+              ? {
+                enqueueMany(batch: readonly Message[]) {
+                  messages.push(...batch);
+                  return rejected ? Promise.reject(failure) : Promise.resolve();
+                },
+              }
+              : {}),
+            listen: () => Promise.resolve(),
+          };
+          const federation = createFederation<void>({
+            ...options,
+            kv: new MemoryKvStore(),
+            manuallyStartQueue: true,
+            queue: mode === "fanout" ? { fanout: queue } : { outbox: queue },
+          });
+          const deliveries: OutboundDeliveryEvent[] = [];
+          const broadcasts: OutboundBroadcastEvent[] = [];
+          federation.setOutboundObservers({
+            onBroadcast(_ctx, event) {
+              broadcasts.push(event);
+            },
+            onDelivery(_ctx, event) {
+              deliveries.push(event);
+              throw new Error("recorder failed");
+            },
+          });
+          const targets = [
+            recipient,
+            recipient.clone({
+              inbox: new URL("https://receiver.example/second"),
+            }),
+          ];
+          const ctx = federation.createContext(
+            new URL("https://example.com"),
+            undefined,
+          );
+          ok(ctx instanceof ContextImpl);
+          const sending = mode === "forward"
+            ? ctx.toInboxContext(
+              null,
+              forwardingPayload,
+              forwardingPayload.id,
+              Create.typeId.href,
+            )
+              .forwardActivity(sender, targets, { skipIfUnsigned: true })
+            : ctx.sendActivity(sender, targets, activity, {
+              fanout: mode === "fanout" ? "force" : "skip",
+            });
+          if (rejected) {
+            await rejects(sending, (error: unknown) => error === failure);
+          } else await sending;
+          deepStrictEqual(preparation(broadcasts), {
+            type: "prepared",
+            preparedFor: mode === "fanout" ? "fanout" : "delivery",
+            destinationCount: 2,
+          });
+          const planned = deliveries.filter((event) =>
+            event.stage === "planned"
+          );
+          const handoffs = deliveries.filter((event) =>
+            event.stage === "handoff"
+          );
+          strictEqual(planned.length, 2);
+          strictEqual(handoffs.length, 2);
+          for (const event of handoffs) {
+            ok(event.stage === "handoff");
+            const fails = rejected &&
+              (mode !== "single" ||
+                event.destinationInbox === recipient.inboxId!.href);
+            if (fails) {
+              ok(event.result.type === "enqueue-failed");
+              strictEqual(event.result.acceptance, "unknown");
+              strictEqual(event.result.error, failure);
+            } else {
+              const result = event.result;
+              ok(result.type === "enqueued");
+              strictEqual(
+                result.queue,
+                mode === "fanout" ? "fanout" : "outbox",
+              );
+              ok(
+                messages.some((message) =>
+                  message.id === result.queueMessageId
+                ),
+              );
+            }
+            strictEqual(event.broadcast.id, broadcasts[0].broadcastId);
+            strictEqual(
+              event.deliveryId,
+              planned.find((plan) =>
+                plan.destinationInbox === event.destinationInbox
+              )!.deliveryId,
+            );
+          }
+        },
+      );
+    }
+  }
+});
+
+test("outbound delivery observers retain accepted handoffs after bookkeeping failure", async () => {
+  const failure = Symbol("metrics failed after acceptance");
+  const events: OutboundDeliveryEvent[] = [];
+  const federation = createFederation<void>({
+    ...options,
+    kv: new MemoryKvStore(),
+    manuallyStartQueue: true,
+    queue: {
+      outbox: {
+        enqueue() {
+          Object.defineProperty(federation, "meterProvider", {
+            get() {
+              throw failure;
+            },
+          });
+          return Promise.resolve();
+        },
+        listen: () => Promise.resolve(),
+      },
+    },
+  });
+  federation.setOutboundObservers({
+    onDelivery(_ctx, event) {
+      events.push(event);
+    },
+  });
+  await rejects(
+    federation.createContext(new URL("https://example.com"), undefined)
+      .sendActivity(sender, recipient, activity),
+    (error: unknown) => error === failure,
+  );
+  deepStrictEqual(events.map((event) => event.stage), ["planned", "handoff"]);
+  const event = events[1];
+  ok(event.stage === "handoff");
+  ok(event.result.type === "enqueued");
 });

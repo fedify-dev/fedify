@@ -3324,38 +3324,46 @@ export class FederationImpl<TContextData>
       }
       const promises: Promise<void>[] = [];
       for (const inbox in inboxes) {
-        const sending = sendActivityToInbox(
-          inbox,
-          inboxes[inbox].gatewayInboxes,
-          {
-            allowPrivateAddress: this.allowPrivateAddress,
-            keys,
-            activity: jsonLd,
-            activityId: activity.id?.href,
-            activityType: getTypeId(activity).href,
-            sharedInbox: inboxes[inbox].sharedInbox,
-            headers: collectionSync == null ? undefined : new Headers({
-              "Collection-Synchronization":
-                await buildCollectionSynchronizationHeader(
-                  collectionSync,
-                  inboxes[inbox].actorIds,
-                ),
-            }),
-            specDeterminer: new KvSpecDeterminer(
-              this.kv,
-              this.kvPrefixes.httpMessageSignaturesSpec,
-              this.firstKnock,
-              { specTtl: this.httpMessageSignaturesSpecTtl },
-            ),
-            meterProvider: this.meterProvider,
-            tracerProvider: this.tracerProvider,
-          },
-        );
+        const delivery = observation?.delivery(inbox);
+        let sending: Promise<void>;
+        try {
+          sending = sendActivityToInbox(
+            inbox,
+            inboxes[inbox].gatewayInboxes,
+            {
+              allowPrivateAddress: this.allowPrivateAddress,
+              keys,
+              activity: jsonLd,
+              activityId: activity.id?.href,
+              activityType: getTypeId(activity).href,
+              sharedInbox: inboxes[inbox].sharedInbox,
+              headers: collectionSync == null ? undefined : new Headers({
+                "Collection-Synchronization":
+                  await buildCollectionSynchronizationHeader(
+                    collectionSync,
+                    inboxes[inbox].actorIds,
+                  ),
+              }),
+              specDeterminer: new KvSpecDeterminer(
+                this.kv,
+                this.kvPrefixes.httpMessageSignaturesSpec,
+                this.firstKnock,
+                { specTtl: this.httpMessageSignaturesSpecTtl },
+              ),
+              meterProvider: this.meterProvider,
+              tracerProvider: this.tracerProvider,
+            },
+          );
+        } catch (error) {
+          if (delivery != null) await delivery.failed(error);
+          throw error;
+        }
         if (observation != null) {
           // The preparation callback may await while an earlier send rejects.
           // Keep its original rejection for Promise.all without an unhandled one.
           sending.catch(() => {});
         }
+        if (delivery != null) await delivery.handoff({ type: "direct" });
         promises.push(sending);
       }
       if (observation != null) await observation.prepared("delivery");
@@ -3378,35 +3386,42 @@ export class FederationImpl<TContextData>
     propagation.inject(context.active(), carrier);
     const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
     for (const inbox in inboxes) {
-      const { portableInbox, gatewayInboxes } = inboxes[inbox];
-      const messageOrderingKey = orderingKey == null
-        ? undefined
-        : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`;
-      const message: OutboxMessage = {
-        type: "outbox",
-        id: crypto.randomUUID(),
-        baseUrl: ctx.origin,
-        keys: keyJwkPairs,
-        activity: jsonLd,
-        activityId: activity.id?.href,
-        activityType: getTypeId(activity).href,
-        inbox,
-        sharedInbox: inboxes[inbox].sharedInbox,
-        actorIds: [...inboxes[inbox].actorIds],
-        started: new Date().toISOString(),
-        attempt: 0,
-        headers: collectionSync == null ? {} : {
-          "Collection-Synchronization":
-            await buildCollectionSynchronizationHeader(
-              collectionSync,
-              inboxes[inbox].actorIds,
-            ),
-        },
-        orderingKey: messageOrderingKey,
-        ...getPortableMessageFields(portableInbox, gatewayInboxes),
-        traceContext: carrier,
-      };
-      messages.push({ message, orderingKey: messageOrderingKey });
+      try {
+        const { portableInbox, gatewayInboxes } = inboxes[inbox];
+        const messageOrderingKey = orderingKey == null
+          ? undefined
+          : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`;
+        const message: OutboxMessage = {
+          type: "outbox",
+          id: crypto.randomUUID(),
+          baseUrl: ctx.origin,
+          keys: keyJwkPairs,
+          activity: jsonLd,
+          activityId: activity.id?.href,
+          activityType: getTypeId(activity).href,
+          inbox,
+          sharedInbox: inboxes[inbox].sharedInbox,
+          actorIds: [...inboxes[inbox].actorIds],
+          started: new Date().toISOString(),
+          attempt: 0,
+          headers: collectionSync == null ? {} : {
+            "Collection-Synchronization":
+              await buildCollectionSynchronizationHeader(
+                collectionSync,
+                inboxes[inbox].actorIds,
+              ),
+          },
+          orderingKey: messageOrderingKey,
+          ...getPortableMessageFields(portableInbox, gatewayInboxes),
+          traceContext: carrier,
+        };
+        messages.push({ message, orderingKey: messageOrderingKey });
+      } catch (error) {
+        if (observation != null) {
+          await observation.delivery(inbox)?.failed(error);
+        }
+        throw error;
+      }
     }
     if (observation != null) await observation.prepared("delivery");
     const { outboxQueue } = this;
@@ -3416,7 +3431,14 @@ export class FederationImpl<TContextData>
     if (outboxQueue.enqueueMany == null || orderingKey != null) {
       const promises: PromiseSettledResult<void>[] = await Promise.allSettled(
         messages.map(async (m) => {
-          await outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey });
+          await (observation == null
+            ? outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
+            : observation.enqueue(
+              [{ inbox: m.message.inbox, queueMessageId: m.message.id }],
+              "outbox",
+              () =>
+                outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey }),
+            ));
           recordOutboxEnqueue(this.meterProvider, outboxQueue, m.message);
         }),
       );
@@ -3438,7 +3460,16 @@ export class FederationImpl<TContextData>
       }
     } else {
       try {
-        await outboxQueue.enqueueMany(messages.map((m) => m.message));
+        await (observation == null
+          ? outboxQueue.enqueueMany(messages.map((m) => m.message))
+          : observation.enqueue(
+            messages.map(({ message }) => ({
+              inbox: message.inbox,
+              queueMessageId: message.id,
+            })),
+            "outbox",
+            () => outboxQueue.enqueueMany!(messages.map((m) => m.message)),
+          ));
       } catch (error) {
         logger.error(
           "Failed to enqueue activity {activityId} to send later: {error}",
@@ -4528,7 +4559,7 @@ export class FederationImpl<TContextData>
             forward: (activity, activityId, activityType, signatures) =>
               observeOutboundBroadcast(
                 context,
-                this.outboundObservers.onBroadcast,
+                this.outboundObservers,
                 async (observation) => {
                   if (this.portableInboxForwarding.maxTargets < 1) {
                     if (observation != null) {
@@ -5692,7 +5723,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   ): Promise<void> {
     return observeOutboundBroadcast(
       this,
-      this.federation.outboundObservers.onBroadcast,
+      this.federation.outboundObservers,
       (observation) => {
         const tracer = this.tracerProvider.getTracer(
           metadata.name,
@@ -5915,7 +5946,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       preferSharedInbox: options.preferSharedInbox,
       excludeBaseUris: options.excludeBaseUris,
     });
-    observation?.planned(globalThis.Object.keys(inboxes).length);
+    if (observation != null) await observation.planDestinations(inboxes);
     if (globalThis.Object.keys(inboxes).length < 1) {
       logger.debug("No inboxes found for activity {activityId}.", {
         activityId: activity.id?.href,
@@ -6000,10 +6031,21 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       this.federation._startQueueInternal(this.data);
     }
     if (observation != null) await observation.prepared("fanout");
-    await this.federation.fanoutQueue.enqueue(
-      message,
-      { orderingKey: options.orderingKey },
-    );
+    await (observation == null
+      ? this.federation.fanoutQueue.enqueue(message, {
+        orderingKey: options.orderingKey,
+      })
+      : observation.enqueue(
+        globalThis.Object.keys(inboxes).map((inbox) => ({
+          inbox,
+          queueMessageId: message.id,
+        })),
+        "fanout",
+        () =>
+          this.federation.fanoutQueue!.enqueue(message, {
+            orderingKey: options.orderingKey,
+          }),
+      ));
     getFederationMetrics(this.federation.meterProvider).recordQueueTaskEnqueued(
       {
         role: "fanout",
@@ -6807,7 +6849,7 @@ function forwardActivity<TContextData>(
 ): Promise<boolean> {
   return observeOutboundBroadcast(
     ctx,
-    ctx.federation.outboundObservers.onBroadcast,
+    ctx.federation.outboundObservers,
     (observation) => {
       const tracer = ctx.tracerProvider.getTracer(
         metadata.name,
@@ -6949,7 +6991,7 @@ async function forwardActivityInternal<TContextData>(
     preferSharedInbox: options?.preferSharedInbox,
     excludeBaseUris: options?.excludeBaseUris,
   });
-  observation?.planned(globalThis.Object.keys(inboxes).length);
+  if (observation != null) await observation.planDestinations(inboxes);
   if (globalThis.Object.keys(inboxes).length < 1) {
     logger.debug("No inboxes found for activity {activityId}.", {
       activityId: ctx.activityId,
@@ -6979,30 +7021,38 @@ async function forwardActivityInternal<TContextData>(
     observation?.setPhase("request-preparation");
     const promises: Promise<void>[] = [];
     for (const inbox in inboxes) {
-      const sending = sendActivityToInbox(
-        inbox,
-        inboxes[inbox].gatewayInboxes,
-        {
-          allowPrivateAddress: ctx.federation.allowPrivateAddress,
-          keys,
-          activity: ctx.activity,
-          activityId: ctx.activityId,
-          activityType: ctx.activityType,
-          sharedInbox: inboxes[inbox].sharedInbox,
-          meterProvider: ctx.meterProvider,
-          tracerProvider: ctx.tracerProvider,
-          specDeterminer: new KvSpecDeterminer(
-            ctx.federation.kv,
-            ctx.federation.kvPrefixes.httpMessageSignaturesSpec,
-            ctx.federation.firstKnock,
-            { specTtl: ctx.federation.httpMessageSignaturesSpecTtl },
-          ),
-        },
-      );
+      const delivery = observation?.delivery(inbox);
+      let sending: Promise<void>;
+      try {
+        sending = sendActivityToInbox(
+          inbox,
+          inboxes[inbox].gatewayInboxes,
+          {
+            allowPrivateAddress: ctx.federation.allowPrivateAddress,
+            keys,
+            activity: ctx.activity,
+            activityId: ctx.activityId,
+            activityType: ctx.activityType,
+            sharedInbox: inboxes[inbox].sharedInbox,
+            meterProvider: ctx.meterProvider,
+            tracerProvider: ctx.tracerProvider,
+            specDeterminer: new KvSpecDeterminer(
+              ctx.federation.kv,
+              ctx.federation.kvPrefixes.httpMessageSignaturesSpec,
+              ctx.federation.firstKnock,
+              { specTtl: ctx.federation.httpMessageSignaturesSpecTtl },
+            ),
+          },
+        );
+      } catch (error) {
+        if (delivery != null) await delivery.failed(error);
+        throw error;
+      }
       if (observation != null) {
         // Preserve early rejections while the preparation observer is awaited.
         sending.catch(() => {});
       }
+      if (delivery != null) await delivery.handoff({ type: "direct" });
       promises.push(sending);
     }
     if (observation != null) await observation.prepared("delivery");
@@ -7030,38 +7080,50 @@ async function forwardActivityInternal<TContextData>(
   const started = new Date().toISOString();
   const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
   for (const inbox in inboxes) {
-    const { portableInbox, gatewayInboxes } = inboxes[inbox];
-    const message: OutboxMessage = {
-      type: "outbox",
-      id: crypto.randomUUID(),
-      baseUrl: ctx.origin,
-      keys: keyJwkPairs,
-      activity: ctx.activity,
-      activityId: ctx.activityId,
-      activityType: ctx.activityType,
-      inbox,
-      sharedInbox: inboxes[inbox].sharedInbox,
-      actorIds: [...inboxes[inbox].actorIds],
-      started,
-      attempt: 0,
-      headers: {},
-      orderingKey: orderingKey == null
-        ? undefined
-        : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`,
-      ...getPortableMessageFields(portableInbox, gatewayInboxes),
-      traceContext: carrier,
-    };
-    messages.push({
-      message,
-      orderingKey: message.orderingKey,
-    });
+    try {
+      const { portableInbox, gatewayInboxes } = inboxes[inbox];
+      const message: OutboxMessage = {
+        type: "outbox",
+        id: crypto.randomUUID(),
+        baseUrl: ctx.origin,
+        keys: keyJwkPairs,
+        activity: ctx.activity,
+        activityId: ctx.activityId,
+        activityType: ctx.activityType,
+        inbox,
+        sharedInbox: inboxes[inbox].sharedInbox,
+        actorIds: [...inboxes[inbox].actorIds],
+        started,
+        attempt: 0,
+        headers: {},
+        orderingKey: orderingKey == null
+          ? undefined
+          : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`,
+        ...getPortableMessageFields(portableInbox, gatewayInboxes),
+        traceContext: carrier,
+      };
+      messages.push({
+        message,
+        orderingKey: message.orderingKey,
+      });
+    } catch (error) {
+      if (observation != null) await observation.delivery(inbox)?.failed(error);
+      throw error;
+    }
   }
   if (observation != null) await observation.prepared("delivery");
   const { outboxQueue } = ctx.federation;
   if (outboxQueue.enqueueMany == null || orderingKey != null) {
     const promises: PromiseSettledResult<void>[] = await Promise.allSettled(
       messages.map(async (m) => {
-        await outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey });
+        await (observation == null
+          ? outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
+          : observation.enqueue(
+            [{ inbox: m.message.inbox, queueMessageId: m.message.id }],
+            "outbox",
+            () =>
+              outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey }),
+          ));
         recordOutboxEnqueue(
           ctx.federation.meterProvider,
           outboxQueue,
@@ -7087,7 +7149,16 @@ async function forwardActivityInternal<TContextData>(
     }
   } else {
     try {
-      await outboxQueue.enqueueMany(messages.map((m) => m.message));
+      await (observation == null
+        ? outboxQueue.enqueueMany(messages.map((m) => m.message))
+        : observation.enqueue(
+          messages.map(({ message }) => ({
+            inbox: message.inbox,
+            queueMessageId: message.id,
+          })),
+          "outbox",
+          () => outboxQueue.enqueueMany!(messages.map((m) => m.message)),
+        ));
     } catch (error) {
       logger.error(
         "Failed to enqueue activity {activityId} to forward later:\n{error}",
@@ -7227,7 +7298,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
   ): Promise<void> {
     return observeOutboundBroadcast(
       this,
-      this.federation.outboundObservers.onBroadcast,
+      this.federation.outboundObservers,
       (observation) => {
         const tracer = this.tracerProvider.getTracer(
           metadata.name,

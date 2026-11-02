@@ -46,7 +46,10 @@ import type { FederationOptions } from "./federation.ts";
 import { createFederation } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
 import { observeOutboundBroadcast } from "./outbound-observation.ts";
-import type { OutboundBroadcastEvent } from "./outbound-report.ts";
+import type {
+  OutboundBroadcastEvent,
+  OutboundDeliveryEvent,
+} from "./outbound-report.ts";
 import {
   coversDelivery,
   forwardPortableInboxActivity,
@@ -2333,8 +2336,12 @@ test("portable replication observers distinguish disabled, unavailable, and uncl
         },
       });
       const events: OutboundBroadcastEvent[] = [];
+      const deliveries: OutboundDeliveryEvent[] = [];
       const contexts: unknown[] = [];
       federation.setOutboundObservers({
+        onDelivery(_ctx, event) {
+          deliveries.push(event);
+        },
         onBroadcast(ctx, event) {
           contexts.push(ctx);
           events.push(event);
@@ -2354,6 +2361,7 @@ test("portable replication observers distinguish disabled, unavailable, and uncl
           : "no-forwarding-targets",
       });
       assertStrictEquals(contexts[0], contexts[1]);
+      assertEquals(deliveries, []);
       assertEquals(queue.outbox.length, 0);
     });
   }
@@ -2378,6 +2386,7 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
       };
       const { federation } = setup({ queue, keyPairs: false });
       const events: OutboundBroadcastEvent[] = [];
+      const deliveries: OutboundDeliveryEvent[] = [];
       let ready!: () => void;
       const prepared = new Promise<void>((resolve) => {
         ready = resolve;
@@ -2387,6 +2396,9 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
         release = resolve;
       });
       federation.setOutboundObservers({
+        onDelivery(_ctx, event) {
+          deliveries.push(event);
+        },
         async onBroadcast(_ctx, event) {
           events.push(event);
           if (event.stage === "preparation-finished") {
@@ -2421,9 +2433,37 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
         assertEquals(message.keys, []);
         assertFalse("broadcastId" in message);
       }
+      assertEquals(
+        deliveries.filter((event) => event.stage === "planned").length,
+        2,
+      );
+      const handoffs = deliveries.filter((event) => event.stage === "handoff");
+      assertEquals(handoffs.length, 2);
+      assertEquals(
+        handoffs.filter((event) =>
+          event.stage === "handoff" && event.result.type === "enqueued"
+        ).length,
+        1,
+      );
+      assertEquals(
+        handoffs.filter((event) =>
+          event.stage === "handoff" && event.result.type === "enqueue-failed" &&
+          event.result.acceptance === "unknown"
+        ).length,
+        1,
+      );
+      for (const event of deliveries) {
+        assertEquals(event.portableInbox, `ap+ef61://${did}/users/alice/inbox`);
+        if (event.stage === "planned") {
+          assertEquals(event.mode, "portable-replication");
+        }
+      }
       assertEquals(events.length, 2);
       // A swallowed enqueue failure keeps its claim; redelivery is not retried.
       federation.setOutboundObservers({
+        onDelivery(_ctx, event) {
+          deliveries.push(event);
+        },
         onBroadcast(_ctx, event) {
           events.push(event);
         },
@@ -2458,7 +2498,11 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
       const queue = new RecordingQueue();
       const { federation } = setup({ kv: memory, queue, keyPairs: false });
       const events: OutboundBroadcastEvent[] = [];
+      const deliveries: OutboundDeliveryEvent[] = [];
       federation.setOutboundObservers({
+        onDelivery(_ctx, event) {
+          deliveries.push(event);
+        },
         onBroadcast(_ctx, event) {
           events.push(event);
         },
@@ -2478,6 +2522,7 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
         planning: "incomplete",
         plannedDestinationCount: 1,
       });
+      assertEquals(deliveries.map((event) => event.stage), ["planned"]);
       assertEquals(queue.outbox.length, 0);
     },
   );
@@ -2493,10 +2538,16 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
         new URL(LOCAL),
       );
       const events: OutboundBroadcastEvent[] = [];
+      const deliveries: OutboundDeliveryEvent[] = [];
       await observeOutboundBroadcast(
         ctx,
-        (_ctx, event) => {
-          events.push(event);
+        {
+          onDelivery(_ctx, event) {
+            deliveries.push(event);
+          },
+          onBroadcast: (_ctx, event) => {
+            events.push(event);
+          },
         },
         (observation) => forwardPortableInboxActivity(parameters, observation),
         "portable-replication",
@@ -2506,6 +2557,14 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
         preparedFor: "delivery",
         destinationCount: 1,
       });
+      assertEquals(deliveries.map((event) => event.stage), [
+        "planned",
+        "handoff",
+      ]);
+      const accepted = deliveries[1];
+      assert(
+        accepted.stage === "handoff" && accepted.result.type === "enqueued",
+      );
       assertEquals(queue.outbox[0].keys, []);
       assertStrictEquals(queue.outbox[0].activity, parameters.activity);
     },
@@ -2555,6 +2614,7 @@ test("portable replication observers retain preparation after the forwarding dea
           new URL(LOCAL),
         );
         const events: OutboundBroadcastEvent[] = [];
+        const deliveries: OutboundDeliveryEvent[] = [];
         let finished!: () => void;
         const preparation = new Promise<void>((resolve) => {
           finished = resolve;
@@ -2570,9 +2630,14 @@ test("portable replication observers retain preparation after the forwarding dea
         try {
           const forwarded = await observeOutboundBroadcast(
             ctx,
-            (_ctx, event) => {
-              events.push(event);
-              if (event.stage === "preparation-finished") finished();
+            {
+              onDelivery(_ctx, event) {
+                deliveries.push(event);
+              },
+              onBroadcast: (_ctx, event) => {
+                events.push(event);
+                if (event.stage === "preparation-finished") finished();
+              },
             },
             (observation) =>
               forwardPortableInboxActivity(parameters, observation),
@@ -2582,7 +2647,15 @@ test("portable replication observers retain preparation after the forwarding dea
           assertEquals(events.map((event) => event.stage), ["started"]);
           release();
           await preparation;
+          assertEquals(deliveries.map((event) => event.stage), [
+            "planned",
+            failed ? "preparation-failed" : "handoff",
+          ]);
+          assertEquals(deliveries[0].deliveryId, deliveries[1].deliveryId);
           if (failed) {
+            const failedDelivery = deliveries[1];
+            assert(failedDelivery.stage === "preparation-failed");
+            assertStrictEquals(failedDelivery.failure.error, failure);
             assertEquals(replicationResult(events), {
               type: "failed",
               failure: {

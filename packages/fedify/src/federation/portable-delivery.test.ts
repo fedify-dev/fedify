@@ -7,6 +7,7 @@ import { rsaPrivateKey2, rsaPublicKey2 } from "../testing/keys.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { FederationImpl, InboxContextImpl } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
+import type { OutboundDeliveryEvent } from "./outbound-report.ts";
 import { MAX_DELIVERY_GATEWAYS } from "./portable-delivery.ts";
 import type { FanoutMessage, Message, OutboxMessage } from "./queue.ts";
 import { extractInboxes, SendActivityError } from "./send.ts";
@@ -584,6 +585,12 @@ test("InboxContext.forwardActivity() to a portable inbox", async (t) => {
       kv: new MemoryKvStore(),
       allowPrivateAddress: true,
     });
+    const events: OutboundDeliveryEvent[] = [];
+    federation.setOutboundObservers({
+      onDelivery(_ctx, event) {
+        events.push(event);
+      },
+    });
     await createInboxContext(federation).forwardActivity(sender, recipient, {
       immediate: true,
       skipIfUnsigned: false,
@@ -592,6 +599,15 @@ test("InboxContext.forwardActivity() to a portable inbox", async (t) => {
       inboxOn("https://gw1.example"),
       inboxOn("https://gw2.example"),
     ]);
+    deepStrictEqual(events.map((event) => event.stage), ["planned", "handoff"]);
+    strictEqual(events[0].deliveryId, events[1].deliveryId);
+    for (const event of events) {
+      strictEqual(event.destinationInbox, inboxOn("https://gw1.example"));
+      strictEqual(event.portableInbox, PORTABLE_INBOX);
+    }
+    const planned = events[0];
+    ok(planned.stage === "planned");
+    strictEqual(planned.mode, "portable-fallback");
   });
 
   await t.step("through the queue", async () => {
@@ -603,6 +619,12 @@ test("InboxContext.forwardActivity() to a portable inbox", async (t) => {
       queue,
       manuallyStartQueue: true,
       allowPrivateAddress: true,
+    });
+    const events: OutboundDeliveryEvent[] = [];
+    federation.setOutboundObservers({
+      onDelivery(_ctx, event) {
+        events.push(event);
+      },
     });
     await createInboxContext(federation).forwardActivity(sender, recipient, {
       orderingKey: "key",
@@ -617,6 +639,15 @@ test("InboxContext.forwardActivity() to a portable inbox", async (t) => {
       inboxOn("https://gw2.example"),
     ]);
     strictEqual(queued[0].options?.orderingKey, `key\n${DID}`);
+    deepStrictEqual(events.map((event) => event.stage), ["planned", "handoff"]);
+    strictEqual(events[0].deliveryId, events[1].deliveryId);
+    for (const event of events) {
+      strictEqual(event.destinationInbox, inboxOn("https://gw1.example"));
+      strictEqual(event.portableInbox, PORTABLE_INBOX);
+    }
+    const planned = events[0];
+    ok(planned.stage === "planned");
+    strictEqual(planned.mode, "portable-fallback");
   });
 
   fetchMock.hardReset();

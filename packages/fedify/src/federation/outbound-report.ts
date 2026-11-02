@@ -79,6 +79,65 @@ export type OutboundBroadcastEvent =
   );
 
 /**
+ * A producer-side destination obligation, not delivery completion.
+ *
+ * IDs group this producer's events. Queue execution and identity propagation
+ * through workers are not observed yet. An unvisited destination stays planned
+ * when another destination's preparation interrupts the producer.
+ * @since 2.5.0
+ */
+export type OutboundDeliveryEvent =
+  & {
+    /** The invocation that established this destination. */
+    readonly broadcast: { readonly type: "known"; readonly id: string };
+    /** Opaque identity allocated after deduplication or a confirmed claim. */
+    readonly deliveryId: string;
+    /** Planned destination, unchanged by concrete gateway selection. */
+    readonly destinationInbox: string;
+    /** Canonical portable inbox when the selected route represents one. */
+    readonly portableInbox?: string;
+  }
+  & (
+    | {
+      /** This destination was established by the existing plan. */
+      readonly stage: "planned";
+      /** Known actors sharing the destination, not an exhaustive audience. */
+      readonly actorIds: readonly string[];
+      /** Whether the selected destination uses a shared inbox. */
+      readonly sharedInbox: boolean;
+      /** Fallback routes share one obligation; replication targets do not. */
+      readonly mode: "ordinary" | "portable-fallback" | "portable-replication";
+    }
+    | {
+      /** Local execution entry or enqueue settlement, not remote success. */
+      readonly stage: "handoff";
+      /** Evidence from the actual producer handoff. */
+      readonly result:
+        | { readonly type: "direct" }
+        | {
+          readonly type: "enqueued";
+          readonly queue: "fanout" | "outbox";
+          readonly queueMessageId: string;
+        }
+        | {
+          readonly type: "enqueue-failed";
+          readonly acceptance: "unknown";
+          readonly error: unknown;
+        };
+    }
+    | {
+      /** Destination-local setup failed before entry into concrete sending. */
+      readonly stage: "preparation-failed";
+      /** The original local setup failure, without inventing an attempt. */
+      readonly failure: {
+        readonly kind: "local";
+        readonly phase: "request-preparation";
+        readonly error: unknown;
+      };
+    }
+  );
+
+/**
  * Optional observers of outgoing activity processing.
  *
  * Send, original-payload forwarding, and automatic portable replication producer
@@ -102,5 +161,14 @@ export interface OutboundObservers<TContextData> {
   readonly onBroadcast?: (
     context: Context<TContextData>,
     event: OutboundBroadcastEvent,
+  ) => void | Promise<void>;
+  /**
+   * Observes producer-side planning, handoffs, and destination preparation
+   * failures. Filtered recipients do not become planned deliveries. This does
+   * not report concrete attempts, remote success, or worker execution yet.
+   */
+  readonly onDelivery?: (
+    context: Context<TContextData>,
+    event: OutboundDeliveryEvent,
   ) => void | Promise<void>;
 }
