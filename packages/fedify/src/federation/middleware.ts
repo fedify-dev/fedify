@@ -2645,6 +2645,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     // verifiers can look up the correct key type in the actor document.
     if (actorKeyPairs != null) {
       const contextLoader = this.contextLoader;
+      let proofAdded = false;
       for (const kp of actorKeyPairs) {
         if (
           kp.privateKey.algorithm.name !== "Ed25519" ||
@@ -2654,9 +2655,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           contextLoader,
           tracerProvider: this.tracerProvider,
         });
+        proofAdded = true;
       }
-      // The captured JSON-LD predates the new proof.
-      activityJsonLd = undefined;
+      // The captured JSON-LD predates a new proof, if one was added.
+      if (proofAdded) activityJsonLd = undefined;
     }
     const opts: SendActivityInternalOptions<TContextData> = {
       context: this,

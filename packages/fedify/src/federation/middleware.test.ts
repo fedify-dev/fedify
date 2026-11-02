@@ -5084,16 +5084,21 @@ test("ContextImpl.sendActivity()", async (t) => {
   });
   federation2
     .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
-      if (identifier !== "john") return null;
+      if (identifier !== "john" && identifier !== "rsa-only") return null;
       const keys = await ctx.getActorKeyPairs(identifier);
       return new vocab.Person({
         id: ctx.getActorUri(identifier),
-        preferredUsername: "john",
+        preferredUsername: identifier,
         publicKey: keys[0].cryptographicKey,
         assertionMethods: keys.map((k) => k.multikey),
       });
     })
     .setKeyPairsDispatcher((_ctx, identifier) => {
+      if (identifier === "rsa-only") {
+        return [
+          { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
+        ];
+      }
       if (identifier !== "john") return [];
       return [
         { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
@@ -5288,6 +5293,39 @@ test("ContextImpl.sendActivity()", async (t) => {
     const resigned = queue.messages.at(-1);
     assert(resigned != null && resigned.type === "outbox");
     assertEquals(detachSignature(resigned.activity), restoredJson);
+
+    const rsaOnlyActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/rsa-only"),
+      actor: new URL("https://example.com/rsa-only"),
+    });
+    const rsaOnlySigned = await signObject(
+      rsaOnlyActivity,
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const rsaOnlyJson = await rsaOnlySigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const rsaOnlyRestored = await vocab.Create.fromJsonLd(rsaOnlyJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx2.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      rsaOnlyRestored,
+      { fanout: "force" },
+    );
+    const rsaOnlyMessage = queue.messages.at(-1);
+    assert(rsaOnlyMessage != null && rsaOnlyMessage.type === "fanout");
+    assertEquals(rsaOnlyMessage.activity, rsaOnlyJson);
   });
 
   queue.clear();
