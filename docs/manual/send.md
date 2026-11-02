@@ -103,8 +103,9 @@ federation.setOutboundObservers({
 Here, `recordBroadcast()` and `recordDelivery()` are your application's
 recording functions. Callbacks receive the existing context and application
 data without loading additional data for observation. The report fields contain
-immutable snapshots of known routing facts; original thrown values remain
-available as `unknown` values.
+immutable snapshots of known routing and source facts; original thrown values
+remain available as `unknown` values. The context, application data, Activity
+objects, and exceptions are not deep-copied by this API.
 
 ### Broadcast lifecycle
 
@@ -140,7 +141,8 @@ nonsettling operation can leave a start without a later result.
 ### Destination observations
 
 `onDelivery` receives an `OutboundDeliveryEvent` for each established delivery
-obligation. Its `broadcast` reference identifies the invocation, and its
+obligation. Its `broadcast` reference is `{ type: "known", id }` when the
+invocation is known, or `{ type: "unknown" }` for legacy fanout work. Its
 `deliveryId` groups events for one deduplicated destination or confirmed
 replication target. Different inboxes on the same host remain distinct.
 
@@ -169,6 +171,103 @@ for that destination. Earlier handoffs remain valid, and later unvisited
 destinations can remain planned without a handoff. Parallel work can interleave
 callbacks, so IDs provide grouping rather than a total event order.
 
+### Identities across queues
+
+Observed broadcasts and deliveries retain their IDs through fanout expansion,
+retries, holds, and gateway changes. Fanout expansion can create new outbox task
+IDs without starting another broadcast. Source metadata and `dispatchId` are
+serialized even when producer observers are disabled; broadcast/delivery
+metadata is allocated when producer observation is enabled.
+
+| Boundary                            | Identity behavior                                                                                   |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Observed send or forward invocation | Fresh `broadcastId`; one `deliveryId` per deduplicated destination or confirmed replication target. |
+| Fanout expansion                    | Existing broadcast/delivery IDs, with new child outbox task IDs.                                    |
+| Retry, hold, or deferral            | Same delivery identity and provenance.                                                              |
+| Portable fallback                   | One delivery across alternate gateways; the planned destination remains unchanged.                  |
+| Portable replication                | A separate delivery for each confirmed target claim.                                                |
+
+~~~~ text
+inbox request -> handler -> send/forward -> planned delivery
+                                             +-> direct handoff
+                                             +-> outbox task -> retry/hold
+                                             +-> fanout task -> outbox tasks
+
+Queue continuations preserve known IDs and the original source.
+~~~~
+
+IDs provide grouping, not ordering or deduplication. Replayed work can produce
+repeated observations. Treat IDs as opaque values.
+
+Older messages remain processable. Fanout tasks without identity metadata get
+stable delivery IDs with `broadcast: { type: "unknown" }`. Missing source and
+application correlation remain unavailable. Older consumers can discard these
+fields, so mixed-version processing can lose correlation.
+
+### Original source and current context
+
+Outgoing events distinguish preserved source facts from current URL facts:
+
+ -  `provenance.inboxRequest`, when known, contains the original
+    `inboxRequestId`, informational `requestId`, and a `context` snapshot.
+ -  `local` describes the context invoking this callback now.
+ -  `provenance.originatingRequestId` retains the logging label for
+    HTTP-derived work without an inbox cause.
+
+Both URL snapshots contain `origin`, `host`, `hostname`, and `canonicalOrigin`.
+`host` includes an optional port; `hostname` does not. `canonicalOrigin` uses
+the configured web origin or falls back to `origin`.
+
+The original source survives derived sends, forwarding, context clones and
+conversions, and queues. Its snapshot stays unchanged if a derived context's
+URL changes. Independent contexts do not acquire an inbox cause from ambient
+execution. See [observing inbox requests](./inbox.md#observing-inbox-requests)
+for the difference between the server-generated `inboxRequestId` and the
+informational logging `requestId`.
+
+Worker logs use `sourceInboxRequestId` and `sourceRequestId` for historical
+correlation, preserving an unrelated current `requestId`.
+
+### Application dispatch correlation
+
+Send and forward options accept an application-owned `dispatchId`. Fedify
+preserves it exactly in `event.provenance.dispatchId` and outgoing queue
+continuations. Empty strings are valid; the limit is 1,024 UTF-8 bytes. A
+non-string value raises `TypeError`, and an oversized string raises `RangeError`
+before preparation. Queue consumers enforce the same limit.
+
+This example adds application correlation to an inbox-triggered acceptance:
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+declare const federation: Federation<void>;
+declare function saveAcceptance(follow: import("@fedify/vocab").Follow): Promise<string>;
+// ---cut-before---
+import { Accept, Follow } from "@fedify/vocab";
+
+federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (follow.id == null || follow.objectId == null) return;
+    const actor = ctx.parseUri(follow.objectId);
+    if (actor?.type !== "actor") return;
+    const follower = await follow.getActor(ctx);
+    if (follower == null) return;
+    const dispatchId = await saveAcceptance(follow);
+    await ctx.sendActivity(
+      { identifier: actor.identifier },
+      follower,
+      new Accept({ actor: follow.objectId, object: follow.id }),
+      { dispatchId },
+    );
+  });
+~~~~
+
+`saveAcceptance()` represents your application's record creation; its ID must
+satisfy the byte limit. The new Activity retains the incoming request's source.
+Reusing a `dispatchId` sends again with a fresh broadcast ID. A new public call
+that omits it does not inherit a previous app ID; queued continuations of the
+existing call retain it.
+
 ### Registration and callback behavior
 
 Each registration call replaces all previous outbound observers; pass `{}` to
@@ -188,20 +287,6 @@ If you detach recording work, handle its rejections and shutdown yourself;
 Fedify does not guarantee its persistence. Incoming C2S `setOutboxListeners()`
 registration is separate. Mock federations accept outbound observer
 registration but do not execute these observers.
-
-### Current producer scope
-
-Both callbacks cover ordinary `Context.sendActivity()`, the `OutboxContext`
-override, inbox/outbox `forwardActivity()`, and automatic portable replication
-at their producer boundaries. Original-payload forwarding and replication keep
-the received payload unchanged. Delivery IDs currently group producer-local
-events; they are not yet carried through queue continuations or worker replay.
-
-Worker execution, concrete delivery attempts, HTTP exchanges, response bodies,
-explicit cancellation observations, historical provenance, and optional trace
-metadata are not reported yet. A direct handoff, accepted task, or prepared
-producer must not be treated as proof that the remote application applied an
-activity.
 
 
 Specifying a sender

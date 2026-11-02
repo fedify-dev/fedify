@@ -51,7 +51,7 @@ export class InboxObservation {
   };
   constructor(
     readonly inbox: InboxRequestReport["inbox"],
-    readonly source?: OutboundInboxRequest,
+    readonly source: OutboundInboxRequest | undefined = undefined,
   ) {}
 
   /** Run an ingress operation and project telemetry; fetch owns completion. */

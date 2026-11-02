@@ -91,10 +91,10 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    * later changes to the supplied object do not affect registration.
    * Available on builders and directly created federations.  Building copies
    * the callbacks, and an active send keeps the callback selected at entry.
-   * Currently send, original-payload forwarding, and automatic portable
-   * replication entry and preparation results are observed, including
-   * outbox-context operations and producer-side destination planning and
-   * handoffs. Workers are not observed yet.
+   * Observes send, original-payload forwarding, and automatic portable
+   * replication preparation, destination planning, and handoffs, including
+   * outbox-context operations and fanout continuation handoffs. Known IDs,
+   * original inbox source, and application correlation survive queue work.
    * This is separate from incoming C2S {@link Federatable.setOutboxListeners}.
    * @param observers The optional callbacks to register.
    * @since 2.5.0

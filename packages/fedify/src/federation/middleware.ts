@@ -3898,7 +3898,7 @@ export class FederationImpl<TContextData>
             async () => {
               if (routeName === "inbox") {
                 context = this.#createContext(request, contextData, {
-                  [outboundProvenance]: context[outboundProvenance],
+                  [outboundProvenance]: getOutboundProvenance(context),
                   documentLoader: await context.getDocumentLoader({
                     identifier: recipient!,
                   }),
@@ -3907,7 +3907,7 @@ export class FederationImpl<TContextData>
                 const identity = await this.sharedInboxKeyDispatcher(context);
                 if (identity != null) {
                   context = this.#createContext(request, contextData, {
-                    [outboundProvenance]: context[outboundProvenance],
+                    [outboundProvenance]: getOutboundProvenance(context),
                     documentLoader:
                       "identifier" in identity || "username" in identity
                         ? await context.getDocumentLoader(identity)
@@ -3934,7 +3934,7 @@ export class FederationImpl<TContextData>
           ? route.name.substring(ACTOR_ALIAS_PREFIX.length)
           : route.values.identifier;
         context = this.#createContext(request, contextData, {
-          [outboundProvenance]: context[outboundProvenance],
+          [outboundProvenance]: getOutboundProvenance(context),
           invokedFromActorDispatcher: { identifier },
         });
         return await handleActor(request, {
@@ -3951,7 +3951,7 @@ export class FederationImpl<TContextData>
         const callbacks = this.objectCallbacks[typeId];
         const cls = this.objectTypeIds[typeId];
         context = this.#createContext(request, contextData, {
-          [outboundProvenance]: context[outboundProvenance],
+          [outboundProvenance]: getOutboundProvenance(context),
           invokedFromObjectDispatcher: { cls, values: route.values },
         });
         return await handleObject(request, {
@@ -4020,7 +4020,7 @@ export class FederationImpl<TContextData>
           const identity = await this.sharedInboxKeyDispatcher(context);
           if (identity != null) {
             context = this.#createContext(request, contextData, {
-              [outboundProvenance]: context[outboundProvenance],
+              [outboundProvenance]: getOutboundProvenance(context),
               documentLoader: "identifier" in identity || "username" in identity
                 ? await context.getDocumentLoader(identity)
                 : context.getDocumentLoader(identity),
@@ -4688,7 +4688,7 @@ export class FederationImpl<TContextData>
             // fetch, so fall back to the default document loader without them:
             if (this.actorCallbacks?.keyPairsDispatcher != null) {
               context = this.#createContext(request, contextData, {
-                [outboundProvenance]: context[outboundProvenance],
+                [outboundProvenance]: getOutboundProvenance(context),
                 documentLoader: await context.getDocumentLoader({ identifier }),
               });
             }
@@ -5119,7 +5119,6 @@ function createPortableObjectVerifier(
 }
 
 export class ContextImpl<TContextData> implements Context<TContextData> {
-  readonly [outboundProvenance]: OutboundProvenance;
   readonly url: URL;
   readonly federation: FederationImpl<TContextData>;
   readonly data: TContextData;
@@ -5143,7 +5142,9 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     }: ContextOptions<TContextData>,
   ) {
     this.url = url;
-    this[outboundProvenance] = provenance;
+    // Keep internal symbol metadata enumerable for context spreads, without
+    // exposing a computed class field in generated declarations.
+    globalThis.Object.assign(this, { [outboundProvenance]: provenance });
     this.federation = federation;
     this.data = data;
     this.documentLoader = documentLoader;
@@ -5173,7 +5174,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   clone(data: TContextData): Context<TContextData> {
     return new ContextImpl<TContextData>({
-      [outboundProvenance]: this[outboundProvenance],
+      [outboundProvenance]: getOutboundProvenance(this),
       url: this.url,
       federation: this.federation,
       data,
@@ -5192,7 +5193,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     metadata?: InboxContextMetadata,
   ): InboxContextImpl<TContextData> {
     return new InboxContextImpl(recipient, activity, activityId, activityType, {
-      [outboundProvenance]: this[outboundProvenance],
+      [outboundProvenance]: getOutboundProvenance(this),
       url: this.url,
       federation: this.federation,
       data: this.data,
@@ -5215,7 +5216,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       activityId,
       activityType,
       {
-        [outboundProvenance]: this[outboundProvenance],
+        [outboundProvenance]: getOutboundProvenance(this),
         url: this.url,
         federation: this.federation,
         data: this.data,
@@ -6649,7 +6650,7 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
 
   override clone(data: TContextData): RequestContext<TContextData> {
     return new RequestContextImpl<TContextData>({
-      [outboundProvenance]: this[outboundProvenance],
+      [outboundProvenance]: getOutboundProvenance(this),
       url: this.url,
       federation: this.federation,
       data,
@@ -7389,7 +7390,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
       this.activityId,
       this.activityType,
       {
-        [outboundProvenance]: this[outboundProvenance],
+        [outboundProvenance]: getOutboundProvenance(this),
         url: this.url,
         federation: this.federation,
         data,
@@ -7568,7 +7569,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
       this.activityId,
       this.activityType,
       {
-        [outboundProvenance]: this[outboundProvenance],
+        [outboundProvenance]: getOutboundProvenance(this),
         url: this.url,
         federation: this.federation,
         data,

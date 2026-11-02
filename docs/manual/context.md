@@ -84,6 +84,11 @@ The `Context` object has properties to get the base URL of the current request:
 For `RequestContext`, there is an additional property named
 `~RequestContext.url` that contains the full URL of the current request.
 
+Outgoing observations snapshot these values under `event.local`. For work
+caused by an inbox request, `event.provenance.inboxRequest.context` retains the
+original URL facts through derived contexts and queues. See
+[outgoing source and correlation](./send.md#original-source-and-current-context).
+
 [^1]: If no canonical origin is explicitly configured, it is the same as the
       `Context.origin`. See also the [*Explicitly setting the canonical origin*
       section](./federation.md#explicitly-setting-the-canonical-origin) in the

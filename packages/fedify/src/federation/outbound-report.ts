@@ -146,8 +146,9 @@ export type OutboundDeliveryEvent =
  * Optional observers of outgoing activity processing.
  *
  * Send, original-payload forwarding, and automatic portable replication producer
- * events are observed, including outbox-context operations. Callbacks are
- * awaited without a default timeout.
+ * events are observed, including outbox-context operations and fanout
+ * continuation handoffs. Known IDs and provenance survive queue continuations.
+ * Callbacks are awaited without a default timeout.
  * Their errors, including errors logging observer failures, do not replace the
  * send's result.
  * A callback that never settles can delay execution indefinitely. Detached
@@ -203,7 +204,11 @@ export interface OutboundInboxRequest {
 
 /** Explicit historical cause of outgoing work. @since 2.5.0 */
 export interface OutboundProvenance {
-  /** Application-owned correlation; never a Fedify deduplication key. */
+  /**
+   * Exact application-owned correlation, up to 1,024 UTF-8 bytes; an empty
+   * string is valid. Never a Fedify deduplication key. Each new public call
+   * supplies its own value; queued continuations retain it.
+   */
   readonly dispatchId?: string;
   /** Absent for independent contexts, programmatic routing, and unknown work. */
   readonly inboxRequest?: OutboundInboxRequest;

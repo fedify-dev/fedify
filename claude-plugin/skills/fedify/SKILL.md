@@ -258,7 +258,8 @@ without extra loading and work without OpenTelemetry.
 `portable-replication`. Narrow `event.stage` before reading `event.result`, then
 narrow its `type` (`prepared`, `skipped`, or `failed`). `onDelivery` reports
 `planned`, `handoff`, or destination-local `preparation-failed` events with a
-`deliveryId` and known `broadcast` reference. Handoffs distinguish `direct`,
+`deliveryId` and a `broadcast` reference (`known` with an `id`, or `unknown`
+for legacy fanout work). Handoffs distinguish `direct`,
 `enqueued` (with actual queue/task ID), and `enqueue-failed` (acceptance
 unknown). Readiness, queue acceptance, and remote effects are distinct.
 Portable fallback keeps one delivery across alternate gateways; replication
@@ -268,11 +269,27 @@ Callbacks are awaited without a default timeout; observer/logging errors are
 isolated. Nonsettling callbacks can delay execution indefinitely. Portable
 forwarding can return at its existing deadline while background work and
 observations continue. Detached recording must handle its own rejection,
-shutdown, and persistence. Delivery IDs currently group producer-local events;
-queue identity propagation/replay, worker execution, attempts, HTTP exchanges,
-response capture, cancellation observations, provenance, and trace metadata are
-not implemented yet. Mock federations accept registration without executing
-observers. Incoming C2S listeners use the separate `setOutboxListeners()` API.
+shutdown, and persistence. Known IDs survive fanout expansion, retries, holds,
+and gateway changes. Fanout expansion continues existing delivery handoffs
+without starting another broadcast. Legacy fanout can have an unknown broadcast;
+missing source facts remain unavailable, and older consumers can discard new
+metadata.
+
+Events expose `provenance` for preserved source/app correlation and `local` for
+current URL facts. A known inbox source includes server-generated
+`inboxRequestId`, informational `requestId`, and the original URL snapshot.
+It survives context clones/conversions and queues; independent contexts do not
+infer it from ambient execution.
+
+Send/forward options accept `dispatchId`, preserved exactly in event provenance
+and queues even without producer observers. Empty strings are valid; the limit
+is 1,024 UTF-8 bytes. Invalid types raise `TypeError` and oversized values
+`RangeError` before preparation. Reusing an ID sends again with a fresh
+broadcast ID. New public calls supply their own app ID; queued continuations
+retain it.
+
+Mock federations accept registration without executing observers. Incoming C2S
+listeners use the separate `setOutboxListeners()` API.
 
 See <https://fedify.dev/manual/send.md>.
 

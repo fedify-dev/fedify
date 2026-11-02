@@ -132,9 +132,18 @@ export type InboxRequestOutcome =
  * @since 2.4.0
  */
 export interface InboxRequestReport {
-  /** Server-generated identity; present for routed HTTP ingress. @since 2.5.0 */
+  /**
+   * Fresh server-generated identity for one routed HTTP inbox request,
+   * including preparation failures and duplicate deliveries. Preserved on
+   * outgoing causal descendants; absent without a known routed source.
+   * @since 2.5.0
+   */
   readonly inboxRequestId?: string;
-  /** Informational logging label of that request, not a unique ID. @since 2.5.0 */
+  /**
+   * Original informational logging label; externally controlled and nonunique,
+   * independent of inboxRequestId. Absent without a known routed source.
+   * @since 2.5.0
+   */
   readonly requestId?: string;
   /** The delivery route, including a portable gateway route. */
   readonly inbox: {

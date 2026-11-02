@@ -215,6 +215,16 @@ covers failures while preparing document loaders or resolving a portable
 recipient.  Inbox collection requests, unmatched routes, programmatic
 `routeActivity()` calls, and queue workers do not invoke it.
 
+Since Fedify 2.5.0, routed HTTP inbox reports include `report.inboxRequestId`
+and `report.requestId`, including preparation failures. The former is a fresh
+server-generated ID for each HTTP delivery, even for the same Activity. The
+latter is an informational, externally supplied or generated logging label;
+it is not unique. These fields are absent when no routed source is known.
+
+Outgoing work using the handler's context retains this source through derived
+contexts and queues. See
+[outgoing source and correlation](./send.md#original-source-and-current-context).
+
 `report.payload` is either `unavailable` or `parsed`, whose `value` contains the
 original JSON.  A parsed JSON `null` is distinct from an unavailable body.
 `report.activity` contains the `Activity` obtained by the existing processing

@@ -7,7 +7,7 @@ import type {
 } from "./outbound-report.ts";
 
 // An own symbol property survives context spreads without adding public API.
-export const outboundProvenance = Symbol("outboundProvenance");
+export const outboundProvenance: unique symbol = Symbol("outboundProvenance");
 export const emptyProvenance: OutboundProvenance = Object.freeze({});
 
 export function getOutboundProvenance(context: object): OutboundProvenance {
@@ -140,7 +140,11 @@ export function serializeProvenance(
     : { provenance };
 }
 
-export function sourceLogContext(source: OutboundProvenance) {
+export function sourceLogContext(source: OutboundProvenance): {
+  dispatchId: string | undefined;
+  sourceInboxRequestId: string | undefined;
+  sourceRequestId: string | undefined;
+} {
   return {
     dispatchId: source.dispatchId,
     sourceInboxRequestId: source.inboxRequest?.inboxRequestId,
