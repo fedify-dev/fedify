@@ -125,6 +125,16 @@ import {
   numberSchema,
 } from "../testing/mod.ts";
 
+// Deno's global, declared structurally so that this test does not depend on
+// Deno's ambient types.  It is only accessed after checking that it exists.
+declare const Deno: {
+  readonly permissions: {
+    query(
+      descriptor: { readonly name: "net" },
+    ): Promise<{ readonly state: string }>;
+  };
+};
+
 const documentLoader = getDocumentLoader({ allowPrivateAddress: true });
 
 type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends

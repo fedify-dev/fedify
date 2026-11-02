@@ -107,8 +107,8 @@ Development environment
 -----------------------
 
 Fedify is a TypeScript monorepo.  Node.js runs dependency installation, code
-generation, builds, maintenance scripts, and test harnesses.  Formatting,
-linting, type checking, and the local CLI still use Deno.  Supported packages
+generation, builds, type checking, maintenance scripts, and test harnesses.
+Formatting, linting, and the local CLI still use Deno.  Supported packages
 are tested on Deno, Node.js, and Bun.  [mise] installs the required tool
 versions and runs repository tasks.  Install mise before bootstrapping; it
 provisions Node.js and the tools declared in *mise.toml*, so Node.js needs no
@@ -135,9 +135,8 @@ Install or refresh the pre-commit hook explicitly with
 
 To bootstrap without installing Deno, set `MISE_DISABLE_TOOLS=deno` before
 running `mise install` (for example, `$env:MISE_DISABLE_TOOLS = "deno"` in
-PowerShell).  Deno is still needed for the current formatting, linting, type
-checking, and Deno compatibility tasks; those tools are being migrated
-separately.
+PowerShell).  Deno is still needed for the current formatting, linting, and
+Deno compatibility tasks; those tools are being migrated separately.
 
 Run development workflows through mise.  Do not call `npm` or `pnpm` directly
 for repository tasks.  Start by inspecting the available commands:
@@ -155,7 +154,9 @@ mise run test:deno
 ~~~~
 
 The recommended editor is [Visual Studio Code] with the [Deno extension], but
-any editor with Deno support will work.
+any editor with Deno support will work.  The editor's Deno language server
+checks code the way `mise run check:types:deno` does, which can differ from
+the default type check described in “Type checking” below.
 
 [mise]: https://mise.jdx.dev/
 [Visual Studio Code]: https://code.visualstudio.com/
@@ -223,17 +224,71 @@ Deno compatibility work has explicit preparation and validation commands:
 ~~~~ bash
 mise run deno:cache
 mise run codegen:check:deno
+mise run check:types:deno
 ~~~~
 
 The first command caches workspace exports for Deno and its language server;
-the second checks generated vocabulary formatting and Deno types.  Tasks
-that use Deno, including `check`, `cli`, and `test:deno`, prepare the cache
-automatically.  The Node.js initializer and example harnesses prepare it only
-when selected Deno targets need workspace imports.  Run `mise run deno:cache`
-explicitly before using `mise run --skip-deps` with a Deno task, since that
-option omits task dependencies.
-The existing Deno `compile` tasks still generate vocabulary, but no longer
-cache or type-check it as a side effect.
+the second checks generated vocabulary formatting and Deno types; the third
+type-checks the Deno workspace with `deno check`, including Deno-only code.
+Tasks that use Deno, including `check`, `cli`, and `test:deno`, prepare the
+cache automatically.  The Node.js initializer and example harnesses prepare it
+only when selected Deno targets need workspace imports.  Run
+`mise run deno:cache` explicitly before using `mise run --skip-deps` with a
+Deno task, since that option omits task dependencies. The existing Deno
+`compile` tasks still generate vocabulary, but no longer cache or type-check it
+as a side effect.
+
+### Type checking
+
+`mise run check:types` type-checks the repository with TypeScript on Node.js,
+without Deno.  Pass package names, without the `@fedify/` prefix, to check
+only those packages:
+
+~~~~ bash
+mise run check:types
+mise run check:types -- fedify vocab
+~~~~
+
+It uses TypeScript 7, currently the 7.1 beta, installed as the `typescript7`
+alias.  Tools that need the TypeScript compiler API, such as tsdown's
+declaration builds, VitePress Twoslash, and typescript-eslint, keep using
+TypeScript 6 through the `typescript` package.
+
+Each package has a *tsconfig.check.json*, plus _tsconfig.check.\*.json_
+variants for code that targets another runtime, such as Bun-only modules or
+Cloudflare Workers code.  The root *tsconfig.check.json* covers repository
+scripts.  These configurations only type-check; they are not named
+*tsconfig.json* because Deno would apply such a file to `deno check` and
+tsdown would read it for builds.  Extend the environment preset that matches
+the code: *tsconfig.node.json* for Node.js, *tsconfig.workers.json* for
+Cloudflare Workers, or *tsconfig.bun.json* for Bun.  Each preset loads the
+globals of its runtime rather than those of every runtime, so, for example,
+Node.js code cannot use `Deno` or `document`, and Workers code cannot use
+Node.js's `process` unless its configuration adds Node.js types for the
+`nodejs_compat` flag.  The Node.js preset takes web API types from the web
+worker libraries, so worker-scope globals such as `self` and `location` are
+not rejected there.  Runtime-neutral
+code that detects Deno declares the part of the `Deno` global it uses at
+module scope instead of loading Deno's types.
+
+Workspace packages resolve through their built declarations, so the task
+builds the packages first.  The check is incremental: it keeps TypeScript's
+build information under *node\_modules/.cache/fedify-check-types/buildinfo/*
+and rechecks only files affected by changes since the last run.  It also fails
+when a TypeScript file under *packages/* or *scripts/* belongs to no
+type-checking project.  Code that only Deno can check, such as Deno-only
+packages, scripts that run on Deno, and `Deno.bench()` benchmarks, is assigned
+to `mise run check:types:deno` in *scripts/check\_types\_ownership.ts*, with
+the reason.  Add a file there only when the Node.js-based check cannot cover it.
+
+The task also checks the published declarations of every package: it
+generates small consumer projects that import each export by package name,
+as an ES module and, where the package supports `require()`, as a CommonJS
+module, and type-checks them with `skipLibCheck` disabled for Fedify's own
+declarations.  Declaration defects found when the check was introduced are
+listed, with reasons, in `KNOWN_DECLARATION_PROBLEMS` in
+*scripts/check\_types.ts*; remove an entry when fixing its defect, since a
+stale entry fails the check.
 
 ### Running the CLI
 
@@ -530,11 +585,13 @@ A new package requires these updates:
 
 1.  Add the package directory and its metadata.  Published npm packages need a
     `repository` field for provenance.
-2.  Add the package path to the `workspace` array in the root *deno.json* when
+2.  Add a *tsconfig.check.json* that extends the environment preset matching
+    the package, as described in “Type checking.”
+3.  Add the package path to the `workspace` array in the root *deno.json* when
     Deno should include it.
-3.  Add the path to `packages` in *pnpm-workspace.yaml*.
-4.  Add the package to the table in *README.md*.
-5.  Add its path and owners to *.github/CODEOWNERS*.
+4.  Add the path to `packages` in *pnpm-workspace.yaml*.
+5.  Add the package to the table in *README.md*.
+6.  Add its path and owners to *.github/CODEOWNERS*.
 
 Some packages need more updates:
 

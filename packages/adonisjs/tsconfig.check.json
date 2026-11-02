@@ -1,0 +1,18 @@
+// Reuses the package's own configuration, which AdonisJS tooling also reads.
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "index.ts",
+    "configure.ts",
+    "providers/**/*.ts",
+    "services/**/*.ts",
+    "src/**/*.ts",
+    "stubs/main.ts",
+    "tsdown.config.ts"
+  ],
+  "exclude": [
+    "dist",
+    "dist-tests",
+    "node_modules"
+  ]
+}

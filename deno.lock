@@ -189,7 +189,7 @@
     "npm:temporal-polyfill@^1.0.1": "1.0.1",
     "npm:tsdown@0.22": "0.22.0_tsx@4.21.0_typescript@6.0.3",
     "npm:tsx@^4.21.0": "4.21.0",
-    "npm:typescript@6": "6.0.3",
+    "npm:typescript@^6.0.3": "6.0.3",
     "npm:undici@^7.30.1": "7.30.1",
     "npm:uri-template-router@1": "1.0.0",
     "npm:url-template@^3.1.1": "3.1.1",
@@ -16793,7 +16793,7 @@
       "npm:reflect-metadata@~0.2.2",
       "npm:temporal-polyfill@^1.0.1",
       "npm:tsdown@0.22",
-      "npm:typescript@6",
+      "npm:typescript@^6.0.3",
       "npm:yaml@^2.9.0"
     ],
     "members": {

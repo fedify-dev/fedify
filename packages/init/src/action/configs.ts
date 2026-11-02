@@ -10,7 +10,6 @@ import {
   map,
   pick,
   pipe,
-  prop,
   toArray,
   uniq,
   unless,
@@ -122,13 +121,9 @@ const getDenoVersionFromCommand = (): string | null => {
   }
 };
 
-const getDenoVersionFromRuntime = (): string | null =>
-  pipe(
-    globalThis,
-    prop("Deno"),
-    prop("version"),
-    prop("deno"),
-  );
+const getDenoVersionFromRuntime = (): string | undefined =>
+  (globalThis as { Deno?: { version?: { deno?: string } } }).Deno?.version
+    ?.deno;
 
 const parseVersion: (match: string) => Version | null = (deno: string) =>
   pipe(

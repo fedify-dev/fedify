@@ -1,0 +1,11 @@
+// The adapters run on Cloudflare Workers.  Tests under test/ are checked by
+// tsconfig.check.test.json, and build tooling by tsconfig.check.node.json.
+{
+  "extends": "../../tsconfig.workers.json",
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "dist",
+    "dist-tests",
+    "node_modules"
+  ]
+}

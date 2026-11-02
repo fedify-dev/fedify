@@ -336,7 +336,7 @@ export default withMermaid(defineConfig({
     // tooltips, and Shiki 3 (VitePress 2) throws on a not-yet-loaded language
     // instead of lazily loading it the way the old highlighter did.  Loading a
     // canonical grammar also registers its aliases (e.g. "javascript" covers
-    // "js", "bash" covers "sh").
+    // "js", "bash" covers "sh", "shellsession" covers "console").
     languages: [
       "javascript",
       "jsx",
@@ -345,6 +345,7 @@ export default withMermaid(defineConfig({
       "json",
       "jsonc",
       "bash",
+      "shellsession",
       "html",
       "css",
       "scss",

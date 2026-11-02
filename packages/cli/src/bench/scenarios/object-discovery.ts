@@ -7,6 +7,7 @@
 import { convertUrlIfHandle } from "../../webfinger/lib.ts";
 import { asList } from "../scenario/coerce.ts";
 import type { ObjectSource } from "../scenario/types.ts";
+import type { FetchFunction } from "../fetch.ts";
 
 const ACTIVITY_JSON_ACCEPT = "application/activity+json, application/ld+json";
 const WEBFINGER_ACCEPT = "application/jrd+json, application/json";
@@ -48,7 +49,7 @@ const ACTIVITY_WRAPPER_TYPES = new Set([
  */
 export interface ActorUrlOptions {
   readonly target: URL;
-  readonly fetch?: typeof fetch;
+  readonly fetch?: FetchFunction;
   readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
 }
 
@@ -129,7 +130,7 @@ async function actorUrlFromRecipient(
 async function* crawlCollection(
   start: URL,
   options: {
-    readonly fetch?: typeof fetch;
+    readonly fetch?: FetchFunction;
     readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
     readonly types: ReadonlySet<string>;
     readonly limit: number;
@@ -167,7 +168,7 @@ async function* crawlCollection(
 
 async function fetchJson(
   url: URL,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: FetchFunction = fetch,
   accept = ACTIVITY_JSON_ACCEPT,
 ): Promise<Record<string, unknown>> {
   const response = await fetchImpl(
@@ -196,7 +197,7 @@ async function objectUrl(
   item: unknown,
   options: {
     readonly base: URL;
-    readonly fetch?: typeof fetch;
+    readonly fetch?: FetchFunction;
     readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
     readonly types: ReadonlySet<string>;
   },
@@ -226,7 +227,7 @@ async function objectUrl(
 async function typedReferencedObjectUrl(
   url: URL,
   options: {
-    readonly fetch?: typeof fetch;
+    readonly fetch?: FetchFunction;
     readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
     readonly types: ReadonlySet<string>;
   },

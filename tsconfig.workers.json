@@ -1,0 +1,9 @@
+// Cloudflare Workers environment: Workers runtime globals only, without
+// Node.js globals.  Code that relies on the nodejs_compat flag adds "node"
+// to its own configuration explicitly.
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types"]
+  }
+}

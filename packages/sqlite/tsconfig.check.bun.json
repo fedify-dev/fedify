@@ -1,0 +1,5 @@
+// The Bun-specific SQLite driver, checked with Bun's types only.
+{
+  "extends": "../../tsconfig.bun.json",
+  "include": ["src/sqlite.bun.ts"]
+}

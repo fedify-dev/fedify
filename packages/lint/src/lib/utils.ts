@@ -17,11 +17,12 @@ export function getProp<T extends PropertyKey>(
 export function getPropOr<T extends PropertyKey, V>(
   key: T,
   defaultValue?: V,
-): <S extends unknown>(obj: S) => T extends keyof S ? S[T] : V {
+): <S extends unknown>(obj: S) => PropOr<T, S, V> {
   return <S extends unknown>(obj: S) =>
-    ((obj as Record<T, unknown>)[key] ?? defaultValue) as //
-    (T extends keyof S ? S[T] : V);
+    ((obj as Record<T, unknown>)[key] ?? defaultValue) as PropOr<T, S, V>;
 }
+
+type PropOr<T extends PropertyKey, S, V> = T extends keyof S ? S[T] : V;
 
 export const eq = <T, S extends T>(value: S) => (other: T): boolean =>
   value === other;

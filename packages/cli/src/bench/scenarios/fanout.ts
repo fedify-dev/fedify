@@ -24,6 +24,7 @@ import {
   type RunContext,
   type ScenarioRunner,
 } from "./runner.ts";
+import type { FetchFunction } from "../fetch.ts";
 
 const DEFAULT_FOLLOWERS = 5;
 const DEFAULT_DRAIN_TIMEOUT_MS = 60_000;
@@ -331,7 +332,7 @@ interface DrainResult {
 
 async function waitForDrain(options: {
   readonly target: URL;
-  readonly fetch: typeof fetch;
+  readonly fetch: FetchFunction;
   readonly baseline: Awaited<ReturnType<typeof fetchServerSnapshot>>;
   readonly clock: Clock;
   readonly signal?: AbortSignal;

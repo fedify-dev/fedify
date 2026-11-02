@@ -1,0 +1,13 @@
+// The Cloudflare Workers test harness.  It runs with the nodejs_compat flag
+// (see wrangler.toml) and imports node:async_hooks, so it also needs Node.js
+// types, as Cloudflare documents for nodejs_compat.
+{
+  "extends": "../../tsconfig.workers.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types", "node"]
+  },
+  "include": [
+    "src/cfworkers/runner.ts",
+    "src/cfworkers/selftest.ts"
+  ]
+}

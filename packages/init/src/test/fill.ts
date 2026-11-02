@@ -24,6 +24,11 @@ export const fillEmptyOptions = <T extends TestInitCommand>(
     fillRunMode,
   ) as DefineAllOptions<T>;
 
+type FilledOption<T extends TestInitCommand, K extends MultipleOption> =
+  T extends Awaited<DefineOption<T, infer J>> | DefineOption<T, infer J>
+    ? DefineOption<T, J | K>
+    : DefineOption<T, K>;
+
 const fillOption = <
   K extends MultipleOption,
   AllValues = TestInitCommand[K] extends readonly (infer U)[] ? (U & string)[]
@@ -34,9 +39,7 @@ const fillOption = <
 ) =>
 <T extends TestInitCommand>(
   options: T,
-): T extends Awaited<DefineOption<T, infer J>> | DefineOption<T, infer J>
-  ? DefineOption<T, J | K>
-  : DefineOption<T, K> =>
+): FilledOption<T, K> =>
   ({
     ...options,
     [key]: isEmpty(options[key])
@@ -44,9 +47,7 @@ const fillOption = <
       : (options[key].filter((i) =>
         (allValues as readonly unknown[]).includes(i)
       ) as T[K]),
-  }) as T extends Awaited<DefineOption<T, infer J>> | DefineOption<T, infer J>
-    ? DefineOption<T, J | K>
-    : DefineOption<T, K>;
+  }) as FilledOption<T, K>;
 
 const fillWebFramework = fillOption("webFramework", WEB_FRAMEWORK);
 const fillPackageManager = fillOption("packageManager", PACKAGE_MANAGER);

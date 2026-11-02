@@ -27,7 +27,13 @@ export class SqliteStatement implements SqliteStatementAdapter {
   constructor(private readonly stmt: Statement) {}
 
   run(...params: unknown[]): { changes: number; lastInsertRowid: number } {
-    return this.stmt.run(...params);
+    // Bun types lastInsertRowid as number | bigint; it is a bigint only when
+    // the given Database enables safeIntegers.  The adapter interface keeps
+    // the number type that node:sqlite returns by default:
+    return this.stmt.run(...params) as {
+      changes: number;
+      lastInsertRowid: number;
+    };
   }
 
   get(...params: unknown[]): unknown | undefined {

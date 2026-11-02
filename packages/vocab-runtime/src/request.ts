@@ -209,8 +209,11 @@ export function getUserAgent(
   { software, url }: GetUserAgentOptions = {},
 ): string {
   const fedify = `Fedify/${metadata.version}`;
-  const runtime = globalThis.Deno?.version?.deno != null
-    ? `Deno/${Deno.version.deno}`
+  // Typed structurally so that this module does not depend on Deno's
+  // ambient types:
+  const deno = (globalThis as { Deno?: { version?: { deno?: string } } }).Deno;
+  const runtime = deno?.version?.deno != null
+    ? `Deno/${deno.version.deno}`
     : globalThis.process?.versions?.bun != null
     ? `Bun/${process.versions.bun}`
     : "navigator" in globalThis &&

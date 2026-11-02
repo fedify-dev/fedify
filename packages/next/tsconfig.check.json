@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.node.json",
+  "compilerOptions": {
+    "module": "preserve",
+    // next has no exports map, so its subpaths resolve only with bundler
+    // resolution, which is what Next.js applications use.
+    "moduleResolution": "bundler"
+  },
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
+  "exclude": [
+    "dist",
+    "dist-tests",
+    "node_modules"
+  ]
+}

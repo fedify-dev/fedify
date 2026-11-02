@@ -1,7 +1,7 @@
 /** @jsx react-jsx */
 /** @jsxImportSource hono/jsx */
 import type { LogRecord } from "@logtape/logtape";
-import { getStatusText } from "@poppanator/http-constants";
+import { getStatusText } from "@poppanator/http-constants/functions";
 import { type FC, Fragment, type PropsWithChildren } from "hono/jsx";
 import { getSingletonHighlighter } from "shiki";
 import util from "node:util";

@@ -1,4 +1,4 @@
-import { defineConfig } from "tsdown";
+import { defineConfig, type UserConfig } from "tsdown";
 
 /**
  * Build configuration for `@fedify/adonisjs`, following the Fedify
@@ -23,7 +23,7 @@ import { defineConfig } from "tsdown";
  * is an entry because `configure.ts` resolves the stub templates relative to
  * the compiled location of that module.
  */
-export default defineConfig({
+const config: UserConfig = defineConfig({
   entry: [
     "index.ts",
     "configure.ts",
@@ -80,3 +80,5 @@ export default defineConfig({
   clean: true,
   unbundle: true,
 });
+
+export default config;

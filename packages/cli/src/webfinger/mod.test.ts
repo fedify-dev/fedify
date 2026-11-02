@@ -66,7 +66,7 @@ for (
     const originalFetch = globalThis.fetch;
     const originalWrite = process.stdout.write;
     let output = "";
-    globalThis.fetch = (input, init) => {
+    globalThis.fetch = ((input, init) => {
       requests.push({
         url: String(input),
         userAgent: new Headers(init?.headers).get("User-Agent"),
@@ -76,7 +76,7 @@ for (
           headers: { "Content-Type": "application/jrd+json" },
         }),
       );
-    };
+    }) as typeof fetch;
     process.stdout.write = function (...args) {
       output += String(args[0]);
       return Reflect.apply(originalWrite, this, args);
@@ -208,7 +208,7 @@ test("Test lookupSingleWebFinger", async (): Promise<void> => {
   };
 
   // Correct async fetch mock returning Promise<Response>
-  globalThis.fetch = async (
+  globalThis.fetch = (async (
     input: RequestInfo | URL,
   ): Promise<Response> => {
     await Promise.resolve();
@@ -226,7 +226,7 @@ test("Test lookupSingleWebFinger", async (): Promise<void> => {
     }
 
     throw new Error(`Unexpected URL: ${url}`);
-  };
+  }) as typeof fetch;
 
   try {
     const results = await Array.fromAsync(
@@ -278,7 +278,8 @@ for (
   test(`Test lookupSingleWebFinger - ${name}`, async () => {
     const resource = "acct:alice@example.com";
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = () => Promise.resolve(response());
+    globalThis.fetch = ((_input, _init) =>
+      Promise.resolve(response())) as typeof fetch;
     try {
       await assert.rejects(
         () => lookupSingleWebFinger({ resource, allowPrivateAddresses: true }),
@@ -306,7 +307,9 @@ test("Test lookupSingleWebFinger - a network failure is distinguished from not f
   // Mocked lookups skip DNS by passing allowPrivateAddresses, same as the
   // upstream fix for issue #1273 (0bece1f8e): a real DNS lookup for a public
   // hostname should not be part of a unit test.
-  globalThis.fetch = () => Promise.reject(new TypeError("network down"));
+  globalThis.fetch =
+    ((_input, _init) =>
+      Promise.reject(new TypeError("network down"))) as typeof fetch;
   try {
     await assert.rejects(
       () => lookupSingleWebFinger({ resource, allowPrivateAddresses: true }),

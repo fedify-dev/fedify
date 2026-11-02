@@ -13,6 +13,7 @@ import type { LoadPlan, SendFunction, SendOutcome } from "../load/generator.ts";
 import type { ResolvedScenario } from "../scenario/normalize.ts";
 import type { ScenarioMeasurement } from "../result/build.ts";
 import type { SyntheticServer } from "../server/synthetic.ts";
+import type { FetchFunction } from "../fetch.ts";
 
 /** The context a scenario runner needs to execute. */
 export interface RunContext {
@@ -30,7 +31,7 @@ export interface RunContext {
   /** RNG override for Poisson arrivals. */
   readonly rng?: Rng;
   /** Fetch implementation (overridable for tests). */
-  readonly fetch?: typeof fetch;
+  readonly fetch?: FetchFunction;
   /** Aborts in-flight benchmark work when the orchestrator is interrupted. */
   readonly signal?: AbortSignal;
   /** Host advertised for local benchmark-owned servers. */
@@ -84,7 +85,7 @@ export interface ScenarioRunner {
 /** Performs one HTTP send and classifies the result as a send outcome. */
 export async function sendRequest(
   request: Request,
-  fetchImpl: typeof fetch,
+  fetchImpl: FetchFunction,
 ): Promise<SendOutcome> {
   // Never follow redirects: a redirect could carry signed benchmark load to a
   // host the safety gate never classified, so treat any redirect as a failed

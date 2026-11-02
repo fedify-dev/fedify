@@ -17,6 +17,7 @@
 
 import { STATS_PATH } from "../discovery/probe.ts";
 import type { PartialLatencyMs, ServerMetrics } from "../result/model.ts";
+import type { FetchFunction } from "../fetch.ts";
 
 interface OtelHistogram {
   readonly buckets?: {
@@ -200,7 +201,7 @@ export function parseServerMetrics(snapshot: unknown): ServerMetrics | null {
  */
 export async function fetchServerSnapshot(
   target: URL,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: FetchFunction = fetch,
 ): Promise<ServerSnapshot | null> {
   try {
     // Do not follow redirects: the stats reading must come from the target
@@ -223,7 +224,7 @@ export async function fetchServerSnapshot(
  */
 export async function fetchServerMetrics(
   target: URL,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: FetchFunction = fetch,
 ): Promise<ServerMetrics | null> {
   return snapshotToMetrics(await fetchServerSnapshot(target, fetchImpl));
 }

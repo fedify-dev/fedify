@@ -50,6 +50,7 @@ import {
   type SyntheticServer,
 } from "./server/synthetic.ts";
 import { convertUrlIfHandle } from "../webfinger/lib.ts";
+import type { FetchFunction } from "./fetch.ts";
 
 type BenchRunRuntimeCommand = BenchRunCommand & {
   readonly explicitCliTarget?: boolean;
@@ -67,7 +68,7 @@ export interface RunBenchDeps {
   /** Emits a progress line (to standard error by default). */
   readonly log?: (message: string) => void;
   /** Fetch implementation. */
-  readonly fetch?: typeof fetch;
+  readonly fetch?: FetchFunction;
   /** Hostname resolver used for target risk classification. */
   readonly resolveTargetAddresses?: ResolveTargetAddresses;
   /** Aborts in-flight benchmark work. */
@@ -393,14 +394,10 @@ export default async function runBench(
  * @returns A fetch implementation that injects the User-Agent.
  */
 export function withUserAgent(
-  fetchImpl: typeof fetch,
+  fetchImpl: FetchFunction,
   userAgent: string,
-): typeof fetch {
-  // Cast the wrapper to `typeof fetch`: the standard contract it implements is a
-  // subset of the runtime's overloaded fetch type (which carries extra non-
-  // standard overloads), so the assignment is sound but not structurally
-  // inferable.
-  return ((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+): FetchFunction {
+  return (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     if (input instanceof Request && init === undefined) {
       if (input.headers.has("user-agent")) return fetchImpl(input);
       try {
@@ -418,18 +415,18 @@ export function withUserAgent(
     );
     if (!headers.has("user-agent")) headers.set("user-agent", userAgent);
     return fetchImpl(input, { ...init, headers });
-  }) as typeof fetch;
+  };
 }
 
 function withAbortSignal(
-  fetchImpl: typeof fetch,
+  fetchImpl: FetchFunction,
   signal: AbortSignal | undefined,
-): typeof fetch {
+): FetchFunction {
   if (signal == null) return fetchImpl;
-  return ((input: URL | RequestInfo, init?: RequestInit) => {
+  return (input: URL | RequestInfo, init?: RequestInit) => {
     if (signal.aborted) return Promise.reject(abortReason(signal));
     return fetchImpl(input, { ...init, signal });
-  }) as typeof fetch;
+  };
 }
 
 function throwIfAborted(signal: AbortSignal | undefined): void {
@@ -455,7 +452,7 @@ interface DryRunPlanContext {
   readonly documentLoader: DocumentLoader;
   readonly contextLoader: DocumentLoader;
   readonly allowPrivateAddress: boolean;
-  readonly fetch: typeof fetch;
+  readonly fetch: FetchFunction;
   readonly assertDestinationAllowed: (
     url: URL,
     scenario: ResolvedScenario,

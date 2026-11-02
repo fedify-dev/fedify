@@ -130,7 +130,9 @@ describe("integrateFederation()", () => {
 
     // The 406 fallback replaces Express's default 404 only after routing
     // finishes, which fallback.test.ts covers with a real application:
-    await new Promise<void>((resolve) => middleware(req, response, resolve));
+    await new Promise<void>((resolve) =>
+      middleware(req, response, () => resolve())
+    );
     await Promise.resolve();
     assert.strictEqual(endedBeforeNext, false);
     assert.strictEqual(response.statusCode, 200);

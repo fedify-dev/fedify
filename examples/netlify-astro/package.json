@@ -19,6 +19,7 @@
     "@netlify/async-workloads": "catalog:",
     "@netlify/database": "catalog:",
     "astro": "catalog:",
-    "postgres": "catalog:"
+    "postgres": "catalog:",
+    "typescript": "catalog:"
   }
 }

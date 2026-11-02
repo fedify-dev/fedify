@@ -8,8 +8,8 @@ import type {
 import { Buffer } from "node:buffer";
 
 export type ContextDataFactory<TContextData> = (
-  req: Request,
-  res: Response,
+  req: ERequest,
+  res: EResponse,
 ) => TContextData | Promise<TContextData>;
 
 // from https://github.com/fedify-dev/fedify/blob/main/express/index.ts

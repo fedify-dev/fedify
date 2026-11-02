@@ -402,7 +402,7 @@ async function withMockFetch(
 ): Promise<void> {
   const originalFetch = globalThis.fetch;
   const calls: FetchCall[] = [];
-  globalThis.fetch = (input, init) => {
+  globalThis.fetch = ((input, init) => {
     let url = typeof input === "string"
       ? input
       : input instanceof URL
@@ -424,7 +424,7 @@ async function withMockFetch(
       return Promise.resolve(response);
     }
     throw new Error("Too many mocked redirects");
-  };
+  }) as typeof fetch;
   try {
     await run(calls);
   } finally {

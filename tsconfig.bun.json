@@ -1,0 +1,9 @@
+// Bun environment, used only for *.bun.ts modules.  @types/bun changes some
+// global declarations such as fetch, so it must never be part of a Node.js
+// program.
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["bun"]
+  }
+}

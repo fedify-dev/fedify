@@ -5,11 +5,16 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "typescript": "catalog:",
+    "typescript7": "catalog:",
     "@optique/core": "catalog:",
     "@optique/run": "catalog:",
     "yaml": "catalog:",
     "cross-spawn": "catalog:",
-    "@types/cross-spawn": "catalog:"
+    "@types/cross-spawn": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "@types/bun": "catalog:",
+    "@types/deno": "catalog:",
+    "tsdown": "catalog:"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

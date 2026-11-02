@@ -1,9 +1,21 @@
 import { deepStrictEqual, equal, rejects } from "node:assert/strict";
 import { createServer } from "node:http";
 import { test } from "node:test";
-import type { Document, Image, Link } from "@fedify/vocab";
+// @fedify/vocab depends on this package, so import its source directly rather
+// than declaring a cyclic dependency:
+import type { Document, Image, Link } from "../../vocab/src/mod.ts";
 import { computeDigestMultibase, createHashlink } from "./digest.ts";
 import { fetchPortableMedia, type PortableMedia } from "./portable-media.ts";
+
+// Deno's global, declared structurally so that this test does not depend on
+// Deno's ambient types.  It is only accessed after checking that it exists.
+declare const Deno: {
+  readonly permissions: {
+    query(
+      descriptor: { readonly name: "net" },
+    ): Promise<{ readonly state: string }>;
+  };
+};
 
 const bytes = new TextEncoder().encode("portable image");
 const digest = "zQmU2Jds4B2J83K7CrYC34CEJdB6vCLyqkM2cgBxYeaNWTA";

@@ -177,6 +177,14 @@ A *package.json* is required to publish to npm.
 A *tsdown.config.ts* is required for the build in Node.js and Bun
 environments.
 
+#### `tsconfig.check.json`
+
+A *tsconfig.check.json* is required for the default type check,
+`mise run check:types`; the template files include one.
+It extends the root Node.js preset; if parts of the package target another
+runtime, add a *tsconfig.check.bun.json* or *tsconfig.check.workers.json*
+for them as described in the “Type checking” section of *CONTRIBUTING.md*.
+
 ### Other updates
 
 Refer to the “Adding a new package” section in *CONTRIBUTING.md* and
@@ -241,10 +249,11 @@ At a minimum, test the following scenarios (see
 5.  Write *package.json* (if publishing to npm is intended)
 6.  Run `mise deps`
 7.  Write *tsdown.config.ts* (if Node.js and Bun are supported)
-8.  Write tests if possible
-9.  Perform remaining updates per the “Adding a new package” section in
+8.  Write *tsconfig.check.json*
+9.  Write tests if possible
+10. Perform remaining updates per the “Adding a new package” section in
     *CONTRIBUTING.md*
-10. Record changes as a changelog fragment under *changes.d/*
+11. Record changes as a changelog fragment under *changes.d/*
 
 
 Lint, format, and final checks
