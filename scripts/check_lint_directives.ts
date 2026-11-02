@@ -92,14 +92,14 @@ export function findProblemsInText(
   for (const range of comments.values()) {
     const comment = text.slice(range.pos, range.end);
     const match = comment.match(
-      /^\/\/\s*oxlint-(disable(?:-next-line|-line)?|enable)\b([^\n]*)$/,
+      /^\/\/\s*(oxlint|eslint)-(disable(?:-next-line|-line)?|enable)\b([^\n]*)$/,
     ) ?? comment.match(
-      /^\/\*\s*oxlint-(disable(?:-next-line|-line)?|enable)\b([\s\S]*?)\*\/$/,
+      /^\/\*\s*(oxlint|eslint)-(disable(?:-next-line|-line)?|enable)\b([\s\S]*?)\*\/$/,
     );
     if (match == null) continue;
     const line = sourceFile.getLineAndCharacterOfPosition(range.pos).line + 1;
-    const directive = match[1];
-    const remainder = match[2];
+    const directive = `${match[1]}-${match[2]}`;
+    const remainder = match[3];
     const reasonIndex = remainder.indexOf(" -- ");
     const rulesText = reasonIndex === -1
       ? remainder
@@ -111,12 +111,15 @@ export function findProblemsInText(
       problems.push({
         file,
         line,
-        message: `bare oxlint-${directive} must name at least one rule`,
+        message: `bare ${directive} must name at least one rule`,
       });
       continue;
     }
     for (const name of names) {
-      if (!knownRules.has(name)) {
+      const normalized = name.startsWith("@typescript-eslint/")
+        ? `typescript/${name.slice("@typescript-eslint/".length)}`
+        : name;
+      if (!knownRules.has(normalized)) {
         problems.push({
           file,
           line,
@@ -152,7 +155,8 @@ function listFiles(root: string, paths: readonly string[]): string[] {
     /\.(?:[cm]?[jt]sx?)$/.test(path) &&
     !path.endsWith(".snap") &&
     !path.includes("/__snapshots__/") &&
-    !path.startsWith("scripts/check_lint_directives")
+    !path.startsWith("scripts/check_lint_directives") &&
+    path !== "examples/cloudflare-workers/worker-configuration.d.ts"
   );
 }
 

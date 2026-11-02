@@ -182,6 +182,32 @@ describe("findProblemsInText()", () => {
     );
   });
 
+  it("accepts @typescript-eslint rule aliases", () => {
+    deepStrictEqual(
+      findProblemsInText(
+        "example.ts",
+        "// eslint-disable-next-line @typescript-eslint/no-explicit-any\n",
+        knownRules,
+      ),
+      [],
+    );
+  });
+
+  it("rejects a bare eslint-compatible directive", () => {
+    deepStrictEqual(
+      findProblemsInText(
+        "example.ts",
+        "/* eslint-disable */\nexport const value: any = 1;\n",
+        knownRules,
+      ),
+      [{
+        file: "example.ts",
+        line: 1,
+        message: "bare eslint-disable must name at least one rule",
+      }],
+    );
+  });
+
   it("rejects a block bare disable comment", () => {
     deepStrictEqual(
       findProblemsInText(
