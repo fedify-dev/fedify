@@ -165,11 +165,15 @@ const checkBranchWith =
   (propertyChecker: PropertyChecker) => (branch: Expression): boolean => {
     const expression = unwrapTypeScriptExpression(branch);
 
-    // A null return means that no actor was found, so there is no actor object
-    // whose properties need to be checked. A Tombstone return means the actor
-    // was deleted, which ActorDispatcher explicitly permits, so it likewise
-    // has no actor properties to check.
-    if (isNullLiteral(expression) || isTombstoneExpression(expression)) {
+    // A null or undefined return means that no actor was found, so there is
+    // no actor object whose properties need to be checked. A Tombstone return
+    // means the actor was deleted, which ActorDispatcher explicitly permits,
+    // so it likewise has no actor properties to check.
+    if (
+      isNullLiteral(expression) ||
+      isUndefinedExpression(expression) ||
+      isTombstoneExpression(expression)
+    ) {
       return true;
     }
 
@@ -222,16 +226,12 @@ const extractObjectExpression: (arg: Expression) => ObjectExpression | null =
  * @returns A function that checks the ReturnStatement
  */
 const checkReturnStatement =
-  (propertyChecker: PropertyChecker) => (node: ReturnStatement) =>
-    pipe(
-      node,
-      prop("argument"),
-      cases<Expression, null | undefined, boolean>(
-        isObject,
-        checkBranchWith(propertyChecker),
-        always(false),
-      ),
-    );
+  (propertyChecker: PropertyChecker) => (node: ReturnStatement) => {
+    // A bare return is equivalent to `return undefined`, which means no actor
+    // was found rather than an actor missing its properties.
+    if (node.argument == null) return true;
+    return checkBranchWith(propertyChecker)(node.argument);
+  };
 
 /**
  * Creates a function that recursively checks for a property in an AST node.

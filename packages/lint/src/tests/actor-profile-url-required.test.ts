@@ -42,6 +42,60 @@ runTests(ruleName, {
   }, config),
   ...createRequiredEdgeCaseTests("url", config),
 
+  // ✅ Good - a bare return means no actor was found
+  "bare return": [
+    lintTest({
+      code: blockBody(`return;`),
+      rule,
+      ruleName,
+    }),
+    true,
+  ],
+
+  // ✅ Good - an explicit undefined return means no actor was found
+  "return undefined": [
+    lintTest({
+      code: blockBody(`return undefined;`),
+      rule,
+      ruleName,
+    }),
+    true,
+  ],
+
+  // ✅ Good - a void return means no actor was found
+  "return void": [
+    lintTest({
+      code: blockBody(`return void 0;`),
+      rule,
+      ruleName,
+    }),
+    true,
+  ],
+
+  // ✅ Good - a ternary with an undefined branch and an actor with a URL
+  "ternary with undefined and actor with url": [
+    lintTest({
+      code: blockBody(
+        `return condition
+      ? undefined
+      : new Person({ url: ${PROFILE_URL}, name: "John Doe" });`,
+      ),
+      rule,
+      ruleName,
+    }),
+    true,
+  ],
+
+  // ✅ Good - concise-body dispatcher returning undefined
+  "concise-body dispatcher returning undefined": [
+    lintTest({
+      code: conciseBody(`undefined`),
+      rule,
+      ruleName,
+    }),
+    true,
+  ],
+
   // ✅ Good - quoted property keys are still recognized
   "quoted url property": [
     lintTest({
