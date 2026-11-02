@@ -498,6 +498,19 @@ test("outbound preparation precedes queue acceptance and is not rewritten by enq
           await settled;
           strictEqual(messages.length, 1);
           strictEqual(messages[0].type, role);
+          const message = messages[0];
+          const identity = message.type === "fanout"
+            ? message.inboxes[recipient.inboxId!.href].outbound
+            : message.type === "outbox"
+            ? message.outbound
+            : undefined;
+          ok(identity);
+          deepStrictEqual(identity.broadcast, {
+            type: "known",
+            id: events[0].broadcastId,
+          });
+          strictEqual(identity.destinationInbox, recipient.inboxId!.href);
+          deepStrictEqual(structuredClone(identity), identity);
           strictEqual(events.length, 2);
           ok(!("observation" in messages[0]));
         },
@@ -1489,6 +1502,8 @@ test("outbound delivery observers snapshot registration and deduplicated destina
   strictEqual(sharedPlan.sharedInbox, true);
   strictEqual(sharedPlan.mode, "ordinary");
   notStrictEqual(planned[0].deliveryId, planned[1].deliveryId);
+  ok(planned[0].broadcast.type === "known");
+  ok(planned[1].broadcast.type === "known");
   strictEqual(planned[0].broadcast.id, planned[1].broadcast.id);
   for (const event of events) {
     ok(Object.isFrozen(event));
@@ -1613,7 +1628,27 @@ test("outbound delivery observers report queue acceptance separately from produc
                 ),
               );
             }
+            ok(event.broadcast.type === "known");
             strictEqual(event.broadcast.id, broadcasts[0].broadcastId);
+            const message = messages.find((message) =>
+              message.type === "fanout"
+                ? event.destinationInbox in message.inboxes
+                : message.type === "outbox" &&
+                  message.inbox === event.destinationInbox
+            );
+            ok(message);
+            const identity = message.type === "fanout"
+              ? message.inboxes[event.destinationInbox].outbound
+              : message.type === "outbox"
+              ? message.outbound
+              : undefined;
+            deepStrictEqual(identity, {
+              broadcast: event.broadcast,
+              deliveryId: event.deliveryId,
+              destinationInbox: event.destinationInbox,
+            });
+            deepStrictEqual(JSON.parse(JSON.stringify(identity)), identity);
+            deepStrictEqual(structuredClone(identity), identity);
             strictEqual(
               event.deliveryId,
               planned.find((plan) =>
@@ -1662,4 +1697,167 @@ test("outbound delivery observers retain accepted handoffs after bookkeeping fai
   const event = events[1];
   ok(event.stage === "handoff");
   ok(event.result.type === "enqueued");
+});
+
+test("outbound queue identities survive fanout replay and legacy messages", async (t) => {
+  for (const legacy of [false, true]) {
+    await t.step(
+      legacy ? "legacy fanout" : "serialized producer identities",
+      async () => {
+        const fanouts: Message[] = [];
+        const outboxes: Message[] = [];
+        const recordingQueue = (messages: Message[]): MessageQueue => ({
+          enqueue(message) {
+            messages.push(message);
+            return Promise.resolve();
+          },
+          listen: () => Promise.resolve(),
+        });
+        const federation = createFederation<void>({
+          ...options,
+          kv: new MemoryKvStore(),
+          manuallyStartQueue: true,
+          queue: {
+            fanout: recordingQueue(fanouts),
+            outbox: recordingQueue(outboxes),
+          },
+        });
+        const broadcasts: OutboundBroadcastEvent[] = [];
+        // Identity propagation also works when only the broadcast callback exists.
+        federation.setOutboundObservers({
+          onBroadcast(_ctx, event) {
+            broadcasts.push(event);
+          },
+        });
+        const ctx = federation.createContext(
+          new URL("https://example.com"),
+          undefined,
+        );
+        const targets = [
+          recipient,
+          recipient.clone({
+            inbox: new URL("https://receiver.example/second"),
+          }),
+        ];
+        await ctx.sendActivity(sender, targets, activity, { fanout: "force" });
+        const message = fanouts[0];
+        ok(message?.type === "fanout");
+        const original = structuredClone(message);
+        if (legacy) {
+          for (
+            const entry of Object.values(message.inboxes)
+          ) delete (entry as { outbound?: unknown }).outbound;
+        }
+        const events: OutboundDeliveryEvent[] = [];
+        let newBroadcasts = 0;
+        federation.setOutboundObservers({
+          onBroadcast() {
+            newBroadcasts++;
+          },
+          onDelivery(_ctx, event) {
+            events.push(event);
+          },
+        });
+        await federation.processQueuedTask(
+          undefined,
+          JSON.parse(JSON.stringify(message)),
+        );
+        // Preserve metadata even when the consumer's callbacks are disabled.
+        if (!legacy) federation.setOutboundObservers({});
+        await federation.processQueuedTask(undefined, structuredClone(message));
+        strictEqual(newBroadcasts, 0);
+        strictEqual(outboxes.length, 4);
+        strictEqual(new Set(outboxes.map((message) => message.id)).size, 4);
+        const identities = new Set<string>();
+        for (const inbox of Object.keys(message.inboxes)) {
+          const children = outboxes.filter((message) =>
+            message.type === "outbox" && message.inbox === inbox
+          );
+          strictEqual(children.length, 2);
+          ok(children[0].type === "outbox" && children[1].type === "outbox");
+          const identity = children[0].outbound;
+          ok(identity);
+          identities.add(identity.deliveryId);
+          deepStrictEqual(children[1].outbound, identity);
+          strictEqual(identity.destinationInbox, inbox);
+          deepStrictEqual(
+            identity.broadcast,
+            legacy
+              ? { type: "unknown" }
+              : { type: "known", id: broadcasts[0].broadcastId },
+          );
+          if (!legacy) {
+            deepStrictEqual(identity, original.inboxes[inbox].outbound);
+          }
+          for (
+            const event of events.filter((event) =>
+              event.destinationInbox === inbox
+            )
+          ) {
+            strictEqual(event.stage, "handoff");
+            strictEqual(event.deliveryId, identity.deliveryId);
+            deepStrictEqual(event.broadcast, identity.broadcast);
+            ok(event.stage === "handoff" && event.result.type === "enqueued");
+            const queueMessageId = event.result.queueMessageId;
+            ok(children.some((child) => child.id === queueMessageId));
+          }
+        }
+        strictEqual(identities.size, 2);
+        strictEqual(events.length, legacy ? 4 : 2);
+        if (!legacy) {
+          const invalid = structuredClone(original);
+          const first = Object.values(invalid.inboxes)[0];
+          ok(first.outbound);
+          Object.assign(first.outbound, { deliveryId: "" });
+          await rejects(
+            federation.processQueuedTask(undefined, invalid),
+            TypeError,
+          );
+          strictEqual(outboxes.length, 4);
+        }
+      },
+    );
+  }
+});
+
+test("outbound observers preserve processing of legacy outbox messages", async () => {
+  const messages: Message[] = [];
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    allowPrivateAddress: true,
+    manuallyStartQueue: true,
+    queue: {
+      outbox: {
+        enqueue(message) {
+          messages.push(message);
+          return Promise.resolve();
+        },
+        listen: () => Promise.resolve(),
+      },
+    },
+  });
+  const ctx = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  await ctx.sendActivity(sender, recipient, activity, { fanout: "skip" });
+  const message = messages[0];
+  ok(message?.type === "outbox");
+  strictEqual(message.outbound, undefined);
+  federation.setOutboundObservers({
+    onDelivery() {
+      throw new Error("unused worker observer");
+    },
+  });
+  fetchMock.mockGlobal().post(recipient.inboxId!.href, 202);
+  try {
+    await federation.processQueuedTask(
+      undefined,
+      JSON.parse(JSON.stringify(message)),
+    );
+    strictEqual(fetchMock.callHistory.calls().length, 1);
+    strictEqual(messages.length, 1);
+  } finally {
+    fetchMock.hardReset();
+  }
 });

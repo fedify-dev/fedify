@@ -1,6 +1,6 @@
 import {
   observeOutboundBroadcast,
-  type OutboundBroadcastObservation,
+  OutboundBroadcastObservation,
 } from "./outbound-observation.ts";
 import { InboxObservation } from "./inbox-observation.ts";
 import { type Path, RouterError } from "@fedify/uri-template";
@@ -1389,6 +1389,7 @@ export class FederationImpl<TContextData>
     data: TContextData,
     message: FanoutMessage,
   ): Promise<void> {
+    const observers = this.outboundObservers;
     const logger = getLogger(["fedify", "federation", "fanout"]);
     logger.debug(
       "Fanning out activity {activityId} to {inboxes} inbox(es)...",
@@ -1424,11 +1425,17 @@ export class FederationImpl<TContextData>
         }),
       },
     );
+    const observation = await OutboundBroadcastObservation.resumeFanout(
+      context,
+      observers,
+      message,
+    );
     await this.sendActivity(keys, message.inboxes, activity, {
       collectionSync: message.collectionSync,
       orderingKey: message.orderingKey,
       normalizeExistingProofs: message.normalizeExistingProofs,
       activityJsonLd: message.activity,
+      observation,
       context,
     });
   }
@@ -3400,6 +3407,7 @@ export class FederationImpl<TContextData>
           activityId: activity.id?.href,
           activityType: getTypeId(activity).href,
           inbox,
+          ...observation?.continuation(inbox),
           sharedInbox: inboxes[inbox].sharedInbox,
           actorIds: [...inboxes[inbox].actorIds],
           started: new Date().toISOString(),
@@ -6015,6 +6023,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           [k, { actorIds, sharedInbox, portableInbox, gatewayInboxes }],
         ) => [k, {
           actorIds: [...actorIds],
+          ...observation?.continuation(k),
           sharedInbox,
           ...getPortableMessageFields(portableInbox, gatewayInboxes),
         }]),
@@ -7091,6 +7100,7 @@ async function forwardActivityInternal<TContextData>(
         activityId: ctx.activityId,
         activityType: ctx.activityType,
         inbox,
+        ...observation?.continuation(inbox),
         sharedInbox: inboxes[inbox].sharedInbox,
         actorIds: [...inboxes[inbox].actorIds],
         started,

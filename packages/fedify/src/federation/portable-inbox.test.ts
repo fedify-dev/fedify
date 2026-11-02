@@ -2432,6 +2432,21 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
         assertEquals(message.activity, json);
         assertEquals(message.keys, []);
         assertFalse("broadcastId" in message);
+        const plan = deliveries.find((event) =>
+          event.stage === "planned" && event.destinationInbox === message.inbox
+        );
+        assert(plan);
+        assertEquals(message.outbound, {
+          broadcast: plan.broadcast,
+          deliveryId: plan.deliveryId,
+          destinationInbox: plan.destinationInbox,
+          portableInbox: plan.portableInbox,
+        });
+        assertEquals(
+          JSON.parse(JSON.stringify(message.outbound)),
+          message.outbound,
+        );
+        assertEquals(structuredClone(message.outbound), message.outbound);
       }
       assertEquals(
         deliveries.filter((event) => event.stage === "planned").length,

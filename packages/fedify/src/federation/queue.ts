@@ -1,6 +1,16 @@
 import type { SerializedInboxAuthentication } from "./inbox-authentication.ts";
 import type { SerializedVerifiedActivityView } from "./inbox-view.ts";
 
+/** Serializable grouping facts, separate from queue task identity. @internal */
+export interface SerializedOutboundDelivery {
+  readonly broadcast:
+    | { readonly type: "known"; readonly id: string }
+    | { readonly type: "unknown" };
+  readonly deliveryId: string;
+  readonly destinationInbox: string;
+  readonly portableInbox?: string;
+}
+
 export interface SenderKeyJwkPair {
   readonly keyId: string;
   readonly privateKey: JsonWebKey;
@@ -32,6 +42,8 @@ export interface FanoutMessage {
       {
         readonly actorIds: readonly string[];
         readonly sharedInbox: boolean;
+        /** Optional for continuations created before outbound observation. */
+        readonly outbound?: SerializedOutboundDelivery;
         /**
          * The canonical form of the FEP-ef61 portable inbox that the inbox
          * stands for.
@@ -67,6 +79,8 @@ export interface FanoutMessage {
 export interface OutboxMessage {
   readonly type: "outbox";
   readonly id: ReturnType<typeof crypto.randomUUID>;
+  /** Original delivery identity; absent on legacy/unobserved producers. */
+  readonly outbound?: SerializedOutboundDelivery;
   readonly baseUrl: string;
   readonly keys: readonly SenderKeyJwkPair[];
   readonly activity: unknown;

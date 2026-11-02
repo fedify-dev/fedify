@@ -721,6 +721,7 @@ async function enqueueForwarding<TContextData>(
         activityId: activityId.href,
         activityType,
         inbox: inbox.href,
+        ...observation?.continuation(inbox.href),
         sharedInbox: false,
         started,
         attempt: 0,

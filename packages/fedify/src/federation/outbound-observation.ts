@@ -1,5 +1,7 @@
+import { encodeHex } from "byte-encodings/hex";
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "./context.ts";
+import type { FanoutMessage, SerializedOutboundDelivery } from "./queue.ts";
 import type {
   OutboundBroadcastEvent,
   OutboundDeliveryEvent,
@@ -17,6 +19,62 @@ interface PlannedDestination {
   readonly sharedInbox: boolean;
   readonly portableInbox?: string;
   readonly mode?: "portable-replication";
+}
+
+function snapshotDeliveryIdentity(
+  identity: SerializedOutboundDelivery,
+): SerializedOutboundDelivery {
+  if (
+    identity == null || typeof identity.deliveryId !== "string" ||
+    identity.deliveryId.length < 1 ||
+    typeof identity.destinationInbox !== "string" ||
+    identity.destinationInbox.length < 1 ||
+    identity.broadcast == null ||
+    !(identity.broadcast.type === "unknown" ||
+      identity.broadcast.type === "known" &&
+        typeof identity.broadcast.id === "string" &&
+        identity.broadcast.id.length > 0) ||
+    !(identity.portableInbox == null ||
+      typeof identity.portableInbox === "string")
+  ) {
+    throw new TypeError(
+      "Invalid outbound delivery identity in queue metadata.",
+    );
+  }
+  return Object.freeze({
+    broadcast: Object.freeze(
+      identity.broadcast.type === "known"
+        ? { type: "known" as const, id: identity.broadcast.id }
+        : { type: "unknown" as const },
+    ),
+    deliveryId: identity.deliveryId,
+    destinationInbox: identity.destinationInbox,
+    ...(identity.portableInbox == null
+      ? {}
+      : { portableInbox: identity.portableInbox }),
+  });
+}
+
+async function legacyFanoutIdentity(
+  taskId: string,
+  inbox: string,
+  portableInbox?: string,
+): Promise<SerializedOutboundDelivery> {
+  // A legacy task establishes destination obligations, not its originating
+  // invocation. JSON tuple encoding keeps different task/destination pairs
+  // unambiguous; hashing keeps the derived identity opaque and bounded.
+  const bytes = new TextEncoder().encode(JSON.stringify([
+    "fedify-legacy-fanout-delivery",
+    taskId,
+    inbox,
+  ]));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return {
+    broadcast: { type: "unknown" },
+    deliveryId: `legacy-fanout:${encodeHex(new Uint8Array(digest))}`,
+    destinationInbox: inbox,
+    ...(portableInbox == null ? {} : { portableInbox }),
+  };
 }
 
 async function notifyObserver<TContextData, TEvent>(
@@ -45,32 +103,26 @@ async function notifyObserver<TContextData, TEvent>(
 /** One producer's destination, without callbacks or live inputs in queues. */
 class OutboundDeliveryObservation<TContextData> {
   #finished = false;
-  readonly #reference;
+  readonly #reference: SerializedOutboundDelivery;
   readonly #plan;
 
   constructor(
     readonly context: Context<TContextData>,
-    readonly observer: NonNullable<
-      OutboundObservers<TContextData>["onDelivery"]
-    >,
-    broadcastId: string,
-    destinationInbox: string,
+    readonly observer: OutboundObservers<TContextData>["onDelivery"],
+    identity: SerializedOutboundDelivery,
     destination: PlannedDestination,
   ) {
-    this.#reference = Object.freeze({
-      broadcast: Object.freeze({ type: "known" as const, id: broadcastId }),
-      deliveryId: crypto.randomUUID(),
-      destinationInbox,
-      ...(destination.portableInbox == null
-        ? {}
-        : { portableInbox: destination.portableInbox }),
-    });
+    this.#reference = snapshotDeliveryIdentity(identity);
     this.#plan = Object.freeze({
       actorIds: Object.freeze(Array.from(destination.actorIds)),
       sharedInbox: destination.sharedInbox,
       mode: destination.mode ??
         (destination.portableInbox == null ? "ordinary" : "portable-fallback"),
     });
+  }
+
+  get identity(): SerializedOutboundDelivery {
+    return this.#reference;
   }
 
   planned(): Promise<void> {
@@ -125,7 +177,7 @@ class OutboundDeliveryObservation<TContextData> {
 
 /** State owned by one outgoing invocation, never serialized into queues. */
 export class OutboundBroadcastObservation<TContextData> {
-  readonly #broadcastId = crypto.randomUUID();
+  readonly #broadcast: SerializedOutboundDelivery["broadcast"];
   #finished = false;
   #phase: PreparationFailure["failure"]["phase"] = "unknown";
   #planning: PreparationFailure["planning"] = "not-started";
@@ -142,27 +194,86 @@ export class OutboundBroadcastObservation<TContextData> {
     readonly context: Context<TContextData>,
     observers: OutboundObservers<TContextData>,
     readonly operation: OutboundBroadcastEvent["operation"],
+    broadcast: SerializedOutboundDelivery["broadcast"] = {
+      type: "known",
+      id: crypto.randomUUID(),
+    },
   ) {
+    this.#broadcast = broadcast;
     this.#onBroadcast = observers.onBroadcast;
     this.#onDelivery = observers.onDelivery;
+  }
+
+  /** Continue an existing fanout; do not emit a new broadcast invocation. */
+  static async resumeFanout<TContextData>(
+    context: Context<TContextData>,
+    observers: OutboundObservers<TContextData>,
+    message: FanoutMessage,
+  ): Promise<OutboundBroadcastObservation<TContextData> | undefined> {
+    if (
+      observers.onDelivery == null &&
+      !Object.values(message.inboxes).some((entry) => entry.outbound != null)
+    ) {
+      return undefined;
+    }
+    const observation = new OutboundBroadcastObservation(
+      context,
+      { onDelivery: observers.onDelivery },
+      "send",
+      { type: "unknown" },
+    );
+    observation.#finished = true;
+    observation.planned(Object.keys(message.inboxes).length);
+    for (const [inbox, destination] of Object.entries(message.inboxes)) {
+      const identity = destination.outbound ??
+        await legacyFanoutIdentity(
+          message.id,
+          inbox,
+          destination.portableInbox,
+        );
+      observation.#deliveries.set(
+        inbox,
+        observation.#createDelivery(inbox, destination, identity),
+      );
+    }
+    return observation;
+  }
+
+  #createDelivery(
+    inbox: string,
+    destination: PlannedDestination,
+    identity?: SerializedOutboundDelivery,
+  ): OutboundDeliveryObservation<TContextData> {
+    return new OutboundDeliveryObservation(
+      this.context,
+      this.#onDelivery,
+      identity ?? {
+        broadcast: this.#broadcast,
+        deliveryId: crypto.randomUUID(),
+        destinationInbox: inbox,
+        ...(destination.portableInbox == null
+          ? {}
+          : { portableInbox: destination.portableInbox }),
+      },
+      destination,
+    );
+  }
+
+  continuation(
+    inbox: string,
+  ): { readonly outbound: SerializedOutboundDelivery } | undefined {
+    const delivery = this.delivery(inbox);
+    return delivery == null ? undefined : { outbound: delivery.identity };
   }
 
   async planDestinations(
     inboxes: Readonly<Record<string, PlannedDestination>>,
   ): Promise<void> {
     this.planned(Object.keys(inboxes).length);
-    if (this.#onDelivery == null) return;
     for (const [inbox, destination] of Object.entries(inboxes)) {
-      this.#deliveries.set(
-        inbox,
-        new OutboundDeliveryObservation(
-          this.context,
-          this.#onDelivery,
-          this.#broadcastId,
-          inbox,
-          destination,
-        ),
-      );
+      if (!this.#deliveries.has(inbox)) {
+        this.#deliveries.set(inbox, this.#createDelivery(inbox, destination));
+      }
     }
     for (const delivery of this.#deliveries.values()) await delivery.planned();
   }
@@ -224,14 +335,7 @@ export class OutboundBroadcastObservation<TContextData> {
     destination: PlannedDestination,
   ): Promise<void> {
     this.#destinationCount++;
-    if (this.#onDelivery == null) return;
-    const delivery = new OutboundDeliveryObservation(
-      this.context,
-      this.#onDelivery,
-      this.#broadcastId,
-      inbox,
-      destination,
-    );
+    const delivery = this.#createDelivery(inbox, destination);
     this.#deliveries.set(inbox, delivery);
     await delivery.planned();
   }
@@ -259,11 +363,13 @@ export class OutboundBroadcastObservation<TContextData> {
       observation?: OutboundBroadcastObservation<TContextData>,
     ) => Promise<TResult>,
   ): Promise<TResult> {
-    await this.#notify(Object.freeze({
-      broadcastId: this.#broadcastId,
-      operation: this.operation,
-      stage: "started",
-    }));
+    if (this.#broadcast.type === "known") {
+      await this.#notify(Object.freeze({
+        broadcastId: this.#broadcast.id,
+        operation: this.operation,
+        stage: "started",
+      }));
+    }
     try {
       return await send(this);
     } catch (error) {
@@ -289,12 +395,14 @@ export class OutboundBroadcastObservation<TContextData> {
   async #finish(result: OutboundPreparationResult): Promise<void> {
     if (this.#finished) return;
     this.#finished = true;
-    await this.#notify(Object.freeze({
-      broadcastId: this.#broadcastId,
-      operation: this.operation,
-      stage: "preparation-finished",
-      result,
-    }));
+    if (this.#broadcast.type === "known") {
+      await this.#notify(Object.freeze({
+        broadcastId: this.#broadcast.id,
+        operation: this.operation,
+        stage: "preparation-finished",
+        result,
+      }));
+    }
   }
 
   #notify(event: OutboundBroadcastEvent): Promise<void> {

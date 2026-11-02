@@ -81,15 +81,18 @@ export type OutboundBroadcastEvent =
 /**
  * A producer-side destination obligation, not delivery completion.
  *
- * IDs group this producer's events. Queue execution and identity propagation
- * through workers are not observed yet. An unvisited destination stays planned
- * when another destination's preparation interrupts the producer.
+ * IDs group producer handoffs and their fanout expansion across queue tasks.
+ * Full worker execution reports and concrete attempts are not observed yet.
+ * An unvisited destination stays planned when another destination's preparation
+ * interrupts the producer.
  * @since 2.5.0
  */
 export type OutboundDeliveryEvent =
   & {
-    /** The invocation that established this destination. */
-    readonly broadcast: { readonly type: "known"; readonly id: string };
+    /** The originating invocation, or unknown for legacy fanout work. */
+    readonly broadcast:
+      | { readonly type: "known"; readonly id: string }
+      | { readonly type: "unknown" };
     /** Opaque identity allocated after deduplication or a confirmed claim. */
     readonly deliveryId: string;
     /** Planned destination, unchanged by concrete gateway selection. */
@@ -165,8 +168,9 @@ export interface OutboundObservers<TContextData> {
   ) => void | Promise<void>;
   /**
    * Observes producer-side planning, handoffs, and destination preparation
-   * failures. Filtered recipients do not become planned deliveries. This does
-   * not report concrete attempts, remote success, or worker execution yet.
+   * failures, including fanout continuation handoffs. Filtered recipients do
+   * not become planned deliveries. Concrete attempts, remote success, and full
+   * worker execution reports are not observed yet.
    */
   readonly onDelivery?: (
     context: Context<TContextData>,
