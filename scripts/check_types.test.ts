@@ -446,6 +446,77 @@ describe("checkProject()", () => {
       await rm(dir, { recursive: true });
     }
   });
+
+  // TypeScript 7.0.2 kept files marked as clean in this situation; see
+  // <https://github.com/microsoft/typescript-go/issues/4664>.
+  it("rechecks dependents when global declarations change", async () => {
+    const cache = join(root, "node_modules", ".cache");
+    await mkdir(cache, { recursive: true });
+    const dir = await mkdtemp(join(cache, "fedify-check-types-test-"));
+    try {
+      const write = async (path: string, content: string) => {
+        await mkdir(dirname(join(dir, path)), { recursive: true });
+        await writeFile(join(dir, path), content);
+      };
+      await write(
+        "tsconfig.check.json",
+        JSON.stringify({
+          extends: relative(dir, join(root, "tsconfig.node.json"))
+            .split(sep).join("/"),
+          include: ["src/*.ts"],
+        }),
+      );
+      for (const name of ["dep-a", "dep-b"]) {
+        await write(
+          `node_modules/${name}/package.json`,
+          JSON.stringify({ name, version: "1.0.0", types: "index.d.ts" }),
+        );
+      }
+      await write(
+        "node_modules/dep-a/index.d.ts",
+        'export type Kind = "a" | "b";\n',
+      );
+      await write(
+        "node_modules/dep-b/index.d.ts",
+        "declare global { interface Foo { x: number } }\nexport {};\n",
+      );
+      // The consumer reaches dep-a only through a re-export whose
+      // declaration does not change, and dep-b only through a global.
+      await write("src/middle.ts", 'export type { Kind } from "dep-a";\n');
+      await write("src/env.ts", 'import "dep-b";\n');
+      await write(
+        "src/consumer.ts",
+        'import type { Kind } from "./middle.ts";\n' +
+          "export function describe(kind: Kind): string {\n" +
+          '  switch (kind) { case "a": return "1"; case "b": return "2"; }\n' +
+          "}\n" +
+          "export const foo: Foo = { x: 1 };\n",
+      );
+      const fixture = relative(root, dir).split(sep).join("/");
+      const project = `${fixture}/tsconfig.check.json`;
+      const buildInfo = join(dir, "check.tsbuildinfo");
+      const own = (result: { diagnostics: readonly { text: string }[] }) =>
+        result.diagnostics.map((d) => d.text).filter((text) =>
+          text.startsWith(`${fixture}/src/`)
+        );
+      deepStrictEqual(own(await checkProject(project, buildInfo)), []);
+      await write(
+        "node_modules/dep-a/index.d.ts",
+        'export type Kind = "a" | "b" | "c";\n',
+      );
+      await write(
+        "node_modules/dep-b/index.d.ts",
+        "declare global { interface Foo { x: string } }\nexport {};\n",
+      );
+      const warm = own(await checkProject(project, buildInfo));
+      const clean = own(await checkProject(project));
+      ok(clean.some((text) => /error TS2366/.test(text)));
+      ok(clean.some((text) => /error TS2322/.test(text)));
+      deepStrictEqual(warm, clean);
+    } finally {
+      await rm(dir, { recursive: true });
+    }
+  });
 });
 
 describe("buildInfoFile()", () => {
