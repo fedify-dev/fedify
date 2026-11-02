@@ -669,7 +669,16 @@ function getContextEntryEffect(entry: unknown): ContextEntryEffect {
   if (typeof entry !== "object") return "absent";
   const record = entry as Record<string, unknown>;
   if (globalThis.Object.prototype.hasOwnProperty.call(record, "signature")) {
-    return record["signature"] == null ? "resets" : "defines";
+    const definition = record["signature"];
+    if (definition == null) return "resets";
+    if (
+      typeof definition === "object" && !Array.isArray(definition) &&
+      globalThis.Object.prototype.hasOwnProperty.call(definition, "@id") &&
+      (definition as Record<string, unknown>)["@id"] == null
+    ) {
+      return "resets";
+    }
+    return "defines";
   }
   if (globalThis.Object.prototype.hasOwnProperty.call(record, "@import")) {
     return "unknown";
@@ -756,13 +765,17 @@ export interface Signature {
  * @param signature The signature to attach.
  * @returns The JSON-LD document with the attached signature.
  * @throws {TypeError} If the input document is not a valid JSON-LD document.
+ *                    Top-level arrays are rejected, since a Linked Data
+ *                    Signature is attached to a single node.
  * @since 1.0.0
  */
 export function attachSignature(
   jsonLd: unknown,
   signature: Signature,
 ): { signature: Signature } & Record<string, unknown> {
-  if (typeof jsonLd !== "object" || jsonLd == null) {
+  if (
+    typeof jsonLd !== "object" || jsonLd == null || Array.isArray(jsonLd)
+  ) {
     throw new TypeError(
       "Failed to attach signature; invalid JSON-LD document.",
     );

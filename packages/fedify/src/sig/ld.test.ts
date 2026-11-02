@@ -120,6 +120,18 @@ test("attachSignature()", () => {
     "@context": [...resetDoc["@context"], signatureTerm],
     signature: sig,
   });
+  const disabledTermDoc = {
+    "@context": [
+      { "signature": { "@id": null } },
+      "https://www.w3.org/ns/activitystreams",
+    ],
+    id: "https://example.com/1",
+  };
+  assertEquals(attachSignature(disabledTermDoc, sig), {
+    ...disabledTermDoc,
+    "@context": [...disabledTermDoc["@context"], signatureTerm],
+    signature: sig,
+  });
   assertEquals(attachSignature({ id: "https://example.com/1" }, sig), {
     id: "https://example.com/1",
     "@context": [signatureTerm],
@@ -127,6 +139,7 @@ test("attachSignature()", () => {
   });
   assertThrows(() => attachSignature(null, sig), TypeError);
   assertThrows(() => attachSignature(1234, sig), TypeError);
+  assertThrows(() => attachSignature([], sig), TypeError);
 });
 
 test("createSignature()", async () => {
