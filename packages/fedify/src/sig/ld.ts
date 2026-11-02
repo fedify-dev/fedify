@@ -713,13 +713,16 @@ function prepareSignatureDocument(jsonLd: unknown): unknown {
   // An unknown remote context may already define `signature`, possibly as a
   // protected term, so leave it unchanged rather than risk redefining it.
   if (getSignatureTermState(context) !== "absent") return { ...document };
+  // Copy the template so callers that mutate the returned document cannot
+  // change the definition used by later signing calls.
+  const definition = { ...signatureTermDefinition };
   return {
     ...document,
     "@context": context == null
-      ? [signatureTermDefinition]
+      ? [definition]
       : Array.isArray(context)
-      ? [...context, signatureTermDefinition]
-      : [context, signatureTermDefinition],
+      ? [...context, definition]
+      : [context, definition],
   };
 }
 

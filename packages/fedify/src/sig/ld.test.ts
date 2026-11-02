@@ -235,6 +235,25 @@ test("signJsonLd() signs documents that use the signature term", async () => {
   }
 });
 
+test("signJsonLd() does not share the inline signature definition", async () => {
+  const doc = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://example.com/notes/1",
+    type: "Note",
+  };
+  const first = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const firstContext = first["@context"] as Record<string, unknown>[];
+  firstContext[1]["signature"] = "https://example.com/signature";
+  const second = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  assertEquals((second["@context"] as unknown[])[1], {
+    "signature": "https://w3id.org/security#signature",
+  });
+});
+
 test("signJsonLd() leaves unrecognized remote contexts unchanged", async () => {
   const contextUrl = "https://example.com/contexts/custom";
   const contextLoader = async (url: string) => {
