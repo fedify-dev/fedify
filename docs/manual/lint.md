@@ -664,8 +664,10 @@ federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
 ~~~~
 
 An instance actor branch such as `new Application({...})` is checked the same
-way.  Give it a meaningful `url` (a site root or its own actor URI) or exclude
-the rule where no profile page exists.
+way.  Give it a `url` that serves a human-readable page, such as a site root.
+Only use the actor URI itself when that URI also serves HTML, because WebFinger
+advertises `url` as the profile page.  Exclude the rule where no profile page
+exists.
 
 > [!NOTE]
 > Deno Lint reports plugin rules as errors and has no warning level, so this
