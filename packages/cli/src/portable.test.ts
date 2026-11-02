@@ -750,12 +750,12 @@ function createTimeoutLoaderFactory(
 ): typeof import("./docloader.ts").getDocumentLoader {
   const base = getDefaultDocumentLoader({ allowPrivateAddress: true });
   return () =>
-    Promise.resolve<DocumentLoader>((url, options) => {
-      if (!timedOut(url)) return base(url, options);
+    Promise.resolve<DocumentLoader>(async (url, options) => {
+      if (!timedOut(url)) return await base(url, options);
       // The same shape as a timeout of the built-in document loaders:
       const error = new FetchError(url, "Timed out after 10000 ms");
       error.cause = new DOMException("Timed out.", "TimeoutError");
-      return Promise.reject(error);
+      throw error;
     });
 }
 
