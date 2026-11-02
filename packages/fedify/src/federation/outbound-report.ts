@@ -16,8 +16,8 @@ export type OutboundPreparationResult =
   | {
     /** A deliberate no-send decision. */
     readonly type: "skipped";
-    /** The completed destination plan contained no obligations. */
-    readonly reason: "no-destinations";
+    /** An empty completed plan, or an unsigned payload skipped by policy. */
+    readonly reason: "no-destinations" | "unsigned";
   }
   | {
     /** Preparation failed before the producer reached readiness. */
@@ -48,8 +48,7 @@ export type OutboundPreparationResult =
   };
 
 /**
- * A {@link Context.sendActivity} invocation's producer lifecycle, including
- * the outbox-context override.
+ * A send or original-payload forwarding invocation's producer lifecycle.
  *
  * Preparation results do not report queue acceptance or delivery completion.
  * @since 2.5.0
@@ -59,7 +58,7 @@ export type OutboundBroadcastEvent =
     /** Fresh opaque identity shared by producer events, independent of tracing. */
     readonly broadcastId: string;
     /** The outgoing operation being observed. */
-    readonly operation: "send";
+    readonly operation: "send" | "forward";
   }
   & (
     | {
@@ -77,8 +76,8 @@ export type OutboundBroadcastEvent =
 /**
  * Optional observers of outgoing activity processing.
  *
- * Currently {@link Context.sendActivity} producer events are observed, including
- * the outbox-context override. Callbacks are awaited without a default timeout.
+ * Send and original-payload forwarding producer events are observed, including
+ * outbox-context operations. Callbacks are awaited without a default timeout.
  * Their errors, including errors logging observer failures, do not replace the
  * send's result.
  * A callback that never settles delays execution indefinitely. Detached

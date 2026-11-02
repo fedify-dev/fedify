@@ -11,7 +11,7 @@ type PreparationFailure = Extract<
   { type: "failed" }
 >;
 
-/** State owned by one send invocation, never serialized into queues. */
+/** State owned by one outgoing invocation, never serialized into queues. */
 export class OutboundBroadcastObservation<TContextData> {
   readonly #broadcastId = crypto.randomUUID();
   #finished = false;
@@ -24,6 +24,7 @@ export class OutboundBroadcastObservation<TContextData> {
     readonly observer: NonNullable<
       OutboundObservers<TContextData>["onBroadcast"]
     >,
+    readonly operation: OutboundBroadcastEvent["operation"],
   ) {}
 
   setPhase(phase: PreparationFailure["failure"]["phase"]): void {
@@ -44,25 +45,28 @@ export class OutboundBroadcastObservation<TContextData> {
     }));
   }
 
-  skipped(): Promise<void> {
+  skipped(
+    reason: Extract<OutboundPreparationResult, { type: "skipped" }>["reason"] =
+      "no-destinations",
+  ): Promise<void> {
     return this.#finish(Object.freeze({
       type: "skipped",
-      reason: "no-destinations",
+      reason,
     }));
   }
 
-  async run(
+  async run<TResult>(
     send: (
       observation?: OutboundBroadcastObservation<TContextData>,
-    ) => Promise<void>,
-  ): Promise<void> {
+    ) => Promise<TResult>,
+  ): Promise<TResult> {
     await this.#notify(Object.freeze({
       broadcastId: this.#broadcastId,
-      operation: "send",
+      operation: this.operation,
       stage: "started",
     }));
     try {
-      await send(this);
+      return await send(this);
     } catch (error) {
       const failure: PreparationFailure["failure"] = {
         kind: this.#phase === "unknown" ? "unknown" : "local",
@@ -84,7 +88,7 @@ export class OutboundBroadcastObservation<TContextData> {
     this.#finished = true;
     await this.#notify(Object.freeze({
       broadcastId: this.#broadcastId,
-      operation: "send",
+      operation: this.operation,
       stage: "preparation-finished",
       result,
     }));
@@ -107,13 +111,16 @@ export class OutboundBroadcastObservation<TContextData> {
 }
 
 /** Observe preparation without changing the unobserved send's execution path. */
-export function observeOutboundBroadcast<TContextData>(
+export function observeOutboundBroadcast<TContextData, TResult>(
   context: Context<TContextData>,
   observer: OutboundObservers<TContextData>["onBroadcast"],
   send: (
     observation?: OutboundBroadcastObservation<TContextData>,
-  ) => Promise<void>,
-): Promise<void> {
+  ) => Promise<TResult>,
+  operation: OutboundBroadcastEvent["operation"] = "send",
+): Promise<TResult> {
   if (observer == null) return send();
-  return new OutboundBroadcastObservation(context, observer).run(send);
+  return new OutboundBroadcastObservation(context, observer, operation).run(
+    send,
+  );
 }

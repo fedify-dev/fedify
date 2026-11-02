@@ -16,8 +16,13 @@ import {
 } from "node:assert/strict";
 import { createFederationBuilder } from "./builder.ts";
 import { MemoryKvStore } from "./kv.ts";
-import { ContextImpl, createFederation } from "./middleware.ts";
+import {
+  ContextImpl,
+  createFederation,
+  OutboxContextImpl,
+} from "./middleware.ts";
 import type {
+  Federation,
   Message,
   MessageQueue,
   OutboundBroadcastEvent,
@@ -944,6 +949,352 @@ test("outbox-context observers report immediate readiness before transport settl
           strictEqual(spans[0].status.code, SpanStatusCode.ERROR);
         }
       } finally {
+        release();
+        fetchMock.hardReset();
+        await tracerProvider.shutdown();
+      }
+    });
+  }
+});
+
+// Keep extension fields and signature-shaped data opaque; forwarding observes
+// their existing shape checks, not authentication or a vocabulary round trip.
+const forwardingPayload = {
+  "@context": ["https://www.w3.org/ns/activitystreams", {
+    extension: "https://example.com/extension",
+  }],
+  type: "Create",
+  id: "https://sender.example/create",
+  actor: "https://sender.example/actor",
+  extension: { values: ["original", "payload"] },
+  signature: {
+    type: "RsaSignature2017",
+    creator: "https://sender.example/key",
+    signatureValue: "opaque signature",
+  },
+};
+
+function forwardingContext<TContextData>(
+  federation: Federation<TContextData>,
+  kind: "inbox" | "outbox",
+  payload: unknown,
+  data: TContextData,
+) {
+  const base = federation.createContext(new URL("https://example.com"), data);
+  ok(base instanceof ContextImpl);
+  return kind === "inbox"
+    ? base.toInboxContext(
+      null,
+      payload,
+      forwardingPayload.id,
+      Create.typeId.href,
+    )
+    : base.toOutboxContext(
+      "alice",
+      payload,
+      forwardingPayload.id,
+      Create.typeId.href,
+    );
+}
+
+test("forwarding observers distinguish skips from preparation failures without extra loading", async (t) => {
+  for (const kind of ["inbox", "outbox"] as const) {
+    for (const scenario of ["unsigned", "empty", "failed"] as const) {
+      await t.step(`${kind}: ${scenario}`, async () => {
+        let loads = 0;
+        const failure = Symbol("resolution failed");
+        const federation = createFederation<{ label: string }>({
+          kv: new MemoryKvStore(),
+          documentLoaderFactory: () => () => {
+            loads++;
+            throw new Error("extra lookup");
+          },
+          contextLoaderFactory: () => () => {
+            loads++;
+            throw new Error("extra lookup");
+          },
+        });
+        federation.setActorDispatcher(
+          "/users/{identifier}",
+          () => new Person({}),
+        )
+          .mapHandle(() => {
+            throw failure;
+          });
+        const { signature: _signature, ...unsigned } = forwardingPayload;
+        const ctx = forwardingContext(
+          federation,
+          kind,
+          scenario === "unsigned" ? unsigned : forwardingPayload,
+          { label: "app" },
+        );
+        const events: OutboundBroadcastEvent[] = [];
+        const contexts: unknown[] = [];
+        federation.setOutboundObservers({
+          onBroadcast(context, event) {
+            contexts.push(context);
+            events.push(event);
+            throw new Error("recorder failed");
+          },
+        });
+        const forward = () =>
+          ctx.forwardActivity(
+            scenario === "failed" ? { username: "alice" } : sender,
+            scenario === "empty" ? [] : recipient,
+            { skipIfUnsigned: true },
+          );
+        if (scenario === "failed") {
+          await rejects(forward(), (error: unknown) => error === failure);
+        } else await forward();
+        deepStrictEqual(
+          preparation(events),
+          scenario === "failed"
+            ? {
+              type: "failed",
+              failure: {
+                kind: "local",
+                phase: "sender-resolution",
+                error: failure,
+              },
+              planning: "not-started",
+              plannedDestinationCount: 0,
+            }
+            : {
+              type: "skipped",
+              reason: scenario === "unsigned" ? "unsigned" : "no-destinations",
+            },
+        );
+        for (const event of events) strictEqual(event.operation, "forward");
+        for (const context of contexts) strictEqual(context, ctx);
+        strictEqual(ctx.data.label, "app");
+        strictEqual(loads, 0);
+        if (ctx instanceof OutboxContextImpl) {
+          strictEqual(ctx.hasDeliveredActivity(), false);
+        }
+        federation.setOutboundObservers({});
+        if (scenario === "failed") {
+          await rejects(forward(), (error: unknown) => error === failure);
+        } else await forward();
+        strictEqual(events.length, 2);
+        strictEqual(loads, 0);
+      });
+    }
+  }
+});
+
+test("forwarding observers await readiness before enqueue while preserving raw payloads and errors", async (t) => {
+  for (const batch of [false, true]) {
+    for (const rejected of [false, true]) {
+      await t.step(
+        `${batch ? "batch" : "single"}: ${rejected ? "rejected" : "accepted"}`,
+        async () => {
+          const failure = Symbol("enqueue failure");
+          const messages: Message[] = [];
+          const queue: MessageQueue = {
+            enqueue(message) {
+              messages.push(message);
+              return rejected ? Promise.reject(failure) : Promise.resolve();
+            },
+            ...(batch
+              ? {
+                enqueueMany(batch: readonly Message[]) {
+                  messages.push(...batch);
+                  return rejected ? Promise.reject(failure) : Promise.resolve();
+                },
+              }
+              : {}),
+            listen: () => Promise.resolve(),
+          };
+          const federation = createFederation<void>({
+            ...options,
+            kv: new MemoryKvStore(),
+            queue: { outbox: queue },
+            manuallyStartQueue: true,
+            activityTransformers: [() => {
+              throw new Error("forwarding must not transform");
+            }],
+          });
+          const ctx = forwardingContext(
+            federation,
+            batch ? "outbox" : "inbox",
+            forwardingPayload,
+            undefined,
+          );
+          let ready!: () => void;
+          const prepared = new Promise<void>((resolve) => {
+            ready = resolve;
+          });
+          let release!: () => void;
+          const gate = new Promise<void>((resolve) => {
+            release = resolve;
+          });
+          const events: OutboundBroadcastEvent[] = [];
+          federation.setOutboundObservers({
+            async onBroadcast(_ctx, event) {
+              events.push(event);
+              if (event.stage === "preparation-finished") {
+                ready();
+                await gate;
+              }
+              throw new Error("recorder failed");
+            },
+          });
+          const sending = ctx.forwardActivity(sender, [recipient, recipient], {
+            skipIfUnsigned: true,
+          });
+          const result = rejected
+            ? rejects(sending, (error: unknown) => error === failure)
+            : sending;
+          await prepared;
+          strictEqual(messages.length, 0);
+          if (ctx instanceof OutboxContextImpl) {
+            strictEqual(ctx.hasDeliveredActivity(), false);
+          }
+          deepStrictEqual(preparation(events), {
+            type: "prepared",
+            preparedFor: "delivery",
+            destinationCount: 1,
+          });
+          release();
+          await result;
+          strictEqual(events.length, 2);
+          strictEqual(messages.length, 1);
+          ok(messages[0].type === "outbox");
+          strictEqual(messages[0].activity, forwardingPayload);
+          ok(!("broadcastId" in messages[0]));
+          for (const event of events) strictEqual(event.operation, "forward");
+          if (ctx instanceof OutboxContextImpl) {
+            strictEqual(ctx.hasDeliveredActivity(), !rejected);
+          }
+          federation.setOutboundObservers({});
+          const unobserved = ctx.forwardActivity(sender, recipient, {
+            skipIfUnsigned: true,
+          });
+          if (rejected) {
+            await rejects(unobserved, (error: unknown) => error === failure);
+          } else await unobserved;
+          strictEqual(messages.length, 2);
+          ok(messages[1].type === "outbox");
+          strictEqual(messages[1].activity, forwardingPayload);
+          strictEqual(events.length, 2);
+        },
+      );
+    }
+  }
+});
+
+test("forwarding observers retain readiness and registration through late immediate results", async (t) => {
+  for (const status of [202, 503]) {
+    await t.step(`HTTP ${status}`, async () => {
+      let fetched!: () => void;
+      const fetching = new Promise<void>((resolve) => {
+        fetched = resolve;
+      });
+      let respond!: () => void;
+      const responseGate = new Promise<void>((resolve) => {
+        respond = resolve;
+      });
+      let ready!: () => void;
+      const prepared = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      let release!: () => void;
+      const observerGate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      let ended!: () => void;
+      const concreteSendEnded = new Promise<void>((resolve) => {
+        ended = resolve;
+      });
+      const exportSpans = exporter.export.bind(exporter);
+      exporter.export = (spans, callback) => {
+        exportSpans(spans, callback);
+        if (spans.some((span) => span.name === "activitypub.send_activity")) {
+          ended();
+        }
+      };
+      let submitted: unknown;
+      fetchMock.mockGlobal().post(
+        "https://receiver.example/inbox",
+        async (call) => {
+          submitted = JSON.parse(String(call.options.body));
+          fetched();
+          await responseGate;
+          return new Response(null, { status });
+        },
+      );
+      try {
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          allowPrivateAddress: true,
+          tracerProvider,
+        });
+        const ctx = forwardingContext(
+          federation,
+          status === 202 ? "inbox" : "outbox",
+          forwardingPayload,
+          undefined,
+        );
+        const events: OutboundBroadcastEvent[] = [];
+        let replacements = 0;
+        federation.setOutboundObservers({
+          async onBroadcast(_ctx, event) {
+            events.push(event);
+            if (event.stage === "preparation-finished") {
+              ready();
+              await observerGate;
+            }
+          },
+        });
+        let settled = false;
+        const sending = ctx.forwardActivity(sender, recipient, {
+          immediate: true,
+          skipIfUnsigned: true,
+        })
+          .finally(() => {
+            settled = true;
+          });
+        const result = status === 202
+          ? sending
+          : rejects(sending, (error: unknown) => {
+            return error instanceof Error && "statusCode" in error &&
+              error.statusCode === status;
+          });
+        await Promise.all([prepared, fetching]);
+        deepStrictEqual(submitted, forwardingPayload);
+        strictEqual(settled, false);
+        deepStrictEqual(preparation(events), {
+          type: "prepared",
+          preparedFor: "delivery",
+          destinationCount: 1,
+        });
+        federation.setOutboundObservers({
+          onBroadcast() {
+            replacements++;
+          },
+        });
+        respond();
+        await concreteSendEnded;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        strictEqual(settled, false);
+        release();
+        await result;
+        strictEqual(events.length, 2);
+        strictEqual(replacements, 0);
+        for (const event of events) strictEqual(event.operation, "forward");
+        if (ctx instanceof OutboxContextImpl) {
+          strictEqual(ctx.hasDeliveredActivity(), false);
+        }
+        const spans = exporter.getSpans(
+          status === 202 ? "activitypub.inbox" : "activitypub.outbox",
+        );
+        strictEqual(spans.length, 1);
+        if (status === 503) {
+          strictEqual(spans[0].status.code, SpanStatusCode.ERROR);
+        }
+      } finally {
+        respond();
         release();
         fetchMock.hardReset();
         await tracerProvider.shutdown();

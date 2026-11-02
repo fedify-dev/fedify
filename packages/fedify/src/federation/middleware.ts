@@ -6791,39 +6791,47 @@ function forwardActivity<TContextData>(
   recipients: Recipient | Recipient[] | "followers",
   options?: ForwardActivityOptions,
 ): Promise<boolean> {
-  const tracer = ctx.tracerProvider.getTracer(
-    metadata.name,
-    metadata.version,
-  );
-  return tracer.startActiveSpan(
-    ctx.federation.outboxQueue == null || options?.immediate
-      ? `activitypub.${loggerCategory}`
-      : "activitypub.fanout",
-    {
-      kind: ctx.federation.outboxQueue == null || options?.immediate
-        ? SpanKind.CLIENT
-        : SpanKind.PRODUCER,
-      attributes: { "activitypub.activity.type": ctx.activityType },
+  return observeOutboundBroadcast(
+    ctx,
+    ctx.federation.outboundObservers.onBroadcast,
+    (observation) => {
+      const tracer = ctx.tracerProvider.getTracer(
+        metadata.name,
+        metadata.version,
+      );
+      return tracer.startActiveSpan(
+        ctx.federation.outboxQueue == null || options?.immediate
+          ? `activitypub.${loggerCategory}`
+          : "activitypub.fanout",
+        {
+          kind: ctx.federation.outboxQueue == null || options?.immediate
+            ? SpanKind.CLIENT
+            : SpanKind.PRODUCER,
+          attributes: { "activitypub.activity.type": ctx.activityType },
+        },
+        async (span) => {
+          try {
+            if (ctx.activityId != null) {
+              span.setAttribute("activitypub.activity.id", ctx.activityId);
+            }
+            return await forwardActivityInternal(
+              ctx,
+              loggerCategory,
+              forwarder,
+              recipients,
+              options,
+              observation,
+            );
+          } catch (e) {
+            span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+            throw e;
+          } finally {
+            span.end();
+          }
+        },
+      );
     },
-    async (span) => {
-      try {
-        if (ctx.activityId != null) {
-          span.setAttribute("activitypub.activity.id", ctx.activityId);
-        }
-        return await forwardActivityInternal(
-          ctx,
-          loggerCategory,
-          forwarder,
-          recipients,
-          options,
-        );
-      } catch (e) {
-        span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
-        throw e;
-      } finally {
-        span.end();
-      }
-    },
+    "forward",
   );
 }
 
@@ -6837,8 +6845,10 @@ async function forwardActivityInternal<TContextData>(
     | { username: string },
   recipients: Recipient | Recipient[] | "followers",
   options?: ForwardActivityOptions,
+  observation?: OutboundBroadcastObservation<TContextData>,
 ): Promise<boolean> {
   const logger = getLogger(["fedify", "federation", loggerCategory]);
+  observation?.setPhase("sender-resolution");
   let keys: SenderKeyPair[];
   let identifier: string | null = null;
   if (
@@ -6865,6 +6875,7 @@ async function forwardActivityInternal<TContextData>(
         identifier = mapped;
       }
     }
+    observation?.setPhase("key-resolution");
     const actorKeyPairs = await ctx.getActorKeyPairs(identifier);
     if (actorKeyPairs.length < 1) {
       throw new Error(
@@ -6876,6 +6887,7 @@ async function forwardActivityInternal<TContextData>(
       privateKey: kp.privateKey,
     }));
   } else if (Array.isArray(forwarder)) {
+    observation?.setPhase("key-resolution");
     if (forwarder.length < 1) {
       throw new Error("The forwarder's key pairs are empty.");
     }
@@ -6883,10 +6895,14 @@ async function forwardActivityInternal<TContextData>(
   } else {
     keys = [forwarder];
   }
+  observation?.setPhase("validation");
   if (!hasSignatureLike(ctx.activity)) {
     const hasProof = hasProofLike(ctx.activity);
     if (!hasProof) {
-      if (options?.skipIfUnsigned) return false;
+      if (options?.skipIfUnsigned) {
+        if (observation != null) await observation.skipped("unsigned");
+        return false;
+      }
       logger.warn(
         "The activity {activityId} is not signed; even if it is " +
           "forwarded to other servers as is, it may not be accepted by " +
@@ -6899,6 +6915,7 @@ async function forwardActivityInternal<TContextData>(
       );
     }
   }
+  observation?.setPhase("recipient-resolution");
   if (recipients === "followers") {
     if (identifier == null) {
       throw new Error(
@@ -6912,17 +6929,20 @@ async function forwardActivityInternal<TContextData>(
     }
     recipients = followers;
   }
+  observation?.setPhase("destination-planning");
   const inboxes = extractInboxes({
     recipients: Array.isArray(recipients) ? recipients : [recipients],
     preferSharedInbox: options?.preferSharedInbox,
     excludeBaseUris: options?.excludeBaseUris,
   });
+  observation?.planned(globalThis.Object.keys(inboxes).length);
   if (globalThis.Object.keys(inboxes).length < 1) {
     logger.debug("No inboxes found for activity {activityId}.", {
       activityId: ctx.activityId,
       activityType: ctx.activityType,
       identifier: identifier ?? undefined,
     });
+    if (observation != null) await observation.skipped();
     return false;
   }
   logger.debug("Forwarding activity {activityId} to inboxes:\n{inboxes}", {
@@ -6942,10 +6962,13 @@ async function forwardActivityInternal<TContextData>(
           "set.",
       );
     }
+    observation?.setPhase("request-preparation");
     const promises: Promise<void>[] = [];
     for (const inbox in inboxes) {
-      promises.push(
-        sendActivityToInbox(inbox, inboxes[inbox].gatewayInboxes, {
+      const sending = sendActivityToInbox(
+        inbox,
+        inboxes[inbox].gatewayInboxes,
+        {
           allowPrivateAddress: ctx.federation.allowPrivateAddress,
           keys,
           activity: ctx.activity,
@@ -6960,9 +6983,15 @@ async function forwardActivityInternal<TContextData>(
             ctx.federation.firstKnock,
             { specTtl: ctx.federation.httpMessageSignaturesSpecTtl },
           ),
-        }),
+        },
       );
+      if (observation != null) {
+        // Preserve early rejections while the preparation observer is awaited.
+        sending.catch(() => {});
+      }
+      promises.push(sending);
     }
+    if (observation != null) await observation.prepared("delivery");
     await Promise.all(promises);
     return true;
   }
@@ -6970,14 +6999,17 @@ async function forwardActivityInternal<TContextData>(
     "Enqueuing activity {activityId} to forward later.",
     { activityId: ctx.activityId, activity: ctx.activity },
   );
+  observation?.setPhase("request-preparation");
   if (!ctx.federation.manuallyStartQueue) {
     ctx.federation._startQueueInternal(ctx.data);
   }
+  observation?.setPhase("key-resolution");
   const keyJwkPairs: SenderKeyJwkPair[] = [];
   for (const { keyId, privateKey } of keys) {
     const privateKeyJwk = await exportJwk(privateKey);
     keyJwkPairs.push({ keyId: keyId.href, privateKey: privateKeyJwk });
   }
+  observation?.setPhase("request-preparation");
   const carrier: Record<string, string> = {};
   propagation.inject(context.active(), carrier);
   const orderingKey = options?.orderingKey;
@@ -7010,6 +7042,7 @@ async function forwardActivityInternal<TContextData>(
       orderingKey: message.orderingKey,
     });
   }
+  if (observation != null) await observation.prepared("delivery");
   const { outboxQueue } = ctx.federation;
   if (outboxQueue.enqueueMany == null || orderingKey != null) {
     const promises: PromiseSettledResult<void>[] = await Promise.allSettled(
