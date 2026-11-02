@@ -3549,13 +3549,39 @@ function hasTopLevelProof(value: unknown): boolean {
 
 function getPayloadFields(value: unknown): string {
   if (typeof value !== "object" || value == null || Array.isArray(value)) {
-    return JSON.stringify(value);
+    return JSON.stringify(sortJsonKeys(value));
   }
   const record = { ...(value as Record<string, unknown>) };
   delete record["@context"];
-  delete record.proof;
   delete record.signature;
-  return JSON.stringify(record);
+  const proofs = stripContexts(record.proof);
+  delete record.proof;
+  return JSON.stringify({
+    payload: sortJsonKeys(record),
+    proofs: sortJsonKeys(proofs),
+  });
+}
+
+function stripContexts(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripContexts);
+  if (typeof value !== "object" || value == null) return value;
+  const record = { ...(value as Record<string, unknown>) };
+  delete record["@context"];
+  delete record.signature;
+  for (const key of globalThis.Object.keys(record)) {
+    record[key] = stripContexts(record[key]);
+  }
+  return record;
+}
+
+function sortJsonKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortJsonKeys);
+  if (typeof value !== "object" || value == null) return value;
+  return globalThis.Object.fromEntries(
+    globalThis.Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+      .map(([key, item]) => [key, sortJsonKeys(item)]),
+  );
 }
 
 function notAcceptable(_request: Request): Response {
