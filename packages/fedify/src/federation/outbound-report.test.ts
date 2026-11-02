@@ -1891,6 +1891,18 @@ function continuationMessage(
     ...(portableInbox == null ? {} : { portableInbox }),
     ...(observed
       ? {
+        provenance: {
+          inboxRequest: {
+            inboxRequestId: crypto.randomUUID(),
+            requestId: "original-request-label",
+            context: {
+              origin: "https://source.example:8443",
+              host: "source.example:8443",
+              hostname: "source.example",
+              canonicalOrigin: "https://canonical.example",
+            },
+          },
+        },
         outbound: {
           broadcast: { type: "known" as const, id: crypto.randomUUID() },
           deliveryId: crypto.randomUUID(),
@@ -1967,6 +1979,8 @@ test("outbound queue identities survive ordinary retries, holds, and native rede
             const next = queued[0].message;
             ok(next.type === "outbox");
             deepStrictEqual(next.outbound, original.outbound);
+            deepStrictEqual(next.provenance, original.provenance);
+            strictEqual("provenance" in next, observed);
             strictEqual("outbound" in next, observed);
             strictEqual(next.attempt, mode === "hold" ? 0 : 1);
             strictEqual(next.circuitHeld, mode === "hold" ? true : undefined);
@@ -1981,6 +1995,8 @@ test("outbound queue identities survive ordinary retries, holds, and native rede
             const replay = queued[1].message;
             ok(replay.type === "outbox");
             deepStrictEqual(replay.outbound, original.outbound);
+            deepStrictEqual(replay.provenance, original.provenance);
+            strictEqual("provenance" in replay, observed);
             strictEqual("outbound" in replay, observed);
             strictEqual(replay.attempt, mode === "hold" ? 0 : 2);
             if (mode === "hold") {
@@ -2075,6 +2091,8 @@ test("outbound queue identities retain planned destinations through gateway cont
             strictEqual(next.inbox, gateways[1]);
             deepStrictEqual(next.gatewayInboxes, gateways.slice(1));
             deepStrictEqual(next.outbound, original.outbound);
+            deepStrictEqual(next.provenance, original.provenance);
+            strictEqual("provenance" in next, observed);
             strictEqual("outbound" in next, observed);
             strictEqual(next.portableInbox, portableInbox);
             if (observed) {
@@ -2097,6 +2115,8 @@ test("outbound queue identities retain planned destinations through gateway cont
             const replay = queued[1];
             ok(replay.type === "outbox");
             deepStrictEqual(replay.outbound, original.outbound);
+            deepStrictEqual(replay.provenance, original.provenance);
+            strictEqual("provenance" in replay, observed);
             strictEqual("outbound" in replay, observed);
             strictEqual(replay.inbox, gateways[1]);
             strictEqual(replay.attempt, mode === "retry" ? 2 : next.attempt);

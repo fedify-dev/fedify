@@ -51,9 +51,68 @@ export function createInboxRequestSource(
 export function withOutboundSource<T>(context: object, operation: () => T): T {
   const source = getOutboundProvenance(context);
   // Explicit absence masks unrelated ambient source labels as well.
-  return withContext({
+  return withContext(sourceLogContext(source), operation);
+}
+
+/** Restore only explicit source facts; never infer them from queue/trace IDs. */
+export function restoreProvenance(value: unknown): OutboundProvenance {
+  if (value === undefined) return emptyProvenance;
+  const record = (v: unknown): v is Record<string, unknown> =>
+    v != null && typeof v === "object" && !Array.isArray(v);
+  const invalid = () => new TypeError("Invalid provenance in queue metadata.");
+  if (!record(value)) throw invalid();
+  if (
+    value.originatingRequestId !== undefined &&
+    typeof value.originatingRequestId !== "string"
+  ) throw invalid();
+  let inboxRequest: OutboundInboxRequest | undefined;
+  if (value.inboxRequest !== undefined) {
+    const source = value.inboxRequest;
+    if (
+      !record(source) || typeof source.inboxRequestId !== "string" ||
+      source.inboxRequestId.length < 1 ||
+      typeof source.requestId !== "string" || !record(source.context)
+    ) throw invalid();
+    const facts = source.context;
+    if (
+      typeof facts.origin !== "string" || typeof facts.host !== "string" ||
+      typeof facts.hostname !== "string" ||
+      typeof facts.canonicalOrigin !== "string"
+    ) throw invalid();
+    inboxRequest = Object.freeze({
+      inboxRequestId: source.inboxRequestId,
+      requestId: source.requestId,
+      context: Object.freeze({
+        origin: facts.origin,
+        host: facts.host,
+        hostname: facts.hostname,
+        canonicalOrigin: facts.canonicalOrigin,
+      }),
+    });
+  }
+  return Object.freeze({
+    ...(inboxRequest == null ? {} : { inboxRequest }),
+    ...(value.originatingRequestId === undefined
+      ? {}
+      : { originatingRequestId: value.originatingRequestId }),
+  });
+}
+
+/** Omit absent provenance on legacy and independent producers. */
+export function serializeProvenance(
+  value: OutboundProvenance | undefined,
+): { readonly provenance?: OutboundProvenance } {
+  const provenance = restoreProvenance(value);
+  return provenance.inboxRequest == null &&
+      provenance.originatingRequestId == null
+    ? {}
+    : { provenance };
+}
+
+export function sourceLogContext(source: OutboundProvenance) {
+  return {
     sourceInboxRequestId: source.inboxRequest?.inboxRequestId,
     sourceRequestId: source.inboxRequest?.requestId ??
       source.originatingRequestId,
-  }, operation);
+  };
 }

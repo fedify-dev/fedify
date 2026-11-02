@@ -2479,6 +2479,9 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
       assertEquals(source.inboxRequestId, reports[0].inboxRequestId);
       assertEquals(source.requestId, reports[0].requestId);
       assertEquals(source.context.origin, LOCAL);
+      for (const message of queue.outbox) {
+        assertEquals(message.provenance?.inboxRequest, source);
+      }
       for (const event of [...events, ...deliveries]) {
         assertEquals(event.provenance.inboxRequest, source);
       }

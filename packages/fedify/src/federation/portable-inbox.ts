@@ -1,3 +1,5 @@
+import { serializeProvenance } from "./outbound-provenance.ts";
+import type { OutboundProvenance } from "./outbound-report.ts";
 import type { Actor, CryptographicKey } from "@fedify/vocab";
 import {
   fromCompatibleEf61Id,
@@ -229,6 +231,8 @@ export function coversDelivery(signature: RequestSignature): boolean {
  * Parameters for {@link forwardPortableInboxActivity}.
  */
 export interface ForwardPortableInboxActivityParameters {
+  /** Explicit source carried by queued replication work, independent of observers. */
+  readonly provenance?: OutboundProvenance;
   /** The portable inbox that received the activity. */
   readonly recipient: PortableInboxRecipient;
   /** The received activity, exactly as it was received. */
@@ -714,6 +718,7 @@ async function enqueueForwarding<TContextData>(
     try {
       message = {
         type: "outbox",
+        ...serializeProvenance(parameters.provenance),
         id: crypto.randomUUID(),
         baseUrl,
         keys,

@@ -12,6 +12,7 @@ import {
   reset,
   withContext,
 } from "@logtape/logtape";
+import fetchMock from "fetch-mock";
 import { AsyncLocalStorage } from "node:async_hooks";
 import {
   deepStrictEqual,
@@ -35,8 +36,10 @@ import { ContextImpl, createFederation } from "./middleware.ts";
 import type {
   OutboundBroadcastEvent,
   OutboundDeliveryEvent,
+  OutboundProvenance,
 } from "./outbound-report.ts";
 import type { Message } from "./queue.ts";
+import type { MessageQueue } from "./mq.ts";
 
 const sender = { keyId: rsaPublicKey2.id!, privateKey: rsaPrivateKey2 };
 const outgoing = new Create({
@@ -481,4 +484,302 @@ test("outbound provenance retains request labels on gateway dispatchers", async 
       }
     });
   }
+});
+
+test("queued provenance survives inbox retries, fanout, and outbox worker reconstruction", async (t) => {
+  const records: LogRecord[] = [];
+  await reset();
+  await configure({
+    sinks: { buffer: (record) => records.push(record) },
+    loggers: [{ category: [], sinks: ["buffer"], lowestLevel: "info" }, {
+      category: ["logtape", "meta"],
+      sinks: [],
+    }],
+    contextLocalStorage: new AsyncLocalStorage(),
+  });
+  try {
+    // Source propagation covers both retry owners. Legacy absence is
+    // independent of retry ownership, so one legacy execution is sufficient.
+    for (
+      const { legacy, native } of [
+        { legacy: false, native: false },
+        { legacy: false, native: true },
+        { legacy: true, native: false },
+      ]
+    ) {
+      await t.step(
+        `${legacy ? "legacy" : "source"}: ${
+          native ? "native redelivery" : "scheduled retry"
+        }`,
+        async () => {
+          const messages: Message[] = [];
+          const events: (OutboundBroadcastEvent | OutboundDeliveryEvent)[] = [];
+          const reports: InboxRequestReport[] = [];
+          const queue: MessageQueue = {
+            nativeRetrial: native,
+            enqueue(message) {
+              messages.push(message);
+              return Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          };
+          const federation = createFederation<void>({
+            ...loaders,
+            kv: new MemoryKvStore(),
+            origin: "https://canonical.example",
+            skipSignatureVerification: true,
+            manuallyStartQueue: true,
+            queue: { inbox: queue, fanout: queue, outbox: queue },
+          });
+          federation.setActorDispatcher(
+            "/users/{identifier}",
+            () => new Person({}),
+          ).setKeyPairsDispatcher(async (ctx) => {
+            await ctx.sendActivity(sender, [], outgoing);
+            return [];
+          });
+          let calls = 0;
+          const failure = new Error("retry listener");
+          federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+            .setSharedKeyDispatcher(async (ctx) => {
+              await ctx.sendActivity(sender, [], outgoing);
+              return sender;
+            })
+            .on(Create, async (ctx) => {
+              getLogger(["test", "queued-source"]).info("queued listener");
+              await ctx.sendActivity(sender, [], outgoing);
+              if (++calls === 1) throw failure;
+              ok(ctx instanceof ContextImpl);
+              const clone = ctx.clone(undefined);
+              await clone.sendActivity(sender, target, outgoing, {
+                fanout: "force",
+              });
+              const outbox = ctx.toOutboxContext(
+                "alice",
+                {},
+                outgoing.id!.href,
+                Create.typeId.href,
+              ).clone(undefined);
+              await outbox.sendActivity(sender, target, outgoing, {
+                fanout: "skip",
+              });
+              await clone.forwardActivity(sender, target, {
+                skipIfUnsigned: false,
+              });
+            }).onRequestFinished((_ctx, report) => {
+              reports.push(report);
+            });
+          // Producer metadata must not depend on observer registration.
+          strictEqual(
+            (await federation.fetch(
+              post(native ? "/inbox" : "/users/alice/inbox", await payload()),
+              { contextData: undefined },
+            )).status,
+            202,
+          );
+          const produced = messages[0];
+          ok(produced.type === "inbox");
+          ok(produced.provenance?.inboxRequest);
+          strictEqual(
+            produced.provenance.inboxRequest.inboxRequestId,
+            reports[0].inboxRequestId,
+          );
+          deepStrictEqual(
+            JSON.parse(JSON.stringify(produced.provenance)),
+            produced.provenance,
+          );
+          const task = JSON.parse(
+            JSON.stringify(produced),
+          ) as typeof produced;
+          if (legacy) delete (task as { provenance?: unknown }).provenance;
+          const expected: OutboundProvenance = task.provenance ?? {};
+          federation.setOutboundObservers({
+            onBroadcast(_ctx, event) {
+              events.push(event);
+            },
+            onDelivery(_ctx, event) {
+              events.push(event);
+            },
+          });
+          const execute = (message: Message) =>
+            withContext({
+              requestId: "worker-current",
+              inboxRequestId: "unrelated-inbox",
+              sourceInboxRequestId: "ambient-source",
+              sourceRequestId: "ambient-label",
+            }, () => federation.processQueuedTask(undefined, message));
+          if (!legacy && !native) {
+            await rejects(async () =>
+              await execute({
+                ...task,
+                provenance: {
+                  inboxRequest: {
+                    inboxRequestId: "",
+                    requestId: "bad",
+                    context: {
+                      origin: "x",
+                      host: "x",
+                      hostname: "x",
+                      canonicalOrigin: "x",
+                    },
+                  },
+                },
+              }), TypeError);
+            strictEqual(calls, 0);
+            strictEqual(events.length, 0);
+          }
+          messages.length = 0;
+          const logStart = records.length;
+          if (native) {
+            await rejects(execute(task), (error) => error === failure);
+          } else await execute(task);
+          const retry = native
+            ? task
+            : messages.find((message) => message.type === "inbox");
+          ok(retry?.type === "inbox");
+          deepStrictEqual(retry.provenance ?? {}, expected);
+          strictEqual(retry.attempt, native ? 0 : 1);
+          await execute({
+            ...structuredClone(retry),
+            id: crypto.randomUUID(),
+          });
+          strictEqual(calls, 2);
+          const fanout = messages.find((message) => message.type === "fanout");
+          ok(fanout?.type === "fanout");
+          deepStrictEqual(fanout.provenance ?? {}, expected);
+          await execute(JSON.parse(JSON.stringify(fanout)));
+          const outgoingTasks = messages.filter((message) =>
+            message.type === "outbox"
+          );
+          strictEqual(outgoingTasks.length, 3);
+          for (const message of outgoingTasks) {
+            deepStrictEqual(message.provenance ?? {}, expected);
+            strictEqual("provenance" in message, !legacy);
+          }
+          const consumer = createFederation<void>({
+            kv: new MemoryKvStore(),
+            allowPrivateAddress: true,
+            origin: "https://consumer.example",
+            manuallyStartQueue: true,
+            queue: { outbox: queue },
+          });
+          consumer.setOutboundObservers({
+            onBroadcast(_ctx, event) {
+              events.push(event);
+            },
+          });
+          let permanent = 0;
+          consumer.setOutboxPermanentFailureHandler(async (ctx) => {
+            permanent++;
+            getLogger(["test", "queued-source"]).info("permanent callback");
+            await ctx.clone(undefined).sendActivity(sender, [], outgoing);
+          });
+          fetchMock.mockGlobal().post(target.inboxId!.href, 410);
+          try {
+            await withContext({
+              requestId: "worker-current",
+              sourceInboxRequestId: "ambient-source",
+              sourceRequestId: "ambient-label",
+            }, () =>
+              consumer.processQueuedTask(undefined, {
+                ...structuredClone(outgoingTasks[0]),
+                baseUrl: "https://worker.example",
+              }));
+          } finally {
+            fetchMock.hardReset();
+          }
+          strictEqual(permanent, 1);
+          ok(events.length > 0);
+          for (const event of events) {
+            deepStrictEqual(event.provenance, expected);
+            ok(Object.isFrozen(event.provenance));
+            if (!legacy) {
+              ok(Object.isFrozen(event.provenance.inboxRequest?.context));
+            }
+          }
+          strictEqual(events.at(-1)!.local.host, "worker.example");
+          strictEqual(
+            events.at(-1)!.local.canonicalOrigin,
+            "https://consumer.example",
+          );
+          const workerLogs = records.slice(logStart).filter((record) =>
+            record.rawMessage === "queued listener" ||
+            record.rawMessage === "permanent callback"
+          );
+          strictEqual(workerLogs.length, 3);
+          for (const record of workerLogs) {
+            strictEqual(record.properties.requestId, "worker-current");
+            strictEqual(record.properties.inboxRequestId, undefined);
+            strictEqual(
+              record.properties.sourceInboxRequestId,
+              expected.inboxRequest?.inboxRequestId,
+            );
+            strictEqual(
+              record.properties.sourceRequestId,
+              expected.inboxRequest?.requestId,
+            );
+          }
+        },
+      );
+    }
+  } finally {
+    await reset();
+  }
+});
+
+test("queued provenance retains a non-inbox HTTP request label without inventing an inbox cause", async () => {
+  const messages: Message[] = [];
+  const queue: MessageQueue = {
+    enqueue(message) {
+      messages.push(message);
+      return Promise.resolve();
+    },
+    listen: () => Promise.resolve(),
+  };
+  const federation = createFederation<void>({
+    ...loaders,
+    kv: new MemoryKvStore(),
+    manuallyStartQueue: true,
+    queue: { fanout: queue, outbox: queue },
+  });
+  federation.setActorDispatcher("/users/{identifier}", async (ctx) => {
+    await ctx.sendActivity(sender, target, outgoing, { fanout: "force" });
+    return null;
+  });
+  strictEqual(
+    (await federation.fetch(
+      new Request("https://example.com/users/alice", {
+        headers: {
+          Accept: "application/activity+json",
+          "X-Request-Id": "original-http-label",
+        },
+      }),
+      { contextData: undefined },
+    )).status,
+    404,
+  );
+  const message = messages[0];
+  ok(message?.type === "fanout");
+  deepStrictEqual(message.provenance, {
+    originatingRequestId: "original-http-label",
+  });
+  const events: OutboundDeliveryEvent[] = [];
+  federation.setOutboundObservers({
+    onDelivery(_ctx, event) {
+      events.push(event);
+    },
+  });
+  await withContext(
+    { requestId: "worker-current", sourceInboxRequestId: "unrelated-inbox" },
+    () =>
+      federation.processQueuedTask(
+        undefined,
+        JSON.parse(JSON.stringify(message)),
+      ),
+  );
+  strictEqual(events.length, 1);
+  deepStrictEqual(events[0].provenance, message.provenance);
+  const child = messages[1];
+  ok(child?.type === "outbox");
+  deepStrictEqual(child.provenance, message.provenance);
 });

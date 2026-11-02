@@ -1,7 +1,11 @@
 import {
   createInboxRequestSource,
   emptyProvenance,
+  getOutboundProvenance,
   outboundProvenance,
+  restoreProvenance,
+  serializeProvenance,
+  sourceLogContext,
 } from "./outbound-provenance.ts";
 import type {
   OutboundInboxRequest,
@@ -1229,7 +1233,17 @@ export class FederationImpl<TContextData>
       context.active(),
       message.traceContext,
     );
-    return withContext({ messageId: message.id }, async () => {
+    const provenance = message.type === "task"
+      ? emptyProvenance
+      : restoreProvenance(message.provenance);
+    if (message.type !== "task" && message.provenance !== undefined) {
+      message = { ...message, provenance };
+    }
+    return withContext({
+      messageId: message.id,
+      inboxRequestId: undefined,
+      ...sourceLogContext(provenance),
+    }, async () => {
       if (message.type === "fanout") {
         const common: QueueTaskCommonAttributes = {
           role: "fanout",
@@ -1244,7 +1258,7 @@ export class FederationImpl<TContextData>
             if (message.activityId != null) {
               span.setAttribute("activitypub.activity.id", message.activityId);
             }
-            await this.#listenFanoutMessage(contextData, message);
+            await this.#listenFanoutMessage(contextData, message, provenance);
             return { outcome: "completed" };
           }, classifyAbortableError),
         );
@@ -1265,7 +1279,12 @@ export class FederationImpl<TContextData>
             if (message.activityId != null) {
               span.setAttribute("activitypub.activity.id", message.activityId);
             }
-            await this.#listenOutboxMessage(contextData, message, span);
+            await this.#listenOutboxMessage(
+              contextData,
+              message,
+              span,
+              provenance,
+            );
             return { outcome: "completed" };
           }, classifyAbortableError),
         );
@@ -1283,6 +1302,7 @@ export class FederationImpl<TContextData>
               contextData,
               message,
               span,
+              provenance,
               (activityType) => {
                 common.activityType = activityType;
               },
@@ -1397,6 +1417,7 @@ export class FederationImpl<TContextData>
   async #listenFanoutMessage(
     data: TContextData,
     message: FanoutMessage,
+    provenance: OutboundProvenance,
   ): Promise<void> {
     const observers = this.outboundObservers;
     const logger = getLogger(["fedify", "federation", "fanout"]);
@@ -1428,6 +1449,7 @@ export class FederationImpl<TContextData>
       new URL(message.baseUrl),
       data,
       {
+        [outboundProvenance]: provenance,
         documentLoader: this.documentLoaderFactory({
           allowPrivateAddress: this.allowPrivateAddress,
           userAgent: this.userAgent,
@@ -1453,6 +1475,7 @@ export class FederationImpl<TContextData>
     _: TContextData,
     message: OutboxMessage,
     span: Span,
+    provenance: OutboundProvenance,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const logData = {
@@ -1554,6 +1577,7 @@ export class FederationImpl<TContextData>
           new URL(message.baseUrl),
           _,
           {
+            [outboundProvenance]: provenance,
             documentLoader: this.documentLoaderFactory(loaderOptions),
           },
         );
@@ -1596,6 +1620,7 @@ export class FederationImpl<TContextData>
         },
         span,
         {
+          provenance,
           keys,
           logData,
           getActorIds,
@@ -1842,6 +1867,7 @@ export class FederationImpl<TContextData>
             new URL(message.baseUrl),
             _,
             {
+              [outboundProvenance]: provenance,
               documentLoader: this.documentLoaderFactory(loaderOptions),
             },
           );
@@ -1977,6 +2003,7 @@ export class FederationImpl<TContextData>
     message: OutboxMessage & { readonly gatewayInboxes: readonly string[] },
     span: Span,
     helpers: {
+      readonly provenance: OutboundProvenance;
       readonly keys: readonly SenderKeyPair[];
       readonly logData: Record<string, unknown>;
       readonly getActorIds: () => URL[];
@@ -1992,8 +2019,14 @@ export class FederationImpl<TContextData>
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const circuitLogger = getLogger(["fedify", "federation", "circuit"]);
-    const { keys, logData, getActorIds, parseActivity, dropHeldOutboxMessage } =
-      helpers;
+    const {
+      provenance,
+      keys,
+      logData,
+      getActorIds,
+      parseActivity,
+      dropHeldOutboxMessage,
+    } = helpers;
     const circuit = this.outboxQueue == null ? undefined : this.circuitBreaker;
     const specDeterminer = new KvSpecDeterminer(
       this.kv,
@@ -2251,6 +2284,7 @@ export class FederationImpl<TContextData>
           new URL(message.baseUrl),
           contextData,
           {
+            [outboundProvenance]: provenance,
             documentLoader: this.documentLoaderFactory(
               this.#getLoaderOptions(message.baseUrl),
             ),
@@ -2411,11 +2445,14 @@ export class FederationImpl<TContextData>
     ctxData: TContextData,
     message: InboxMessage,
     span: Span,
+    provenance: OutboundProvenance,
     onActivityType?: (activityType: string) => void,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "inbox"]);
     const baseUrl = new URL(message.baseUrl);
-    let context = this.#createContext(baseUrl, ctxData);
+    let context = this.#createContext(baseUrl, ctxData, {
+      [outboundProvenance]: provenance,
+    });
     // A portable actor does not necessarily have key pairs for authorized
     // fetch, so fall back to the default document loader without them:
     if (
@@ -2423,6 +2460,7 @@ export class FederationImpl<TContextData>
       this.actorCallbacks?.keyPairsDispatcher != null
     ) {
       context = this.#createContext(baseUrl, ctxData, {
+        [outboundProvenance]: provenance,
         documentLoader: await context.getDocumentLoader({
           identifier: message.identifier,
         }),
@@ -2433,6 +2471,7 @@ export class FederationImpl<TContextData>
       const identity = await this.sharedInboxKeyDispatcher(context);
       if (identity != null) {
         context = this.#createContext(baseUrl, ctxData, {
+          [outboundProvenance]: provenance,
           documentLoader: "identifier" in identity || "username" in identity
             ? await context.getDocumentLoader(identity)
             : context.getDocumentLoader(identity),
@@ -3415,6 +3454,7 @@ export class FederationImpl<TContextData>
           : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`;
         const message: OutboxMessage = {
           type: "outbox",
+          ...serializeProvenance(getOutboundProvenance(ctx)),
           id: crypto.randomUUID(),
           baseUrl: ctx.origin,
           keys: keyJwkPairs,
@@ -4686,6 +4726,7 @@ export class FederationImpl<TContextData>
                         return;
                       }
                       await forwardPortableInboxActivity({
+                        provenance: getOutboundProvenance(context),
                         recipient,
                         activity,
                         activityId,
@@ -6124,6 +6165,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     propagation.inject(context.active(), carrier);
     const message: FanoutMessage = {
       type: "fanout",
+      ...serializeProvenance(getOutboundProvenance(this)),
       id: crypto.randomUUID(),
       baseUrl: this.origin,
       keys: keyJwkPairs,
@@ -7203,6 +7245,7 @@ async function forwardActivityInternal<TContextData>(
       const { portableInbox, gatewayInboxes } = inboxes[inbox];
       const message: OutboxMessage = {
         type: "outbox",
+        ...serializeProvenance(getOutboundProvenance(ctx)),
         id: crypto.randomUUID(),
         baseUrl: ctx.origin,
         keys: keyJwkPairs,
