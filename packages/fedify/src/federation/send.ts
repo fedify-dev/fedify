@@ -764,6 +764,7 @@ async function consumeSendActivityResponse(
  * @param request The request to send.
  * @param openHop The function to open a session for each hop.
  * @param consume The function to consume the final response.
+ * @param attempt The in-process attempt observation, if registered.
  * @returns The value returned by `consume`.
  */
 export async function fetchWithValidatedRedirects<T>(

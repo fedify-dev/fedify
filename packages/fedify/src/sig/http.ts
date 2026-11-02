@@ -2305,6 +2305,7 @@ export async function doubleKnock(
  * @param openHop The function to open a session for each hop.  The session of
  *                a hop is closed before the next hop is opened.
  * @param consume The function to consume the final response.
+ * @param observation The in-process transport/finality hooks, if registered.
  * @returns The value returned by `consume`.
  */
 export async function doubleKnockScoped<T>(

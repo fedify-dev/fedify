@@ -83,7 +83,8 @@ export type OutboundBroadcastEvent =
  * A producer-side destination obligation, not delivery completion.
  *
  * IDs group producer handoffs and their fanout expansion across queue tasks.
- * Full worker execution reports and concrete attempts are not observed yet.
+ * Concrete sends use separate {@link OutboundAttemptReport} values; these
+ * events do not establish delivery completion or worker scheduling outcomes.
  * An unvisited destination stays planned when another destination's preparation
  * interrupts the producer.
  * @since 2.5.0
@@ -176,7 +177,9 @@ type OutboundAttemptFailure =
   };
 
 interface OutboundHttpResponseMetadata {
+  /** Actual HTTP status returned by fetch. */
   readonly status: number;
+  /** Copied HTTP status text. */
   readonly statusText: string;
   /** Response URL when supplied by fetch. */
   readonly url?: string;
@@ -184,13 +187,21 @@ interface OutboundHttpResponseMetadata {
 
 type OutboundAttemptResponse =
   | {
+    /** The HTTP flow selected this response before follow-up work. */
     readonly type: "final";
+    /** Actual submission index of the selected response. */
     readonly exchangeIndex: number;
+    /** Frozen response facts, retained across later local failures. */
     readonly metadata: OutboundHttpResponseMetadata;
   }
-  | { readonly type: "not-observed" }
   | {
+    /** No response headers were received, including zero-fetch attempts. */
+    readonly type: "not-observed";
+  }
+  | {
+    /** Continued past the response, or failed before deciding finality. */
     readonly type: "intermediate-only" | "undetermined";
+    /** Latest received response, without a finality claim. */
     readonly lastObserved: {
       readonly exchangeIndex: number;
       readonly metadata: OutboundHttpResponseMetadata;
@@ -200,7 +211,10 @@ type OutboundAttemptResponse =
 /**
  * The terminal result of one concrete send.
  *
- * A send that fails before submitting HTTP still constitutes an attempt.
+ * A send that fails before submitting HTTP still constitutes an attempt, with
+ * zero exchanges. Each gateway send and retry gets a fresh attempt identity.
+ * Final response evidence follows the HTTP flow's selection, not the last
+ * observed status; later cache/cleanup failures can still fail the execution.
  * @since 2.5.0
  */
 export type OutboundAttemptReport = OutboundSourceMetadata & {
@@ -233,7 +247,11 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
     }
     | {
       readonly type: "failed";
-      /** Failure evidence captured before broad sender error wrapping. */
+      /**
+       * Bounded failure kind and operation phase, captured before broad wrapping.
+       * Unknown provenance stays unknown; exception names do not establish it.
+       * Final non-OK HTTP evidence remains primary alongside local diagnostics.
+       */
       readonly failure: OutboundAttemptFailure;
       /** Exact value escaping the sender, possibly different from failure.error. */
       readonly error: unknown;
@@ -248,8 +266,9 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
  * One actual fetch submission within a concrete send attempt.
  *
  * A redirect response remains an observed response even if a later hop fails.
- * This report does not establish the attempt's final response. Response
- * body/header capture is not observed yet.
+ * This report does not establish the attempt's final response. Metadata is
+ * copied before callback awaiting; no live Request/Response/Headers or body
+ * capture is exposed. Exchange callbacks may run before the attempt settles.
  * @since 2.5.0
  */
 export type OutboundHttpExchangeReport =
@@ -283,7 +302,10 @@ export type OutboundHttpExchangeReport =
  *
  * Send, original-payload forwarding, and automatic portable replication producer
  * events are observed, including outbox-context operations and fanout
- * continuation handoffs. Known IDs and provenance survive queue continuations.
+ * continuation handoffs. Concrete attempts and actual fetch exchanges include
+ * queue workers, signature challenges, redirects, and alternate gateways.
+ * Known IDs and provenance survive queue continuations; callback context data
+ * belongs to the current execution. Each callback is independently optional.
  * Callbacks are awaited without a default timeout.
  * Their errors, including errors logging observer failures, do not replace the
  * send's result.
@@ -296,8 +318,9 @@ export type OutboundHttpExchangeReport =
  */
 export interface OutboundObservers<TContextData> {
   /**
-   * Observes a fetch after response headers or rejection, before
-   * subsequent redirect handling. Callback errors do not replace transport.
+   * Observes each actual fetch after response headers or rejection, before
+   * subsequent challenge/redirect handling. Non-2xx responses are still response
+   * outcomes. Pre-fetch failures emit no exchange. Errors cannot veto transport.
    */
   readonly onHttpExchange?: (
     context: Context<TContextData>,
@@ -305,8 +328,10 @@ export interface OutboundObservers<TContextData> {
   ) => void | Promise<void>;
 
   /**
-   * Observes settlement of concrete sends and forwarding, including pre-fetch
-   * failures. Callback errors cannot replace the sender's result.
+   * Observes settlement of concrete sends and forwarding, including workers
+   * and pre-fetch failures. Holds, drops, and failures before sender entry emit
+   * no attempt. Final HTTP evidence, local diagnostics, and the outward error
+   * remain distinct. Callback errors cannot replace the sender's result.
    */
   readonly onAttempt?: (
     context: Context<TContextData>,
@@ -326,8 +351,9 @@ export interface OutboundObservers<TContextData> {
   /**
    * Observes producer-side planning, handoffs, and destination preparation
    * failures, including fanout continuation handoffs. Filtered recipients do
-   * not become planned deliveries. Concrete attempts, remote success, and full
-   * worker execution reports are not observed yet.
+   * not become planned deliveries. Concrete attempts and exchanges have their
+   * own callbacks. These events do not report remote success or worker
+   * scheduling outcomes.
    */
   readonly onDelivery?: (
     context: Context<TContextData>,

@@ -66,7 +66,8 @@ Observing outgoing activities
 
 Use `Federatable.setOutboundObservers()` on a federation builder or a directly
 created federation to observe sends, original-payload forwarding, and automatic
-portable-inbox replication. Both callbacks are optional:
+portable-inbox replication. Each callback is optional. This example records
+producer preparation and delivery handoffs:
 
 ~~~~ typescript twoslash
 import type {
@@ -101,11 +102,13 @@ federation.setOutboundObservers({
 ~~~~
 
 Here, `recordBroadcast()` and `recordDelivery()` are your application's
-recording functions. Callbacks receive the existing context and application
-data without loading additional data for observation. The report fields contain
-immutable snapshots of known routing and source facts; original thrown values
-remain available as `unknown` values. The context, application data, Activity
-objects, and exceptions are not deep-copied by this API.
+recording functions. Callbacks receive context and application data without
+loading additional data for observation. Queued work uses the current worker's
+context and data; the original HTTP cause is recorded separately in
+`provenance`. The report fields contain immutable snapshots of known routing
+and source facts; original thrown values remain available as `unknown` values.
+The context, application data, Activity objects, and exceptions are not
+deep-copied by this API.
 
 ### Broadcast lifecycle
 
@@ -171,6 +174,103 @@ for that destination. Earlier handoffs remain valid, and later unvisited
 destinations can remain planned without a handoff. Parallel work can interleave
 callbacks, so IDs provide grouping rather than a total event order.
 
+### Attempts and HTTP exchanges
+
+`onAttempt` receives an `OutboundAttemptReport` once a concrete send settles,
+including immediate sends, forwarding, portable replication, and queue workers.
+Each entry into the sender gets a fresh `attemptId` under its `deliveryId`.
+Alternate gateways and retries create new attempts; signature challenges and
+redirects can create several fetches within one attempt. `inboxUrl` is the
+inbox selected for that attempt, while `request.url` on an exchange identifies
+the actual URL fetched at that step.
+
+`onHttpExchange` receives an `OutboundHttpExchangeReport` for each actual fetch
+submission. `exchangeIndex` starts at zero within its `attemptId`. Its `request`
+copies the submitted URL and method, including those of signed requests. A
+`response` outcome records status, status text, and the response URL when fetch
+supplies it; a `failed` outcome retains the original fetch rejection. A non-2xx
+response is still a received response. Neither live transport objects nor
+response bodies or headers are exposed.
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+declare const federation: Federation<void>;
+// ---cut-before---
+federation.setOutboundObservers({
+  onHttpExchange(_ctx, report) {
+    console.log(report.attemptId, report.exchangeIndex, report.request.url);
+    if (report.outcome.type === "response") {
+      console.log("HTTP response", report.outcome.response.status);
+    }
+  },
+  onAttempt(_ctx, report) {
+    console.log(report.attemptId, report.httpExchangeCount);
+    const response = report.outcome.response;
+    if (response.type === "final") {
+      console.log("Final response", response.exchangeIndex, response.metadata.status);
+    }
+    if (report.outcome.type === "failed") {
+      console.error(report.outcome.failure.kind, report.outcome.failure.error);
+    }
+  },
+});
+~~~~
+
+An attempt can fail before fetch, for example during URL validation or signing.
+It still has an attempt ID, with `httpExchangeCount: 0` and no exchange report.
+Failures before sender entry, such as queue key import or fanout parsing, and
+worker holds, drops, or deferrals do not create attempts. Attempt reports do not
+establish a worker's scheduling result.
+
+### Response versus final response
+
+A response means one fetch received HTTP headers. A final response is the
+response that the HTTP flow selected as the attempt's result. For example:
+
+~~~~ text
+401 challenge -> retry -> 202 accepted
+exchange 0              exchange 1 (final)
+~~~~
+
+If signing the retry fails, the 401 stays intermediate; being the last response
+does not make it final. An attempt's `outcome.response` makes that distinction
+explicit:
+
+| Type                | Evidence                                                                                           |
+| ------------------- | -------------------------------------------------------------------------------------------------- |
+| `final`             | The flow selected this response. `exchangeIndex` and immutable `metadata` identify it.             |
+| `not-observed`      | No response headers were received, including pre-fetch failures and rejected fetches.              |
+| `intermediate-only` | The flow chose to continue past the received response. `lastObserved` retains its index/metadata.  |
+| `undetermined`      | Execution failed before finality was established. `lastObserved` retains the known response facts. |
+
+`httpExchangeCount` counts actual fetch submissions, including challenge,
+redirect, and transport retries. It does not count signing or preparation work.
+A `succeeded` attempt has a successful final HTTP response after the send
+execution settles; it does not establish subsequent remote application work.
+
+A selected final response survives later cache or cleanup failures. With a
+final non-OK response, `failure.kind` remains `http` and `diagnostics` retains
+additional local failures. With a final 2xx response and a local failure, the
+attempt is `failed` with the 2xx evidence retained. `failure.error` preserves
+original operation evidence when available; an HTTP failure can lack an error
+if execution failed before constructing its usual HTTP exception. The separate
+`outcome.error` is the exact value that escaped the sender, including any
+existing wrapping. Observer errors never become attempt diagnostics.
+
+### Observation time and tracing
+
+Each event or report includes `observedAt`, Unix milliseconds captured at its
+observation boundary before awaiting the callback. Replay gets a new observation
+time while retaining known grouping and historical source facts. Wall clocks do
+not establish a global order across workers.
+
+Optional `trace` contains valid `traceId` and `spanId` from the observed
+operation's own span, including unsampled spans. Fedify omits it when no valid
+own span exists. Producer entry precedes span creation, and exchanges have no
+dedicated span; their reports omit `trace`. Ambient parent/server spans are not
+substituted. Grouping IDs and observations work independently of tracing or
+exporter storage.
+
 ### Identities across queues
 
 Observed broadcasts and deliveries retain their IDs through fanout expansion,
@@ -200,7 +300,10 @@ IDs provide grouping, not ordering or deduplication. Replayed work can produce
 repeated observations. Treat IDs as opaque values.
 
 Older messages remain processable. Fanout tasks without identity metadata get
-stable delivery IDs with `broadcast: { type: "unknown" }`. Missing source and
+stable delivery IDs with `broadcast: { type: "unknown" }`. Legacy outbox attempt
+reports use the current task UUID as `deliveryId` and unknown broadcast
+membership; `destinationInbox` is absent when the original plan is unavailable.
+An explicit canonical `portableInbox` can still be known. Missing source and
 application correlation remain unavailable. Older consumers can discard these
 fields, so mixed-version processing can lose correlation.
 
@@ -272,16 +375,19 @@ existing call retain it.
 
 Each registration call replaces all previous outbound observers; pass `{}` to
 clear them. Fedify copies the supplied callbacks, and building a federation
-copies the builder's registration. An active invocation keeps its selected
-callbacks even if registration changes while it is running. You can register
-only `onBroadcast` or only `onDelivery`.
+copies the builder's registration. An active invocation or worker execution
+keeps its selected callbacks even if registration changes while it is running.
+You can register any callback independently. On attempt/exchange reports,
+`queue` contains the current `queueMessageId` and an available Fedify
+`queueAttempt` counter. Native redelivery can repeat that counter while
+creating fresh attempts.
 
 Callbacks are awaited without a default timeout. Their return values and errors
 cannot veto sending, and callback or error-logging failures do not replace the
 send's original result. Slow callbacks delay processing; a callback that never
 settles can delay it indefinitely. Existing portable-forwarding deadlines can
 return control while background preparation, sending, and observation continue;
-a deadline alone does not create a failed preparation result.
+a deadline alone does not create a failed preparation result or attempt outcome.
 
 If you detach recording work, handle its rejections and shutdown yourself;
 Fedify does not guarantee its persistence. Incoming C2S `setOutboxListeners()`

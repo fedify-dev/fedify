@@ -248,10 +248,12 @@ Use
 `federation.setOutboundObservers({ onBroadcast(ctx, event) { ... }, onDelivery(ctx, event) { ... } })`
 (also available on builders) for producer observations of
 ordinary/outbox-context sends, original-payload forwarding, and automatic
-portable replication. Both callbacks are optional. Registration replaces the
-whole set; `{}` clears it. Registration and builds copy callbacks, and active
-executions retain their selection. Callbacks receive existing context/data
-without extra loading and work without OpenTelemetry.
+portable replication. Add `onAttempt(ctx, report)` and
+`onHttpExchange(ctx, report)` for concrete send and actual fetch results. All
+callbacks are optional. Registration replaces the whole set; `{}` clears it.
+Registration and builds copy callbacks, and active executions retain their
+selection. Callbacks receive existing context/data without extra loading and
+work without OpenTelemetry.
 
 `onBroadcast` groups start and preparation results with an independent
 `broadcastId`; `operation` distinguishes `send`, `forward`, and
@@ -265,6 +267,25 @@ unknown). Readiness, queue acceptance, and remote effects are distinct.
 Portable fallback keeps one delivery across alternate gateways; replication
 claims independent targets. Filtered recipients create no planned delivery.
 
+`onAttempt` emits one terminal `OutboundAttemptReport` per concrete send,
+including workers and each gateway/retry, with a fresh `attemptId` under its
+delivery. `httpExchangeCount` counts actual fetches, including challenges and
+redirects; pre-fetch failures have zero. `onHttpExchange` emits immutable
+`OutboundHttpExchangeReport` snapshots of actual request URL/method and response
+status/text/available URL, or the original fetch error. `exchangeIndex` starts
+at zero per attempt. No live transport objects, bodies, or headers are exposed.
+
+For attempt reports, narrow `report.outcome.response.type`: `final` has an
+`exchangeIndex` and
+`metadata`; `intermediate-only` and `undetermined` have `lastObserved`;
+`not-observed` has no response. The last received challenge or redirect is not
+necessarily final. A selected non-OK final response stays primary `http` failure
+when cache/cleanup also fails; local errors appear in `diagnostics`. A final 2xx
+plus a local error is still a failed attempt. Preserve `failure.error`
+separately from the outward `outcome.error`; HTTP failure evidence may lack an
+exception. Holds, drops, and failures before sender entry produce no attempt,
+and attempt reports do not establish worker scheduling results.
+
 Callbacks are awaited without a default timeout; observer/logging errors are
 isolated. Nonsettling callbacks can delay execution indefinitely. Portable
 forwarding can return at its existing deadline while background work and
@@ -272,14 +293,20 @@ observations continue. Detached recording must handle its own rejection,
 shutdown, and persistence. Known IDs survive fanout expansion, retries, holds,
 and gateway changes. Fanout expansion continues existing delivery handoffs
 without starting another broadcast. Legacy fanout can have an unknown broadcast;
-missing source facts remain unavailable, and older consumers can discard new
-metadata.
+legacy outbox reports use the current task UUID as `deliveryId` and omit an
+unavailable original `destinationInbox`. Missing source facts remain
+unavailable, and older consumers can discard new metadata. Attempt/exchange
+`queue` identifies the current message and available Fedify retry counter;
+workers receive current context data without observation-only loader calls.
 
 Events expose `provenance` for preserved source/app correlation and `local` for
 current URL facts. A known inbox source includes server-generated
 `inboxRequestId`, informational `requestId`, and the original URL snapshot.
 It survives context clones/conversions and queues; independent contexts do not
-infer it from ambient execution.
+infer it from ambient execution. `observedAt` is current Unix milliseconds,
+not a global ordering guarantee. Optional `trace` carries only valid IDs of the
+operation's own span, never an ambient parent fallback; grouping works without
+tracing. Entry events and exchanges omit trace when no own span exists.
 
 Send/forward options accept `dispatchId`, preserved exactly in event provenance
 and queues even without producer observers. Empty strings are valid; the limit
