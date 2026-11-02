@@ -59,8 +59,22 @@ export async function createProof(
   object: Object,
   privateKey: CryptoKey,
   keyId: URL,
-  { contextLoader, context, created }: CreateProofOptions = {},
+  options: CreateProofOptions = {},
 ): Promise<DataIntegrityProof> {
+  return (await createProofInternal(object, privateKey, keyId, options)).proof;
+}
+
+interface CreateProofResult {
+  proof: DataIntegrityProof;
+  jsonLd: unknown;
+}
+
+async function createProofInternal(
+  object: Object,
+  privateKey: CryptoKey,
+  keyId: URL,
+  { contextLoader, context, created }: CreateProofOptions = {},
+): Promise<CreateProofResult> {
   validateCryptoKey(privateKey, "private");
   if (privateKey.algorithm.name !== "Ed25519") {
     throw new TypeError("Unsupported algorithm: " + privateKey.algorithm.name);
@@ -92,13 +106,34 @@ export async function createProof(
   digest.set(new Uint8Array(proofDigest), 0);
   digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
   const sig = await crypto.subtle.sign("Ed25519", privateKey, digest);
-  return new DataIntegrityProof({
-    cryptosuite: "eddsa-jcs-2022",
-    verificationMethod: keyId,
-    proofPurpose: "assertionMethod",
-    created: created ?? Temporal.Now.instant(),
-    proofValue: new Uint8Array(sig),
-  });
+  return {
+    proof: new DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: keyId,
+      proofPurpose: "assertionMethod",
+      created: created ?? Temporal.Now.instant(),
+      proofValue: new Uint8Array(sig),
+    }),
+    jsonLd: compactMsg,
+  };
+}
+
+function getJsonLdContextKey(value: unknown): string {
+  const context = typeof value === "object" && value != null &&
+      !Array.isArray(value)
+    ? (value as Record<string, unknown>)["@context"] ?? null
+    : null;
+  return JSON.stringify(sortJsonKeys(context));
+}
+
+function sortJsonKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortJsonKeys);
+  if (typeof value !== "object" || value == null) return value;
+  return globalThis.Object.fromEntries(
+    globalThis.Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+      .map(([key, item]) => [key, sortJsonKeys(item)]),
+  );
 }
 
 /**
@@ -147,11 +182,30 @@ export async function signObject<T extends Object>(
         if (object.id != null) {
           span.setAttribute("activitypub.object.id", object.id.href);
         }
-        const existingProofs: DataIntegrityProof[] = [];
-        for await (const proof of object.getProofs(options)) {
-          existingProofs.push(proof);
+        const { proof, jsonLd } = await createProofInternal(
+          object,
+          privateKey,
+          keyId,
+          options,
+        );
+        // Existing proofs only cover the current serialization if the object
+        // is serialized with the same context.  A restored document may retain
+        // an older context, and appending to its proofs would leave an invalid
+        // proof alongside the new one.
+        let sameContext = true;
+        if (options.context == null) {
+          const originalJsonLd = await object.toJsonLd({
+            contextLoader: options.contextLoader,
+          });
+          sameContext = getJsonLdContextKey(originalJsonLd) ===
+            getJsonLdContextKey(jsonLd);
         }
-        const proof = await createProof(object, privateKey, keyId, options);
+        const existingProofs: DataIntegrityProof[] = [];
+        if (sameContext) {
+          for await (const existingProof of object.getProofs(options)) {
+            existingProofs.push(existingProof);
+          }
+        }
         if (span.isRecording()) {
           if (proof.cryptosuite != null) {
             span.setAttribute(

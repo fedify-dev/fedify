@@ -267,6 +267,49 @@ test("signObject()", async () => {
   );
 });
 
+test("signObject() migrates proofs from an older context", async () => {
+  const oldContext = [
+    "https://w3id.org/identity/v1",
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+  ];
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+  const oldSigned = await signObject(
+    activity,
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    { contextLoader: mockDocumentLoader, context: oldContext },
+  );
+  const oldJson = await oldSigned.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+    context: oldContext,
+  });
+  const restored = await Create.fromJsonLd(oldJson, {
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+  });
+  const resigned = await signObject(
+    restored,
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    { contextLoader: mockDocumentLoader },
+  );
+  const json = await resigned.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const proofs = Array.isArray(json.proof) ? json.proof : [json.proof];
+  assertEquals(proofs.length, 1);
+  assertEquals(
+    (proofs[0] as Record<string, unknown>).verificationMethod,
+    ed25519Multikey.id!.href,
+  );
+});
+
 test("verifyProof()", async () => {
   const cache: Record<string, CryptographicKey | Multikey | null> = {};
   const options: VerifyProofOptions = {
