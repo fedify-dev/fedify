@@ -27,7 +27,8 @@
   },
   "homepage": "https://github.com/fedify-dev/fedify/tree/main/examples/elysia#readme",
   "devDependencies": {
-    "bun-types": "^1.2.19"
+    "bun-types": "^1.2.19",
+    "typescript": "catalog:"
   },
   "dependencies": {
     "@fedify/elysia": "workspace:*",
