@@ -16,7 +16,7 @@ import {
 } from "node:assert/strict";
 import { createFederationBuilder } from "./builder.ts";
 import { MemoryKvStore } from "./kv.ts";
-import { createFederation } from "./middleware.ts";
+import { ContextImpl, createFederation } from "./middleware.ts";
 import type {
   Message,
   MessageQueue,
@@ -638,5 +638,316 @@ test("outbound preparation preserves earlier handoffs when later destination set
         }
       },
     );
+  }
+});
+
+test("outbox-context observers await starts and preserve context, registration, and failures", async () => {
+  const federation = createFederation<{ label: string }>(options);
+  const failure = Symbol("sender resolution failed");
+  let resolutions = 0;
+  federation.setActorDispatcher("/users/{identifier}", () => new Person({}))
+    .mapHandle(() => {
+      resolutions++;
+      throw failure;
+    });
+  const base = federation.createContext(new URL("https://example.com"), {
+    label: "app",
+  });
+  ok(base instanceof ContextImpl);
+  const ctx = base.toOutboxContext(
+    "alice",
+    {},
+    activity.id!.href,
+    Create.typeId.href,
+  );
+  let entered!: () => void;
+  const entry = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const events: OutboundBroadcastEvent[] = [];
+  const contexts: unknown[] = [];
+  let replacementCalls = 0;
+  federation.setOutboundObservers({
+    async onBroadcast(context, event) {
+      contexts.push(context);
+      events.push(event);
+      if (event.stage === "started") {
+        entered();
+        await gate;
+      }
+      throw new Error("recorder failed");
+    },
+  });
+  const sending = rejects(
+    ctx.sendActivity({ username: "alice" }, [], activity),
+    (error: unknown) => error === failure,
+  );
+  await entry;
+  strictEqual(resolutions, 0);
+  strictEqual(ctx.hasDeliveredActivity(), false);
+  federation.setOutboundObservers({
+    onBroadcast() {
+      replacementCalls++;
+    },
+  });
+  release();
+  await sending;
+  strictEqual(resolutions, 1);
+  strictEqual(replacementCalls, 0);
+  strictEqual(contexts.length, 2);
+  for (const context of contexts) strictEqual(context, ctx);
+  strictEqual(ctx.data.label, "app");
+  deepStrictEqual(preparation(events), {
+    type: "failed",
+    failure: { kind: "local", phase: "sender-resolution", error: failure },
+    planning: "not-started",
+    plannedDestinationCount: 0,
+  });
+  strictEqual(ctx.hasDeliveredActivity(), false);
+  federation.setOutboundObservers({});
+  await rejects(
+    ctx.sendActivity({ username: "alice" }, [], activity),
+    (error: unknown) => error === failure,
+  );
+  strictEqual(resolutions, 2);
+  strictEqual(events.length, 2);
+  strictEqual(ctx.hasDeliveredActivity(), false);
+});
+
+test("outbox-context observers preserve empty sends without extra loading", async () => {
+  let loads = 0;
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    documentLoaderFactory: () => () => {
+      loads++;
+      throw new Error("unexpected lookup");
+    },
+    contextLoaderFactory: () => () => {
+      loads++;
+      throw new Error("unexpected lookup");
+    },
+  });
+  const base = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  ok(base instanceof ContextImpl);
+  const ctx = base.toOutboxContext(
+    "alice",
+    {},
+    activity.id!.href,
+    Create.typeId.href,
+  );
+  const events: OutboundBroadcastEvent[] = [];
+  federation.setOutboundObservers({
+    onBroadcast(_ctx, event) {
+      events.push(event);
+    },
+  });
+  await ctx.sendActivity(sender, [], activity);
+  deepStrictEqual(preparation(events), {
+    type: "skipped",
+    reason: "no-destinations",
+  });
+  strictEqual(ctx.hasDeliveredActivity(), false);
+  federation.setOutboundObservers({});
+  await ctx.sendActivity(sender, [], activity);
+  strictEqual(ctx.hasDeliveredActivity(), false);
+  strictEqual(events.length, 2);
+  strictEqual(loads, 0);
+});
+
+test("outbox-context observers report queue readiness before acceptance and preserve delivery state", async (t) => {
+  for (const role of ["outbox", "fanout"] as const) {
+    for (const rejected of [false, true]) {
+      await t.step(
+        `${role}: ${rejected ? "rejected" : "accepted"}`,
+        async () => {
+          const failure = Symbol("enqueue failed");
+          const events: OutboundBroadcastEvent[] = [];
+          const messages: Message[] = [];
+          const checkpoints: {
+            context: unknown;
+            delivered: boolean;
+            enqueued: number;
+          }[] = [];
+          const queue: MessageQueue = {
+            enqueue(message) {
+              messages.push(message);
+              return rejected ? Promise.reject(failure) : Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          };
+          const federation = createFederation<void>({
+            ...options,
+            kv: new MemoryKvStore(),
+            manuallyStartQueue: true,
+            queue: { [role]: queue },
+          });
+          const base = federation.createContext(
+            new URL("https://example.com"),
+            undefined,
+          );
+          ok(base instanceof ContextImpl);
+          const ctx = base.toOutboxContext(
+            "alice",
+            {},
+            activity.id!.href,
+            Create.typeId.href,
+          );
+          const clone = ctx.clone(undefined);
+          federation.setOutboundObservers({
+            onBroadcast(context, event) {
+              events.push(event);
+              checkpoints.push({
+                context,
+                delivered: ctx.hasDeliveredActivity(),
+                enqueued: messages.length,
+              });
+              // Callback failure must not change acceptance or delivery state.
+              throw new Error("recorder failed");
+            },
+          });
+          const sending = ctx.sendActivity(
+            sender,
+            [recipient, recipient],
+            activity,
+            {
+              fanout: role === "fanout" ? "force" : "skip",
+            },
+          );
+          if (rejected) {
+            await rejects(sending, (error: unknown) => error === failure);
+          } else await sending;
+          deepStrictEqual(preparation(events), {
+            type: "prepared",
+            preparedFor: role === "fanout" ? "fanout" : "delivery",
+            destinationCount: 1,
+          });
+          strictEqual(checkpoints.length, 2);
+          for (const checkpoint of checkpoints) {
+            strictEqual(checkpoint.context, ctx);
+            strictEqual(checkpoint.delivered, false);
+            strictEqual(checkpoint.enqueued, 0);
+          }
+          strictEqual(messages.length, 1);
+          strictEqual(messages[0].type, role);
+          strictEqual(ctx.hasDeliveredActivity(), !rejected);
+          strictEqual(clone.hasDeliveredActivity(), !rejected);
+          // Clearing observers keeps successful sends and the shared state working.
+          if (!rejected) {
+            federation.setOutboundObservers({});
+            await ctx.sendActivity(sender, recipient, activity, {
+              fanout: role === "fanout" ? "force" : "skip",
+            });
+            await ctx.sendActivity(sender, [], activity);
+            strictEqual(messages.length, 2);
+            strictEqual(events.length, 2);
+            strictEqual(ctx.hasDeliveredActivity(), true);
+            strictEqual(clone.hasDeliveredActivity(), true);
+          }
+        },
+      );
+    }
+  }
+});
+
+test("outbox-context observers report immediate readiness before transport settles", async (t) => {
+  for (const status of [202, 503]) {
+    await t.step(`HTTP ${status}`, async () => {
+      let fetched!: () => void;
+      const fetching = new Promise<void>((resolve) => {
+        fetched = resolve;
+      });
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready!: () => void;
+      const prepared = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const events: OutboundBroadcastEvent[] = [];
+      const contexts: unknown[] = [];
+      const [tracerProvider, spanExporter] = createTestTracerProvider();
+      fetchMock.mockGlobal().post(
+        "https://receiver.example/inbox",
+        async () => {
+          fetched();
+          await gate;
+          return new Response(null, { status });
+        },
+      );
+      try {
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          allowPrivateAddress: true,
+          tracerProvider,
+        });
+        const base = federation.createContext(
+          new URL("https://example.com"),
+          undefined,
+        );
+        ok(base instanceof ContextImpl);
+        const ctx = base.toOutboxContext(
+          "alice",
+          {},
+          activity.id!.href,
+          Create.typeId.href,
+        );
+        const clone = ctx.clone(undefined);
+        federation.setOutboundObservers({
+          onBroadcast(context, event) {
+            contexts.push(context);
+            events.push(event);
+            if (event.stage === "preparation-finished") ready();
+          },
+        });
+        let settled = false;
+        const sending = ctx.sendActivity(sender, recipient, activity, {
+          immediate: true,
+        })
+          .finally(() => {
+            settled = true;
+          });
+        const result = status === 202
+          ? sending
+          : rejects(sending, (error: unknown) => {
+            return error instanceof Error && "statusCode" in error &&
+              error.statusCode === status;
+          });
+        await Promise.all([fetching, prepared]);
+        strictEqual(settled, false);
+        strictEqual(ctx.hasDeliveredActivity(), false);
+        deepStrictEqual(preparation(events), {
+          type: "prepared",
+          preparedFor: "delivery",
+          destinationCount: 1,
+        });
+        release();
+        await result;
+        strictEqual(events.length, 2);
+        for (const context of contexts) strictEqual(context, ctx);
+        strictEqual(ctx.hasDeliveredActivity(), status === 202);
+        strictEqual(clone.hasDeliveredActivity(), status === 202);
+        const spans = spanExporter.getSpans("activitypub.outbox");
+        strictEqual(spans.length, 1);
+        strictEqual(
+          spans[0].attributes["activitypub.activity.id"],
+          activity.id!.href,
+        );
+        if (status === 503) {
+          strictEqual(spans[0].status.code, SpanStatusCode.ERROR);
+        }
+      } finally {
+        release();
+        fetchMock.hardReset();
+        await tracerProvider.shutdown();
+      }
+    });
   }
 });

@@ -48,7 +48,8 @@ export type OutboundPreparationResult =
   };
 
 /**
- * An ordinary {@link Context.sendActivity} invocation's producer lifecycle.
+ * A {@link Context.sendActivity} invocation's producer lifecycle, including
+ * the outbox-context override.
  *
  * Preparation results do not report queue acceptance or delivery completion.
  * @since 2.5.0
@@ -76,9 +77,10 @@ export type OutboundBroadcastEvent =
 /**
  * Optional observers of outgoing activity processing.
  *
- * Currently only ordinary {@link Context.sendActivity} producer events are
- * observed. Callbacks are awaited without a default timeout. Their errors,
- * including errors logging observer failures, do not replace the send's result.
+ * Currently {@link Context.sendActivity} producer events are observed, including
+ * the outbox-context override. Callbacks are awaited without a default timeout.
+ * Their errors, including errors logging observer failures, do not replace the
+ * send's result.
  * A callback that never settles delays execution indefinitely. Detached
  * recording must handle its own rejection and shutdown; no persistence is
  * guaranteed.

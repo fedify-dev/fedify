@@ -7178,45 +7178,59 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
     activity: Activity,
     options: SendActivityOptionsForCollection = {},
   ): Promise<void> {
-    const tracer = this.tracerProvider.getTracer(
-      metadata.name,
-      metadata.version,
-    );
-    return tracer.startActiveSpan(
-      this.federation.outboxQueue == null || options.immediate
-        ? "activitypub.outbox"
-        : "activitypub.fanout",
-      {
-        kind: this.federation.outboxQueue == null || options.immediate
-          ? SpanKind.CLIENT
-          : SpanKind.PRODUCER,
-        attributes: {
-          "activitypub.activity.type": getTypeId(activity).href,
-          "activitypub.activity.to": activity.toIds.map((to) => to.href),
-          "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
-          "activitypub.activity.bto": activity.btoIds.map((bto) => bto.href),
-          "activitypub.activity.bcc": activity.bccIds.map((bcc) => bcc.href),
-        },
-      },
-      async (span) => {
-        try {
-          if (activity.id != null) {
-            span.setAttribute("activitypub.activity.id", activity.id.href);
-          }
-          const delivered = await this.sendActivityInternal(
-            sender,
-            recipients,
-            activity,
-            options,
-            span,
-          );
-          if (delivered) this.#deliveryState.delivered = true;
-        } catch (e) {
-          span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
-          throw e;
-        } finally {
-          span.end();
-        }
+    return observeOutboundBroadcast(
+      this,
+      this.federation.outboundObservers.onBroadcast,
+      (observation) => {
+        const tracer = this.tracerProvider.getTracer(
+          metadata.name,
+          metadata.version,
+        );
+        return tracer.startActiveSpan(
+          this.federation.outboxQueue == null || options.immediate
+            ? "activitypub.outbox"
+            : "activitypub.fanout",
+          {
+            kind: this.federation.outboxQueue == null || options.immediate
+              ? SpanKind.CLIENT
+              : SpanKind.PRODUCER,
+            attributes: {
+              "activitypub.activity.type": getTypeId(activity).href,
+              "activitypub.activity.to": activity.toIds.map((to) => to.href),
+              "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
+              "activitypub.activity.bto": activity.btoIds.map((bto) =>
+                bto.href
+              ),
+              "activitypub.activity.bcc": activity.bccIds.map((bcc) =>
+                bcc.href
+              ),
+            },
+          },
+          async (span) => {
+            try {
+              if (activity.id != null) {
+                span.setAttribute("activitypub.activity.id", activity.id.href);
+              }
+              const delivered = await this.sendActivityInternal(
+                sender,
+                recipients,
+                activity,
+                options,
+                span,
+                observation,
+              );
+              if (delivered) this.#deliveryState.delivered = true;
+            } catch (e) {
+              span.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: String(e),
+              });
+              throw e;
+            } finally {
+              span.end();
+            }
+          },
+        );
       },
     );
   }

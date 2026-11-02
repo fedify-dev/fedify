@@ -11,7 +11,7 @@ type PreparationFailure = Extract<
   { type: "failed" }
 >;
 
-/** State owned by one ordinary send invocation, never serialized into queues. */
+/** State owned by one send invocation, never serialized into queues. */
 export class OutboundBroadcastObservation<TContextData> {
   readonly #broadcastId = crypto.randomUUID();
   #finished = false;
