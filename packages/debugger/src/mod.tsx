@@ -313,6 +313,8 @@ export function createFederationDebugger<TContextData>(
   return new Proxy(federation as Federation<TContextData> & { sink: Sink }, {
     get(target, prop, receiver) {
       if (prop in overrides) return overrides[prop];
+      // Proxy forwarding requires dynamic property access.
+      // oxlint-disable-next-line anti-slop/no-reflect-get
       const value = Reflect.get(target, prop, receiver);
       if (typeof value === "function") return value.bind(target);
       return value;

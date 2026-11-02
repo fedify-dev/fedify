@@ -984,11 +984,11 @@ async function captureLogs(fn: () => Promise<void>): Promise<LogRecord[]> {
 
 // Gets the error messages of the logged failures to cancel response bodies:
 function getCancelFailures(records: readonly LogRecord[]): string[] {
-  return records
-    .filter((r) =>
-      r.rawMessage === "Failed to cancel the response body from {url}: {error}"
-    )
-    .map((r) => (r.properties.error as Error).message);
+  return records.flatMap((r) =>
+    r.rawMessage === "Failed to cancel the response body from {url}: {error}"
+      ? [(r.properties.error as Error).message]
+      : []
+  );
 }
 
 const linkAlternate = (next: string): RecordedResponseInit => ({

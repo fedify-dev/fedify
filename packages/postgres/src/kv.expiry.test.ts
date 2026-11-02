@@ -1,3 +1,4 @@
+// oxlint-disable anti-slop/no-reflect-apply -- Proxy forwarding requires dynamic invocation.
 import { test } from "@fedify/fixture";
 import { PostgresKvStore } from "@fedify/postgres/kv";
 import * as temporal from "@js-temporal/polyfill";

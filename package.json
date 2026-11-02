@@ -14,6 +14,7 @@
     "@cloudflare/workers-types": "catalog:",
     "@types/bun": "catalog:",
     "@types/deno": "catalog:",
+    "@oxlint/plugins": "catalog:",
     "oxlint": "catalog:",
     "tsdown": "catalog:"
   },

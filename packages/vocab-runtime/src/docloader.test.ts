@@ -2120,16 +2120,16 @@ async function captureDocumentLoaderLogs<T>(
 function cancelFailureLogs(
   records: readonly LogRecord[],
 ): [string, unknown, string][] {
-  return records
-    .filter((record) =>
-      record.rawMessage ===
+  return records.flatMap((record) =>
+    record.rawMessage ===
         "Failed to cancel the response body from {url}: {error}"
-    )
-    .map((record) => [
-      record.level,
-      record.properties.url,
-      String(record.properties.error),
-    ]);
+      ? [[
+        record.level,
+        record.properties.url,
+        String(record.properties.error),
+      ]]
+      : []
+  );
 }
 
 function linkHeaderAlternate(next: string): RecordedResponseInit {

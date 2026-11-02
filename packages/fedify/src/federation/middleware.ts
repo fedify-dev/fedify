@@ -3869,9 +3869,9 @@ export class FederationImpl<TContextData>
           recordOutboxEnqueue(this.meterProvider, outboxQueue, m.message);
         }),
       );
-      const errors = promises
-        .filter((r) => r.status === "rejected")
-        .map((r) => (r as PromiseRejectedResult).reason);
+      const errors = promises.flatMap((r) =>
+        r.status === "rejected" ? [(r as PromiseRejectedResult).reason] : []
+      );
       if (errors.length > 0) {
         logger.error(
           "Failed to enqueue activity {activityId} to send later: {errors}",
@@ -7722,9 +7722,9 @@ async function forwardActivityInternal<TContextData>(
         );
       }),
     );
-    const errors: unknown[] = promises
-      .filter((r) => r.status === "rejected")
-      .map((r) => (r as PromiseRejectedResult).reason);
+    const errors: unknown[] = promises.flatMap((r) =>
+      r.status === "rejected" ? [(r as PromiseRejectedResult).reason] : []
+    );
     if (errors.length > 0) {
       logger.error(
         "Failed to enqueue activity {activityId} to forward later:\n{errors}",

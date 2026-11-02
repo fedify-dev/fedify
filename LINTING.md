@@ -136,9 +136,26 @@ a note here.  The current additions are:
 Vendored [anti-slop] rules live in *tools/oxlint/anti-slop/*.  They are copied
 from upstream and recorded in *tools/oxlint/anti-slop/UPSTREAM.md*; update
 them by following the upstream install skill and recording the new revision.
-Only rules that pass the current codebase are enabled initially.  Rules that
-require broad type or API refactoring are staged separately.  The
-`require-readable-spacing` rule is not enabled because formatting is owned by
-the formatter.
+The vendored directory is excluded from Oxlint, `deno fmt`, and Hongdown, and
+`@oxlint/plugins` is pinned to the same exact version as `oxlint`.
+
+The enabled generic rules are:
+
+ -  `oxc/no-accumulating-spread`
+ -  `anti-slop/no-array-filter-map`
+ -  `anti-slop/no-module-mocking`
+ -  `anti-slop/no-reduce-accumulator-copy`
+ -  `anti-slop/no-reflect-apply`
+ -  `anti-slop/no-reflect-get`
+ -  `anti-slop/no-unknown-type-aliases`
+ -  `anti-slop/no-widen-then-assert`
+
+The remaining generic rules are deferred because they require broad type or
+API refactoring: `no-chained-type-assertions`,
+`no-conditional-empty-object-spread`, `no-known-value-widening`,
+`no-object-parameters`, `no-runtime-typeof`, `no-shape-in-symbol-names`,
+`no-unknown-parameters`, `no-unknown-returns`, `no-unsafe-dictionary-type`, and
+`require-safety-comment-for-type-assertion`. `require-readable-spacing` is not
+enabled because formatting is owned by the formatter.
 
 [anti-slop]: https://github.com/dmmulroy/anti-slop

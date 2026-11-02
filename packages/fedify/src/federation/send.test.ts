@@ -1473,11 +1473,11 @@ async function captureLogs(fn: () => Promise<void>): Promise<LogRecord[]> {
 
 // Gets the URLs of the logged failures to cancel response bodies:
 function getCancelFailureUrls(records: readonly LogRecord[]): unknown[] {
-  return records
-    .filter((r) =>
-      r.rawMessage === "Failed to cancel the response body from {url}: {error}"
-    )
-    .map((r) => r.properties.url);
+  return records.flatMap((r) =>
+    r.rawMessage === "Failed to cancel the response body from {url}: {error}"
+      ? [r.properties.url]
+      : []
+  );
 }
 
 test("fetchWithValidatedRedirects() logs a redirect body failing to cancel and follows the redirect", async (t) => {

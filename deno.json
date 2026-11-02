@@ -112,7 +112,8 @@
     "claude-plugin/",
     "docs/",
     "pnpm-lock.yaml",
-    "pnpm-workspace.yaml"
+    "pnpm-workspace.yaml",
+    "tools/"
   ],
   "fmt": {
     "exclude": [

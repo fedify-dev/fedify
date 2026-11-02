@@ -1,3 +1,4 @@
+// oxlint-disable anti-slop/no-reflect-apply -- Proxy forwarding requires dynamic invocation.
 import type { ServerResponse } from "node:http";
 
 export const NOT_ACCEPTABLE_BODY = "Not Acceptable";

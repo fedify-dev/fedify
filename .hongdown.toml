@@ -15,6 +15,7 @@ exclude = [
   "WARP.md",
   "changes.d/**",
   "packages/fedify/src/cfworkers/**",
+  "tools/oxlint/anti-slop/**",
   "plan.md",
   "**/plans/**",
 ]

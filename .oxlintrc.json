@@ -22,6 +22,32 @@
   "options": {
     "reportUnusedDisableDirectives": "error"
   },
+  "jsPlugins": [
+    {
+      "name": "anti-slop",
+      "specifier": "./tools/oxlint/anti-slop/index.ts"
+    }
+  ],
+  "overrides": [
+    {
+      "files": [
+        "packages/cli/**"
+      ],
+      "rules": {
+        "eslint/no-console": "off"
+      }
+    },
+    {
+      "files": [
+        "examples/fresh/**"
+      ],
+      "rules": {
+        "react/no-danger": "error",
+        "react/no-danger-with-children": "error",
+        "react/rules-of-hooks": "error"
+      }
+    }
+  ],
   "rules": {
     "typescript/adjacent-overload-signatures": "error",
     "typescript/ban-ts-comment": [
@@ -148,28 +174,16 @@
     "eslint/require-await": "error",
     "eslint/require-yield": "error",
     "eslint/use-isnan": "error",
-    "eslint/valid-typeof": "error"
+    "eslint/valid-typeof": "error",
+    "oxc/no-accumulating-spread": "error",
+    "anti-slop/no-module-mocking": "error",
+    "anti-slop/no-reduce-accumulator-copy": "error",
+    "anti-slop/no-unknown-type-aliases": "error",
+    "anti-slop/no-widen-then-assert": "error",
+    "anti-slop/no-array-filter-map": "error",
+    "anti-slop/no-reflect-get": "error",
+    "anti-slop/no-reflect-apply": "error"
   },
-  "overrides": [
-    {
-      "files": [
-        "packages/cli/**"
-      ],
-      "rules": {
-        "eslint/no-console": "off"
-      }
-    },
-    {
-      "files": [
-        "examples/fresh/**"
-      ],
-      "rules": {
-        "react/no-danger": "error",
-        "react/no-danger-with-children": "error",
-        "react/rules-of-hooks": "error"
-      }
-    }
-  ],
   "ignorePatterns": [
     "**/pnpm-lock.yaml",
     "pnpm-workspace.yaml",
@@ -206,6 +220,7 @@
     "**/node_modules/**",
     "**/npm/**",
     "**/apidoc/**",
-    "**/*.test-report.xml"
+    "**/*.test-report.xml",
+    "tools/oxlint/anti-slop/**"
   ]
 }

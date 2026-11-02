@@ -226,8 +226,9 @@ function* generateEntityTypeHelpers(
   sortedTypeUris: string[],
   types: Record<string, TypeSchema>,
 ): Iterable<string> {
-  const entityTypes = sortedTypeUris.filter((typeUri) => types[typeUri].entity)
-    .map((typeUri) => ({ name: types[typeUri].name, uri: typeUri }));
+  const entityTypes = sortedTypeUris.flatMap((typeUri) =>
+    types[typeUri].entity ? [{ name: types[typeUri].name, uri: typeUri }] : []
+  );
   const entityTypeNames = entityTypes.map((entityType) => entityType.name);
   const entityTypeUnion = entityTypeNames.length < 1
     ? " never"

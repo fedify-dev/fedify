@@ -185,11 +185,9 @@ function aggregateServer(
 function aggregateSignatureVerification(
   servers: readonly ServerMetrics[],
 ): NonNullable<ServerMetrics["signatureVerificationMs"]> | null {
-  const values = servers
-    .map((s) => s.signatureVerificationMs)
-    .filter((s): s is NonNullable<ServerMetrics["signatureVerificationMs"]> =>
-      s != null
-    );
+  const values = servers.flatMap((s) =>
+    s.signatureVerificationMs == null ? [] : [s.signatureVerificationMs]
+  );
   if (values.length !== servers.length) return null;
   const standards = new Set<string>();
   for (const value of values) {
@@ -211,9 +209,7 @@ function aggregateSignatureVerification(
 function aggregateQueue(
   servers: readonly ServerMetrics[],
 ): NonNullable<ServerMetrics["queue"]> | null {
-  const values = servers
-    .map((s) => s.queue)
-    .filter((q): q is NonNullable<ServerMetrics["queue"]> => q != null);
+  const values = servers.flatMap((s) => s.queue == null ? [] : [s.queue]);
   if (values.length !== servers.length) return null;
   const drainMs = aggregatePartial(values.map((v) => v.drainMs));
   const depths = values.map((v) => v.depthMax);

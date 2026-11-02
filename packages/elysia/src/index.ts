@@ -111,7 +111,9 @@ export const fedify = <TContextData = unknown>(
             ].includes(name)
           ) delete set.headers[header];
         }
-        const fields = vary.map((field) => field.trim()).filter(Boolean);
+        const fields = vary.flatMap((field) =>
+          field.trim() ? [field.trim()] : []
+        );
         if (
           !fields.some((field) =>
             field === "*" || field.toLowerCase() === "accept"

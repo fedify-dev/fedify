@@ -102,9 +102,11 @@ class MockKvNamespace implements WorkersKvNamespaceLike {
     options?: KvListOptions,
   ): Promise<KvListResult<Metadata>> {
     this.listCalls++;
-    const matches = [...this.entries]
-      .filter(([name]) => name.startsWith(options?.prefix ?? ""))
-      .map(([name, entry]) => ({ name, metadata: entry.metadata as Metadata }));
+    const matches = [...this.entries].flatMap(([name, entry]) =>
+      name.startsWith(options?.prefix ?? "")
+        ? [{ name, metadata: entry.metadata as Metadata }]
+        : []
+    );
     const start = options?.cursor == null ? 0 : Number(options.cursor);
     const keys = matches.slice(start, start + this.#pageSize);
     const nextStart = start + keys.length;

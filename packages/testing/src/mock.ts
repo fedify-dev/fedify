@@ -872,6 +872,8 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       Reflect.set(
         receivedActivity,
         "_cachedJsonLd",
+        // Preserve the internal JSON-LD cache across clones.
+        // oxlint-disable-next-line anti-slop/no-reflect-get
         Reflect.get(activity, "_cachedJsonLd"),
       );
     }
