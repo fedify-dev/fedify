@@ -3304,6 +3304,295 @@ function continuationMessage(
   };
 }
 
+test("ordinary outbox worker actions record actual retry and hold enqueues", async (t) => {
+  for (const mode of ["retry", "retry-after", "hold"] as const) {
+    await t.step(mode, async () => {
+      const queued: {
+        message: Message;
+        options: Parameters<MessageQueue["enqueue"]>[1];
+      }[] = [];
+      const reports: OutboundWorkerReport[] = [];
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        manuallyStartQueue: true,
+        outboxRetryPolicy: () => Temporal.Duration.from({ milliseconds: 250 }),
+        circuitBreaker: mode === "hold"
+          ? { failureThreshold: 1, recoveryDelay: { hours: 1 } }
+          : false,
+        queue: {
+          outbox: {
+            enqueue(message, options) {
+              queued.push({ message, options });
+              return Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          },
+        },
+      });
+      federation.setOutboundObservers({
+        onWorker(_ctx, report) {
+          reports.push(report);
+        },
+      });
+      const message = continuationMessage(recipient.inboxId!.href, true);
+      Object.assign(message, {
+        outbound: {
+          ...message.outbound!,
+          destinationInbox: "https://original.example/inbox",
+        },
+      });
+      fetchMock.mockGlobal().post(
+        message.inbox,
+        mode === "retry-after"
+          ? {
+            status: 429,
+            headers: { "Retry-After": "1" },
+          }
+          : 503,
+      );
+      try {
+        await federation.processQueuedTask(undefined, message);
+        strictEqual(reports.length, 1);
+        strictEqual(reports[0].attemptsStarted, 1);
+        deepStrictEqual(reports[0].result, { type: "completed" });
+        strictEqual(queued.length, 1);
+        const task = queued[0].message;
+        ok(task.type === "outbox");
+        const action = reports[0].actions?.[0];
+        ok(action?.type === "scheduled");
+        strictEqual(action.action, mode === "hold" ? "defer" : "retry");
+        deepStrictEqual(action.queue, {
+          queueMessageId: task.id,
+          queueAttempt: mode === "hold" ? 0 : 1,
+        });
+        strictEqual(reports[0].queue.queueAttempt, 0);
+        strictEqual(action.delay, queued[0].options?.delay?.toString());
+        deepStrictEqual(action.inboxUrls, [message.inbox]);
+        strictEqual(
+          reports[0].delivery?.destinationInbox,
+          "https://original.example/inbox",
+        );
+        strictEqual(reports[0].actions?.length, 1);
+        ok(Object.isFrozen(reports[0].actions));
+        ok(Object.isFrozen(action));
+        ok(Object.isFrozen(action.queue));
+        ok(Object.isFrozen(action.inboxUrls));
+        if (mode === "retry-after") {
+          strictEqual(
+            Temporal.Duration.from(action.delay).total("milliseconds"),
+            1_000,
+          );
+        }
+        if (mode === "hold") {
+          const requests = fetchMock.callHistory.calls().length;
+          await federation.processQueuedTask(undefined, structuredClone(task));
+          strictEqual(reports.length, 2);
+          strictEqual(reports[1].attemptsStarted, 0);
+          strictEqual(fetchMock.callHistory.calls().length, requests);
+          const held = reports[1].actions?.[0];
+          ok(held?.type === "scheduled");
+          strictEqual(held.action, "defer");
+          strictEqual(held.queue.queueAttempt, 0);
+        }
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
+test("ordinary outbox worker actions preserve enqueue uncertainty and accepted bookkeeping failures", async (t) => {
+  for (const mode of ["rejected", "accepted"] as const) {
+    await t.step(mode, async () => {
+      const [meterProvider] = createTestMeterProvider();
+      const failure = Symbol(mode);
+      const queued: Message[] = [];
+      const reports: OutboundWorkerReport[] = [];
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        manuallyStartQueue: true,
+        meterProvider,
+        circuitBreaker: false,
+        outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 1 }),
+        queue: {
+          outbox: {
+            enqueue(message) {
+              queued.push(message);
+              return mode === "rejected"
+                ? Promise.reject(failure)
+                : Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          },
+        },
+      });
+      ok(federation instanceof FederationImpl);
+      const metrics = federation.metrics;
+      const original = metrics.recordQueueTaskEnqueued;
+      if (mode === "accepted") {
+        Object.defineProperty(metrics, "recordQueueTaskEnqueued", {
+          configurable: true,
+          value: (...args: Parameters<typeof original>) => {
+            original.call(metrics, ...args);
+            throw failure;
+          },
+        });
+      }
+      federation.setOutboundObservers({
+        onWorker(_ctx, report) {
+          reports.push(report);
+        },
+      });
+      const message = continuationMessage(recipient.inboxId!.href, true);
+      fetchMock.mockGlobal().post(message.inbox, 503);
+      try {
+        await rejects(
+          federation.processQueuedTask(undefined, message),
+          (error: unknown) => error === failure,
+        );
+        strictEqual(queued.length, 1);
+        strictEqual(reports.length, 1);
+        strictEqual(reports[0].attemptsStarted, 1);
+        deepStrictEqual(reports[0].result, { type: "failed", error: failure });
+        const action = reports[0].actions?.[0];
+        ok(action);
+        strictEqual(reports[0].actions?.length, 1);
+        strictEqual(
+          action.type,
+          mode === "rejected" ? "action-failed" : "scheduled",
+        );
+        ok(
+          action.type === "scheduled" ||
+            action.type === "action-failed" && action.action === "retry",
+        );
+        strictEqual(action.action, "retry");
+        deepStrictEqual(action.queue, {
+          queueMessageId: queued[0].id,
+          queueAttempt: 1,
+        });
+        if (action.type === "action-failed") {
+          ok("acceptance" in action);
+          strictEqual(action.acceptance, "unknown");
+          strictEqual(action.error, failure);
+        } else strictEqual("acceptance" in action, false);
+      } finally {
+        if (mode === "accepted") {
+          Object.defineProperty(metrics, "recordQueueTaskEnqueued", {
+            value: original,
+          });
+        }
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
+test("ordinary outbox worker actions retain local abandonment and failed drop steps", async (t) => {
+  for (
+    const mode of [
+      "permanent",
+      "declined",
+      "ttl",
+      "ttl-parse",
+      "ttl-handler",
+      "permanent-handler",
+    ] as const
+  ) {
+    await t.step(mode, async () => {
+      const reports: OutboundWorkerReport[] = [];
+      const queued: Message[] = [];
+      const ttl = mode.startsWith("ttl");
+      const failure = Symbol(mode);
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        manuallyStartQueue: true,
+        outboxRetryPolicy: () => null,
+        circuitBreaker: ttl ? { heldActivityTtl: { seconds: 1 } } : false,
+        queue: {
+          outbox: {
+            enqueue(message) {
+              queued.push(message);
+              return Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          },
+        },
+      });
+      federation.setOutboundObservers({
+        onWorker(_ctx, report) {
+          reports.push(report);
+        },
+      });
+      if (mode.endsWith("handler")) {
+        federation.setOutboxPermanentFailureHandler(() => {
+          throw failure;
+        });
+      }
+      if (mode === "ttl-parse") {
+        Object.defineProperty(federation, "documentLoaderFactory", {
+          value: () => {
+            throw failure;
+          },
+        });
+      }
+      const original = continuationMessage(recipient.inboxId!.href, true);
+      const message = ttl
+        ? {
+          ...original,
+          circuitHeld: true as const,
+          circuitHeldSince: "2000-01-01T00:00:00Z",
+        }
+        : original;
+      fetchMock.mockGlobal().post(
+        message.inbox,
+        mode.startsWith("permanent") ? 404 : 503,
+      );
+      try {
+        const processing = federation.processQueuedTask(undefined, message);
+        if (mode === "ttl-parse") {
+          await rejects(processing, (error: unknown) => error === failure);
+        } else await processing;
+        strictEqual(reports.length, 1);
+        strictEqual(queued.length, 0);
+        const report = reports[0];
+        strictEqual(report.attemptsStarted, ttl ? 0 : 1);
+        deepStrictEqual(
+          report.result,
+          mode === "ttl-parse"
+            ? { type: "failed", error: failure }
+            : { type: "completed" },
+        );
+        const actions = report.actions;
+        ok(actions);
+        const abandoned = actions[0];
+        ok(abandoned.type === "abandoned");
+        strictEqual(
+          abandoned.reason,
+          ttl
+            ? "held-ttl-expired"
+            : mode === "declined"
+            ? "retry-policy-declined"
+            : "permanent-failure",
+        );
+        deepStrictEqual(abandoned.inboxUrls, [message.inbox]);
+        if (mode.endsWith("handler") || mode === "ttl-parse") {
+          strictEqual(actions.length, 2);
+          const failed = actions[1];
+          ok(failed.type === "action-failed" && failed.action === "drop");
+          strictEqual(failed.error, failure);
+          strictEqual("acceptance" in failed, false);
+        } else strictEqual(actions.length, 1);
+        if (ttl) strictEqual(fetchMock.callHistory.calls().length, 0);
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
 test("outbound worker-only observers count real sends and report local settlement", async (t) => {
   for (
     const mode of [
@@ -3395,6 +3684,11 @@ test("outbound worker-only observers count real sends and report local settlemen
         deepStrictEqual(contexts, [data]);
         const report = reports[0];
         strictEqual(report.role, "outbox");
+        if (mode === "gateway" || mode === "recovered-preparation") {
+          strictEqual(report.actions, undefined);
+        } else if (mode === "handled") {
+          ok(report.actions?.[0].type === "scheduled");
+        } else deepStrictEqual(report.actions, []);
         strictEqual(report.attemptsStarted, mode === "gateway" ? 2 : 1);
         deepStrictEqual(report.queue, {
           queueMessageId: message.id,

@@ -1574,6 +1574,7 @@ export class FederationImpl<TContextData>
     worker?: OutboundWorkerObservation<TContextData>,
   ): Promise<void> {
     const { onAttempt, onHttpExchange } = observers;
+    if ((message.gatewayInboxes?.length ?? 0) <= 1) worker?.enableActions();
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const logData = {
       keyIds: message.keys.map((pair) => pair.keyId),
@@ -1669,10 +1670,18 @@ export class FederationImpl<TContextData>
         circuitHeld: true,
         circuitHeldSince: heldSince.toString(),
       } satisfies OutboxMessage;
-      await outboxQueue.enqueue(heldMessage, {
+      const enqueueOptions = {
         delay: clampNegativeDelay(delay),
         orderingKey: message.orderingKey,
-      });
+      };
+      await (worker == null
+        ? outboxQueue.enqueue(heldMessage, enqueueOptions)
+        : worker.enqueue(
+          "defer",
+          heldMessage,
+          enqueueOptions.delay,
+          () => outboxQueue.enqueue(heldMessage, enqueueOptions),
+        ));
       this.metrics.recordQueueTaskEnqueued(
         {
           role: "outbox",
@@ -1722,6 +1731,7 @@ export class FederationImpl<TContextData>
             actorIds: getActorIds(),
           });
         } catch (handlerError) {
+          worker?.dropFailure([inbox.href], handlerError);
           logger.error(
             "An unexpected error occurred in " +
               "outboxPermanentFailureHandler:\n{error}",
@@ -1782,14 +1792,18 @@ export class FederationImpl<TContextData>
           return;
         }
         if (decision.type === "drop") {
-          const activity = await parseActivity();
-          await dropHeldOutboxMessage(
-            circuit,
-            remoteHost,
-            inbox,
-            decision.heldSince,
-            activity,
-          );
+          worker?.abandon("held-ttl-expired", [inbox.href]);
+          const drop = async () => {
+            const activity = await parseActivity();
+            await dropHeldOutboxMessage(
+              circuit,
+              remoteHost,
+              inbox,
+              decision.heldSince,
+              activity,
+            );
+          };
+          await (worker == null ? drop() : worker.drop([inbox.href], drop));
           return;
         }
         if (decision.stateChange != null) {
@@ -1968,13 +1982,18 @@ export class FederationImpl<TContextData>
       }
 
       if (circuitDrop != null) {
-        await dropHeldOutboxMessage(
-          circuitDrop.circuit,
-          circuitDrop.remoteHost,
-          circuitDrop.inbox,
-          circuitDrop.heldSince,
-          activity,
-        );
+        worker?.abandon("held-ttl-expired", [circuitDrop.inbox.href]);
+        const drop = () =>
+          dropHeldOutboxMessage(
+            circuitDrop.circuit,
+            circuitDrop.remoteHost,
+            circuitDrop.inbox,
+            circuitDrop.heldSince,
+            activity,
+          );
+        await (worker == null
+          ? drop()
+          : worker.drop([circuitDrop.inbox.href], drop));
         return;
       }
 
@@ -1982,6 +2001,7 @@ export class FederationImpl<TContextData>
       if (
         isPermanentFailure
       ) {
+        worker?.abandon("permanent-failure", [message.inbox]);
         this.metrics.recordPermanentFailure(
           error.inbox,
           error.statusCode,
@@ -1995,30 +2015,34 @@ export class FederationImpl<TContextData>
           },
         );
         if (this.outboxPermanentFailureHandler != null) {
-          const ctx = this.#createContext(
-            new URL(message.baseUrl),
-            contextData,
-            {
-              [outboundProvenance]: provenance,
-              documentLoader: this.documentLoaderFactory(loaderOptions),
-            },
-          );
-          try {
-            await this.outboxPermanentFailureHandler(ctx, {
-              reason: "http",
-              inbox: new URL(message.inbox),
-              activity,
-              error,
-              statusCode: error.statusCode,
-              actorIds: getActorIds(),
-            });
-          } catch (handlerError) {
-            logger.error(
-              "An unexpected error occurred in " +
-                "outboxPermanentFailureHandler:\n{error}",
-              { ...logData, error: handlerError },
+          const drop = async () => {
+            const ctx = this.#createContext(
+              new URL(message.baseUrl),
+              contextData,
+              {
+                [outboundProvenance]: provenance,
+                documentLoader: this.documentLoaderFactory(loaderOptions),
+              },
             );
-          }
+            try {
+              await this.outboxPermanentFailureHandler!(ctx, {
+                reason: "http",
+                inbox: new URL(message.inbox),
+                activity,
+                error,
+                statusCode: error.statusCode,
+                actorIds: getActorIds(),
+              });
+            } catch (handlerError) {
+              worker?.dropFailure([message.inbox], handlerError);
+              logger.error(
+                "An unexpected error occurred in " +
+                  "outboxPermanentFailureHandler:\n{error}",
+                { ...logData, error: handlerError },
+              );
+            }
+          };
+          await (worker == null ? drop() : worker.drop([message.inbox], drop));
         }
         recordOutboxActivity(
           this.meterProvider,
@@ -2076,13 +2100,18 @@ export class FederationImpl<TContextData>
         } satisfies OutboxMessage;
         const { outboxQueue } = this;
         if (outboxQueue != null) {
-          await outboxQueue.enqueue(
-            retryMessage,
-            {
-              delay: clampNegativeDelay(delay),
-              orderingKey: message.orderingKey,
-            },
-          );
+          const enqueueOptions = {
+            delay: clampNegativeDelay(delay),
+            orderingKey: message.orderingKey,
+          };
+          await (worker == null
+            ? outboxQueue.enqueue(retryMessage, enqueueOptions)
+            : worker.enqueue(
+              "retry",
+              retryMessage,
+              enqueueOptions.delay,
+              () => outboxQueue.enqueue(retryMessage, enqueueOptions),
+            ));
           this.metrics.recordQueueTaskEnqueued(
             {
               role: "outbox",
@@ -2098,6 +2127,7 @@ export class FederationImpl<TContextData>
           );
         }
       } else {
+        worker?.abandon("retry-policy-declined", [message.inbox]);
         logger.error(
           "Failed to send activity {activityId} to {inbox} after {attempt} " +
             "attempts; giving up:\n{error}",

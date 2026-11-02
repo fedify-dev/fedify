@@ -297,11 +297,43 @@ export type OutboundHttpExchangeReport =
       | { readonly type: "failed"; readonly error: unknown };
   };
 
+type OutboundWorkerSchedule = {
+  readonly action: "retry" | "defer";
+  /** Actual continuation task and Fedify retry counter. */
+  readonly queue: NonNullable<OutboundAttemptReport["queue"]>;
+  /** Actual affected routes, copied independently of the planned delivery. */
+  readonly inboxUrls: readonly string[];
+  /** ISO 8601 duration passed to enqueue after delay normalization. */
+  readonly delay: string;
+};
+
+type OutboundWorkerAction =
+  | (OutboundWorkerSchedule & { readonly type: "scheduled" })
+  | (OutboundWorkerSchedule & {
+    readonly type: "action-failed";
+    readonly acceptance: "unknown";
+    readonly error: unknown;
+  })
+  | {
+    readonly type: "abandoned";
+    readonly reason:
+      | "held-ttl-expired"
+      | "permanent-failure"
+      | "retry-policy-declined";
+    readonly inboxUrls: readonly string[];
+  }
+  | {
+    readonly type: "action-failed";
+    readonly action: "drop";
+    readonly inboxUrls: readonly string[];
+    readonly error: unknown;
+  };
+
 /**
  * One fanout or outbox worker execution after its local processing settles.
  *
- * Completion does not establish HTTP success or scheduling acceptance. Actions
- * are reported separately when their observation is implemented.
+ * Completion does not establish HTTP success. Scheduling/drop action evidence
+ * is separate from the execution result and backend acknowledgment.
  * @since 2.5.0
  */
 export type OutboundWorkerReport = OutboundSourceMetadata & {
@@ -311,6 +343,8 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
   readonly queue: NonNullable<OutboundAttemptReport["queue"]>;
   /** Concrete sender entries, independent of enabled attempt/exchange callbacks. */
   readonly attemptsStarted: number;
+  /** Ordinary outbox action facts; omitted for other worker paths. */
+  readonly actions?: readonly OutboundWorkerAction[];
   /** Known outbox obligation; absent for fanout or unavailable metadata. */
   readonly delivery?: Pick<
     OutboundAttemptReport,
@@ -359,7 +393,8 @@ export interface OutboundObservers<TContextData> {
   /**
    * Observes terminal outgoing worker processing with current context/data.
    * Errors are isolated; results do not replace attempt outcomes or establish
-   * future backend execution. Scheduling actions are not observed here yet.
+   * future backend execution. Ordinary outbox action facts are included;
+   * gateway and fanout actions are not observed yet.
    */
   readonly onWorker?: (
     context: Context<TContextData>,

@@ -346,9 +346,13 @@ type WorkerPreparationFailure = Extract<
   { type: "preparation-failed" }
 >["failure"];
 
+type WorkerAction = NonNullable<OutboundWorkerReport["actions"]>[number];
+type WorkerAbandonment = Extract<WorkerAction, { type: "abandoned" }>;
+
 /** Per-execution state, independent of concrete attempt/exchange callbacks. */
 export class OutboundWorkerObservation<TContextData> {
   #attemptsStarted = 0;
+  #actions: WorkerAction[] | undefined;
   #trace: OutboundWorkerReport["trace"];
   #preparationFailure: WorkerPreparationFailure | undefined;
   readonly #queue: OutboundWorkerReport["queue"];
@@ -380,6 +384,78 @@ export class OutboundWorkerObservation<TContextData> {
   readonly attemptStarted: () => void = () => {
     this.#attemptsStarted++;
   };
+
+  enableActions(): void {
+    this.#actions ??= [];
+  }
+
+  async enqueue(
+    action: "retry" | "defer",
+    message: OutboxMessage,
+    delay: Temporal.Duration,
+    enqueue: () => Promise<void>,
+  ): Promise<void> {
+    if (this.#actions == null) return await enqueue();
+    const facts = {
+      action,
+      queue: Object.freeze({
+        queueMessageId: message.id,
+        queueAttempt: message.attempt,
+      }),
+      inboxUrls: Object.freeze([message.inbox]),
+      delay: delay.toString(),
+    };
+    try {
+      await enqueue();
+    } catch (error) {
+      this.#actions.push(
+        Object.freeze({
+          type: "action-failed",
+          ...facts,
+          acceptance: "unknown" as const,
+          error,
+        }),
+      );
+      throw error;
+    }
+    this.#actions.push(Object.freeze({ type: "scheduled", ...facts }));
+  }
+
+  abandon(
+    reason: WorkerAbandonment["reason"],
+    inboxUrls: readonly string[],
+  ): void {
+    this.#actions?.push(
+      Object.freeze({
+        type: "abandoned",
+        reason,
+        inboxUrls: Object.freeze([...inboxUrls]),
+      }),
+    );
+  }
+
+  dropFailure(inboxUrls: readonly string[], error: unknown): void {
+    this.#actions?.push(
+      Object.freeze({
+        type: "action-failed",
+        action: "drop",
+        inboxUrls: Object.freeze([...inboxUrls]),
+        error,
+      }),
+    );
+  }
+
+  async drop(
+    inboxUrls: readonly string[],
+    operation: () => Promise<void>,
+  ): Promise<void> {
+    try {
+      await operation();
+    } catch (error) {
+      this.dropFailure(inboxUrls, error);
+      throw error;
+    }
+  }
 
   getContext(): Context<TContextData> {
     return this.#currentContext ??= this.context();
@@ -438,6 +514,9 @@ export class OutboundWorkerObservation<TContextData> {
           queue: this.#queue,
           ...(this.#delivery == null ? {} : { delivery: this.#delivery }),
           attemptsStarted: this.#attemptsStarted,
+          ...(this.#actions == null
+            ? {}
+            : { actions: Object.freeze([...this.#actions]) }),
           observedAt,
           ...(this.#trace == null ? {} : { trace: this.#trace }),
           provenance: this.provenance,
