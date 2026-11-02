@@ -1,3 +1,4 @@
+import { observeOutboundBroadcastStart } from "./outbound-observation.ts";
 import { InboxObservation } from "./inbox-observation.ts";
 import { type Path, RouterError } from "@fedify/uri-template";
 import type {
@@ -5646,44 +5647,57 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activity: Activity,
     options: SendActivityOptionsForCollection = {},
   ): Promise<void> {
-    const tracer = this.tracerProvider.getTracer(
-      metadata.name,
-      metadata.version,
-    );
-    return tracer.startActiveSpan(
-      this.federation.outboxQueue == null || options.immediate
-        ? "activitypub.outbox"
-        : "activitypub.fanout",
-      {
-        kind: this.federation.outboxQueue == null || options.immediate
-          ? SpanKind.CLIENT
-          : SpanKind.PRODUCER,
-        attributes: {
-          "activitypub.activity.type": getTypeId(activity).href,
-          "activitypub.activity.to": activity.toIds.map((to) => to.href),
-          "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
-          "activitypub.activity.bto": activity.btoIds.map((bto) => bto.href),
-          "activitypub.activity.bcc": activity.bccIds.map((bcc) => bcc.href),
-        },
-      },
-      async (span) => {
-        try {
-          if (activity.id != null) {
-            span.setAttribute("activitypub.activity.id", activity.id.href);
-          }
-          await this.sendActivityInternal(
-            sender,
-            recipients,
-            activity,
-            options,
-            span,
-          );
-        } catch (e) {
-          span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
-          throw e;
-        } finally {
-          span.end();
-        }
+    return observeOutboundBroadcastStart(
+      this,
+      this.federation.outboundObservers.onBroadcast,
+      () => {
+        const tracer = this.tracerProvider.getTracer(
+          metadata.name,
+          metadata.version,
+        );
+        return tracer.startActiveSpan(
+          this.federation.outboxQueue == null || options.immediate
+            ? "activitypub.outbox"
+            : "activitypub.fanout",
+          {
+            kind: this.federation.outboxQueue == null || options.immediate
+              ? SpanKind.CLIENT
+              : SpanKind.PRODUCER,
+            attributes: {
+              "activitypub.activity.type": getTypeId(activity).href,
+              "activitypub.activity.to": activity.toIds.map((to) => to.href),
+              "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
+              "activitypub.activity.bto": activity.btoIds.map((bto) =>
+                bto.href
+              ),
+              "activitypub.activity.bcc": activity.bccIds.map((bcc) =>
+                bcc.href
+              ),
+            },
+          },
+          async (span) => {
+            try {
+              if (activity.id != null) {
+                span.setAttribute("activitypub.activity.id", activity.id.href);
+              }
+              await this.sendActivityInternal(
+                sender,
+                recipients,
+                activity,
+                options,
+                span,
+              );
+            } catch (e) {
+              span.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: String(e),
+              });
+              throw e;
+            } finally {
+              span.end();
+            }
+          },
+        );
       },
     );
   }

@@ -1,3 +1,4 @@
+import type { OutboundObservers } from "./outbound-report.ts";
 import type { InboxListenerOptions } from "./activity-listener.ts";
 import type { InboxRequestFinishedHandler } from "./inbox-report.ts";
 import type {
@@ -82,6 +83,23 @@ export interface FederationStartQueueOptions {
  * @since 1.6.0
  */
 export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
+  /**
+   * Registers observers for outgoing activity processing.
+   *
+   * Each call replaces all previously registered outbound observers.
+   * Pass an empty object to clear them.  Fedify copies the callbacks;
+   * later changes to the supplied object do not affect registration.
+   * Available on builders and directly created federations.  Building copies
+   * the callbacks, and an active send keeps the callback selected at entry.
+   * Currently only ordinary {@link Context.sendActivity} starts are observed;
+   * outbox-context overrides, forwarding, workers, and preparation completion
+   * are not observed yet.
+   * This is separate from incoming C2S {@link Federatable.setOutboxListeners}.
+   * @param observers The optional callbacks to register.
+   * @since 2.5.0
+   */
+  setOutboundObservers(observers: OutboundObservers<TContextData>): void;
+
   /**
    * Registers a NodeInfo dispatcher.
    * @param path The URI path pattern for the NodeInfo dispatcher.  The syntax

@@ -7,6 +7,7 @@ import type {
   FederationStartQueueOptions,
   GetObjectOptions,
   Message,
+  OutboundObservers,
   ParseUriOptions,
   ParseUriResult,
   PortableRequest,
@@ -590,6 +591,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       authorize: () => setters,
     };
     return setters;
+  }
+
+  setOutboundObservers(_observers: OutboundObservers<TContextData>): void {
+    // Registration compatibility; mock sends do not run transport observers.
   }
 
   setInboxListeners(inboxPath: any, sharedInboxPath?: string): any {

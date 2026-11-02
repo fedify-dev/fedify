@@ -207,6 +207,12 @@ test("reset clears sent activities", async () => {
   deepStrictEqual(mockFederation.sentActivities.length, 0);
 });
 
+test("MockFederation accepts outbound observer registration", () => {
+  const federation = createFederation<void>();
+  federation.setOutboundObservers({ onBroadcast: () => {} });
+  federation.setOutboundObservers({});
+});
+
 test("MockFederation accepts inbox request observation registration", () => {
   const federation = createFederation<void>();
   const setters = federation.setInboxListeners("/users/{identifier}/inbox");

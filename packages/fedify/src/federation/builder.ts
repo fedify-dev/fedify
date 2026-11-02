@@ -1,3 +1,4 @@
+import type { OutboundObservers } from "./outbound-report.ts";
 import type { InboxRequestFinishedHandler } from "./inbox-report.ts";
 import {
   assertPath,
@@ -183,6 +184,9 @@ export class FederationBuilderImpl<TContextData>
   inboxListeners?: ActivityListenerSet<InboxContext<TContextData>>;
   outboxListeners?: ActivityListenerSet<OutboxContext<TContextData>>;
   inboxRequestFinishedHandler?: InboxRequestFinishedHandler<TContextData>;
+  outboundObservers: OutboundObservers<TContextData> = globalThis.Object.freeze(
+    {},
+  );
 
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
   outboxListenerErrorHandler?: OutboxListenerErrorHandler<TContextData>;
@@ -288,6 +292,7 @@ export class FederationBuilderImpl<TContextData>
     f.inboxListeners = this.inboxListeners?.clone();
     f.outboxListeners = this.outboxListeners?.clone();
     f.inboxRequestFinishedHandler = this.inboxRequestFinishedHandler;
+    f.setOutboundObservers(this.outboundObservers);
     f.inboxErrorHandler = this.inboxErrorHandler;
     f.outboxListenerErrorHandler = this.outboxListenerErrorHandler;
     f.outboxAuthorizePredicate = this.outboxAuthorizePredicate;
@@ -656,6 +661,12 @@ export class FederationBuilderImpl<TContextData>
       },
     };
     return setters;
+  }
+
+  setOutboundObservers(observers: OutboundObservers<TContextData>): void {
+    this.outboundObservers = globalThis.Object.freeze({
+      onBroadcast: observers.onBroadcast,
+    });
   }
 
   setNodeInfoDispatcher(
