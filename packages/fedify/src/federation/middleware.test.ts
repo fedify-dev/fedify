@@ -5452,6 +5452,13 @@ test("ContextImpl.sendActivity()", async (t) => {
       proofValue: new Uint8Array([9, 10, 11, 12]),
       created: Temporal.Instant.from("2026-01-03T00:00:00Z"),
     });
+    const restoredProof = new vocab.DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: new URL("https://example.com/rsa-only#multikey-2"),
+      proofPurpose: "assertionMethod",
+      proofValue: new Uint8Array([13, 14, 15, 16]),
+      created: Temporal.Instant.from("2026-01-04T00:00:00Z"),
+    });
     const federation3 = new FederationImpl<void>({
       kv,
       allowPrivateAddress: true,
@@ -5474,6 +5481,11 @@ test("ContextImpl.sendActivity()", async (t) => {
               object: new URL("https://example.com/note/replaced"),
               proofs: [replacementProof],
             });
+          }
+          if (
+            activity.id?.href === "https://example.com/activity/restored-proof"
+          ) {
+            return activity.clone({ proofs: [restoredProof] });
           }
           return activity;
         },
@@ -5564,6 +5576,63 @@ test("ContextImpl.sendActivity()", async (t) => {
     assertEquals(replacedProofs.length, 1);
     const [keptProof] = replacedProofs as Record<string, unknown>[];
     assertEquals(keptProof.created, "2026-01-03T00:00:00Z");
+
+    // A restored activity with an old context must still use proof changes
+    // made by a transformer instead of the captured old-context snapshot.
+    const oldContext = [
+      "https://w3id.org/identity/v1",
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ];
+    const restoredBase = new vocab.Create({
+      id: new URL("https://example.com/activity/restored-proof"),
+      actor: ctx3.getActorUri("rsa-only"),
+    });
+    const restoredSigned = await signObject(
+      restoredBase,
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const restoredJson = await restoredSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const restored = await vocab.Create.fromJsonLd(restoredJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restored,
+      { fanout: "force" },
+    );
+    const restoredFanout = queue.messages.at(-1);
+    assert(restoredFanout != null && restoredFanout.type === "fanout");
+    const restoredFanoutJson = detachSignature(
+      restoredFanout.activity,
+    ) as Record<
+      string,
+      unknown
+    >;
+    const restoredProofs = Array.isArray(restoredFanoutJson.proof)
+      ? restoredFanoutJson.proof
+      : [restoredFanoutJson.proof];
+    assertEquals(restoredProofs.length, 1);
+    const [transformedProof] = restoredProofs as Record<string, unknown>[];
+    assertEquals(transformedProof.created, "2026-01-04T00:00:00Z");
+    assert(
+      Array.isArray(restoredFanoutJson["@context"]) &&
+        restoredFanoutJson["@context"].includes(
+          "https://w3id.org/security/v1",
+        ),
+    );
 
     // A proofless activity should not be serialized just to look for proofs.
     const proofless = new vocab.Create({

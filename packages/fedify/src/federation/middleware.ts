@@ -2670,7 +2670,6 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         activityJsonLd = undefined;
         activity = activity.clone({ proofs: retainedProofs });
       } else if (
-        contextMatches &&
         getProofFields(transformedJsonLd) !== getProofFields(capturedJsonLd)
       ) {
         // The transformer only changed the proofs.  Their content still
@@ -2699,17 +2698,9 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         kp.multikey.id != null
       );
       if (willSign) {
-        let hasProof = activityJsonLd != null &&
-          hasTopLevelProof(activityJsonLd);
-        if (!hasProof) {
-          for await (const _ of activity.getProofs({ contextLoader })) {
-            hasProof = true;
-            break;
-          }
-        }
         // A new proof covers the current serialization.  Existing proofs can
         // stay only if they already cover the same context.
-        if (hasProof && activityJsonLd != null && !contextMatches) {
+        if (activityJsonLd != null && !contextMatches) {
           activity = activity.clone({ proofs: [] });
         }
       }
