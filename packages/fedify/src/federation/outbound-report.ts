@@ -176,6 +176,24 @@ type OutboundAttemptFailure =
     readonly error: unknown;
   };
 
+/** Opt-in policy for one side of an actual HTTP exchange. @since 2.5.0 */
+export interface OutboundHeaderPolicy {
+  /** Literal HTTP names, normalized to lowercase and deduplicated at registration. */
+  readonly allow: readonly string[];
+  /** Additional names whose selected values are always `[redacted]`. */
+  readonly redact?: readonly string[];
+  /** Positive safe-integer UTF-8 budget for `name: value\r\n` entries. */
+  readonly maxBytes: number;
+}
+
+/** Immutable selected header values, using the runtime representation. @since 2.5.0 */
+export interface OutboundHeaderSnapshot {
+  /** Lowercase names in lexical order; credentials/signatures/cookies are redacted. */
+  readonly entries: readonly (readonly [string, string])[];
+  /** At least one selected entry was omitted because it exceeded the budget. */
+  readonly limitReached: boolean;
+}
+
 interface OutboundHttpResponseMetadata {
   /** Actual HTTP status returned by fetch. */
   readonly status: number;
@@ -287,12 +305,20 @@ export type OutboundHttpExchangeReport =
     /** Zero-based submission order within this attempt. */
     readonly exchangeIndex: number;
     /** Immutable facts of the request actually submitted. */
-    readonly request: { readonly url: string; readonly method: string };
+    readonly request: {
+      readonly url: string;
+      readonly method: string;
+      /** Selected header snapshot; absent when request header capture is disabled. */
+      readonly headers?: OutboundHeaderSnapshot;
+    };
     /** A received response, including non-2xx, or the original fetch rejection. */
     readonly outcome:
       | {
         readonly type: "response";
-        readonly response: OutboundHttpResponseMetadata;
+        readonly response: OutboundHttpResponseMetadata & {
+          /** Selected snapshot; absent when response header capture is disabled. */
+          readonly headers?: OutboundHeaderSnapshot;
+        };
       }
       | { readonly type: "failed"; readonly error: unknown };
   };
@@ -429,6 +455,14 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
  * @since 2.5.0
  */
 export interface OutboundObservers<TContextData> {
+  /**
+   * Opt-in actual request headers for exchange reports; disabled by default.
+   * Protected credentials, signatures, and cookies remain redacted even if allowed.
+   */
+  readonly requestHeaders?: OutboundHeaderPolicy;
+  /** Independent opt-in response header policy for exchange reports. */
+  readonly responseHeaders?: OutboundHeaderPolicy;
+
   /**
    * Observes terminal outgoing worker processing with current context/data.
    * Errors are isolated; results do not replace attempt outcomes or establish

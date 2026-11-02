@@ -21,8 +21,9 @@ import {
   ok,
   rejects,
   strictEqual,
+  throws,
 } from "node:assert/strict";
-import { createFederationBuilder } from "./builder.ts";
+import { createFederationBuilder, FederationBuilderImpl } from "./builder.ts";
 import { MemoryKvStore } from "./kv.ts";
 import {
   ContextImpl,
@@ -47,6 +48,7 @@ import {
   SendActivityError,
 } from "./send.ts";
 import { OutboundBroadcastObservation } from "./outbound-observation.ts";
+import { snapshotHeaderPolicy, snapshotHeaders } from "./outbound-headers.ts";
 import { rsaPrivateKey2, rsaPublicKey2 } from "../testing/keys.ts";
 
 const activity = new Create({
@@ -5236,5 +5238,380 @@ test("fanout worker actions preserve earlier direct entries across later setup f
         }
       },
     );
+  }
+});
+
+test("outbound header policies validate atomically and copy registration", async () => {
+  const builder = createFederationBuilder<void>();
+  ok(builder instanceof FederationBuilderImpl);
+  const allow = ["X-Safe", "x-safe", "Content-Type"];
+  const redact = ["X-Custom-Secret"];
+  const policy = { allow, redact, maxBytes: 128 };
+  const callback = () => {};
+  builder.setOutboundObservers({
+    requestHeaders: policy,
+    onHttpExchange: callback,
+  });
+  const original = builder.outboundObservers;
+  deepStrictEqual(original.requestHeaders, {
+    allow: ["content-type", "x-safe"],
+    redact: ["x-custom-secret"],
+    maxBytes: 128,
+  });
+  ok(Object.isFrozen(original.requestHeaders));
+  ok(Object.isFrozen(original.requestHeaders?.allow));
+  ok(Object.isFrozen(original.requestHeaders?.redact));
+  allow.push("authorization");
+  redact.length = 0;
+  policy.maxBytes = 1;
+  const invalid = [
+    [{ allow: ["safe"], maxBytes: 0 }, RangeError],
+    [{ allow: ["safe"], maxBytes: -1 }, RangeError],
+    [{ allow: ["safe"], maxBytes: 1.5 }, RangeError],
+    [{ allow: ["safe"], maxBytes: Infinity }, RangeError],
+    [{ allow: ["safe"], maxBytes: NaN }, RangeError],
+    [{ allow: ["safe"], maxBytes: Number.MAX_SAFE_INTEGER + 1 }, RangeError],
+    [{ allow: ["safe"] }, TypeError],
+    [{ allow: ["safe"], maxBytes: "128" }, TypeError],
+    [{ allow: ["*"], maxBytes: 128 }, TypeError],
+    [{ allow: ["x-foo\nsecret"], maxBytes: 128 }, TypeError],
+    [{ allow: ["ümlaut"], maxBytes: 128 }, TypeError],
+    [{ allow: "x-safe", maxBytes: 128 }, TypeError],
+    [{ allow: [12], maxBytes: 128 }, TypeError],
+    [{ allow: [], redact: null, maxBytes: 128 }, TypeError],
+    [null, TypeError],
+  ] as const;
+  for (const [value, error] of invalid) {
+    throws(() =>
+      builder.setOutboundObservers({
+        requestHeaders: { allow: [], maxBytes: 1 },
+        responseHeaders: value as never,
+      }), error);
+    strictEqual(builder.outboundObservers, original);
+  }
+  const federation = await builder.build(options);
+  ok(federation instanceof FederationImpl);
+  deepStrictEqual(
+    federation.outboundObservers.requestHeaders,
+    original.requestHeaders,
+  );
+  builder.setOutboundObservers({});
+  strictEqual(federation.outboundObservers.onHttpExchange, callback);
+  const registration = federation.outboundObservers;
+  throws(
+    () =>
+      federation.setOutboundObservers({
+        requestHeaders: { allow: [], maxBytes: 0 },
+      }),
+    RangeError,
+  );
+  strictEqual(federation.outboundObservers, registration);
+  federation.setOutboundObservers({});
+  strictEqual(federation.outboundObservers.requestHeaders, undefined);
+});
+
+test("outbound header snapshots redact secrets and budget complete UTF-8 entries", () => {
+  const secrets = [
+    "authorization",
+    "proxy-authorization",
+    "cookie",
+    "set-cookie",
+    "signature",
+    "signature-input",
+    "authentication-info",
+    "proxy-authentication-info",
+    "x-api-key",
+    "x-auth-token",
+  ];
+  const headers = new Headers(secrets.map((name) => [name, "do-not-export"]));
+  headers.append("X-Visible", "first");
+  headers.append("x-visible", "second");
+  headers.set("X-Custom", "also-secret");
+  const policy = snapshotHeaderPolicy({
+    allow: [...secrets, "X-Visible", "x-custom", "x-missing"],
+    redact: ["X-Custom"],
+    maxBytes: 4096,
+  });
+  ok(policy);
+  const snapshot = snapshotHeaders(headers, policy);
+  for (const [name, value] of snapshot.entries) {
+    strictEqual(value, name === "x-visible" ? "first, second" : "[redacted]");
+  }
+  deepStrictEqual(
+    snapshot.entries.map(([name]) => name),
+    [...secrets, "x-visible", "x-custom"].sort(),
+  );
+  strictEqual(JSON.stringify(snapshot).includes("do-not-export"), false);
+  strictEqual(JSON.stringify(snapshot).includes("also-secret"), false);
+  ok(Object.isFrozen(snapshot));
+  ok(Object.isFrozen(snapshot.entries));
+  for (const entry of snapshot.entries) ok(Object.isFrozen(entry));
+  headers.set("x-visible", "changed");
+  strictEqual(
+    snapshot.entries.find(([name]) => name === "x-visible")?.[1],
+    "first, second",
+  );
+  const values = new Headers({ "a": "oversized value", "b": "é", "c": "z" });
+  const capture = (maxBytes: number) =>
+    snapshotHeaders(
+      values,
+      snapshotHeaderPolicy({ allow: ["c", "a", "b"], maxBytes })!,
+    );
+  // `b: é\r\n` is seven UTF-8 bytes; skip a large entry and keep considering later ones.
+  deepStrictEqual(capture(7), { entries: [["b", "é"]], limitReached: true });
+  deepStrictEqual(capture(6), { entries: [["c", "z"]], limitReached: true });
+  deepStrictEqual(
+    snapshotHeaders(
+      new Headers({ b: "é" }),
+      snapshotHeaderPolicy({ allow: ["b"], maxBytes: 7 })!,
+    ),
+    { entries: [["b", "é"]], limitReached: false },
+  );
+  deepStrictEqual(
+    snapshotHeaders(values, snapshotHeaderPolicy({ allow: [], maxBytes: 1 })!),
+    { entries: [], limitReached: false },
+  );
+  deepStrictEqual(
+    snapshotHeaders(
+      new Headers({ authorization: "very long secret" }),
+      snapshotHeaderPolicy({ allow: ["authorization"], maxBytes: 27 })!,
+    ),
+    { entries: [["authorization", "[redacted]"]], limitReached: false },
+  );
+});
+
+test("outbound header policies retain selected snapshots across unsigned redirects", async () => {
+  const exchanges: OutboundHttpExchangeReport[] = [];
+  const allow = ["X-Trace", "Content-Type", "Authorization"];
+  const builder = createFederationBuilder<void>();
+  let entered!: () => void;
+  const observing = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  builder.setOutboundObservers({
+    requestHeaders: { allow, maxBytes: 512 },
+    responseHeaders: {
+      allow: ["Location", "X-Reply", "Set-Cookie"],
+      maxBytes: 512,
+    },
+    async onHttpExchange(_ctx, report) {
+      exchanges.push(report);
+      entered();
+      await gate;
+    },
+  });
+  const federation = await builder.build({
+    kv: new MemoryKvStore(),
+    allowPrivateAddress: true,
+  });
+  builder.setOutboundObservers({});
+  const message = {
+    ...continuationMessage(recipient.inboxId!.href, true),
+    headers: {
+      "X-Trace": "worker",
+      "Authorization": "secret",
+      "Content-Type": "application/activity+json",
+    },
+  };
+  const next = new URL("/next", message.inbox).href;
+  fetchMock.mockGlobal().post(message.inbox, {
+    status: 303,
+    headers: {
+      Location: next,
+      "X-Reply": "first",
+      "Set-Cookie": "secret-cookie",
+    },
+  }).get(next, { status: 202, headers: { "X-Reply": "second" } });
+  const processing = federation.processQueuedTask(undefined, message);
+  try {
+    await observing;
+    allow.length = 0;
+    federation.setOutboundObservers({
+      onHttpExchange() {
+        throw new Error("replacement must not run");
+      },
+    });
+    release();
+    await processing;
+    strictEqual(exchanges.length, 2);
+    for (const report of exchanges) {
+      strictEqual(
+        report.request.headers?.entries.find(([name]) =>
+          name === "authorization"
+        )?.[1],
+        "[redacted]",
+      );
+      strictEqual(
+        report.request.headers?.entries.find(([name]) => name === "x-trace")
+          ?.[1],
+        "worker",
+      );
+      ok(report.outcome.type === "response");
+      ok(Object.isFrozen(report.outcome.response.headers));
+      strictEqual(JSON.stringify(report).includes("secret-cookie"), false);
+    }
+    strictEqual(exchanges[1].request.method, "GET");
+    strictEqual(
+      exchanges[1].request.headers?.entries.some(([name]) =>
+        name === "content-type"
+      ),
+      false,
+    );
+    ok(
+      exchanges[0].outcome.type === "response" &&
+        exchanges[1].outcome.type === "response",
+    );
+    deepStrictEqual(exchanges[0].outcome.response.headers?.entries, [
+      ["location", next],
+      ["set-cookie", "[redacted]"],
+      ["x-reply", "first"],
+    ]);
+    deepStrictEqual(exchanges[1].outcome.response.headers?.entries, [[
+      "x-reply",
+      "second",
+    ]]);
+  } finally {
+    release();
+    await processing;
+    fetchMock.hardReset();
+  }
+});
+
+test("outbound header snapshots follow signed challenge and redirect requests", async () => {
+  const ctx = createFederation<void>(options).createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  const exchanges: OutboundHttpExchangeReport[] = [];
+  const observation = new OutboundBroadcastObservation(ctx, {
+    requestHeaders: snapshotHeaderPolicy({
+      allow: ["content-digest", "signature", "signature-input"],
+      maxBytes: 1024,
+    }),
+    responseHeaders: snapshotHeaderPolicy({
+      allow: ["accept-signature", "location"],
+      maxBytes: 1024,
+    }),
+    onHttpExchange(_ctx, report) {
+      exchanges.push(report);
+    },
+  }, "send");
+  const inbox = recipient.inboxId!.href;
+  const next = new URL("/next", inbox).href;
+  await observation.planDestinations({
+    [inbox]: { actorIds: [], sharedInbox: false },
+  });
+  const responses: ResponseInit[] = [
+    {
+      status: 401,
+      headers: {
+        "Accept-Signature":
+          'sig1=("@method" "@target-uri");created;nonce="observer-nonce"',
+      },
+    },
+    { status: 307, headers: { Location: next } },
+    { status: 202 },
+  ];
+  const requests: Request[] = [];
+  await sendConcreteActivity({
+    observation: observation.delivery(inbox),
+    activity: { id: "https://example.com/activity" },
+    keys: [sender],
+    inbox: new URL(inbox),
+    specDeterminer: { determineSpec: () => "rfc9421", rememberSpec() {} },
+  }, {
+    openHop: (url) =>
+      Promise.resolve({
+        url: new URL(url),
+        fetch(input) {
+          ok(input instanceof Request);
+          requests.push(input);
+          return Promise.resolve(
+            new Response(null, responses[requests.length - 1]),
+          );
+        },
+        close: () => Promise.resolve(),
+      }),
+  });
+  strictEqual(exchanges.length, 3);
+  for (const [index, report] of exchanges.entries()) {
+    const expected = Array.from(requests[index].headers).filter(([name]) =>
+      ["content-digest", "signature", "signature-input"].includes(name)
+    ).map((
+      [name, value],
+    ) => [name, name.startsWith("signature") ? "[redacted]" : value]);
+    deepStrictEqual(report.request.headers?.entries, expected);
+    strictEqual(report.request.headers?.limitReached, false);
+    ok(requests[index].headers.has("signature"));
+    ok(report.outcome.type === "response");
+    strictEqual(report.outcome.response.status, responses[index].status);
+  }
+  strictEqual(exchanges[2].request.url, next);
+  ok(exchanges[0].outcome.type === "response");
+  strictEqual(
+    exchanges[0].outcome.response.headers?.entries[0][0],
+    "accept-signature",
+  );
+});
+
+test("outbound header capture keeps each side independent and disabled by default", async (t) => {
+  for (const mode of ["disabled", "request", "response", "empty"] as const) {
+    await t.step(mode, async () => {
+      const reports: OutboundHttpExchangeReport[] = [];
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+      });
+      federation.setOutboundObservers({
+        ...(mode === "request" || mode === "empty"
+          ? {
+            requestHeaders: {
+              allow: mode === "empty" ? [] : ["x-request"],
+              maxBytes: 128,
+            },
+          }
+          : {}),
+        ...(mode === "response"
+          ? { responseHeaders: { allow: ["x-response"], maxBytes: 128 } }
+          : {}),
+        onHttpExchange(_ctx, report) {
+          reports.push(report);
+        },
+      });
+      const message = {
+        ...continuationMessage(recipient.inboxId!.href, false),
+        headers: { "X-Request": "request" },
+      };
+      fetchMock.mockGlobal().post(message.inbox, {
+        status: 202,
+        headers: { "X-Response": "response" },
+      });
+      try {
+        await federation.processQueuedTask(undefined, message);
+        strictEqual(reports.length, 1);
+        const report = reports[0];
+        ok(report.outcome.type === "response");
+        deepStrictEqual(
+          report.request.headers,
+          mode === "request"
+            ? { entries: [["x-request", "request"]], limitReached: false }
+            : mode === "empty"
+            ? { entries: [], limitReached: false }
+            : undefined,
+        );
+        deepStrictEqual(
+          report.outcome.response.headers,
+          mode === "response"
+            ? { entries: [["x-response", "response"]], limitReached: false }
+            : undefined,
+        );
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
   }
 });

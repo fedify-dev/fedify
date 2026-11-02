@@ -1,3 +1,4 @@
+import { snapshotHeaders } from "./outbound-headers.ts";
 import {
   getOutboundProvenance,
   invocationProvenance,
@@ -164,6 +165,11 @@ type AttemptFacts = Pick<
   | "outcome"
 >;
 
+type HeaderPolicies = Pick<
+  OutboundObservers<unknown>,
+  "requestHeaders" | "responseHeaders"
+>;
+
 type ExchangeFacts = Pick<
   OutboundHttpExchangeReport,
   | "attemptId"
@@ -195,6 +201,7 @@ export class OutboundAttemptObservation {
     readonly reportExchange:
       | ((facts: ExchangeFacts) => Promise<void>)
       | undefined = undefined,
+    readonly headerPolicies: HeaderPolicies = {},
   ) {}
 
   setSpan(span: Span, parentSpanContext?: SpanContext): void {
@@ -209,6 +216,12 @@ export class OutboundAttemptObservation {
     const snapshot = Object.freeze({
       url: request.url,
       method: request.method,
+      ...(this.headerPolicies.requestHeaders == null ? {} : {
+        headers: snapshotHeaders(
+          request.headers,
+          this.headerPolicies.requestHeaders,
+        ),
+      }),
     });
     let response: Response;
     try {
@@ -230,7 +243,15 @@ export class OutboundAttemptObservation {
     });
     await this.#exchange(exchangeIndex, snapshot, {
       type: "response",
-      response: metadata,
+      response: Object.freeze({
+        ...metadata,
+        ...(this.headerPolicies.responseHeaders == null ? {} : {
+          headers: snapshotHeaders(
+            response.headers,
+            this.headerPolicies.responseHeaders,
+          ),
+        }),
+      }),
     });
     return response;
   }
@@ -601,6 +622,7 @@ export class OutboundAttemptObserver<TContextData> {
     queue?: OutboundAttemptReport["queue"],
     readonly onHttpExchange: OutboundObservers<TContextData>["onHttpExchange"] =
       undefined,
+    readonly headerPolicies: HeaderPolicies = {},
   ) {
     this.#queue = queue == null ? undefined : Object.freeze({ ...queue });
   }
@@ -611,6 +633,7 @@ export class OutboundAttemptObserver<TContextData> {
     message: OutboxMessage,
     provenance: OutboundProvenance,
     onHttpExchange?: OutboundObservers<TContextData>["onHttpExchange"],
+    headerPolicies: HeaderPolicies = {},
   ): OutboundAttemptObserver<TContextData> | undefined {
     if (callback == null && onHttpExchange == null) return undefined;
     const identity = snapshotOutboxIdentity(message);
@@ -624,6 +647,7 @@ export class OutboundAttemptObserver<TContextData> {
         queueAttempt: message.attempt,
       },
       onHttpExchange,
+      headerPolicies,
     );
   }
 
@@ -658,6 +682,7 @@ export class OutboundAttemptObserver<TContextData> {
           }),
           "http-exchange",
         ),
+      this.onHttpExchange == null ? {} : this.headerPolicies,
     );
   }
 }
@@ -679,6 +704,7 @@ class OutboundDeliveryObservation<TContextData> {
     onAttempt: OutboundObservers<TContextData>["onAttempt"],
     onHttpExchange: OutboundObservers<TContextData>["onHttpExchange"],
     queue?: OutboundAttemptReport["queue"],
+    headerPolicies: HeaderPolicies = {},
   ) {
     this.#reference = snapshotDeliveryIdentity(identity);
     this.#attempts = new OutboundAttemptObserver(
@@ -688,6 +714,7 @@ class OutboundDeliveryObservation<TContextData> {
       this.provenance,
       queue,
       onHttpExchange,
+      headerPolicies,
     );
     this.#plan = Object.freeze({
       actorIds: Object.freeze(Array.from(destination.actorIds)),
@@ -780,6 +807,7 @@ export class OutboundBroadcastObservation<TContextData> {
   readonly #onDelivery: OutboundObservers<TContextData>["onDelivery"];
   readonly #onAttempt: OutboundObservers<TContextData>["onAttempt"];
   readonly #onHttpExchange: OutboundObservers<TContextData>["onHttpExchange"];
+  readonly #headerPolicies: HeaderPolicies;
   readonly #deliveries = new Map<
     string,
     OutboundDeliveryObservation<TContextData>
@@ -801,6 +829,10 @@ export class OutboundBroadcastObservation<TContextData> {
     this.#onDelivery = observers.onDelivery;
     this.#onAttempt = observers.onAttempt;
     this.#onHttpExchange = observers.onHttpExchange;
+    this.#headerPolicies = {
+      requestHeaders: observers.requestHeaders,
+      responseHeaders: observers.responseHeaders,
+    };
   }
 
   /** Continue an existing fanout; do not emit a new broadcast invocation. */
@@ -824,6 +856,8 @@ export class OutboundBroadcastObservation<TContextData> {
         onDelivery: observers.onDelivery,
         onAttempt: observers.onAttempt,
         onHttpExchange: observers.onHttpExchange,
+        requestHeaders: observers.requestHeaders,
+        responseHeaders: observers.responseHeaders,
       },
       "send",
       getOutboundProvenance(context),
@@ -870,6 +904,7 @@ export class OutboundBroadcastObservation<TContextData> {
       this.#onAttempt,
       this.#onHttpExchange,
       this.queue,
+      this.#headerPolicies,
     );
   }
 

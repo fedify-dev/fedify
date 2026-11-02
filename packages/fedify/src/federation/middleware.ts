@@ -1628,6 +1628,7 @@ export class FederationImpl<TContextData>
       message,
       provenance,
       onHttpExchange,
+      observers,
     );
     let parsedActorIds: URL[] | undefined;
     const getActorIds = () => {
