@@ -102,9 +102,7 @@ function isSameRawPropertyNode(source: unknown, destination: unknown): boolean {
   if (
     source == null || destination == null ||
     typeof source !== "object" || typeof destination !== "object" ||
-    !(RAW_PROPERTY_PROTOCOL in source) ||
-    globalThis.Object.getPrototypeOf(source) !==
-      globalThis.Object.getPrototypeOf(destination)
+    !(RAW_PROPERTY_PROTOCOL in source) || !(RAW_PROPERTY_PROTOCOL in destination)
   ) {
     return false;
   }
@@ -113,12 +111,50 @@ function isSameRawPropertyNode(source: unknown, destination: unknown): boolean {
   return sourceId?.href === destinationId?.href;
 }
 
+function getRawPropertyDescriptors(object: object): Set<RawPropertyDescriptor> {
+  const descriptors = new Set<RawPropertyDescriptor>();
+  let prototype: object | null = globalThis.Object.getPrototypeOf(object);
+  while (prototype != null) {
+    for (const descriptor of rawPropertyDescriptors.get(prototype)?.values() ?? []) {
+      descriptors.add(descriptor);
+    }
+    prototype = globalThis.Object.getPrototypeOf(prototype);
+  }
+  return descriptors;
+}
+
+// Merges the retained unknown properties of a decoded object into a copy that
+// was decoded again by a different class.  The classes classify properties
+// differently, so the copy keeps what it retained itself and gains the
+// original's values for the properties its own class does not know either:
+function mergeRawProperties(source: object, destination: object): void {
+  const retained = retainedRawProperties.get(source);
+  if (retained == null) return;
+  const merged: Record<string, readonly unknown[]> = {
+    ...retainedRawProperties.get(destination),
+  };
+  let changed = false;
+  for (const [iri, values] of globalThis.Object.entries(retained)) {
+    if (getRawPropertyDescriptor(destination, iri) != null) continue;
+    merged[iri] = values;
+    changed = true;
+  }
+  if (changed) {
+    retainedRawProperties.set(
+      destination,
+      globalThis.Object.freeze(merged) as RetainedRawProperties,
+    );
+  }
+}
+
 // Copies the retained unknown properties of a decoded object and of the
 // objects nested in it to a copy of the same graph that was decoded again,
-// pairing nested objects by property and position.  Only objects of the same
-// class and id are paired.  When the decoding dropped some values of
-// a property, positions no longer correspond, so nested objects are paired
-// by id alone:
+// pairing nested objects by property and position.  Only objects with the same
+// id are paired.  When the decoding dropped some values of a property,
+// positions no longer correspond, so nested objects are paired by id alone.
+// When the copy was decoded by a different class, the retained properties are
+// merged rather than replaced, and only the properties both classes declare
+// are followed:
 function copyRawPropertiesDeep(
   source: object,
   destination: object,
@@ -126,19 +162,18 @@ function copyRawPropertiesDeep(
 ): void {
   if (visited.has(destination)) return;
   visited.add(destination);
-  // A different class classifies properties differently, so the retention
-  // of the copy, decoded again by that class, is the one to keep:
   if (!isSameRawPropertyNode(source, destination)) return;
-  copyRawProperties(source, destination);
-  const descriptors = new Set<RawPropertyDescriptor>();
-  let prototype: object | null = globalThis.Object.getPrototypeOf(destination);
-  while (prototype != null) {
-    for (const descriptor of rawPropertyDescriptors.get(prototype)?.values() ?? []) {
-      descriptors.add(descriptor);
+  const sameClass = globalThis.Object.getPrototypeOf(source) ===
+    globalThis.Object.getPrototypeOf(destination);
+  if (sameClass) copyRawProperties(source, destination);
+  else mergeRawProperties(source, destination);
+  const sourceDescriptors = sameClass
+    ? undefined
+    : getRawPropertyDescriptors(source);
+  for (const descriptor of getRawPropertyDescriptors(destination)) {
+    if (sourceDescriptors != null && !sourceDescriptors.has(descriptor)) {
+      continue;
     }
-    prototype = globalThis.Object.getPrototypeOf(prototype);
-  }
-  for (const descriptor of descriptors) {
     const sources = descriptor.values(source);
     const destinations = descriptor.values(destination);
     const aligned = sources.length === destinations.length;

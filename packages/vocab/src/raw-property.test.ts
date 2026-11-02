@@ -212,25 +212,40 @@ test("getRawPropertyValues() does not mix up objects dropped by a reparse", asyn
 
 test("getRawPropertyValues() keeps unknown properties when a reparse changes the class", async () => {
   const create = await Create.fromJsonLd({
-    "@context": [AS, { Poll: `${AS}#Question` }],
+    "@context": [AS, { Poll: `${AS}#Question`, quant: QUANT }],
     id: "https://example.com/activities/1",
     type: "Create",
     actor: "https://example.com/users/alice",
     object: {
       "@context": AS,
       id: "https://example.com/questions/1",
-      // Only the outer context defines this type alias:
+      // Only the outer context defines this type alias and prefix:
       type: ["Poll", "Object"],
       oneOf: [{ type: "Note", name: "Yes" }],
+      "quant:structuredUrl": { "@id": "https://example.com/data/1" },
+      attachment: {
+        type: "Document",
+        "quant:structuredUrl": { "@id": "https://example.com/data/2" },
+      },
     },
   });
   const object = await create.getObject();
   ok(object != null);
   ok(!(object instanceof Question));
+  // Retained only by the reparse, as the original class knew it:
   deepStrictEqual(
     (await getRawPropertyValues(object, `${AS}#oneOf`)).length,
     1,
   );
+  // Retained only by the original decode, which had the outer context:
+  deepStrictEqual(await getRawPropertyValues(object, STRUCTURED_URL), [
+    { "@id": "https://example.com/data/1" },
+  ]);
+  const [attachment] = await Array.fromAsync(object.getAttachments());
+  ok(attachment != null);
+  deepStrictEqual(await getRawPropertyValues(attachment, STRUCTURED_URL), [
+    { "@id": "https://example.com/data/2" },
+  ]);
 });
 
 test("getRawPropertyValues() keeps unknown properties across copies", async () => {
