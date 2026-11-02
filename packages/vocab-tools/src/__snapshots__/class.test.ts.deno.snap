@@ -79590,6 +79590,36 @@ array.push(element);
     descriptors.set(\\"http://joinmastodon.org/ns#indexable\\", descriptor);
 
     descriptor = {
+      canonicalIri: \\"http://joinmastodon.org/ns#attributionDomains\\",
+      // Scalar encoders are mostly synchronous, but some are not:
+      // deno-lint-ignore require-await
+      async encode(
+        object: object,
+        options: { format: \\"expand\\"; contextLoader?: DocumentLoader },
+      ): Promise<unknown> {
+        const array: unknown[] = [];
+        for (const v of (object as Application).#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+
+      let element = (
+{ \\"@value\\": v }
+      );
+      if (Array.isArray(element)) {
+        if (element.length < 1) continue;
+        if (element.length == 1) element = element[0];
+      }
+      if (typeof element === \\"undefined\\") continue;
+array.push(element);
+        }
+        if (array.length < 1) return undefined;
+        return array;
+      },
+      values(object: object): readonly unknown[] {
+        return (object as Application).#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
+      },
+    };
+    descriptors.set(\\"http://joinmastodon.org/ns#attributionDomains\\", descriptor);
+
+    descriptor = {
       canonicalIri: \\"https://www.w3.org/ns/activitystreams#movedTo\\",
       // Scalar encoders are mostly synchronous, but some are not:
       // deno-lint-ignore require-await
@@ -87896,6 +87926,7 @@ get attributionDomains(): (string)[] {
     
     array = [];
     for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+    
       let element = (
     { \\"@value\\": v }
       );
@@ -88167,7 +88198,7 @@ get attributionDomains(): (string)[] {
     return super.isCompactable();
   }
   
-  static readonly #knownRawPropertyIris: ReadonlySet<string> = new Set([\\"http://creativecommons.org/ns#license\\",\\"http://fedibird.com/ns#emojiReactions\\",\\"http://joinmastodon.org/ns#discoverable\\",\\"http://joinmastodon.org/ns#featured\\",\\"http://joinmastodon.org/ns#featuredTags\\",\\"http://joinmastodon.org/ns#indexable\\",\\"http://joinmastodon.org/ns#memorial\\",\\"http://joinmastodon.org/ns#suspended\\",\\"http://purl.org/dc/terms/license\\",\\"http://www.w3.org/ns/ldp#inbox\\",\\"https://gotosocial.org/ns#announceAuthorization\\",\\"https://gotosocial.org/ns#approvedBy\\",\\"https://gotosocial.org/ns#interactionPolicy\\",\\"https://gotosocial.org/ns#likeAuthorization\\",\\"https://gotosocial.org/ns#replyAuthorization\\",\\"https://misskey-hub.net/ns#_misskey_followedMessage\\",\\"https://misskey-hub.net/ns#isCat\\",\\"https://schema.org/license\\",\\"https://w3id.org/fep/22cd#translations\\",\\"https://w3id.org/fep/6757#preferredLicense\\",\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"https://w3id.org/fep/ef61/gateways\\",\\"https://w3id.org/security#assertionMethod\\",\\"https://w3id.org/security#proof\\",\\"https://w3id.org/security#publicKey\\",\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\",\\"https://www.w3.org/ns/activitystreams#attachment\\",\\"https://www.w3.org/ns/activitystreams#attributedTo\\",\\"https://www.w3.org/ns/activitystreams#audience\\",\\"https://www.w3.org/ns/activitystreams#bcc\\",\\"https://www.w3.org/ns/activitystreams#bto\\",\\"https://www.w3.org/ns/activitystreams#cc\\",\\"https://www.w3.org/ns/activitystreams#content\\",\\"https://www.w3.org/ns/activitystreams#context\\",\\"https://www.w3.org/ns/activitystreams#duration\\",\\"https://www.w3.org/ns/activitystreams#endTime\\",\\"https://www.w3.org/ns/activitystreams#endpoints\\",\\"https://www.w3.org/ns/activitystreams#followers\\",\\"https://www.w3.org/ns/activitystreams#following\\",\\"https://www.w3.org/ns/activitystreams#generator\\",\\"https://www.w3.org/ns/activitystreams#icon\\",\\"https://www.w3.org/ns/activitystreams#image\\",\\"https://www.w3.org/ns/activitystreams#inReplyTo\\",\\"https://www.w3.org/ns/activitystreams#liked\\",\\"https://www.w3.org/ns/activitystreams#likes\\",\\"https://www.w3.org/ns/activitystreams#location\\",\\"https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers\\",\\"https://www.w3.org/ns/activitystreams#mediaType\\",\\"https://www.w3.org/ns/activitystreams#movedTo\\",\\"https://www.w3.org/ns/activitystreams#name\\",\\"https://www.w3.org/ns/activitystreams#outbox\\",\\"https://www.w3.org/ns/activitystreams#preferredUsername\\",\\"https://www.w3.org/ns/activitystreams#preview\\",\\"https://www.w3.org/ns/activitystreams#published\\",\\"https://www.w3.org/ns/activitystreams#replies\\",\\"https://www.w3.org/ns/activitystreams#sensitive\\",\\"https://www.w3.org/ns/activitystreams#shares\\",\\"https://www.w3.org/ns/activitystreams#source\\",\\"https://www.w3.org/ns/activitystreams#startTime\\",\\"https://www.w3.org/ns/activitystreams#streams\\",\\"https://www.w3.org/ns/activitystreams#summary\\",\\"https://www.w3.org/ns/activitystreams#tag\\",\\"https://www.w3.org/ns/activitystreams#to\\",\\"https://www.w3.org/ns/activitystreams#updated\\",\\"https://www.w3.org/ns/activitystreams#url\\",\\"https://www.w3.org/ns/did#service\\"]);
+  static readonly #knownRawPropertyIris: ReadonlySet<string> = new Set([\\"http://creativecommons.org/ns#license\\",\\"http://fedibird.com/ns#emojiReactions\\",\\"http://joinmastodon.org/ns#attributionDomains\\",\\"http://joinmastodon.org/ns#discoverable\\",\\"http://joinmastodon.org/ns#featured\\",\\"http://joinmastodon.org/ns#featuredTags\\",\\"http://joinmastodon.org/ns#indexable\\",\\"http://joinmastodon.org/ns#memorial\\",\\"http://joinmastodon.org/ns#suspended\\",\\"http://purl.org/dc/terms/license\\",\\"http://www.w3.org/ns/ldp#inbox\\",\\"https://gotosocial.org/ns#announceAuthorization\\",\\"https://gotosocial.org/ns#approvedBy\\",\\"https://gotosocial.org/ns#interactionPolicy\\",\\"https://gotosocial.org/ns#likeAuthorization\\",\\"https://gotosocial.org/ns#replyAuthorization\\",\\"https://misskey-hub.net/ns#_misskey_followedMessage\\",\\"https://misskey-hub.net/ns#isCat\\",\\"https://schema.org/license\\",\\"https://w3id.org/fep/22cd#translations\\",\\"https://w3id.org/fep/6757#preferredLicense\\",\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"https://w3id.org/fep/ef61/gateways\\",\\"https://w3id.org/security#assertionMethod\\",\\"https://w3id.org/security#proof\\",\\"https://w3id.org/security#publicKey\\",\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\",\\"https://www.w3.org/ns/activitystreams#attachment\\",\\"https://www.w3.org/ns/activitystreams#attributedTo\\",\\"https://www.w3.org/ns/activitystreams#audience\\",\\"https://www.w3.org/ns/activitystreams#bcc\\",\\"https://www.w3.org/ns/activitystreams#bto\\",\\"https://www.w3.org/ns/activitystreams#cc\\",\\"https://www.w3.org/ns/activitystreams#content\\",\\"https://www.w3.org/ns/activitystreams#context\\",\\"https://www.w3.org/ns/activitystreams#duration\\",\\"https://www.w3.org/ns/activitystreams#endTime\\",\\"https://www.w3.org/ns/activitystreams#endpoints\\",\\"https://www.w3.org/ns/activitystreams#followers\\",\\"https://www.w3.org/ns/activitystreams#following\\",\\"https://www.w3.org/ns/activitystreams#generator\\",\\"https://www.w3.org/ns/activitystreams#icon\\",\\"https://www.w3.org/ns/activitystreams#image\\",\\"https://www.w3.org/ns/activitystreams#inReplyTo\\",\\"https://www.w3.org/ns/activitystreams#liked\\",\\"https://www.w3.org/ns/activitystreams#likes\\",\\"https://www.w3.org/ns/activitystreams#location\\",\\"https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers\\",\\"https://www.w3.org/ns/activitystreams#mediaType\\",\\"https://www.w3.org/ns/activitystreams#movedTo\\",\\"https://www.w3.org/ns/activitystreams#name\\",\\"https://www.w3.org/ns/activitystreams#outbox\\",\\"https://www.w3.org/ns/activitystreams#preferredUsername\\",\\"https://www.w3.org/ns/activitystreams#preview\\",\\"https://www.w3.org/ns/activitystreams#published\\",\\"https://www.w3.org/ns/activitystreams#replies\\",\\"https://www.w3.org/ns/activitystreams#sensitive\\",\\"https://www.w3.org/ns/activitystreams#shares\\",\\"https://www.w3.org/ns/activitystreams#source\\",\\"https://www.w3.org/ns/activitystreams#startTime\\",\\"https://www.w3.org/ns/activitystreams#streams\\",\\"https://www.w3.org/ns/activitystreams#summary\\",\\"https://www.w3.org/ns/activitystreams#tag\\",\\"https://www.w3.org/ns/activitystreams#to\\",\\"https://www.w3.org/ns/activitystreams#updated\\",\\"https://www.w3.org/ns/activitystreams#url\\",\\"https://www.w3.org/ns/did#service\\"]);
 
   /**
    * Converts a JSON-LD structure to an object of this type.
@@ -106065,6 +106096,36 @@ array.push(element);
     descriptors.set(\\"http://joinmastodon.org/ns#indexable\\", descriptor);
 
     descriptor = {
+      canonicalIri: \\"http://joinmastodon.org/ns#attributionDomains\\",
+      // Scalar encoders are mostly synchronous, but some are not:
+      // deno-lint-ignore require-await
+      async encode(
+        object: object,
+        options: { format: \\"expand\\"; contextLoader?: DocumentLoader },
+      ): Promise<unknown> {
+        const array: unknown[] = [];
+        for (const v of (object as Group).#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+
+      let element = (
+{ \\"@value\\": v }
+      );
+      if (Array.isArray(element)) {
+        if (element.length < 1) continue;
+        if (element.length == 1) element = element[0];
+      }
+      if (typeof element === \\"undefined\\") continue;
+array.push(element);
+        }
+        if (array.length < 1) return undefined;
+        return array;
+      },
+      values(object: object): readonly unknown[] {
+        return (object as Group).#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
+      },
+    };
+    descriptors.set(\\"http://joinmastodon.org/ns#attributionDomains\\", descriptor);
+
+    descriptor = {
       canonicalIri: \\"https://www.w3.org/ns/activitystreams#movedTo\\",
       // Scalar encoders are mostly synchronous, but some are not:
       // deno-lint-ignore require-await
@@ -114371,6 +114432,7 @@ get attributionDomains(): (string)[] {
     
     array = [];
     for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+    
       let element = (
     { \\"@value\\": v }
       );
@@ -114642,7 +114704,7 @@ get attributionDomains(): (string)[] {
     return super.isCompactable();
   }
   
-  static readonly #knownRawPropertyIris: ReadonlySet<string> = new Set([\\"http://creativecommons.org/ns#license\\",\\"http://fedibird.com/ns#emojiReactions\\",\\"http://joinmastodon.org/ns#discoverable\\",\\"http://joinmastodon.org/ns#featured\\",\\"http://joinmastodon.org/ns#featuredTags\\",\\"http://joinmastodon.org/ns#indexable\\",\\"http://joinmastodon.org/ns#memorial\\",\\"http://joinmastodon.org/ns#suspended\\",\\"http://purl.org/dc/terms/license\\",\\"http://www.w3.org/ns/ldp#inbox\\",\\"https://gotosocial.org/ns#announceAuthorization\\",\\"https://gotosocial.org/ns#approvedBy\\",\\"https://gotosocial.org/ns#interactionPolicy\\",\\"https://gotosocial.org/ns#likeAuthorization\\",\\"https://gotosocial.org/ns#replyAuthorization\\",\\"https://misskey-hub.net/ns#_misskey_followedMessage\\",\\"https://misskey-hub.net/ns#isCat\\",\\"https://schema.org/license\\",\\"https://w3id.org/fep/22cd#translations\\",\\"https://w3id.org/fep/6757#preferredLicense\\",\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"https://w3id.org/fep/ef61/gateways\\",\\"https://w3id.org/security#assertionMethod\\",\\"https://w3id.org/security#proof\\",\\"https://w3id.org/security#publicKey\\",\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\",\\"https://www.w3.org/ns/activitystreams#attachment\\",\\"https://www.w3.org/ns/activitystreams#attributedTo\\",\\"https://www.w3.org/ns/activitystreams#audience\\",\\"https://www.w3.org/ns/activitystreams#bcc\\",\\"https://www.w3.org/ns/activitystreams#bto\\",\\"https://www.w3.org/ns/activitystreams#cc\\",\\"https://www.w3.org/ns/activitystreams#content\\",\\"https://www.w3.org/ns/activitystreams#context\\",\\"https://www.w3.org/ns/activitystreams#duration\\",\\"https://www.w3.org/ns/activitystreams#endTime\\",\\"https://www.w3.org/ns/activitystreams#endpoints\\",\\"https://www.w3.org/ns/activitystreams#followers\\",\\"https://www.w3.org/ns/activitystreams#following\\",\\"https://www.w3.org/ns/activitystreams#generator\\",\\"https://www.w3.org/ns/activitystreams#icon\\",\\"https://www.w3.org/ns/activitystreams#image\\",\\"https://www.w3.org/ns/activitystreams#inReplyTo\\",\\"https://www.w3.org/ns/activitystreams#liked\\",\\"https://www.w3.org/ns/activitystreams#likes\\",\\"https://www.w3.org/ns/activitystreams#location\\",\\"https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers\\",\\"https://www.w3.org/ns/activitystreams#mediaType\\",\\"https://www.w3.org/ns/activitystreams#movedTo\\",\\"https://www.w3.org/ns/activitystreams#name\\",\\"https://www.w3.org/ns/activitystreams#outbox\\",\\"https://www.w3.org/ns/activitystreams#preferredUsername\\",\\"https://www.w3.org/ns/activitystreams#preview\\",\\"https://www.w3.org/ns/activitystreams#published\\",\\"https://www.w3.org/ns/activitystreams#replies\\",\\"https://www.w3.org/ns/activitystreams#sensitive\\",\\"https://www.w3.org/ns/activitystreams#shares\\",\\"https://www.w3.org/ns/activitystreams#source\\",\\"https://www.w3.org/ns/activitystreams#startTime\\",\\"https://www.w3.org/ns/activitystreams#streams\\",\\"https://www.w3.org/ns/activitystreams#summary\\",\\"https://www.w3.org/ns/activitystreams#tag\\",\\"https://www.w3.org/ns/activitystreams#to\\",\\"https://www.w3.org/ns/activitystreams#updated\\",\\"https://www.w3.org/ns/activitystreams#url\\",\\"https://www.w3.org/ns/did#service\\"]);
+  static readonly #knownRawPropertyIris: ReadonlySet<string> = new Set([\\"http://creativecommons.org/ns#license\\",\\"http://fedibird.com/ns#emojiReactions\\",\\"http://joinmastodon.org/ns#attributionDomains\\",\\"http://joinmastodon.org/ns#discoverable\\",\\"http://joinmastodon.org/ns#featured\\",\\"http://joinmastodon.org/ns#featuredTags\\",\\"http://joinmastodon.org/ns#indexable\\",\\"http://joinmastodon.org/ns#memorial\\",\\"http://joinmastodon.org/ns#suspended\\",\\"http://purl.org/dc/terms/license\\",\\"http://www.w3.org/ns/ldp#inbox\\",\\"https://gotosocial.org/ns#announceAuthorization\\",\\"https://gotosocial.org/ns#approvedBy\\",\\"https://gotosocial.org/ns#interactionPolicy\\",\\"https://gotosocial.org/ns#likeAuthorization\\",\\"https://gotosocial.org/ns#replyAuthorization\\",\\"https://misskey-hub.net/ns#_misskey_followedMessage\\",\\"https://misskey-hub.net/ns#isCat\\",\\"https://schema.org/license\\",\\"https://w3id.org/fep/22cd#translations\\",\\"https://w3id.org/fep/6757#preferredLicense\\",\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"https://w3id.org/fep/ef61/gateways\\",\\"https://w3id.org/security#assertionMethod\\",\\"https://w3id.org/security#proof\\",\\"https://w3id.org/security#publicKey\\",\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\",\\"https://www.w3.org/ns/activitystreams#attachment\\",\\"https://www.w3.org/ns/activitystreams#attributedTo\\",\\"https://www.w3.org/ns/activitystreams#audience\\",\\"https://www.w3.org/ns/activitystreams#bcc\\",\\"https://www.w3.org/ns/activitystreams#bto\\",\\"https://www.w3.org/ns/activitystreams#cc\\",\\"https://www.w3.org/ns/activitystreams#content\\",\\"https://www.w3.org/ns/activitystreams#context\\",\\"https://www.w3.org/ns/activitystreams#duration\\",\\"https://www.w3.org/ns/activitystreams#endTime\\",\\"https://www.w3.org/ns/activitystreams#endpoints\\",\\"https://www.w3.org/ns/activitystreams#followers\\",\\"https://www.w3.org/ns/activitystreams#following\\",\\"https://www.w3.org/ns/activitystreams#generator\\",\\"https://www.w3.org/ns/activitystreams#icon\\",\\"https://www.w3.org/ns/activitystreams#image\\",\\"https://www.w3.org/ns/activitystreams#inReplyTo\\",\\"https://www.w3.org/ns/activitystreams#liked\\",\\"https://www.w3.org/ns/activitystreams#likes\\",\\"https://www.w3.org/ns/activitystreams#location\\",\\"https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers\\",\\"https://www.w3.org/ns/activitystreams#mediaType\\",\\"https://www.w3.org/ns/activitystreams#movedTo\\",\\"https://www.w3.org/ns/activitystreams#name\\",\\"https://www.w3.org/ns/activitystreams#outbox\\",\\"https://www.w3.org/ns/activitystreams#preferredUsername\\",\\"https://www.w3.org/ns/activitystreams#preview\\",\\"https://www.w3.org/ns/activitystreams#published\\",\\"https://www.w3.org/ns/activitystreams#replies\\",\\"https://www.w3.org/ns/activitystreams#sensitive\\",\\"https://www.w3.org/ns/activitystreams#shares\\",\\"https://www.w3.org/ns/activitystreams#source\\",\\"https://www.w3.org/ns/activitystreams#startTime\\",\\"https://www.w3.org/ns/activitystreams#streams\\",\\"https://www.w3.org/ns/activitystreams#summary\\",\\"https://www.w3.org/ns/activitystreams#tag\\",\\"https://www.w3.org/ns/activitystreams#to\\",\\"https://www.w3.org/ns/activitystreams#updated\\",\\"https://www.w3.org/ns/activitystreams#url\\",\\"https://www.w3.org/ns/did#service\\"]);
 
   /**
    * Converts a JSON-LD structure to an object of this type.
@@ -131114,6 +131176,36 @@ array.push(element);
     descriptors.set(\\"http://joinmastodon.org/ns#indexable\\", descriptor);
 
     descriptor = {
+      canonicalIri: \\"http://joinmastodon.org/ns#attributionDomains\\",
+      // Scalar encoders are mostly synchronous, but some are not:
+      // deno-lint-ignore require-await
+      async encode(
+        object: object,
+        options: { format: \\"expand\\"; contextLoader?: DocumentLoader },
+      ): Promise<unknown> {
+        const array: unknown[] = [];
+        for (const v of (object as Organization).#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+
+      let element = (
+{ \\"@value\\": v }
+      );
+      if (Array.isArray(element)) {
+        if (element.length < 1) continue;
+        if (element.length == 1) element = element[0];
+      }
+      if (typeof element === \\"undefined\\") continue;
+array.push(element);
+        }
+        if (array.length < 1) return undefined;
+        return array;
+      },
+      values(object: object): readonly unknown[] {
+        return (object as Organization).#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
+      },
+    };
+    descriptors.set(\\"http://joinmastodon.org/ns#attributionDomains\\", descriptor);
+
+    descriptor = {
       canonicalIri: \\"https://www.w3.org/ns/activitystreams#movedTo\\",
       // Scalar encoders are mostly synchronous, but some are not:
       // deno-lint-ignore require-await
@@ -139420,6 +139512,7 @@ get attributionDomains(): (string)[] {
     
     array = [];
     for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+    
       let element = (
     { \\"@value\\": v }
       );
@@ -139691,7 +139784,7 @@ get attributionDomains(): (string)[] {
     return super.isCompactable();
   }
   
-  static readonly #knownRawPropertyIris: ReadonlySet<string> = new Set([\\"http://creativecommons.org/ns#license\\",\\"http://fedibird.com/ns#emojiReactions\\",\\"http://joinmastodon.org/ns#discoverable\\",\\"http://joinmastodon.org/ns#featured\\",\\"http://joinmastodon.org/ns#featuredTags\\",\\"http://joinmastodon.org/ns#indexable\\",\\"http://joinmastodon.org/ns#memorial\\",\\"http://joinmastodon.org/ns#suspended\\",\\"http://purl.org/dc/terms/license\\",\\"http://www.w3.org/ns/ldp#inbox\\",\\"https://gotosocial.org/ns#announceAuthorization\\",\\"https://gotosocial.org/ns#approvedBy\\",\\"https://gotosocial.org/ns#interactionPolicy\\",\\"https://gotosocial.org/ns#likeAuthorization\\",\\"https://gotosocial.org/ns#replyAuthorization\\",\\"https://misskey-hub.net/ns#_misskey_followedMessage\\",\\"https://misskey-hub.net/ns#isCat\\",\\"https://schema.org/license\\",\\"https://w3id.org/fep/22cd#translations\\",\\"https://w3id.org/fep/6757#preferredLicense\\",\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"https://w3id.org/fep/ef61/gateways\\",\\"https://w3id.org/security#assertionMethod\\",\\"https://w3id.org/security#proof\\",\\"https://w3id.org/security#publicKey\\",\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\",\\"https://www.w3.org/ns/activitystreams#attachment\\",\\"https://www.w3.org/ns/activitystreams#attributedTo\\",\\"https://www.w3.org/ns/activitystreams#audience\\",\\"https://www.w3.org/ns/activitystreams#bcc\\",\\"https://www.w3.org/ns/activitystreams#bto\\",\\"https://www.w3.org/ns/activitystreams#cc\\",\\"https://www.w3.org/ns/activitystreams#content\\",\\"https://www.w3.org/ns/activitystreams#context\\",\\"https://www.w3.org/ns/activitystreams#duration\\",\\"https://www.w3.org/ns/activitystreams#endTime\\",\\"https://www.w3.org/ns/activitystreams#endpoints\\",\\"https://www.w3.org/ns/activitystreams#followers\\",\\"https://www.w3.org/ns/activitystreams#following\\",\\"https://www.w3.org/ns/activitystreams#generator\\",\\"https://www.w3.org/ns/activitystreams#icon\\",\\"https://www.w3.org/ns/activitystreams#image\\",\\"https://www.w3.org/ns/activitystreams#inReplyTo\\",\\"https://www.w3.org/ns/activitystreams#liked\\",\\"https://www.w3.org/ns/activitystreams#likes\\",\\"https://www.w3.org/ns/activitystreams#location\\",\\"https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers\\",\\"https://www.w3.org/ns/activitystreams#mediaType\\",\\"https://www.w3.org/ns/activitystreams#movedTo\\",\\"https://www.w3.org/ns/activitystreams#name\\",\\"https://www.w3.org/ns/activitystreams#outbox\\",\\"https://www.w3.org/ns/activitystreams#preferredUsername\\",\\"https://www.w3.org/ns/activitystreams#preview\\",\\"https://www.w3.org/ns/activitystreams#published\\",\\"https://www.w3.org/ns/activitystreams#replies\\",\\"https://www.w3.org/ns/activitystreams#sensitive\\",\\"https://www.w3.org/ns/activitystreams#shares\\",\\"https://www.w3.org/ns/activitystreams#source\\",\\"https://www.w3.org/ns/activitystreams#startTime\\",\\"https://www.w3.org/ns/activitystreams#streams\\",\\"https://www.w3.org/ns/activitystreams#summary\\",\\"https://www.w3.org/ns/activitystreams#tag\\",\\"https://www.w3.org/ns/activitystreams#to\\",\\"https://www.w3.org/ns/activitystreams#updated\\",\\"https://www.w3.org/ns/activitystreams#url\\",\\"https://www.w3.org/ns/did#service\\"]);
+  static readonly #knownRawPropertyIris: ReadonlySet<string> = new Set([\\"http://creativecommons.org/ns#license\\",\\"http://fedibird.com/ns#emojiReactions\\",\\"http://joinmastodon.org/ns#attributionDomains\\",\\"http://joinmastodon.org/ns#discoverable\\",\\"http://joinmastodon.org/ns#featured\\",\\"http://joinmastodon.org/ns#featuredTags\\",\\"http://joinmastodon.org/ns#indexable\\",\\"http://joinmastodon.org/ns#memorial\\",\\"http://joinmastodon.org/ns#suspended\\",\\"http://purl.org/dc/terms/license\\",\\"http://www.w3.org/ns/ldp#inbox\\",\\"https://gotosocial.org/ns#announceAuthorization\\",\\"https://gotosocial.org/ns#approvedBy\\",\\"https://gotosocial.org/ns#interactionPolicy\\",\\"https://gotosocial.org/ns#likeAuthorization\\",\\"https://gotosocial.org/ns#replyAuthorization\\",\\"https://misskey-hub.net/ns#_misskey_followedMessage\\",\\"https://misskey-hub.net/ns#isCat\\",\\"https://schema.org/license\\",\\"https://w3id.org/fep/22cd#translations\\",\\"https://w3id.org/fep/6757#preferredLicense\\",\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"https://w3id.org/fep/ef61/gateways\\",\\"https://w3id.org/security#assertionMethod\\",\\"https://w3id.org/security#proof\\",\\"https://w3id.org/security#publicKey\\",\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\",\\"https://www.w3.org/ns/activitystreams#attachment\\",\\"https://www.w3.org/ns/activitystreams#attributedTo\\",\\"https://www.w3.org/ns/activitystreams#audience\\",\\"https://www.w3.org/ns/activitystreams#bcc\\",\\"https://www.w3.org/ns/activitystreams#bto\\",\\"https://www.w3.org/ns/activitystreams#cc\\",\\"https://www.w3.org/ns/activitystreams#content\\",\\"https://www.w3.org/ns/activitystreams#context\\",\\"https://www.w3.org/ns/activitystreams#duration\\",\\"https://www.w3.org/ns/activitystreams#endTime\\",\\"https://www.w3.org/ns/activitystreams#endpoints\\",\\"https://www.w3.org/ns/activitystreams#followers\\",\\"https://www.w3.org/ns/activitystreams#following\\",\\"https://www.w3.org/ns/activitystreams#generator\\",\\"https://www.w3.org/ns/activitystreams#icon\\",\\"https://www.w3.org/ns/activitystreams#image\\",\\"https://www.w3.org/ns/activitystreams#inReplyTo\\",\\"https://www.w3.org/ns/activitystreams#liked\\",\\"https://www.w3.org/ns/activitystreams#likes\\",\\"https://www.w3.org/ns/activitystreams#location\\",\\"https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers\\",\\"https://www.w3.org/ns/activitystreams#mediaType\\",\\"https://www.w3.org/ns/activitystreams#movedTo\\",\\"https://www.w3.org/ns/activitystreams#name\\",\\"https://www.w3.org/ns/activitystreams#outbox\\",\\"https://www.w3.org/ns/activitystreams#preferredUsername\\",\\"https://www.w3.org/ns/activitystreams#preview\\",\\"https://www.w3.org/ns/activitystreams#published\\",\\"https://www.w3.org/ns/activitystreams#replies\\",\\"https://www.w3.org/ns/activitystreams#sensitive\\",\\"https://www.w3.org/ns/activitystreams#shares\\",\\"https://www.w3.org/ns/activitystreams#source\\",\\"https://www.w3.org/ns/activitystreams#startTime\\",\\"https://www.w3.org/ns/activitystreams#streams\\",\\"https://www.w3.org/ns/activitystreams#summary\\",\\"https://www.w3.org/ns/activitystreams#tag\\",\\"https://www.w3.org/ns/activitystreams#to\\",\\"https://www.w3.org/ns/activitystreams#updated\\",\\"https://www.w3.org/ns/activitystreams#url\\",\\"https://www.w3.org/ns/did#service\\"]);
 
   /**
    * Converts a JSON-LD structure to an object of this type.
@@ -144812,6 +144905,36 @@ array.push(element);
       },
     };
     descriptors.set(\\"http://joinmastodon.org/ns#indexable\\", descriptor);
+
+    descriptor = {
+      canonicalIri: \\"http://joinmastodon.org/ns#attributionDomains\\",
+      // Scalar encoders are mostly synchronous, but some are not:
+      // deno-lint-ignore require-await
+      async encode(
+        object: object,
+        options: { format: \\"expand\\"; contextLoader?: DocumentLoader },
+      ): Promise<unknown> {
+        const array: unknown[] = [];
+        for (const v of (object as Person).#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+
+      let element = (
+{ \\"@value\\": v }
+      );
+      if (Array.isArray(element)) {
+        if (element.length < 1) continue;
+        if (element.length == 1) element = element[0];
+      }
+      if (typeof element === \\"undefined\\") continue;
+array.push(element);
+        }
+        if (array.length < 1) return undefined;
+        return array;
+      },
+      values(object: object): readonly unknown[] {
+        return (object as Person).#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
+      },
+    };
+    descriptors.set(\\"http://joinmastodon.org/ns#attributionDomains\\", descriptor);
 
     descriptor = {
       canonicalIri: \\"https://www.w3.org/ns/activitystreams#movedTo\\",
@@ -153120,6 +153243,7 @@ get attributionDomains(): (string)[] {
     
     array = [];
     for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+    
       let element = (
     { \\"@value\\": v }
       );
@@ -153391,7 +153515,7 @@ get attributionDomains(): (string)[] {
     return super.isCompactable();
   }
   
-  static readonly #knownRawPropertyIris: ReadonlySet<string> = new Set([\\"http://creativecommons.org/ns#license\\",\\"http://fedibird.com/ns#emojiReactions\\",\\"http://joinmastodon.org/ns#discoverable\\",\\"http://joinmastodon.org/ns#featured\\",\\"http://joinmastodon.org/ns#featuredTags\\",\\"http://joinmastodon.org/ns#indexable\\",\\"http://joinmastodon.org/ns#memorial\\",\\"http://joinmastodon.org/ns#suspended\\",\\"http://purl.org/dc/terms/license\\",\\"http://www.w3.org/ns/ldp#inbox\\",\\"https://gotosocial.org/ns#announceAuthorization\\",\\"https://gotosocial.org/ns#approvedBy\\",\\"https://gotosocial.org/ns#interactionPolicy\\",\\"https://gotosocial.org/ns#likeAuthorization\\",\\"https://gotosocial.org/ns#replyAuthorization\\",\\"https://misskey-hub.net/ns#_misskey_followedMessage\\",\\"https://misskey-hub.net/ns#isCat\\",\\"https://schema.org/license\\",\\"https://w3id.org/fep/22cd#translations\\",\\"https://w3id.org/fep/6757#preferredLicense\\",\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"https://w3id.org/fep/ef61/gateways\\",\\"https://w3id.org/security#assertionMethod\\",\\"https://w3id.org/security#proof\\",\\"https://w3id.org/security#publicKey\\",\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\",\\"https://www.w3.org/ns/activitystreams#attachment\\",\\"https://www.w3.org/ns/activitystreams#attributedTo\\",\\"https://www.w3.org/ns/activitystreams#audience\\",\\"https://www.w3.org/ns/activitystreams#bcc\\",\\"https://www.w3.org/ns/activitystreams#bto\\",\\"https://www.w3.org/ns/activitystreams#cc\\",\\"https://www.w3.org/ns/activitystreams#content\\",\\"https://www.w3.org/ns/activitystreams#context\\",\\"https://www.w3.org/ns/activitystreams#duration\\",\\"https://www.w3.org/ns/activitystreams#endTime\\",\\"https://www.w3.org/ns/activitystreams#endpoints\\",\\"https://www.w3.org/ns/activitystreams#followers\\",\\"https://www.w3.org/ns/activitystreams#following\\",\\"https://www.w3.org/ns/activitystreams#generator\\",\\"https://www.w3.org/ns/activitystreams#icon\\",\\"https://www.w3.org/ns/activitystreams#image\\",\\"https://www.w3.org/ns/activitystreams#inReplyTo\\",\\"https://www.w3.org/ns/activitystreams#liked\\",\\"https://www.w3.org/ns/activitystreams#likes\\",\\"https://www.w3.org/ns/activitystreams#location\\",\\"https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers\\",\\"https://www.w3.org/ns/activitystreams#mediaType\\",\\"https://www.w3.org/ns/activitystreams#movedTo\\",\\"https://www.w3.org/ns/activitystreams#name\\",\\"https://www.w3.org/ns/activitystreams#outbox\\",\\"https://www.w3.org/ns/activitystreams#preferredUsername\\",\\"https://www.w3.org/ns/activitystreams#preview\\",\\"https://www.w3.org/ns/activitystreams#published\\",\\"https://www.w3.org/ns/activitystreams#replies\\",\\"https://www.w3.org/ns/activitystreams#sensitive\\",\\"https://www.w3.org/ns/activitystreams#shares\\",\\"https://www.w3.org/ns/activitystreams#source\\",\\"https://www.w3.org/ns/activitystreams#startTime\\",\\"https://www.w3.org/ns/activitystreams#streams\\",\\"https://www.w3.org/ns/activitystreams#summary\\",\\"https://www.w3.org/ns/activitystreams#tag\\",\\"https://www.w3.org/ns/activitystreams#to\\",\\"https://www.w3.org/ns/activitystreams#updated\\",\\"https://www.w3.org/ns/activitystreams#url\\",\\"https://www.w3.org/ns/did#service\\"]);
+  static readonly #knownRawPropertyIris: ReadonlySet<string> = new Set([\\"http://creativecommons.org/ns#license\\",\\"http://fedibird.com/ns#emojiReactions\\",\\"http://joinmastodon.org/ns#attributionDomains\\",\\"http://joinmastodon.org/ns#discoverable\\",\\"http://joinmastodon.org/ns#featured\\",\\"http://joinmastodon.org/ns#featuredTags\\",\\"http://joinmastodon.org/ns#indexable\\",\\"http://joinmastodon.org/ns#memorial\\",\\"http://joinmastodon.org/ns#suspended\\",\\"http://purl.org/dc/terms/license\\",\\"http://www.w3.org/ns/ldp#inbox\\",\\"https://gotosocial.org/ns#announceAuthorization\\",\\"https://gotosocial.org/ns#approvedBy\\",\\"https://gotosocial.org/ns#interactionPolicy\\",\\"https://gotosocial.org/ns#likeAuthorization\\",\\"https://gotosocial.org/ns#replyAuthorization\\",\\"https://misskey-hub.net/ns#_misskey_followedMessage\\",\\"https://misskey-hub.net/ns#isCat\\",\\"https://schema.org/license\\",\\"https://w3id.org/fep/22cd#translations\\",\\"https://w3id.org/fep/6757#preferredLicense\\",\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"https://w3id.org/fep/ef61/gateways\\",\\"https://w3id.org/security#assertionMethod\\",\\"https://w3id.org/security#proof\\",\\"https://w3id.org/security#publicKey\\",\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\",\\"https://www.w3.org/ns/activitystreams#attachment\\",\\"https://www.w3.org/ns/activitystreams#attributedTo\\",\\"https://www.w3.org/ns/activitystreams#audience\\",\\"https://www.w3.org/ns/activitystreams#bcc\\",\\"https://www.w3.org/ns/activitystreams#bto\\",\\"https://www.w3.org/ns/activitystreams#cc\\",\\"https://www.w3.org/ns/activitystreams#content\\",\\"https://www.w3.org/ns/activitystreams#context\\",\\"https://www.w3.org/ns/activitystreams#duration\\",\\"https://www.w3.org/ns/activitystreams#endTime\\",\\"https://www.w3.org/ns/activitystreams#endpoints\\",\\"https://www.w3.org/ns/activitystreams#followers\\",\\"https://www.w3.org/ns/activitystreams#following\\",\\"https://www.w3.org/ns/activitystreams#generator\\",\\"https://www.w3.org/ns/activitystreams#icon\\",\\"https://www.w3.org/ns/activitystreams#image\\",\\"https://www.w3.org/ns/activitystreams#inReplyTo\\",\\"https://www.w3.org/ns/activitystreams#liked\\",\\"https://www.w3.org/ns/activitystreams#likes\\",\\"https://www.w3.org/ns/activitystreams#location\\",\\"https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers\\",\\"https://www.w3.org/ns/activitystreams#mediaType\\",\\"https://www.w3.org/ns/activitystreams#movedTo\\",\\"https://www.w3.org/ns/activitystreams#name\\",\\"https://www.w3.org/ns/activitystreams#outbox\\",\\"https://www.w3.org/ns/activitystreams#preferredUsername\\",\\"https://www.w3.org/ns/activitystreams#preview\\",\\"https://www.w3.org/ns/activitystreams#published\\",\\"https://www.w3.org/ns/activitystreams#replies\\",\\"https://www.w3.org/ns/activitystreams#sensitive\\",\\"https://www.w3.org/ns/activitystreams#shares\\",\\"https://www.w3.org/ns/activitystreams#source\\",\\"https://www.w3.org/ns/activitystreams#startTime\\",\\"https://www.w3.org/ns/activitystreams#streams\\",\\"https://www.w3.org/ns/activitystreams#summary\\",\\"https://www.w3.org/ns/activitystreams#tag\\",\\"https://www.w3.org/ns/activitystreams#to\\",\\"https://www.w3.org/ns/activitystreams#updated\\",\\"https://www.w3.org/ns/activitystreams#url\\",\\"https://www.w3.org/ns/did#service\\"]);
 
   /**
    * Converts a JSON-LD structure to an object of this type.
@@ -168927,6 +169051,36 @@ array.push(element);
     descriptors.set(\\"http://joinmastodon.org/ns#indexable\\", descriptor);
 
     descriptor = {
+      canonicalIri: \\"http://joinmastodon.org/ns#attributionDomains\\",
+      // Scalar encoders are mostly synchronous, but some are not:
+      // deno-lint-ignore require-await
+      async encode(
+        object: object,
+        options: { format: \\"expand\\"; contextLoader?: DocumentLoader },
+      ): Promise<unknown> {
+        const array: unknown[] = [];
+        for (const v of (object as Service).#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+
+      let element = (
+{ \\"@value\\": v }
+      );
+      if (Array.isArray(element)) {
+        if (element.length < 1) continue;
+        if (element.length == 1) element = element[0];
+      }
+      if (typeof element === \\"undefined\\") continue;
+array.push(element);
+        }
+        if (array.length < 1) return undefined;
+        return array;
+      },
+      values(object: object): readonly unknown[] {
+        return (object as Service).#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
+      },
+    };
+    descriptors.set(\\"http://joinmastodon.org/ns#attributionDomains\\", descriptor);
+
+    descriptor = {
       canonicalIri: \\"https://www.w3.org/ns/activitystreams#movedTo\\",
       // Scalar encoders are mostly synchronous, but some are not:
       // deno-lint-ignore require-await
@@ -177233,6 +177387,7 @@ get attributionDomains(): (string)[] {
     
     array = [];
     for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+    
       let element = (
     { \\"@value\\": v }
       );
@@ -177504,7 +177659,7 @@ get attributionDomains(): (string)[] {
     return super.isCompactable();
   }
   
-  static readonly #knownRawPropertyIris: ReadonlySet<string> = new Set([\\"http://creativecommons.org/ns#license\\",\\"http://fedibird.com/ns#emojiReactions\\",\\"http://joinmastodon.org/ns#discoverable\\",\\"http://joinmastodon.org/ns#featured\\",\\"http://joinmastodon.org/ns#featuredTags\\",\\"http://joinmastodon.org/ns#indexable\\",\\"http://joinmastodon.org/ns#memorial\\",\\"http://joinmastodon.org/ns#suspended\\",\\"http://purl.org/dc/terms/license\\",\\"http://www.w3.org/ns/ldp#inbox\\",\\"https://gotosocial.org/ns#announceAuthorization\\",\\"https://gotosocial.org/ns#approvedBy\\",\\"https://gotosocial.org/ns#interactionPolicy\\",\\"https://gotosocial.org/ns#likeAuthorization\\",\\"https://gotosocial.org/ns#replyAuthorization\\",\\"https://misskey-hub.net/ns#_misskey_followedMessage\\",\\"https://misskey-hub.net/ns#isCat\\",\\"https://schema.org/license\\",\\"https://w3id.org/fep/22cd#translations\\",\\"https://w3id.org/fep/6757#preferredLicense\\",\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"https://w3id.org/fep/ef61/gateways\\",\\"https://w3id.org/security#assertionMethod\\",\\"https://w3id.org/security#proof\\",\\"https://w3id.org/security#publicKey\\",\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\",\\"https://www.w3.org/ns/activitystreams#attachment\\",\\"https://www.w3.org/ns/activitystreams#attributedTo\\",\\"https://www.w3.org/ns/activitystreams#audience\\",\\"https://www.w3.org/ns/activitystreams#bcc\\",\\"https://www.w3.org/ns/activitystreams#bto\\",\\"https://www.w3.org/ns/activitystreams#cc\\",\\"https://www.w3.org/ns/activitystreams#content\\",\\"https://www.w3.org/ns/activitystreams#context\\",\\"https://www.w3.org/ns/activitystreams#duration\\",\\"https://www.w3.org/ns/activitystreams#endTime\\",\\"https://www.w3.org/ns/activitystreams#endpoints\\",\\"https://www.w3.org/ns/activitystreams#followers\\",\\"https://www.w3.org/ns/activitystreams#following\\",\\"https://www.w3.org/ns/activitystreams#generator\\",\\"https://www.w3.org/ns/activitystreams#icon\\",\\"https://www.w3.org/ns/activitystreams#image\\",\\"https://www.w3.org/ns/activitystreams#inReplyTo\\",\\"https://www.w3.org/ns/activitystreams#liked\\",\\"https://www.w3.org/ns/activitystreams#likes\\",\\"https://www.w3.org/ns/activitystreams#location\\",\\"https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers\\",\\"https://www.w3.org/ns/activitystreams#mediaType\\",\\"https://www.w3.org/ns/activitystreams#movedTo\\",\\"https://www.w3.org/ns/activitystreams#name\\",\\"https://www.w3.org/ns/activitystreams#outbox\\",\\"https://www.w3.org/ns/activitystreams#preferredUsername\\",\\"https://www.w3.org/ns/activitystreams#preview\\",\\"https://www.w3.org/ns/activitystreams#published\\",\\"https://www.w3.org/ns/activitystreams#replies\\",\\"https://www.w3.org/ns/activitystreams#sensitive\\",\\"https://www.w3.org/ns/activitystreams#shares\\",\\"https://www.w3.org/ns/activitystreams#source\\",\\"https://www.w3.org/ns/activitystreams#startTime\\",\\"https://www.w3.org/ns/activitystreams#streams\\",\\"https://www.w3.org/ns/activitystreams#summary\\",\\"https://www.w3.org/ns/activitystreams#tag\\",\\"https://www.w3.org/ns/activitystreams#to\\",\\"https://www.w3.org/ns/activitystreams#updated\\",\\"https://www.w3.org/ns/activitystreams#url\\",\\"https://www.w3.org/ns/did#service\\"]);
+  static readonly #knownRawPropertyIris: ReadonlySet<string> = new Set([\\"http://creativecommons.org/ns#license\\",\\"http://fedibird.com/ns#emojiReactions\\",\\"http://joinmastodon.org/ns#attributionDomains\\",\\"http://joinmastodon.org/ns#discoverable\\",\\"http://joinmastodon.org/ns#featured\\",\\"http://joinmastodon.org/ns#featuredTags\\",\\"http://joinmastodon.org/ns#indexable\\",\\"http://joinmastodon.org/ns#memorial\\",\\"http://joinmastodon.org/ns#suspended\\",\\"http://purl.org/dc/terms/license\\",\\"http://www.w3.org/ns/ldp#inbox\\",\\"https://gotosocial.org/ns#announceAuthorization\\",\\"https://gotosocial.org/ns#approvedBy\\",\\"https://gotosocial.org/ns#interactionPolicy\\",\\"https://gotosocial.org/ns#likeAuthorization\\",\\"https://gotosocial.org/ns#replyAuthorization\\",\\"https://misskey-hub.net/ns#_misskey_followedMessage\\",\\"https://misskey-hub.net/ns#isCat\\",\\"https://schema.org/license\\",\\"https://w3id.org/fep/22cd#translations\\",\\"https://w3id.org/fep/6757#preferredLicense\\",\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"https://w3id.org/fep/ef61/gateways\\",\\"https://w3id.org/security#assertionMethod\\",\\"https://w3id.org/security#proof\\",\\"https://w3id.org/security#publicKey\\",\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\",\\"https://www.w3.org/ns/activitystreams#attachment\\",\\"https://www.w3.org/ns/activitystreams#attributedTo\\",\\"https://www.w3.org/ns/activitystreams#audience\\",\\"https://www.w3.org/ns/activitystreams#bcc\\",\\"https://www.w3.org/ns/activitystreams#bto\\",\\"https://www.w3.org/ns/activitystreams#cc\\",\\"https://www.w3.org/ns/activitystreams#content\\",\\"https://www.w3.org/ns/activitystreams#context\\",\\"https://www.w3.org/ns/activitystreams#duration\\",\\"https://www.w3.org/ns/activitystreams#endTime\\",\\"https://www.w3.org/ns/activitystreams#endpoints\\",\\"https://www.w3.org/ns/activitystreams#followers\\",\\"https://www.w3.org/ns/activitystreams#following\\",\\"https://www.w3.org/ns/activitystreams#generator\\",\\"https://www.w3.org/ns/activitystreams#icon\\",\\"https://www.w3.org/ns/activitystreams#image\\",\\"https://www.w3.org/ns/activitystreams#inReplyTo\\",\\"https://www.w3.org/ns/activitystreams#liked\\",\\"https://www.w3.org/ns/activitystreams#likes\\",\\"https://www.w3.org/ns/activitystreams#location\\",\\"https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers\\",\\"https://www.w3.org/ns/activitystreams#mediaType\\",\\"https://www.w3.org/ns/activitystreams#movedTo\\",\\"https://www.w3.org/ns/activitystreams#name\\",\\"https://www.w3.org/ns/activitystreams#outbox\\",\\"https://www.w3.org/ns/activitystreams#preferredUsername\\",\\"https://www.w3.org/ns/activitystreams#preview\\",\\"https://www.w3.org/ns/activitystreams#published\\",\\"https://www.w3.org/ns/activitystreams#replies\\",\\"https://www.w3.org/ns/activitystreams#sensitive\\",\\"https://www.w3.org/ns/activitystreams#shares\\",\\"https://www.w3.org/ns/activitystreams#source\\",\\"https://www.w3.org/ns/activitystreams#startTime\\",\\"https://www.w3.org/ns/activitystreams#streams\\",\\"https://www.w3.org/ns/activitystreams#summary\\",\\"https://www.w3.org/ns/activitystreams#tag\\",\\"https://www.w3.org/ns/activitystreams#to\\",\\"https://www.w3.org/ns/activitystreams#updated\\",\\"https://www.w3.org/ns/activitystreams#url\\",\\"https://www.w3.org/ns/did#service\\"]);
 
   /**
    * Converts a JSON-LD structure to an object of this type.
