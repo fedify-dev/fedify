@@ -1667,7 +1667,7 @@ export interface OutboxListenerSetters<TContextData> {
    * @since 2.2.0
    */
   on<TActivity extends Activity>(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     type: new (...args: any[]) => TActivity,
     listener: OutboxListener<TContextData, TActivity>,
   ): OutboxListenerSetters<TContextData>;
@@ -1742,7 +1742,7 @@ export interface InboxListenerSetters<TContextData> {
    * @returns The setters object so that settings can be chained.
    */
   on<TActivity extends Activity>(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     type: new (...args: any[]) => TActivity,
     listener: InboxListener<TContextData, TActivity>,
     options?: InboxListenerOptions,
@@ -1997,7 +1997,7 @@ export interface CustomCollectionCallbackSetters<
  * @template TObject The type of the object.
  */
 export type ConstructorWithTypeId<TObject extends Object> =
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   (new (...args: any[]) => TObject) & { typeId: URL };
 
 /**

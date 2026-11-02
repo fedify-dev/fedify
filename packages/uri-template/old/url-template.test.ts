@@ -1,5 +1,5 @@
 import { test } from "@fedify/fixture";
-// deno-lint-ignore no-import-prefix
+
 import { parseTemplate } from "npm:url-template@^3.1.1";
 import {
   createFixedTemplateTest,

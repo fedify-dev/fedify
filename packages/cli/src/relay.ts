@@ -43,7 +43,7 @@ export async function runRelay(
     kv = new MemoryKvStore();
   }
 
-  // deno-lint-ignore prefer-const
+  // oxlint-disable-next-line eslint/prefer-const
   let relay: Relay;
   let server: TemporaryServer | null = null;
   const acceptFollows: string[] = [];

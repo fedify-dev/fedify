@@ -39,6 +39,7 @@ try {
     PATH: `${bin}${delimiter}${process.env.PATH}`,
   };
   const tasks = [
+    ["check:lint"],
     ["check:types"],
     ["check:types", "--", "fedify", "vocab"],
     ["check-versions"],

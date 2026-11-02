@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-explicit-any
+// oxlint-disable typescript/no-explicit-any
 
 /**
  * Additional options for enqueuing a message in a queue.

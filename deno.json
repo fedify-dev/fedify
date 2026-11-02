@@ -114,11 +114,6 @@
     "pnpm-lock.yaml",
     "pnpm-workspace.yaml"
   ],
-  "lint": {
-    "exclude": [
-      "examples/cloudflare-workers/worker-configuration.d.ts"
-    ]
-  },
   "fmt": {
     "exclude": [
       "**/*.html",

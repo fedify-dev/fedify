@@ -123,7 +123,7 @@ function validatePathPrefix(path: string): string {
     );
   }
   // Reject control characters, semicolons, and commas (unsafe in headers)
-  // deno-lint-ignore no-control-regex
+  // oxlint-disable-next-line eslint/no-control-regex
   if (/[\x00-\x1f\x7f;,]/.test(path)) {
     throw new TypeError(
       `Invalid debug dashboard path: ${JSON.stringify(path)}. ` +
@@ -270,7 +270,7 @@ export function createFederationDebugger<TContextData>(
           reset: true,
           sinks,
           loggers,
-          // deno-lint-ignore no-explicit-any
+          // oxlint-disable-next-line typescript/no-explicit-any
         } as any,
       );
     } else {

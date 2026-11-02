@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-import-prefix
 import { test } from "@fedify/fixture";
 import { cloneDeep } from "es-toolkit";
 import { Router as InnerRouter } from "npm:uri-template-router@^1.0.0";

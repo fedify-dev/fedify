@@ -97,6 +97,8 @@ Deno.test("integrateFetchOptions() - onNotFound delegates to ctx.next with corre
 
   const mockCtx = {
     next(req?: Request) {
+      // This assignment intentionally captures the method receiver for the test.
+      // oxlint-disable-next-line typescript/no-this-alias
       capturedThis = this;
       passedRequest = req;
       return Promise.resolve(notFoundResponse);

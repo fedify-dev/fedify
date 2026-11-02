@@ -127,9 +127,9 @@ export async function resolveAuthoritativeObject<T extends ASObject>(
           // The candidate's loader serves the context documents the object
           // was parsed with, so the expansion is the parsed interpretation:
           const expanded = await jsonld.expand(
-            // deno-lint-ignore no-explicit-any
+            // oxlint-disable-next-line typescript/no-explicit-any
             candidate.document as any,
-            // deno-lint-ignore no-explicit-any
+            // oxlint-disable-next-line typescript/no-explicit-any
             { documentLoader: candidate.contextLoader } as any,
           );
           const root = getRootNode(expanded);

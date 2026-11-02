@@ -7043,7 +7043,7 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
   isInActorDispatcher(): boolean {
     return this.#invokedFromActorDispatcher != null;
   }
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   override readonly url: URL = undefined as any;
   // An own property, so that the contexts derived by spreading this one, e.g.,
   // in getActor() and getObject(), keep it:

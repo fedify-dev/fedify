@@ -161,7 +161,7 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
    * {@inheritDoc MessageQueue.enqueue}
    */
   enqueue(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     message: any,
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
@@ -206,7 +206,7 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
    * {@inheritDoc MessageQueue.enqueueMany}
    */
   enqueueMany(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
@@ -288,7 +288,7 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
    * {@inheritDoc MessageQueue.listen}
    */
   async listen(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     handler: (message: any) => Promise<void> | void,
     options?: MessageQueueListenOptions,
   ): Promise<void> {

@@ -66,7 +66,8 @@ export interface PostgresKvStoreOptions {
  * ```
  */
 export class PostgresKvStore implements KvStore {
-  // deno-lint-ignore ban-types
+  // postgres.js uses Sql<{}> to mean an untyped SQL client.
+  // oxlint-disable-next-line typescript/no-empty-object-type
   readonly #sql: Sql<{}>;
   readonly #tableName: string;
   readonly #unlogged: boolean;
@@ -83,7 +84,8 @@ export class PostgresKvStore implements KvStore {
    * @param options The options for the key–value store.
    */
   constructor(
-    // deno-lint-ignore ban-types
+    // postgres.js uses Sql<{}> to mean an untyped SQL client.
+    // oxlint-disable-next-line typescript/no-empty-object-type
     sql: Sql<{}>,
     options: PostgresKvStoreOptions = {},
   ) {

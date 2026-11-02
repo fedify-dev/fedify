@@ -29,7 +29,7 @@ export class LanguageString extends String {
 // Custom inspect hooks for Deno and Node.js debuggers are assigned outside
 // the class body because computed property names using Symbol.for() are
 // incompatible with isolatedDeclarations mode.
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 (LanguageString.prototype as any)[Symbol.for("Deno.customInspect")] = function (
   this: LanguageString,
   inspect: (val: unknown, opts: unknown) => string,
@@ -38,7 +38,7 @@ export class LanguageString extends String {
   return `<${this.locale.baseName}> ${inspect(this.toString(), options)}`;
 };
 
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 (LanguageString.prototype as any)[Symbol.for("nodejs.util.inspect.custom")] =
   function (
     this: LanguageString,

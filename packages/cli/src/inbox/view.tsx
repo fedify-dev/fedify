@@ -29,7 +29,6 @@ const Layout: FC<PropsWithChildren<LayoutProps>> = (
         <title>
           {props.title == null
             ? ""
-            // deno-lint-ignore jsx-curly-braces
             : <Fragment>{props.title} &mdash;{" "}</Fragment>}Fedify Ephemeral
           Inbox ({props.handle})
         </title>
@@ -303,7 +302,7 @@ const Tab: FC<TabProps> = (
   );
 };
 
-// deno-lint-ignore no-empty-interface
+// oxlint-disable-next-line typescript/no-empty-interface
 interface TabListProps {
 }
 
@@ -372,7 +371,6 @@ const Log: FC<LogProps> = (
       </div>
       <small class="text-body-secondary">
         {category.map((c, i) =>
-          // deno-lint-ignore jsx-curly-braces
           i < 1 ? c : <Fragment key={i.toString()}>{" "}/ {c}</Fragment>
         )}
       </small>
@@ -541,6 +539,7 @@ const ActivityList: FC<ActivityListProps> = (
         const url = new URL(entry.request.url);
         return (
           <a
+            key={url.toString()}
             class={"list-group-item list-group-item-action d-flex w-100 justify-content-between " +
               itemClass}
             href={`/r/${i}`}

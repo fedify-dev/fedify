@@ -46,7 +46,7 @@ import type {
  */
 // The empty interface is intentional: it is the extension point applications
 // augment, so it has to start out with no members.
-// deno-lint-ignore no-empty-interface
+// oxlint-disable-next-line typescript/no-empty-interface
 export interface FedifyTypes {}
 
 /**

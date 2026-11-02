@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// deno-lint-ignore-file no-explicit-any
+// oxlint-disable typescript/no-explicit-any
 
 export const keyPairsStore: Map<string, Array<CryptoKeyPair>> = (
   globalThis as any

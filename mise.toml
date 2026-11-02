@@ -228,9 +228,18 @@ description = "Check code formatting"
 run = "deno fmt --check"
 
 [tasks."check:lint"]
-depends = ["deno:cache"]
 description = "Check code linting"
-run = "deno --quiet lint"
+run = [
+  "node --experimental-strip-types scripts/check_lint_directives.ts",
+  "pnpm exec oxlint -c .oxlintrc.json . packages/vocab/src/vocab.ts",
+]
+
+[tasks.lint]
+description = "Lint the codebase with Oxlint"
+run = [
+  "node --experimental-strip-types scripts/check_lint_directives.ts",
+  "pnpm exec oxlint -c .oxlintrc.json . packages/vocab/src/vocab.ts",
+]
 
 # Type-checks against the built declarations of workspace packages, so it
 # depends on `build` rather than `codegen` (see the note on `build`).
@@ -302,7 +311,13 @@ for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
     exit 1
   }
   deno fmt --check $dir
-  deno lint $dir
+  let lint_paths = if $pkg == "vocab" {
+    [$dir "packages/vocab/src/vocab.ts"]
+  } else {
+    [$dir]
+  }
+  node --experimental-strip-types scripts/check_lint_directives.ts $dir
+  pnpm exec oxlint -c .oxlintrc.json ...$lint_paths
   # Deno-only packages (no package.json) keep their Deno type check.
   if ($"($dir)/package.json" | path exists) {
     node --experimental-strip-types scripts/check_types.ts $pkg
@@ -328,11 +343,13 @@ node scripts/test_testing_pack.mjs
 depends = ["deno:cache"]
 wait_for = ["build"]
 description = "Run the test suite using Deno"
+env = { FEDIFY_REQUIRE_OXLINT_TESTS = "1" }
 run = "deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel"
 
 [tasks."test:node"]
 description = "Run the test suite using Node.js"
 depends = ["build"]
+env = { FEDIFY_REQUIRE_OXLINT_TESTS = "1" }
 # See the note on `build`: Nushell keeps the single-quoted pnpm filter working
 # on Windows, where `cmd` would otherwise pass it through literally.
 # Keep package-level concurrency bounded because each `node --test` command
@@ -367,6 +384,7 @@ run = "node --experimental-strip-types scripts/check_temporal_polyfill.ts"
 [tasks.test-each]
 depends = ["deno:cache"]
 description = "Run tests for a specific package across all environments"
+env = { FEDIFY_REQUIRE_OXLINT_TESTS = "1" }
 usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
 shell = "nu -c"
 run = '''

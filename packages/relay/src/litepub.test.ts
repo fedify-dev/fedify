@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-explicit-any
+// oxlint-disable typescript/no-explicit-any
 import { MemoryKvStore, signRequest } from "@fedify/fedify";
 import { createRelay, type RelayOptions } from "@fedify/relay";
 import {

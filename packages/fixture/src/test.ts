@@ -134,16 +134,13 @@ export function test(
     });
   } else if ("Bun" in globalThis) {
     let failed: unknown = undefined;
-    // deno-lint-ignore no-inner-declarations
     function step(def: TestStepDefinition): Promise<boolean>;
-    // deno-lint-ignore no-inner-declarations
     function step(
       name: string,
       fn: TestFunction,
     ): Promise<boolean>;
-    // deno-lint-ignore no-inner-declarations
     function step(fn: TestFunction): Promise<boolean>;
-    // deno-lint-ignore no-inner-declarations
+    // oxlint-disable-next-line eslint/no-inner-declarations
     async function step(
       defOrNameOrFn:
         | TestStepDefinition
@@ -177,7 +174,7 @@ export function test(
       origin: "",
       step,
     };
-    // deno-lint-ignore no-inner-declarations
+    // oxlint-disable-next-line eslint/no-inner-declarations
     async function fn() {
       await def.fn(ctx);
       if (failed) throw failed;

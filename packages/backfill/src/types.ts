@@ -72,6 +72,9 @@ export interface BackfillContext {
  * @since 2.3.0
  */
 export interface BackfillOptions<
+  // TObject is part of the public generic API even though this interface
+  // body does not reference it.
+  // oxlint-disable-next-line eslint/no-unused-vars
   TObject extends APObject = APObject,
 > {
   /**

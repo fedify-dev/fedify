@@ -38,7 +38,7 @@ export default function UserProfile() {
       <p>
         Try:{" "}
         <code>
-          curl -H "Accept: application/activity+json"
+          curl -H &quot;Accept: application/activity+json&quot;
           http://localhost:3000/users/{params.identifier}
         </code>
       </p>

@@ -72,6 +72,8 @@ async function withServers(
 networkTest(
   "fetchPortableMedia() accepts Link, Image, and Document",
   async () => {
+    // The type parameter is only used to instantiate the function.
+    // oxlint-disable-next-line eslint/no-unused-vars
     const accepts = <T extends PortableMedia>() => {};
     accepts<Link>();
     accepts<Image>();

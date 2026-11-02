@@ -41,7 +41,7 @@ function createLoader(
   responses: Record<string, Record<string, unknown>>,
 ): DocumentLoader & { readonly fetched: string[] } {
   const fetched: string[] = [];
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const loader = async (
     url: string,
     options?: { signal?: AbortSignal },
@@ -65,7 +65,7 @@ function createVerifier(
   verified = true,
 ): PortableObjectVerifier & { readonly documents: unknown[] } {
   const documents: unknown[] = [];
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const verifier = async (document: unknown) => {
     documents.push(document);
     return { verified };
@@ -717,7 +717,7 @@ test("getActorHandle() with FEP-ef61 portable actors", {
 
 test("lookupObject() reports inferred gateways as hints", async () => {
   const calls: PortableObjectVerifierOptions[] = [];
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const verifyPortableObject: PortableObjectVerifier = async (_, options) => {
     calls.push(options);
     return { verified: true };
@@ -735,7 +735,7 @@ test("lookupObject() reports inferred gateways as hints", async () => {
 
 test("lookupObject() reports explicit gateways to the verifier", async (t) => {
   const calls: PortableObjectVerifierOptions[] = [];
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const verifyPortableObject: PortableObjectVerifier = async (_, options) => {
     calls.push(options);
     return { verified: true };
@@ -811,7 +811,7 @@ test("lookupObject() verifies fetched documents that stand for portable objects"
     document: Record<string, unknown>,
   ): DocumentLoader & { readonly fetched: string[] } => {
     const fetched: string[] = [];
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const loader = async (url: string): Promise<RemoteDocument> => {
       fetched.push(url);
       if (url !== plainUrl) {
@@ -832,7 +832,7 @@ test("lookupObject() verifies fetched documents that stand for portable objects"
     const actor = await lookupObject(plainUrl, {
       documentLoader,
       contextLoader: mockDocumentLoader,
-      // deno-lint-ignore require-await
+      // oxlint-disable-next-line eslint/require-await
       verifyPortableObject: async (_, options) => {
         calls.push(options);
         return { verified: true };
@@ -850,7 +850,7 @@ test("lookupObject() verifies fetched documents that stand for portable objects"
       documentLoader,
       contextLoader: mockDocumentLoader,
       gateways: ["https://other.example"],
-      // deno-lint-ignore require-await
+      // oxlint-disable-next-line eslint/require-await
       verifyPortableObject: async (_, options) => {
         explicitCalls.push(options);
         return { verified: true };

@@ -784,7 +784,7 @@ export function bypassKeyCacheReads(keyCache?: KeyCache): KeyCache {
 }
 
 type FetchableKeyClass<T extends CryptographicKey | Multikey> =
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   (new (...args: any[]) => T) & {
     fromJsonLd(
       jsonLd: unknown,

@@ -3430,7 +3430,7 @@ async function _handleOrderedCollection<
 
 async function respondWithCustomCollection<TContextData>(
   request: Request,
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   handler: CustomCollectionHandler<any, any, TContextData, any, any, any>,
   context: RequestContext<TContextData>,
   portable: PortableCollectionRepresentation | undefined,

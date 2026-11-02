@@ -56,6 +56,13 @@ export const oxlintBin: string | null = findOxlint();
  */
 export const oxlintUnavailable: boolean = !pluginBuilt || oxlintBin == null;
 
+if (oxlintUnavailable && process.env.FEDIFY_REQUIRE_OXLINT_TESTS === "1") {
+  throw new Error(
+    "Oxlint integration tests are required, but prerequisites are missing. " +
+      "Run `mise install && mise run prepare-each lint` first.",
+  );
+}
+
 /**
  * Print a single warning explaining why the oxlint tests are being skipped.
  * Call this only when {@link oxlintUnavailable} is `true`.

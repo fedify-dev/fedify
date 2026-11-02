@@ -243,7 +243,7 @@ export async function importMultibaseKey(key: string): Promise<CryptoKey> {
   const content = removeMulticodecPrefix(decoded);
   if (code === 0x1205) { // rsa-pub
     const keyObject = createPublicKey({
-      // deno-lint-ignore no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       key: content as any,
       format: "der",
       type: "pkcs1",

@@ -5297,7 +5297,7 @@ test("Federation.setMediaUploader()", async (t) => {
           headers: { "content-type": "multipart/form-data; boundary=abc" },
           body: erroringBody,
           duplex: "half",
-          // deno-lint-ignore no-explicit-any
+          // oxlint-disable-next-line typescript/no-explicit-any
         } as any),
         { contextData: undefined },
       );
@@ -13216,7 +13216,7 @@ test("createFederation() forwards DocumentLoaderFactoryOptions to a user-supplie
   impl.authenticatedDocumentLoaderFactory(
     {
       keyId: new URL("https://example.com/users/alice#main-key"),
-      // deno-lint-ignore no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       privateKey: {} as any,
     },
     { allowPrivateAddress: true, userAgent: "test-ua" },
@@ -13278,7 +13278,7 @@ class RendezvousQueue implements MessageQueue {
     this.#openGate();
   }
 
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   enqueue(message: any, options?: MessageQueueEnqueueOptions): Promise<void> {
     this.enqueued.push({ message, options });
     if (++this.#count >= this.expected) this.#markDispatched();
@@ -13286,7 +13286,7 @@ class RendezvousQueue implements MessageQueue {
   }
 
   listen(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     _handler: (message: any) => Promise<void> | void,
     _options?: MessageQueueListenOptions,
   ): Promise<void> {
@@ -13508,7 +13508,7 @@ test("ContextImpl.enqueueTaskMany()", async (t) => {
         undefined,
       );
       await rejects(
-        // deno-lint-ignore no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         () => ctx.enqueueTaskMany(task, [1, "two", 3] as any),
         { name: "TypeError", message: /Task data failed schema validation/ },
       );

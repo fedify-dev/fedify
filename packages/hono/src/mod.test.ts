@@ -9,6 +9,8 @@ interface MockHonoContext {
   res: Response;
 }
 
+// The unused type parameter keeps the mock generic at its call sites.
+// oxlint-disable-next-line eslint/no-unused-vars
 interface MockFederation<T> {
   fetch(request: Request, options: unknown): Promise<Response>;
 }

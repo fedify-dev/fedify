@@ -313,7 +313,7 @@ test("inboxRunner.validate - rejects activity options it cannot honor", () => {
         name: "inbox",
         type: "inbox",
         recipient: "http://localhost:3000/users/alice",
-        // deno-lint-ignore no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         activity: activity as any,
       }],
     }).scenarios[0];

@@ -867,7 +867,7 @@ nodeTest(
       if (timeout !== delayMs) {
         return callOriginalSetTimeout(callback, timeout, ...args);
       }
-      // deno-lint-ignore prefer-const
+      // oxlint-disable-next-line eslint/prefer-const
       let handle: TimeoutHandle;
       const wrapped = (...wrappedArgs: unknown[]) => {
         firedDelayedHandles.add(handle);
