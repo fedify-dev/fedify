@@ -147,6 +147,27 @@ function bind(pattern: unknown, scope: Scope, binding: Binding = {}): void {
     for (const element of node.elements as unknown[]) bind(element, scope);
   }
 }
+/**
+ * Rewrites a single-quoted string literal's source as a double-quoted one, so
+ * that `JSON.parse()` can decode its escapes.  Returns `null` for anything
+ * other than a string literal.
+ */
+function toJsonString(raw: string): string | null {
+  if (raw.startsWith('"')) return raw;
+  if (!raw.startsWith("'")) return null;
+  let result = '"';
+  for (let i = 1; i < raw.length - 1; i++) {
+    const char = raw[i];
+    if (char === "\\") {
+      const next = raw[++i];
+      result += next === "'" ? "'" : char + next;
+    } else {
+      result += char === '"' ? '\\"' : char;
+    }
+  }
+  return result + '"';
+}
+
 function lookup(
   scope: Scope | undefined,
   identifier: string,
@@ -261,9 +282,10 @@ export function checkRawPropertyIris(
     if (node.type === "Literal" && typeof node.value === "string") {
       // Deno replaces escaped lone surrogates in Literal.value with U+FFFD.
       // JSON-compatible raw literals retain their exact code units.
-      if (typeof node.raw === "string" && node.raw.startsWith('"')) {
+      const raw = typeof node.raw === "string" ? toJsonString(node.raw) : null;
+      if (raw != null) {
         try {
-          const value: unknown = JSON.parse(node.raw);
+          const value: unknown = JSON.parse(raw);
           if (typeof value === "string") return { value, literal: node };
         } catch {
           // JavaScript-only escapes (such as \x20) use the parser's value.

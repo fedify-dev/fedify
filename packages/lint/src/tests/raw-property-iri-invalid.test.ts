@@ -164,6 +164,24 @@ cases.push(
     "non-HTTP scheme",
   ],
   [
+    "single-quoted lone surrogate",
+    `${setup} read(obj, 'https://example/\\uD800');`,
+    "must be a full",
+  ],
+  [
+    "single-quoted surrogate pair",
+    `${setup} read(obj, 'https://example/\\uD83D\\uDE00');`,
+  ],
+  [
+    "single-quoted double quote",
+    `${setup} read(obj, 'https://example/"\\u0070');`,
+    "must be a full",
+  ],
+  [
+    "single-quoted valid",
+    `${setup} read(obj, 'https://example/\\u0070rop\\'s');`,
+  ],
+  [
     "switch discriminant outside case scope",
     `${setup} const iri = "https://example/p"; switch (read(obj, iri)) { case 0: const iri = "content"; }`,
   ],
