@@ -2622,12 +2622,15 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     for (const activityTransformer of this.federation.activityTransformers) {
       activity = activityTransformer(activity, this);
     }
+    let transformedJsonLd: unknown = undefined;
     if (activityJsonLd != null) {
-      const transformed = await activity.toJsonLd({
+      transformedJsonLd = await activity.toJsonLd({
         format: "compact",
         contextLoader: this.contextLoader,
       });
-      if (getPayloadFields(transformed) !== getPayloadFields(activityJsonLd)) {
+      if (
+        getPayloadFields(transformedJsonLd) !== getPayloadFields(activityJsonLd)
+      ) {
         activityJsonLd = undefined;
         activity = activity.clone({ proofs: [] });
       }
@@ -2660,9 +2663,21 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
             break;
           }
         }
-        // A new proof is created over the current serialization, so old proofs
-        // that cover another context cannot be kept.
-        if (hasProof) activity = activity.clone({ proofs: [] });
+        // A new proof is created over the current serialization.  Existing
+        // proofs can stay only if they already cover the same context.
+        const sameContext = activityJsonLd != null &&
+          transformedJsonLd != null &&
+          JSON.stringify(
+              sortJsonKeys(
+                (activityJsonLd as Record<string, unknown>)["@context"],
+              ),
+            ) ===
+            JSON.stringify(
+              sortJsonKeys(
+                (transformedJsonLd as Record<string, unknown>)["@context"],
+              ),
+            );
+        if (hasProof && !sameContext) activity = activity.clone({ proofs: [] });
       }
       let proofAdded = false;
       for (const kp of actorKeyPairs) {

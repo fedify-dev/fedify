@@ -5387,6 +5387,45 @@ test("ContextImpl.sendActivity()", async (t) => {
       unknown
     >;
     assert(typeof noIdQueuedJson.id === "string");
+
+    const currentActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/current"),
+      actor: ctx2.getActorUri("john"),
+    });
+    const currentSigned = await signObject(
+      currentActivity,
+      edKey.privateKey,
+      edKey.multikey.id!,
+      { contextLoader: documentLoader },
+    );
+    const currentJson = await currentSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+    }) as Record<string, unknown>;
+    const currentRestored = await vocab.Create.fromJsonLd(currentJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx2.sendActivity(
+      { username: "john" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      currentRestored,
+      { fanout: "force" },
+    );
+    const currentFanout = queue.messages.at(-1);
+    assert(currentFanout != null && currentFanout.type === "fanout");
+    const currentQueued = detachSignature(currentFanout.activity) as Record<
+      string,
+      unknown
+    >;
+    const currentProofs = Array.isArray(currentQueued.proof)
+      ? currentQueued.proof
+      : [currentQueued.proof];
+    assertEquals(currentProofs.length, 2);
   });
 
   queue.clear();
