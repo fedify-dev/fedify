@@ -627,6 +627,11 @@ async function sendActivityInternal(
           { tracerProvider, specDeterminer },
           openDeliveryHop,
           consume,
+          attempt == null ? undefined : {
+            fetch: (request, submit) => attempt.fetch(request, submit),
+            error: (phase, error) =>
+              attempt.failure({ kind: "local", phase, error }),
+          },
         );
     } catch (error) {
       attempt?.unknown(error);

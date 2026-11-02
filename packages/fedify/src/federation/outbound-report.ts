@@ -160,7 +160,13 @@ type OutboundAttemptFailure =
   }
   | {
     readonly kind: "local";
-    readonly phase: "serialization" | "request-preparation" | "cleanup";
+    readonly phase:
+      | "serialization"
+      | "request-preparation"
+      | "cleanup"
+      | "signing"
+      | "spec-lookup"
+      | "post-response";
     readonly error: unknown;
   }
   | {
@@ -215,11 +221,11 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
 };
 
 /**
- * One actual unsigned fetch submission within a concrete send attempt.
+ * One actual fetch submission within a concrete send attempt.
  *
  * A redirect response remains an observed response even if a later hop fails.
- * This report does not establish the attempt's final response. Signed exchanges
- * and response body/header capture are not observed yet.
+ * This report does not establish the attempt's final response. Response
+ * body/header capture is not observed yet.
  * @since 2.5.0
  */
 export type OutboundHttpExchangeReport =
@@ -271,7 +277,7 @@ export type OutboundHttpExchangeReport =
  */
 export interface OutboundObservers<TContextData> {
   /**
-   * Observes an unsigned fetch after response headers or rejection, before
+   * Observes a fetch after response headers or rejection, before
    * subsequent redirect handling. Callback errors do not replace transport.
    */
   readonly onHttpExchange?: (

@@ -2110,24 +2110,67 @@ async function createRedirectRequest(
   });
 }
 
+/** In-process hooks for scoped outbound delivery, outside the public options. */
+export interface DoubleKnockObservation {
+  fetch(request: Request, submit: () => Promise<Response>): Promise<Response>;
+  error(
+    phase: "signing" | "spec-lookup" | "post-response",
+    error: unknown,
+  ): void;
+}
+
+function observeDoubleKnockOperation<T>(
+  observation: DoubleKnockObservation | undefined,
+  phase: "signing" | "spec-lookup" | "post-response",
+  operation: () => T | Promise<T>,
+): T | Promise<T> {
+  if (observation == null) return operation();
+  try {
+    return Promise.resolve(operation()).catch((error) => {
+      observation.error(phase, error);
+      throw error;
+    });
+  } catch (error) {
+    observation.error(phase, error);
+    throw error;
+  }
+}
+
+function submitDoubleKnockRequest(
+  session: PublicFetchSession,
+  request: Request,
+  signal: AbortSignal | undefined,
+  observation: DoubleKnockObservation | undefined,
+): Promise<Response> {
+  const submit = () =>
+    session.fetch(request, {
+      // Since Bun has a bug that ignores the `Request.redirect` option,
+      // to work around it we specify `redirect: "manual"` here too:
+      // https://github.com/oven-sh/bun/issues/10754
+      redirect: "manual",
+      signal,
+    });
+  return observation == null ? submit() : observation.fetch(request, submit);
+}
+
 async function fetchDoubleKnockRequest(
   session: PublicFetchSession,
   request: Request,
   signedRequest: Request,
-  signal?: AbortSignal,
+  signal: AbortSignal | undefined,
+  observation?: DoubleKnockObservation,
 ): Promise<Response> {
   const maxAttempts = request.method === "GET" || request.method === "HEAD"
     ? 2
     : 1;
   for (let attempt = 1;; attempt++) {
     try {
-      return await session.fetch(signedRequest, {
-        // Since Bun has a bug that ignores the `Request.redirect` option,
-        // to work around it we specify `redirect: "manual"` here too:
-        // https://github.com/oven-sh/bun/issues/10754
-        redirect: "manual",
+      return await submitDoubleKnockRequest(
+        session,
+        signedRequest,
         signal,
-      });
+        observation,
+      );
     } catch (error) {
       const abortedSignal = getAbortedSignal(
         signal,
@@ -2269,12 +2312,14 @@ export async function doubleKnockScoped<T>(
   options: DoubleKnockOptions,
   openHop: DoubleKnockOpenHop,
   consume: (response: Response) => Promise<T>,
+  observation?: DoubleKnockObservation,
 ): Promise<T> {
   const { response, session } = await doubleKnockCore(
     request,
     identity,
     options,
     openHop,
+    observation,
   );
   try {
     return await consume(response);
@@ -2332,6 +2377,7 @@ async function doubleKnockCore(
   identity: { keyId: URL; privateKey: CryptoKey },
   options: DoubleKnockOptions,
   openHop: DoubleKnockOpenHop,
+  observation?: DoubleKnockObservation,
 ): Promise<DoubleKnockHop> {
   const { specDeterminer, log, tracerProvider, signal } = options;
   signal?.throwIfAborted();
@@ -2352,13 +2398,22 @@ async function doubleKnockCore(
       const origin = new URL(request.url).origin;
       const firstTrySpec: HttpMessageSignaturesSpec = specDeterminer == null
         ? "rfc9421"
-        : await specDeterminer.determineSpec(origin);
+        : await observeDoubleKnockOperation(
+          observation,
+          "spec-lookup",
+          () => specDeterminer.determineSpec(origin),
+        );
       signal?.throwIfAborted();
-      let signedRequest = await signRequest(
-        request,
-        identity.privateKey,
-        identity.keyId,
-        { spec: firstTrySpec, tracerProvider, body },
+      let signedRequest = await observeDoubleKnockOperation(
+        observation,
+        "signing",
+        () =>
+          signRequest(
+            request,
+            identity.privateKey,
+            identity.keyId,
+            { spec: firstTrySpec, tracerProvider, body },
+          ),
       );
       signal?.throwIfAborted();
       log?.(signedRequest);
@@ -2367,6 +2422,7 @@ async function doubleKnockCore(
         request,
         signedRequest,
         signal,
+        observation,
       );
       const firstRedirected = isRedirectResponse(response);
       if (
@@ -2436,14 +2492,22 @@ async function doubleKnockCore(
             cancelResponseBody(response, request.url);
             signedRequest = challengeRequest;
             log?.(signedRequest);
-            response = await session.fetch(signedRequest, {
-              redirect: "manual",
+            response = await submitDoubleKnockRequest(
+              session,
+              signedRequest,
               signal,
-            });
+              observation,
+            );
           }
           if (fulfilled && !isRedirectResponse(response)) {
             if (response.status < 300) {
-              await specDeterminer?.rememberSpec(origin, "rfc9421");
+              await observeDoubleKnockOperation(
+                observation,
+                "post-response",
+                () =>
+                  specDeterminer?.rememberSpec(origin, "rfc9421") ??
+                    Promise.resolve(),
+              );
               return { response, session };
             }
             if (response.status !== 400 && response.status !== 401) {
@@ -2471,11 +2535,16 @@ async function doubleKnockCore(
           // The retry goes to the same URL, so it uses the same session:
           cancelResponseBody(response, request.url);
           signal?.throwIfAborted();
-          signedRequest = await signRequest(
-            request,
-            identity.privateKey,
-            identity.keyId,
-            { spec, tracerProvider, body },
+          signedRequest = await observeDoubleKnockOperation(
+            observation,
+            "signing",
+            () =>
+              signRequest(
+                request,
+                identity.privateKey,
+                identity.keyId,
+                { spec, tracerProvider, body },
+              ),
           );
           signal?.throwIfAborted();
           log?.(signedRequest);
@@ -2484,16 +2553,28 @@ async function doubleKnockCore(
             request,
             signedRequest,
             signal,
+            observation,
           );
           if (
             !isRedirectResponse(response) &&
             response.status !== 400 && response.status !== 401
           ) {
-            await specDeterminer?.rememberSpec(origin, spec);
+            await observeDoubleKnockOperation(
+              observation,
+              "post-response",
+              () =>
+                specDeterminer?.rememberSpec(origin, spec) ?? Promise.resolve(),
+            );
           }
         }
       } else if (!firstRedirected) {
-        await specDeterminer?.rememberSpec(origin, firstTrySpec);
+        await observeDoubleKnockOperation(
+          observation,
+          "post-response",
+          () =>
+            specDeterminer?.rememberSpec(origin, firstTrySpec) ??
+              Promise.resolve(),
+        );
       }
       if (!isRedirectResponse(response)) return { response, session };
 

@@ -377,6 +377,273 @@ test("outbound unsigned exchanges report only actual submissions and retain rece
   }
 });
 
+test("outbound signed exchanges follow actual challenge, fallback, and redirect submissions", async (t) => {
+  const challenge =
+    'sig1=("@method" "@target-uri");created;nonce="observer-nonce"';
+  for (
+    const mode of [
+      "success",
+      "fallback",
+      "challenge",
+      "challenge-fallback",
+      "challenge-redirect",
+      "unfulfillable",
+    ] as const
+  ) {
+    await t.step(mode, async () => {
+      const inbox = recipient.inboxId!.href;
+      const next = new URL("/next", inbox).href;
+      const responses: ResponseInit[] = mode === "success"
+        ? [{ status: 202 }]
+        : mode === "fallback"
+        ? [{ status: 401 }, { status: 202 }]
+        : mode === "unfulfillable"
+        ? [
+          {
+            status: 401,
+            headers: {
+              "Accept-Signature": 'sig1=("@method" "x-absent");created',
+            },
+          },
+          { status: 202 },
+        ]
+        : [
+          { status: 401, headers: { "Accept-Signature": challenge } },
+          ...(mode === "challenge"
+            ? [{ status: 202 }]
+            : mode === "challenge-fallback"
+            ? [{ status: 401 }, { status: 202 }]
+            : [{ status: 307, headers: { Location: next } }, { status: 202 }]),
+        ];
+      const ctx = createFederation<void>(options).createContext(
+        new URL("https://example.com"),
+        undefined,
+      );
+      const exchanges: OutboundHttpExchangeReport[] = [];
+      const attempts: OutboundAttemptReport[] = [];
+      const observation = new OutboundBroadcastObservation(ctx, {
+        onAttempt(_ctx, report) {
+          attempts.push(report);
+        },
+        onHttpExchange(_ctx, report) {
+          exchanges.push(report);
+          throw new Error("observer must not alter signature negotiation");
+        },
+      }, "send");
+      await observation.planDestinations({
+        [inbox]: { actorIds: [], sharedInbox: false },
+      });
+      const requests: Request[] = [];
+      const origins: string[] = [];
+      const payload = { id: "https://example.com/activity", extra: "original" };
+      await sendConcreteActivity({
+        observation: observation.delivery(inbox),
+        activity: payload,
+        keys: [sender],
+        inbox: new URL(inbox),
+        specDeterminer: {
+          determineSpec(origin) {
+            origins.push(origin);
+            return "rfc9421";
+          },
+          rememberSpec() {},
+        },
+      }, {
+        openHop: (url) =>
+          Promise.resolve({
+            url: new URL(url),
+            fetch(input) {
+              ok(input instanceof Request);
+              const response = responses[requests.length];
+              requests.push(input);
+              ok(
+                response,
+                "observation must not create extra HTTP submissions",
+              );
+              return Promise.resolve(new Response(null, response));
+            },
+            close: () => Promise.resolve(),
+          }),
+      });
+      strictEqual(attempts.length, 1);
+      strictEqual(attempts[0].outcome.type, "succeeded");
+      strictEqual(exchanges.length, responses.length);
+      strictEqual(requests.length, responses.length);
+      strictEqual(origins.length, mode === "challenge-redirect" ? 2 : 1);
+      for (const [index, report] of exchanges.entries()) {
+        strictEqual(report.exchangeIndex, index);
+        strictEqual(report.attemptId, attempts[0].attemptId);
+        deepStrictEqual(report.request, {
+          url: requests[index].url,
+          method: requests[index].method,
+        });
+        ok(report.outcome.type === "response");
+        strictEqual(report.outcome.response.status, responses[index].status);
+        deepStrictEqual(
+          JSON.parse(await requests[index].clone().text()),
+          payload,
+        );
+        ok(requests[index].headers.has("Signature"));
+      }
+      ok(requests[0].headers.has("Signature-Input"));
+      if (mode.startsWith("challenge")) {
+        ok(
+          requests[1].headers.get("Signature-Input")?.includes(
+            'nonce="observer-nonce"',
+          ),
+        );
+      }
+      if (
+        mode === "fallback" || mode === "challenge-fallback" ||
+        mode === "unfulfillable"
+      ) {
+        strictEqual(requests.at(-1)!.headers.has("Signature-Input"), false);
+      }
+      if (mode === "challenge-redirect") strictEqual(requests[2].url, next);
+    });
+  }
+});
+
+test("outbound signed exchanges preserve earlier responses when subsequent operations fail", async (t) => {
+  for (
+    const phase of [
+      "spec-lookup",
+      "signing",
+      "later-spec-lookup",
+      "later-signing",
+      "post-response",
+      "request",
+      "handled-signing",
+    ] as const
+  ) {
+    await t.step(phase, async () => {
+      const inbox = recipient.inboxId!.href;
+      const exchanges: OutboundHttpExchangeReport[] = [];
+      const attempts: OutboundAttemptReport[] = [];
+      const ctx = createFederation<void>(options).createContext(
+        new URL("https://example.com"),
+        undefined,
+      );
+      const observation = new OutboundBroadcastObservation(ctx, {
+        onAttempt(_ctx, report) {
+          attempts.push(report);
+        },
+        onHttpExchange(_ctx, report) {
+          exchanges.push(report);
+        },
+      }, "send");
+      await observation.planDestinations({
+        [inbox]: { actorIds: [], sharedInbox: false },
+      });
+      const failure = Symbol(phase);
+      const keyId = new URL(sender.keyId);
+      const href = keyId.href;
+      let submissions = 0;
+      let lookups = 0;
+      Object.defineProperty(keyId, "href", {
+        get() {
+          if (
+            phase === "signing" || phase === "later-signing" && submissions > 0
+          ) throw failure;
+          return href;
+        },
+      });
+      let outward: unknown;
+      await rejects(
+        sendConcreteActivity({
+          observation: observation.delivery(inbox),
+          activity: {},
+          keys: [{ ...sender, keyId }],
+          inbox: new URL(inbox),
+          specDeterminer: {
+            determineSpec() {
+              lookups++;
+              if (
+                phase === "spec-lookup" ||
+                phase === "later-spec-lookup" && lookups > 1
+              ) throw failure;
+              return "rfc9421";
+            },
+            rememberSpec() {
+              if (phase === "post-response") return Promise.reject(failure);
+            },
+          },
+        }, {
+          openHop: (url) =>
+            Promise.resolve({
+              url: new URL(url),
+              fetch() {
+                submissions++;
+                if (
+                  phase === "request" ||
+                  phase === "handled-signing" && submissions > 1
+                ) return Promise.reject(failure);
+                return Promise.resolve(
+                  new Response(null, {
+                    status: phase === "later-spec-lookup"
+                      ? 307
+                      : phase === "post-response"
+                      ? 202
+                      : 401,
+                    headers: phase === "later-spec-lookup"
+                      ? { Location: "/next" }
+                      : phase === "handled-signing"
+                      ? {
+                        "Accept-Signature":
+                          'sig1=("@method" "x-absent");created',
+                      }
+                      : {},
+                  }),
+                );
+              },
+              close: () => Promise.resolve(),
+            }),
+        }),
+        (error: unknown) => {
+          outward = error;
+          return error instanceof FetchError;
+        },
+      );
+      strictEqual(exchanges.length, submissions);
+      strictEqual(attempts.length, 1);
+      const outcome = attempts[0].outcome;
+      ok(outcome.type === "failed");
+      strictEqual(outcome.error, outward);
+      strictEqual(outcome.failure.error, failure);
+      const transport = phase === "request" || phase === "handled-signing";
+      strictEqual(outcome.failure.kind, transport ? "transport" : "local");
+      strictEqual(
+        outcome.failure.phase,
+        transport ? "request" : phase.replace("later-", ""),
+      );
+      const count = phase === "spec-lookup" || phase === "signing"
+        ? 0
+        : phase === "handled-signing"
+        ? 2
+        : 1;
+      strictEqual(submissions, count);
+      for (const [index, report] of exchanges.entries()) {
+        strictEqual(report.attemptId, attempts[0].attemptId);
+        strictEqual(report.exchangeIndex, index);
+        if (transport && index === count - 1) {
+          ok(report.outcome.type === "failed");
+          strictEqual(report.outcome.error, failure);
+        } else {
+          ok(report.outcome.type === "response");
+          strictEqual(
+            report.outcome.response.status,
+            phase === "later-spec-lookup"
+              ? 307
+              : phase === "post-response"
+              ? 202
+              : 401,
+          );
+        }
+      }
+    });
+  }
+});
+
 test("outbound attempts report ordinary and outbox sends with attempt-only builder registration", async (t) => {
   for (const kind of ["ordinary", "outbox"] as const) {
     for (const status of [202, 503, "policy"] as const) {
@@ -557,7 +824,7 @@ test("outbound attempts preserve boundary failures and allocate fresh IDs per co
       "request",
       "cleanup",
       "http-cleanup",
-      "signing",
+      "spec-lookup",
     ] as const
   ) {
     await t.step(phase, async () => {
@@ -595,7 +862,7 @@ test("outbound attempts preserve boundary failures and allocate fresh IDs per co
               },
             }
             : {},
-          keys: phase === "signing" ? [sender] : [],
+          keys: phase === "spec-lookup" ? [sender] : [],
           inbox: new URL(inbox),
           specDeterminer: {
             determineSpec() {
@@ -663,16 +930,8 @@ test("outbound attempts preserve boundary failures and allocate fresh IDs per co
         deepStrictEqual(report.outcome.response, { status: 503 });
       } else {
         deepStrictEqual(report.outcome.failure, {
-          kind: phase === "dns" || phase === "request"
-            ? "transport"
-            : phase === "signing"
-            ? "unknown"
-            : "local",
-          phase: phase === "dns"
-            ? "validation"
-            : phase === "signing"
-            ? "unknown"
-            : phase,
+          kind: phase === "dns" || phase === "request" ? "transport" : "local",
+          phase: phase === "dns" ? "validation" : phase,
           error: failure,
         });
       }
