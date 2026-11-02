@@ -203,6 +203,8 @@ export interface OutboundInboxRequest {
 
 /** Explicit historical cause of outgoing work. @since 2.5.0 */
 export interface OutboundProvenance {
+  /** Application-owned correlation; never a Fedify deduplication key. */
+  readonly dispatchId?: string;
   /** Absent for independent contexts, programmatic routing, and unknown work. */
   readonly inboxRequest?: OutboundInboxRequest;
   /** Original logging label for request-derived work without an inbox cause. */

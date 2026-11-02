@@ -1,10 +1,11 @@
 import {
   getOutboundProvenance,
+  invocationProvenance,
   snapshotLocalContext,
-  withOutboundSource,
+  sourceLogContext,
 } from "./outbound-provenance.ts";
 import { encodeHex } from "byte-encodings/hex";
-import { getLogger } from "@logtape/logtape";
+import { getLogger, withContext } from "@logtape/logtape";
 import type { Context } from "./context.ts";
 import type { FanoutMessage, SerializedOutboundDelivery } from "./queue.ts";
 import type {
@@ -12,6 +13,7 @@ import type {
   OutboundDeliveryEvent,
   OutboundObservers,
   OutboundPreparationResult,
+  OutboundProvenance,
 } from "./outbound-report.ts";
 
 type WithoutSource<T> = T extends unknown ? Omit<T, "provenance" | "local">
@@ -85,7 +87,10 @@ async function legacyFanoutIdentity(
   };
 }
 
-async function notifyObserver<TContextData, TEvent>(
+async function notifyObserver<
+  TContextData,
+  TEvent extends { readonly provenance: OutboundProvenance },
+>(
   context: Context<TContextData>,
   callback:
     | ((context: Context<TContextData>, event: TEvent) => void | Promise<void>)
@@ -95,7 +100,10 @@ async function notifyObserver<TContextData, TEvent>(
 ): Promise<void> {
   if (callback == null) return;
   try {
-    await withOutboundSource(context, () => callback(context, event));
+    await withContext(
+      sourceLogContext(event.provenance),
+      () => callback(context, event),
+    );
   } catch (error) {
     try {
       getLogger(["fedify", "federation", "outbox"]).error(
@@ -119,6 +127,7 @@ class OutboundDeliveryObservation<TContextData> {
     readonly observer: OutboundObservers<TContextData>["onDelivery"],
     identity: SerializedOutboundDelivery,
     destination: PlannedDestination,
+    readonly provenance: OutboundProvenance,
   ) {
     this.#reference = snapshotDeliveryIdentity(identity);
     this.#plan = Object.freeze({
@@ -138,7 +147,7 @@ class OutboundDeliveryObservation<TContextData> {
       this.context,
       this.observer,
       Object.freeze({
-        provenance: getOutboundProvenance(this.context),
+        provenance: this.provenance,
         local: snapshotLocalContext(this.context),
         ...this.#reference,
         ...this.#plan,
@@ -157,7 +166,7 @@ class OutboundDeliveryObservation<TContextData> {
       this.context,
       this.observer,
       Object.freeze({
-        provenance: getOutboundProvenance(this.context),
+        provenance: this.provenance,
         local: snapshotLocalContext(this.context),
         ...this.#reference,
         stage: "handoff" as const,
@@ -174,7 +183,7 @@ class OutboundDeliveryObservation<TContextData> {
       this.context,
       this.observer,
       Object.freeze({
-        provenance: getOutboundProvenance(this.context),
+        provenance: this.provenance,
         local: snapshotLocalContext(this.context),
         ...this.#reference,
         stage: "preparation-failed" as const,
@@ -208,6 +217,7 @@ export class OutboundBroadcastObservation<TContextData> {
     readonly context: Context<TContextData>,
     observers: OutboundObservers<TContextData>,
     readonly operation: OutboundBroadcastEvent["operation"],
+    readonly provenance: OutboundProvenance = getOutboundProvenance(context),
     broadcast: SerializedOutboundDelivery["broadcast"] = {
       type: "known",
       id: crypto.randomUUID(),
@@ -234,6 +244,7 @@ export class OutboundBroadcastObservation<TContextData> {
       context,
       { onDelivery: observers.onDelivery },
       "send",
+      getOutboundProvenance(context),
       { type: "unknown" },
     );
     observation.#finished = true;
@@ -270,6 +281,7 @@ export class OutboundBroadcastObservation<TContextData> {
           : { portableInbox: destination.portableInbox }),
       },
       destination,
+      this.provenance,
     );
   }
 
@@ -374,7 +386,8 @@ export class OutboundBroadcastObservation<TContextData> {
 
   async run<TResult>(
     send: (
-      observation?: OutboundBroadcastObservation<TContextData>,
+      observation: OutboundBroadcastObservation<TContextData> | undefined,
+      provenance: OutboundProvenance,
     ) => Promise<TResult>,
   ): Promise<TResult> {
     if (this.#broadcast.type === "known") {
@@ -385,7 +398,7 @@ export class OutboundBroadcastObservation<TContextData> {
       }));
     }
     try {
-      return await send(this);
+      return await send(this, this.provenance);
     } catch (error) {
       await this.failed(error);
       throw error;
@@ -427,7 +440,7 @@ export class OutboundBroadcastObservation<TContextData> {
       this.#onBroadcast,
       Object.freeze({
         ...event,
-        provenance: getOutboundProvenance(this.context),
+        provenance: this.provenance,
         local: snapshotLocalContext(this.context),
       }),
       "broadcast",
@@ -440,16 +453,38 @@ export function observeOutboundBroadcast<TContextData, TResult>(
   context: Context<TContextData>,
   observers: OutboundObservers<TContextData>,
   send: (
-    observation?: OutboundBroadcastObservation<TContextData>,
+    observation: OutboundBroadcastObservation<TContextData> | undefined,
+    provenance: OutboundProvenance,
   ) => Promise<TResult>,
   operation: OutboundBroadcastEvent["operation"] = "send",
+  dispatchId?: string,
 ): Promise<TResult> {
-  if (observers.onBroadcast == null && observers.onDelivery == null) {
-    return withOutboundSource(context, () => send());
+  let provenance: OutboundProvenance;
+  let invalid: { error: unknown } | undefined;
+  try {
+    provenance = invocationProvenance(context, dispatchId);
+  } catch (error) {
+    provenance = invocationProvenance(context, undefined);
+    invalid = { error };
   }
-  return withOutboundSource(
-    context,
-    () =>
-      new OutboundBroadcastObservation(context, observers, operation).run(send),
-  );
+  const execute = async (
+    observation?: OutboundBroadcastObservation<TContextData>,
+  ) => {
+    if (invalid != null) {
+      observation?.setPhase("validation");
+      throw invalid.error;
+    }
+    return await send(observation, provenance);
+  };
+  return withContext(sourceLogContext(provenance), () => {
+    if (observers.onBroadcast == null && observers.onDelivery == null) {
+      return execute();
+    }
+    return new OutboundBroadcastObservation(
+      context,
+      observers,
+      operation,
+      provenance,
+    ).run(execute);
+  });
 }

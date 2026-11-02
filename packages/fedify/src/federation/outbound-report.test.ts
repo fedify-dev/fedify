@@ -1892,6 +1892,7 @@ function continuationMessage(
     ...(observed
       ? {
         provenance: {
+          dispatchId: "application-dispatch",
           inboxRequest: {
             inboxRequestId: crypto.randomUUID(),
             requestId: "original-request-label",

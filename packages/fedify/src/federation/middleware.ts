@@ -3250,6 +3250,7 @@ export class FederationImpl<TContextData>
       orderingKey,
       context: ctx,
       observation,
+      provenance = getOutboundProvenance(ctx),
     } = options;
     observation?.setPhase("validation");
     if (activity.id == null) {
@@ -3454,7 +3455,7 @@ export class FederationImpl<TContextData>
           : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`;
         const message: OutboxMessage = {
           type: "outbox",
-          ...serializeProvenance(getOutboundProvenance(ctx)),
+          ...serializeProvenance(provenance),
           id: crypto.randomUUID(),
           baseUrl: ctx.origin,
           keys: keyJwkPairs,
@@ -3556,6 +3557,7 @@ export class FederationImpl<TContextData>
       // Each HTTP ingress owns its current identity; async ancestry is not
       // evidence that this request came from another inbox request.
       inboxRequestId: undefined,
+      dispatchId: undefined,
       sourceInboxRequestId: undefined,
       sourceRequestId: undefined,
     }, async () => {
@@ -5882,7 +5884,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     return observeOutboundBroadcast(
       this,
       this.federation.outboundObservers,
-      (observation) => {
+      (observation, provenance) => {
         const tracer = this.tracerProvider.getTracer(
           metadata.name,
           metadata.version,
@@ -5919,6 +5921,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
                 options,
                 span,
                 observation,
+                provenance,
               );
             } catch (e) {
               span.setStatus({
@@ -5932,6 +5935,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           },
         );
       },
+      "send",
+      options.dispatchId,
     );
   }
 
@@ -5946,6 +5951,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     options: SendActivityOptionsForCollection,
     span: Span,
     observation?: OutboundBroadcastObservation<TContextData>,
+    provenance: OutboundProvenance = getOutboundProvenance(this),
   ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     observation?.setPhase("sender-resolution");
@@ -6038,6 +6044,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     const opts: SendActivityInternalOptions<TContextData> = {
       context: this,
       observation,
+      provenance,
       orderingKey: options.orderingKey,
       collectionSync,
       immediate: options.immediate,
@@ -6165,7 +6172,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     propagation.inject(context.active(), carrier);
     const message: FanoutMessage = {
       type: "fanout",
-      ...serializeProvenance(getOutboundProvenance(this)),
+      ...serializeProvenance(provenance),
       id: crypto.randomUUID(),
       baseUrl: this.origin,
       keys: keyJwkPairs,
@@ -7011,7 +7018,7 @@ function forwardActivity<TContextData>(
   return observeOutboundBroadcast(
     ctx,
     ctx.federation.outboundObservers,
-    (observation) => {
+    (observation, provenance) => {
       const tracer = ctx.tracerProvider.getTracer(
         metadata.name,
         metadata.version,
@@ -7038,6 +7045,7 @@ function forwardActivity<TContextData>(
               recipients,
               options,
               observation,
+              provenance,
             );
           } catch (e) {
             span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
@@ -7049,6 +7057,7 @@ function forwardActivity<TContextData>(
       );
     },
     "forward",
+    options?.dispatchId,
   );
 }
 
@@ -7063,6 +7072,7 @@ async function forwardActivityInternal<TContextData>(
   recipients: Recipient | Recipient[] | "followers",
   options?: ForwardActivityOptions,
   observation?: OutboundBroadcastObservation<TContextData>,
+  provenance: OutboundProvenance = getOutboundProvenance(ctx),
 ): Promise<boolean> {
   const logger = getLogger(["fedify", "federation", loggerCategory]);
   observation?.setPhase("sender-resolution");
@@ -7245,7 +7255,7 @@ async function forwardActivityInternal<TContextData>(
       const { portableInbox, gatewayInboxes } = inboxes[inbox];
       const message: OutboxMessage = {
         type: "outbox",
-        ...serializeProvenance(getOutboundProvenance(ctx)),
+        ...serializeProvenance(provenance),
         id: crypto.randomUUID(),
         baseUrl: ctx.origin,
         keys: keyJwkPairs,
@@ -7463,7 +7473,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
     return observeOutboundBroadcast(
       this,
       this.federation.outboundObservers,
-      (observation) => {
+      (observation, provenance) => {
         const tracer = this.tracerProvider.getTracer(
           metadata.name,
           metadata.version,
@@ -7500,6 +7510,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
                 options,
                 span,
                 observation,
+                provenance,
               );
               if (delivered) this.#deliveryState.delivered = true;
             } catch (e) {
@@ -7514,6 +7525,8 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
           },
         );
       },
+      "send",
+      options.dispatchId,
     );
   }
 
@@ -7570,6 +7583,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
 }
 
 interface SendActivityInternalOptions<TContextData> {
+  readonly provenance?: OutboundProvenance;
   readonly observation?: OutboundBroadcastObservation<TContextData>;
   readonly immediate?: boolean;
   readonly collectionSync?: string;

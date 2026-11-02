@@ -54,6 +54,34 @@ export function withOutboundSource<T>(context: object, operation: () => T): T {
   return withContext(sourceLogContext(source), operation);
 }
 
+/** The same exact-string budget applies to public input and queued metadata. */
+export function validateDispatchId(
+  value: unknown,
+): asserts value is string | undefined {
+  if (value === undefined) return;
+  if (typeof value !== "string") {
+    throw new TypeError("dispatchId must be a string.");
+  }
+  if (
+    value.length > 1024 || new TextEncoder().encode(value).byteLength > 1024
+  ) {
+    throw new RangeError("dispatchId must not exceed 1,024 UTF-8 bytes.");
+  }
+}
+
+/** A new public invocation keeps its HTTP source, with its own dispatch ID. */
+export function invocationProvenance(
+  context: object,
+  dispatchId: unknown,
+): OutboundProvenance {
+  validateDispatchId(dispatchId);
+  const { dispatchId: _previous, ...source } = getOutboundProvenance(context);
+  return Object.freeze({
+    ...source,
+    ...(dispatchId === undefined ? {} : { dispatchId }),
+  });
+}
+
 /** Restore only explicit source facts; never infer them from queue/trace IDs. */
 export function restoreProvenance(value: unknown): OutboundProvenance {
   if (value === undefined) return emptyProvenance;
@@ -61,6 +89,7 @@ export function restoreProvenance(value: unknown): OutboundProvenance {
     v != null && typeof v === "object" && !Array.isArray(v);
   const invalid = () => new TypeError("Invalid provenance in queue metadata.");
   if (!record(value)) throw invalid();
+  validateDispatchId(value.dispatchId);
   if (
     value.originatingRequestId !== undefined &&
     typeof value.originatingRequestId !== "string"
@@ -91,6 +120,7 @@ export function restoreProvenance(value: unknown): OutboundProvenance {
     });
   }
   return Object.freeze({
+    ...(value.dispatchId === undefined ? {} : { dispatchId: value.dispatchId }),
     ...(inboxRequest == null ? {} : { inboxRequest }),
     ...(value.originatingRequestId === undefined
       ? {}
@@ -103,7 +133,8 @@ export function serializeProvenance(
   value: OutboundProvenance | undefined,
 ): { readonly provenance?: OutboundProvenance } {
   const provenance = restoreProvenance(value);
-  return provenance.inboxRequest == null &&
+  return provenance.dispatchId === undefined &&
+      provenance.inboxRequest == null &&
       provenance.originatingRequestId == null
     ? {}
     : { provenance };
@@ -111,6 +142,7 @@ export function serializeProvenance(
 
 export function sourceLogContext(source: OutboundProvenance) {
   return {
+    dispatchId: source.dispatchId,
     sourceInboxRequestId: source.inboxRequest?.inboxRequestId,
     sourceRequestId: source.inboxRequest?.requestId ??
       source.originatingRequestId,
