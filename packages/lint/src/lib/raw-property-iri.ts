@@ -246,6 +246,7 @@ export function checkRawPropertyIris(
   function staticString(
     node: Ast | undefined,
     seen = new Set<Ast>(),
+    bound = false,
   ): { value: string; literal: Ast } | undefined {
     if (!node || seen.has(node)) return;
     seen.add(node);
@@ -275,9 +276,13 @@ export function checkRawPropertyIris(
       return staticString(
         lookup(scopes.get(node), node.name as string)?.init,
         seen,
+        true,
       );
     }
     if (
+      // A URL object bound to a const can still be mutated, e.g., through its
+      // href setter, so only a URL constructed in place is known statically:
+      !bound &&
       node.type === "NewExpression" && name(node.callee) === "URL" &&
       ast(node.callee)?.type === "Identifier" &&
       !lookup(scopes.get(node), "URL")

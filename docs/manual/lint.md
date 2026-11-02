@@ -1811,9 +1811,11 @@ await getRawPropertyValues(note, "as:content");
 await getRawPropertyValues(note, "https://www.w3.org/ns/activitystreams#content");
 ~~~~
 
-The rule checks string literals, templates without expressions, global
-`new URL("…")` calls without a base argument, and `const` bindings to those
-forms.  Dynamic values and `new URL(relative, base)` are ignored.
+The rule checks string literals, templates without expressions, `const`
+bindings to those, and global `new URL("…")` calls without a base argument.
+Dynamic values, `new URL(relative, base)`, and `URL` objects bound to
+a variable are ignored, since a `URL` object can be changed after it is
+constructed.
 
 By default, only imports from `@fedify/vocab` are inspected, including
 `jsr:`/`npm:` and versioned specifiers.  The deprecated

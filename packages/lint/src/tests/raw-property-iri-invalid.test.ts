@@ -111,9 +111,8 @@ const cases: [string, string, string?][] = [
     `${setup} read(obj, new URL("https://example/a b"));`,
   ],
   [
-    "URL const",
-    `${setup} const iri = new URL("as:content"); read(obj, iri);`,
-    "non-HTTP scheme",
+    "URL const ignored, as it can be mutated",
+    `${setup} const iri = new URL("about:blank"); iri.href = "https://example/p"; read(obj, iri);`,
   ],
   [
     "URL with base",
