@@ -342,8 +342,6 @@ export class FederationImpl<TContextData>
   outboxRetryPolicy: RetryPolicy;
   inboxRetryPolicy: RetryPolicy;
   activityTransformers: readonly ActivityTransformer<TContextData>[];
-  /** @internal */
-  usesDefaultActivityTransformers: boolean;
   _tracerProvider: TracerProvider | undefined;
   firstKnock?: HttpMessageSignaturesSpec;
 
@@ -488,9 +486,6 @@ export class FederationImpl<TContextData>
       createExponentialBackoffPolicy();
     this.activityTransformers = options.activityTransformers ??
       getDefaultActivityTransformers<TContextData>();
-    this.usesDefaultActivityTransformers =
-      options.activityTransformers == null ||
-      options.activityTransformers.length < 1;
     this._tracerProvider = options.tracerProvider;
     this.firstKnock = options.firstKnock;
   }
@@ -2627,8 +2622,15 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     for (const activityTransformer of this.federation.activityTransformers) {
       activity = activityTransformer(activity, this);
     }
-    if (!this.federation.usesDefaultActivityTransformers) {
-      activityJsonLd = undefined;
+    if (activityJsonLd != null) {
+      const transformed = await activity.toJsonLd({
+        format: "compact",
+        contextLoader: this.contextLoader,
+      });
+      if (getPayloadFields(transformed) !== getPayloadFields(activityJsonLd)) {
+        activityJsonLd = undefined;
+        activity = activity.clone({ proofs: [] });
+      }
     }
     span?.setAttribute("activitypub.activity.id", activity?.id?.href ?? "");
     if (activity.actorId == null) {
@@ -3543,6 +3545,17 @@ function notFound(_request: Request): Response {
 function hasTopLevelProof(value: unknown): boolean {
   return typeof value === "object" && value != null && !Array.isArray(value) &&
     globalThis.Object.prototype.hasOwnProperty.call(value, "proof");
+}
+
+function getPayloadFields(value: unknown): string {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return JSON.stringify(value);
+  }
+  const record = { ...(value as Record<string, unknown>) };
+  delete record["@context"];
+  delete record.proof;
+  delete record.signature;
+  return JSON.stringify(record);
 }
 
 function notAcceptable(_request: Request): Response {

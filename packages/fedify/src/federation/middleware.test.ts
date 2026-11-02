@@ -5352,6 +5352,41 @@ test("ContextImpl.sendActivity()", async (t) => {
         "https://w3id.org/security/v1",
       ),
     );
+
+    const noIdActivity = new vocab.Create({
+      actor: ctx2.getActorUri("john"),
+    });
+    const noIdSigned = await signObject(
+      noIdActivity,
+      edKey.privateKey,
+      edKey.multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const noIdJson = await noIdSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const noIdRestored = await vocab.Create.fromJsonLd(noIdJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx2.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      noIdRestored,
+    );
+    const noIdQueued = queue.messages.at(-1);
+    assert(noIdQueued != null && noIdQueued.type === "outbox");
+    const noIdQueuedJson = detachSignature(noIdQueued.activity) as Record<
+      string,
+      unknown
+    >;
+    assert(typeof noIdQueuedJson.id === "string");
   });
 
   queue.clear();
