@@ -264,3 +264,139 @@ test("response body capture isolates unavailable readers and diagnostic deadline
     strictEqual(body.locked, false);
   });
 });
+
+test("response body capture bounds oversized and nonterminating sources", async (t) => {
+  for (const mode of ["oversized", "infinite", "empty-infinite"] as const) {
+    await t.step(mode, async () => {
+      let pulls = 0;
+      let cancels = 0;
+      const source = new Uint8Array(
+        mode === "oversized" ? 1024 * 1024 : mode === "infinite" ? 1 : 0,
+      ).fill(255);
+      const original = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          pulls++;
+          controller.enqueue(source);
+        },
+        cancel() {
+          cancels++;
+        },
+      }, { highWaterMark: 0 });
+      let exposed = 0;
+      const result = await captureResponseBody(new Response(original), {
+        maxBytes: 17,
+        timeoutMs: 50,
+      }, async (body) => {
+        const reader = body.getReader();
+        try {
+          while (true) {
+            const chunk = await reader.read();
+            if (chunk.done) break;
+            exposed += chunk.value.length;
+            ok(chunk.value.buffer.byteLength <= 17);
+            strictEqual(chunk.value[0], 255);
+            chunk.value.fill(0);
+          }
+        } catch {
+          /* Cap/deadline revokes the reader. */
+        } finally {
+          reader.releaseLock();
+        }
+      });
+      strictEqual(
+        result.type,
+        mode === "empty-infinite" ? "deadline" : "limit-reached",
+      );
+      strictEqual(result.bytesExposed, mode === "empty-infinite" ? 0 : 17);
+      strictEqual(exposed, result.bytesExposed);
+      strictEqual(cancels, 1);
+      strictEqual(original.locked, false);
+      if (mode !== "empty-infinite") {
+        strictEqual(pulls, mode === "oversized" ? 1 : 17);
+        strictEqual(source[0], 255);
+      }
+    });
+  }
+});
+
+test("response body capture applies backpressure and revokes a paused consumer", async () => {
+  let pulls = 0;
+  let cancels = 0;
+  let retained!: ReadableStreamDefaultReader<Uint8Array>;
+  let exposed = 0;
+  const source = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      pulls++;
+      controller.enqueue(new Uint8Array([1]));
+    },
+    cancel() {
+      cancels++;
+      return new Promise<void>(() => {});
+    },
+  }, { highWaterMark: 0 });
+  const result = await captureResponseBody(new Response(source), {
+    maxBytes: 32,
+    timeoutMs: 50,
+  }, async (body, signal) => {
+    retained = body.getReader();
+    const first = await retained.read();
+    ok(!first.done);
+    exposed += first.value.length;
+    await new Promise<void>((resolve) => {
+      if (signal.aborted) resolve();
+      else signal.addEventListener("abort", () => resolve(), { once: true });
+    });
+    strictEqual(pulls, 1);
+    await rejects(retained.read());
+  });
+  deepStrictEqual(result, { type: "deadline", bytesExposed: 1 });
+  strictEqual(exposed, 1);
+  strictEqual(pulls, 1);
+  strictEqual(cancels, 1);
+  strictEqual(source.locked, false);
+  await rejects(retained.read());
+  retained.releaseLock();
+});
+
+test("response body capture rejects late source data and observes late pull failure", async () => {
+  let controller!: ReadableStreamDefaultController<Uint8Array>;
+  let rejectPull!: (error: unknown) => void;
+  const pulling = new Promise<void>((_resolve, reject) => {
+    rejectPull = reject;
+  });
+  let cancels = 0;
+  const source = new ReadableStream<Uint8Array>({
+    start(value) {
+      controller = value;
+    },
+    pull() {
+      return pulling;
+    },
+    cancel() {
+      cancels++;
+      return new Promise<void>(() => {});
+    },
+  }, { highWaterMark: 0 });
+  let retained!: ReadableStreamDefaultReader<Uint8Array>;
+  let exposed = 0;
+  const result = await captureResponseBody(new Response(source), {
+    maxBytes: 32,
+    timeoutMs: 25,
+  }, async (body) => {
+    retained = body.getReader();
+    try {
+      const chunk = await retained.read();
+      if (!chunk.done) exposed += chunk.value.length;
+    } catch { /* Revoked at deadline. */ }
+  });
+  deepStrictEqual(result, { type: "deadline", bytesExposed: 0 });
+  strictEqual(exposed, 0);
+  strictEqual(cancels, 1);
+  throws(() => controller.enqueue(new Uint8Array([1])), TypeError);
+  rejectPull(new Error("late upstream failure"));
+  await Promise.resolve();
+  await Promise.resolve();
+  await rejects(retained.read());
+  retained.releaseLock();
+  strictEqual(source.locked, false);
+});

@@ -5859,3 +5859,213 @@ test("outbound capture limits retain the original final HTTP diagnostic", async 
   ok(attempts[0].outcome.response.type === "final");
   strictEqual(attempts[0].outcome.response.metadata.status, 503);
 });
+
+test("outbound capture deadlines select each real exchange without changing HTTP flow", async (t) => {
+  const measurements: {
+    signed: boolean;
+    selector: string;
+    selected: number;
+    timeoutMs: number;
+    elapsedMs: number;
+  }[] = [];
+  for (const signed of [false, true]) {
+    for (const responses of ["all", "non-success-http-responses"] as const) {
+      await t.step(
+        `${signed ? "signed" : "unsigned"}: ${responses}`,
+        async () => {
+          const inbox = recipient.inboxId!.href;
+          const next = new URL("/capture-deadline", inbox).href;
+          const ctx = createFederation<void>(options).createContext(
+            new URL("https://example.com"),
+            undefined,
+          );
+          const exchanges: OutboundHttpExchangeReport[] = [];
+          const attempts: OutboundAttemptReport[] = [];
+          const signals: AbortSignal[] = [];
+          const timeoutMs = 25;
+          const observation = new OutboundBroadcastObservation(ctx, {
+            responseBodyCapture: {
+              maxBytes: 32,
+              timeoutMs,
+              responses,
+              onBody(_ctx, event) {
+                signals.push(event.signal);
+                // The archive callback never pulls or settles; each exchange still proceeds.
+                return new Promise<void>(() => {});
+              },
+            },
+            onHttpExchange(_ctx, report) {
+              exchanges.push(report);
+            },
+            onAttempt(_ctx, report) {
+              attempts.push(report);
+            },
+          }, "send");
+          await observation.planDestinations({
+            [inbox]: { actorIds: [], sharedInbox: false },
+          });
+          const steps: ResponseInit[] = signed
+            ? [
+              {
+                status: 401,
+                headers: {
+                  "Accept-Signature":
+                    'sig1=("@method" "@target-uri");created;nonce="deadline-nonce"',
+                },
+              },
+              { status: 307, headers: { Location: next } },
+              { status: 202 },
+            ]
+            : [{ status: 303, headers: { Location: next } }, { status: 202 }];
+          let submissions = 0;
+          const start = performance.now();
+          await sendConcreteActivity({
+            observation: observation.delivery(inbox),
+            activity: {},
+            keys: signed ? [sender] : [],
+            inbox: new URL(inbox),
+            specDeterminer: {
+              determineSpec: () => "rfc9421",
+              rememberSpec() {},
+            },
+          }, {
+            openHop: (url) =>
+              Promise.resolve({
+                url: new URL(url),
+                fetch() {
+                  return Promise.resolve(
+                    new Response("response", steps[submissions++]),
+                  );
+                },
+                close: () => Promise.resolve(),
+              }),
+          });
+          const elapsedMs = performance.now() - start;
+          const selected = steps.length - (responses === "all" ? 0 : 1);
+          strictEqual(submissions, steps.length);
+          strictEqual(signals.length, selected);
+          for (const signal of signals) ok(signal.aborted);
+          deepStrictEqual(
+            exchanges.map((event) => event.bodyCapture?.type),
+            steps.map((step) =>
+              step.status === 202 && responses !== "all"
+                ? "filtered"
+                : "deadline"
+            ),
+          );
+          for (const [index, exchange] of exchanges.entries()) {
+            strictEqual(exchange.bodyCapture?.bytesExposed, 0);
+            ok(exchange.outcome.type === "response");
+            strictEqual(exchange.outcome.response.status, steps[index].status);
+          }
+          strictEqual(attempts[0].outcome.type, "succeeded");
+          strictEqual(attempts[0].httpExchangeCount, steps.length);
+          const final = attempts[0].outcome.response;
+          ok(final.type === "final");
+          strictEqual(final.metadata.status, 202);
+          measurements.push({
+            signed,
+            selector: responses,
+            selected,
+            timeoutMs,
+            elapsedMs: Math.round(elapsedMs * 100) / 100,
+          });
+        },
+      );
+    }
+  }
+  console.info(
+    "Selected-exchange capture latency (local test, not a benchmark):",
+    JSON.stringify(measurements),
+  );
+});
+
+test("outbound capture evidence survives later final response bookkeeping failures", async (t) => {
+  for (const status of [202, 503]) {
+    await t.step(`${status}: cache and cleanup`, async () => {
+      const inbox = recipient.inboxId!.href;
+      const ctx = createFederation<void>(options).createContext(
+        new URL("https://example.com"),
+        undefined,
+      );
+      const exchanges: OutboundHttpExchangeReport[] = [];
+      const attempts: OutboundAttemptReport[] = [];
+      const observation = new OutboundBroadcastObservation(ctx, {
+        responseBodyCapture: {
+          maxBytes: 4,
+          timeoutMs: 1000,
+          async onBody(_ctx, event) {
+            await readCapturedText(event.body);
+          },
+        },
+        onHttpExchange(_ctx, report) {
+          exchanges.push(report);
+        },
+        onAttempt(_ctx, report) {
+          attempts.push(report);
+        },
+      }, "send");
+      await observation.planDestinations({
+        [inbox]: { actorIds: [], sharedInbox: false },
+      });
+      const cache = Symbol("cache after capture");
+      const cleanup = Symbol("cleanup after capture");
+      let submissions = 0;
+      let outward: unknown;
+      await rejects(
+        sendConcreteActivity({
+          observation: observation.delivery(inbox),
+          activity: {},
+          keys: [sender],
+          inbox: new URL(inbox),
+          specDeterminer: {
+            determineSpec: () => "rfc9421",
+            rememberSpec() {
+              throw cache;
+            },
+          },
+        }, {
+          openHop: (url) =>
+            Promise.resolve({
+              url: new URL(url),
+              fetch() {
+                return Promise.resolve(
+                  new Response("response body", {
+                    status: ++submissions === 1 ? 401 : status,
+                  }),
+                );
+              },
+              close: () => Promise.reject(cleanup),
+            }),
+        }),
+        (error: unknown) => {
+          outward = error;
+          return error instanceof FetchError && error.cause === cache;
+        },
+      );
+      strictEqual(submissions, 2);
+      deepStrictEqual(exchanges.map((report) => report.bodyCapture), [{
+        type: "limit-reached",
+        bytesExposed: 4,
+      }, { type: "limit-reached", bytesExposed: 4 }]);
+      const outcome = attempts[0].outcome;
+      ok(outcome.type === "failed");
+      strictEqual(outcome.error, outward);
+      ok(outcome.response.type === "final");
+      strictEqual(outcome.response.metadata.status, status);
+      strictEqual(outcome.failure.kind, status === 503 ? "http" : "local");
+      const failures = [outcome.failure, ...(outcome.diagnostics ?? [])];
+      ok(
+        failures.some((failure) =>
+          failure.phase === "post-response" && failure.error === cache
+        ),
+      );
+      ok(
+        failures.some((failure) =>
+          failure.phase === "cleanup" && failure.error === cleanup
+        ),
+      );
+      strictEqual(attempts[0].httpExchangeCount, 2);
+    });
+  }
+});
