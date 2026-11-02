@@ -217,6 +217,8 @@ export interface OutboundProvenance {
 }
 
 interface OutboundSourceMetadata {
+  /** Unix milliseconds at observation; wall clocks do not ensure global ordering. */
+  readonly observedAt: number;
   /** Immutable historical cause, distinct from this callback's context. */
   readonly provenance: OutboundProvenance;
   /** URL facts of the current callback context. */

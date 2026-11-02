@@ -16,7 +16,8 @@ import type {
   OutboundProvenance,
 } from "./outbound-report.ts";
 
-type WithoutSource<T> = T extends unknown ? Omit<T, "provenance" | "local">
+type WithoutSource<T> = T extends unknown
+  ? Omit<T, "provenance" | "local" | "observedAt">
   : never;
 
 type PreparationFailure = Extract<
@@ -147,6 +148,7 @@ class OutboundDeliveryObservation<TContextData> {
       this.context,
       this.observer,
       Object.freeze({
+        observedAt: Temporal.Now.instant().epochMilliseconds,
         provenance: this.provenance,
         local: snapshotLocalContext(this.context),
         ...this.#reference,
@@ -166,6 +168,7 @@ class OutboundDeliveryObservation<TContextData> {
       this.context,
       this.observer,
       Object.freeze({
+        observedAt: Temporal.Now.instant().epochMilliseconds,
         provenance: this.provenance,
         local: snapshotLocalContext(this.context),
         ...this.#reference,
@@ -183,6 +186,7 @@ class OutboundDeliveryObservation<TContextData> {
       this.context,
       this.observer,
       Object.freeze({
+        observedAt: Temporal.Now.instant().epochMilliseconds,
         provenance: this.provenance,
         local: snapshotLocalContext(this.context),
         ...this.#reference,
@@ -440,6 +444,7 @@ export class OutboundBroadcastObservation<TContextData> {
       this.#onBroadcast,
       Object.freeze({
         ...event,
+        observedAt: Temporal.Now.instant().epochMilliseconds,
         provenance: this.provenance,
         local: snapshotLocalContext(this.context),
       }),

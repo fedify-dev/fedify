@@ -29,7 +29,8 @@ import type {
   OutboundDeliveryEvent,
   OutboundObservers,
 } from "./mod.ts";
-import type { OutboxMessage } from "./queue.ts";
+import type { FanoutMessage, OutboxMessage } from "./queue.ts";
+import { OutboundBroadcastObservation } from "./outbound-observation.ts";
 import { rsaPrivateKey2, rsaPublicKey2 } from "../testing/keys.ts";
 
 const activity = new Create({
@@ -42,6 +43,112 @@ const options = {
   documentLoaderFactory: () => mockDocumentLoader,
   contextLoaderFactory: () => mockDocumentLoader,
 };
+
+test("outbound observation timestamps snapshot each boundary and refresh on fanout replay", async () => {
+  const federation = createFederation<void>(options);
+  const ctx = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  const events: (OutboundBroadcastEvent | OutboundDeliveryEvent)[] = [];
+  const timestamps: number[] = [];
+  let now = 1_800_000_000_000;
+  const originalNow = Temporal.Now.instant;
+  const observe = async (
+    _context: unknown,
+    event: OutboundBroadcastEvent | OutboundDeliveryEvent,
+  ) => {
+    const observedAt = now;
+    strictEqual(event.observedAt, observedAt);
+    ok(Object.isFrozen(event));
+    ok(Object.isFrozen(event.provenance));
+    ok(Object.isFrozen(event.local));
+    events.push(event);
+    timestamps.push(observedAt);
+    // Time spent awaiting a recorder must not change this event's snapshot.
+    now += 1_000;
+    await Promise.resolve();
+    strictEqual(event.observedAt, observedAt);
+  };
+  const observers = { onBroadcast: observe, onDelivery: observe };
+  const inbox = "https://receiver.example/inbox";
+  const otherInbox = "https://receiver.example/other";
+  try {
+    Temporal.Now.instant = () => Temporal.Instant.fromEpochMilliseconds(now);
+    const observation = new OutboundBroadcastObservation(
+      ctx,
+      observers,
+      "send",
+    );
+    await observation.run(async () => {
+      await observation.planDestinations({
+        [inbox]: { actorIds: [], sharedInbox: false },
+        [otherInbox]: { actorIds: [], sharedInbox: false },
+      });
+      await observation.delivery(inbox)!.handoff({ type: "direct" });
+      await observation.delivery(otherInbox)!.failed(new Error("local setup"));
+      await observation.prepared("delivery");
+    });
+    deepStrictEqual(events.map((event) => event.stage), [
+      "started",
+      "planned",
+      "planned",
+      "handoff",
+      "preparation-failed",
+      "preparation-finished",
+    ]);
+    deepStrictEqual(timestamps, [
+      1_800_000_000_000,
+      1_800_000_001_000,
+      1_800_000_002_000,
+      1_800_000_003_000,
+      1_800_000_004_000,
+      1_800_000_005_000,
+    ]);
+    const identity = observation.continuation(inbox)!.outbound;
+    strictEqual("observedAt" in identity, false);
+    const message: FanoutMessage = JSON.parse(JSON.stringify({
+      type: "fanout",
+      id: crypto.randomUUID(),
+      baseUrl: "https://example.com/",
+      keys: [],
+      inboxes: {
+        [inbox]: { actorIds: [], sharedInbox: false, outbound: identity },
+      },
+      activity: {},
+      activityType: Create.typeId.href,
+      traceContext: {},
+    }));
+    // Replaying the same task preserves grouping, but observes a new instant.
+    for (let replay = 0; replay < 2; replay++) {
+      now += 60_000;
+      const resumed = await OutboundBroadcastObservation.resumeFanout(
+        ctx,
+        observers,
+        message,
+      );
+      ok(resumed);
+      await resumed.delivery(inbox)!.handoff({
+        type: "enqueued",
+        queue: "outbox",
+        queueMessageId: crypto.randomUUID(),
+      });
+      const event = events.at(-1)!;
+      ok("deliveryId" in event);
+      strictEqual(event.deliveryId, identity.deliveryId);
+      strictEqual(event.provenance, events[0].provenance);
+      deepStrictEqual(event.local, events[0].local);
+    }
+    deepStrictEqual(timestamps.slice(6), [
+      1_800_000_066_000,
+      1_800_000_127_000,
+    ]);
+    deepStrictEqual(events.map((event) => event.observedAt), timestamps);
+    strictEqual("observedAt" in message.inboxes[inbox].outbound!, false);
+  } finally {
+    Temporal.Now.instant = originalNow;
+  }
+});
 
 test("outbound observers report fresh immutable starts without tracing or extra loading", async (t) => {
   const { AlwaysOffSampler, BasicTracerProvider } = await import(
