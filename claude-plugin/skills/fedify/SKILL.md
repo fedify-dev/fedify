@@ -273,7 +273,8 @@ delivery. `httpExchangeCount` counts actual fetches, including challenges and
 redirects; pre-fetch failures have zero. `onHttpExchange` emits immutable
 `OutboundHttpExchangeReport` snapshots of actual request URL/method and response
 status/text/available URL, or the original fetch error. `exchangeIndex` starts
-at zero per attempt. No live transport objects, bodies, or headers are exposed.
+at zero per attempt. No live transport objects are exposed; header snapshots
+and a separate bounded body callback are opt-in.
 
 For attempt reports, narrow `report.outcome.response.type`: `final` has an
 `exchangeIndex` and
@@ -309,15 +310,62 @@ settlement does not establish backend acknowledgment, a scheduled native retry,
 or remote success; later direct attempts may settle after a setup failure has
 already ended the worker. Do not infer scheduling from an attempt result.
 
-Callbacks are awaited without a default timeout; observer/logging errors are
-isolated. Nonsettling callbacks can delay execution indefinitely. Portable
-forwarding can return at its existing deadline while background work and
-observations continue. Detached recording must handle its own rejection,
+Header values default to disabled. `requestHeaders` and `responseHeaders`
+independently accept `allow`, positive safe-integer `maxBytes`, and optional
+`redact`. Names are literal, lowercase/deduplicated; selected credentials,
+signatures and cookies are always `[redacted]`. Exchange `headers.entries` are
+immutable runtime name/value pairs. Budget UTF-8 `name + ": " + value + "\r\n"`
+after redaction; omit whole entries and report `limitReached`. Invalid
+configuration preserves prior registration; later caller mutation cannot change
+selected policy. Header capture does not enable body capture.
+
+`responseBodyCapture` requires `onBody(ctx, event)`, positive safe-integer
+`maxBytes`, and finite positive `timeoutMs` (rounded up, at most 2^31-1); no
+numeric defaults. Enabled `responses` defaults to `all`, or select
+`non-success-http-responses` (outside 200–299), independently for each actual
+response including intermediate ones. The callback receives grouping metadata,
+request/response snapshots, a controlled byte stream and capture-only signal,
+before its terminal exchange report. It can be registered alone. Pull bytes
+incrementally and pass the signal to application writes; do not accumulate a
+whole body just to record it.
+
+Exchange `bodyCapture` is absent when disabled/no response, otherwise narrow
+`type`: `filtered`, `no-body`, `complete`, `limit-reached`, `deadline`,
+`callback-returned`, `consumer-stopped` (original `reason`), or `failed`
+(`phase: "body" | "observer"`, original `error`). `bytesExposed` is not durable
+storage. Exact cap without EOF proves neither completeness nor truncation.
+Return/throw/cancel/cap/deadline revokes even locked readers; absolute lifetime
+includes no-pull/slow consumers and bounded cleanup. Late rejections are
+handled, but arbitrary JavaScript/storage cannot be forced to stop. One source
+reader is shared with diagnostics, with no application clone/tee or extra
+wrapper queue. Capture cannot abort transport or rewrite HTTP/retry evidence.
+Diagnostics have a separate one-second budget and 1 KiB preview; timeout
+appends `… (timed out)`. Selected exchanges accumulate waiting time;
+upstream/runtime/application memory is outside Fedify's buffering claim.
+
+`senderPayload: true` adds an immutable `sender-payload` privacy projection to
+attempt reports. Narrow `report.senderPayload.type`: `available` exposes
+`value`, `representation: "privacy-projection"`, and `redacted`; `unavailable`
+distinguishes `disabled`, `not-materialized`, and `privacy-filter-unavailable`.
+Recursive compact/prefixed/expanded blind-recipient fields are removed without
+changing transport/signing input. Only audited bundled contexts, exact
+generated root extension definitions, supported nested context URLs, or
+unambiguous expanded JSON qualify; arbitrary aliases/overrides and unsupported
+data fail closed. No extra loading/serialization, raw fallback, exact-wire or
+proof-validity claim is provided. A redirect can drop its body independently of
+attempt input. Evidence is privileged: URLs/content can still contain private
+data and require application access control/redaction. See the sending manual
+for typed examples.
+
+Metadata callbacks are awaited without a default timeout; observer/logging
+errors are isolated. Nonsettling callbacks can delay execution indefinitely.
+Portable forwarding can return at its existing deadline while background work
+and observations continue. Detached recording must handle its own rejection,
 shutdown, and persistence. Known IDs survive fanout expansion, retries, holds,
 and gateway changes. Fanout expansion continues existing delivery handoffs
-without starting another broadcast. Legacy fanout can have an unknown broadcast;
-legacy outbox reports use the current task UUID as `deliveryId` and omit an
-unavailable original `destinationInbox`. Missing source facts remain
+without starting another broadcast. Legacy fanout can have an unknown
+broadcast; legacy outbox reports use the current task UUID as `deliveryId` and
+omit an unavailable original `destinationInbox`. Missing source facts remain
 unavailable, and older consumers can discard new metadata. Attempt/exchange
 `queue` identifies the current message and available Fedify retry counter;
 workers receive current context data without observation-only loader calls.

@@ -189,8 +189,10 @@ submission. `exchangeIndex` starts at zero within its `attemptId`. Its `request`
 copies the submitted URL and method, including those of signed requests. A
 `response` outcome records status, status text, and the response URL when fetch
 supplies it; a `failed` outcome retains the original fetch rejection. A non-2xx
-response is still a received response. Neither live transport objects nor
-response bodies or headers are exposed.
+response is still a received response. Reports contain immutable metadata;
+optional header snapshots and body-capture summaries are described below.
+A separate bounded callback supplies selected response bytes, without exposing
+live transport objects.
 
 ~~~~ typescript twoslash
 import type { Federation } from "@fedify/fedify";
@@ -341,6 +343,201 @@ if execution failed before constructing its usual HTTP exception. The separate
 `outcome.error` is the exact value that escaped the sender, including any
 existing wrapping. Observer errors never become attempt diagnostics.
 
+### Capturing headers
+
+Header values are disabled by default. Enable `requestHeaders` and
+`responseHeaders` independently to add immutable `headers` snapshots to actual
+exchange requests and responses. Each policy requires an explicit `allow` list
+of literal HTTP field names and a positive safe-integer `maxBytes`. An optional
+`redact` list adds application-specific secret headers. Names are normalized to
+lowercase and deduplicated; wildcards are not supported.
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+declare const federation: Federation<void>;
+// ---cut-before---
+federation.setOutboundObservers({
+  requestHeaders: { allow: ["content-type", "signature"], maxBytes: 2048 },
+  responseHeaders: { allow: ["content-type", "retry-after", "set-cookie"], maxBytes: 1024 },
+  onHttpExchange(_ctx, report) {
+    console.log(report.request.headers?.entries);
+    if (report.outcome.type === "response") {
+      console.log(report.outcome.response.headers?.entries);
+      console.log(report.outcome.response.headers?.limitReached);
+    }
+  },
+});
+~~~~
+
+Selected credentials, signatures, and cookies always become `[redacted]`, even
+if allowlisted. The protected names are `authorization`, `proxy-authorization`,
+`cookie`, `set-cookie`, `signature`, `signature-input`, `authentication-info`,
+`proxy-authentication-info`, `x-api-key`, and `x-auth-token`. Application
+redactions also take precedence over the allowlist. There is no raw-secret
+option; add custom credential names to your redaction policy.
+
+`entries` contains readonly name/value pairs in lexical name order, using the
+runtime's representation of repeated values. It does not promise raw wire
+ordering or recover values already combined by the runtime. Each pair costs the
+UTF-8 bytes of `name + ": " + value + "\r\n"`, after redaction. An oversized
+entry is omitted whole while later entries remain eligible; `limitReached`
+records any budget omission. An absent `headers` field means disabled, while an
+enabled empty allowlist produces an empty snapshot. Signed/challenge/redirect
+requests are captured at their actual submission, including changed headers.
+
+### Streaming response bodies
+
+Application body capture is disabled unless `responseBodyCapture` is supplied.
+It is independent of header capture and can be registered without metadata
+callbacks. It requires `onBody`, a positive safe-integer `maxBytes`, and a
+finite positive `timeoutMs`; there are no numeric defaults. Fractional
+milliseconds round up, and the rounded lifetime cannot exceed 2,147,483,647 ms.
+Invalid configuration leaves the previous registration intact.
+
+`responses` defaults to `all` only when capture is enabled. The other selector,
+`non-success-http-responses`, selects actual statuses outside 200–299, including
+intermediate challenges and redirects. Selection does not predict the attempt
+outcome. This example uses illustrative limits, not performance guarantees:
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+declare const federation: Federation<void>;
+declare function saveChunk(
+  attemptId: string,
+  exchangeIndex: number,
+  chunk: Uint8Array,
+  signal: AbortSignal,
+): Promise<void>;
+// ---cut-before---
+federation.setOutboundObservers({
+  responseBodyCapture: {
+    maxBytes: 64 * 1024,
+    timeoutMs: 5000,
+    responses: "non-success-http-responses",
+    async onBody(_ctx, event) {
+      const reader = event.body.getReader();
+      try {
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          await saveChunk(event.attemptId, event.exchangeIndex, chunk.value, event.signal);
+        }
+      } catch (error) {
+        if (!event.signal.aborted) throw error;
+      } finally {
+        reader.releaseLock();
+      }
+    },
+  },
+  onHttpExchange(_ctx, report) {
+    console.log(report.attemptId, report.exchangeIndex, report.bodyCapture);
+  },
+});
+~~~~
+
+`onBody` receives the current context/data, grouping metadata, an immutable
+request/response snapshot, a controlled `ReadableStream<Uint8Array>`, and a
+capture-only signal. The callback runs after headers and before the terminal
+exchange report. Finished reports contain `bodyCapture` summaries, never
+streams:
+
+| Summary type        | Meaning                                                                                      |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| Absent              | Application capture was disabled, or fetch produced no response.                             |
+| `filtered`          | The response was not selected; no callback ran.                                              |
+| `no-body`           | A selected response had no body; distinct from an empty stream reaching EOF.                 |
+| `complete`          | EOF was observed and the callback settled successfully within its lifetime.                  |
+| `limit-reached`     | The byte cap was reached without observed EOF; completeness and truncation remain uncertain. |
+| `deadline`          | The absolute capture lifetime expired, including no-pull or slow-consumer time.              |
+| `callback-returned` | The callback returned before EOF or another stopping condition.                              |
+| `consumer-stopped`  | The consumer cancelled; `reason` retains its original value.                                 |
+| `failed`            | `phase` identifies a `body` or `observer` failure and `error` retains its original value.    |
+
+`bytesExposed` counts bytes handed to application code, not durable storage.
+At an exact cap, another read does not establish EOF: access is revoked, and
+`limit-reached` remains uncertain even if the remote body might end there.
+Signal abort or stream rejection can also stop an outstanding application write;
+the summary does not certify that exposed chunks were saved.
+
+Fedify uses one source reader shared with the bounded error diagnostic preview,
+pull backpressure, no additional wrapper queue, and at most one pending source
+read. It does not clone, tee, or accumulate the response body for application
+capture. Its limits do not bound upstream chunk allocations, runtime buffering,
+or memory/storage retained by the application.
+
+The absolute lifetime starts before callback invocation. Access is revoked on
+callback return/throw, consumer cancellation, byte cap, or deadline, including
+when an application retains a locked reader. Fedify bounds its own cleanup and
+handles late callback/cancellation rejection without waiting indefinitely.
+Signals cannot force arbitrary JavaScript or application storage to stop. Work
+that ignores the signal can continue after its observation has ended.
+
+Capture failure or its signal does not abort the HTTP send, skip a challenge,
+change a received status into a transport failure, or trigger another send.
+The final error diagnostic can continue under its separate one-second budget
+after application access ends. Error previews retain at most 1 KiB and append
+`… (timed out)` when that diagnostic deadline expires, or `… (truncated)` when
+additional body bytes establish truncation. Several selected exchanges can
+accumulate waiting time; capture does not promise zero timing influence.
+
+### Inspecting the sender payload
+
+Enable `senderPayload: true` to include an independent privacy projection of the
+concrete sender's existing JSON input in terminal attempt reports. It covers
+immediate sends, worker/fanout execution, original forwarding, and portable
+replication. It does not expose a producer's earlier Activity or perform extra
+hydration, JSON-LD processing, context loading, or serialization.
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+declare const federation: Federation<void>;
+// ---cut-before---
+federation.setOutboundObservers({
+  senderPayload: true,
+  onAttempt(_ctx, report) {
+    const document = report.senderPayload;
+    if (document.type === "available") {
+      console.log(document.stage, document.representation, document.redacted);
+      console.log(document.value);
+    } else {
+      console.log("Sender payload unavailable", document.reason);
+    }
+  },
+});
+~~~~
+
+`stage` is `sender-payload`, and available values use
+`representation: "privacy-projection"`. `redacted` means blind-recipient fields
+were removed. The immutable copy removes compact, `as:`-prefixed, and full-IRI
+`bto`/`bcc` fields throughout nested objects, arrays, and proof-bearing content.
+It never changes the transport payload or signing input. A projection is not
+exact wire evidence and does not establish signature/proof validity, including
+when `redacted` is false. An unsigned redirect can drop its request body while
+the attempt still retains this input projection.
+
+The supported subset includes ordinary plain JSON under audited ActivityStreams,
+identity, security, data-integrity v1/v2, and GoToSocial context URLs; exact
+Fedify-generated root extension definitions; and audited nested context URLs
+under a supported compact root. Context-free expanded JSON-LD with unambiguous
+IRI property names is also supported. Arbitrary inline aliases, context
+overrides, unknown remote contexts, getters/custom JSON conversion, and
+unsupported or cyclic/deep data produce an unavailable result. There is no
+raw-data fallback.
+
+An unavailable payload has one of these reasons:
+
+| Reason                       | Meaning                                                          |
+| ---------------------------- | ---------------------------------------------------------------- |
+| `disabled`                   | Sender-payload export was not enabled.                           |
+| `not-materialized`           | The attempt failed before reaching the sender snapshot boundary. |
+| `privacy-filter-unavailable` | A safe independent projection could not be established.          |
+
+Header, body, and document evidence remain privileged application data. URLs and
+content may contain other private values; blind-recipient filtering is not a
+general personal-data sanitizer or permission to publish the evidence. Your
+application owns access control, further redaction, archival, and saved original
+dispatch documents.
+
 ### Observation time and tracing
 
 Each event or report includes `observedAt`, Unix milliseconds captured at its
@@ -466,7 +663,8 @@ attempt/exchange reports, `queue` contains the current `queueMessageId` and an
 available Fedify `queueAttempt` counter. Native redelivery can repeat that
 counter while creating fresh attempts.
 
-Callbacks are awaited without a default timeout. Their return values and errors
+Metadata callbacks are awaited without a default timeout; body consumers use
+an explicit bounded capture lifetime. Callback return values and errors
 cannot veto sending, and callback or error-logging failures do not replace the
 send's original result. Slow callbacks delay processing; a callback that never
 settles can delay it indefinitely. Existing portable-forwarding deadlines can

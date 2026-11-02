@@ -746,7 +746,7 @@ function cancelResponseBody(response: Response, url: string): void {
 /**
  * Reads what is needed from the final response of a delivery while its
  * session is open: the body of a successful response is cancelled, and at
- * most 1 KiB of an error response body is read.
+ * most 1 KiB of an error response body is read within its diagnostic budget.
  */
 async function consumeSendActivityResponse(
   response: Response,
@@ -895,7 +895,9 @@ export class SendActivityError extends Error {
    * The response body from the inbox, if any.  Note that this may be
    * truncated to a maximum of 1 KiB to prevent excessive memory consumption
    * when remote servers return large error pages (e.g., Cloudflare error pages).
-   * If truncated, the string will end with `"… (truncated)"`.
+   * If truncated, the string will end with `"… (truncated)"`. Diagnostic reading
+   * has a separate one-second budget; a deadline retains any partial preview and
+   * appends `"… (timed out)"`. This is independent of application body capture.
    */
   readonly responseBody: string;
 

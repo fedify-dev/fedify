@@ -1319,6 +1319,12 @@ queue depth for messages still waiting. See
 [worker execution and actions](./send.md#worker-execution-and-actions) for
 report variants and a typed example.
 
+Metadata callbacks are awaited without a default timeout. Optional
+[response-body capture](./send.md#streaming-response-bodies) instead has
+explicit byte/time limits; several selected exchanges can accumulate waiting
+time within one worker execution. Applications own archival and must handle
+recording work that outlives the capture signal or a backend deadline.
+
 
 Queue depth reporting
 ---------------------

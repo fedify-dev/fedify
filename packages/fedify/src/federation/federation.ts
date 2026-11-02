@@ -87,7 +87,7 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    * Registers observers for outgoing activity processing.
    *
    * Each call replaces all previously registered outbound observers.
-   * Pass an empty object to clear them.  Fedify copies the callbacks;
+   * Pass an empty object to clear them.  Fedify copies callbacks and capture policies;
    * later changes to the supplied object do not affect registration.
    * Available on builders and directly created federations.  Building copies
    * the callbacks, and an active send keeps the callback selected at entry.
@@ -100,6 +100,9 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    * separately from attempts and backend acknowledgment.
    * Known IDs, original inbox source, and
    * application correlation survive queue work; workers use current context data.
+   * Header values, bounded response-body streaming and sender-payload projections
+   * are independently opt-in. Body consumers require explicit byte/time limits;
+   * other metadata callbacks have no default timeout.
    * This is separate from incoming C2S {@link Federatable.setOutboxListeners}.
    * @param observers The optional callbacks to register.
    * @since 2.5.0

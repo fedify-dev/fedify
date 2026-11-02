@@ -187,16 +187,25 @@ export type OutboundJsonValue =
 
 /** Attempt input evidence, never proof of a particular exchange's wire body. @since 2.5.0 */
 export type OutboundSenderPayload =
-  & { readonly stage: "sender-payload" }
+  & {
+    /** Concrete sender input, not a producer history or per-exchange wire body. */
+    readonly stage: "sender-payload";
+  }
   & (
     | {
+      /** A safe independent projection was established without extra processing. */
       readonly type: "available";
+      /** Always a projection; no signature/proof or exact-wire claim is retained. */
       readonly representation: "privacy-projection";
+      /** At least one blind-recipient field was removed from the copied value. */
       readonly redacted: boolean;
+      /** Recursively immutable JSON data; transport/signing input is unchanged. */
       readonly value: OutboundJsonValue;
     }
     | {
+      /** No document value is exposed, including when export is disabled. */
       readonly type: "unavailable";
+      /** Opt-out, pre-snapshot failure, or unsupported privacy/context semantics. */
       readonly reason:
         | "disabled"
         | "not-materialized"
@@ -212,6 +221,7 @@ export type OutboundBodyCaptureSummary =
   }
   & (
     | {
+      /** Selection, verified EOF, byte-cap uncertainty, or local lifetime end. */
       readonly type:
         | "filtered"
         | "no-body"
@@ -220,10 +230,18 @@ export type OutboundBodyCaptureSummary =
         | "deadline"
         | "callback-returned";
     }
-    | { readonly type: "consumer-stopped"; readonly reason: unknown }
     | {
+      /** Application cancellation ended capture. */
+      readonly type: "consumer-stopped";
+      /** Original consumer reason, including non-Error values. */
+      readonly reason: unknown;
+    }
+    | {
+      /** Capture failed without changing received HTTP evidence. */
       readonly type: "failed";
+      /** Source reading versus application callback failure. */
       readonly phase: "body" | "observer";
+      /** Original capture error; it does not become the attempt's failure. */
       readonly error: unknown;
     }
   );
@@ -245,13 +263,18 @@ export type OutboundResponseBodyEvent =
 
 /** Explicit opt-in response-body capture limits and consumer. @since 2.5.0 */
 export interface OutboundResponseBodyCapture<TContextData> {
-  /** Positive safe-integer byte limit. Reaching it without EOF proves no completeness. */
+  /** Positive safe-integer exposure limit; exact cap without EOF stays uncertain. */
   readonly maxBytes: number;
   /** Positive finite absolute lifetime in milliseconds, rounded up; at most 2^31-1. */
   readonly timeoutMs: number;
   /** Actual response selector, defaulting to `all` only when enabled. */
   readonly responses?: "all" | "non-success-http-responses";
-  /** Awaited within the bounded capture lifetime; errors cannot veto transport. */
+  /**
+   * Invoked after headers, before the terminal exchange report, with current data.
+   * Awaited within the absolute lifetime, including no-pull/slow-consumer time.
+   * Return/throw/cancel/cap/deadline revokes access even for retained locked readers.
+   * Errors cannot veto transport; ignoring the signal cannot be forcibly stopped.
+   */
   readonly onBody: (
     context: Context<TContextData>,
     event: OutboundResponseBodyEvent,
@@ -262,9 +285,15 @@ export interface OutboundResponseBodyCapture<TContextData> {
 export interface OutboundHeaderPolicy {
   /** Literal HTTP names, normalized to lowercase and deduplicated at registration. */
   readonly allow: readonly string[];
-  /** Additional names whose selected values are always `[redacted]`. */
+  /**
+   * Additional names whose selected values are always `[redacted]`.
+   * Credentials, signatures and cookies remain protected even without this list.
+   */
   readonly redact?: readonly string[];
-  /** Positive safe-integer UTF-8 budget for `name: value\r\n` entries. */
+  /**
+   * Positive safe-integer UTF-8 budget for `name: value\r\n` after redaction.
+   * Whole oversized entries are omitted; later entries remain eligible.
+   */
   readonly maxBytes: number;
 }
 
@@ -370,7 +399,8 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
  * A redirect response remains an observed response even if a later hop fails.
  * This report does not establish the attempt's final response. Metadata is
  * copied before callback awaiting; no live Request/Response/Headers are exposed.
- * Enabled body capture uses a separate revocable callback; reports hold summaries. Exchange callbacks may run before the attempt settles.
+ * Enabled body capture uses a separate revocable callback; reports hold summaries.
+ * Exchange callbacks run after selected capture ends and may precede attempt settlement.
  * @since 2.5.0
  */
 export type OutboundHttpExchangeReport =
@@ -542,9 +572,17 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
  * @since 2.5.0
  */
 export interface OutboundObservers<TContextData> {
-  /** Opt-in privacy-filtered sender input on attempt reports; disabled by default. */
+  /**
+   * Opt-in immutable privacy projection of concrete sender input on attempt reports.
+   * Disabled by default. Unsupported context/data semantics yield no raw fallback;
+   * this is not exact wire evidence or proof that redirected requests kept a body.
+   */
   readonly senderPayload?: boolean;
-  /** Independent opt-in body consumer; explicit byte/time limits are required. */
+  /**
+   * Independent opt-in body consumer; explicit byte/time limits are required.
+   * Shares one source reader with separately bounded diagnostics, without cloning
+   * or whole-body accumulation for the application. Finished reports hold summaries.
+   */
   readonly responseBodyCapture?: OutboundResponseBodyCapture<TContextData>;
   /**
    * Opt-in actual request headers for exchange reports; disabled by default.
