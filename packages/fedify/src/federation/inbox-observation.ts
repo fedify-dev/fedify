@@ -127,11 +127,18 @@ export class InboxObservation {
     outcome: InboxRequestOutcome,
   ): Promise<void> {
     if (handler == null) return;
+    const signal = context.request.signal;
+    const requestCancellation: InboxRequestReport["requestCancellation"] =
+      signal.aborted
+        ? Object.freeze({ type: "aborted", reason: signal.reason })
+        : Object.freeze({ type: "not-aborted" });
     const report: InboxRequestReport = {
       ...(this.source == null ? {} : {
         inboxRequestId: this.source.inboxRequestId,
         requestId: this.source.requestId,
+        local: Object.freeze({ ...this.source.context }),
       }),
+      requestCancellation,
       inbox: this.inbox,
       payload: this.payload,
       activity: this.activity,
