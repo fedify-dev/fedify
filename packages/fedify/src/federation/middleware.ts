@@ -723,7 +723,9 @@ export class FederationImpl<TContextData>
       collectionSync: message.collectionSync,
       orderingKey: message.orderingKey,
       context,
-      activityJsonLd: message.activity,
+      activityJsonLd: hasTopLevelProof(message.activity)
+        ? message.activity
+        : undefined,
     });
   }
 
@@ -1384,7 +1386,7 @@ export class FederationImpl<TContextData>
       }
     }
     let jsonLd = options.activityJsonLd != null
-      ? options.activityJsonLd
+      ? detachSignature(options.activityJsonLd)
       : await activity.toJsonLd({
         format: "compact",
         contextLoader,
@@ -2482,16 +2484,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     let activityJsonLd = await activity.toJsonLd({
       contextLoader: this.contextLoader,
     });
-    if (
-      typeof activityJsonLd !== "object" || activityJsonLd == null ||
-      Array.isArray(activityJsonLd) ||
-      !globalThis.Object.prototype.hasOwnProperty.call(
-        activityJsonLd,
-        "proof",
-      )
-    ) {
-      activityJsonLd = undefined;
-    }
+    if (!hasTopLevelProof(activityJsonLd)) activityJsonLd = undefined;
     const tracer = this.tracerProvider.getTracer(
       metadata.name,
       metadata.version,
@@ -2708,10 +2701,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           [k, { actorIds, sharedInbox }],
         ) => [k, { actorIds: [...actorIds], sharedInbox }]),
       ),
-      activity: await activity.toJsonLd({
-        format: "compact",
-        contextLoader: this.contextLoader,
-      }),
+      activity: activityJsonLd != null
+        ? detachSignature(activityJsonLd)
+        : await activity.toJsonLd({
+          format: "compact",
+          contextLoader: this.contextLoader,
+        }),
       activityId: activity.id?.href,
       activityType: getTypeId(activity).href,
       collectionSync: opts.collectionSync,
@@ -3524,6 +3519,11 @@ export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {
 
 function notFound(_request: Request): Response {
   return new Response("Not Found", { status: 404 });
+}
+
+function hasTopLevelProof(value: unknown): boolean {
+  return typeof value === "object" && value != null && !Array.isArray(value) &&
+    globalThis.Object.prototype.hasOwnProperty.call(value, "proof");
 }
 
 function notAcceptable(_request: Request): Response {

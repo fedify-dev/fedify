@@ -31,6 +31,7 @@ import person2Fixture from "../../../fixture/src/fixtures/example.com/person2.js
 import { signRequest, verifyRequest } from "../sig/http.ts";
 import type { KeyCache } from "../sig/key.ts";
 import {
+  attachSignature,
   compactJsonLd,
   detachSignature,
   signJsonLd,
@@ -5196,6 +5197,22 @@ test("ContextImpl.sendActivity()", async (t) => {
     assert(replayed != null && replayed.type === "outbox");
     assertEquals(detachSignature(replayed.activity), oldJson);
 
+    const proofless = { ...oldJson };
+    delete proofless.proof;
+    queue.clear();
+    await federation2.processQueuedTask(undefined, {
+      ...fanoutMsg,
+      id: crypto.randomUUID(),
+      activity: proofless,
+    });
+    const signedReplay = queue.messages.at(-1);
+    assert(signedReplay != null && signedReplay.type === "outbox");
+    assert(
+      typeof signedReplay.activity === "object" &&
+        signedReplay.activity != null &&
+        "proof" in signedReplay.activity,
+    );
+
     // The public direct-send path must also keep a pre-upgrade proof covered.
     const actorKeys = await ctx2.getActorKeyPairs("john");
     const edKey = actorKeys.find((key) =>
@@ -5233,6 +5250,44 @@ test("ContextImpl.sendActivity()", async (t) => {
     const resent = queue.messages.at(-1);
     assert(resent != null && resent.type === "outbox");
     assertEquals(detachSignature(resent.activity), restoredJson);
+
+    queue.clear();
+    await ctx2.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restored,
+      { fanout: "force" },
+    );
+    const queuedFanout = queue.messages.at(-1);
+    assert(queuedFanout != null && queuedFanout.type === "fanout");
+    assertEquals(queuedFanout.activity, restoredJson);
+
+    const oldSignature = {
+      "@context": "https://w3id.org/identity/v1",
+      type: "RsaSignature2017",
+      creator: "https://example.com/person2#key4",
+      created: "2026-01-01T00:00:00Z",
+      signatureValue: "abc",
+    } as const;
+    const restoredWithSignature = await vocab.Create.fromJsonLd(
+      attachSignature(restoredJson, oldSignature),
+      { contextLoader: documentLoader, documentLoader },
+    );
+    queue.clear();
+    await ctx2.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restoredWithSignature,
+    );
+    const resigned = queue.messages.at(-1);
+    assert(resigned != null && resigned.type === "outbox");
+    assertEquals(detachSignature(resigned.activity), restoredJson);
   });
 
   queue.clear();
