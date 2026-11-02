@@ -112,7 +112,8 @@ function children(node: Ast): Ast[] {
     "children",
   ]);
   for (const key of keys) {
-    if (key === "parent") continue;
+    // ESTree providers attach the token and comment arrays to Program:
+    if (key === "parent" || key === "tokens" || key === "comments") continue;
     const value = node[key];
     if (Array.isArray(value)) {
       for (const item of value) {
