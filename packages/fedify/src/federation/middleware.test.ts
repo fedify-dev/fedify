@@ -5195,6 +5195,44 @@ test("ContextImpl.sendActivity()", async (t) => {
     const replayed = queue.messages.at(-1);
     assert(replayed != null && replayed.type === "outbox");
     assertEquals(detachSignature(replayed.activity), oldJson);
+
+    // The public direct-send path must also keep a pre-upgrade proof covered.
+    const actorKeys = await ctx2.getActorKeyPairs("john");
+    const edKey = actorKeys.find((key) =>
+      key.privateKey.algorithm.name === "Ed25519"
+    );
+    assert(edKey != null && edKey.multikey.id != null);
+    const restoredActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/old"),
+      actor: ctx2.getActorUri("john"),
+    });
+    const restoredSigned = await signObject(
+      restoredActivity,
+      edKey.privateKey,
+      edKey.multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const restoredJson = await restoredSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const restored = await vocab.Create.fromJsonLd(restoredJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx2.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restored,
+    );
+    const resent = queue.messages.at(-1);
+    assert(resent != null && resent.type === "outbox");
+    assertEquals(detachSignature(resent.activity), restoredJson);
   });
 
   queue.clear();

@@ -342,6 +342,8 @@ export class FederationImpl<TContextData>
   outboxRetryPolicy: RetryPolicy;
   inboxRetryPolicy: RetryPolicy;
   activityTransformers: readonly ActivityTransformer<TContextData>[];
+  /** @internal */
+  usesDefaultActivityTransformers: boolean;
   _tracerProvider: TracerProvider | undefined;
   firstKnock?: HttpMessageSignaturesSpec;
 
@@ -486,6 +488,9 @@ export class FederationImpl<TContextData>
       createExponentialBackoffPolicy();
     this.activityTransformers = options.activityTransformers ??
       getDefaultActivityTransformers<TContextData>();
+    this.usesDefaultActivityTransformers =
+      options.activityTransformers == null ||
+      options.activityTransformers.length < 1;
     this._tracerProvider = options.tracerProvider;
     this.firstKnock = options.firstKnock;
   }
@@ -1367,7 +1372,6 @@ export class FederationImpl<TContextData>
       proofCreated = true;
       break;
     }
-    const hadProof = proofCreated;
     if (!proofCreated) {
       for (const { keyId, privateKey } of keys) {
         if (privateKey.algorithm.name === "Ed25519") {
@@ -1379,7 +1383,7 @@ export class FederationImpl<TContextData>
         }
       }
     }
-    let jsonLd = hadProof && options.activityJsonLd != null
+    let jsonLd = options.activityJsonLd != null
       ? options.activityJsonLd
       : await activity.toJsonLd({
         format: "compact",
@@ -2463,7 +2467,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     });
   }
 
-  sendActivity(
+  async sendActivity(
     sender:
       | SenderKeyPair
       | SenderKeyPair[]
@@ -2473,6 +2477,21 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activity: Activity,
     options: SendActivityOptionsForCollection = {},
   ): Promise<void> {
+    // Capture the proof-covered serialization before the span attributes below
+    // read lazy accessors that invalidate the object's cached JSON-LD.
+    let activityJsonLd = await activity.toJsonLd({
+      contextLoader: this.contextLoader,
+    });
+    if (
+      typeof activityJsonLd !== "object" || activityJsonLd == null ||
+      Array.isArray(activityJsonLd) ||
+      !globalThis.Object.prototype.hasOwnProperty.call(
+        activityJsonLd,
+        "proof",
+      )
+    ) {
+      activityJsonLd = undefined;
+    }
     const tracer = this.tracerProvider.getTracer(
       metadata.name,
       metadata.version,
@@ -2504,6 +2523,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
             activity,
             options,
             span,
+            activityJsonLd,
           );
         } catch (e) {
           span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
@@ -2525,6 +2545,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activity: Activity,
     options: SendActivityOptionsForCollection,
     span: Span,
+    activityJsonLd?: unknown,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     let keys: SenderKeyPair[];
@@ -2609,15 +2630,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     } else {
       expandedRecipients = [recipients];
     }
-    const opts: SendActivityInternalOptions<TContextData> = {
-      context: this,
-      orderingKey: options.orderingKey,
-      collectionSync,
-      immediate: options.immediate,
-    };
     span.setAttribute("activitypub.inboxes", expandedRecipients.length);
     for (const activityTransformer of this.federation.activityTransformers) {
       activity = activityTransformer(activity, this);
+    }
+    if (!this.federation.usesDefaultActivityTransformers) {
+      activityJsonLd = undefined;
     }
     span?.setAttribute("activitypub.activity.id", activity?.id?.href ?? "");
     if (activity.actorId == null) {
@@ -2644,7 +2662,16 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           tracerProvider: this.tracerProvider,
         });
       }
+      // The captured JSON-LD predates the new proof.
+      activityJsonLd = undefined;
     }
+    const opts: SendActivityInternalOptions<TContextData> = {
+      context: this,
+      orderingKey: options.orderingKey,
+      collectionSync,
+      immediate: options.immediate,
+      activityJsonLd,
+    };
     const inboxes = extractInboxes({
       recipients: expandedRecipients,
       preferSharedInbox: options.preferSharedInbox,
