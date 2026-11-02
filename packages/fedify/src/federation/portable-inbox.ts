@@ -27,6 +27,7 @@ import type { PortableInboxForwardingOptions } from "./federation.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import { recordOutboxEnqueue } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
+import type { OutboundBroadcastObservation } from "./outbound-observation.ts";
 import type { OutboxMessage, SenderKeyJwkPair } from "./queue.ts";
 import { sendActivity, type SenderKeyPair } from "./send.ts";
 
@@ -291,10 +292,12 @@ export interface ForwardPortableInboxActivityParameters {
  * other gateways, that gateway has the activity already, so it is claimed
  * without forwarding the activity to it.  See {@link identifySendingGateway}.
  * @param parameters The parameters.
+ * @param observation The in-process producer observation, if registered.
  * @returns The target inbox URLs that the activity was handed off to.
  */
-export async function forwardPortableInboxActivity(
+export async function forwardPortableInboxActivity<TContextData>(
   parameters: ForwardPortableInboxActivityParameters,
+  observation?: OutboundBroadcastObservation<TContextData>,
 ): Promise<URL[]> {
   const logger = getLogger(["fedify", "federation", "inbox"]);
   const {
@@ -308,10 +311,20 @@ export async function forwardPortableInboxActivity(
   const options = parameters.options ??
     resolvePortableInboxForwardingOptions();
   const { maxTargets, ttl } = options;
-  if (kv.cas == null || maxTargets < 1) return [];
+  if (kv.cas == null) {
+    if (observation != null) {
+      await observation.skipped("forwarding-unavailable");
+    }
+    return [];
+  }
+  if (maxTargets < 1) {
+    if (observation != null) await observation.skipped("forwarding-disabled");
+    return [];
+  }
   // The deadline covers both identifying the sending gateway and, without
   // an outbox queue, forwarding:
   const deadline = Date.now() + options.deadline.total("millisecond");
+  observation?.setPhase("destination-planning");
   // A compatible activity ID is canonicalized too, so that its equivalent
   // representations share the same forwarding claims:
   const canonicalActivityId = getCanonicalPortableId(activityId) ??
@@ -362,9 +375,14 @@ export async function forwardPortableInboxActivity(
   for (const { gateway, inbox } of targets) {
     if (await kv.cas(claimKey(gateway), undefined, true, { ttl })) {
       claimed.push(inbox);
+      observation?.planDestination();
     }
   }
-  if (claimed.length < 1) return [];
+  observation?.planned(claimed.length);
+  if (claimed.length < 1) {
+    if (observation != null) await observation.skipped("no-forwarding-targets");
+    return [];
+  }
   logger.debug(
     "Forwarding activity {activityId} from the portable inbox {inbox} to " +
       "other gateways:\n{targets}",
@@ -375,9 +393,9 @@ export async function forwardPortableInboxActivity(
     },
   );
   if (outboxQueue == null) {
-    await forwardImmediately(parameters, claimed, deadline);
+    await forwardImmediately(parameters, claimed, deadline, observation);
   } else {
-    await enqueueForwarding(parameters, outboxQueue, claimed);
+    await enqueueForwarding(parameters, outboxQueue, claimed, observation);
   }
   return claimed;
 }
@@ -565,10 +583,11 @@ async function resolveForwardingKey(
   return key;
 }
 
-async function forwardImmediately(
+async function forwardImmediately<TContextData>(
   parameters: ForwardPortableInboxActivityParameters,
   inboxes: readonly URL[],
   deadlineAt: number,
+  observation?: OutboundBroadcastObservation<TContextData>,
 ): Promise<void> {
   const {
     activity,
@@ -582,27 +601,43 @@ async function forwardImmediately(
   const logger = getLogger(["fedify", "federation", "inbox"]);
   const deadline = Math.max(0, deadlineAt - Date.now());
   // The deadline also covers resolving the key, which may be slow:
-  const forwarding = resolveForwardingKey(parameters).then((key) =>
-    Promise.all(inboxes.map((inbox) =>
-      sendActivity({
-        activity,
-        activityId: activityId.href,
-        activityType,
-        keys: key == null ? [] : [key],
-        inbox,
-        allowPrivateAddress,
-        specDeterminer,
-        meterProvider,
-        tracerProvider,
-      }).catch((error) => {
-        logger.error(
-          "Failed to forward activity {activityId} to {inbox}; it will not " +
-            "be forwarded to the inbox again:\n{error}",
-          { activityId: activityId.href, inbox: inbox.href, error },
-        );
-      })
-    ))
-  );
+  observation?.setPhase("key-resolution");
+  const forwarding = (async () => {
+    try {
+      const key = await resolveForwardingKey(parameters);
+      observation?.setPhase("request-preparation");
+      const sending = inboxes.map((inbox) =>
+        sendActivity({
+          activity,
+          activityId: activityId.href,
+          activityType,
+          keys: key == null ? [] : [key],
+          inbox,
+          allowPrivateAddress,
+          specDeterminer,
+          meterProvider,
+          tracerProvider,
+        }).catch((error) => {
+          logger.error(
+            "Failed to forward activity {activityId} to {inbox}; it will not " +
+              "be forwarded to the inbox again:\n{error}",
+            { activityId: activityId.href, inbox: inbox.href, error },
+          );
+        })
+      );
+      if (observation != null) {
+        // A logging sink may throw while an earlier send settles. Retain its
+        // rejection until the preparation callback finishes and the sends join.
+        for (const promise of sending) promise.catch(() => {});
+        await observation.prepared("delivery");
+      }
+      await Promise.all(sending);
+    } catch (error) {
+      // Preparation can settle after the deadline has returned to the caller.
+      if (observation != null) await observation.failed(error);
+      throw error;
+    }
+  })();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timedOut = await Promise.race([
     forwarding.then(() => false),
@@ -620,10 +655,11 @@ async function forwardImmediately(
   }
 }
 
-async function enqueueForwarding(
+async function enqueueForwarding<TContextData>(
   parameters: ForwardPortableInboxActivityParameters,
   outboxQueue: MessageQueue,
   inboxes: readonly URL[],
+  observation?: OutboundBroadcastObservation<TContextData>,
 ): Promise<void> {
   const {
     activity,
@@ -634,6 +670,7 @@ async function enqueueForwarding(
     meterProvider,
   } = parameters;
   const logger = getLogger(["fedify", "federation", "inbox"]);
+  observation?.setPhase("key-resolution");
   const key = await resolveForwardingKey(parameters);
   const keys: SenderKeyJwkPair[] = [];
   if (key != null) {
@@ -650,10 +687,12 @@ async function enqueueForwarding(
       );
     }
   }
+  observation?.setPhase("request-preparation");
   startQueue?.();
   const started = new Date().toISOString();
   const traceContext: Record<string, string> = {};
   propagation.inject(context.active(), traceContext);
+  let preparedCount = 0;
   await Promise.all(inboxes.map(async (inbox) => {
     const message: OutboxMessage = {
       type: "outbox",
@@ -670,6 +709,11 @@ async function enqueueForwarding(
       headers: {},
       traceContext,
     };
+    if (observation != null && ++preparedCount === inboxes.length) {
+      // Earlier destinations may already be enqueuing; do not wait for their
+      // acceptance before reporting the last local message construction.
+      await observation.prepared("delivery");
+    }
     try {
       await outboxQueue.enqueue(message);
     } catch (error) {

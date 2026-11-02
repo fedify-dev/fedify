@@ -37,6 +37,10 @@ export class OutboundBroadcastObservation<TContextData> {
     this.#destinationCount = destinationCount;
   }
 
+  planDestination(): void {
+    this.#destinationCount++;
+  }
+
   prepared(preparedFor: "fanout" | "delivery"): Promise<void> {
     return this.#finish(Object.freeze({
       type: "prepared",
@@ -68,19 +72,23 @@ export class OutboundBroadcastObservation<TContextData> {
     try {
       return await send(this);
     } catch (error) {
-      const failure: PreparationFailure["failure"] = {
-        kind: this.#phase === "unknown" ? "unknown" : "local",
-        phase: this.#phase,
-        error,
-      };
-      await this.#finish(Object.freeze({
-        type: "failed",
-        failure: Object.freeze(failure),
-        planning: this.#planning,
-        plannedDestinationCount: this.#destinationCount,
-      }));
+      await this.failed(error);
       throw error;
     }
+  }
+
+  failed(error: unknown): Promise<void> {
+    const failure: PreparationFailure["failure"] = {
+      kind: this.#phase === "unknown" ? "unknown" : "local",
+      phase: this.#phase,
+      error,
+    };
+    return this.#finish(Object.freeze({
+      type: "failed",
+      failure: Object.freeze(failure),
+      planning: this.#planning,
+      plannedDestinationCount: this.#destinationCount,
+    }));
   }
 
   async #finish(result: OutboundPreparationResult): Promise<void> {

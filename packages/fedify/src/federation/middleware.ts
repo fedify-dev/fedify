@@ -4525,52 +4525,66 @@ export class FederationImpl<TContextData>
           onNotFound,
           portableInbox: {
             recipient,
-            forward: async (activity, activityId, activityType, signatures) => {
-              if (this.portableInboxForwarding.maxTargets < 1) return;
-              if (this.kv.cas == null) {
-                if (!this.#portableInboxForwardingWarned) {
-                  this.#portableInboxForwardingWarned = true;
-                  logger.warn(
-                    "Activities delivered to FEP-ef61 portable inboxes are not " +
-                      "forwarded to the other gateways, as the key–value store " +
-                      "does not support compare-and-swap (KvStore.cas()), which " +
-                      "is needed to forward each activity at most once.",
-                  );
-                }
-                return;
-              }
-              await forwardPortableInboxActivity({
-                recipient,
-                activity,
-                activityId,
-                activityType,
-                excludedOrigins,
-                baseUrl: context.origin,
-                kv: this.kv,
-                kvPrefix: this.kvPrefixes.portableInboxForwarding,
-                outboxQueue: this.outboxQueue,
-                startQueue: this.manuallyStartQueue
-                  ? undefined
-                  : () => this._startQueueInternal(contextData),
-                allowPrivateAddress: this.allowPrivateAddress,
-                getKeys: () =>
-                  this.#getPortableGatewayKeyPairs(
-                    context,
-                    identifier,
+            forward: (activity, activityId, activityType, signatures) =>
+              observeOutboundBroadcast(
+                context,
+                this.outboundObservers.onBroadcast,
+                async (observation) => {
+                  if (this.portableInboxForwarding.maxTargets < 1) {
+                    if (observation != null) {
+                      await observation.skipped("forwarding-disabled");
+                    }
+                    return;
+                  }
+                  if (this.kv.cas == null) {
+                    if (!this.#portableInboxForwardingWarned) {
+                      this.#portableInboxForwardingWarned = true;
+                      logger.warn(
+                        "Activities delivered to FEP-ef61 portable inboxes are not " +
+                          "forwarded to the other gateways, as the key–value store " +
+                          "does not support compare-and-swap (KvStore.cas()), which " +
+                          "is needed to forward each activity at most once.",
+                      );
+                    }
+                    if (observation != null) {
+                      await observation.skipped("forwarding-unavailable");
+                    }
+                    return;
+                  }
+                  await forwardPortableInboxActivity({
                     recipient,
-                  ),
-                specDeterminer: new KvSpecDeterminer(
-                  this.kv,
-                  this.kvPrefixes.httpMessageSignaturesSpec,
-                  this.firstKnock,
-                  { specTtl: this.httpMessageSignaturesSpecTtl },
-                ),
-                signatures,
-                options: this.portableInboxForwarding,
-                meterProvider: this.meterProvider,
-                tracerProvider: this.tracerProvider,
-              });
-            },
+                    activity,
+                    activityId,
+                    activityType,
+                    excludedOrigins,
+                    baseUrl: context.origin,
+                    kv: this.kv,
+                    kvPrefix: this.kvPrefixes.portableInboxForwarding,
+                    outboxQueue: this.outboxQueue,
+                    startQueue: this.manuallyStartQueue
+                      ? undefined
+                      : () => this._startQueueInternal(contextData),
+                    allowPrivateAddress: this.allowPrivateAddress,
+                    getKeys: () =>
+                      this.#getPortableGatewayKeyPairs(
+                        context,
+                        identifier,
+                        recipient,
+                      ),
+                    specDeterminer: new KvSpecDeterminer(
+                      this.kv,
+                      this.kvPrefixes.httpMessageSignaturesSpec,
+                      this.firstKnock,
+                      { specTtl: this.httpMessageSignaturesSpecTtl },
+                    ),
+                    signatures,
+                    options: this.portableInboxForwarding,
+                    meterProvider: this.meterProvider,
+                    tracerProvider: this.tracerProvider,
+                  }, observation);
+                },
+                "portable-replication",
+              ),
           },
         });
       },
