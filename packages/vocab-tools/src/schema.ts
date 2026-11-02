@@ -260,7 +260,23 @@ export type Context = Uri | EmbeddedContext | (Uri | EmbeddedContext)[];
 
 type Uri = "http://{string}" | "https://{string}";
 type EmbeddedContext = Record<string, TermDefinition>;
-type TermDefinition = Uri | Record<string, Uri | "@id">;
+type TermDefinition =
+  | Uri
+  | Record<string, Uri | "@id">
+  | ContainerTermDefinition;
+
+/**
+ * A term definition that carries a JSON-LD `@container` keyword.
+ *
+ * The JSON Schema in *schema.yaml* enforces this shape conditionally whenever
+ * an embedded context term has `@container`; the TypeScript union cannot
+ * express the conditional and serves only as a guide.
+ */
+interface ContainerTermDefinition {
+  "@id": string;
+  "@type"?: Uri | "@id";
+  "@container": "@set" | "@list";
+}
 
 /**
  * Type guard to check if a property is not functional (has pluralName).

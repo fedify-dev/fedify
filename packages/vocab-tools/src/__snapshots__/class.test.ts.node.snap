@@ -20021,7 +20021,8 @@ get licenses(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -31511,7 +31512,8 @@ deepCloneDescriptors.set(this.prototype, {
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -67038,7 +67040,8 @@ deepCloneDescriptors.set(this.prototype, {
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -68209,7 +68212,8 @@ const base = getDeepCloneDescriptor(this.prototype)!;
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -70063,6 +70067,7 @@ export class Application extends Object {
 #_2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended: (boolean)[] = [];
 #_79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial: (boolean)[] = [];
 #_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable: (boolean)[] = [];
+#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains: (string)[] = [];
 
       #_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: (Application | Group | Organization | Person | Service | URL)[] = [];
       #_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: VocabTrustSet = new Set();
@@ -70105,7 +70110,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 ,
@@ -70584,6 +70589,45 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         }
       
+        if (\\"attributionDomains\\" in values &&             values.attributionDomains != null) {
+      
+    let copied!: (string)[];
+    let valid = false;
+    if (Array.isArray(values.attributionDomains)) {
+      const array = values.attributionDomains;
+      const test = (v: string): boolean => typeof v === \\"string\\";
+      let checked: VocabArrayValidation | undefined;
+      if (array.length < vocabSparseArrayMinimumLength
+          ? array.every(test)
+          : (checked = vocabValidatePropertyArray(array, test)).valid) {
+        const input = values.attributionDomains;
+        if (input.length < vocabSparseArrayMinimumLength && !checked?.sparse) {
+          copied = input.slice();
+          valid = true;
+        } else {
+          const result = vocabCopyValidatedPropertyArray(
+            input, test, checked ?? { valid: true, sparse: false },
+          );
+          if (result.ok) {
+            copied = result.array;
+            valid = true;
+          }
+        }
+      }
+    }
+    if (valid) {
+
+            // @ts-ignore: type is checked above.
+            this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = copied;
+      
+          } else {
+            throw new TypeError(
+              \\"The attributionDomains must be an array of type \\" +
+              \\"string\\" + \\".\\",
+            );
+          }
+        }
+      
         if (\\"successor\\" in values &&             values.successor != null) {
           if (values.successor instanceof Application || values.successor instanceof Group || values.successor instanceof Organization || values.successor instanceof Person || values.successor instanceof Service || values.successor instanceof URL) {
             // @ts-ignore: type is checked above.
@@ -70812,7 +70856,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 
@@ -71352,6 +71396,46 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             );
           }
         }
+      clone.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length < vocabSparseArrayMinimumLength
+      ? this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.slice() : vocabCopyPropertyArray(this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains);
+        if (\\"attributionDomains\\" in values &&             values.attributionDomains != null) {
+      
+    let copied!: (string)[];
+    let valid = false;
+    if (Array.isArray(values.attributionDomains)) {
+      const array = values.attributionDomains;
+      const test = (v: string): boolean => typeof v === \\"string\\";
+      let checked: VocabArrayValidation | undefined;
+      if (array.length < vocabSparseArrayMinimumLength
+          ? array.every(test)
+          : (checked = vocabValidatePropertyArray(array, test)).valid) {
+        const input = values.attributionDomains;
+        if (input.length < vocabSparseArrayMinimumLength && !checked?.sparse) {
+          copied = input.slice();
+          valid = true;
+        } else {
+          const result = vocabCopyValidatedPropertyArray(
+            input, test, checked ?? { valid: true, sparse: false },
+          );
+          if (result.ok) {
+            copied = result.array;
+            valid = true;
+          }
+        }
+      }
+    }
+    if (valid) {
+
+            // @ts-ignore: type is checked above.
+            clone.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = copied;
+      
+          } else {
+            throw new TypeError(
+              \\"The attributionDomains must be an array of type \\" +
+              \\"string\\" + \\".\\",
+            );
+          }
+        }
       clone.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.length < vocabSparseArrayMinimumLength
       ? this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.slice() : vocabCopyPropertyArray(this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo);clone.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = vocabCopyTrustSet(
         this.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo, clone.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo,
@@ -71607,7 +71691,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 = {}, options: {
@@ -77179,6 +77263,17 @@ get gateways(): (URL)[] {
         return this.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable[0];
       }
       
+/** Domains this actor claims as its own, so that Mastodon can credit the
+ * actor on link preview cards that point at one of them.  Each value is a
+ * bare host name, without a scheme, port, path, or leading \`*.\`.  Fedify
+ * treats the values as opaque strings and does not normalize or validate
+ * them; applications are responsible for producing normalized host names.
+ * 
+ */
+get attributionDomains(): (string)[] {
+        return this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
+      }
+      
     async #fetchSuccessor(
       url: URL,
       options: {
@@ -79351,6 +79446,22 @@ get gateways(): (URL)[] {
       }
       
       compactItems = [];
+      for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+        const item = (
+      v
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result[\\"attributionDomains\\"]
+          = compactItems.length > 1
+          ? compactItems
+          : compactItems[0];
+        
+      }
+      
+      compactItems = [];
       for (const v of this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo) {
         const item = (
       retainedSignedValueRef(v, signedValues.scope) ?? (v instanceof URL ? formatIri(v) : v instanceof Application ? await v.toJsonLd({
@@ -79492,7 +79603,7 @@ get gateways(): (URL)[] {
       
       result[\\"type\\"] = \\"Application\\";
       if (this.id != null) result[\\"id\\"] = formatIri(this.id);
-      result[\\"@context\\"] = [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
+      result[\\"@context\\"] = [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"attributionDomains\\":{\\"@id\\":\\"toot:attributionDomains\\",\\"@container\\":\\"@set\\"},\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
       return signedValues.owner
         ? resolveSignedValues(result, signedValues.scope)
         : result;
@@ -79895,6 +80006,26 @@ get gateways(): (URL)[] {
     }
     
     array = [];
+    for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+      let element = (
+    { \\"@value\\": v }
+      );
+      if (Array.isArray(element)) {
+        if (element.length < 1) continue;
+        if (element.length == 1) element = element[0];
+      }
+      if (typeof element === \\"undefined\\") continue;
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    array
+      );
+      values[\\"http://joinmastodon.org/ns#attributionDomains\\"] = propValue;
+    
+    }
+    
+    array = [];
     for (const v of this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo) {
       let element = (
     retainedSignedValueRef(v, signedValues.scope) ?? (v instanceof URL ? { \\"@id\\": formatIri(v) } : v instanceof Application ? await v.toJsonLd(options) : v instanceof Group ? await v.toJsonLd(options) : v instanceof Organization ? await v.toJsonLd(options) : v instanceof Person ? await v.toJsonLd(options) : await v.toJsonLd(options))
@@ -80026,7 +80157,7 @@ get gateways(): (URL)[] {
       );
     }
     let docContext: Parameters<typeof jsonld.compact>[1] = options.context ??
-      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"attributionDomains\\":{\\"@id\\":\\"toot:attributionDomains\\",\\"@container\\":\\"@set\\"},\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
   
     if (options.context == null) {
       const currentContexts = Array.isArray(docContext) ? docContext : [docContext];
@@ -80937,6 +81068,36 @@ get gateways(): (URL)[] {
     
     }
     instance.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable;
+    const _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains: (string)[] = [];
+
+    let _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array = values[\\"http://joinmastodon.org/ns#attributionDomains\\"];
+    
+    for (
+      const v of _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array == null
+        ? []
+        : _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array.length === 1 && \\"@list\\" in _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array[0]
+        ? _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array[0][\\"@list\\"]
+        : _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded =
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
+      ;
+    
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
+    
+      if (!this._shouldCacheDecodedJsonLd(decoded)) {
+        shouldCacheJsonLd = false;
+      }
+      _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.push(decoded);
+    
+    }
+    instance.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
     
       const _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: (Application | Group | Organization | Person | Service | URL)[] = [];
       const _trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: VocabTrustSet = new Set();
@@ -81108,7 +81269,8 @@ get gateways(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -81617,6 +81779,28 @@ get gateways(): (URL)[] {
     
       if (_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.length == 1) {
         proxy.indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable[0];
+      }
+      
+      const _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for(\\"Deno.customInspect\\")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => \\"URL \\" + inspect(inspectIri(v), options),
+              [Symbol.for(\\"nodejs.util.inspect.custom\\")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => \\"URL \\" + inspect(inspectIri(v), options),
+            }
+          : v);
+    
+      if (_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length > 1
+          || !(\\"attributionDomain\\" in proxy)
+          && _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length > 0) {
+        proxy.attributionDomains = _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
       }
       
       const _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo
@@ -85473,7 +85657,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -94198,6 +94383,7 @@ export class Group extends Object {
 #_2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended: (boolean)[] = [];
 #_79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial: (boolean)[] = [];
 #_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable: (boolean)[] = [];
+#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains: (string)[] = [];
 
       #_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: (Application | Group | Organization | Person | Service | URL)[] = [];
       #_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: VocabTrustSet = new Set();
@@ -94240,7 +94426,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 ,
@@ -94719,6 +94905,45 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         }
       
+        if (\\"attributionDomains\\" in values &&             values.attributionDomains != null) {
+      
+    let copied!: (string)[];
+    let valid = false;
+    if (Array.isArray(values.attributionDomains)) {
+      const array = values.attributionDomains;
+      const test = (v: string): boolean => typeof v === \\"string\\";
+      let checked: VocabArrayValidation | undefined;
+      if (array.length < vocabSparseArrayMinimumLength
+          ? array.every(test)
+          : (checked = vocabValidatePropertyArray(array, test)).valid) {
+        const input = values.attributionDomains;
+        if (input.length < vocabSparseArrayMinimumLength && !checked?.sparse) {
+          copied = input.slice();
+          valid = true;
+        } else {
+          const result = vocabCopyValidatedPropertyArray(
+            input, test, checked ?? { valid: true, sparse: false },
+          );
+          if (result.ok) {
+            copied = result.array;
+            valid = true;
+          }
+        }
+      }
+    }
+    if (valid) {
+
+            // @ts-ignore: type is checked above.
+            this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = copied;
+      
+          } else {
+            throw new TypeError(
+              \\"The attributionDomains must be an array of type \\" +
+              \\"string\\" + \\".\\",
+            );
+          }
+        }
+      
         if (\\"successor\\" in values &&             values.successor != null) {
           if (values.successor instanceof Application || values.successor instanceof Group || values.successor instanceof Organization || values.successor instanceof Person || values.successor instanceof Service || values.successor instanceof URL) {
             // @ts-ignore: type is checked above.
@@ -94947,7 +95172,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 
@@ -95487,6 +95712,46 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             );
           }
         }
+      clone.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length < vocabSparseArrayMinimumLength
+      ? this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.slice() : vocabCopyPropertyArray(this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains);
+        if (\\"attributionDomains\\" in values &&             values.attributionDomains != null) {
+      
+    let copied!: (string)[];
+    let valid = false;
+    if (Array.isArray(values.attributionDomains)) {
+      const array = values.attributionDomains;
+      const test = (v: string): boolean => typeof v === \\"string\\";
+      let checked: VocabArrayValidation | undefined;
+      if (array.length < vocabSparseArrayMinimumLength
+          ? array.every(test)
+          : (checked = vocabValidatePropertyArray(array, test)).valid) {
+        const input = values.attributionDomains;
+        if (input.length < vocabSparseArrayMinimumLength && !checked?.sparse) {
+          copied = input.slice();
+          valid = true;
+        } else {
+          const result = vocabCopyValidatedPropertyArray(
+            input, test, checked ?? { valid: true, sparse: false },
+          );
+          if (result.ok) {
+            copied = result.array;
+            valid = true;
+          }
+        }
+      }
+    }
+    if (valid) {
+
+            // @ts-ignore: type is checked above.
+            clone.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = copied;
+      
+          } else {
+            throw new TypeError(
+              \\"The attributionDomains must be an array of type \\" +
+              \\"string\\" + \\".\\",
+            );
+          }
+        }
       clone.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.length < vocabSparseArrayMinimumLength
       ? this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.slice() : vocabCopyPropertyArray(this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo);clone.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = vocabCopyTrustSet(
         this.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo, clone.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo,
@@ -95742,7 +96007,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 = {}, options: {
@@ -101314,6 +101579,17 @@ get gateways(): (URL)[] {
         return this.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable[0];
       }
       
+/** Domains this actor claims as its own, so that Mastodon can credit the
+ * actor on link preview cards that point at one of them.  Each value is a
+ * bare host name, without a scheme, port, path, or leading \`*.\`.  Fedify
+ * treats the values as opaque strings and does not normalize or validate
+ * them; applications are responsible for producing normalized host names.
+ * 
+ */
+get attributionDomains(): (string)[] {
+        return this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
+      }
+      
     async #fetchSuccessor(
       url: URL,
       options: {
@@ -103486,6 +103762,22 @@ get gateways(): (URL)[] {
       }
       
       compactItems = [];
+      for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+        const item = (
+      v
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result[\\"attributionDomains\\"]
+          = compactItems.length > 1
+          ? compactItems
+          : compactItems[0];
+        
+      }
+      
+      compactItems = [];
       for (const v of this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo) {
         const item = (
       retainedSignedValueRef(v, signedValues.scope) ?? (v instanceof URL ? formatIri(v) : v instanceof Application ? await v.toJsonLd({
@@ -103627,7 +103919,7 @@ get gateways(): (URL)[] {
       
       result[\\"type\\"] = \\"Group\\";
       if (this.id != null) result[\\"id\\"] = formatIri(this.id);
-      result[\\"@context\\"] = [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
+      result[\\"@context\\"] = [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"attributionDomains\\":{\\"@id\\":\\"toot:attributionDomains\\",\\"@container\\":\\"@set\\"},\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
       return signedValues.owner
         ? resolveSignedValues(result, signedValues.scope)
         : result;
@@ -104030,6 +104322,26 @@ get gateways(): (URL)[] {
     }
     
     array = [];
+    for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+      let element = (
+    { \\"@value\\": v }
+      );
+      if (Array.isArray(element)) {
+        if (element.length < 1) continue;
+        if (element.length == 1) element = element[0];
+      }
+      if (typeof element === \\"undefined\\") continue;
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    array
+      );
+      values[\\"http://joinmastodon.org/ns#attributionDomains\\"] = propValue;
+    
+    }
+    
+    array = [];
     for (const v of this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo) {
       let element = (
     retainedSignedValueRef(v, signedValues.scope) ?? (v instanceof URL ? { \\"@id\\": formatIri(v) } : v instanceof Application ? await v.toJsonLd(options) : v instanceof Group ? await v.toJsonLd(options) : v instanceof Organization ? await v.toJsonLd(options) : v instanceof Person ? await v.toJsonLd(options) : await v.toJsonLd(options))
@@ -104161,7 +104473,7 @@ get gateways(): (URL)[] {
       );
     }
     let docContext: Parameters<typeof jsonld.compact>[1] = options.context ??
-      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"attributionDomains\\":{\\"@id\\":\\"toot:attributionDomains\\",\\"@container\\":\\"@set\\"},\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
   
     if (options.context == null) {
       const currentContexts = Array.isArray(docContext) ? docContext : [docContext];
@@ -105072,6 +105384,36 @@ get gateways(): (URL)[] {
     
     }
     instance.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable;
+    const _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains: (string)[] = [];
+
+    let _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array = values[\\"http://joinmastodon.org/ns#attributionDomains\\"];
+    
+    for (
+      const v of _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array == null
+        ? []
+        : _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array.length === 1 && \\"@list\\" in _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array[0]
+        ? _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array[0][\\"@list\\"]
+        : _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded =
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
+      ;
+    
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
+    
+      if (!this._shouldCacheDecodedJsonLd(decoded)) {
+        shouldCacheJsonLd = false;
+      }
+      _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.push(decoded);
+    
+    }
+    instance.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
     
       const _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: (Application | Group | Organization | Person | Service | URL)[] = [];
       const _trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: VocabTrustSet = new Set();
@@ -105243,7 +105585,8 @@ get gateways(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -105752,6 +106095,28 @@ get gateways(): (URL)[] {
     
       if (_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.length == 1) {
         proxy.indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable[0];
+      }
+      
+      const _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for(\\"Deno.customInspect\\")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => \\"URL \\" + inspect(inspectIri(v), options),
+              [Symbol.for(\\"nodejs.util.inspect.custom\\")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => \\"URL \\" + inspect(inspectIri(v), options),
+            }
+          : v);
+    
+      if (_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length > 1
+          || !(\\"attributionDomain\\" in proxy)
+          && _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length > 0) {
+        proxy.attributionDomains = _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
       }
       
       const _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo
@@ -108107,7 +108472,8 @@ get licenses(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -108136,7 +108502,8 @@ get licenses(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -108165,7 +108532,8 @@ get licenses(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -116966,6 +117334,7 @@ export class Organization extends Object {
 #_2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended: (boolean)[] = [];
 #_79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial: (boolean)[] = [];
 #_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable: (boolean)[] = [];
+#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains: (string)[] = [];
 
       #_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: (Application | Group | Organization | Person | Service | URL)[] = [];
       #_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: VocabTrustSet = new Set();
@@ -117008,7 +117377,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 ,
@@ -117487,6 +117856,45 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         }
       
+        if (\\"attributionDomains\\" in values &&             values.attributionDomains != null) {
+      
+    let copied!: (string)[];
+    let valid = false;
+    if (Array.isArray(values.attributionDomains)) {
+      const array = values.attributionDomains;
+      const test = (v: string): boolean => typeof v === \\"string\\";
+      let checked: VocabArrayValidation | undefined;
+      if (array.length < vocabSparseArrayMinimumLength
+          ? array.every(test)
+          : (checked = vocabValidatePropertyArray(array, test)).valid) {
+        const input = values.attributionDomains;
+        if (input.length < vocabSparseArrayMinimumLength && !checked?.sparse) {
+          copied = input.slice();
+          valid = true;
+        } else {
+          const result = vocabCopyValidatedPropertyArray(
+            input, test, checked ?? { valid: true, sparse: false },
+          );
+          if (result.ok) {
+            copied = result.array;
+            valid = true;
+          }
+        }
+      }
+    }
+    if (valid) {
+
+            // @ts-ignore: type is checked above.
+            this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = copied;
+      
+          } else {
+            throw new TypeError(
+              \\"The attributionDomains must be an array of type \\" +
+              \\"string\\" + \\".\\",
+            );
+          }
+        }
+      
         if (\\"successor\\" in values &&             values.successor != null) {
           if (values.successor instanceof Application || values.successor instanceof Group || values.successor instanceof Organization || values.successor instanceof Person || values.successor instanceof Service || values.successor instanceof URL) {
             // @ts-ignore: type is checked above.
@@ -117715,7 +118123,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 
@@ -118255,6 +118663,46 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             );
           }
         }
+      clone.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length < vocabSparseArrayMinimumLength
+      ? this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.slice() : vocabCopyPropertyArray(this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains);
+        if (\\"attributionDomains\\" in values &&             values.attributionDomains != null) {
+      
+    let copied!: (string)[];
+    let valid = false;
+    if (Array.isArray(values.attributionDomains)) {
+      const array = values.attributionDomains;
+      const test = (v: string): boolean => typeof v === \\"string\\";
+      let checked: VocabArrayValidation | undefined;
+      if (array.length < vocabSparseArrayMinimumLength
+          ? array.every(test)
+          : (checked = vocabValidatePropertyArray(array, test)).valid) {
+        const input = values.attributionDomains;
+        if (input.length < vocabSparseArrayMinimumLength && !checked?.sparse) {
+          copied = input.slice();
+          valid = true;
+        } else {
+          const result = vocabCopyValidatedPropertyArray(
+            input, test, checked ?? { valid: true, sparse: false },
+          );
+          if (result.ok) {
+            copied = result.array;
+            valid = true;
+          }
+        }
+      }
+    }
+    if (valid) {
+
+            // @ts-ignore: type is checked above.
+            clone.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = copied;
+      
+          } else {
+            throw new TypeError(
+              \\"The attributionDomains must be an array of type \\" +
+              \\"string\\" + \\".\\",
+            );
+          }
+        }
       clone.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.length < vocabSparseArrayMinimumLength
       ? this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.slice() : vocabCopyPropertyArray(this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo);clone.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = vocabCopyTrustSet(
         this.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo, clone.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo,
@@ -118510,7 +118958,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 = {}, options: {
@@ -124082,6 +124530,17 @@ get gateways(): (URL)[] {
         return this.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable[0];
       }
       
+/** Domains this actor claims as its own, so that Mastodon can credit the
+ * actor on link preview cards that point at one of them.  Each value is a
+ * bare host name, without a scheme, port, path, or leading \`*.\`.  Fedify
+ * treats the values as opaque strings and does not normalize or validate
+ * them; applications are responsible for producing normalized host names.
+ * 
+ */
+get attributionDomains(): (string)[] {
+        return this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
+      }
+      
     async #fetchSuccessor(
       url: URL,
       options: {
@@ -126254,6 +126713,22 @@ get gateways(): (URL)[] {
       }
       
       compactItems = [];
+      for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+        const item = (
+      v
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result[\\"attributionDomains\\"]
+          = compactItems.length > 1
+          ? compactItems
+          : compactItems[0];
+        
+      }
+      
+      compactItems = [];
       for (const v of this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo) {
         const item = (
       retainedSignedValueRef(v, signedValues.scope) ?? (v instanceof URL ? formatIri(v) : v instanceof Application ? await v.toJsonLd({
@@ -126395,7 +126870,7 @@ get gateways(): (URL)[] {
       
       result[\\"type\\"] = \\"Organization\\";
       if (this.id != null) result[\\"id\\"] = formatIri(this.id);
-      result[\\"@context\\"] = [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
+      result[\\"@context\\"] = [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"attributionDomains\\":{\\"@id\\":\\"toot:attributionDomains\\",\\"@container\\":\\"@set\\"},\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
       return signedValues.owner
         ? resolveSignedValues(result, signedValues.scope)
         : result;
@@ -126798,6 +127273,26 @@ get gateways(): (URL)[] {
     }
     
     array = [];
+    for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+      let element = (
+    { \\"@value\\": v }
+      );
+      if (Array.isArray(element)) {
+        if (element.length < 1) continue;
+        if (element.length == 1) element = element[0];
+      }
+      if (typeof element === \\"undefined\\") continue;
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    array
+      );
+      values[\\"http://joinmastodon.org/ns#attributionDomains\\"] = propValue;
+    
+    }
+    
+    array = [];
     for (const v of this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo) {
       let element = (
     retainedSignedValueRef(v, signedValues.scope) ?? (v instanceof URL ? { \\"@id\\": formatIri(v) } : v instanceof Application ? await v.toJsonLd(options) : v instanceof Group ? await v.toJsonLd(options) : v instanceof Organization ? await v.toJsonLd(options) : v instanceof Person ? await v.toJsonLd(options) : await v.toJsonLd(options))
@@ -126929,7 +127424,7 @@ get gateways(): (URL)[] {
       );
     }
     let docContext: Parameters<typeof jsonld.compact>[1] = options.context ??
-      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"attributionDomains\\":{\\"@id\\":\\"toot:attributionDomains\\",\\"@container\\":\\"@set\\"},\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
   
     if (options.context == null) {
       const currentContexts = Array.isArray(docContext) ? docContext : [docContext];
@@ -127840,6 +128335,36 @@ get gateways(): (URL)[] {
     
     }
     instance.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable;
+    const _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains: (string)[] = [];
+
+    let _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array = values[\\"http://joinmastodon.org/ns#attributionDomains\\"];
+    
+    for (
+      const v of _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array == null
+        ? []
+        : _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array.length === 1 && \\"@list\\" in _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array[0]
+        ? _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array[0][\\"@list\\"]
+        : _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded =
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
+      ;
+    
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
+    
+      if (!this._shouldCacheDecodedJsonLd(decoded)) {
+        shouldCacheJsonLd = false;
+      }
+      _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.push(decoded);
+    
+    }
+    instance.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
     
       const _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: (Application | Group | Organization | Person | Service | URL)[] = [];
       const _trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: VocabTrustSet = new Set();
@@ -128011,7 +128536,8 @@ get gateways(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -128520,6 +129046,28 @@ get gateways(): (URL)[] {
     
       if (_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.length == 1) {
         proxy.indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable[0];
+      }
+      
+      const _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for(\\"Deno.customInspect\\")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => \\"URL \\" + inspect(inspectIri(v), options),
+              [Symbol.for(\\"nodejs.util.inspect.custom\\")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => \\"URL \\" + inspect(inspectIri(v), options),
+            }
+          : v);
+    
+      if (_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length > 1
+          || !(\\"attributionDomain\\" in proxy)
+          && _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length > 0) {
+        proxy.attributionDomains = _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
       }
       
       const _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo
@@ -129247,6 +129795,7 @@ export class Person extends Object {
 #_2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended: (boolean)[] = [];
 #_79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial: (boolean)[] = [];
 #_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable: (boolean)[] = [];
+#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains: (string)[] = [];
 
       #_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: (Application | Group | Organization | Person | Service | URL)[] = [];
       #_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: VocabTrustSet = new Set();
@@ -129289,7 +129838,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 ,
@@ -129768,6 +130317,45 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         }
       
+        if (\\"attributionDomains\\" in values &&             values.attributionDomains != null) {
+      
+    let copied!: (string)[];
+    let valid = false;
+    if (Array.isArray(values.attributionDomains)) {
+      const array = values.attributionDomains;
+      const test = (v: string): boolean => typeof v === \\"string\\";
+      let checked: VocabArrayValidation | undefined;
+      if (array.length < vocabSparseArrayMinimumLength
+          ? array.every(test)
+          : (checked = vocabValidatePropertyArray(array, test)).valid) {
+        const input = values.attributionDomains;
+        if (input.length < vocabSparseArrayMinimumLength && !checked?.sparse) {
+          copied = input.slice();
+          valid = true;
+        } else {
+          const result = vocabCopyValidatedPropertyArray(
+            input, test, checked ?? { valid: true, sparse: false },
+          );
+          if (result.ok) {
+            copied = result.array;
+            valid = true;
+          }
+        }
+      }
+    }
+    if (valid) {
+
+            // @ts-ignore: type is checked above.
+            this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = copied;
+      
+          } else {
+            throw new TypeError(
+              \\"The attributionDomains must be an array of type \\" +
+              \\"string\\" + \\".\\",
+            );
+          }
+        }
+      
         if (\\"successor\\" in values &&             values.successor != null) {
           if (values.successor instanceof Application || values.successor instanceof Group || values.successor instanceof Organization || values.successor instanceof Person || values.successor instanceof Service || values.successor instanceof URL) {
             // @ts-ignore: type is checked above.
@@ -129996,7 +130584,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 
@@ -130536,6 +131124,46 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             );
           }
         }
+      clone.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length < vocabSparseArrayMinimumLength
+      ? this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.slice() : vocabCopyPropertyArray(this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains);
+        if (\\"attributionDomains\\" in values &&             values.attributionDomains != null) {
+      
+    let copied!: (string)[];
+    let valid = false;
+    if (Array.isArray(values.attributionDomains)) {
+      const array = values.attributionDomains;
+      const test = (v: string): boolean => typeof v === \\"string\\";
+      let checked: VocabArrayValidation | undefined;
+      if (array.length < vocabSparseArrayMinimumLength
+          ? array.every(test)
+          : (checked = vocabValidatePropertyArray(array, test)).valid) {
+        const input = values.attributionDomains;
+        if (input.length < vocabSparseArrayMinimumLength && !checked?.sparse) {
+          copied = input.slice();
+          valid = true;
+        } else {
+          const result = vocabCopyValidatedPropertyArray(
+            input, test, checked ?? { valid: true, sparse: false },
+          );
+          if (result.ok) {
+            copied = result.array;
+            valid = true;
+          }
+        }
+      }
+    }
+    if (valid) {
+
+            // @ts-ignore: type is checked above.
+            clone.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = copied;
+      
+          } else {
+            throw new TypeError(
+              \\"The attributionDomains must be an array of type \\" +
+              \\"string\\" + \\".\\",
+            );
+          }
+        }
       clone.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.length < vocabSparseArrayMinimumLength
       ? this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.slice() : vocabCopyPropertyArray(this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo);clone.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = vocabCopyTrustSet(
         this.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo, clone.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo,
@@ -130791,7 +131419,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 = {}, options: {
@@ -136363,6 +136991,17 @@ get gateways(): (URL)[] {
         return this.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable[0];
       }
       
+/** Domains this actor claims as its own, so that Mastodon can credit the
+ * actor on link preview cards that point at one of them.  Each value is a
+ * bare host name, without a scheme, port, path, or leading \`*.\`.  Fedify
+ * treats the values as opaque strings and does not normalize or validate
+ * them; applications are responsible for producing normalized host names.
+ * 
+ */
+get attributionDomains(): (string)[] {
+        return this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
+      }
+      
     async #fetchSuccessor(
       url: URL,
       options: {
@@ -138535,6 +139174,22 @@ get gateways(): (URL)[] {
       }
       
       compactItems = [];
+      for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+        const item = (
+      v
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result[\\"attributionDomains\\"]
+          = compactItems.length > 1
+          ? compactItems
+          : compactItems[0];
+        
+      }
+      
+      compactItems = [];
       for (const v of this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo) {
         const item = (
       retainedSignedValueRef(v, signedValues.scope) ?? (v instanceof URL ? formatIri(v) : v instanceof Application ? await v.toJsonLd({
@@ -138676,7 +139331,7 @@ get gateways(): (URL)[] {
       
       result[\\"type\\"] = \\"Person\\";
       if (this.id != null) result[\\"id\\"] = formatIri(this.id);
-      result[\\"@context\\"] = [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
+      result[\\"@context\\"] = [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"attributionDomains\\":{\\"@id\\":\\"toot:attributionDomains\\",\\"@container\\":\\"@set\\"},\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
       return signedValues.owner
         ? resolveSignedValues(result, signedValues.scope)
         : result;
@@ -139079,6 +139734,26 @@ get gateways(): (URL)[] {
     }
     
     array = [];
+    for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+      let element = (
+    { \\"@value\\": v }
+      );
+      if (Array.isArray(element)) {
+        if (element.length < 1) continue;
+        if (element.length == 1) element = element[0];
+      }
+      if (typeof element === \\"undefined\\") continue;
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    array
+      );
+      values[\\"http://joinmastodon.org/ns#attributionDomains\\"] = propValue;
+    
+    }
+    
+    array = [];
     for (const v of this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo) {
       let element = (
     retainedSignedValueRef(v, signedValues.scope) ?? (v instanceof URL ? { \\"@id\\": formatIri(v) } : v instanceof Application ? await v.toJsonLd(options) : v instanceof Group ? await v.toJsonLd(options) : v instanceof Organization ? await v.toJsonLd(options) : v instanceof Person ? await v.toJsonLd(options) : await v.toJsonLd(options))
@@ -139210,7 +139885,7 @@ get gateways(): (URL)[] {
       );
     }
     let docContext: Parameters<typeof jsonld.compact>[1] = options.context ??
-      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"attributionDomains\\":{\\"@id\\":\\"toot:attributionDomains\\",\\"@container\\":\\"@set\\"},\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
   
     if (options.context == null) {
       const currentContexts = Array.isArray(docContext) ? docContext : [docContext];
@@ -140121,6 +140796,36 @@ get gateways(): (URL)[] {
     
     }
     instance.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable;
+    const _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains: (string)[] = [];
+
+    let _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array = values[\\"http://joinmastodon.org/ns#attributionDomains\\"];
+    
+    for (
+      const v of _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array == null
+        ? []
+        : _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array.length === 1 && \\"@list\\" in _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array[0]
+        ? _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array[0][\\"@list\\"]
+        : _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded =
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
+      ;
+    
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
+    
+      if (!this._shouldCacheDecodedJsonLd(decoded)) {
+        shouldCacheJsonLd = false;
+      }
+      _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.push(decoded);
+    
+    }
+    instance.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
     
       const _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: (Application | Group | Organization | Person | Service | URL)[] = [];
       const _trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: VocabTrustSet = new Set();
@@ -140292,7 +140997,8 @@ get gateways(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -140801,6 +141507,28 @@ get gateways(): (URL)[] {
     
       if (_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.length == 1) {
         proxy.indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable[0];
+      }
+      
+      const _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for(\\"Deno.customInspect\\")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => \\"URL \\" + inspect(inspectIri(v), options),
+              [Symbol.for(\\"nodejs.util.inspect.custom\\")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => \\"URL \\" + inspect(inspectIri(v), options),
+            }
+          : v);
+    
+      if (_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length > 1
+          || !(\\"attributionDomain\\" in proxy)
+          && _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length > 0) {
+        proxy.attributionDomains = _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
       }
       
       const _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo
@@ -151093,6 +151821,7 @@ export class Service extends Object {
 #_2kGKkJtoFWg8c18PaVSqj9NKP4t7_suspended: (boolean)[] = [];
 #_79S8K4f5J9MWUgCxziRyUe6PTHZ_memorial: (boolean)[] = [];
 #_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable: (boolean)[] = [];
+#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains: (string)[] = [];
 
       #_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: (Application | Group | Organization | Person | Service | URL)[] = [];
       #_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: VocabTrustSet = new Set();
@@ -151135,7 +151864,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 ,
@@ -151614,6 +152343,45 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         }
       
+        if (\\"attributionDomains\\" in values &&             values.attributionDomains != null) {
+      
+    let copied!: (string)[];
+    let valid = false;
+    if (Array.isArray(values.attributionDomains)) {
+      const array = values.attributionDomains;
+      const test = (v: string): boolean => typeof v === \\"string\\";
+      let checked: VocabArrayValidation | undefined;
+      if (array.length < vocabSparseArrayMinimumLength
+          ? array.every(test)
+          : (checked = vocabValidatePropertyArray(array, test)).valid) {
+        const input = values.attributionDomains;
+        if (input.length < vocabSparseArrayMinimumLength && !checked?.sparse) {
+          copied = input.slice();
+          valid = true;
+        } else {
+          const result = vocabCopyValidatedPropertyArray(
+            input, test, checked ?? { valid: true, sparse: false },
+          );
+          if (result.ok) {
+            copied = result.array;
+            valid = true;
+          }
+        }
+      }
+    }
+    if (valid) {
+
+            // @ts-ignore: type is checked above.
+            this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = copied;
+      
+          } else {
+            throw new TypeError(
+              \\"The attributionDomains must be an array of type \\" +
+              \\"string\\" + \\".\\",
+            );
+          }
+        }
+      
         if (\\"successor\\" in values &&             values.successor != null) {
           if (values.successor instanceof Application || values.successor instanceof Group || values.successor instanceof Organization || values.successor instanceof Person || values.successor instanceof Service || values.successor instanceof URL) {
             // @ts-ignore: type is checked above.
@@ -151842,7 +152610,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 
@@ -152382,6 +153150,46 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             );
           }
         }
+      clone.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length < vocabSparseArrayMinimumLength
+      ? this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.slice() : vocabCopyPropertyArray(this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains);
+        if (\\"attributionDomains\\" in values &&             values.attributionDomains != null) {
+      
+    let copied!: (string)[];
+    let valid = false;
+    if (Array.isArray(values.attributionDomains)) {
+      const array = values.attributionDomains;
+      const test = (v: string): boolean => typeof v === \\"string\\";
+      let checked: VocabArrayValidation | undefined;
+      if (array.length < vocabSparseArrayMinimumLength
+          ? array.every(test)
+          : (checked = vocabValidatePropertyArray(array, test)).valid) {
+        const input = values.attributionDomains;
+        if (input.length < vocabSparseArrayMinimumLength && !checked?.sparse) {
+          copied = input.slice();
+          valid = true;
+        } else {
+          const result = vocabCopyValidatedPropertyArray(
+            input, test, checked ?? { valid: true, sparse: false },
+          );
+          if (result.ok) {
+            copied = result.array;
+            valid = true;
+          }
+        }
+      }
+    }
+    if (valid) {
+
+            // @ts-ignore: type is checked above.
+            clone.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = copied;
+      
+          } else {
+            throw new TypeError(
+              \\"The attributionDomains must be an array of type \\" +
+              \\"string\\" + \\".\\",
+            );
+          }
+        }
       clone.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.length < vocabSparseArrayMinimumLength
       ? this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.slice() : vocabCopyPropertyArray(this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo);clone.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = vocabCopyTrustSet(
         this.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo, clone.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo,
@@ -152637,7 +153445,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
 assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
-gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;attributionDomains?: (string)[];successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;preferredLicense?: URL | null;}
 = {}, options: {
@@ -158209,6 +159017,17 @@ get gateways(): (URL)[] {
         return this.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable[0];
       }
       
+/** Domains this actor claims as its own, so that Mastodon can credit the
+ * actor on link preview cards that point at one of them.  Each value is a
+ * bare host name, without a scheme, port, path, or leading \`*.\`.  Fedify
+ * treats the values as opaque strings and does not normalize or validate
+ * them; applications are responsible for producing normalized host names.
+ * 
+ */
+get attributionDomains(): (string)[] {
+        return this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
+      }
+      
     async #fetchSuccessor(
       url: URL,
       options: {
@@ -160381,6 +161200,22 @@ get gateways(): (URL)[] {
       }
       
       compactItems = [];
+      for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+        const item = (
+      v
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result[\\"attributionDomains\\"]
+          = compactItems.length > 1
+          ? compactItems
+          : compactItems[0];
+        
+      }
+      
+      compactItems = [];
       for (const v of this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo) {
         const item = (
       retainedSignedValueRef(v, signedValues.scope) ?? (v instanceof URL ? formatIri(v) : v instanceof Application ? await v.toJsonLd({
@@ -160522,7 +161357,7 @@ get gateways(): (URL)[] {
       
       result[\\"type\\"] = \\"Service\\";
       if (this.id != null) result[\\"id\\"] = formatIri(this.id);
-      result[\\"@context\\"] = [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
+      result[\\"@context\\"] = [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"attributionDomains\\":{\\"@id\\":\\"toot:attributionDomains\\",\\"@container\\":\\"@set\\"},\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
       return signedValues.owner
         ? resolveSignedValues(result, signedValues.scope)
         : result;
@@ -160925,6 +161760,26 @@ get gateways(): (URL)[] {
     }
     
     array = [];
+    for (const v of this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains) {
+      let element = (
+    { \\"@value\\": v }
+      );
+      if (Array.isArray(element)) {
+        if (element.length < 1) continue;
+        if (element.length == 1) element = element[0];
+      }
+      if (typeof element === \\"undefined\\") continue;
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    array
+      );
+      values[\\"http://joinmastodon.org/ns#attributionDomains\\"] = propValue;
+    
+    }
+    
+    array = [];
     for (const v of this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo) {
       let element = (
     retainedSignedValueRef(v, signedValues.scope) ?? (v instanceof URL ? { \\"@id\\": formatIri(v) } : v instanceof Application ? await v.toJsonLd(options) : v instanceof Group ? await v.toJsonLd(options) : v instanceof Organization ? await v.toJsonLd(options) : v instanceof Person ? await v.toJsonLd(options) : await v.toJsonLd(options))
@@ -161056,7 +161911,7 @@ get gateways(): (URL)[] {
       );
     }
     let docContext: Parameters<typeof jsonld.compact>[1] = options.context ??
-      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
+      [\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/fep/ef61\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",\\"https://w3id.org/fep/7aa9\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"featuredCollections\\":{\\"@id\\":\\"https://w3id.org/fep/7aa9#featuredCollections\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"Emoji\\":\\"toot:Emoji\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"attributionDomains\\":{\\"@id\\":\\"toot:attributionDomains\\",\\"@container\\":\\"@set\\"},\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\"}];
   
     if (options.context == null) {
       const currentContexts = Array.isArray(docContext) ? docContext : [docContext];
@@ -161967,6 +162822,36 @@ get gateways(): (URL)[] {
     
     }
     instance.#_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable;
+    const _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains: (string)[] = [];
+
+    let _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array = values[\\"http://joinmastodon.org/ns#attributionDomains\\"];
+    
+    for (
+      const v of _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array == null
+        ? []
+        : _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array.length === 1 && \\"@list\\" in _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array[0]
+        ? _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array[0][\\"@list\\"]
+        : _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded =
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
+      ;
+    
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
+    
+      if (!this._shouldCacheDecodedJsonLd(decoded)) {
+        shouldCacheJsonLd = false;
+      }
+      _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.push(decoded);
+    
+    }
+    instance.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
     
       const _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: (Application | Group | Organization | Person | Service | URL)[] = [];
       const _trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo: VocabTrustSet = new Set();
@@ -162138,7 +163023,8 @@ get gateways(): (URL)[] {
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -162647,6 +163533,28 @@ get gateways(): (URL)[] {
     
       if (_2diCorzqPGQQqftp6e4SrCEwEnyk_indexable.length == 1) {
         proxy.indexable = _2diCorzqPGQQqftp6e4SrCEwEnyk_indexable[0];
+      }
+      
+      const _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains = this.#_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for(\\"Deno.customInspect\\")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => \\"URL \\" + inspect(inspectIri(v), options),
+              [Symbol.for(\\"nodejs.util.inspect.custom\\")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => \\"URL \\" + inspect(inspectIri(v), options),
+            }
+          : v);
+    
+      if (_4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length > 1
+          || !(\\"attributionDomain\\" in proxy)
+          && _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains.length > 0) {
+        proxy.attributionDomains = _4QMetaJKCxkz7wX64M2TuXRgNjB6_attributionDomains;
       }
       
       const _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo
@@ -163613,7 +164521,8 @@ get contents(): ((string | LanguageString))[] {
       if (v == null) continue;
     
       const decoded =
-    v[\\"@value\\"]
+    typeof v === \\"object\\" && \\"@value\\" in v
+        && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : undefined
       ;
     
       if (typeof decoded === \\"undefined\\") {
@@ -166995,7 +167904,7 @@ instruments?: (Object | URL)[];}
       );
     }
     let docContext: Parameters<typeof jsonld.compact>[1] = options.context ??
-      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"sensitive\\":\\"as:sensitive\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"quoteUrl\\":\\"as:quoteUrl\\",\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"votersCount\\":{\\"@id\\":\\"toot:votersCount\\",\\"@type\\":\\"http://www.w3.org/2001/XMLSchema#nonNegativeInteger\\"},\\"Emoji\\":\\"toot:Emoji\\",\\"Hashtag\\":\\"as:Hashtag\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"ChatMessage\\":\\"http://litepub.social/ns#ChatMessage\\",\\"quote\\":{\\"@id\\":\\"https://w3id.org/fep/044f#quote\\",\\"@type\\":\\"@id\\"},\\"fedibird\\":\\"http://fedibird.com/ns#\\",\\"quoteUri\\":\\"fedibird:quoteUri\\",\\"QuoteAuthorization\\":\\"https://w3id.org/fep/044f#QuoteAuthorization\\",\\"QuoteRequest\\":\\"https://w3id.org/fep/044f#QuoteRequest\\",\\"quoteAuthorization\\":{\\"@id\\":\\"https://w3id.org/fep/044f#quoteAuthorization\\",\\"@type\\":\\"@id\\"},\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_quote\\":\\"misskey:_misskey_quote\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\",\\"emojiReactions\\":{\\"@id\\":\\"fedibird:emojiReactions\\",\\"@type\\":\\"@id\\"}}];
+      [\\"https://w3id.org/identity/v1\\",\\"https://www.w3.org/ns/activitystreams\\",\\"https://w3id.org/security/v1\\",\\"https://w3id.org/security/data-integrity/v1\\",\\"https://www.w3.org/ns/did/v1\\",\\"https://w3id.org/security/multikey/v1\\",\\"https://gotosocial.org/ns\\",{\\"alsoKnownAs\\":{\\"@id\\":\\"as:alsoKnownAs\\",\\"@type\\":\\"@id\\"},\\"manuallyApprovesFollowers\\":\\"as:manuallyApprovesFollowers\\",\\"sensitive\\":\\"as:sensitive\\",\\"movedTo\\":{\\"@id\\":\\"as:movedTo\\",\\"@type\\":\\"@id\\"},\\"quoteUrl\\":\\"as:quoteUrl\\",\\"toot\\":\\"http://joinmastodon.org/ns#\\",\\"featured\\":{\\"@id\\":\\"toot:featured\\",\\"@type\\":\\"@id\\"},\\"featuredTags\\":{\\"@id\\":\\"toot:featuredTags\\",\\"@type\\":\\"@id\\"},\\"discoverable\\":\\"toot:discoverable\\",\\"suspended\\":\\"toot:suspended\\",\\"memorial\\":\\"toot:memorial\\",\\"indexable\\":\\"toot:indexable\\",\\"attributionDomains\\":{\\"@id\\":\\"toot:attributionDomains\\",\\"@container\\":\\"@set\\"},\\"votersCount\\":{\\"@id\\":\\"toot:votersCount\\",\\"@type\\":\\"http://www.w3.org/2001/XMLSchema#nonNegativeInteger\\"},\\"Emoji\\":\\"toot:Emoji\\",\\"Hashtag\\":\\"as:Hashtag\\",\\"schema\\":\\"http://schema.org#\\",\\"PropertyValue\\":\\"schema:PropertyValue\\",\\"value\\":\\"schema:value\\",\\"ChatMessage\\":\\"http://litepub.social/ns#ChatMessage\\",\\"quote\\":{\\"@id\\":\\"https://w3id.org/fep/044f#quote\\",\\"@type\\":\\"@id\\"},\\"fedibird\\":\\"http://fedibird.com/ns#\\",\\"quoteUri\\":\\"fedibird:quoteUri\\",\\"QuoteAuthorization\\":\\"https://w3id.org/fep/044f#QuoteAuthorization\\",\\"QuoteRequest\\":\\"https://w3id.org/fep/044f#QuoteRequest\\",\\"quoteAuthorization\\":{\\"@id\\":\\"https://w3id.org/fep/044f#quoteAuthorization\\",\\"@type\\":\\"@id\\"},\\"misskey\\":\\"https://misskey-hub.net/ns#\\",\\"_misskey_quote\\":\\"misskey:_misskey_quote\\",\\"_misskey_followedMessage\\":\\"misskey:_misskey_followedMessage\\",\\"isCat\\":\\"misskey:isCat\\",\\"emojiReactions\\":{\\"@id\\":\\"fedibird:emojiReactions\\",\\"@type\\":\\"@id\\"}}];
   
     if (options.context == null) {
       const currentContexts = Array.isArray(docContext) ? docContext : [docContext];

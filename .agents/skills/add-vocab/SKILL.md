@@ -125,6 +125,11 @@ Embedded context entries are YAML mappings where:
  -  String value `"prefix:term"` or `"https://..."` defines a simple term alias
  -  Object value with `"@id"` and optionally `"@type": "@id"` defines a term
     that should be treated as an IRI (linked resource)
+ -  Object value may also carry `"@container": "@set"` or
+    `"@container": "@list"` to match a vocabulary whose context defines a
+    container.  A context term's `@container` is separate from the
+    property-level `container: list` option, which controls how the compact
+    serializer writes list values.
 
 ### Ensuring complete compaction coverage
 

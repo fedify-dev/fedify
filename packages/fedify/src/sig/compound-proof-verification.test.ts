@@ -795,6 +795,28 @@ test("verifyCompoundPortableObjectProofs() exempts keys embedded in portable act
   assert(result.status === "ok");
   assert(result.verified);
   assertEquals(result.portableObjects.map((o) => o.path), [""]);
+  // A parent context may carry a "@set" container term without making the
+  // keys ambiguous:
+  const actorWithSetTerm = await compatibleActor();
+  result = await verifyCompoundPortableObjectProofs(
+    await signCompatible({
+      ...actorWithSetTerm,
+      "@context": [
+        ...actorWithSetTerm["@context"] as unknown[],
+        {
+          tags: {
+            "@id": "https://example.com/tags",
+            "@container": "@set",
+          },
+        },
+      ],
+    }),
+    limits,
+    options,
+  );
+  assert(result.status === "ok");
+  assert(result.verified);
+  assertEquals(result.portableObjects.map((o) => o.path), [""]);
   // An ap: actor with gateway keys at compatible identifiers, as Fedify's
   // own portable actors have:
   result = await verifyCompoundPortableObjectProofs(
@@ -861,6 +883,18 @@ test("verifyCompoundPortableObjectProofs() exempts only keys of the parent itsel
       "@context": [
         ...actor["@context"] as unknown[],
         { kind: "@type" },
+      ],
+    },
+    "a parent context with a list container": {
+      ...actor,
+      "@context": [
+        ...actor["@context"] as unknown[],
+        {
+          tags: {
+            "@id": "https://example.com/tags",
+            "@container": "@list",
+          },
+        },
       ],
     },
     "a key with a scoped context": {

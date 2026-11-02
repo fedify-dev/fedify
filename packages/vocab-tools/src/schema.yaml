@@ -228,16 +228,44 @@ $defs:
         $ref: "#/$defs/ldTermDefinition"
 
   ldTermDefinition:
-    anyOf:
-    - type: string
-      format: uri
-    - type: object
-      patternProperties:
-        "^.+$":
-          anyOf:
-          - type: string
-            format: uri
-          - const: "@id"
+    allOf:
+    - anyOf:
+      - type: string
+        format: uri
+      - type: object
+        patternProperties:
+          "^.+$":
+            anyOf:
+            - type: string
+              format: uri
+            - const: "@id"
+      - $ref: "#/$defs/ldContainerTermDefinition"
+    - if:
+        type: object
+        required:
+        - "@container"
+      then:
+        $ref: "#/$defs/ldContainerTermDefinition"
+
+  ldContainerTermDefinition:
+    type: object
+    properties:
+      "@id":
+        type: string
+        format: uri
+      "@type":
+        anyOf:
+        - type: string
+          format: uri
+        - const: "@id"
+      "@container":
+        enum:
+        - "@set"
+        - "@list"
+    required:
+    - "@id"
+    - "@container"
+    additionalProperties: false
 
 description: The schema of a type.  It is used to generate a class.
 type: object

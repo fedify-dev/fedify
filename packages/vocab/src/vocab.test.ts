@@ -2527,6 +2527,10 @@ test("Person.toJsonLd()", async () => {
           "@id": "toot:featuredTags",
           "@type": "@id",
         },
+        attributionDomains: {
+          "@id": "toot:attributionDomains",
+          "@container": "@set",
+        },
         indexable: "toot:indexable",
         _misskey_followedMessage: "misskey:_misskey_followedMessage",
         isCat: "misskey:isCat",
@@ -3305,6 +3309,10 @@ test("InteractionPolicy.canFeature", async () => {
         featuredTags: {
           "@id": "toot:featuredTags",
           "@type": "@id",
+        },
+        attributionDomains: {
+          "@id": "toot:attributionDomains",
+          "@container": "@set",
         },
         indexable: "toot:indexable",
         isCat: "misskey:isCat",

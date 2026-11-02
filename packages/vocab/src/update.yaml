@@ -38,6 +38,9 @@ defaultContext:
   suspended: "toot:suspended"
   memorial: "toot:memorial"
   indexable: "toot:indexable"
+  attributionDomains:
+    "@id": "toot:attributionDomains"
+    "@container": "@set"
   votersCount:
     "@id": "toot:votersCount"
     "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger"

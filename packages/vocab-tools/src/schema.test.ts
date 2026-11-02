@@ -317,3 +317,75 @@ test("loadSchemaFiles validates redundant properties on both property kinds", as
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("loadSchemaFiles validates context container terms", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-schema-context-"));
+  const uri = "https://example.com/Fixture";
+  const type = {
+    name: "Fixture",
+    uri,
+    entity: false,
+    description: "A fixture.",
+    properties: [],
+  };
+  const writeTerm = (term: unknown) =>
+    writeFile(
+      join(dir, "fixture.yaml"),
+      stringify({ ...type, defaultContext: [{ term }] }),
+    );
+  try {
+    for (const container of ["@set", "@list"]) {
+      await writeTerm({
+        "@id": "toot:attributionDomains",
+        "@container": container,
+      });
+      const types = await loadSchemaFiles(dir);
+      deepStrictEqual(types[uri].defaultContext, [{
+        term: {
+          "@id": "toot:attributionDomains",
+          "@container": container,
+        },
+      }]);
+    }
+
+    await writeTerm({
+      "@id": "toot:attributionDomains",
+      "@type": "@id",
+      "@container": "@set",
+    });
+    const withType = await loadSchemaFiles(dir);
+    deepStrictEqual(withType[uri].defaultContext, [{
+      term: {
+        "@id": "toot:attributionDomains",
+        "@type": "@id",
+        "@container": "@set",
+      },
+    }]);
+
+    // The pre-existing object term shape must keep validating:
+    await writeTerm({ "@type": "@id" });
+    await loadSchemaFiles(dir);
+
+    for (
+      const invalid of [
+        { "@id": "toot:attributionDomains", "@container": "@id" },
+        {
+          "@id": "toot:attributionDomains",
+          "@container": "https://example.com/bogus",
+        },
+        { "@id": "toot:attributionDomains", "@container": "@bogus" },
+        {
+          "@id": "toot:attributionDomains",
+          "@container": "@set",
+          "@unknown": "@set",
+        },
+        { "@container": "@set" },
+      ]
+    ) {
+      await writeTerm(invalid);
+      await rejects(loadSchemaFiles(dir), AggregateError);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
