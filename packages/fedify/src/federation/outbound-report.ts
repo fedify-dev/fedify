@@ -176,6 +176,60 @@ type OutboundAttemptFailure =
     readonly error: unknown;
   };
 
+/** Result of an enabled response-body capture. Absence means disabled. @since 2.5.0 */
+export type OutboundBodyCaptureSummary =
+  & {
+    /** Bytes handed to the application, not bytes durably stored. */
+    readonly bytesExposed: number;
+  }
+  & (
+    | {
+      readonly type:
+        | "filtered"
+        | "no-body"
+        | "complete"
+        | "limit-reached"
+        | "deadline"
+        | "callback-returned";
+    }
+    | { readonly type: "consumer-stopped"; readonly reason: unknown }
+    | {
+      readonly type: "failed";
+      readonly phase: "body" | "observer";
+      readonly error: unknown;
+    }
+  );
+
+/** Bounded, revocable access to one selected response. @since 2.5.0 */
+export type OutboundResponseBodyEvent =
+  & Omit<OutboundHttpExchangeReport, "outcome" | "bodyCapture">
+  & {
+    /** Immutable response metadata, independently of eventual attempt outcome. */
+    readonly response: Extract<
+      OutboundHttpExchangeReport["outcome"],
+      { type: "response" }
+    >["response"];
+    /** Pull-driven bytes; access ends when the callback settles or its limits apply. */
+    readonly body: ReadableStream<Uint8Array>;
+    /** Capture-only lifetime signal; aborting it does not cancel transport. */
+    readonly signal: AbortSignal;
+  };
+
+/** Explicit opt-in response-body capture limits and consumer. @since 2.5.0 */
+export interface OutboundResponseBodyCapture<TContextData> {
+  /** Positive safe-integer byte limit. Reaching it without EOF proves no completeness. */
+  readonly maxBytes: number;
+  /** Positive finite absolute lifetime in milliseconds, rounded up; at most 2^31-1. */
+  readonly timeoutMs: number;
+  /** Actual response selector, defaulting to `all` only when enabled. */
+  readonly responses?: "all" | "non-success-http-responses";
+  /** Awaited within the bounded capture lifetime; errors cannot veto transport. */
+  readonly onBody: (
+    context: Context<TContextData>,
+    event: OutboundResponseBodyEvent,
+  ) => void | Promise<void>;
+}
+
 /** Opt-in policy for one side of an actual HTTP exchange. @since 2.5.0 */
 export interface OutboundHeaderPolicy {
   /** Literal HTTP names, normalized to lowercase and deduplicated at registration. */
@@ -285,8 +339,8 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
  *
  * A redirect response remains an observed response even if a later hop fails.
  * This report does not establish the attempt's final response. Metadata is
- * copied before callback awaiting; no live Request/Response/Headers or body
- * capture is exposed. Exchange callbacks may run before the attempt settles.
+ * copied before callback awaiting; no live Request/Response/Headers are exposed.
+ * Enabled body capture uses a separate revocable callback; reports hold summaries. Exchange callbacks may run before the attempt settles.
  * @since 2.5.0
  */
 export type OutboundHttpExchangeReport =
@@ -304,6 +358,8 @@ export type OutboundHttpExchangeReport =
   & {
     /** Zero-based submission order within this attempt. */
     readonly exchangeIndex: number;
+    /** Enabled capture result; absent when disabled or no response was received. */
+    readonly bodyCapture?: OutboundBodyCaptureSummary;
     /** Immutable facts of the request actually submitted. */
     readonly request: {
       readonly url: string;
@@ -444,10 +500,11 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
  * actions; they do not establish backend acknowledgment or future execution.
  * Known IDs and provenance survive queue continuations; callback context data
  * belongs to the current execution. Each callback is independently optional.
- * Callbacks are awaited without a default timeout.
+ * Metadata callbacks are awaited without a default timeout. An enabled body
+ * consumer instead uses its explicit bounded capture lifetime.
  * Their errors, including errors logging observer failures, do not replace the
  * send's result.
- * A callback that never settles can delay execution indefinitely. Detached
+ * A metadata callback that never settles can delay execution indefinitely. Detached
  * recording must handle its own rejection and shutdown; no persistence is
  * guaranteed. Existing portable forwarding deadlines may return while
  * background preparation, sending, and observer callbacks continue.
@@ -455,6 +512,8 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
  * @since 2.5.0
  */
 export interface OutboundObservers<TContextData> {
+  /** Independent opt-in body consumer; explicit byte/time limits are required. */
+  readonly responseBodyCapture?: OutboundResponseBodyCapture<TContextData>;
   /**
    * Opt-in actual request headers for exchange reports; disabled by default.
    * Protected credentials, signatures, and cookies remain redacted even if allowed.

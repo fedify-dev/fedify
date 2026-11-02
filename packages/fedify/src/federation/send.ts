@@ -1,3 +1,4 @@
+import { takeCapturedDiagnostic } from "./outbound-capture.ts";
 import { ResponseBodyPump } from "./outbound-body.ts";
 import type { Recipient } from "@fedify/vocab";
 import { FetchError, UrlError } from "@fedify/vocab-runtime";
@@ -420,6 +421,8 @@ async function readLimitedResponseBody(
   response: Response,
   maxBytes: number,
 ): Promise<string> {
+  const captured = takeCapturedDiagnostic(response);
+  if (captured !== undefined) return captured;
   if (response.body == null) {
     return "";
   }

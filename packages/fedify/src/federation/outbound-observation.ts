@@ -1,3 +1,4 @@
+import { captureResponseBody } from "./outbound-capture.ts";
 import { snapshotHeaders } from "./outbound-headers.ts";
 import {
   getOutboundProvenance,
@@ -20,12 +21,14 @@ import type {
 } from "./queue.ts";
 import type {
   OutboundAttemptReport,
+  OutboundBodyCaptureSummary,
   OutboundBroadcastEvent,
   OutboundDeliveryEvent,
   OutboundHttpExchangeReport,
   OutboundObservers,
   OutboundPreparationResult,
   OutboundProvenance,
+  OutboundResponseBodyEvent,
   OutboundWorkerReport,
 } from "./outbound-report.ts";
 
@@ -178,7 +181,26 @@ type ExchangeFacts = Pick<
   | "observedAt"
   | "request"
   | "outcome"
+  | "bodyCapture"
 >;
+
+type BodyFacts = Pick<
+  OutboundResponseBodyEvent,
+  | "attemptId"
+  | "inboxUrl"
+  | "exchangeIndex"
+  | "observedAt"
+  | "request"
+  | "response"
+  | "body"
+  | "signal"
+>;
+type BodyCapture = {
+  maxBytes: number;
+  timeoutMs: number;
+  responses?: "all" | "non-success-http-responses";
+  onBody: (event: BodyFacts) => void | Promise<void>;
+};
 
 type AttemptResponse = OutboundAttemptReport["outcome"]["response"];
 type FinalResponse = Extract<AttemptResponse, { type: "final" }>;
@@ -202,6 +224,7 @@ export class OutboundAttemptObservation {
       | ((facts: ExchangeFacts) => Promise<void>)
       | undefined = undefined,
     readonly headerPolicies: HeaderPolicies = {},
+    readonly bodyCapture?: BodyCapture,
   ) {}
 
   setSpan(span: Span, parentSpanContext?: SpanContext): void {
@@ -241,18 +264,39 @@ export class OutboundAttemptObservation {
       type: "undetermined",
       lastObserved: observed,
     });
-    await this.#exchange(exchangeIndex, snapshot, {
-      type: "response",
-      response: Object.freeze({
-        ...metadata,
-        ...(this.headerPolicies.responseHeaders == null ? {} : {
-          headers: snapshotHeaders(
-            response.headers,
-            this.headerPolicies.responseHeaders,
-          ),
-        }),
+    const responseSnapshot = Object.freeze({
+      ...metadata,
+      ...(this.headerPolicies.responseHeaders == null ? {} : {
+        headers: snapshotHeaders(
+          response.headers,
+          this.headerPolicies.responseHeaders,
+        ),
       }),
     });
+    const bodyCapture = this.bodyCapture == null
+      ? undefined
+      : await captureResponseBody(
+        response,
+        this.bodyCapture,
+        (body, signal) =>
+          this.bodyCapture!.onBody({
+            attemptId: this.#attemptId,
+            inboxUrl: this.inboxUrl,
+            exchangeIndex,
+            observedAt: Temporal.Now.instant().epochMilliseconds,
+            request: snapshot,
+            response: responseSnapshot,
+            body,
+            signal,
+          }),
+      );
+    if (bodyCapture?.type === "failed" && bodyCapture.phase === "observer") {
+      logObserverFailure("response-body", bodyCapture.error);
+    }
+    await this.#exchange(exchangeIndex, snapshot, {
+      type: "response",
+      response: responseSnapshot,
+    }, bodyCapture);
     return response;
   }
 
@@ -260,6 +304,7 @@ export class OutboundAttemptObservation {
     exchangeIndex: number,
     request: OutboundHttpExchangeReport["request"],
     outcome: OutboundHttpExchangeReport["outcome"],
+    bodyCapture?: OutboundBodyCaptureSummary,
   ): Promise<void> {
     return this.reportExchange?.({
       attemptId: this.#attemptId,
@@ -268,6 +313,7 @@ export class OutboundAttemptObservation {
       observedAt: Temporal.Now.instant().epochMilliseconds,
       request,
       outcome: Object.freeze(outcome),
+      ...(bodyCapture == null ? {} : { bodyCapture }),
     }) ?? Promise.resolve();
   }
 
@@ -623,6 +669,9 @@ export class OutboundAttemptObserver<TContextData> {
     readonly onHttpExchange: OutboundObservers<TContextData>["onHttpExchange"] =
       undefined,
     readonly headerPolicies: HeaderPolicies = {},
+    readonly bodyCapture: OutboundObservers<
+      TContextData
+    >["responseBodyCapture"] = undefined,
   ) {
     this.#queue = queue == null ? undefined : Object.freeze({ ...queue });
   }
@@ -634,8 +683,11 @@ export class OutboundAttemptObserver<TContextData> {
     provenance: OutboundProvenance,
     onHttpExchange?: OutboundObservers<TContextData>["onHttpExchange"],
     headerPolicies: HeaderPolicies = {},
+    bodyCapture?: OutboundObservers<TContextData>["responseBodyCapture"],
   ): OutboundAttemptObserver<TContextData> | undefined {
-    if (callback == null && onHttpExchange == null) return undefined;
+    if (callback == null && onHttpExchange == null && bodyCapture == null) {
+      return undefined;
+    }
     const identity = snapshotOutboxIdentity(message);
     return new OutboundAttemptObserver(
       context,
@@ -648,11 +700,15 @@ export class OutboundAttemptObserver<TContextData> {
       },
       onHttpExchange,
       headerPolicies,
+      bodyCapture,
     );
   }
 
   startAttempt(inboxUrl: string): OutboundAttemptObservation | undefined {
-    if (this.callback == null && this.onHttpExchange == null) return undefined;
+    if (
+      this.callback == null && this.onHttpExchange == null &&
+      this.bodyCapture == null
+    ) return undefined;
     const context = this.context();
     return new OutboundAttemptObservation(
       inboxUrl,
@@ -682,7 +738,27 @@ export class OutboundAttemptObserver<TContextData> {
           }),
           "http-exchange",
         ),
-      this.onHttpExchange == null ? {} : this.headerPolicies,
+      this.onHttpExchange == null && this.bodyCapture == null
+        ? {}
+        : this.headerPolicies,
+      this.bodyCapture == null ? undefined : {
+        ...this.bodyCapture,
+        onBody: (event) =>
+          withContext(
+            sourceLogContext(this.provenance),
+            () =>
+              this.bodyCapture!.onBody(
+                context,
+                Object.freeze({
+                  ...this.identity,
+                  ...event,
+                  ...(this.#queue == null ? {} : { queue: this.#queue }),
+                  provenance: this.provenance,
+                  local: snapshotLocalContext(context),
+                }),
+              ),
+          ),
+      },
     );
   }
 }
@@ -705,6 +781,7 @@ class OutboundDeliveryObservation<TContextData> {
     onHttpExchange: OutboundObservers<TContextData>["onHttpExchange"],
     queue?: OutboundAttemptReport["queue"],
     headerPolicies: HeaderPolicies = {},
+    bodyCapture?: OutboundObservers<TContextData>["responseBodyCapture"],
   ) {
     this.#reference = snapshotDeliveryIdentity(identity);
     this.#attempts = new OutboundAttemptObserver(
@@ -715,6 +792,7 @@ class OutboundDeliveryObservation<TContextData> {
       queue,
       onHttpExchange,
       headerPolicies,
+      bodyCapture,
     );
     this.#plan = Object.freeze({
       actorIds: Object.freeze(Array.from(destination.actorIds)),
@@ -808,6 +886,7 @@ export class OutboundBroadcastObservation<TContextData> {
   readonly #onAttempt: OutboundObservers<TContextData>["onAttempt"];
   readonly #onHttpExchange: OutboundObservers<TContextData>["onHttpExchange"];
   readonly #headerPolicies: HeaderPolicies;
+  readonly #bodyCapture: OutboundObservers<TContextData>["responseBodyCapture"];
   readonly #deliveries = new Map<
     string,
     OutboundDeliveryObservation<TContextData>
@@ -829,6 +908,7 @@ export class OutboundBroadcastObservation<TContextData> {
     this.#onDelivery = observers.onDelivery;
     this.#onAttempt = observers.onAttempt;
     this.#onHttpExchange = observers.onHttpExchange;
+    this.#bodyCapture = observers.responseBodyCapture;
     this.#headerPolicies = {
       requestHeaders: observers.requestHeaders,
       responseHeaders: observers.responseHeaders,
@@ -845,7 +925,8 @@ export class OutboundBroadcastObservation<TContextData> {
   ): Promise<OutboundBroadcastObservation<TContextData> | undefined> {
     if (
       observers.onDelivery == null && observers.onAttempt == null &&
-      observers.onHttpExchange == null && observers.onWorker == null &&
+      observers.onHttpExchange == null &&
+      observers.responseBodyCapture == null && observers.onWorker == null &&
       !Object.values(message.inboxes).some((entry) => entry.outbound != null)
     ) {
       return undefined;
@@ -858,6 +939,7 @@ export class OutboundBroadcastObservation<TContextData> {
         onHttpExchange: observers.onHttpExchange,
         requestHeaders: observers.requestHeaders,
         responseHeaders: observers.responseHeaders,
+        responseBodyCapture: observers.responseBodyCapture,
       },
       "send",
       getOutboundProvenance(context),
@@ -905,6 +987,7 @@ export class OutboundBroadcastObservation<TContextData> {
       this.#onHttpExchange,
       this.queue,
       this.#headerPolicies,
+      this.#bodyCapture,
     );
   }
 
@@ -1109,7 +1192,8 @@ export function observeOutboundBroadcast<TContextData, TResult>(
   return withContext(sourceLogContext(provenance), () => {
     if (
       observers.onBroadcast == null && observers.onDelivery == null &&
-      observers.onAttempt == null && observers.onHttpExchange == null
+      observers.onAttempt == null && observers.onHttpExchange == null &&
+      observers.responseBodyCapture == null
     ) {
       return execute();
     }

@@ -1,3 +1,4 @@
+import { snapshotBodyCapture } from "./outbound-capture.ts";
 import { snapshotHeaderPolicy } from "./outbound-headers.ts";
 import type { OutboundObservers } from "./outbound-report.ts";
 import type { InboxRequestFinishedHandler } from "./inbox-report.ts";
@@ -666,6 +667,7 @@ export class FederationBuilderImpl<TContextData>
 
   setOutboundObservers(observers: OutboundObservers<TContextData>): void {
     this.outboundObservers = globalThis.Object.freeze({
+      responseBodyCapture: snapshotBodyCapture(observers.responseBodyCapture),
       requestHeaders: snapshotHeaderPolicy(observers.requestHeaders),
       responseHeaders: snapshotHeaderPolicy(observers.responseHeaders),
       onBroadcast: observers.onBroadcast,

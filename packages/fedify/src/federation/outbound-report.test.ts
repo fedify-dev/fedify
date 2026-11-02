@@ -40,6 +40,7 @@ import type {
   OutboundDeliveryEvent,
   OutboundHttpExchangeReport,
   OutboundObservers,
+  OutboundResponseBodyEvent,
   OutboundWorkerReport,
 } from "./mod.ts";
 import type { FanoutMessage, OutboxMessage } from "./queue.ts";
@@ -5614,4 +5615,247 @@ test("outbound header capture keeps each side independent and disabled by defaul
       }
     });
   }
+});
+
+async function readCapturedText(
+  body: ReadableStream<Uint8Array>,
+): Promise<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  try {
+    while (true) {
+      const result = await reader.read();
+      if (result.done) return text;
+      text += decoder.decode(result.value, { stream: true });
+    }
+  } catch {
+    return text;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+test("outbound body-only observers retain worker context and selection across redirects", async () => {
+  const events: OutboundResponseBodyEvent[] = [];
+  const texts: string[] = [];
+  const builder = createFederationBuilder<{ label: string }>();
+  const config = {
+    maxBytes: 128,
+    timeoutMs: 1000,
+    async onBody(
+      ctx: import("./context.ts").Context<{ label: string }>,
+      event: OutboundResponseBodyEvent,
+    ) {
+      strictEqual(ctx.data.label, "worker");
+      events.push(event);
+      texts.push(await readCapturedText(event.body));
+      federation.setOutboundObservers({});
+    },
+  };
+  builder.setOutboundObservers({ responseBodyCapture: config });
+  const federation = await builder.build({
+    kv: new MemoryKvStore(),
+    allowPrivateAddress: true,
+  });
+  config.maxBytes = 1;
+  config.onBody = () => {
+    throw new Error("mutated callback must not be selected");
+  };
+  builder.setOutboundObservers({});
+  const task = continuationMessage(recipient.inboxId!.href, false);
+  const next = new URL("/captured-next", task.inbox).href;
+  fetchMock.mockGlobal().post(task.inbox, {
+    status: 303,
+    headers: { Location: next },
+    body: "first",
+  }).get(next, { status: 202, body: "second" });
+  try {
+    await federation.processQueuedTask({ label: "worker" }, task);
+    deepStrictEqual(texts, ["first", "second"]);
+    strictEqual(events.length, 2);
+    for (const [index, event] of events.entries()) {
+      ok(Object.isFrozen(event));
+      ok(event.signal.aborted);
+      strictEqual(event.exchangeIndex, index);
+      strictEqual(event.queue?.queueMessageId, task.id);
+      strictEqual(event.deliveryId, task.id);
+      strictEqual(event.response.status, index === 0 ? 303 : 202);
+      strictEqual(event.request.url, index === 0 ? task.inbox : next);
+    }
+    strictEqual(events[0].attemptId, events[1].attemptId);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+test("outbound capture settles before exchanges without changing signed negotiation", async (t) => {
+  for (const fails of [false, true]) {
+    await t.step(
+      fails ? "intermediate observer failure" : "complete bodies",
+      async () => {
+        const ctx = createFederation<void>(options).createContext(
+          new URL("https://example.com"),
+          undefined,
+        );
+        const exchanges: OutboundHttpExchangeReport[] = [];
+        const attempts: OutboundAttemptReport[] = [];
+        const order: string[] = [];
+        const failure = new Error("capture observer failed");
+        const observation = new OutboundBroadcastObservation(ctx, {
+          responseBodyCapture: {
+            maxBytes: 128,
+            timeoutMs: 1000,
+            async onBody(_ctx, event) {
+              order.push(`body ${event.exchangeIndex}`);
+              if (fails && event.exchangeIndex === 0) throw failure;
+              await readCapturedText(event.body);
+            },
+          },
+          onHttpExchange(_ctx, report) {
+            exchanges.push(report);
+            order.push(`exchange ${report.exchangeIndex}`);
+          },
+          onAttempt(_ctx, report) {
+            attempts.push(report);
+            order.push("attempt");
+          },
+        }, "send");
+        const inbox = recipient.inboxId!.href;
+        const next = new URL("/capture-signed", inbox).href;
+        await observation.planDestinations({
+          [inbox]: { actorIds: [], sharedInbox: false },
+        });
+        const responses: ResponseInit[] = [
+          {
+            status: 401,
+            headers: {
+              "Accept-Signature":
+                'sig1=("@method" "@target-uri");created;nonce="capture-nonce"',
+            },
+          },
+          { status: 307, headers: { Location: next } },
+          { status: 202 },
+        ];
+        let submissions = 0;
+        await sendConcreteActivity({
+          observation: observation.delivery(inbox),
+          activity: { id: "https://example.com/capture" },
+          keys: [sender],
+          inbox: new URL(inbox),
+          specDeterminer: { determineSpec: () => "rfc9421", rememberSpec() {} },
+        }, {
+          openHop: (url) =>
+            Promise.resolve({
+              url: new URL(url),
+              fetch() {
+                const index = submissions++;
+                return Promise.resolve(
+                  new Response(`body ${index}`, responses[index]),
+                );
+              },
+              close: () => Promise.resolve(),
+            }),
+        });
+        strictEqual(submissions, 3);
+        deepStrictEqual(order, [
+          "body 0",
+          "exchange 0",
+          "body 1",
+          "exchange 1",
+          "body 2",
+          "exchange 2",
+          "attempt",
+        ]);
+        for (const [index, report] of exchanges.entries()) {
+          if (fails && index === 0) {
+            deepStrictEqual(report.bodyCapture, {
+              type: "failed",
+              phase: "observer",
+              error: failure,
+              bytesExposed: 0,
+            });
+          } else {deepStrictEqual(report.bodyCapture, {
+              type: "complete",
+              bytesExposed: 6,
+            });}
+          ok(report.outcome.type === "response");
+          strictEqual(report.outcome.response.status, responses[index].status);
+          strictEqual("body" in report, false);
+        }
+        strictEqual(attempts[0].outcome.type, "succeeded");
+        strictEqual(attempts[0].httpExchangeCount, 3);
+        const final = attempts[0].outcome.response;
+        ok(final.type === "final");
+        strictEqual(final.metadata.status, 202);
+      },
+    );
+  }
+});
+
+test("outbound capture limits retain the original final HTTP diagnostic", async () => {
+  const ctx = createFederation<void>(options).createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  const exchanges: OutboundHttpExchangeReport[] = [];
+  const attempts: OutboundAttemptReport[] = [];
+  const observation = new OutboundBroadcastObservation(ctx, {
+    responseBodyCapture: {
+      maxBytes: 4,
+      timeoutMs: 1000,
+      async onBody(_ctx, event) {
+        await readCapturedText(event.body);
+      },
+    },
+    onHttpExchange(_ctx, report) {
+      exchanges.push(report);
+    },
+    onAttempt(_ctx, report) {
+      attempts.push(report);
+    },
+  }, "send");
+  const inbox = recipient.inboxId!.href;
+  await observation.planDestinations({
+    [inbox]: { actorIds: [], sharedInbox: false },
+  });
+  let submissions = 0;
+  await rejects(
+    sendConcreteActivity({
+      observation: observation.delivery(inbox),
+      activity: {},
+      keys: [],
+      inbox: new URL(inbox),
+    }, {
+      openHop: (url) =>
+        Promise.resolve({
+          url: new URL(url),
+          fetch() {
+            submissions++;
+            return Promise.resolve(
+              new Response("full diagnostic error", {
+                status: 503,
+                headers: { "Retry-After": "1" },
+              }),
+            );
+          },
+          close: () => Promise.resolve(),
+        }),
+    }),
+    (error: unknown) => {
+      ok(error instanceof SendActivityError);
+      strictEqual(error.statusCode, 503);
+      strictEqual(error.responseBody, "full diagnostic error");
+      return true;
+    },
+  );
+  strictEqual(submissions, 1);
+  deepStrictEqual(exchanges[0].bodyCapture, {
+    type: "limit-reached",
+    bytesExposed: 4,
+  });
+  ok(attempts[0].outcome.type === "failed");
+  strictEqual(attempts[0].outcome.failure.kind, "http");
+  ok(attempts[0].outcome.response.type === "final");
+  strictEqual(attempts[0].outcome.response.metadata.status, 503);
 });

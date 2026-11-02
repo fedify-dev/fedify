@@ -1,9 +1,9 @@
 /** One pull-driven response reader with an absolute lifetime and no extra queue. */
 export class ResponseBodyPump {
   readonly #reader: ReadableStreamDefaultReader<Uint8Array>;
-  readonly #expiresAt: number;
+  #expiresAt: number;
   readonly #deadline: Promise<undefined>;
-  readonly #timer: ReturnType<typeof setTimeout>;
+  #timer: ReturnType<typeof setTimeout>;
   #expireDeadline!: () => void;
   #pending:
     | Promise<ReadableStreamReadResult<Uint8Array> | undefined>
@@ -56,6 +56,19 @@ export class ResponseBodyPump {
       },
     );
     return this.#pending;
+  }
+
+  /** Shorten the remaining lifetime when ownership passes to diagnostic cleanup. */
+  limitLifetime(timeoutMs: number): void {
+    if (this.#closed) return;
+    this.#expiresAt = Math.min(
+      this.#expiresAt,
+      performance.now() + Math.max(0, timeoutMs),
+    );
+    clearTimeout(this.#timer);
+    if (performance.now() >= this.#expiresAt) this.#expire();
+    else {this.#timer = setTimeout(() =>
+        this.#expire(), this.#expiresAt - performance.now());}
   }
 
   /** Stop pulling and release ownership without awaiting arbitrary cancellation. */
