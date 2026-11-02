@@ -1574,7 +1574,7 @@ export class FederationImpl<TContextData>
     worker?: OutboundWorkerObservation<TContextData>,
   ): Promise<void> {
     const { onAttempt, onHttpExchange } = observers;
-    if ((message.gatewayInboxes?.length ?? 0) <= 1) worker?.enableActions();
+    worker?.enableActions();
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const logData = {
       keyIds: message.keys.map((pair) => pair.keyId),
@@ -2213,6 +2213,7 @@ export class FederationImpl<TContextData>
       readonly retryAfter?: Temporal.Duration;
     }
     const survivors: Survivor[] = [];
+    const permanentRoutes = new Set<string>();
     let lastError: unknown;
     let lastPermanent: { error: SendActivityError; inbox: URL } | undefined;
     let activity: Activity | undefined;
@@ -2223,13 +2224,19 @@ export class FederationImpl<TContextData>
       inbox: URL,
       heldSince: Temporal.Instant,
     ) => {
-      await dropHeldOutboxMessage(
-        circuit,
-        remoteHost,
-        inbox,
-        heldSince,
-        await getActivity(),
+      const routes = message.gatewayInboxes.filter((route) =>
+        !permanentRoutes.has(route)
       );
+      worker?.abandon("held-ttl-expired", routes);
+      const execute = async () =>
+        dropHeldOutboxMessage(
+          circuit,
+          remoteHost,
+          inbox,
+          heldSince,
+          await getActivity(),
+        );
+      await (worker == null ? execute() : worker.drop(routes, execute));
     };
     // Checked up front, as gateways deferred by Retry-After are skipped
     // without asking the circuit breaker, which would otherwise tell:
@@ -2378,6 +2385,8 @@ export class FederationImpl<TContextData>
           );
         }
         if (isPermanentFailure) {
+          permanentRoutes.add(inboxHref);
+          worker?.abandon("permanent-failure", [inboxHref]);
           logger.warn(
             "Permanent delivery failure for activity {activityId} to " +
               "{inbox} ({status}); not trying the gateway again.",
@@ -2451,32 +2460,38 @@ export class FederationImpl<TContextData>
         { ...logData, portableInbox: message.portableInbox },
       );
       if (this.outboxPermanentFailureHandler != null) {
-        const ctx = this.#createContext(
-          new URL(message.baseUrl),
-          contextData,
-          {
-            [outboundProvenance]: provenance,
-            documentLoader: this.documentLoaderFactory(
-              this.#getLoaderOptions(message.baseUrl),
-            ),
-          },
-        );
-        try {
-          await this.outboxPermanentFailureHandler(ctx, {
-            reason: "http",
-            inbox,
-            activity: await getActivity(),
-            error,
-            statusCode: error.statusCode,
-            actorIds: getActorIds(),
-          });
-        } catch (handlerError) {
-          logger.error(
-            "An unexpected error occurred in " +
-              "outboxPermanentFailureHandler:\n{error}",
-            { ...logData, error: handlerError },
+        const drop = async () => {
+          const ctx = this.#createContext(
+            new URL(message.baseUrl),
+            contextData,
+            {
+              [outboundProvenance]: provenance,
+              documentLoader: this.documentLoaderFactory(
+                this.#getLoaderOptions(message.baseUrl),
+              ),
+            },
           );
-        }
+          try {
+            await this.outboxPermanentFailureHandler!(ctx, {
+              reason: "http",
+              inbox,
+              activity: await getActivity(),
+              error,
+              statusCode: error.statusCode,
+              actorIds: getActorIds(),
+            });
+          } catch (handlerError) {
+            worker?.dropFailure(message.gatewayInboxes, handlerError);
+            logger.error(
+              "An unexpected error occurred in " +
+                "outboxPermanentFailureHandler:\n{error}",
+              { ...logData, error: handlerError },
+            );
+          }
+        };
+        await (worker == null
+          ? drop()
+          : worker.drop(message.gatewayInboxes, drop));
       }
       recordOutboxActivity(
         this.meterProvider,
@@ -2537,10 +2552,18 @@ export class FederationImpl<TContextData>
           "until one of its gateways can be tried again.",
         { ...logData, portableInbox: message.portableInbox },
       );
-      await outboxQueue.enqueue(heldMessage, {
+      const enqueueOptions = {
         delay: clampNegativeDelay(delay),
         orderingKey: message.orderingKey,
-      });
+      };
+      await (worker == null
+        ? outboxQueue.enqueue(heldMessage, enqueueOptions)
+        : worker.enqueue(
+          "defer",
+          heldMessage,
+          enqueueOptions.delay,
+          () => outboxQueue.enqueue(heldMessage, enqueueOptions),
+        ));
       this.metrics.recordQueueTaskEnqueued(
         {
           role: "outbox",
@@ -2567,6 +2590,10 @@ export class FederationImpl<TContextData>
       throw lastError;
     }
     if (policyDelay == null || outboxQueue == null) {
+      worker?.abandon(
+        outboxQueue == null ? "queue-unavailable" : "retry-policy-declined",
+        survivors.map((route) => route.inbox),
+      );
       logger.error(
         "Failed to send activity {activityId} to every gateway of " +
           "{portableInbox} after {attempt} attempts; giving up:\n{error}",
@@ -2593,10 +2620,14 @@ export class FederationImpl<TContextData>
         "{portableInbox} (attempt #{attempt}); retry...:\n{error}",
       { ...logData, portableInbox: message.portableInbox, error: lastError },
     );
-    await outboxQueue.enqueue(retryMessage, {
+    const enqueueOptions = {
       delay: clampNegativeDelay(delay),
       orderingKey: message.orderingKey,
-    });
+    };
+    await (worker == null
+      ? outboxQueue.enqueue(retryMessage, enqueueOptions)
+      : worker.enqueue("retry", retryMessage, enqueueOptions.delay, () =>
+        outboxQueue.enqueue(retryMessage, enqueueOptions)));
     this.metrics.recordQueueTaskEnqueued(
       {
         role: "outbox",

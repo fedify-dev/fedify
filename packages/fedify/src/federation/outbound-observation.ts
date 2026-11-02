@@ -402,8 +402,15 @@ export class OutboundWorkerObservation<TContextData> {
         queueMessageId: message.id,
         queueAttempt: message.attempt,
       }),
-      inboxUrls: Object.freeze([message.inbox]),
+      inboxUrls: Object.freeze(
+        message.gatewayInboxes != null && message.gatewayInboxes.length > 1
+          ? [...message.gatewayInboxes]
+          : [message.inbox],
+      ),
       delay: delay.toString(),
+      ...(message.gatewayNotBefore == null ? {} : {
+        notBefore: Object.freeze({ ...message.gatewayNotBefore }),
+      }),
     };
     try {
       await enqueue();

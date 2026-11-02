@@ -3304,6 +3304,309 @@ function continuationMessage(
   };
 }
 
+test("gateway worker actions retain route abandonment without claiming an unqueued deferral", async () => {
+  const gateways = [
+    "https://gw1.example/inbox",
+    "https://gw2.example/inbox",
+    "https://gw3.example/inbox",
+  ];
+  const queued: Message[] = [];
+  const workers: OutboundWorkerReport[] = [];
+  const attempts: OutboundAttemptReport[] = [];
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    allowPrivateAddress: true,
+    manuallyStartQueue: true,
+    circuitBreaker: false,
+    queue: {
+      outbox: {
+        enqueue(message) {
+          queued.push(message);
+          return Promise.resolve();
+        },
+        listen: () => Promise.resolve(),
+      },
+    },
+  });
+  federation.setOutboundObservers({
+    onWorker(_ctx, report) {
+      workers.push(report);
+    },
+    onAttempt(_ctx, report) {
+      attempts.push(report);
+    },
+  });
+  const message = {
+    ...continuationMessage(gateways[0], true),
+    gatewayInboxes: gateways,
+  };
+  fetchMock.mockGlobal().post(gateways[0], 404)
+    .post(gateways[1], { status: 429, headers: { "Retry-After": "3600" } })
+    .post(gateways[2], 202);
+  try {
+    await federation.processQueuedTask(undefined, message);
+    strictEqual(workers.length, 1);
+    strictEqual(workers[0].attemptsStarted, 3);
+    deepStrictEqual(workers[0].result, { type: "completed" });
+    deepStrictEqual(workers[0].actions, [{
+      type: "abandoned",
+      reason: "permanent-failure",
+      inboxUrls: [gateways[0]],
+    }]);
+    strictEqual(queued.length, 0);
+    deepStrictEqual(attempts.map((report) => report.outcome.type), [
+      "failed",
+      "failed",
+      "succeeded",
+    ]);
+    for (const report of attempts) {
+      strictEqual(report.deliveryId, message.outbound!.deliveryId);
+    }
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+test("gateway worker actions preserve abandonment and available drop errors", async (t) => {
+  const gateways = ["https://gw1.example/inbox", "https://gw2.example/inbox"];
+  for (
+    const mode of [
+      "permanent",
+      "permanent-handler",
+      "declined",
+      "queue-unavailable",
+      "ttl",
+      "ttl-parse",
+    ] as const
+  ) {
+    await t.step(mode, async () => {
+      const ttl = mode.startsWith("ttl");
+      const failure = Symbol(mode);
+      const reports: OutboundWorkerReport[] = [];
+      const queued: Message[] = [];
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        manuallyStartQueue: true,
+        circuitBreaker: ttl ? { heldActivityTtl: { seconds: 1 } } : false,
+        outboxRetryPolicy: () =>
+          mode === "declined" ? null : Temporal.Duration.from({ seconds: 1 }),
+        ...(mode === "queue-unavailable" ? {} : {
+          queue: {
+            outbox: {
+              enqueue(message: Message) {
+                queued.push(message);
+                return Promise.resolve();
+              },
+              listen: () => Promise.resolve(),
+            },
+          },
+        }),
+      });
+      federation.setOutboundObservers({
+        onWorker(_ctx, report) {
+          reports.push(report);
+        },
+      });
+      if (mode === "permanent-handler") {
+        federation.setOutboxPermanentFailureHandler(() => {
+          throw failure;
+        });
+      }
+      if (mode === "ttl-parse") {
+        Object.defineProperty(federation, "documentLoaderFactory", {
+          value: () => {
+            throw failure;
+          },
+        });
+      }
+      const message = {
+        ...continuationMessage(gateways[0], true),
+        gatewayInboxes: gateways,
+        ...(ttl
+          ? {
+            circuitHeld: true as const,
+            circuitHeldSince: "2000-01-01T00:00:00Z",
+          }
+          : {}),
+      };
+      fetchMock.mockGlobal();
+      for (const inbox of gateways) {
+        fetchMock.post(inbox, mode.startsWith("permanent") ? 404 : 503);
+      }
+      try {
+        const processing = federation.processQueuedTask(undefined, message);
+        if (mode === "ttl-parse") {
+          await rejects(processing, (error: unknown) => error === failure);
+        } else await processing;
+        strictEqual(reports.length, 1);
+        strictEqual(queued.length, 0);
+        const report = reports[0];
+        strictEqual(report.attemptsStarted, ttl ? 0 : 2);
+        deepStrictEqual(
+          report.result,
+          mode === "ttl-parse"
+            ? { type: "failed", error: failure }
+            : { type: "completed" },
+        );
+        const actions = report.actions;
+        ok(actions);
+        const abandonments = actions.filter((action) =>
+          action.type === "abandoned"
+        );
+        if (mode.startsWith("permanent")) {
+          deepStrictEqual(
+            abandonments,
+            gateways.map((inbox) => ({
+              type: "abandoned",
+              reason: "permanent-failure",
+              inboxUrls: [inbox],
+            })),
+          );
+        } else {deepStrictEqual(abandonments, [{
+            type: "abandoned",
+            reason: ttl
+              ? "held-ttl-expired"
+              : mode === "declined"
+              ? "retry-policy-declined"
+              : "queue-unavailable",
+            inboxUrls: gateways,
+          }]);}
+        const failed = actions.filter((action) =>
+          action.type === "action-failed"
+        );
+        if (mode === "permanent-handler" || mode === "ttl-parse") {
+          strictEqual(failed.length, 1);
+          strictEqual(failed[0].action, "drop");
+          strictEqual(failed[0].error, failure);
+          deepStrictEqual(failed[0].inboxUrls, gateways);
+          strictEqual("acceptance" in failed[0], false);
+        } else strictEqual(failed.length, 0);
+        if (ttl) strictEqual(fetchMock.callHistory.calls().length, 0);
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
+test("gateway continuation failures preserve partial actions and settled attempts", async (t) => {
+  const gateways = [
+    "https://gw1.example/inbox",
+    "https://gw2.example/inbox",
+    "https://gw3.example/inbox",
+  ];
+  for (
+    const mode of ["retry-reject", "defer-reject", "retry-bookkeeping"] as const
+  ) {
+    await t.step(mode, async () => {
+      const [meterProvider] = createTestMeterProvider();
+      const failure = Symbol(mode);
+      const queued: Message[] = [];
+      const workers: OutboundWorkerReport[] = [];
+      const attempts: OutboundAttemptReport[] = [];
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        manuallyStartQueue: true,
+        meterProvider,
+        circuitBreaker: mode === "defer-reject"
+          ? { failureThreshold: 1, recoveryDelay: { hours: 1 } }
+          : false,
+        outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 1 }),
+        queue: {
+          outbox: {
+            enqueue(message) {
+              queued.push(message);
+              return mode === "retry-bookkeeping"
+                ? Promise.resolve()
+                : Promise.reject(failure);
+            },
+            listen: () => Promise.resolve(),
+          },
+        },
+      });
+      ok(federation instanceof FederationImpl);
+      const metrics = federation.metrics;
+      const original = metrics.recordQueueTaskEnqueued;
+      if (mode === "retry-bookkeeping") {
+        Object.defineProperty(metrics, "recordQueueTaskEnqueued", {
+          configurable: true,
+          value: (...args: Parameters<typeof original>) => {
+            original.call(metrics, ...args);
+            throw failure;
+          },
+        });
+      }
+      federation.setOutboundObservers({
+        onWorker(_ctx, report) {
+          workers.push(report);
+        },
+        onAttempt(_ctx, report) {
+          attempts.push(report);
+        },
+      });
+      const message = {
+        ...continuationMessage(gateways[0], true),
+        gatewayInboxes: gateways,
+      };
+      fetchMock.mockGlobal().post(gateways[0], 404).post(gateways[1], 503).post(
+        gateways[2],
+        503,
+      );
+      try {
+        await rejects(
+          federation.processQueuedTask(undefined, message),
+          (error: unknown) => error === failure,
+        );
+        strictEqual(queued.length, 1);
+        strictEqual(workers.length, 1);
+        strictEqual(workers[0].attemptsStarted, 3);
+        deepStrictEqual(workers[0].result, { type: "failed", error: failure });
+        const actions = workers[0].actions;
+        ok(actions);
+        strictEqual(actions.length, 2);
+        deepStrictEqual(actions[0], {
+          type: "abandoned",
+          reason: "permanent-failure",
+          inboxUrls: [gateways[0]],
+        });
+        const action = actions[1];
+        ok(
+          action.type === "scheduled" ||
+            action.type === "action-failed" && action.action !== "drop",
+        );
+        strictEqual(action.action, mode === "defer-reject" ? "defer" : "retry");
+        deepStrictEqual(action.inboxUrls, gateways.slice(1));
+        const task = queued[0];
+        ok(task.type === "outbox");
+        deepStrictEqual(action.queue, {
+          queueMessageId: task.id,
+          queueAttempt: task.attempt,
+        });
+        if (mode === "retry-bookkeeping") strictEqual(action.type, "scheduled");
+        else {
+          ok(action.type === "action-failed");
+          strictEqual(action.acceptance, "unknown");
+          strictEqual(action.error, failure);
+        }
+        strictEqual(attempts.length, 3);
+        for (const report of attempts) {
+          ok(report.outcome.type === "failed");
+          strictEqual(report.outcome.failure.kind, "http");
+        }
+      } finally {
+        if (mode === "retry-bookkeeping") {
+          Object.defineProperty(metrics, "recordQueueTaskEnqueued", {
+            value: original,
+          });
+        }
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
 test("ordinary outbox worker actions record actual retry and hold enqueues", async (t) => {
   for (const mode of ["retry", "retry-after", "hold"] as const) {
     await t.step(mode, async () => {
@@ -3685,7 +3988,7 @@ test("outbound worker-only observers count real sends and report local settlemen
         const report = reports[0];
         strictEqual(report.role, "outbox");
         if (mode === "gateway" || mode === "recovered-preparation") {
-          strictEqual(report.actions, undefined);
+          deepStrictEqual(report.actions, []);
         } else if (mode === "handled") {
           ok(report.actions?.[0].type === "scheduled");
         } else deepStrictEqual(report.actions, []);
@@ -4351,6 +4654,8 @@ test("outbound queue identities retain planned destinations through gateway cont
     for (const mode of ["retry", "hold", "defer", "native"] as const) {
       await t.step(`${mode}: ${observed ? "identity" : "legacy"}`, async () => {
         const queued: Message[] = [];
+        const enqueueOptions: Parameters<MessageQueue["enqueue"]>[1][] = [];
+        const workers: OutboundWorkerReport[] = [];
         const federation = createFederation<void>({
           kv: new MemoryKvStore(),
           manuallyStartQueue: true,
@@ -4361,8 +4666,9 @@ test("outbound queue identities retain planned destinations through gateway cont
           queue: {
             outbox: {
               nativeRetrial: mode === "native",
-              enqueue(message) {
+              enqueue(message, options) {
                 queued.push(message);
+                enqueueOptions.push(options);
                 return Promise.resolve();
               },
               listen: () => Promise.resolve(),
@@ -4375,6 +4681,9 @@ test("outbound queue identities retain planned destinations through gateway cont
         };
         const attempts: OutboundAttemptReport[] = [];
         federation.setOutboundObservers({
+          onWorker(_ctx, report) {
+            workers.push(report);
+          },
           onAttempt(_ctx, report) {
             attempts.push(report);
           },
@@ -4506,6 +4815,51 @@ test("outbound queue identities retain planned destinations through gateway cont
               gateways.slice(1),
             );
             strictEqual(attempts[3].queue?.queueAttempt, 1);
+          }
+          strictEqual(workers.length, 2);
+          for (const [index, report] of workers.entries()) {
+            if (mode === "native") {
+              deepStrictEqual(report.actions, []);
+              strictEqual(
+                report.result.type,
+                index === 0 ? "failed" : "completed",
+              );
+              strictEqual(report.attemptsStarted, index === 0 ? 3 : 1);
+              continue;
+            }
+            const actions = report.actions;
+            ok(actions);
+            if (index === 0) {
+              deepStrictEqual(actions[0], {
+                type: "abandoned",
+                reason: "permanent-failure",
+                inboxUrls: [gateways[0]],
+              });
+            }
+            strictEqual(actions.length, index === 0 ? 2 : 1);
+            const action = actions.at(-1)!;
+            ok(action.type === "scheduled");
+            const task = queued[index];
+            ok(task.type === "outbox");
+            strictEqual(
+              action.action,
+              mode === "hold" || index === 1 && mode === "defer"
+                ? "defer"
+                : "retry",
+            );
+            deepStrictEqual(action.inboxUrls, gateways.slice(1));
+            deepStrictEqual(action.queue, {
+              queueMessageId: task.id,
+              queueAttempt: task.attempt,
+            });
+            strictEqual(action.delay, enqueueOptions[index]?.delay?.toString());
+            deepStrictEqual(action.notBefore, task.gatewayNotBefore);
+            if (action.notBefore != null) ok(Object.isFrozen(action.notBefore));
+            strictEqual(
+              report.attemptsStarted,
+              index === 0 ? 3 : mode === "retry" ? 2 : 0,
+            );
+            deepStrictEqual(report.result, { type: "completed" });
           }
           deepStrictEqual(task, original);
           deepStrictEqual(message, original);

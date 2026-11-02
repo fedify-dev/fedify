@@ -305,6 +305,8 @@ type OutboundWorkerSchedule = {
   readonly inboxUrls: readonly string[];
   /** ISO 8601 duration passed to enqueue after delay normalization. */
   readonly delay: string;
+  /** Per-route ISO instants retained by the scheduled continuation, if any. */
+  readonly notBefore?: Readonly<Record<string, string>>;
 };
 
 type OutboundWorkerAction =
@@ -319,7 +321,9 @@ type OutboundWorkerAction =
     readonly reason:
       | "held-ttl-expired"
       | "permanent-failure"
-      | "retry-policy-declined";
+      | "retry-policy-declined"
+      | "queue-unavailable";
+    /** Routes locally abandoned; other routes of the delivery may continue. */
     readonly inboxUrls: readonly string[];
   }
   | {
@@ -343,7 +347,7 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
   readonly queue: NonNullable<OutboundAttemptReport["queue"]>;
   /** Concrete sender entries, independent of enabled attempt/exchange callbacks. */
   readonly attemptsStarted: number;
-  /** Ordinary outbox action facts; omitted for other worker paths. */
+  /** Outbox action facts, including gateway subsets; omitted for fanout. */
   readonly actions?: readonly OutboundWorkerAction[];
   /** Known outbox obligation; absent for fanout or unavailable metadata. */
   readonly delivery?: Pick<
@@ -393,8 +397,8 @@ export interface OutboundObservers<TContextData> {
   /**
    * Observes terminal outgoing worker processing with current context/data.
    * Errors are isolated; results do not replace attempt outcomes or establish
-   * future backend execution. Ordinary outbox action facts are included;
-   * gateway and fanout actions are not observed yet.
+   * future backend execution. Outbox/gateway action facts are included;
+   * fanout actions are not observed yet.
    */
   readonly onWorker?: (
     context: Context<TContextData>,
