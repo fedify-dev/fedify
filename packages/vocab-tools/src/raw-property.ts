@@ -115,7 +115,9 @@ function isSameRawPropertyNode(source: unknown, destination: unknown): boolean {
 
 // Copies the retained unknown properties of a decoded object and of the
 // objects nested in it to a copy of the same graph that was decoded again,
-// pairing nested objects by property and position:
+// pairing nested objects by property and position.  When the decoding dropped
+// some values of a property, positions no longer correspond, so only objects
+// with the same id are paired:
 function copyRawPropertiesDeep(
   source: object,
   destination: object,
@@ -136,17 +138,16 @@ function copyRawPropertiesDeep(
   for (const descriptor of descriptors) {
     const sources = descriptor.values(source);
     const destinations = descriptor.values(destination);
-    const length = globalThis.Math.min(sources.length, destinations.length);
-    for (let i = 0; i < length; i++) {
-      if (
-        sources[i] !== destinations[i] &&
-        isSameRawPropertyNode(sources[i], destinations[i])
-      ) {
-        copyRawPropertiesDeep(
-          sources[i] as object,
-          destinations[i] as object,
-          visited,
-        );
+    const aligned = sources.length === destinations.length;
+    for (let i = 0; i < destinations.length; i++) {
+      const destination = destinations[i];
+      const source = aligned
+        ? sources[i]
+        : (destination as { id?: URL | null } | null)?.id == null
+        ? undefined
+        : sources.find((s) => isSameRawPropertyNode(s, destination));
+      if (source !== destination && isSameRawPropertyNode(source, destination)) {
+        copyRawPropertiesDeep(source as object, destination as object, visited);
       }
     }
   }

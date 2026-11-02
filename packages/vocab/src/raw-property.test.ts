@@ -173,6 +173,43 @@ test("getRawPropertyValues() reads objects nested in reparsed embedded objects",
   ]);
 });
 
+test("getRawPropertyValues() does not mix up objects dropped by a reparse", async () => {
+  const create = await Create.fromJsonLd({
+    "@context": [AS, { quant: QUANT, Doc: `${AS}#Document` }],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object: {
+      "@context": AS,
+      id: "https://example.com/notes/1",
+      type: "Note",
+      attachment: [
+        {
+          // Only the outer context defines this type alias:
+          type: "Doc",
+          "quant:structuredUrl": { "@id": "https://example.com/data/a" },
+        },
+        {
+          type: "Document",
+          "quant:structuredUrl": { "@id": "https://example.com/data/b" },
+        },
+      ],
+    },
+  });
+  const note = await create.getObject();
+  ok(note instanceof Note);
+  const attachments = await Array.fromAsync(note.getAttachments());
+  // Reparsed without the outer context, the first attachment is dropped:
+  strictEqual(attachments.length, 1);
+  ok(attachments[0] != null);
+  // Without an id to match, the remaining attachment cannot be paired with
+  // its original, so it must not receive the dropped attachment's values:
+  deepStrictEqual(
+    await getRawPropertyValues(attachments[0], STRUCTURED_URL),
+    [],
+  );
+});
+
 test("getRawPropertyValues() keeps unknown properties across copies", async () => {
   const note = await Note.fromJsonLd(structuredNote);
   const expected = [{ "@id": "https://example.com/data/1?token=abc" }];
