@@ -163,6 +163,10 @@ cases.push(
     `${setup} read(obj, "constructor:property");`,
     "non-HTTP scheme",
   ],
+  [
+    "switch discriminant outside case scope",
+    `${setup} const iri = "https://example/p"; switch (read(obj, iri)) { case 0: const iri = "content"; }`,
+  ],
   ["IPv6 authority", `${setup} read(obj, "https://[::1]/property");`],
   [
     "escaped template",

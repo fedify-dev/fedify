@@ -239,7 +239,15 @@ export function checkRawPropertyIris(
       }
     }
     if (node.type === "CallExpression") calls.push(node);
-    for (const child of children(node)) visit(child, scope);
+    for (const child of children(node)) {
+      // The discriminant of a switch is evaluated outside its case scope:
+      visit(
+        child,
+        node.type === "SwitchStatement" && child === node.discriminant
+          ? outer
+          : scope,
+      );
+    }
   }
   visit(program as unknown as Ast, root);
 
