@@ -423,17 +423,27 @@ export function createIdRequiredRuleTests(config: TestConfig): TestSuite {
 }
 
 /**
- * Creates required rule tests for `preferredUsername`, which — like `id` —
- * uses `setActorDispatcher` as its own setter, so the generic
- * `createRequiredDispatcherRuleTests` (built for properties with a separate
- * setter such as `setInboxListeners`) does not apply. Unlike `id`, it has no
- * getter, so its "good" cases use a plain literal instead of a context call.
+ * Creates required-rule tests for a property whose setter is
+ * `setActorDispatcher()` itself and which has no `Context` getter.  The
+ * generic `createRequiredDispatcherRuleTests` is built for properties with a
+ * separate setter such as `setInboxListeners`, so it does not apply.  `id` is
+ * not covered here because it has a getter and its own suite.
+ *
+ * `examples.singular` and `examples.plural` are code expressions placed after
+ * the singular and plural property keys in the generated actor object.
  */
-export function createPreferredUsernameRequiredRuleTests(
+export function createDirectActorPropertyRequiredRuleTests(
+  propertyKey: PropertyKey,
+  examples: { singular: string; plural: string },
   config: TestConfig,
 ): TestSuite {
   const { rule, ruleName } = config;
-  const expectedError = actorPropertyRequired(properties.preferredUsername);
+  const prop = properties[propertyKey];
+  const expectedError = actorPropertyRequired(prop);
+  const propertyName = prop.name;
+  const pluralName = "pluralName" in prop
+    ? prop.pluralName
+    : `${propertyName}s`;
 
   return {
     // ✅ Good - non-Federation object
@@ -451,11 +461,11 @@ export function createPreferredUsernameRequiredRuleTests(
       true,
     ],
 
-    // ✅ Good - with preferredUsername property
-    "with preferredUsername property": [
+    // ✅ Good - with the singular property
+    [`with ${propertyName} property`]: [
       lintTest({
         code: createActorDispatcherCode(`return new Person({
-          preferredUsername: identifier,
+          ${propertyName}: ${examples.singular},
           name: "John Doe",
         });`),
         rule,
@@ -464,11 +474,11 @@ export function createPreferredUsernameRequiredRuleTests(
       true,
     ],
 
-    // ✅ Good - with plural preferredUsernames property
-    "with preferredUsernames (plural) property": [
+    // ✅ Good - with the plural property
+    [`with plural ${pluralName} property`]: [
       lintTest({
         code: createActorDispatcherCode(`return new Person({
-          preferredUsernames: [identifier],
+          ${pluralName}: ${examples.plural},
           name: "John Doe",
         });`),
         rule,
@@ -477,12 +487,12 @@ export function createPreferredUsernameRequiredRuleTests(
       true,
     ],
 
-    // ✅ Good - BlockStatement with preferredUsername
-    "block statement with preferredUsername": [
+    // ✅ Good - BlockStatement with the property
+    [`block statement with ${propertyName}`]: [
       lintTest({
         code: createActorDispatcherCode(`const name = "John Doe";
         return new Person({
-          preferredUsername: identifier,
+          ${propertyName}: ${examples.singular},
           name,
         });`),
         rule,
@@ -491,8 +501,8 @@ export function createPreferredUsernameRequiredRuleTests(
       true,
     ],
 
-    // ❌ Bad - without preferredUsername property
-    "without preferredUsername property": [
+    // ❌ Bad - without the property
+    [`without ${propertyName} property`]: [
       lintTest({
         code: createActorDispatcherCode(
           `return new Person({ name: "John Doe" });`,
@@ -515,11 +525,11 @@ export function createPreferredUsernameRequiredRuleTests(
       false,
     ],
 
-    // ✅ Good - multiple properties including preferredUsername
-    "multiple properties including preferredUsername": [
+    // ✅ Good - multiple properties including the property
+    [`multiple properties including ${propertyName}`]: [
       lintTest({
         code: createActorDispatcherCode(`return new Person({
-          preferredUsername: identifier,
+          ${propertyName}: ${examples.singular},
           name: "John Doe",
           inbox: ctx.getInboxUri(identifier),
           outbox: ctx.getOutboxUri(identifier),
@@ -530,8 +540,8 @@ export function createPreferredUsernameRequiredRuleTests(
       true,
     ],
 
-    // ❌ Bad - variable assignment without preferredUsername
-    "variable assignment without preferredUsername": [
+    // ❌ Bad - variable assignment without the property
+    [`variable assignment without ${propertyName}`]: [
       lintTest({
         code: createActorDispatcherCode(
           `const actor = new Person({ name: "John Doe" });
@@ -559,6 +569,18 @@ federation.setActorDispatcher(
       true,
     ],
   };
+}
+
+/**
+ * Creates required rule tests for `preferredUsername`.
+ */
+export function createPreferredUsernameRequiredRuleTests(
+  config: TestConfig,
+): TestSuite {
+  return createDirectActorPropertyRequiredRuleTests("preferredUsername", {
+    singular: "identifier",
+    plural: "[identifier]",
+  }, config);
 }
 
 // =============================================================================

@@ -25,32 +25,33 @@ import type {
   ReturnStatement,
   SpreadElement,
   Statement,
-  WithIdentifierKey,
 } from "./types.ts";
-import { cases, eq } from "./utils.ts";
+import { cases } from "./utils.ts";
+
+const getKeyName = (node: Property): string | null => {
+  const key = node.key;
+  if (key.type === "Identifier" && !node.computed) return key.name;
+  if (key.type === "Literal" && typeof key.value === "string") {
+    return key.value;
+  }
+  return null;
+};
 
 /**
- * Checks if a node has a key with a specific name.
+ * Checks if a node has a key with a specific name, whether the key is written
+ * as an identifier (`url`) or as a string literal (`"url"` or `["url"]`).
+ * Computed identifier keys stay dynamic and are not matched.
  */
-const hasKeyName =
-  <T extends string>(propertyName: T) =>
-  (node: Property): node is Property & WithIdentifierKey<T> =>
-    pipe(
-      node,
-      prop("key"),
-      allOf(
-        isNodeType("Identifier"),
-        pipeLazy(prop("name"), eq(propertyName)) as (node: Node) => boolean,
-      ),
-    ) as boolean;
+const hasKeyName = (propertyName: string) => (node: Property): boolean =>
+  getKeyName(node) === propertyName;
 
 /**
- * Checks if a node is a Property with an Identifier key of a specific name.
+ * Checks if a node is a Property with a specific key name.
  */
-export const isPropertyWithName = <T extends string>(propertyName: T) =>
+export const isPropertyWithName = (propertyName: string) =>
 (
   node: Property | SpreadElement,
-): node is Property & WithIdentifierKey<T> =>
+): node is Property =>
   allOf(
     isNodeType("Property"),
     hasKeyName(propertyName),
@@ -126,21 +127,53 @@ const unwrapTypeScriptExpression = (node: Expression): Expression => {
 const isNullLiteral = (node: Expression): boolean =>
   node.type === "Literal" && node.value === null;
 
+const isUndefinedExpression = (node: Expression): boolean =>
+  (node.type === "Identifier" && node.name === "undefined") ||
+  (node.type === "UnaryExpression" && node.operator === "void");
+
 const isTombstoneExpression = (node: Expression): boolean =>
   node.type === "NewExpression" &&
   node.callee.type === "Identifier" &&
   node.callee.name === "Tombstone";
+
+/**
+ * Checks whether a property initializer visibly carries a value.
+ *
+ * A `null` literal, `undefined`, `void`, or an empty array literal means
+ * there is no value for rules that require a profile URL, even though the
+ * property key is present.  TypeScript wrappers such as `as`, `satisfies`,
+ * and non-null assertions are unwrapped first.
+ */
+export const isNonEmptyInitializer = (
+  node: Expression | AssignmentPattern,
+): boolean => {
+  const value = node.type === "AssignmentPattern"
+    ? node.right as Expression
+    : node;
+  const expression = unwrapTypeScriptExpression(value);
+  if (isNullLiteral(expression) || isUndefinedExpression(expression)) {
+    return false;
+  }
+  if (expression.type === "ArrayExpression") {
+    return expression.elements.length > 0;
+  }
+  return true;
+};
 
 // Check if both branches have the property
 const checkBranchWith =
   (propertyChecker: PropertyChecker) => (branch: Expression): boolean => {
     const expression = unwrapTypeScriptExpression(branch);
 
-    // A null return means that no actor was found, so there is no actor object
-    // whose properties need to be checked. A Tombstone return means the actor
-    // was deleted, which ActorDispatcher explicitly permits, so it likewise
-    // has no actor properties to check.
-    if (isNullLiteral(expression) || isTombstoneExpression(expression)) {
+    // A null or undefined return means that no actor was found, so there is
+    // no actor object whose properties need to be checked. A Tombstone return
+    // means the actor was deleted, which ActorDispatcher explicitly permits,
+    // so it likewise has no actor properties to check.
+    if (
+      isNullLiteral(expression) ||
+      isUndefinedExpression(expression) ||
+      isTombstoneExpression(expression)
+    ) {
       return true;
     }
 
@@ -193,16 +226,12 @@ const extractObjectExpression: (arg: Expression) => ObjectExpression | null =
  * @returns A function that checks the ReturnStatement
  */
 const checkReturnStatement =
-  (propertyChecker: PropertyChecker) => (node: ReturnStatement) =>
-    pipe(
-      node,
-      prop("argument"),
-      cases<Expression, null | undefined, boolean>(
-        isObject,
-        checkBranchWith(propertyChecker),
-        always(false),
-      ),
-    );
+  (propertyChecker: PropertyChecker) => (node: ReturnStatement) => {
+    // A bare return is equivalent to `return undefined`, which means no actor
+    // was found rather than an actor missing its properties.
+    if (node.argument == null) return true;
+    return checkBranchWith(propertyChecker)(node.argument);
+  };
 
 /**
  * Creates a function that recursively checks for a property in an AST node.

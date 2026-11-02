@@ -44,7 +44,7 @@ const logger = getLogger(["fedify", "init", "action", "configs"]);
  * @returns Configuration object with path and Deno-specific settings
  */
 export const loadDenoConfig = (data: InitCommandData) => {
-  const lintExcludes = getDenoKvLintExcludes(data);
+  const lintExcludes = getDenoLintExcludes(data);
   return {
     path: "deno.json",
     data: {
@@ -54,9 +54,7 @@ export const loadDenoConfig = (data: InitCommandData) => {
       imports: joinDepsReg("deno")(getDependencies(data)),
       lint: {
         plugins: ["jsr:@fedify/lint"],
-        ...(lintExcludes.length > 0
-          ? { rules: { exclude: lintExcludes } }
-          : {}),
+        rules: { exclude: lintExcludes },
       },
       ...(data.testMode && !data.dryRun ? { links: getLinks(data) } : {}),
     },
@@ -64,13 +62,17 @@ export const loadDenoConfig = (data: InitCommandData) => {
 };
 
 /**
- * Deno Lint reports every plugin rule as an error, so `denokv` selections
- * would fail `deno lint` without opting out of the deprecation rules.  The
- * interactive prompt already labels the option as deprecated.
+ * Deno Lint reports every plugin rule as an error, so advisory rules that the
+ * generated scaffold cannot satisfy have to be excluded.  The default actor
+ * template has no profile page, so `actor-profile-url-required` would
+ * otherwise fail `deno lint`.  The interactive prompts already label the
+ * `denokv` option as deprecated, so the corresponding deprecation rules are
+ * excluded when selected.
  */
-const getDenoKvLintExcludes = (
+const getDenoLintExcludes = (
   { kvStore, messageQueue }: Pick<InitCommandData, "kvStore" | "messageQueue">,
 ): string[] => [
+  "fedify-lint/actor-profile-url-required",
   ...(kvStore === "denokv" ? ["fedify-lint/deno-kv-store-deprecated"] : []),
   ...(messageQueue === "denokv"
     ? ["fedify-lint/deno-kv-message-queue-deprecated"]

@@ -147,6 +147,7 @@ federation
       id: ctx.getActorUri(identifier),
       name: "John Doe",
       preferredUsername: identifier,
+      url: new URL("/@johndoe", ctx.origin),
       summary: "A test actor for comprehensive lint rule validation",
       inbox: ctx.getInboxUri(identifier),
       endpoints: new Endpoints({
@@ -384,6 +385,68 @@ test("Integration: ❌ actor-preferred-username-required - missing preferred-use
     ),
     assertHasError("actor-preferred-username-required"),
   ));
+
+test("Integration: ❌ actor-profile-url-required - missing url property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      'url: new URL("/@johndoe", ctx.origin),',
+      "// url: REMOVED",
+    ),
+    assertHasError("actor-profile-url-required"),
+  ));
+
+test(
+  "Integration: ✅ actor-profile-url-required - quoted url property",
+  () =>
+    pipe(
+      COMPLETE_VALID_CODE,
+      replace(
+        'url: new URL("/@johndoe", ctx.origin),',
+        '"url": new URL("/@johndoe", ctx.origin),',
+      ),
+      assertNoErrors,
+    ),
+);
+
+test(
+  "Integration: ✅ actor-profile-url-required - computed quoted url property",
+  () =>
+    pipe(
+      COMPLETE_VALID_CODE,
+      replace(
+        'url: new URL("/@johndoe", ctx.origin),',
+        '["url"]: new URL("/@johndoe", ctx.origin),',
+      ),
+      assertNoErrors,
+    ),
+);
+
+test(
+  "Integration: ❌ actor-profile-url-required - undefined url",
+  () =>
+    pipe(
+      COMPLETE_VALID_CODE,
+      replace(
+        'url: new URL("/@johndoe", ctx.origin),',
+        "url: undefined,",
+      ),
+      assertHasError("actor-profile-url-required"),
+    ),
+);
+
+test(
+  "Integration: ❌ actor-profile-url-required - empty urls array",
+  () =>
+    pipe(
+      COMPLETE_VALID_CODE,
+      replace(
+        'url: new URL("/@johndoe", ctx.origin),',
+        "urls: [],",
+      ),
+      assertHasError("actor-profile-url-required"),
+    ),
+);
 
 test(
   "Integration: ❌ actor-inbox-property-required - missing inbox property",
