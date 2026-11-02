@@ -2647,31 +2647,20 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         getContentFields(capturedJsonLd);
       contextMatches = getContextFields(transformedJsonLd) ===
         getContextFields(capturedJsonLd);
-      if (contentChanged) {
-        // Drop proofs that covered the captured content, but keep proofs the
-        // transformer supplied for the new content.
-        const capturedProofs = new Set(
-          getProofEntries(capturedJsonLd).map(getProofEntryFields),
-        );
-        const retainedProofs: DataIntegrityProof[] = [];
-        for await (
-          const proof of activity.getProofs({
-            contextLoader: this.contextLoader,
-          })
-        ) {
-          const proofJsonLd = await proof.toJsonLd({
-            format: "compact",
-            contextLoader: this.contextLoader,
-          });
-          if (!capturedProofs.has(getProofEntryFields(proofJsonLd))) {
-            retainedProofs.push(proof);
-          }
-        }
+      const proofsChanged = getProofFields(transformedJsonLd) !==
+        getProofFields(capturedJsonLd);
+      if (contentChanged || (!contextMatches && proofsChanged)) {
+        // Drop proofs that covered the captured content or context, but keep
+        // proofs the transformer supplied for the current serialization.
+        activity = activity.clone({
+          proofs: await getUncapturedProofs(
+            activity,
+            capturedJsonLd,
+            this.contextLoader,
+          ),
+        });
         activityJsonLd = undefined;
-        activity = activity.clone({ proofs: retainedProofs });
-      } else if (
-        getProofFields(transformedJsonLd) !== getProofFields(capturedJsonLd)
-      ) {
+      } else if (proofsChanged) {
         // The transformer only changed the proofs.  Their content still
         // matches, so keep the transformed proofs and serialize the
         // transformed activity instead of the captured snapshot.
@@ -3623,6 +3612,27 @@ function getProofFields(value: unknown): string {
   return JSON.stringify(
     getProofEntries(value).map(getProofEntryFields).sort(),
   );
+}
+
+async function getUncapturedProofs(
+  activity: Activity,
+  capturedJsonLd: unknown,
+  contextLoader: DocumentLoader,
+): Promise<DataIntegrityProof[]> {
+  const capturedProofs = new Set(
+    getProofEntries(capturedJsonLd).map(getProofEntryFields),
+  );
+  const retainedProofs: DataIntegrityProof[] = [];
+  for await (const proof of activity.getProofs({ contextLoader })) {
+    const proofJsonLd = await proof.toJsonLd({
+      format: "compact",
+      contextLoader,
+    });
+    if (!capturedProofs.has(getProofEntryFields(proofJsonLd))) {
+      retainedProofs.push(proof);
+    }
+  }
+  return retainedProofs;
 }
 
 function stripContexts(value: unknown): unknown {

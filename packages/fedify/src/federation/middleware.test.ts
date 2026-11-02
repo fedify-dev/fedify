@@ -5459,6 +5459,7 @@ test("ContextImpl.sendActivity()", async (t) => {
       proofValue: new Uint8Array([13, 14, 15, 16]),
       created: Temporal.Instant.from("2026-01-04T00:00:00Z"),
     });
+    const restoredProofHolder: { old?: vocab.DataIntegrityProof } = {};
     const federation3 = new FederationImpl<void>({
       kv,
       allowPrivateAddress: true,
@@ -5485,7 +5486,9 @@ test("ContextImpl.sendActivity()", async (t) => {
           if (
             activity.id?.href === "https://example.com/activity/restored-proof"
           ) {
-            return activity.clone({ proofs: [restoredProof] });
+            return activity.clone({
+              proofs: [restoredProofHolder.old!, restoredProof],
+            });
           }
           return activity;
         },
@@ -5603,6 +5606,12 @@ test("ContextImpl.sendActivity()", async (t) => {
       contextLoader: documentLoader,
       documentLoader,
     });
+    for await (
+      const proof of restored.getProofs({ contextLoader: documentLoader })
+    ) {
+      restoredProofHolder.old = proof;
+      break;
+    }
     queue.clear();
     await ctx3.sendActivity(
       { identifier: "rsa-only" },
