@@ -35,6 +35,7 @@ import type {
   OutboundAttemptReport,
   OutboundBroadcastEvent,
   OutboundDeliveryEvent,
+  OutboundHttpExchangeReport,
   OutboundObservers,
 } from "./mod.ts";
 import type { FanoutMessage, OutboxMessage } from "./queue.ts";
@@ -159,6 +160,220 @@ test("outbound observation timestamps snapshot each boundary and refresh on fano
     strictEqual("observedAt" in message.inboxes[inbox].outbound!, false);
   } finally {
     Temporal.Now.instant = originalNow;
+  }
+});
+
+test("outbound exchange-only observers await snapshots across unsigned worker redirects", async () => {
+  const builder = createFederationBuilder<{ label: string }>();
+  const exchanges: OutboundHttpExchangeReport[] = [];
+  const contexts: unknown[] = [];
+  let entered!: () => void;
+  const observing = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let replacements = 0;
+  builder.setOutboundObservers({
+    async onHttpExchange(ctx, report) {
+      exchanges.push(report);
+      contexts.push(ctx.data);
+      entered();
+      await gate;
+      throw new Error("exchange callback rejection must be isolated");
+    },
+  });
+  const federation = await builder.build({
+    kv: new MemoryKvStore(),
+    allowPrivateAddress: true,
+  });
+  builder.setOutboundObservers({
+    onHttpExchange() {
+      replacements++;
+    },
+  });
+  const message = continuationMessage(recipient.inboxId!.href, true);
+  const data = { label: "worker" };
+  const next = new URL("/next", message.inbox).href;
+  const bodies: unknown[] = [];
+  fetchMock.mockGlobal()
+    .post(message.inbox, (call) => {
+      bodies.push(JSON.parse(String(call.options.body)));
+      return { status: 303, headers: { Location: next } };
+    })
+    .get(next, 202);
+  let settled = false;
+  const processing = federation.processQueuedTask(data, message)
+    .finally(() => {
+      settled = true;
+    });
+  try {
+    await observing;
+    strictEqual(settled, false);
+    strictEqual(fetchMock.callHistory.calls().length, 1);
+    strictEqual(exchanges.length, 1);
+    strictEqual(
+      Reflect.set(exchanges[0].request, "url", "https://changed.example"),
+      false,
+    );
+    federation.setOutboundObservers({
+      onHttpExchange() {
+        replacements++;
+      },
+    });
+    release();
+    await processing;
+    strictEqual(replacements, 0);
+    strictEqual(exchanges.length, 2);
+    deepStrictEqual(contexts, [data, data]);
+    deepStrictEqual(bodies, [message.activity]);
+    deepStrictEqual(exchanges.map((report) => report.exchangeIndex), [0, 1]);
+    deepStrictEqual(exchanges.map((report) => report.request), [
+      { url: message.inbox, method: "POST" },
+      { url: next, method: "GET" },
+    ]);
+    strictEqual(exchanges[0].attemptId, exchanges[1].attemptId);
+    for (const [index, report] of exchanges.entries()) {
+      strictEqual(report.deliveryId, message.outbound!.deliveryId);
+      deepStrictEqual(report.broadcast, message.outbound!.broadcast);
+      deepStrictEqual(report.provenance, message.provenance);
+      deepStrictEqual(report.queue, {
+        queueMessageId: message.id,
+        queueAttempt: message.attempt,
+      });
+      strictEqual(report.outcome.type, "response");
+      ok(report.outcome.type === "response");
+      strictEqual(report.outcome.response.status, index === 0 ? 303 : 202);
+      ok(Object.isFrozen(report));
+      ok(Object.isFrozen(report.request));
+      ok(Object.isFrozen(report.outcome));
+      ok(Object.isFrozen(report.outcome.response));
+      strictEqual("trace" in report, false);
+    }
+    strictEqual(fetchMock.callHistory.calls().length, 2);
+  } finally {
+    release();
+    await processing;
+    fetchMock.hardReset();
+  }
+});
+
+test("outbound unsigned exchanges report only actual submissions and retain received responses", async (t) => {
+  for (
+    const phase of [
+      "http",
+      "request",
+      "policy",
+      "serialization",
+      "redirect-policy",
+      "redirect-cleanup",
+      "final-cleanup",
+    ] as const
+  ) {
+    await t.step(phase, async () => {
+      const federation = createFederation<void>(options);
+      const ctx = federation.createContext(
+        new URL("https://example.com"),
+        undefined,
+      );
+      const exchanges: OutboundHttpExchangeReport[] = [];
+      const attempts: OutboundAttemptReport[] = [];
+      const observation = new OutboundBroadcastObservation(ctx, {
+        onAttempt(_ctx, report) {
+          attempts.push(report);
+        },
+        onHttpExchange(_ctx, report) {
+          exchanges.push(report);
+          throw new Error("recorder must not change the exchange result");
+        },
+      }, "send");
+      const inbox = recipient.inboxId!.href;
+      await observation.planDestinations({
+        [inbox]: { actorIds: [], sharedInbox: false },
+      });
+      const failure = phase.includes("policy")
+        ? new UrlError("destination denied")
+        : undefined;
+      let submissions = 0;
+      let closed = 0;
+      let outward: unknown;
+      await rejects(
+        sendConcreteActivity({
+          observation: observation.delivery(inbox),
+          activity: phase === "serialization"
+            ? {
+              toJSON() {
+                throw failure;
+              },
+            }
+            : {},
+          keys: [],
+          inbox: new URL(inbox),
+        }, {
+          openHop(url) {
+            if (
+              phase === "policy" || phase === "redirect-policy" && url !== inbox
+            ) {
+              return Promise.reject(failure);
+            }
+            return Promise.resolve({
+              url: new URL(url),
+              fetch() {
+                submissions++;
+                if (phase === "request") return Promise.reject(failure);
+                const redirect = phase.startsWith("redirect-");
+                return Promise.resolve(
+                  new Response(null, {
+                    status: redirect ? 307 : phase === "http" ? 503 : 202,
+                    statusText: "Observed response",
+                    headers: redirect ? { Location: "/next" } : {},
+                  }),
+                );
+              },
+              close() {
+                closed++;
+                return phase.endsWith("cleanup")
+                  ? Promise.reject(failure)
+                  : Promise.resolve();
+              },
+            });
+          },
+        }),
+        (error: unknown) => {
+          outward = error;
+          return true;
+        },
+      );
+      strictEqual(attempts.length, 1);
+      ok(attempts[0].outcome.type === "failed");
+      strictEqual(attempts[0].outcome.error, outward);
+      const count = phase === "policy" || phase === "serialization" ? 0 : 1;
+      strictEqual(submissions, count);
+      strictEqual(exchanges.length, count);
+      if (count === 0) return;
+      const report = exchanges[0];
+      strictEqual(report.attemptId, attempts[0].attemptId);
+      strictEqual(report.exchangeIndex, 0);
+      deepStrictEqual(report.request, { url: inbox, method: "POST" });
+      if (phase === "request") {
+        strictEqual(report.outcome.type, "failed");
+        ok(report.outcome.type === "failed");
+        strictEqual(report.outcome.error, failure);
+      } else {
+        ok(report.outcome.type === "response");
+        deepStrictEqual(report.outcome.response, {
+          status: phase.startsWith("redirect-")
+            ? 307
+            : phase === "http"
+            ? 503
+            : 202,
+          statusText: "Observed response",
+        });
+      }
+      ok(closed > 0);
+    });
   }
 });
 

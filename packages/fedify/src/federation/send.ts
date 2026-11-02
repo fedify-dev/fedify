@@ -619,6 +619,7 @@ async function sendActivityInternal(
           request,
           openDeliveryHop,
           consume,
+          attempt,
         )
         : await doubleKnockScoped(
           request,
@@ -763,6 +764,7 @@ export async function fetchWithValidatedRedirects<T>(
   request: Request,
   openHop: DoubleKnockOpenHop,
   consume: (response: Response) => Promise<T>,
+  attempt?: OutboundAttemptObservation,
 ): Promise<T> {
   const logger = getLogger(["fedify", "federation", "outbox"]);
   let body: string | undefined = await request.clone().text();
@@ -771,7 +773,10 @@ export async function fetchWithValidatedRedirects<T>(
     let response: Response;
     try {
       // Bun also needs the redirect option on fetch() itself.
-      response = await session.fetch(request, { redirect: "manual" });
+      response = await (attempt == null
+        ? session.fetch(request, { redirect: "manual" })
+        : attempt.fetch(request, () =>
+          session.fetch(request, { redirect: "manual" })));
     } catch (error) {
       await closeAfterError(session, logger);
       throw error;

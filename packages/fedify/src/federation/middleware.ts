@@ -1489,7 +1489,7 @@ export class FederationImpl<TContextData>
     span: Span,
     provenance: OutboundProvenance,
   ): Promise<void> {
-    const onAttempt = this.outboundObservers.onAttempt;
+    const { onAttempt, onHttpExchange } = this.outboundObservers;
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const logData = {
       keyIds: message.keys.map((pair) => pair.keyId),
@@ -1538,6 +1538,7 @@ export class FederationImpl<TContextData>
       onAttempt,
       message,
       provenance,
+      onHttpExchange,
     );
     let parsedActorIds: URL[] | undefined;
     const getActorIds = () => {

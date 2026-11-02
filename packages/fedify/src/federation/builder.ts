@@ -668,6 +668,7 @@ export class FederationBuilderImpl<TContextData>
       onBroadcast: observers.onBroadcast,
       onDelivery: observers.onDelivery,
       onAttempt: observers.onAttempt,
+      onHttpExchange: observers.onHttpExchange,
     });
   }
 

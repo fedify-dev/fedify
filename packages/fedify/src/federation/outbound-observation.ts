@@ -21,6 +21,7 @@ import type {
   OutboundAttemptReport,
   OutboundBroadcastEvent,
   OutboundDeliveryEvent,
+  OutboundHttpExchangeReport,
   OutboundObservers,
   OutboundPreparationResult,
   OutboundProvenance,
@@ -107,7 +108,7 @@ async function notifyObserver<
     | ((context: Context<TContextData>, event: TEvent) => void | Promise<void>)
     | undefined,
   event: TEvent,
-  unit: "broadcast" | "delivery" | "attempt",
+  unit: "broadcast" | "delivery" | "attempt" | "http-exchange",
 ): Promise<void> {
   if (callback == null) return;
   try {
@@ -153,6 +154,16 @@ type AttemptFacts = Pick<
   "attemptId" | "inboxUrl" | "observedAt" | "trace" | "outcome"
 >;
 
+type ExchangeFacts = Pick<
+  OutboundHttpExchangeReport,
+  | "attemptId"
+  | "inboxUrl"
+  | "exchangeIndex"
+  | "observedAt"
+  | "request"
+  | "outcome"
+>;
+
 /** State owned by one concrete send, never persisted in queue metadata. */
 export class OutboundAttemptObservation {
   readonly #attemptId = crypto.randomUUID();
@@ -160,14 +171,60 @@ export class OutboundAttemptObservation {
   #response: { readonly status: number } | undefined;
   #trace: OutboundAttemptReport["trace"];
   #finished = false;
+  #exchangeCount = 0;
 
   constructor(
     readonly inboxUrl: string,
     readonly report: (facts: AttemptFacts) => Promise<void>,
+    readonly reportExchange:
+      | ((facts: ExchangeFacts) => Promise<void>)
+      | undefined = undefined,
   ) {}
 
   setSpan(span: Span, parentSpanContext?: SpanContext): void {
     this.#trace = snapshotTrace(span, parentSpanContext);
+  }
+
+  async fetch(
+    request: Request,
+    submit: () => Promise<Response>,
+  ): Promise<Response> {
+    const exchangeIndex = this.#exchangeCount++;
+    const snapshot = Object.freeze({
+      url: request.url,
+      method: request.method,
+    });
+    let response: Response;
+    try {
+      response = await submit();
+    } catch (error) {
+      await this.#exchange(exchangeIndex, snapshot, { type: "failed", error });
+      throw error;
+    }
+    await this.#exchange(exchangeIndex, snapshot, {
+      type: "response",
+      response: Object.freeze({
+        status: response.status,
+        statusText: response.statusText,
+        ...(response.url === "" ? {} : { url: response.url }),
+      }),
+    });
+    return response;
+  }
+
+  #exchange(
+    exchangeIndex: number,
+    request: OutboundHttpExchangeReport["request"],
+    outcome: OutboundHttpExchangeReport["outcome"],
+  ): Promise<void> {
+    return this.reportExchange?.({
+      attemptId: this.#attemptId,
+      inboxUrl: this.inboxUrl,
+      exchangeIndex,
+      observedAt: Temporal.Now.instant().epochMilliseconds,
+      request,
+      outcome: Object.freeze(outcome),
+    }) ?? Promise.resolve();
   }
 
   response(status: number): void {
@@ -247,6 +304,8 @@ export class OutboundAttemptObserver<TContextData> {
     readonly identity: AttemptIdentity,
     readonly provenance: OutboundProvenance,
     queue?: OutboundAttemptReport["queue"],
+    readonly onHttpExchange: OutboundObservers<TContextData>["onHttpExchange"] =
+      undefined,
   ) {
     this.#queue = queue == null ? undefined : Object.freeze({ ...queue });
   }
@@ -256,8 +315,9 @@ export class OutboundAttemptObserver<TContextData> {
     callback: OutboundObservers<TContextData>["onAttempt"],
     message: OutboxMessage,
     provenance: OutboundProvenance,
+    onHttpExchange?: OutboundObservers<TContextData>["onHttpExchange"],
   ): OutboundAttemptObserver<TContextData> | undefined {
-    if (callback == null) return undefined;
+    if (callback == null && onHttpExchange == null) return undefined;
     const identity = message.outbound == null
       ? Object.freeze({
         broadcast: Object.freeze({ type: "unknown" as const }),
@@ -276,11 +336,12 @@ export class OutboundAttemptObserver<TContextData> {
         queueMessageId: message.id,
         queueAttempt: message.attempt,
       },
+      onHttpExchange,
     );
   }
 
   startAttempt(inboxUrl: string): OutboundAttemptObservation | undefined {
-    if (this.callback == null) return undefined;
+    if (this.callback == null && this.onHttpExchange == null) return undefined;
     const context = this.context();
     return new OutboundAttemptObservation(
       inboxUrl,
@@ -296,6 +357,19 @@ export class OutboundAttemptObserver<TContextData> {
             local: snapshotLocalContext(context),
           }),
           "attempt",
+        ),
+      (facts) =>
+        notifyObserver(
+          context,
+          this.onHttpExchange,
+          Object.freeze({
+            ...this.identity,
+            ...facts,
+            ...(this.#queue == null ? {} : { queue: this.#queue }),
+            provenance: this.provenance,
+            local: snapshotLocalContext(context),
+          }),
+          "http-exchange",
         ),
     );
   }
@@ -316,6 +390,7 @@ class OutboundDeliveryObservation<TContextData> {
     readonly provenance: OutboundProvenance,
     readonly trace: OutboundBroadcastEvent["trace"],
     onAttempt: OutboundObservers<TContextData>["onAttempt"],
+    onHttpExchange: OutboundObservers<TContextData>["onHttpExchange"],
     queue?: OutboundAttemptReport["queue"],
   ) {
     this.#reference = snapshotDeliveryIdentity(identity);
@@ -325,6 +400,7 @@ class OutboundDeliveryObservation<TContextData> {
       this.#reference,
       this.provenance,
       queue,
+      onHttpExchange,
     );
     this.#plan = Object.freeze({
       actorIds: Object.freeze(Array.from(destination.actorIds)),
@@ -416,6 +492,7 @@ export class OutboundBroadcastObservation<TContextData> {
   readonly #onBroadcast: OutboundObservers<TContextData>["onBroadcast"];
   readonly #onDelivery: OutboundObservers<TContextData>["onDelivery"];
   readonly #onAttempt: OutboundObservers<TContextData>["onAttempt"];
+  readonly #onHttpExchange: OutboundObservers<TContextData>["onHttpExchange"];
   readonly #deliveries = new Map<
     string,
     OutboundDeliveryObservation<TContextData>
@@ -436,6 +513,7 @@ export class OutboundBroadcastObservation<TContextData> {
     this.#onBroadcast = observers.onBroadcast;
     this.#onDelivery = observers.onDelivery;
     this.#onAttempt = observers.onAttempt;
+    this.#onHttpExchange = observers.onHttpExchange;
   }
 
   /** Continue an existing fanout; do not emit a new broadcast invocation. */
@@ -448,13 +526,18 @@ export class OutboundBroadcastObservation<TContextData> {
   ): Promise<OutboundBroadcastObservation<TContextData> | undefined> {
     if (
       observers.onDelivery == null && observers.onAttempt == null &&
+      observers.onHttpExchange == null &&
       !Object.values(message.inboxes).some((entry) => entry.outbound != null)
     ) {
       return undefined;
     }
     const observation = new OutboundBroadcastObservation(
       context,
-      { onDelivery: observers.onDelivery, onAttempt: observers.onAttempt },
+      {
+        onDelivery: observers.onDelivery,
+        onAttempt: observers.onAttempt,
+        onHttpExchange: observers.onHttpExchange,
+      },
       "send",
       getOutboundProvenance(context),
       { type: "unknown" },
@@ -498,6 +581,7 @@ export class OutboundBroadcastObservation<TContextData> {
       this.provenance,
       this.#trace,
       this.#onAttempt,
+      this.#onHttpExchange,
       this.queue,
     );
   }
@@ -703,7 +787,7 @@ export function observeOutboundBroadcast<TContextData, TResult>(
   return withContext(sourceLogContext(provenance), () => {
     if (
       observers.onBroadcast == null && observers.onDelivery == null &&
-      observers.onAttempt == null
+      observers.onAttempt == null && observers.onHttpExchange == null
     ) {
       return execute();
     }

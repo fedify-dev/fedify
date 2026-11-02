@@ -215,6 +215,45 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
 };
 
 /**
+ * One actual unsigned fetch submission within a concrete send attempt.
+ *
+ * A redirect response remains an observed response even if a later hop fails.
+ * This report does not establish the attempt's final response. Signed exchanges
+ * and response body/header capture are not observed yet.
+ * @since 2.5.0
+ */
+export type OutboundHttpExchangeReport =
+  & OutboundSourceMetadata
+  & Pick<
+    OutboundAttemptReport,
+    | "attemptId"
+    | "broadcast"
+    | "deliveryId"
+    | "destinationInbox"
+    | "portableInbox"
+    | "inboxUrl"
+    | "queue"
+  >
+  & {
+    /** Zero-based submission order within this attempt. */
+    readonly exchangeIndex: number;
+    /** Immutable facts of the request actually submitted. */
+    readonly request: { readonly url: string; readonly method: string };
+    /** A received response, including non-2xx, or the original fetch rejection. */
+    readonly outcome:
+      | {
+        readonly type: "response";
+        readonly response: {
+          readonly status: number;
+          readonly statusText: string;
+          /** Response URL when supplied by fetch. */
+          readonly url?: string;
+        };
+      }
+      | { readonly type: "failed"; readonly error: unknown };
+  };
+
+/**
  * Optional observers of outgoing activity processing.
  *
  * Send, original-payload forwarding, and automatic portable replication producer
@@ -231,6 +270,15 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
  * @since 2.5.0
  */
 export interface OutboundObservers<TContextData> {
+  /**
+   * Observes an unsigned fetch after response headers or rejection, before
+   * subsequent redirect handling. Callback errors do not replace transport.
+   */
+  readonly onHttpExchange?: (
+    context: Context<TContextData>,
+    report: OutboundHttpExchangeReport,
+  ) => void | Promise<void>;
+
   /**
    * Observes settlement of concrete sends and forwarding, including pre-fetch
    * failures. Callback errors cannot replace the sender's result.
