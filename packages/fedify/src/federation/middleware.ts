@@ -6132,14 +6132,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       } else {
         identifierPromise = Promise.resolve(identity.identifier);
       }
-      return identifierPromise.then((identifier) => {
+      return identifierPromise.then(async (identifier) => {
         if (identifier == null) return this.documentLoader;
-        const keyPair = this.getRsaKeyPairFromIdentifier(identifier);
-        return keyPair.then((pair) =>
-          pair == null
-            ? this.documentLoader
-            : this.federation.authenticatedDocumentLoaderFactory(pair)
-        );
+        const pair = await this.getRsaKeyPairFromIdentifier(identifier);
+        return pair == null
+          ? this.documentLoader
+          : this.federation.authenticatedDocumentLoaderFactory(pair);
       });
     }
     return this.federation.authenticatedDocumentLoaderFactory(identity);

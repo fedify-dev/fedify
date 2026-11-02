@@ -18,8 +18,8 @@ import {
   followersStore,
   followingStore,
   onStateChange,
+  setInboundSigSpec,
 } from "./federation.ts";
-import { setInboundSigSpec } from "./federation.ts";
 
 const indexHtml = await Deno.readTextFile(
   new URL("index.html", import.meta.url),

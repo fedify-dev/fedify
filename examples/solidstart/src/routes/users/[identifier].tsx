@@ -1,5 +1,4 @@
-import { useParams } from "@solidjs/router";
-import { createAsync, query } from "@solidjs/router";
+import { createAsync, query, useParams } from "@solidjs/router";
 import { Show } from "solid-js";
 
 const getProfile = query(async (identifier: string) => {

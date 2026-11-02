@@ -6,7 +6,6 @@ import {
   verificationObservation,
 } from "../sig/verification.ts";
 import type { AcceptSignatureParameters } from "@fedify/fedify/sig";
-import type { Recipient } from "@fedify/vocab";
 import {
   Activity,
   Collection,
@@ -18,6 +17,7 @@ import {
   Object,
   OrderedCollection,
   OrderedCollectionPage,
+  type Recipient,
   Tombstone,
 } from "@fedify/vocab";
 import {

@@ -1,15 +1,13 @@
-import type {
-  GetUserAgentOptions,
-  PortableObjectVerifier,
-} from "@fedify/vocab-runtime";
 import {
   canonicalizePortableUri,
   type DocumentLoader,
   formatIri,
   getDocumentLoader,
+  type GetUserAgentOptions,
   haveSameFe34Origin,
   haveSameIriOrigin,
   parseIri,
+  type PortableObjectVerifier,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
 import {

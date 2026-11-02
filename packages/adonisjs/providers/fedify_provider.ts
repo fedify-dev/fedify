@@ -348,7 +348,13 @@ export default class FedifyProvider {
     this.#loggingConfigured = false;
     // A failing reset must not fail the shutdown queued behind it.  The queue
     // promise never rejects, so only the reset is guarded.
-    return stopped.then(() => resetLogging().catch(() => {}));
+    return stopped.then(async () => {
+      try {
+        await resetLogging();
+      } catch {
+        // Reset failures must not fail the shutdown queued behind them.
+      }
+    });
   }
 
   /**

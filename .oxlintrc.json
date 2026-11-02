@@ -182,7 +182,9 @@
     "anti-slop/no-widen-then-assert": "error",
     "anti-slop/no-array-filter-map": "error",
     "anti-slop/no-reflect-get": "error",
-    "anti-slop/no-reflect-apply": "error"
+    "anti-slop/no-reflect-apply": "error",
+    "import/no-duplicates": "error",
+    "promise/no-nesting": "error"
   },
   "ignorePatterns": [
     "**/pnpm-lock.yaml",

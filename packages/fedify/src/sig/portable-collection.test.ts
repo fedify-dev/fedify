@@ -10,6 +10,7 @@ import {
 } from "@fedify/vocab";
 import {
   type DocumentLoader,
+  encodeMultibase,
   exportDidKey,
   FetchError,
   type PortableObjectReferrer,
@@ -19,7 +20,6 @@ import {
 import { deepStrictEqual, ok, strictEqual } from "node:assert/strict";
 import serialize from "json-canon";
 import { ed25519PrivateKey, ed25519PublicKey } from "../testing/keys.ts";
-import { encodeMultibase } from "@fedify/vocab-runtime";
 import {
   verifyPortableObject,
   type VerifyPortableObjectOptions,

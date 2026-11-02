@@ -289,12 +289,11 @@ export async function runInbox(
         peersCnt === 1 ? "peer" : "peers"
       }...`,
     );
-    sendDeleteToPeers(server).then(() => {
+    sendDeleteToPeers(server).then(async () => {
       spinner.text = "Stopping server...";
-      server.close().then(() => {
-        spinner.succeed("Server stopped.");
-        process.exit(0);
-      });
+      await server.close();
+      spinner.succeed("Server stopped.");
+      process.exit(0);
     });
   });
   spinner.start();

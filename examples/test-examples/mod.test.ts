@@ -11,11 +11,10 @@
  *   mise run test:tooling
  */
 import { fileURLToPath } from "node:url";
-import { readdir } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import assert from "node:assert/strict";
 import test from "node:test";
 import process from "node:process";
-import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { commandOutput } from "../../scripts/tooling_process.ts";
