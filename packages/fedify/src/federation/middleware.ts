@@ -1,4 +1,7 @@
-import { observeOutboundBroadcastStart } from "./outbound-observation.ts";
+import {
+  observeOutboundBroadcast,
+  type OutboundBroadcastObservation,
+} from "./outbound-observation.ts";
 import { InboxObservation } from "./inbox-observation.ts";
 import { type Path, RouterError } from "@fedify/uri-template";
 import type {
@@ -3180,7 +3183,14 @@ export class FederationImpl<TContextData>
     options: SendActivityInternalOptions<TContextData>,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
-    const { immediate, collectionSync, orderingKey, context: ctx } = options;
+    const {
+      immediate,
+      collectionSync,
+      orderingKey,
+      context: ctx,
+      observation,
+    } = options;
+    observation?.setPhase("validation");
     if (activity.id == null) {
       throw new TypeError("The activity to send must have an id.");
     }
@@ -3191,6 +3201,7 @@ export class FederationImpl<TContextData>
     } else if (keys.length < 1) {
       throw new TypeError("The keys must not be empty.");
     }
+    observation?.setPhase("serialization");
     const contextLoader = this.contextLoaderFactory(
       this.#getLoaderOptions(ctx.origin),
     );
@@ -3200,6 +3211,7 @@ export class FederationImpl<TContextData>
     // nor any key other than the DID's can do for a portable actor's
     // activity; its Object Integrity Proof does that instead:
     const ldSignable = !hasPortableActor(activity);
+    observation?.setPhase("key-resolution");
     for (const { keyId, privateKey } of keys) {
       validateCryptoKey(privateKey, "private");
       if (
@@ -3212,6 +3224,7 @@ export class FederationImpl<TContextData>
     }
     // If Object Integrity Proofs were already created before fanout (e.g., in
     // sendActivityInternal()), skip signing to avoid duplicates.
+    observation?.setPhase("signing");
     const signed = await signOutgoingActivity(
       activity,
       keys.map(({ keyId, privateKey }) => ({
@@ -3226,6 +3239,7 @@ export class FederationImpl<TContextData>
     );
     activity = signed.activity;
     const { hasProof, proofCreated } = signed;
+    observation?.setPhase("serialization");
     let jsonLd = !proofCreated && options.activityJsonLd != null
       ? options.activityJsonLd
       : await activity.toJsonLd({
@@ -3241,6 +3255,7 @@ export class FederationImpl<TContextData>
         preserveNestedSecuredDocuments: true,
       });
     }
+    observation?.setPhase("validation");
     assertSupportedCompoundProofShape(jsonLd, activityId);
     if (rsaKey == null && !ldSignable) {
       logger.debug(
@@ -3264,6 +3279,7 @@ export class FederationImpl<TContextData>
       );
     } else {
       try {
+        observation?.setPhase("signing");
         jsonLd = await signJsonLd(jsonLd, rsaKey.privateKey, rsaKey.keyId, {
           contextLoader,
           tracerProvider: this.tracerProvider,
@@ -3292,6 +3308,7 @@ export class FederationImpl<TContextData>
         },
       );
     }
+    observation?.setPhase("request-preparation");
     if (immediate || this.outboxQueue == null) {
       if (immediate) {
         logger.debug(
@@ -3307,8 +3324,10 @@ export class FederationImpl<TContextData>
       }
       const promises: Promise<void>[] = [];
       for (const inbox in inboxes) {
-        promises.push(
-          sendActivityToInbox(inbox, inboxes[inbox].gatewayInboxes, {
+        const sending = sendActivityToInbox(
+          inbox,
+          inboxes[inbox].gatewayInboxes,
+          {
             allowPrivateAddress: this.allowPrivateAddress,
             keys,
             activity: jsonLd,
@@ -3330,9 +3349,16 @@ export class FederationImpl<TContextData>
             ),
             meterProvider: this.meterProvider,
             tracerProvider: this.tracerProvider,
-          }),
+          },
         );
+        if (observation != null) {
+          // The preparation callback may await while an earlier send rejects.
+          // Keep its original rejection for Promise.all without an unhandled one.
+          sending.catch(() => {});
+        }
+        promises.push(sending);
       }
+      if (observation != null) await observation.prepared("delivery");
       await Promise.all(promises);
       return;
     }
@@ -3340,12 +3366,14 @@ export class FederationImpl<TContextData>
       "Enqueuing activity {activityId} to send later.",
       { activityId: activity.id!.href, activity: jsonLd },
     );
+    observation?.setPhase("key-resolution");
     const keyJwkPairs: SenderKeyJwkPair[] = [];
     for (const { keyId, privateKey } of keys) {
       const privateKeyJwk = await exportJwk(privateKey);
       keyJwkPairs.push({ keyId: keyId.href, privateKey: privateKeyJwk });
     }
     if (!this.manuallyStartQueue) this._startQueueInternal(ctx.data);
+    observation?.setPhase("request-preparation");
     const carrier: Record<string, string> = {};
     propagation.inject(context.active(), carrier);
     const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
@@ -3380,6 +3408,7 @@ export class FederationImpl<TContextData>
       };
       messages.push({ message, orderingKey: messageOrderingKey });
     }
+    if (observation != null) await observation.prepared("delivery");
     const { outboxQueue } = this;
     // enqueueMany does not support per-message orderingKey, so fall back to
     // individual enqueues whenever orderingKey is specified or the backend
@@ -5647,10 +5676,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activity: Activity,
     options: SendActivityOptionsForCollection = {},
   ): Promise<void> {
-    return observeOutboundBroadcastStart(
+    return observeOutboundBroadcast(
       this,
       this.federation.outboundObservers.onBroadcast,
-      () => {
+      (observation) => {
         const tracer = this.tracerProvider.getTracer(
           metadata.name,
           metadata.version,
@@ -5686,6 +5715,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
                 activity,
                 options,
                 span,
+                observation,
               );
             } catch (e) {
               span.setStatus({
@@ -5712,8 +5742,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activity: Activity,
     options: SendActivityOptionsForCollection,
     span: Span,
+    observation?: OutboundBroadcastObservation<TContextData>,
   ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
+    observation?.setPhase("sender-resolution");
     let keys: SenderKeyPair[];
     let identifier: string | null = null;
     let actorKeyPairs: ActorKeyPair[] | null = null;
@@ -5740,6 +5772,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         }
       }
       span.setAttribute("fedify.actor.identifier", identifier);
+      observation?.setPhase("key-resolution");
       if (this.federation.actorCallbacks?.keyPairsDispatcher == null) {
         throw new Error("No actor key pairs dispatcher registered.");
       }
@@ -5754,6 +5787,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         privateKey: kp.privateKey,
       }));
     } else if (Array.isArray(sender)) {
+      observation?.setPhase("key-resolution");
       if (sender.length < 1) {
         throw new Error("The sender's key pairs are empty.");
       }
@@ -5764,9 +5798,11 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     if (keys.length < 1) {
       throw new TypeError("The sender's keys must not be empty.");
     }
+    observation?.setPhase("key-resolution");
     for (const { privateKey } of keys) {
       validateCryptoKey(privateKey, "private");
     }
+    observation?.setPhase("recipient-resolution");
     let expandedRecipients: Recipient[];
     let collectionSync: string | undefined;
     if (Array.isArray(recipients)) {
@@ -5798,16 +5834,19 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     }
     const opts: SendActivityInternalOptions<TContextData> = {
       context: this,
+      observation,
       orderingKey: options.orderingKey,
       collectionSync,
       immediate: options.immediate,
       normalizeExistingProofs: options.normalizeExistingProofs,
     };
     span.setAttribute("activitypub.inboxes", expandedRecipients.length);
+    observation?.setPhase("transformation");
     for (const activityTransformer of this.federation.activityTransformers) {
       activity = activityTransformer(activity, this);
     }
     span?.setAttribute("activitypub.activity.id", activity?.id?.href ?? "");
+    observation?.setPhase("validation");
     if (activity.actorId == null) {
       logger.error(
         "Activity {activityId} to send does not have an actor.",
@@ -5834,6 +5873,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     // does not accept.  This mirrors the guard `FederationImpl.sendActivity()`
     // applies before signing.  Actor key pairs keep appending outside that
     // profile, as they always have.
+    observation?.setPhase("signing");
     const { activity: signedActivity, proofCreated } =
       await signOutgoingActivity(
         activity,
@@ -5855,16 +5895,19 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         },
       );
     activity = signedActivity;
+    observation?.setPhase("destination-planning");
     const inboxes = extractInboxes({
       recipients: expandedRecipients,
       preferSharedInbox: options.preferSharedInbox,
       excludeBaseUris: options.excludeBaseUris,
     });
+    observation?.planned(globalThis.Object.keys(inboxes).length);
     if (globalThis.Object.keys(inboxes).length < 1) {
       logger.debug("No inboxes found for activity {activityId}.", {
         activityId: activity.id?.href,
         activity,
       });
+      if (observation != null) await observation.skipped();
       return false;
     }
     logger.debug("Sending activity {activityId} to inboxes:\n{inboxes}", {
@@ -5872,6 +5915,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       activityId: activity.id?.href,
       activity,
     });
+    observation?.setPhase("serialization");
     const activityJsonLd = await activity.toJsonLd({
       format: "compact",
       contextLoader: this.contextLoader,
@@ -5904,13 +5948,16 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     }
     // Reject before anything is enqueued, so the caller learns about it
     // instead of the fanout worker.
+    observation?.setPhase("validation");
     assertSupportedCompoundProofShape(activityJsonLd, activity.id?.href);
+    observation?.setPhase("key-resolution");
     const keyJwkPairs = await Promise.all(
       keys.map(async ({ keyId, privateKey }) => ({
         keyId: keyId.href,
         privateKey: await exportJwk(privateKey),
       })),
     );
+    observation?.setPhase("request-preparation");
     const carrier: Record<string, string> = {};
     propagation.inject(context.active(), carrier);
     const message: FanoutMessage = {
@@ -5938,6 +5985,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     if (!this.federation.manuallyStartQueue) {
       this.federation._startQueueInternal(this.data);
     }
+    if (observation != null) await observation.prepared("fanout");
     await this.federation.fanoutQueue.enqueue(
       message,
       { orderingKey: options.orderingKey },
@@ -7225,6 +7273,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
 }
 
 interface SendActivityInternalOptions<TContextData> {
+  readonly observation?: OutboundBroadcastObservation<TContextData>;
   readonly immediate?: boolean;
   readonly collectionSync?: string;
   readonly orderingKey?: string;

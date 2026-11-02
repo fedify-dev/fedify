@@ -1,6 +1,11 @@
-import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import { Create, Person } from "@fedify/vocab";
 import { configure, reset } from "@logtape/logtape";
+import { SpanStatusCode } from "@opentelemetry/api";
 import fetchMock from "fetch-mock";
 import {
   deepStrictEqual,
@@ -12,7 +17,12 @@ import {
 import { createFederationBuilder } from "./builder.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { createFederation } from "./middleware.ts";
-import type { OutboundBroadcastEvent, OutboundObservers } from "./mod.ts";
+import type {
+  Message,
+  MessageQueue,
+  OutboundBroadcastEvent,
+  OutboundObservers,
+} from "./mod.ts";
 import { rsaPrivateKey2, rsaPublicKey2 } from "../testing/keys.ts";
 
 const activity = new Create({
@@ -57,7 +67,6 @@ test("outbound observers report fresh immutable starts without tracing or extra 
             onBroadcast(context, event) {
               strictEqual(context, ctx);
               strictEqual(context.data.label, "app");
-              strictEqual(event.stage, "started");
               strictEqual(event.operation, "send");
               ok(Object.isFrozen(event));
               events.push(event);
@@ -65,9 +74,16 @@ test("outbound observers report fresh immutable starts without tracing or extra 
           });
           await ctx.sendActivity(sender, [], activity);
           await ctx.sendActivity(sender, [], activity);
-          strictEqual(events.length, 2);
+          deepStrictEqual(preparation(events.slice(0, 2)), {
+            type: "skipped",
+            reason: "no-destinations",
+          });
+          deepStrictEqual(preparation(events.slice(2)), {
+            type: "skipped",
+            reason: "no-destinations",
+          });
           ok(events[0].broadcastId.length > 0);
-          notStrictEqual(events[0].broadcastId, events[1].broadcastId);
+          notStrictEqual(events[0].broadcastId, events[2].broadcastId);
           strictEqual(loads, 0);
         },
       );
@@ -100,8 +116,8 @@ test("outbound observers await entry before preparation and retain the selected 
   });
   const calls: string[] = [];
   federation.setOutboundObservers({
-    async onBroadcast() {
-      calls.push("original");
+    async onBroadcast(_ctx, event) {
+      calls.push(`original:${event.stage}`);
       entered();
       await gate;
       throw new Error("asynchronous observer failure");
@@ -114,8 +130,8 @@ test("outbound observers await entry before preparation and retain the selected 
   await entry;
   strictEqual(preparations, 0);
   federation.setOutboundObservers({
-    onBroadcast() {
-      calls.push("replacement");
+    onBroadcast(_ctx, event) {
+      calls.push(`replacement:${event.stage}`);
     },
   });
   release();
@@ -124,7 +140,12 @@ test("outbound observers await entry before preparation and retain the selected 
     ctx.sendActivity({ username: "alice" }, [], activity),
     (error: unknown) => error === failure,
   );
-  deepStrictEqual(calls, ["original", "replacement"]);
+  deepStrictEqual(calls, [
+    "original:started",
+    "original:preparation-finished",
+    "replacement:started",
+    "replacement:preparation-finished",
+  ]);
   strictEqual(preparations, 2);
 });
 
@@ -170,8 +191,8 @@ test("outbound observers isolate callback and logging errors from success and or
       ctx.sendActivity({ username: "alice" }, [], activity),
       (error: unknown) => error === failure,
     );
-    strictEqual(calls, 2);
-    strictEqual(logCalls, 2);
+    strictEqual(calls, 4);
+    strictEqual(logCalls, 4);
   } finally {
     await reset();
   }
@@ -206,11 +227,18 @@ test("outbound observers copy registration and isolate builder instances", async
     await federation.createContext(new URL("https://example.com"), undefined)
       .sendActivity(sender, [], activity);
   }
-  deepStrictEqual(calls, ["first only", "original", "new builder"]);
+  deepStrictEqual(calls, [
+    "first only",
+    "first only",
+    "original",
+    "original",
+    "new builder",
+    "new builder",
+  ]);
   second.setOutboundObservers({});
   await second.createContext(new URL("https://example.com"), undefined)
     .sendActivity(sender, [], activity);
-  strictEqual(calls.length, 3);
+  strictEqual(calls.length, 6);
 });
 
 test("outbound observers do not veto an actual immediate delivery", async () => {
@@ -226,8 +254,8 @@ test("outbound observers do not veto an actual immediate delivery", async () => 
       allowPrivateAddress: true,
     });
     federation.setOutboundObservers({
-      onBroadcast() {
-        order.push("started");
+      onBroadcast(_ctx, event) {
+        order.push(event.stage);
         throw new Error("recording failed");
       },
     });
@@ -241,8 +269,374 @@ test("outbound observers do not veto an actual immediate delivery", async () => 
         activity,
         { immediate: true },
       );
-    deepStrictEqual(order, ["started", "fetch"]);
+    strictEqual(order[0], "started");
+    strictEqual(order.filter((entry) => entry === "fetch").length, 1);
+    strictEqual(
+      order.filter((entry) => entry === "preparation-finished").length,
+      1,
+    );
   } finally {
     fetchMock.hardReset();
+  }
+});
+
+function preparation(events: OutboundBroadcastEvent[]) {
+  deepStrictEqual(events.map((event) => event.stage), [
+    "started",
+    "preparation-finished",
+  ]);
+  strictEqual(events[0].broadcastId, events[1].broadcastId);
+  ok(events.every((event) => Object.isFrozen(event)));
+  const event = events[1];
+  ok(event.stage === "preparation-finished");
+  ok(Object.isFrozen(event.result));
+  return event.result;
+}
+
+const recipient = new Person({
+  id: new URL("https://receiver.example/actor"),
+  inbox: new URL("https://receiver.example/inbox"),
+});
+
+test("outbound preparation preserves failure provenance and plan completeness", async (t) => {
+  for (
+    const phase of [
+      "sender-resolution",
+      "transformation",
+      "destination-planning",
+      "serialization",
+    ] as const
+  ) {
+    await t.step(phase, async () => {
+      const failure = Symbol(phase);
+      const events: OutboundBroadcastEvent[] = [];
+      const federation = createFederation<void>({
+        ...options,
+        kv: new MemoryKvStore(),
+        ...(phase === "transformation"
+          ? {
+            activityTransformers: [() => {
+              throw failure;
+            }],
+          }
+          : { activityTransformers: [] }),
+      });
+      federation.setOutboundObservers({
+        onBroadcast(_ctx, event) {
+          events.push(event);
+        },
+      });
+      let sentActivity = activity;
+      let target = recipient;
+      if (phase === "serialization") {
+        sentActivity = activity.clone({});
+        Object.defineProperty(sentActivity, "toJsonLd", {
+          value: () => Promise.reject(failure),
+        });
+      }
+      if (phase === "destination-planning") {
+        target = recipient.clone({});
+        Object.defineProperty(target, "inboxId", {
+          get() {
+            throw failure;
+          },
+        });
+      }
+      if (phase === "sender-resolution") {
+        federation.setActorDispatcher(
+          "/users/{identifier}",
+          () => new Person({}),
+        )
+          .mapHandle(() => {
+            throw failure;
+          });
+      }
+      await rejects(
+        federation.createContext(new URL("https://example.com"), undefined)
+          .sendActivity(
+            phase === "sender-resolution" ? { username: "alice" } : sender,
+            target,
+            sentActivity,
+          ),
+        (error: unknown) => error === failure,
+      );
+      deepStrictEqual(preparation(events), {
+        type: "failed",
+        failure: { kind: "local", phase, error: failure },
+        planning: phase === "serialization"
+          ? "complete"
+          : phase === "destination-planning"
+          ? "incomplete"
+          : "not-started",
+        plannedDestinationCount: phase === "serialization" ? 1 : 0,
+      });
+    });
+  }
+});
+
+test("outbound preparation precedes queue acceptance and is not rewritten by enqueue failure", async (t) => {
+  for (const role of ["outbox", "fanout"] as const) {
+    for (const rejected of [false, true]) {
+      await t.step(
+        `${role}: ${rejected ? "enqueue rejects" : "enqueue accepts"}`,
+        async () => {
+          const failure = Symbol("enqueue failure");
+          const events: OutboundBroadcastEvent[] = [];
+          const messages: Message[] = [];
+          const queue: MessageQueue = {
+            enqueue(message) {
+              messages.push(message);
+              if (rejected) return Promise.reject(failure);
+              return Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          };
+          const federation = createFederation<void>({
+            ...options,
+            kv: new MemoryKvStore(),
+            manuallyStartQueue: true,
+            queue: { [role]: queue },
+          });
+          let ready!: () => void;
+          const prepared = new Promise<void>((resolve) => {
+            ready = resolve;
+          });
+          let release!: () => void;
+          const gate = new Promise<void>((resolve) => {
+            release = resolve;
+          });
+          federation.setOutboundObservers({
+            async onBroadcast(_ctx, event) {
+              events.push(event);
+              if (event.stage === "preparation-finished") {
+                ready();
+                await gate;
+              }
+            },
+          });
+          const sending = federation.createContext(
+            new URL("https://example.com"),
+            undefined,
+          )
+            .sendActivity(sender, [recipient, recipient], activity, {
+              fanout: role === "fanout" ? "force" : "skip",
+            });
+          const settled = rejected
+            ? rejects(sending, (error: unknown) => error === failure)
+            : sending;
+          await prepared;
+          strictEqual(messages.length, 0);
+          deepStrictEqual(preparation(events), {
+            type: "prepared",
+            preparedFor: role === "fanout" ? "fanout" : "delivery",
+            destinationCount: 1,
+          });
+          release();
+          await settled;
+          strictEqual(messages.length, 1);
+          strictEqual(messages[0].type, role);
+          strictEqual(events.length, 2);
+          ok(!("observation" in messages[0]));
+        },
+      );
+    }
+  }
+});
+
+test("outbound preparation finishes before immediate sends settle without reporting later failures twice", async (t) => {
+  for (const status of [202, 503]) {
+    await t.step(`HTTP ${status}`, async () => {
+      let fetched!: () => void;
+      const fetching = new Promise<void>((resolve) => {
+        fetched = resolve;
+      });
+      let releaseResponse!: () => void;
+      const responseGate = new Promise<void>((resolve) => {
+        releaseResponse = resolve;
+      });
+      let ready!: () => void;
+      const prepared = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      let releaseObserver!: () => void;
+      const observerGate = new Promise<void>((resolve) => {
+        releaseObserver = resolve;
+      });
+      const events: OutboundBroadcastEvent[] = [];
+      const [tracerProvider, spanExporter] = createTestTracerProvider();
+      let sendEnded!: () => void;
+      const concreteSendEnded = new Promise<void>((resolve) => {
+        sendEnded = resolve;
+      });
+      const exportSpans = spanExporter.export.bind(spanExporter);
+      spanExporter.export = (spans, callback) => {
+        exportSpans(spans, callback);
+        if (spans.some((span) => span.name === "activitypub.send_activity")) {
+          sendEnded();
+        }
+      };
+      fetchMock.mockGlobal().post(
+        "https://receiver.example/inbox",
+        async () => {
+          fetched();
+          await responseGate;
+          return { status, body: "receiver response" };
+        },
+      );
+      try {
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          allowPrivateAddress: true,
+          tracerProvider,
+        });
+        federation.setOutboundObservers({
+          async onBroadcast(_ctx, event) {
+            events.push(event);
+            if (event.stage === "preparation-finished") {
+              ready();
+              await observerGate;
+            }
+          },
+        });
+        let settled = false;
+        const sending = federation.createContext(
+          new URL("https://example.com"),
+          undefined,
+        )
+          .sendActivity(sender, recipient, activity, { immediate: true })
+          .finally(() => {
+            settled = true;
+          });
+        const result = status === 202
+          ? sending
+          : rejects(sending, (error: unknown) => {
+            return error instanceof Error && "statusCode" in error &&
+              error.statusCode === status;
+          });
+        await Promise.all([prepared, fetching]);
+        strictEqual(settled, false);
+        deepStrictEqual(preparation(events), {
+          type: "prepared",
+          preparedFor: "delivery",
+          destinationCount: 1,
+        });
+        releaseResponse();
+        // Wait for the actual concrete send to finish while the preparation
+        // observer remains blocked, rather than assuming a timer is long enough.
+        await concreteSendEnded;
+        const span = spanExporter.getSpan("activitypub.send_activity");
+        ok(span);
+        if (status === 503) strictEqual(span.status.code, SpanStatusCode.ERROR);
+        // Only now yield a turn so an unhandled rejection would be detected
+        // before releasing the observer and joining the send promises.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        strictEqual(settled, false);
+        releaseObserver();
+        await result;
+        strictEqual(events.length, 2);
+      } finally {
+        releaseResponse();
+        releaseObserver();
+        fetchMock.hardReset();
+        await tracerProvider.shutdown();
+      }
+    });
+  }
+});
+
+test("outbound preparation preserves earlier handoffs when later destination setup fails", async (t) => {
+  for (const immediate of [true, false]) {
+    await t.step(
+      immediate
+        ? "immediate handoff survives"
+        : "queued messages are not handed off yet",
+      async () => {
+        const events: OutboundBroadcastEvent[] = [];
+        const messages: Message[] = [];
+        const firstInbox = "https://receiver.example/first-inbox";
+        const broken = recipient.clone({
+          inbox: new URL("https://receiver.example/second-inbox"),
+        });
+        // Fault injection: planning can retain this value, but collection-sync
+        // header construction cannot interpret it as a URL.
+        Object.defineProperty(broken, "id", {
+          value: { href: "invalid actor URL" },
+        });
+        let firstFetched!: () => void;
+        const fetching = new Promise<void>((resolve) => {
+          firstFetched = resolve;
+        });
+        fetchMock.mockGlobal().post(firstInbox, () => {
+          firstFetched();
+          return new Response(null, { status: 202 });
+        });
+        try {
+          const queue: MessageQueue = {
+            enqueue(message) {
+              messages.push(message);
+              return Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          };
+          const federation = createFederation<void>({
+            kv: new MemoryKvStore(),
+            allowPrivateAddress: true,
+            manuallyStartQueue: true,
+            ...(immediate ? {} : { queue: { outbox: queue } }),
+          });
+          federation.setActorDispatcher(
+            "/users/{identifier}",
+            () => new Person({}),
+          )
+            .setKeyPairsDispatcher(
+              () => [{
+                privateKey: rsaPrivateKey2,
+                publicKey: rsaPublicKey2.publicKey!,
+              }],
+            );
+          federation.setFollowersDispatcher(
+            "/users/{identifier}/followers",
+            () => ({
+              items: [recipient.clone({ inbox: new URL(firstInbox) }), broken],
+            }),
+          );
+          federation.setOutboundObservers({
+            onBroadcast(_ctx, event) {
+              events.push(event);
+            },
+          });
+          let originalError: unknown;
+          await rejects(
+            federation.createContext(new URL("https://example.com"), undefined)
+              .sendActivity({ identifier: "alice" }, "followers", activity, {
+                immediate,
+                syncCollection: true,
+              }),
+            (error: unknown) => {
+              originalError = error;
+              return error instanceof TypeError;
+            },
+          );
+          deepStrictEqual(preparation(events), {
+            type: "failed",
+            failure: {
+              kind: "local",
+              phase: "request-preparation",
+              error: originalError,
+            },
+            planning: "complete",
+            plannedDestinationCount: 2,
+          });
+          strictEqual(messages.length, 0);
+          if (immediate) {
+            // Prove the earlier send still reaches fetch after producer failure.
+            await fetching;
+          }
+          strictEqual(events.length, 2);
+        } finally {
+          fetchMock.hardReset();
+        }
+      },
+    );
   }
 });

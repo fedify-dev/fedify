@@ -22,10 +22,7 @@ export {
   type IsActorAuthenticatedOptions,
 } from "./inbox-authentication.ts";
 export * from "./inbox-report.ts";
-export type {
-  OutboundBroadcastEvent,
-  OutboundObservers,
-} from "./outbound-report.ts";
+export * from "./outbound-report.ts";
 export * from "./kv.ts";
 export {
   createFederation,
