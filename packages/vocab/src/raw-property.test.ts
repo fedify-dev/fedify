@@ -10,6 +10,7 @@ import {
   Object as ASObject,
   Person,
   Question,
+  Service,
 } from "./mod.ts";
 
 const AS = "https://www.w3.org/ns/activitystreams";
@@ -245,6 +246,32 @@ test("getRawPropertyValues() keeps unknown properties when a reparse changes the
   ok(attachment != null);
   deepStrictEqual(await getRawPropertyValues(attachment, STRUCTURED_URL), [
     { "@id": "https://example.com/data/2" },
+  ]);
+});
+
+test("getRawPropertyValues() follows properties shared by sibling classes", async () => {
+  const create = await Create.fromJsonLd({
+    "@context": [AS, { Human: `${AS}#Person`, quant: QUANT }],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object: {
+      "@context": AS,
+      id: "https://example.com/users/bot",
+      // Only the outer context defines this type alias and prefix:
+      type: ["Human", "Service"],
+      endpoints: {
+        sharedInbox: "https://example.com/inbox",
+        "quant:structuredUrl": { "@id": "https://example.com/data/1" },
+      },
+    },
+  });
+  const actor = await create.getObject();
+  ok(actor instanceof Service);
+  const endpoints = actor.endpoints;
+  ok(endpoints != null);
+  deepStrictEqual(await getRawPropertyValues(endpoints, STRUCTURED_URL), [
+    { "@id": "https://example.com/data/1" },
   ]);
 });
 

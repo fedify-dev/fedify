@@ -153,8 +153,8 @@ function mergeRawProperties(source: object, destination: object): void {
 // id are paired.  When the decoding dropped some values of a property,
 // positions no longer correspond, so nested objects are paired by id alone.
 // When the copy was decoded by a different class, the retained properties are
-// merged rather than replaced, and only the properties both classes declare
-// are followed:
+// merged rather than replaced, and only the properties both classes declare,
+// matched by their IRIs, are followed:
 function copyRawPropertiesDeep(
   source: object,
   destination: object,
@@ -167,14 +167,14 @@ function copyRawPropertiesDeep(
     globalThis.Object.getPrototypeOf(destination);
   if (sameClass) copyRawProperties(source, destination);
   else mergeRawProperties(source, destination);
-  const sourceDescriptors = sameClass
-    ? undefined
-    : getRawPropertyDescriptors(source);
   for (const descriptor of getRawPropertyDescriptors(destination)) {
-    if (sourceDescriptors != null && !sourceDescriptors.has(descriptor)) {
-      continue;
-    }
-    const sources = descriptor.values(source);
+    // Sibling classes declare the same property with distinct descriptors, so
+    // each object is read through its own class's descriptor:
+    const sourceDescriptor = sameClass
+      ? descriptor
+      : getRawPropertyDescriptor(source, descriptor.canonicalIri);
+    if (sourceDescriptor == null) continue;
+    const sources = sourceDescriptor.values(source);
     const destinations = descriptor.values(destination);
     const aligned = sources.length === destinations.length;
     for (let i = 0; i < destinations.length; i++) {
