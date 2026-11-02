@@ -309,13 +309,33 @@ type OutboundWorkerSchedule = {
   readonly notBefore?: Readonly<Record<string, string>>;
 };
 
+type OutboundWorkerChild = {
+  readonly action: "enqueue";
+  /** Actual child task identity and initial Fedify retry counter. */
+  readonly queue: NonNullable<OutboundAttemptReport["queue"]>;
+  /** Routes submitted with this child task. */
+  readonly inboxUrls: readonly string[];
+  /** Stable child obligation, independent of its task identity. */
+  readonly delivery?: OutboundWorkerReport["delivery"];
+};
+
 type OutboundWorkerAction =
-  | (OutboundWorkerSchedule & { readonly type: "scheduled" })
-  | (OutboundWorkerSchedule & {
+  | ((OutboundWorkerSchedule | OutboundWorkerChild) & {
+    readonly type: "scheduled";
+  })
+  | ((OutboundWorkerSchedule | OutboundWorkerChild) & {
     readonly type: "action-failed";
     readonly acceptance: "unknown";
     readonly error: unknown;
   })
+  | {
+    readonly type: "handoff";
+    readonly action: "direct";
+    /** Actual concrete sender target; entry does not establish HTTP success. */
+    readonly inboxUrls: readonly string[];
+    /** Planned obligation retained across gateway fallback targets. */
+    readonly delivery?: OutboundWorkerReport["delivery"];
+  }
   | {
     readonly type: "abandoned";
     readonly reason:
@@ -347,8 +367,8 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
   readonly queue: NonNullable<OutboundAttemptReport["queue"]>;
   /** Concrete sender entries, independent of enabled attempt/exchange callbacks. */
   readonly attemptsStarted: number;
-  /** Outbox action facts, including gateway subsets; omitted for fanout. */
-  readonly actions?: readonly OutboundWorkerAction[];
+  /** Observed scheduling, direct-entry, and local abandonment facts. */
+  readonly actions: readonly OutboundWorkerAction[];
   /** Known outbox obligation; absent for fanout or unavailable metadata. */
   readonly delivery?: Pick<
     OutboundAttemptReport,
@@ -397,8 +417,8 @@ export interface OutboundObservers<TContextData> {
   /**
    * Observes terminal outgoing worker processing with current context/data.
    * Errors are isolated; results do not replace attempt outcomes or establish
-   * future backend execution. Outbox/gateway action facts are included;
-   * fanout actions are not observed yet.
+   * future backend execution. Actions retain actual accepted/uncertain child
+   * handoffs and retry/defer/drop facts, separately from attempt outcomes.
    */
   readonly onWorker?: (
     context: Context<TContextData>,

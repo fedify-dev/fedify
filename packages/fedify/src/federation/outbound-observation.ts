@@ -389,6 +389,59 @@ export class OutboundWorkerObservation<TContextData> {
     this.#actions ??= [];
   }
 
+  directAttemptStarted(
+    inboxUrl: string,
+    identity?: SerializedOutboundDelivery,
+  ): void {
+    this.attemptStarted();
+    this.#actions?.push(Object.freeze({
+      type: "handoff",
+      action: "direct",
+      inboxUrls: Object.freeze([inboxUrl]),
+      ...(identity == null
+        ? {}
+        : { delivery: snapshotDeliveryIdentity(identity) }),
+    }));
+  }
+
+  async enqueueChildren(
+    messages: readonly OutboxMessage[],
+    enqueue: () => Promise<void>,
+  ): Promise<void> {
+    if (this.#actions == null) return await enqueue();
+    const facts = messages.map((message) => ({
+      action: "enqueue" as const,
+      queue: Object.freeze({
+        queueMessageId: message.id,
+        queueAttempt: message.attempt,
+      }),
+      inboxUrls: Object.freeze(
+        message.gatewayInboxes != null && message.gatewayInboxes.length > 1
+          ? [...message.gatewayInboxes]
+          : [message.inbox],
+      ),
+      ...(message.outbound == null
+        ? {}
+        : { delivery: snapshotDeliveryIdentity(message.outbound) }),
+    }));
+    try {
+      await enqueue();
+    } catch (error) {
+      for (const fact of facts) {
+        this.#actions.push(Object.freeze({
+          type: "action-failed",
+          ...fact,
+          acceptance: "unknown" as const,
+          error,
+        }));
+      }
+      throw error;
+    }
+    for (const fact of facts) {
+      this.#actions.push(Object.freeze({ type: "scheduled", ...fact }));
+    }
+  }
+
   async enqueue(
     action: "retry" | "defer",
     message: OutboxMessage,
@@ -521,9 +574,7 @@ export class OutboundWorkerObservation<TContextData> {
           queue: this.#queue,
           ...(this.#delivery == null ? {} : { delivery: this.#delivery }),
           attemptsStarted: this.#attemptsStarted,
-          ...(this.#actions == null
-            ? {}
-            : { actions: Object.freeze([...this.#actions]) }),
+          actions: Object.freeze([...(this.#actions ?? [])]),
           observedAt,
           ...(this.#trace == null ? {} : { trace: this.#trace }),
           provenance: this.provenance,
@@ -762,7 +813,7 @@ export class OutboundBroadcastObservation<TContextData> {
   ): Promise<OutboundBroadcastObservation<TContextData> | undefined> {
     if (
       observers.onDelivery == null && observers.onAttempt == null &&
-      observers.onHttpExchange == null &&
+      observers.onHttpExchange == null && observers.onWorker == null &&
       !Object.values(message.inboxes).some((entry) => entry.outbound != null)
     ) {
       return undefined;

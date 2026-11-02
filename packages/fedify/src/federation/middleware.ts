@@ -1498,6 +1498,7 @@ export class FederationImpl<TContextData>
     observers: OutboundObservers<TContextData>,
     worker?: OutboundWorkerObservation<TContextData>,
   ): Promise<void> {
+    worker?.enableActions();
     const logger = getLogger(["fedify", "federation", "fanout"]);
     logger.debug(
       "Fanning out activity {activityId} to {inboxes} inbox(es)...",
@@ -3592,11 +3593,27 @@ export class FederationImpl<TContextData>
         const delivery = observation?.delivery(inbox);
         let sending: Promise<void>;
         try {
+          const createHeaders = collectionSync == null
+            ? undefined
+            : async () =>
+              new Headers({
+                "Collection-Synchronization":
+                  await buildCollectionSynchronizationHeader(
+                    collectionSync,
+                    inboxes[inbox].actorIds,
+                  ),
+              });
           sending = sendActivityToInbox(
             inbox,
             inboxes[inbox].gatewayInboxes,
             {
-              attemptStarted: worker?.attemptStarted,
+              attemptStarted: worker == null
+                ? undefined
+                : (target) =>
+                  worker.directAttemptStarted(
+                    target,
+                    observation?.continuation(inbox)?.outbound,
+                  ),
               observation: delivery,
               allowPrivateAddress: this.allowPrivateAddress,
               keys,
@@ -3604,13 +3621,11 @@ export class FederationImpl<TContextData>
               activityId: activity.id?.href,
               activityType: getTypeId(activity).href,
               sharedInbox: inboxes[inbox].sharedInbox,
-              headers: collectionSync == null ? undefined : new Headers({
-                "Collection-Synchronization":
-                  await buildCollectionSynchronizationHeader(
-                    collectionSync,
-                    inboxes[inbox].actorIds,
-                  ),
-              }),
+              headers: createHeaders == null
+                ? undefined
+                : await (worker == null
+                  ? createHeaders()
+                  : worker.prepare("request-preparation", createHeaders)),
               specDeterminer: new KvSpecDeterminer(
                 this.kv,
                 this.kvPrefixes.httpMessageSignaturesSpec,
@@ -3654,37 +3669,44 @@ export class FederationImpl<TContextData>
     const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
     for (const inbox in inboxes) {
       try {
-        const { portableInbox, gatewayInboxes } = inboxes[inbox];
-        const messageOrderingKey = orderingKey == null
-          ? undefined
-          : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`;
-        const message: OutboxMessage = {
-          type: "outbox",
-          ...serializeProvenance(provenance),
-          id: crypto.randomUUID(),
-          baseUrl: ctx.origin,
-          keys: keyJwkPairs,
-          activity: jsonLd,
-          activityId: activity.id?.href,
-          activityType: getTypeId(activity).href,
-          inbox,
-          ...observation?.continuation(inbox),
-          sharedInbox: inboxes[inbox].sharedInbox,
-          actorIds: [...inboxes[inbox].actorIds],
-          started: new Date().toISOString(),
-          attempt: 0,
-          headers: collectionSync == null ? {} : {
-            "Collection-Synchronization":
-              await buildCollectionSynchronizationHeader(
-                collectionSync,
-                inboxes[inbox].actorIds,
-              ),
-          },
-          orderingKey: messageOrderingKey,
-          ...getPortableMessageFields(portableInbox, gatewayInboxes),
-          traceContext: carrier,
+        const prepareMessage = async () => {
+          const { portableInbox, gatewayInboxes } = inboxes[inbox];
+          const messageOrderingKey = orderingKey == null
+            ? undefined
+            : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`;
+          const message: OutboxMessage = {
+            type: "outbox",
+            ...serializeProvenance(provenance),
+            id: crypto.randomUUID(),
+            baseUrl: ctx.origin,
+            keys: keyJwkPairs,
+            activity: jsonLd,
+            activityId: activity.id?.href,
+            activityType: getTypeId(activity).href,
+            inbox,
+            ...observation?.continuation(inbox),
+            sharedInbox: inboxes[inbox].sharedInbox,
+            actorIds: [...inboxes[inbox].actorIds],
+            started: new Date().toISOString(),
+            attempt: 0,
+            headers: collectionSync == null ? {} : {
+              "Collection-Synchronization":
+                await buildCollectionSynchronizationHeader(
+                  collectionSync,
+                  inboxes[inbox].actorIds,
+                ),
+            },
+            orderingKey: messageOrderingKey,
+            ...getPortableMessageFields(portableInbox, gatewayInboxes),
+            traceContext: carrier,
+          };
+          return { message, orderingKey: messageOrderingKey };
         };
-        messages.push({ message, orderingKey: messageOrderingKey });
+        messages.push(
+          await (worker == null
+            ? prepareMessage()
+            : worker.prepare("request-preparation", prepareMessage)),
+        );
       } catch (error) {
         if (observation != null) {
           await observation.delivery(inbox)?.failed(error);
@@ -3700,14 +3722,21 @@ export class FederationImpl<TContextData>
     if (outboxQueue.enqueueMany == null || orderingKey != null) {
       const promises: PromiseSettledResult<void>[] = await Promise.allSettled(
         messages.map(async (m) => {
-          await (observation == null
-            ? outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
-            : observation.enqueue(
-              [{ inbox: m.message.inbox, queueMessageId: m.message.id }],
-              "outbox",
-              () =>
-                outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey }),
-            ));
+          const enqueue = () =>
+            worker == null
+              ? outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
+              : worker.enqueueChildren(
+                [m.message],
+                () =>
+                  outboxQueue.enqueue(m.message, {
+                    orderingKey: m.orderingKey,
+                  }),
+              );
+          await (observation == null ? enqueue() : observation.enqueue(
+            [{ inbox: m.message.inbox, queueMessageId: m.message.id }],
+            "outbox",
+            enqueue,
+          ));
           recordOutboxEnqueue(this.meterProvider, outboxQueue, m.message);
         }),
       );
@@ -3729,16 +3758,21 @@ export class FederationImpl<TContextData>
       }
     } else {
       try {
-        await (observation == null
-          ? outboxQueue.enqueueMany(messages.map((m) => m.message))
-          : observation.enqueue(
-            messages.map(({ message }) => ({
-              inbox: message.inbox,
-              queueMessageId: message.id,
-            })),
-            "outbox",
-            () => outboxQueue.enqueueMany!(messages.map((m) => m.message)),
-          ));
+        const enqueue = () =>
+          worker == null
+            ? outboxQueue.enqueueMany!(messages.map((m) => m.message))
+            : worker.enqueueChildren(
+              messages.map((m) => m.message),
+              () => outboxQueue.enqueueMany!(messages.map((m) => m.message)),
+            );
+        await (observation == null ? enqueue() : observation.enqueue(
+          messages.map(({ message }) => ({
+            inbox: message.inbox,
+            queueMessageId: message.id,
+          })),
+          "outbox",
+          enqueue,
+        ));
       } catch (error) {
         logger.error(
           "Failed to enqueue activity {activityId} to send later: {error}",

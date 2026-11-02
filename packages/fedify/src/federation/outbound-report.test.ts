@@ -3670,6 +3670,7 @@ test("ordinary outbox worker actions record actual retry and hold enqueues", asy
           queueAttempt: mode === "hold" ? 0 : 1,
         });
         strictEqual(reports[0].queue.queueAttempt, 0);
+        ok(action.action === "retry" || action.action === "defer");
         strictEqual(action.delay, queued[0].options?.delay?.toString());
         deepStrictEqual(action.inboxUrls, [message.inbox]);
         strictEqual(
@@ -4155,6 +4156,26 @@ test("outbound worker reports distinguish fanout child tasks from concrete sends
         strictEqual(reports[0].delivery, undefined);
         strictEqual(reports[0].attemptsStarted, queued ? 0 : 2);
         strictEqual(children.length, queued ? 2 : 0);
+        strictEqual(reports[0].actions.length, 2);
+        for (const action of reports[0].actions) {
+          strictEqual(action.type, queued ? "scheduled" : "handoff");
+          ok(action.type === "scheduled" || action.type === "handoff");
+          strictEqual(action.action, queued ? "enqueue" : "direct");
+          const inbox = action.inboxUrls[0];
+          strictEqual(action.delivery?.destinationInbox, inbox);
+          deepStrictEqual(action.delivery?.broadcast, { type: "unknown" });
+          ok(action.delivery?.deliveryId);
+          if (action.type === "scheduled") {
+            const child = children.find((child) =>
+              child.id === action.queue.queueMessageId
+            );
+            ok(child?.type === "outbox");
+            deepStrictEqual(action.delivery, child.outbound);
+          }
+          ok(Object.isFrozen(action));
+          ok(Object.isFrozen(action.inboxUrls));
+          ok(Object.isFrozen(action.delivery));
+        }
         deepStrictEqual(reports[0].queue, { queueMessageId: task.id });
         deepStrictEqual(reports[0].result, { type: "completed" });
         strictEqual(reports[0].provenance.dispatchId, "original invocation");
@@ -4852,6 +4873,7 @@ test("outbound queue identities retain planned destinations through gateway cont
               queueMessageId: task.id,
               queueAttempt: task.attempt,
             });
+            ok(action.action === "retry" || action.action === "defer");
             strictEqual(action.delay, enqueueOptions[index]?.delay?.toString());
             deepStrictEqual(action.notBefore, task.gatewayNotBefore);
             if (action.notBefore != null) ok(Object.isFrozen(action.notBefore));
@@ -4868,5 +4890,351 @@ test("outbound queue identities retain planned destinations through gateway cont
         }
       });
     }
+  }
+});
+
+test("fanout worker actions retain child enqueue settlement and replay identities", async (t) => {
+  for (
+    const mode of [
+      "individual",
+      "partial",
+      "batch",
+      "batch-rejected",
+      "ordered",
+      "bookkeeping",
+    ] as const
+  ) {
+    await t.step(mode, async () => {
+      const fanouts: Message[] = [];
+      const submitted: OutboxMessage[] = [];
+      const accepted: OutboxMessage[] = [];
+      const reports: OutboundWorkerReport[] = [];
+      const broadcasts: OutboundBroadcastEvent[] = [];
+      const failure = Symbol(mode);
+      const [meterProvider] = createTestMeterProvider();
+      let batches = 0;
+      const outbox: MessageQueue = {
+        enqueue(message) {
+          ok(message.type === "outbox");
+          submitted.push(message);
+          if (
+            mode === "partial" && reports.length === 0 &&
+            message.inbox.endsWith("/second")
+          ) {
+            return Promise.reject(failure);
+          }
+          accepted.push(message);
+          return Promise.resolve();
+        },
+        listen: () => Promise.resolve(),
+      };
+      if (["batch", "batch-rejected", "ordered"].includes(mode)) {
+        outbox.enqueueMany = (messages) => {
+          batches++;
+          for (const message of messages) {
+            ok(message.type === "outbox");
+            submitted.push(message);
+          }
+          // A rejected batch may already have accepted part of its input.
+          accepted.push(
+            ...submitted.slice(0, mode === "batch-rejected" ? 1 : 2),
+          );
+          return mode === "batch-rejected"
+            ? Promise.reject(failure)
+            : Promise.resolve();
+        };
+      }
+      const federation = createFederation<void>({
+        ...options,
+        kv: new MemoryKvStore(),
+        manuallyStartQueue: true,
+        meterProvider,
+        queue: {
+          fanout: {
+            enqueue(message) {
+              fanouts.push(message);
+              return Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          },
+          outbox,
+        },
+      });
+      federation.setOutboundObservers({
+        onBroadcast(_ctx, event) {
+          broadcasts.push(event);
+        },
+        onWorker(_ctx, report) {
+          reports.push(report);
+        },
+      });
+      await federation.createContext(new URL("https://example.com"), undefined)
+        .sendActivity(
+          sender,
+          [
+            recipient,
+            recipient.clone({
+              inbox: new URL("https://receiver.example/second"),
+            }),
+          ],
+          activity,
+          {
+            fanout: "force",
+            ...(mode === "ordered" ? { orderingKey: "conversation" } : {}),
+          },
+        );
+      const task = fanouts[0];
+      ok(task?.type === "fanout");
+      const producerEvents = [...broadcasts];
+      ok(federation instanceof FederationImpl);
+      const metrics = federation.metrics;
+      const original = metrics.recordQueueTaskEnqueued;
+      if (mode === "bookkeeping") {
+        Object.defineProperty(metrics, "recordQueueTaskEnqueued", {
+          configurable: true,
+          value: (...args: Parameters<typeof original>) => {
+            original.call(metrics, ...args);
+            throw failure;
+          },
+        });
+      }
+      try {
+        for (
+          let replay = 0;
+          replay < (mode === "individual" || mode === "partial" ? 2 : 1);
+          replay++
+        ) {
+          submitted.length = 0;
+          accepted.length = 0;
+          const processing = federation.processQueuedTask(
+            undefined,
+            structuredClone(task),
+          );
+          const rejected = mode === "partial" && replay === 0 ||
+            mode === "batch-rejected" || mode === "bookkeeping";
+          if (rejected) {
+            await rejects(
+              processing,
+              (error: unknown) =>
+                mode === "bookkeeping"
+                  ? error instanceof AggregateError &&
+                    error.errors.every((item) => item === failure)
+                  : error === failure,
+            );
+          } else await processing;
+          const report = reports[replay];
+          strictEqual(report.result.type, rejected ? "failed" : "completed");
+          strictEqual(report.attemptsStarted, 0);
+          strictEqual(report.delivery, undefined);
+          strictEqual(report.actions.length, 2);
+          strictEqual(submitted.length, 2);
+          strictEqual(
+            accepted.length,
+            mode === "partial" && replay === 0 || mode === "batch-rejected"
+              ? 1
+              : 2,
+          );
+          for (const child of submitted) {
+            const action = report.actions.find((action) =>
+              "queue" in action && action.queue.queueMessageId === child.id
+            );
+            ok(
+              action?.type === "scheduled" || action?.type === "action-failed",
+            );
+            ok(action.action === "enqueue");
+            deepStrictEqual(action.queue, {
+              queueMessageId: child.id,
+              queueAttempt: 0,
+            });
+            deepStrictEqual(action.inboxUrls, [child.inbox]);
+            deepStrictEqual(
+              action.delivery,
+              task.inboxes[child.inbox].outbound,
+            );
+            deepStrictEqual(action.delivery, child.outbound);
+            strictEqual("delay" in action, false);
+            strictEqual(
+              action.type,
+              mode === "batch-rejected" ||
+                mode === "partial" && replay === 0 &&
+                  child.inbox.endsWith("/second")
+                ? "action-failed"
+                : "scheduled",
+            );
+            if (action.type === "action-failed") {
+              strictEqual(action.acceptance, "unknown");
+              strictEqual(action.error, failure);
+            }
+            if (replay > 0) {
+              const earlier = reports[0].actions.find((earlier) =>
+                "delivery" in earlier &&
+                earlier.delivery?.destinationInbox === child.inbox
+              );
+              ok(
+                (earlier?.type === "scheduled" ||
+                  earlier?.type === "action-failed") &&
+                  earlier.action === "enqueue",
+              );
+              notStrictEqual(
+                action.queue.queueMessageId,
+                earlier.queue.queueMessageId,
+              );
+              deepStrictEqual(action.delivery, earlier.delivery);
+            }
+          }
+          deepStrictEqual(broadcasts, producerEvents);
+        }
+        strictEqual(
+          batches,
+          mode === "batch" || mode === "batch-rejected" ? 1 : 0,
+        );
+      } finally {
+        if (mode === "bookkeeping") {
+          Object.defineProperty(metrics, "recordQueueTaskEnqueued", {
+            configurable: true,
+            value: original,
+          });
+        }
+      }
+    });
+  }
+});
+
+test("fanout worker actions preserve earlier direct entries across later setup failure", async (t) => {
+  for (const queued of [false, true]) {
+    await t.step(
+      queued
+        ? "prepare all children before enqueue"
+        : "earlier send still settles",
+      async () => {
+        const fanouts: Message[] = [];
+        const children: Message[] = [];
+        const reports: OutboundWorkerReport[] = [];
+        const attempts: OutboundAttemptReport[] = [];
+        const broadcasts: OutboundBroadcastEvent[] = [];
+        const queue = (messages: Message[]): MessageQueue => ({
+          enqueue(message) {
+            messages.push(message);
+            return Promise.resolve();
+          },
+          listen: () => Promise.resolve(),
+        });
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          allowPrivateAddress: true,
+          manuallyStartQueue: true,
+          queue: {
+            fanout: queue(fanouts),
+            ...(queued ? { outbox: queue(children) } : {}),
+          },
+        });
+        federation.setOutboundObservers({
+          onBroadcast(_ctx, event) {
+            broadcasts.push(event);
+          },
+          onWorker(_ctx, report) {
+            reports.push(report);
+          },
+        });
+        await federation.createContext(
+          new URL("https://example.com"),
+          undefined,
+        )
+          .sendActivity(
+            sender,
+            [
+              recipient,
+              recipient.clone({
+                inbox: new URL("https://receiver.example/second"),
+              }),
+            ],
+            activity,
+            { fanout: "force" },
+          );
+        const originalTask = fanouts[0];
+        ok(originalTask?.type === "fanout");
+        const secondInbox = "https://receiver.example/second";
+        const task: FanoutMessage = {
+          ...originalTask,
+          collectionSync: "https://example.com/followers",
+          inboxes: {
+            ...originalTask.inboxes,
+            [secondInbox]: {
+              ...originalTask.inboxes[secondInbox],
+              actorIds: ["invalid actor URL"],
+            },
+          },
+        };
+        const producerEvents = [...broadcasts];
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        let observed!: () => void;
+        const settled = new Promise<void>((resolve) => {
+          observed = resolve;
+        });
+        federation.setOutboundObservers({
+          onBroadcast(_ctx, event) {
+            broadcasts.push(event);
+          },
+          onWorker(_ctx, report) {
+            reports.push(report);
+          },
+          onAttempt(_ctx, report) {
+            attempts.push(report);
+            observed();
+          },
+        });
+        fetchMock.mockGlobal().post(recipient.inboxId!.href, async () => {
+          await gate;
+          return 202;
+        });
+        try {
+          let failure: unknown;
+          await rejects(
+            federation.processQueuedTask(undefined, task),
+            (error: unknown) => {
+              failure = error;
+              return error instanceof TypeError;
+            },
+          );
+          strictEqual(reports.length, 1);
+          const report = reports[0];
+          deepStrictEqual(report.result, {
+            type: "preparation-failed",
+            error: failure,
+            failure: {
+              kind: "local",
+              phase: "request-preparation",
+              error: failure,
+            },
+          });
+          strictEqual(report.attemptsStarted, queued ? 0 : 1);
+          strictEqual(children.length, 0);
+          strictEqual(report.actions.length, queued ? 0 : 1);
+          if (!queued) {
+            const action = report.actions[0];
+            ok(action.type === "handoff");
+            strictEqual(action.action, "direct");
+            deepStrictEqual(action.inboxUrls, [recipient.inboxId!.href]);
+            deepStrictEqual(
+              action.delivery,
+              task.inboxes[recipient.inboxId!.href].outbound,
+            );
+            strictEqual(attempts.length, 0);
+            release();
+            await settled;
+            strictEqual(attempts.length, 1);
+            strictEqual(attempts[0].outcome.type, "succeeded");
+            strictEqual(reports.length, 1);
+          }
+          deepStrictEqual(broadcasts, producerEvents);
+        } finally {
+          release();
+          fetchMock.hardReset();
+        }
+      },
+    );
   }
 });
