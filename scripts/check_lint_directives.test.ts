@@ -199,16 +199,28 @@ describe("findProblemsInText()", () => {
 });
 
 describe("checkLintDirectives()", () => {
+  const cleanGitEnv = { ...process.env };
+  delete cleanGitEnv.GIT_DIR;
+  delete cleanGitEnv.GIT_WORK_TREE;
+  delete cleanGitEnv.GIT_INDEX_FILE;
+  delete cleanGitEnv.GIT_PREFIX;
+
   it("skips tracked files deleted from the worktree", () => {
     const root = mkdtempSync(join(tmpdir(), "fedify-lint-directives-"));
     try {
-      execFileSync("git", ["init", "--quiet"], { cwd: root });
+      execFileSync("git", ["init", "--quiet"], {
+        cwd: root,
+        env: cleanGitEnv,
+      });
       writeFileSync(
         join(root, ".oxlintrc.json"),
         JSON.stringify({ rules: { "typescript/no-explicit-any": "error" } }),
       );
       writeFileSync(join(root, "keep.ts"), "export const value = 1;\n");
-      execFileSync("git", ["add", "keep.ts"], { cwd: root });
+      execFileSync("git", ["add", "keep.ts"], {
+        cwd: root,
+        env: cleanGitEnv,
+      });
       rmSync(join(root, "keep.ts"));
       deepStrictEqual(
         checkLintDirectives(root, join(root, ".oxlintrc.json")),
@@ -222,7 +234,10 @@ describe("checkLintDirectives()", () => {
   it("includes untracked, non-ignored source files", () => {
     const root = mkdtempSync(join(tmpdir(), "fedify-lint-directives-"));
     try {
-      execFileSync("git", ["init", "--quiet"], { cwd: root });
+      execFileSync("git", ["init", "--quiet"], {
+        cwd: root,
+        env: cleanGitEnv,
+      });
       writeFileSync(
         join(root, ".oxlintrc.json"),
         JSON.stringify({ rules: { "typescript/no-explicit-any": "error" } }),

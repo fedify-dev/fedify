@@ -130,6 +130,11 @@ export function findProblemsInText(
 
 /** Lists JS/TS files under the given paths, including untracked files. */
 function listFiles(root: string, paths: readonly string[]): string[] {
+  const env = { ...process.env };
+  delete env.GIT_DIR;
+  delete env.GIT_WORK_TREE;
+  delete env.GIT_INDEX_FILE;
+  delete env.GIT_PREFIX;
   const output = execFileSync(
     "git",
     [
@@ -140,7 +145,7 @@ function listFiles(root: string, paths: readonly string[]): string[] {
       "--",
       ...(paths.length === 0 ? ["."] : paths),
     ],
-    { cwd: root, encoding: "utf8" },
+    { cwd: root, encoding: "utf8", env },
   );
   return output.split(/\r?\n/).filter((path) =>
     path.length > 0 &&
