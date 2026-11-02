@@ -5445,16 +5445,38 @@ test("ContextImpl.sendActivity()", async (t) => {
       proofValue: new Uint8Array([5, 6, 7, 8]),
       created: Temporal.Instant.from("2026-01-02T00:00:00Z"),
     });
+    const replacementProof = new vocab.DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: new URL("https://example.com/rsa-only#multikey-2"),
+      proofPurpose: "assertionMethod",
+      proofValue: new Uint8Array([9, 10, 11, 12]),
+      created: Temporal.Instant.from("2026-01-03T00:00:00Z"),
+    });
     const federation3 = new FederationImpl<void>({
       kv,
       allowPrivateAddress: true,
       queue,
       activityTransformers: [
-        (activity) =>
-          activity.id?.href ===
+        (activity) => {
+          if (
+            activity.id?.href ===
               "https://example.com/activity/transformed-proof"
-            ? activity.clone({ proofs: [originalProof, addedProof] })
-            : activity,
+          ) {
+            return activity.clone({ proofs: [originalProof, addedProof] });
+          }
+          if (
+            activity.id?.href ===
+              "https://example.com/activity/replaced-proof"
+          ) {
+            return new vocab.Create({
+              id: activity.id,
+              actor: new URL("https://example.com/rsa-only"),
+              object: new URL("https://example.com/note/replaced"),
+              proofs: [replacementProof],
+            });
+          }
+          return activity;
+        },
       ],
     });
     federation3
@@ -5509,6 +5531,39 @@ test("ContextImpl.sendActivity()", async (t) => {
       ? fanoutJson.proof
       : [fanoutJson.proof];
     assertEquals(fanoutProofs.length, 2);
+
+    // A transformer may also replace the content and supply a new proof.
+    const replacedActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/replaced-proof"),
+      actor: ctx3.getActorUri("rsa-only"),
+      proofs: [originalProof],
+    });
+    queue.clear();
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      replacedActivity,
+      { fanout: "force" },
+    );
+    const replacedFanout = queue.messages.at(-1);
+    assert(replacedFanout != null && replacedFanout.type === "fanout");
+    const replacedJson = detachSignature(replacedFanout.activity) as Record<
+      string,
+      unknown
+    >;
+    assertEquals(
+      replacedJson.object,
+      "https://example.com/note/replaced",
+    );
+    const replacedProofs = Array.isArray(replacedJson.proof)
+      ? replacedJson.proof
+      : [replacedJson.proof];
+    assertEquals(replacedProofs.length, 1);
+    const [keptProof] = replacedProofs as Record<string, unknown>[];
+    assertEquals(keptProof.created, "2026-01-03T00:00:00Z");
 
     // A proofless activity should not be serialized just to look for proofs.
     const proofless = new vocab.Create({

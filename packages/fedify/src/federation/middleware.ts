@@ -10,6 +10,7 @@ import type {
 import {
   Activity,
   CryptographicKey,
+  type DataIntegrityProof,
   getTypeId,
   lookupObject,
   Multikey,
@@ -2647,8 +2648,27 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       contextMatches = getContextFields(transformedJsonLd) ===
         getContextFields(capturedJsonLd);
       if (contentChanged) {
+        // Drop proofs that covered the captured content, but keep proofs the
+        // transformer supplied for the new content.
+        const capturedProofs = new Set(
+          getProofEntries(capturedJsonLd).map(getProofEntryFields),
+        );
+        const retainedProofs: DataIntegrityProof[] = [];
+        for await (
+          const proof of activity.getProofs({
+            contextLoader: this.contextLoader,
+          })
+        ) {
+          const proofJsonLd = await proof.toJsonLd({
+            format: "compact",
+            contextLoader: this.contextLoader,
+          });
+          if (!capturedProofs.has(getProofEntryFields(proofJsonLd))) {
+            retainedProofs.push(proof);
+          }
+        }
         activityJsonLd = undefined;
-        activity = activity.clone({ proofs: [] });
+        activity = activity.clone({ proofs: retainedProofs });
       } else if (
         contextMatches &&
         getProofFields(transformedJsonLd) !== getProofFields(capturedJsonLd)
@@ -3595,16 +3615,22 @@ function getContextFields(value: unknown): string {
   return JSON.stringify(sortJsonKeys(context ?? null));
 }
 
-function getProofFields(value: unknown): string {
+function getProofEntries(value: unknown): unknown[] {
   if (typeof value !== "object" || value == null || Array.isArray(value)) {
-    return "[]";
+    return [];
   }
   const proof = (value as Record<string, unknown>).proof;
-  if (proof == null) return "[]";
+  if (proof == null) return [];
+  return Array.isArray(proof) ? proof : [proof];
+}
+
+function getProofEntryFields(proof: unknown): string {
+  return JSON.stringify(sortJsonKeys(stripContexts(proof)));
+}
+
+function getProofFields(value: unknown): string {
   return JSON.stringify(
-    (Array.isArray(proof) ? proof : [proof])
-      .map((entry) => JSON.stringify(sortJsonKeys(stripContexts(entry))))
-      .sort(),
+    getProofEntries(value).map(getProofEntryFields).sort(),
   );
 }
 
