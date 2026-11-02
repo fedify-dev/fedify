@@ -43,11 +43,15 @@
     "react/button-has-type": "error",
     "react/jsx-curly-brace-presence": [
       "error",
-      { "propElementValues": "always" }
+      {
+        "propElementValues": "always"
+      }
     ],
     "react/jsx-key": [
       "error",
-      { "checkKeyMustBeforeSpread": false }
+      {
+        "checkKeyMustBeforeSpread": false
+      }
     ],
     "react/no-children-prop": "error",
     "react/jsx-no-comment-textnodes": "error",
@@ -63,8 +67,14 @@
     "eslint/no-class-assign": "error",
     "eslint/no-compare-neg-zero": "error",
     "eslint/no-cond-assign": "error",
+    "eslint/no-console": "warn",
     "eslint/no-const-assign": "error",
-    "eslint/no-constant-condition": ["error", { "checkLoops": false }],
+    "eslint/no-constant-condition": [
+      "error",
+      {
+        "checkLoops": false
+      }
+    ],
     "eslint/no-control-regex": "error",
     "eslint/no-debugger": "error",
     "eslint/no-delete-var": "error",
@@ -76,11 +86,15 @@
     "eslint/no-empty-character-class": "error",
     "typescript/no-empty-interface": [
       "error",
-      { "allowSingleExtends": true }
+      {
+        "allowSingleExtends": true
+      }
     ],
     "typescript/no-empty-object-type": [
       "error",
-      { "allowInterfaces": "always" }
+      {
+        "allowInterfaces": "always"
+      }
     ],
     "eslint/no-empty-pattern": "error",
     "eslint/no-ex-assign": "error",
@@ -124,7 +138,12 @@
     "eslint/no-var": "error",
     "eslint/no-with": "error",
     "typescript/prefer-as-const": "error",
-    "eslint/prefer-const": ["error", { "destructuring": "all" }],
+    "eslint/prefer-const": [
+      "error",
+      {
+        "destructuring": "all"
+      }
+    ],
     "typescript/prefer-namespace-keyword": "error",
     "eslint/require-await": "error",
     "eslint/require-yield": "error",
@@ -133,7 +152,17 @@
   },
   "overrides": [
     {
-      "files": ["examples/fresh/**"],
+      "files": [
+        "packages/cli/**"
+      ],
+      "rules": {
+        "eslint/no-console": "off"
+      }
+    },
+    {
+      "files": [
+        "examples/fresh/**"
+      ],
       "rules": {
         "react/no-danger": "error",
         "react/no-danger-with-children": "error",

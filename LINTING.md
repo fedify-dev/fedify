@@ -129,6 +129,9 @@ a note here.  The current additions are:
  -  `eslint/no-await-in-loop` as a warning.  Fedify contains many loops that
     deliberately await sequentially, especially in tests and protocol code,
     so this stays advisory rather than failing the gate.
+ -  `eslint/no-console` as a warning, except in *packages/cli/* where console
+    output is the user interface.  The init package suppresses the one
+    intentional user-facing warning.
 
 Vendored [anti-slop] rules live in *tools/oxlint/anti-slop/*.  They are copied
 from upstream and recorded in *tools/oxlint/anti-slop/UPSTREAM.md*; update
