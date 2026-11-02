@@ -192,18 +192,27 @@ export async function signObject<T extends Object>(
         // is serialized with the same context.  A restored document may retain
         // an older context, and appending to its proofs would leave an invalid
         // proof alongside the new one.
-        let sameContext = true;
-        if (options.context == null) {
-          const originalJsonLd = await object.toJsonLd({
-            contextLoader: options.contextLoader,
-          });
-          sameContext = getJsonLdContextKey(originalJsonLd) ===
-            getJsonLdContextKey(jsonLd);
-        }
         const existingProofs: DataIntegrityProof[] = [];
-        if (sameContext) {
-          for await (const existingProof of object.getProofs(options)) {
-            existingProofs.push(existingProof);
+        let hasProofs = object.proofIds.length > 0;
+        if (!hasProofs) {
+          for await (const _ of object.getProofs(options)) {
+            hasProofs = true;
+            break;
+          }
+        }
+        if (hasProofs) {
+          let sameContext = true;
+          if (options.context == null) {
+            const originalJsonLd = await object.toJsonLd({
+              contextLoader: options.contextLoader,
+            });
+            sameContext = getJsonLdContextKey(originalJsonLd) ===
+              getJsonLdContextKey(jsonLd);
+          }
+          if (sameContext) {
+            for await (const existingProof of object.getProofs(options)) {
+              existingProofs.push(existingProof);
+            }
           }
         }
         if (span.isRecording()) {

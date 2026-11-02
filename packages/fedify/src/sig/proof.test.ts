@@ -310,6 +310,28 @@ test("signObject() migrates proofs from an older context", async () => {
   );
 });
 
+test("signObject() skips context comparison for proofless objects", async () => {
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+  let unformattedSerializations = 0;
+  const originalToJsonLd = activity.toJsonLd.bind(activity);
+  Object.defineProperty(activity, "toJsonLd", {
+    value: async (options?: { format?: "compact" | "expand" }) => {
+      if (options?.format == null) unformattedSerializations++;
+      return await originalToJsonLd(options);
+    },
+  });
+  await signObject(
+    activity,
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    { contextLoader: mockDocumentLoader },
+  );
+  assertEquals(unformattedSerializations, 0);
+});
+
 test("verifyProof()", async () => {
   const cache: Record<string, CryptographicKey | Multikey | null> = {};
   const options: VerifyProofOptions = {
