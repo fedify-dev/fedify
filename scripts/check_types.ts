@@ -339,8 +339,28 @@ export interface ProjectResult extends CompilerOutput {
   readonly errors: readonly Diagnostic[];
 }
 
-/** Type-checks a project and lists the files in its program. */
-export async function checkProject(project: string): Promise<ProjectResult> {
+/** The directory, under node_modules, that holds incremental build state. */
+export const BUILD_INFO = "node_modules/.cache/fedify-check-types/buildinfo";
+
+/** Returns the incremental build information file for a project. */
+export function buildInfoFile(project: string): string {
+  return join(
+    root,
+    BUILD_INFO,
+    `${toPosix(project).replace(/\//g, "__")}.tsbuildinfo`,
+  );
+}
+
+/**
+ * Type-checks a project and lists the files in its program.  Given a build
+ * information file, the check is incremental: files whose contents did not
+ * change since the last run are not checked again, but their diagnostics are
+ * still reported.
+ */
+export async function checkProject(
+  project: string,
+  buildInfo?: string,
+): Promise<ProjectResult> {
   const result = await commandOutput(process.execPath, [
     tsc,
     "--project",
@@ -351,6 +371,9 @@ export async function checkProject(project: string): Promise<ProjectResult> {
     "--skipLibCheck",
     "false",
     "--listFiles",
+    ...(buildInfo == null
+      ? []
+      : ["--incremental", "--tsBuildInfoFile", buildInfo]),
   ], { cwd: root });
   const output = new TextDecoder().decode(result.stdout) +
     new TextDecoder().decode(result.stderr);
@@ -678,7 +701,7 @@ async function main(args: readonly string[]): Promise<number> {
     projects,
     concurrency,
     async (project) => {
-      const result = await checkProject(project);
+      const result = await checkProject(project, buildInfoFile(project));
       const status = result.errors.length > 0 ? "FAIL" : "ok";
       console.log(`${status} ${project}`);
       return result;
@@ -750,7 +773,7 @@ async function checkDeclarations(
     consumers,
     options.concurrency,
     async (project) => {
-      const result = await checkProject(project);
+      const result = await checkProject(project, buildInfoFile(project));
       const diagnostics = result.diagnostics.filter((diagnostic) =>
         isDeclarationDiagnostic(diagnostic, firstPartyDirs)
       );
