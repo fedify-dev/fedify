@@ -55,7 +55,7 @@ export type OutboundPreparationResult =
  */
 export type OutboundBroadcastEvent =
   & {
-    /** Fresh opaque identity shared by this invocation's producer events. */
+    /** Fresh opaque identity shared by producer events, independent of tracing. */
     readonly broadcastId: string;
     /** The outgoing operation being observed. */
     readonly operation: "send";

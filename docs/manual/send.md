@@ -59,6 +59,71 @@ async function sendFollow(
 > the *Context* section.
 
 
+Observing outgoing preparation
+------------------------------
+
+*This API is available since Fedify 2.5.0.*
+
+Use `Federatable.setOutboundObservers()` on a federation builder or a directly
+created federation to observe ordinary `~Context.sendActivity()` invocations:
+
+~~~~ typescript twoslash
+import type { Federation, OutboundBroadcastEvent } from "@fedify/fedify";
+declare const federation: Federation<{ requestId: string }>;
+declare function recordBroadcast(
+  requestId: string,
+  event: OutboundBroadcastEvent,
+): Promise<void>;
+// ---cut-before---
+federation.setOutboundObservers({
+  async onBroadcast(ctx, event) {
+    await recordBroadcast(ctx.data.requestId, event);
+    if (event.stage === "preparation-finished" && event.result.type === "failed") {
+      console.error(event.result.failure.phase, event.result.failure.error);
+    }
+  },
+});
+~~~~
+
+Here, `recordBroadcast()` is your application's recording function. The callback
+receives the existing context and application data without loading additional
+data for observation. Each invocation has a fresh `broadcastId`,
+shared by its `started` and `preparation-finished` events. These IDs work
+without OpenTelemetry, including when no tracer provider is configured or
+sampling is disabled.
+
+`started` precedes sender and recipient resolution and signing. The
+`preparation-finished` event contains an `OutboundPreparationResult`:
+
+ -  `prepared` means the current producer reached readiness for fanout or
+    delivery. `destinationCount` counts deduplicated destinations, not
+    successful deliveries. Fanout workers still need to prepare deliveries.
+ -  `skipped` with reason `no-destinations` means there was nothing to send.
+ -  `failed` reports the preparation phase, the original thrown value (which
+    need not be an `Error`), and the extent of destination planning.
+
+Preparation readiness does not confirm queue acceptance or successful delivery.
+Immediate sends can already be running when preparation finishes, and a later
+send or enqueue failure does not replace the preparation result.
+
+Each registration call replaces all previous outbound observers; pass `{}` to
+clear them. Fedify copies the supplied callbacks, and building a federation
+copies the builder's registration. An active invocation keeps the callback
+selected at entry even if registration changes while it is running.
+
+Callbacks are awaited without a default timeout. Their return values and errors
+cannot veto sending, and callback or error-logging failures do not replace the
+send's original result. Slow callbacks delay processing; a callback that never
+settles delays it indefinitely. If you detach recording work, handle its
+rejections and shutdown yourself; Fedify does not guarantee its persistence.
+
+Currently this API covers ordinary sends only. Sends through an
+`OutboxContext` override, forwarding, automatic portable replication, workers,
+delivery attempts, HTTP exchanges, and response bodies are not observed yet.
+Incoming C2S `setOutboxListeners()` registration is separate. Mock federations
+accept outbound observer registration but do not execute these observers.
+
+
 Specifying a sender
 -------------------
 

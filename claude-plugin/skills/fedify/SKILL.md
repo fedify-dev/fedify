@@ -244,6 +244,22 @@ deliveries have no retry.
 > those must be distinct activities.  Use a fresh UUID or counter in the
 > fragment.
 
+Use `federation.setOutboundObservers({ onBroadcast(ctx, event) { ... } })`
+(also available on builders) to observe ordinary `Context.sendActivity()` entry
+and preparation results. This replaces the whole observer set; `{}` clears it.
+Registration and builds copy callbacks, and active sends retain their selected
+callback. The callback receives existing context/data without extra loading.
+Events share an independent `broadcastId` and work without OpenTelemetry.
+Narrow `event.stage` before reading `event.result`, then narrow `result.type`
+(`prepared`, `skipped`, or `failed`). Preparation readiness is separate from
+queue acceptance and delivery success. Callbacks are awaited without a timeout;
+errors are isolated, but a nonsettling callback delays execution indefinitely.
+Detached recording must handle its own rejection, shutdown, and persistence.
+Outbox-context overrides, forwarding, portable replication, workers, attempts,
+HTTP exchanges, and response capture are not observed yet. Mock federations
+accept registration without executing observers. Incoming C2S outbox listeners
+use the separate `setOutboxListeners()` API.
+
 See <https://fedify.dev/manual/send.md>.
 
 
