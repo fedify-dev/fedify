@@ -641,10 +641,19 @@ test("portable fallback attempts retain one delivery across concrete gateway sen
               reports[1].outcome.type,
               accepted ? "succeeded" : "failed",
             );
-            deepStrictEqual(reports.map((report) => report.outcome.response), [
-              { status: 503 },
-              { status: accepted ? 202 : 502 },
-            ]);
+            for (const [index, report] of reports.entries()) {
+              const response = report.outcome.response;
+              ok(response.type === "final");
+              strictEqual(
+                response.metadata.status,
+                index === 0 ? 503 : accepted ? 202 : 502,
+              );
+              strictEqual(
+                report.httpExchangeCount,
+                index === 1 && accepted ? 1 : 2,
+              );
+              strictEqual(response.exchangeIndex, report.httpExchangeCount - 1);
+            }
             if (operation !== "send") {
               for (const payload of submitted) deepStrictEqual(payload, raw);
             }

@@ -352,6 +352,23 @@ test("outbound unsigned exchanges report only actual submissions and retain rece
       const count = phase === "policy" || phase === "serialization" ? 0 : 1;
       strictEqual(submissions, count);
       strictEqual(exchanges.length, count);
+      strictEqual(attempts[0].httpExchangeCount, count);
+      const evidence = attempts[0].outcome.response;
+      if (count === 0 || phase === "request") {
+        deepStrictEqual(evidence, { type: "not-observed" });
+      } else if (phase.startsWith("redirect-")) {
+        deepStrictEqual(evidence, {
+          type: "intermediate-only",
+          lastObserved: {
+            exchangeIndex: 0,
+            metadata: { status: 307, statusText: "Observed response" },
+          },
+        });
+      } else {
+        ok(evidence.type === "final");
+        strictEqual(evidence.exchangeIndex, 0);
+        strictEqual(evidence.metadata.status, phase === "http" ? 503 : 202);
+      }
       if (count === 0) return;
       const report = exchanges[0];
       strictEqual(report.attemptId, attempts[0].attemptId);
@@ -469,6 +486,13 @@ test("outbound signed exchanges follow actual challenge, fallback, and redirect 
       strictEqual(attempts[0].outcome.type, "succeeded");
       strictEqual(exchanges.length, responses.length);
       strictEqual(requests.length, responses.length);
+      strictEqual(attempts[0].httpExchangeCount, requests.length);
+      const final = attempts[0].outcome.response;
+      ok(final.type === "final");
+      strictEqual(final.exchangeIndex, requests.length - 1);
+      ok(Object.isFrozen(final));
+      ok(Object.isFrozen(final.metadata));
+      strictEqual(final.metadata.status, 202);
       strictEqual(origins.length, mode === "challenge-redirect" ? 2 : 1);
       for (const [index, report] of exchanges.entries()) {
         strictEqual(report.exchangeIndex, index);
@@ -622,6 +646,19 @@ test("outbound signed exchanges preserve earlier responses when subsequent opera
         ? 2
         : 1;
       strictEqual(submissions, count);
+      strictEqual(attempts[0].httpExchangeCount, count);
+      if (phase === "post-response") {
+        ok(outcome.response.type === "final");
+        strictEqual(outcome.response.exchangeIndex, 0);
+        strictEqual(outcome.response.metadata.status, 202);
+      } else if (phase.startsWith("later-") || phase === "handled-signing") {
+        ok(outcome.response.type === "intermediate-only");
+        strictEqual(outcome.response.lastObserved.exchangeIndex, 0);
+        strictEqual(
+          outcome.response.lastObserved.metadata.status,
+          phase === "later-spec-lookup" ? 307 : 401,
+        );
+      } else deepStrictEqual(outcome.response, { type: "not-observed" });
       for (const [index, report] of exchanges.entries()) {
         strictEqual(report.attemptId, attempts[0].attemptId);
         strictEqual(report.exchangeIndex, index);
@@ -639,6 +676,261 @@ test("outbound signed exchanges preserve earlier responses when subsequent opera
               : 401,
           );
         }
+      }
+    });
+  }
+});
+
+test("outbound attempt finality preserves HTTP, cache, and cleanup failures together", async (t) => {
+  for (const status of [202, 503]) {
+    for (const phase of ["cache", "cleanup", "both"] as const) {
+      await t.step(`${status}: ${phase}`, async () => {
+        const inbox = recipient.inboxId!.href;
+        const reports: OutboundAttemptReport[] = [];
+        const exchanges: OutboundHttpExchangeReport[] = [];
+        const ctx = createFederation<void>(options).createContext(
+          new URL("https://example.com"),
+          undefined,
+        );
+        const observation = new OutboundBroadcastObservation(ctx, {
+          onAttempt(_ctx, report) {
+            reports.push(report);
+          },
+          onHttpExchange(_ctx, report) {
+            exchanges.push(report);
+          },
+        }, "send");
+        await observation.planDestinations({
+          [inbox]: { actorIds: [], sharedInbox: false },
+        });
+        const cacheError = Symbol("cache failure");
+        const cleanupError = Symbol("cleanup failure");
+        let submissions = 0;
+        let outward: unknown;
+        await rejects(
+          sendConcreteActivity({
+            observation: observation.delivery(inbox),
+            activity: {},
+            keys: [sender],
+            inbox: new URL(inbox),
+            specDeterminer: {
+              determineSpec: () => "rfc9421",
+              rememberSpec() {
+                if (phase !== "cleanup") throw cacheError;
+              },
+            },
+          }, {
+            openHop: (url) =>
+              Promise.resolve({
+                url: new URL(url),
+                fetch() {
+                  return Promise.resolve(
+                    new Response(null, {
+                      status: ++submissions === 1 ? 401 : status,
+                      statusText: "Observed response",
+                    }),
+                  );
+                },
+                close() {
+                  return phase === "cache"
+                    ? Promise.resolve()
+                    : Promise.reject(cleanupError);
+                },
+              }),
+          }),
+          (error: unknown) => {
+            outward = error;
+            return error instanceof FetchError;
+          },
+        );
+        strictEqual(reports.length, 1);
+        strictEqual(submissions, 2);
+        const report = reports[0];
+        strictEqual(report.httpExchangeCount, 2);
+        const outcome = report.outcome;
+        ok(outcome.type === "failed");
+        strictEqual(outcome.error, outward);
+        strictEqual(
+          (outward as FetchError).cause,
+          phase === "cleanup" ? cleanupError : cacheError,
+        );
+        deepStrictEqual(outcome.response, {
+          type: "final",
+          exchangeIndex: 1,
+          metadata: { status, statusText: "Observed response" },
+        });
+        const diagnostics = [];
+        if (phase !== "cleanup") {
+          diagnostics.push({
+            kind: "local",
+            phase: "post-response",
+            error: cacheError,
+          });
+        }
+        if (phase !== "cache") {
+          diagnostics.push({
+            kind: "local",
+            phase: "cleanup",
+            error: cleanupError,
+          });
+        }
+        if (status === 503) {
+          deepStrictEqual(outcome.failure, { kind: "http", phase: "response" });
+          deepStrictEqual(outcome.diagnostics, diagnostics);
+        } else {
+          deepStrictEqual(outcome.failure, diagnostics[0]);
+          deepStrictEqual(
+            outcome.diagnostics,
+            diagnostics.length > 1 ? diagnostics.slice(1) : undefined,
+          );
+        }
+        ok(Object.isFrozen(outcome.response));
+        ok(Object.isFrozen(outcome.response.metadata));
+        if (outcome.diagnostics != null) {
+          ok(Object.isFrozen(outcome.diagnostics));
+        }
+        strictEqual(exchanges.length, 2);
+        ok(exchanges[1].outcome.type === "response");
+        deepStrictEqual(
+          exchanges[1].outcome.response,
+          outcome.response.metadata,
+        );
+      });
+    }
+  }
+});
+
+test("outbound attempt finality follows branch decisions rather than status or last index", async (t) => {
+  for (
+    const mode of [
+      "challenge-cache",
+      "final-401",
+      "unsigned-300",
+      "signed-300",
+      "undetermined",
+    ] as const
+  ) {
+    await t.step(mode, async () => {
+      const inbox = recipient.inboxId!.href;
+      const reports: OutboundAttemptReport[] = [];
+      const exchanges: OutboundHttpExchangeReport[] = [];
+      const ctx = createFederation<void>(options).createContext(
+        new URL("https://example.com"),
+        undefined,
+      );
+      const observation = new OutboundBroadcastObservation(ctx, {
+        onAttempt(_ctx, report) {
+          reports.push(report);
+        },
+        onHttpExchange(_ctx, report) {
+          exchanges.push(report);
+        },
+      }, "send");
+      await observation.planDestinations({
+        [inbox]: { actorIds: [], sharedInbox: false },
+      });
+      const failure = Symbol(mode);
+      const denied = new UrlError("redirect denied");
+      const keyId = new URL(sender.keyId);
+      const href = keyId.href;
+      let submissions = 0;
+      let cacheWrites = 0;
+      Object.defineProperty(keyId, "href", {
+        get() {
+          if (mode === "undetermined" && submissions > 0) throw failure;
+          return href;
+        },
+      });
+      let outward: unknown;
+      await rejects(
+        sendConcreteActivity({
+          observation: observation.delivery(inbox),
+          activity: {},
+          keys: mode === "unsigned-300" ? [] : [{ ...sender, keyId }],
+          inbox: new URL(inbox),
+          specDeterminer: {
+            determineSpec: () => "rfc9421",
+            rememberSpec() {
+              cacheWrites++;
+              if (mode === "challenge-cache") throw failure;
+            },
+          },
+        }, {
+          openHop(url) {
+            if (url !== inbox) return Promise.reject(denied);
+            return Promise.resolve({
+              url: new URL(url),
+              fetch() {
+                submissions++;
+                return Promise.resolve(
+                  new Response(null, {
+                    status: mode.endsWith("300")
+                      ? 300
+                      : mode === "challenge-cache" && submissions > 1
+                      ? 202
+                      : 401,
+                    statusText: "Observed response",
+                    headers: mode.endsWith("300")
+                      ? { Location: "/next" }
+                      : mode === "challenge-cache" || mode === "undetermined"
+                      ? {
+                        "Accept-Signature":
+                          'sig1=("@method" "@target-uri");created',
+                      }
+                      : {},
+                  }),
+                );
+              },
+              close: () => Promise.resolve(),
+            });
+          },
+        }),
+        (error: unknown) => {
+          outward = error;
+          return true;
+        },
+      );
+      strictEqual(reports.length, 1);
+      const report = reports[0];
+      strictEqual(report.httpExchangeCount, submissions);
+      strictEqual(
+        submissions,
+        mode === "challenge-cache" || mode === "final-401" ? 2 : 1,
+      );
+      strictEqual(exchanges.length, submissions);
+      const outcome = report.outcome;
+      ok(outcome.type === "failed");
+      strictEqual(outcome.error, outward);
+      const evidence = outcome.response;
+      if (mode === "signed-300" || mode === "undetermined") {
+        ok(
+          evidence.type ===
+            (mode === "signed-300" ? "intermediate-only" : "undetermined"),
+        );
+        strictEqual(evidence.lastObserved.exchangeIndex, 0);
+        strictEqual(
+          evidence.lastObserved.metadata.status,
+          mode === "signed-300" ? 300 : 401,
+        );
+        strictEqual(
+          outcome.failure.kind,
+          mode === "signed-300" ? "policy" : "unknown",
+        );
+      } else {
+        ok(evidence.type === "final");
+        strictEqual(evidence.exchangeIndex, submissions - 1);
+        strictEqual(
+          evidence.metadata.status,
+          mode === "challenge-cache" ? 202 : mode === "final-401" ? 401 : 300,
+        );
+        strictEqual(
+          outcome.failure.kind,
+          mode === "challenge-cache" ? "local" : "http",
+        );
+      }
+      if (mode === "final-401") strictEqual(cacheWrites, 0);
+      if (mode === "challenge-cache" || mode === "undetermined") {
+        strictEqual(outcome.failure.error, failure);
       }
     });
   }
@@ -726,11 +1018,15 @@ test("outbound attempts report ordinary and outbox sends with attempt-only build
             traceId: span.spanContext().traceId,
             spanId: span.spanContext().spanId,
           });
+          strictEqual(
+            report.httpExchangeCount,
+            status === "policy" ? 0 : status === 202 ? 1 : 2,
+          );
           if (status === 202) {
-            deepStrictEqual(report.outcome, {
-              type: "succeeded",
-              response: { status },
-            });
+            strictEqual(report.outcome.type, "succeeded");
+            ok(report.outcome.response.type === "final");
+            strictEqual(report.outcome.response.metadata.status, status);
+            strictEqual(report.outcome.response.exchangeIndex, 0);
           } else {
             ok(report.outcome.type === "failed");
             strictEqual(report.outcome.error, outward);
@@ -740,8 +1036,14 @@ test("outbound attempts report ordinary and outbox sends with attempt-only build
               status === "policy" ? "policy" : "http",
             );
             if (status === "policy") {
-              strictEqual(report.outcome.response, undefined);
-            } else deepStrictEqual(report.outcome.response, { status });
+              deepStrictEqual(report.outcome.response, {
+                type: "not-observed",
+              });
+            } else {
+              ok(report.outcome.response.type === "final");
+              strictEqual(report.outcome.response.metadata.status, status);
+              strictEqual(report.outcome.response.exchangeIndex, 1);
+            }
           }
         } finally {
           fetchMock.hardReset();
@@ -927,7 +1229,11 @@ test("outbound attempts preserve boundary failures and allocate fresh IDs per co
           phase: "cleanup",
           error: failure,
         }]);
-        deepStrictEqual(report.outcome.response, { status: 503 });
+        deepStrictEqual(report.outcome.response, {
+          type: "final",
+          exchangeIndex: 0,
+          metadata: { status: 503, statusText: "" },
+        });
       } else {
         deepStrictEqual(report.outcome.failure, {
           kind: phase === "dns" || phase === "request" ? "transport" : "local",
@@ -2471,7 +2777,9 @@ test("forwarding observers retain readiness and registration through late immedi
           attempt.outcome.type,
           status === 202 ? "succeeded" : "failed",
         );
-        deepStrictEqual(attempt.outcome.response, { status });
+        ok(attempt.outcome.response.type === "final");
+        strictEqual(attempt.outcome.response.metadata.status, status);
+        strictEqual(attempt.httpExchangeCount, status === 202 ? 1 : 2);
         if (attempt.outcome.type === "failed") {
           strictEqual(attempt.outcome.failure.kind, "http");
           strictEqual(attempt.outcome.failure.error, attempt.outcome.error);

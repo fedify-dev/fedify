@@ -3314,6 +3314,7 @@ test("doubleKnockScoped() observes each actual GET and HEAD transport retry", as
             observed.push(request);
             return submit();
           },
+          response() {},
           error() {
             throw new Error("transport retry must not be a local failure");
           },

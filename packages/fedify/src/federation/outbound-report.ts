@@ -175,6 +175,28 @@ type OutboundAttemptFailure =
     readonly error: unknown;
   };
 
+interface OutboundHttpResponseMetadata {
+  readonly status: number;
+  readonly statusText: string;
+  /** Response URL when supplied by fetch. */
+  readonly url?: string;
+}
+
+type OutboundAttemptResponse =
+  | {
+    readonly type: "final";
+    readonly exchangeIndex: number;
+    readonly metadata: OutboundHttpResponseMetadata;
+  }
+  | { readonly type: "not-observed" }
+  | {
+    readonly type: "intermediate-only" | "undetermined";
+    readonly lastObserved: {
+      readonly exchangeIndex: number;
+      readonly metadata: OutboundHttpResponseMetadata;
+    };
+  };
+
 /**
  * The terminal result of one concrete send.
  *
@@ -194,6 +216,8 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
   readonly portableInbox?: string;
   /** Inbox selected for this invocation of the concrete sender. */
   readonly inboxUrl: string;
+  /** Actual fetch submissions, including challenges and redirects; may be zero. */
+  readonly httpExchangeCount: number;
   /** Current queue execution; absent on immediate sends. */
   readonly queue?: {
     readonly queueMessageId: string;
@@ -205,7 +229,7 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
     | {
       readonly type: "succeeded";
       /** Final response selected by the sender. */
-      readonly response: { readonly status: number };
+      readonly response: Extract<OutboundAttemptResponse, { type: "final" }>;
     }
     | {
       readonly type: "failed";
@@ -213,8 +237,8 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
       readonly failure: OutboundAttemptFailure;
       /** Exact value escaping the sender, possibly different from failure.error. */
       readonly error: unknown;
-      /** Final response when the sender reached final-response consumption. */
-      readonly response?: { readonly status: number };
+      /** Explicit final or last-observed response evidence, including absence. */
+      readonly response: OutboundAttemptResponse;
       /** Additional failures, without replacing the primary evidence. */
       readonly diagnostics?: readonly OutboundAttemptFailure[];
     };
@@ -249,12 +273,7 @@ export type OutboundHttpExchangeReport =
     readonly outcome:
       | {
         readonly type: "response";
-        readonly response: {
-          readonly status: number;
-          readonly statusText: string;
-          /** Response URL when supplied by fetch. */
-          readonly url?: string;
-        };
+        readonly response: OutboundHttpResponseMetadata;
       }
       | { readonly type: "failed"; readonly error: unknown };
   };

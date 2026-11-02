@@ -2113,6 +2113,7 @@ async function createRedirectRequest(
 /** In-process hooks for scoped outbound delivery, outside the public options. */
 export interface DoubleKnockObservation {
   fetch(request: Request, submit: () => Promise<Response>): Promise<Response>;
+  response(response: Response, disposition: "final" | "intermediate"): void;
   error(
     phase: "signing" | "spec-lookup" | "post-response",
     error: unknown,
@@ -2487,6 +2488,7 @@ async function doubleKnockCore(
             }
           }
           if (fulfilled && challengeRequest != null) {
+            observation?.response(response, "intermediate");
             signal?.throwIfAborted();
             // The challenge retry stays on the current validated hop.
             cancelResponseBody(response, request.url);
@@ -2501,6 +2503,7 @@ async function doubleKnockCore(
           }
           if (fulfilled && !isRedirectResponse(response)) {
             if (response.status < 300) {
+              observation?.response(response, "final");
               await observeDoubleKnockOperation(
                 observation,
                 "post-response",
@@ -2511,6 +2514,7 @@ async function doubleKnockCore(
               return { response, session };
             }
             if (response.status !== 400 && response.status !== 401) {
+              observation?.response(response, "final");
               return { response, session };
             }
           }
@@ -2518,6 +2522,7 @@ async function doubleKnockCore(
         }
 
         if (!isRedirectResponse(response)) {
+          observation?.response(response, "intermediate");
           // verification failed; retry with the other spec of HTTP Signatures
           // (double-knocking; see https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions)
           const spec = firstTrySpec === "draft-cavage-http-signatures-12"
@@ -2559,6 +2564,7 @@ async function doubleKnockCore(
             !isRedirectResponse(response) &&
             response.status !== 400 && response.status !== 401
           ) {
+            observation?.response(response, "final");
             await observeDoubleKnockOperation(
               observation,
               "post-response",
@@ -2568,6 +2574,7 @@ async function doubleKnockCore(
           }
         }
       } else if (!firstRedirected) {
+        observation?.response(response, "final");
         await observeDoubleKnockOperation(
           observation,
           "post-response",
@@ -2576,10 +2583,14 @@ async function doubleKnockCore(
               Promise.resolve(),
         );
       }
-      if (!isRedirectResponse(response)) return { response, session };
+      if (!isRedirectResponse(response)) {
+        observation?.response(response, "final");
+        return { response, session };
+      }
 
       // Follow redirects manually to get the final URL.  The current hop is
       // closed before the next one is validated and opened:
+      observation?.response(response, "intermediate");
       cancelResponseBody(response, request.url);
       await session.close();
       if (redirected >= maximumRedirection) {

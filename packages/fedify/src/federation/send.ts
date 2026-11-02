@@ -609,7 +609,6 @@ async function sendActivityInternal(
       );
     }
     const consume = (response: Response) => {
-      attempt?.response(response.status);
       return consumeSendActivityResponse(response, inbox);
     };
     let outcome: SendActivityOutcome;
@@ -629,6 +628,8 @@ async function sendActivityInternal(
           consume,
           attempt == null ? undefined : {
             fetch: (request, submit) => attempt.fetch(request, submit),
+            response: (response, disposition) =>
+              attempt.response(response, disposition),
             error: (phase, error) =>
               attempt.failure({ kind: "local", phase, error }),
           },
@@ -790,6 +791,7 @@ export async function fetchWithValidatedRedirects<T>(
     if (
       ![301, 302, 303, 307, 308].includes(response.status) || location == null
     ) {
+      attempt?.response(response, "final");
       try {
         return await consume(response);
       } catch (error) {
@@ -804,6 +806,7 @@ export async function fetchWithValidatedRedirects<T>(
       }
     }
     // The current hop is closed before the next one is validated and opened:
+    attempt?.response(response, "intermediate");
     cancelResponseBody(response, request.url);
     await session.close();
     if (redirects >= 20) throw new TypeError("Too many redirects");

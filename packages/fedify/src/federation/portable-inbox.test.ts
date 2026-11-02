@@ -2665,7 +2665,9 @@ test("portable replication attempts settle independently after the forwarding de
     // The pending gateway has no synthetic timeout attempt outcome.
     assertEquals(attempts.length, 1);
     assertEquals(attempts[0].outcome.type, "failed");
-    assertEquals(attempts[0].outcome.response, { status: 503 });
+    assert(attempts[0].outcome.response.type === "final");
+    assertEquals(attempts[0].outcome.response.metadata.status, 503);
+    assertEquals(attempts[0].httpExchangeCount, 1);
     federation.setOutboundObservers({
       onAttempt() {
         replacements++;
@@ -2674,10 +2676,10 @@ test("portable replication attempts settle independently after the forwarding de
     release();
     await Promise.all([successReported, concreteSendsEnded]);
     assertEquals(attempts.length, 2);
-    assertEquals(attempts[1].outcome, {
-      type: "succeeded",
-      response: { status: 202 },
-    });
+    assertEquals(attempts[1].outcome.type, "succeeded");
+    assert(attempts[1].outcome.response.type === "final");
+    assertEquals(attempts[1].outcome.response.metadata.status, 202);
+    assertEquals(attempts[1].httpExchangeCount, 1);
     assertEquals(replacements, 0);
     assert(attempts[0].attemptId !== attempts[1].attemptId);
     assert(attempts[0].deliveryId !== attempts[1].deliveryId);

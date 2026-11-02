@@ -151,7 +151,12 @@ type AttemptFailure = Extract<
 >["failure"];
 type AttemptFacts = Pick<
   OutboundAttemptReport,
-  "attemptId" | "inboxUrl" | "observedAt" | "trace" | "outcome"
+  | "attemptId"
+  | "inboxUrl"
+  | "httpExchangeCount"
+  | "observedAt"
+  | "trace"
+  | "outcome"
 >;
 
 type ExchangeFacts = Pick<
@@ -164,11 +169,17 @@ type ExchangeFacts = Pick<
   | "outcome"
 >;
 
+type AttemptResponse = OutboundAttemptReport["outcome"]["response"];
+type FinalResponse = Extract<AttemptResponse, { type: "final" }>;
+type ObservedResponse = Pick<FinalResponse, "exchangeIndex" | "metadata">;
+
 /** State owned by one concrete send, never persisted in queue metadata. */
 export class OutboundAttemptObservation {
   readonly #attemptId = crypto.randomUUID();
   readonly #failures: AttemptFailure[] = [];
-  #response: { readonly status: number } | undefined;
+  #response: AttemptResponse = Object.freeze({ type: "not-observed" });
+  #finalResponse: FinalResponse | undefined;
+  readonly #responses = new WeakMap<Response, ObservedResponse>();
   #trace: OutboundAttemptReport["trace"];
   #finished = false;
   #exchangeCount = 0;
@@ -201,13 +212,20 @@ export class OutboundAttemptObservation {
       await this.#exchange(exchangeIndex, snapshot, { type: "failed", error });
       throw error;
     }
+    const metadata = Object.freeze({
+      status: response.status,
+      statusText: response.statusText,
+      ...(response.url === "" ? {} : { url: response.url }),
+    });
+    const observed = Object.freeze({ exchangeIndex, metadata });
+    this.#responses.set(response, observed);
+    this.#response = Object.freeze({
+      type: "undetermined",
+      lastObserved: observed,
+    });
     await this.#exchange(exchangeIndex, snapshot, {
       type: "response",
-      response: Object.freeze({
-        status: response.status,
-        statusText: response.statusText,
-        ...(response.url === "" ? {} : { url: response.url }),
-      }),
+      response: metadata,
     });
     return response;
   }
@@ -227,8 +245,18 @@ export class OutboundAttemptObservation {
     }) ?? Promise.resolve();
   }
 
-  response(status: number): void {
-    this.#response = Object.freeze({ status });
+  response(response: Response, disposition: "final" | "intermediate"): void {
+    const observed = this.#responses.get(response);
+    if (observed == null) return;
+    if (disposition === "final") {
+      this.#finalResponse = Object.freeze({ type: "final", ...observed });
+      this.#response = this.#finalResponse;
+    } else {
+      this.#response = Object.freeze({
+        type: "intermediate-only",
+        lastObserved: observed,
+      });
+    }
   }
 
   failure(failure: AttemptFailure): void {
@@ -246,15 +274,16 @@ export class OutboundAttemptObservation {
   }
 
   succeeded(): Promise<void> {
-    return this.#finish({ type: "succeeded", response: this.#response! });
+    return this.#finish({ type: "succeeded", response: this.#finalResponse! });
   }
 
   failed(error: unknown): Promise<void> {
     let failure: AttemptFailure;
     let diagnostics: AttemptFailure[];
     if (
-      this.#response != null &&
-      (this.#response.status < 200 || this.#response.status >= 300)
+      this.#response.type === "final" &&
+      (this.#response.metadata.status < 200 ||
+        this.#response.metadata.status >= 300)
     ) {
       failure = this.#failures.find((failure) => failure.kind === "http") ??
         Object.freeze({ kind: "http", phase: "response" });
@@ -269,7 +298,7 @@ export class OutboundAttemptObservation {
       type: "failed",
       failure,
       error,
-      ...(this.#response == null ? {} : { response: this.#response }),
+      response: this.#response,
       ...(diagnostics.length === 0
         ? {}
         : { diagnostics: Object.freeze(diagnostics) }),
@@ -282,6 +311,7 @@ export class OutboundAttemptObservation {
     return this.report({
       attemptId: this.#attemptId,
       inboxUrl: this.inboxUrl,
+      httpExchangeCount: this.#exchangeCount,
       observedAt: Temporal.Now.instant().epochMilliseconds,
       ...(this.#trace == null ? {} : { trace: this.#trace }),
       outcome: Object.freeze(outcome),
