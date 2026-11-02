@@ -5326,6 +5326,32 @@ test("ContextImpl.sendActivity()", async (t) => {
     const rsaOnlyMessage = queue.messages.at(-1);
     assert(rsaOnlyMessage != null && rsaOnlyMessage.type === "fanout");
     assertEquals(rsaOnlyMessage.activity, rsaOnlyJson);
+
+    queue.clear();
+    await ctx2.sendActivity(
+      { username: "john" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restored,
+      { fanout: "force" },
+    );
+    const namedFanout = queue.messages.at(-1);
+    assert(namedFanout != null && namedFanout.type === "fanout");
+    const namedJson = detachSignature(namedFanout.activity) as Record<
+      string,
+      unknown
+    >;
+    const namedProofs = Array.isArray(namedJson.proof)
+      ? namedJson.proof
+      : [namedJson.proof];
+    assertEquals(namedProofs.length, 1);
+    assert(
+      (namedJson["@context"] as string[]).includes(
+        "https://w3id.org/security/v1",
+      ),
+    );
   });
 
   queue.clear();

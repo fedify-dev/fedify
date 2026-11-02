@@ -2645,6 +2645,23 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     // verifiers can look up the correct key type in the actor document.
     if (actorKeyPairs != null) {
       const contextLoader = this.contextLoader;
+      const willSign = actorKeyPairs.some((kp) =>
+        kp.privateKey.algorithm.name === "Ed25519" &&
+        kp.multikey.id != null
+      );
+      if (willSign) {
+        let hasProof = activityJsonLd != null &&
+          hasTopLevelProof(activityJsonLd);
+        if (!hasProof) {
+          for await (const _ of activity.getProofs({ contextLoader })) {
+            hasProof = true;
+            break;
+          }
+        }
+        // A new proof is created over the current serialization, so old proofs
+        // that cover another context cannot be kept.
+        if (hasProof) activity = activity.clone({ proofs: [] });
+      }
       let proofAdded = false;
       for (const kp of actorKeyPairs) {
         if (
