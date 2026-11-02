@@ -5430,6 +5430,114 @@ test("ContextImpl.sendActivity()", async (t) => {
 
   queue.clear();
 
+  await t.step("activity transformers preserve proofs", async () => {
+    const originalProof = new vocab.DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: new URL("https://example.com/rsa-only#multikey-2"),
+      proofPurpose: "assertionMethod",
+      proofValue: new Uint8Array([1, 2, 3, 4]),
+      created: Temporal.Instant.from("2026-01-01T00:00:00Z"),
+    });
+    const addedProof = new vocab.DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: new URL("https://example.com/rsa-only#multikey-2"),
+      proofPurpose: "assertionMethod",
+      proofValue: new Uint8Array([5, 6, 7, 8]),
+      created: Temporal.Instant.from("2026-01-02T00:00:00Z"),
+    });
+    const federation3 = new FederationImpl<void>({
+      kv,
+      allowPrivateAddress: true,
+      queue,
+      activityTransformers: [
+        (activity) =>
+          activity.id?.href ===
+              "https://example.com/activity/transformed-proof"
+            ? activity.clone({ proofs: [originalProof, addedProof] })
+            : activity,
+      ],
+    });
+    federation3
+      .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
+        if (identifier !== "rsa-only") return null;
+        const keys = await ctx.getActorKeyPairs(identifier);
+        return new vocab.Person({
+          id: ctx.getActorUri(identifier),
+          preferredUsername: identifier,
+          publicKey: keys[0].cryptographicKey,
+          assertionMethods: keys.map((k) => k.multikey),
+        });
+      })
+      .setKeyPairsDispatcher((_ctx, identifier) =>
+        identifier === "rsa-only"
+          ? [
+            {
+              privateKey: rsaPrivateKey2,
+              publicKey: rsaPublicKey2.publicKey!,
+            },
+          ]
+          : []
+      );
+    const ctx3 = new ContextImpl({
+      data: undefined,
+      federation: federation3,
+      url: new URL("https://example.com/"),
+      documentLoader: documentLoader,
+      contextLoader: documentLoader,
+    });
+    const activity = new vocab.Create({
+      id: new URL("https://example.com/activity/transformed-proof"),
+      actor: ctx3.getActorUri("rsa-only"),
+      proofs: [originalProof],
+    });
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      activity,
+      { fanout: "force" },
+    );
+    const fanout = queue.messages.at(-1);
+    assert(fanout != null && fanout.type === "fanout");
+    const fanoutJson = detachSignature(fanout.activity) as Record<
+      string,
+      unknown
+    >;
+    const fanoutProofs = Array.isArray(fanoutJson.proof)
+      ? fanoutJson.proof
+      : [fanoutJson.proof];
+    assertEquals(fanoutProofs.length, 2);
+
+    // A proofless activity should not be serialized just to look for proofs.
+    const proofless = new vocab.Create({
+      id: new URL("https://example.com/activity/proofless"),
+      actor: ctx3.getActorUri("rsa-only"),
+    });
+    let unformattedSerializations = 0;
+    const originalToJsonLd = proofless.toJsonLd.bind(proofless);
+    Object.defineProperty(proofless, "toJsonLd", {
+      value: async (options?: { format?: "compact" | "expand" }) => {
+        if (options?.format == null) unformattedSerializations++;
+        return await originalToJsonLd(options);
+      },
+    });
+    queue.clear();
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      proofless,
+      { fanout: "skip" },
+    );
+    assertEquals(unformattedSerializations, 0);
+  });
+
+  queue.clear();
+
   await t.step('fanout: "skip"', async () => {
     const activity = new vocab.Create({
       id: new URL("https://example.com/activity/1"),

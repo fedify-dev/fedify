@@ -2475,11 +2475,24 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     options: SendActivityOptionsForCollection = {},
   ): Promise<void> {
     // Capture the proof-covered serialization before the span attributes below
-    // read lazy accessors that invalidate the object's cached JSON-LD.
-    let activityJsonLd = await activity.toJsonLd({
-      contextLoader: this.contextLoader,
-    });
-    if (!hasTopLevelProof(activityJsonLd)) activityJsonLd = undefined;
+    // read lazy accessors that invalidate the object's cached JSON-LD.  A
+    // proofless activity has nothing to preserve, so skip the serialization.
+    let activityJsonLd: unknown = undefined;
+    let hasProof = activity.proofIds.length > 0;
+    if (!hasProof) {
+      for await (
+        const _ of activity.getProofs({ contextLoader: this.contextLoader })
+      ) {
+        hasProof = true;
+        break;
+      }
+    }
+    if (hasProof) {
+      activityJsonLd = await activity.toJsonLd({
+        contextLoader: this.contextLoader,
+      });
+      if (!hasTopLevelProof(activityJsonLd)) activityJsonLd = undefined;
+    }
     const tracer = this.tracerProvider.getTracer(
       metadata.name,
       metadata.version,
@@ -2622,17 +2635,28 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     for (const activityTransformer of this.federation.activityTransformers) {
       activity = activityTransformer(activity, this);
     }
-    let transformedJsonLd: unknown = undefined;
+    let contextMatches = false;
     if (activityJsonLd != null) {
-      transformedJsonLd = await activity.toJsonLd({
+      const capturedJsonLd = activityJsonLd;
+      const transformedJsonLd = await activity.toJsonLd({
         format: "compact",
         contextLoader: this.contextLoader,
       });
-      if (
-        getPayloadFields(transformedJsonLd) !== getPayloadFields(activityJsonLd)
-      ) {
+      const contentChanged = getContentFields(transformedJsonLd) !==
+        getContentFields(capturedJsonLd);
+      contextMatches = getContextFields(transformedJsonLd) ===
+        getContextFields(capturedJsonLd);
+      if (contentChanged) {
         activityJsonLd = undefined;
         activity = activity.clone({ proofs: [] });
+      } else if (
+        contextMatches &&
+        getProofFields(transformedJsonLd) !== getProofFields(capturedJsonLd)
+      ) {
+        // The transformer only changed the proofs.  Their content still
+        // matches, so keep the transformed proofs and serialize the
+        // transformed activity instead of the captured snapshot.
+        activityJsonLd = undefined;
       }
     }
     span?.setAttribute("activitypub.activity.id", activity?.id?.href ?? "");
@@ -2663,21 +2687,11 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
             break;
           }
         }
-        // A new proof is created over the current serialization.  Existing
-        // proofs can stay only if they already cover the same context.
-        const sameContext = activityJsonLd != null &&
-          transformedJsonLd != null &&
-          JSON.stringify(
-              sortJsonKeys(
-                (activityJsonLd as Record<string, unknown>)["@context"],
-              ),
-            ) ===
-            JSON.stringify(
-              sortJsonKeys(
-                (transformedJsonLd as Record<string, unknown>)["@context"],
-              ),
-            );
-        if (hasProof && !sameContext) activity = activity.clone({ proofs: [] });
+        // A new proof covers the current serialization.  Existing proofs can
+        // stay only if they already cover the same context.
+        if (hasProof && activityJsonLd != null && !contextMatches) {
+          activity = activity.clone({ proofs: [] });
+        }
       }
       let proofAdded = false;
       for (const kp of actorKeyPairs) {
@@ -3562,19 +3576,36 @@ function hasTopLevelProof(value: unknown): boolean {
     globalThis.Object.prototype.hasOwnProperty.call(value, "proof");
 }
 
-function getPayloadFields(value: unknown): string {
+function getContentFields(value: unknown): string {
   if (typeof value !== "object" || value == null || Array.isArray(value)) {
     return JSON.stringify(sortJsonKeys(value));
   }
   const record = { ...(value as Record<string, unknown>) };
   delete record["@context"];
-  delete record.signature;
-  const proofs = stripContexts(record.proof);
   delete record.proof;
-  return JSON.stringify({
-    payload: sortJsonKeys(record),
-    proofs: sortJsonKeys(proofs),
-  });
+  delete record.signature;
+  return JSON.stringify(sortJsonKeys(record));
+}
+
+function getContextFields(value: unknown): string {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return JSON.stringify(sortJsonKeys(value));
+  }
+  const context = (value as Record<string, unknown>)["@context"];
+  return JSON.stringify(sortJsonKeys(context ?? null));
+}
+
+function getProofFields(value: unknown): string {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return "[]";
+  }
+  const proof = (value as Record<string, unknown>).proof;
+  if (proof == null) return "[]";
+  return JSON.stringify(
+    (Array.isArray(proof) ? proof : [proof])
+      .map((entry) => JSON.stringify(sortJsonKeys(stripContexts(entry))))
+      .sort(),
+  );
 }
 
 function stripContexts(value: unknown): unknown {
