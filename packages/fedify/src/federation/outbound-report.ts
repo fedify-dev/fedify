@@ -170,10 +170,9 @@ type OutboundAttemptFailure =
   };
 
 /**
- * The terminal result of one immediate concrete send.
+ * The terminal result of one concrete send.
  *
  * A send that fails before submitting HTTP still constitutes an attempt.
- * Queued worker sends are not observed yet.
  * @since 2.5.0
  */
 export type OutboundAttemptReport = OutboundSourceMetadata & {
@@ -183,12 +182,18 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
   readonly broadcast: OutboundDeliveryEvent["broadcast"];
   /** Destination obligation shared with producer delivery events. */
   readonly deliveryId: string;
-  /** Original planned inbox, independent of the concrete route. */
-  readonly destinationInbox: string;
+  /** Original planned inbox; unavailable on legacy outbox tasks. */
+  readonly destinationInbox?: string;
   /** Canonical portable inbox when the planned destination represents one. */
   readonly portableInbox?: string;
   /** Inbox selected for this invocation of the concrete sender. */
   readonly inboxUrl: string;
+  /** Current queue execution; absent on immediate sends. */
+  readonly queue?: {
+    readonly queueMessageId: string;
+    /** Present when the queue message carries a Fedify retry counter. */
+    readonly queueAttempt?: number;
+  };
   /** Settled execution result, separate from producer preparation. */
   readonly outcome:
     | {
@@ -227,7 +232,7 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
  */
 export interface OutboundObservers<TContextData> {
   /**
-   * Observes settlement of immediate sends and forwarding, including pre-fetch
+   * Observes settlement of concrete sends and forwarding, including pre-fetch
    * failures. Callback errors cannot replace the sender's result.
    */
   readonly onAttempt?: (

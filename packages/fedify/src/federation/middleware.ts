@@ -13,6 +13,7 @@ import type {
 } from "./outbound-report.ts";
 import {
   observeOutboundBroadcast,
+  OutboundAttemptObserver,
   OutboundBroadcastObservation,
 } from "./outbound-observation.ts";
 import { InboxObservation } from "./inbox-observation.ts";
@@ -1483,11 +1484,12 @@ export class FederationImpl<TContextData>
   }
 
   async #listenOutboxMessage(
-    _: TContextData,
+    contextData: TContextData,
     message: OutboxMessage,
     span: Span,
     provenance: OutboundProvenance,
   ): Promise<void> {
+    const onAttempt = this.outboundObservers.onAttempt;
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const logData = {
       keyIds: message.keys.map((pair) => pair.keyId),
@@ -1513,6 +1515,30 @@ export class FederationImpl<TContextData>
       keys.push(pair);
     }
     const loaderOptions = this.#getLoaderOptions(message.baseUrl);
+    let observationContext: ContextImpl<TContextData> | undefined;
+    let observationDocumentLoader: DocumentLoader | undefined;
+    let observationContextLoader: DocumentLoader | undefined;
+    const observation = OutboundAttemptObserver.resumeOutbox(
+      () =>
+        observationContext ??= new ContextImpl({
+          [outboundProvenance]: provenance,
+          federation: this,
+          url: new URL("/", message.baseUrl),
+          data: contextData,
+          // Observing settlement must not create loaders or perform lookups.
+          documentLoader: (...args) =>
+            (observationDocumentLoader ??= this.documentLoaderFactory(
+              loaderOptions,
+            ))(...args),
+          contextLoader: (...args) =>
+            (observationContextLoader ??= this.contextLoaderFactory(
+              loaderOptions,
+            ))(...args),
+        }),
+      onAttempt,
+      message,
+      provenance,
+    );
     let parsedActorIds: URL[] | undefined;
     const getActorIds = () => {
       parsedActorIds ??= (message.actorIds ?? []).flatMap((id) => {
@@ -1586,7 +1612,7 @@ export class FederationImpl<TContextData>
       if (this.outboxPermanentFailureHandler != null) {
         const ctx = this.#createContext(
           new URL(message.baseUrl),
-          _,
+          contextData,
           {
             [outboundProvenance]: provenance,
             documentLoader: this.documentLoaderFactory(loaderOptions),
@@ -1624,13 +1650,14 @@ export class FederationImpl<TContextData>
     const { gatewayInboxes } = message;
     if (gatewayInboxes != null && gatewayInboxes.length > 1) {
       await this.#listenGatewayOutboxMessage(
-        _,
+        contextData,
         {
           ...message,
           gatewayInboxes,
         },
         span,
         {
+          observation,
           provenance,
           keys,
           logData,
@@ -1685,6 +1712,7 @@ export class FederationImpl<TContextData>
         }
       }
       await sendActivity({
+        observation,
         allowPrivateAddress: this.allowPrivateAddress,
         keys,
         activity: message.activity,
@@ -1724,7 +1752,7 @@ export class FederationImpl<TContextData>
         }
         try {
           return getRemoteHost(new URL(message.inbox));
-        } catch (_) {
+        } catch {
           logger.warn(
             "Invalid inbox URL in queued outbox message: {inbox}",
             logData,
@@ -1876,7 +1904,7 @@ export class FederationImpl<TContextData>
         if (this.outboxPermanentFailureHandler != null) {
           const ctx = this.#createContext(
             new URL(message.baseUrl),
-            _,
+            contextData,
             {
               [outboundProvenance]: provenance,
               documentLoader: this.documentLoaderFactory(loaderOptions),
@@ -2014,6 +2042,7 @@ export class FederationImpl<TContextData>
     message: OutboxMessage & { readonly gatewayInboxes: readonly string[] },
     span: Span,
     helpers: {
+      readonly observation: SendActivityParameters["observation"];
       readonly provenance: OutboundProvenance;
       readonly keys: readonly SenderKeyPair[];
       readonly logData: Record<string, unknown>;
@@ -2031,6 +2060,7 @@ export class FederationImpl<TContextData>
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const circuitLogger = getLogger(["fedify", "federation", "circuit"]);
     const {
+      observation,
       provenance,
       keys,
       logData,
@@ -2138,6 +2168,7 @@ export class FederationImpl<TContextData>
       }
       try {
         await sendActivity({
+          observation,
           allowPrivateAddress: this.allowPrivateAddress,
           keys,
           activity: message.activity,

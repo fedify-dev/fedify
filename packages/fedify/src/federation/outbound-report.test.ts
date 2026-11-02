@@ -2440,7 +2440,11 @@ test("outbound observers preserve processing of legacy outbox messages", async (
   const message = messages[0];
   ok(message?.type === "outbox");
   strictEqual(message.outbound, undefined);
+  const attempts: OutboundAttemptReport[] = [];
   federation.setOutboundObservers({
+    onAttempt(_ctx, report) {
+      attempts.push(report);
+    },
     onDelivery() {
       throw new Error("unused worker observer");
     },
@@ -2453,6 +2457,11 @@ test("outbound observers preserve processing of legacy outbox messages", async (
     );
     strictEqual(fetchMock.callHistory.calls().length, 1);
     strictEqual(messages.length, 1);
+    strictEqual(attempts.length, 1);
+    strictEqual(attempts[0].deliveryId, message.id);
+    deepStrictEqual(attempts[0].broadcast, { type: "unknown" });
+    strictEqual("destinationInbox" in attempts[0], false);
+    deepStrictEqual(attempts[0].provenance, {});
   } finally {
     fetchMock.hardReset();
   }
@@ -2510,6 +2519,201 @@ function continuationMessage(
   };
 }
 
+test("outbound worker attempts restore current context without creating loaders", async () => {
+  const federation = createFederation<{ label: string }>({
+    kv: new MemoryKvStore(),
+    allowPrivateAddress: true,
+  });
+  let loads = 0;
+  const unexpectedLoader = () => {
+    loads++;
+    throw new Error("observation must not create loaders");
+  };
+  Object.defineProperties(federation, {
+    documentLoaderFactory: { value: unexpectedLoader },
+    contextLoaderFactory: { value: unexpectedLoader },
+  });
+  const message = continuationMessage(recipient.inboxId!.href, true);
+  const data = { label: "current worker" };
+  const reports: OutboundAttemptReport[] = [];
+  const contexts: unknown[] = [];
+  federation.setOutboundObservers({
+    onAttempt(ctx, report) {
+      reports.push(report);
+      contexts.push(ctx.data, ctx.clone(data).data);
+      throw new Error("worker observer failure must be isolated");
+    },
+  });
+  fetchMock.mockGlobal().post(message.inbox, 202);
+  try {
+    await federation.processQueuedTask(data, structuredClone(message));
+    strictEqual(loads, 0);
+    deepStrictEqual(contexts, [data, data]);
+    strictEqual(reports.length, 1);
+    deepStrictEqual(reports[0].provenance, message.provenance);
+    strictEqual(reports[0].local.origin, new URL(message.baseUrl).origin);
+    deepStrictEqual(reports[0].queue, {
+      queueMessageId: message.id,
+      queueAttempt: 0,
+    });
+    strictEqual(reports[0].outcome.type, "succeeded");
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+test("outbound fanout workers report fresh attempts with restored grouping and current data", async (t) => {
+  for (const legacy of [false, true]) {
+    await t.step(legacy ? "legacy fanout" : "populated identity", async () => {
+      const messages: Message[] = [];
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const federation = createFederation<{ label: string }>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        tracerProvider,
+        manuallyStartQueue: true,
+        queue: {
+          fanout: {
+            enqueue(message) {
+              messages.push(message);
+              return Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          },
+        },
+      });
+      if (!legacy) federation.setOutboundObservers({ onBroadcast() {} });
+      const ctx = federation.createContext(new URL("https://example.com"), {
+        label: "producer",
+      });
+      await ctx.sendActivity(sender, recipient, activity, {
+        fanout: "force",
+        dispatchId: "original-dispatch",
+      });
+      const message = messages[0];
+      ok(message?.type === "fanout");
+      const identity = message.inboxes[recipient.inboxId!.href].outbound;
+      strictEqual(identity == null, legacy);
+      const reports: OutboundAttemptReport[] = [];
+      const contexts: unknown[] = [];
+      const data = { label: "worker" };
+      federation.setOutboundObservers({
+        onAttempt(context, report) {
+          reports.push(report);
+          contexts.push(context.data);
+        },
+      });
+      fetchMock.mockGlobal().post(recipient.inboxId!.href, 202);
+      try {
+        await federation.processQueuedTask(data, structuredClone(message));
+        await federation.processQueuedTask(data, structuredClone(message));
+        strictEqual(reports.length, 2);
+        deepStrictEqual(contexts, [data, data]);
+        notStrictEqual(reports[0].attemptId, reports[1].attemptId);
+        strictEqual(reports[0].deliveryId, reports[1].deliveryId);
+        if (identity != null) {
+          strictEqual(reports[0].deliveryId, identity.deliveryId);
+        }
+        for (const report of reports) {
+          strictEqual(report.destinationInbox, recipient.inboxId!.href);
+          deepStrictEqual(
+            report.broadcast,
+            identity?.broadcast ?? { type: "unknown" },
+          );
+          strictEqual(report.provenance.dispatchId, "original-dispatch");
+          deepStrictEqual(report.queue, { queueMessageId: message.id });
+          const span = exporter.spans.find((span) =>
+            span.spanContext().spanId === report.trace?.spanId
+          );
+          ok(span);
+          strictEqual(span.name, "activitypub.send_activity");
+        }
+      } finally {
+        fetchMock.hardReset();
+        await tracerProvider.shutdown();
+      }
+    });
+  }
+});
+
+test("outbound workers omit attempts for key import, fanout parsing, and held-task drops", async (t) => {
+  for (
+    const phase of [
+      "key-import",
+      "fanout-parsing",
+      "drop",
+      "gateway-drop",
+    ] as const
+  ) {
+    await t.step(phase, async () => {
+      const messages: Message[] = [];
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        manuallyStartQueue: true,
+        circuitBreaker: { heldActivityTtl: { seconds: 1 } },
+        queue: {
+          outbox: {
+            enqueue(message) {
+              messages.push(message);
+              return Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          },
+        },
+      });
+      const attempts: OutboundAttemptReport[] = [];
+      federation.setOutboundObservers({
+        onAttempt(_ctx, report) {
+          attempts.push(report);
+        },
+      });
+      const original = continuationMessage(recipient.inboxId!.href, true);
+      const message: Message = phase === "fanout-parsing"
+        ? {
+          type: "fanout",
+          id: original.id,
+          baseUrl: original.baseUrl,
+          keys: [],
+          inboxes: { [original.inbox]: { actorIds: [], sharedInbox: false } },
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Person",
+          },
+          activityType: Create.typeId.href,
+          traceContext: {},
+        }
+        : phase === "key-import"
+        ? {
+          ...original,
+          keys: [{ keyId: sender.keyId.href, privateKey: { kty: "invalid" } }],
+        }
+        : {
+          ...original,
+          circuitHeld: true,
+          circuitHeldSince: "2000-01-01T00:00:00Z",
+          ...(phase === "gateway-drop"
+            ? {
+              gatewayInboxes: [original.inbox, "https://gateway.example/inbox"],
+            }
+            : {}),
+        };
+      fetchMock.mockGlobal();
+      try {
+        const processing = federation.processQueuedTask(undefined, message);
+        if (phase === "key-import" || phase === "fanout-parsing") {
+          await rejects(processing);
+        } else await processing;
+        strictEqual(attempts.length, 0);
+        strictEqual(fetchMock.callHistory.calls().length, 0);
+        strictEqual(messages.length, 0);
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
 test("outbound queue identities survive ordinary retries, holds, and native redelivery", async (t) => {
   for (const observed of [false, true]) {
     for (const mode of ["retry", "hold", "retry-after", "native"] as const) {
@@ -2537,6 +2741,12 @@ test("outbound queue identities survive ordinary retries, holds, and native rede
           },
         });
         const message = continuationMessage(recipient.inboxId!.href, observed);
+        const attempts: OutboundAttemptReport[] = [];
+        federation.setOutboundObservers({
+          onAttempt(_ctx, report) {
+            attempts.push(report);
+          },
+        });
         const original = structuredClone(message);
         const task: OutboxMessage = JSON.parse(JSON.stringify(message));
         fetchMock.mockGlobal().post(
@@ -2599,6 +2809,45 @@ test("outbound queue identities survive ordinary retries, holds, and native rede
               strictEqual(fetchMock.callHistory.calls().length, requests);
             }
           }
+          strictEqual(attempts.length, mode === "hold" ? 1 : 2);
+          strictEqual(
+            new Set(attempts.map((report) => report.attemptId)).size,
+            attempts.length,
+          );
+          for (const report of attempts) {
+            strictEqual(
+              report.destinationInbox,
+              original.outbound?.destinationInbox,
+            );
+            deepStrictEqual(
+              report.broadcast,
+              original.outbound?.broadcast ?? { type: "unknown" },
+            );
+            strictEqual(
+              report.provenance.dispatchId,
+              original.provenance?.dispatchId,
+            );
+            deepStrictEqual(
+              report.provenance.inboxRequest,
+              original.provenance?.inboxRequest,
+            );
+            strictEqual(report.local.origin, new URL(message.baseUrl).origin);
+            ok(report.queue);
+            strictEqual(
+              report.deliveryId,
+              observed
+                ? original.outbound!.deliveryId
+                : report.queue.queueMessageId,
+            );
+            ok(Object.isFrozen(report.queue));
+          }
+          strictEqual(attempts[0].queue?.queueAttempt, 0);
+          if (mode !== "hold") {
+            strictEqual(
+              attempts[1].queue?.queueAttempt,
+              mode === "native" ? 0 : 1,
+            );
+          }
           deepStrictEqual(task, original);
           deepStrictEqual(message, original);
         } finally {
@@ -2642,6 +2891,12 @@ test("outbound queue identities retain planned destinations through gateway cont
           ...continuationMessage(gateways[0], observed, portableInbox),
           gatewayInboxes: gateways,
         };
+        const attempts: OutboundAttemptReport[] = [];
+        federation.setOutboundObservers({
+          onAttempt(_ctx, report) {
+            attempts.push(report);
+          },
+        });
         const original = structuredClone(message);
         const task: OutboxMessage = JSON.parse(JSON.stringify(message));
         fetchMock.mockGlobal();
@@ -2719,6 +2974,56 @@ test("outbound queue identities retain planned destinations through gateway cont
             if (mode !== "retry") {
               strictEqual(fetchMock.callHistory.calls().length, requests);
             }
+          }
+          strictEqual(
+            attempts.length,
+            mode === "native" ? 4 : mode === "retry" ? 5 : 3,
+          );
+          strictEqual(
+            new Set(attempts.map((report) => report.attemptId)).size,
+            attempts.length,
+          );
+          for (const report of attempts) {
+            strictEqual(
+              report.destinationInbox,
+              original.outbound?.destinationInbox,
+            );
+            deepStrictEqual(
+              report.broadcast,
+              original.outbound?.broadcast ?? { type: "unknown" },
+            );
+            strictEqual(
+              report.provenance.dispatchId,
+              original.provenance?.dispatchId,
+            );
+            deepStrictEqual(
+              report.provenance.inboxRequest,
+              original.provenance?.inboxRequest,
+            );
+            strictEqual(report.local.origin, new URL(message.baseUrl).origin);
+            ok(report.queue);
+            strictEqual(
+              report.deliveryId,
+              observed
+                ? original.outbound!.deliveryId
+                : report.queue.queueMessageId,
+            );
+            ok(Object.isFrozen(report.queue));
+          }
+          strictEqual(attempts[0].queue?.queueAttempt, 0);
+          deepStrictEqual(
+            attempts.slice(0, 3).map((report) => report.inboxUrl),
+            gateways,
+          );
+          for (const report of attempts) {
+            strictEqual(report.portableInbox, portableInbox);
+          }
+          if (mode === "retry") {
+            deepStrictEqual(
+              attempts.slice(3).map((report) => report.inboxUrl),
+              gateways.slice(1),
+            );
+            strictEqual(attempts[3].queue?.queueAttempt, 1);
           }
           deepStrictEqual(task, original);
           deepStrictEqual(message, original);

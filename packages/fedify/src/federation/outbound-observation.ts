@@ -12,7 +12,11 @@ import {
 import { encodeHex } from "byte-encodings/hex";
 import { getLogger, withContext } from "@logtape/logtape";
 import type { Context } from "./context.ts";
-import type { FanoutMessage, SerializedOutboundDelivery } from "./queue.ts";
+import type {
+  FanoutMessage,
+  OutboxMessage,
+  SerializedOutboundDelivery,
+} from "./queue.ts";
 import type {
   OutboundAttemptReport,
   OutboundBroadcastEvent,
@@ -228,11 +232,81 @@ export class OutboundAttemptObservation {
   }
 }
 
+type AttemptIdentity = Pick<
+  OutboundAttemptReport,
+  "broadcast" | "deliveryId" | "destinationInbox" | "portableInbox"
+>;
+
+/** Selected callback and restored grouping, shared by concrete gateway attempts. */
+export class OutboundAttemptObserver<TContextData> {
+  readonly #queue: OutboundAttemptReport["queue"];
+
+  constructor(
+    readonly context: () => Context<TContextData>,
+    readonly callback: OutboundObservers<TContextData>["onAttempt"],
+    readonly identity: AttemptIdentity,
+    readonly provenance: OutboundProvenance,
+    queue?: OutboundAttemptReport["queue"],
+  ) {
+    this.#queue = queue == null ? undefined : Object.freeze({ ...queue });
+  }
+
+  static resumeOutbox<TContextData>(
+    context: () => Context<TContextData>,
+    callback: OutboundObservers<TContextData>["onAttempt"],
+    message: OutboxMessage,
+    provenance: OutboundProvenance,
+  ): OutboundAttemptObserver<TContextData> | undefined {
+    if (callback == null) return undefined;
+    const identity = message.outbound == null
+      ? Object.freeze({
+        broadcast: Object.freeze({ type: "unknown" as const }),
+        deliveryId: message.id,
+        ...(message.portableInbox == null
+          ? {}
+          : { portableInbox: message.portableInbox }),
+      })
+      : snapshotDeliveryIdentity(message.outbound);
+    return new OutboundAttemptObserver(
+      context,
+      callback,
+      identity,
+      provenance,
+      {
+        queueMessageId: message.id,
+        queueAttempt: message.attempt,
+      },
+    );
+  }
+
+  startAttempt(inboxUrl: string): OutboundAttemptObservation | undefined {
+    if (this.callback == null) return undefined;
+    const context = this.context();
+    return new OutboundAttemptObservation(
+      inboxUrl,
+      (facts) =>
+        notifyObserver(
+          context,
+          this.callback,
+          Object.freeze({
+            ...this.identity,
+            ...facts,
+            ...(this.#queue == null ? {} : { queue: this.#queue }),
+            provenance: this.provenance,
+            local: snapshotLocalContext(context),
+          }),
+          "attempt",
+        ),
+    );
+  }
+}
+
 /** One producer's destination, without callbacks or live inputs in queues. */
 class OutboundDeliveryObservation<TContextData> {
   #finished = false;
   readonly #reference: SerializedOutboundDelivery;
   readonly #plan;
+  readonly #attempts: OutboundAttemptObserver<TContextData>;
 
   constructor(
     readonly context: Context<TContextData>,
@@ -241,9 +315,17 @@ class OutboundDeliveryObservation<TContextData> {
     destination: PlannedDestination,
     readonly provenance: OutboundProvenance,
     readonly trace: OutboundBroadcastEvent["trace"],
-    readonly onAttempt: OutboundObservers<TContextData>["onAttempt"],
+    onAttempt: OutboundObservers<TContextData>["onAttempt"],
+    queue?: OutboundAttemptReport["queue"],
   ) {
     this.#reference = snapshotDeliveryIdentity(identity);
+    this.#attempts = new OutboundAttemptObserver(
+      () => this.context,
+      onAttempt,
+      this.#reference,
+      this.provenance,
+      queue,
+    );
     this.#plan = Object.freeze({
       actorIds: Object.freeze(Array.from(destination.actorIds)),
       sharedInbox: destination.sharedInbox,
@@ -253,22 +335,7 @@ class OutboundDeliveryObservation<TContextData> {
   }
 
   startAttempt(inboxUrl: string): OutboundAttemptObservation | undefined {
-    if (this.onAttempt == null) return undefined;
-    return new OutboundAttemptObservation(
-      inboxUrl,
-      (facts) =>
-        notifyObserver(
-          this.context,
-          this.onAttempt,
-          Object.freeze({
-            ...this.#reference,
-            ...facts,
-            provenance: this.provenance,
-            local: snapshotLocalContext(this.context),
-          }),
-          "attempt",
-        ),
-    );
+    return this.#attempts.startAttempt(inboxUrl);
   }
 
   get identity(): SerializedOutboundDelivery {
@@ -363,6 +430,7 @@ export class OutboundBroadcastObservation<TContextData> {
       type: "known",
       id: crypto.randomUUID(),
     },
+    readonly queue: OutboundAttemptReport["queue"] = undefined,
   ) {
     this.#broadcast = broadcast;
     this.#onBroadcast = observers.onBroadcast;
@@ -379,17 +447,18 @@ export class OutboundBroadcastObservation<TContextData> {
     parentSpanContext?: SpanContext,
   ): Promise<OutboundBroadcastObservation<TContextData> | undefined> {
     if (
-      observers.onDelivery == null &&
+      observers.onDelivery == null && observers.onAttempt == null &&
       !Object.values(message.inboxes).some((entry) => entry.outbound != null)
     ) {
       return undefined;
     }
     const observation = new OutboundBroadcastObservation(
       context,
-      { onDelivery: observers.onDelivery },
+      { onDelivery: observers.onDelivery, onAttempt: observers.onAttempt },
       "send",
       getOutboundProvenance(context),
       { type: "unknown" },
+      { queueMessageId: message.id },
     );
     if (span != null) observation.setSpan(span, parentSpanContext);
     observation.#finished = true;
@@ -429,6 +498,7 @@ export class OutboundBroadcastObservation<TContextData> {
       this.provenance,
       this.#trace,
       this.#onAttempt,
+      this.queue,
     );
   }
 
