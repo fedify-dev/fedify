@@ -307,7 +307,10 @@ test("outbound preparation preserves failure provenance and plan completeness", 
   for (
     const phase of [
       "sender-resolution",
+      "key-resolution",
+      "recipient-resolution",
       "transformation",
+      "signing",
       "destination-planning",
       "serialization",
     ] as const
@@ -339,6 +342,14 @@ test("outbound preparation preserves failure provenance and plan completeness", 
           value: () => Promise.reject(failure),
         });
       }
+      if (phase === "signing") {
+        sentActivity = activity.clone({});
+        Object.defineProperty(sentActivity, "getProofs", {
+          value() {
+            throw failure;
+          },
+        });
+      }
       if (phase === "destination-planning") {
         target = recipient.clone({});
         Object.defineProperty(target, "inboxId", {
@@ -356,18 +367,64 @@ test("outbound preparation preserves failure provenance and plan completeness", 
             throw failure;
           });
       }
-      await rejects(
-        federation.createContext(new URL("https://example.com"), undefined)
-          .sendActivity(
-            phase === "sender-resolution" ? { username: "alice" } : sender,
-            target,
-            sentActivity,
-          ),
-        (error: unknown) => error === failure,
+      let keyDispatches = 0;
+      if (phase === "key-resolution" || phase === "recipient-resolution") {
+        federation.setActorDispatcher(
+          "/users/{identifier}",
+          () => new Person({}),
+        )
+          .setKeyPairsDispatcher(() => {
+            keyDispatches++;
+            if (phase === "key-resolution") throw failure;
+            return [{
+              privateKey: rsaPrivateKey2,
+              publicKey: rsaPublicKey2.publicKey!,
+            }];
+          });
+      }
+      if (phase === "recipient-resolution") {
+        federation.setFollowersDispatcher(
+          "/users/{identifier}/followers",
+          () => {
+            throw failure;
+          },
+        );
+      }
+      const ctx = federation.createContext(
+        new URL("https://example.com"),
+        undefined,
       );
-      deepStrictEqual(preparation(events), {
+      const sending = phase === "recipient-resolution"
+        ? ctx.sendActivity({ identifier: "alice" }, "followers", sentActivity)
+        : ctx.sendActivity(
+          phase === "sender-resolution"
+            ? { username: "alice" }
+            : phase === "key-resolution"
+            ? { identifier: "alice" }
+            : sender,
+          target,
+          sentActivity,
+        );
+      let originalError: unknown;
+      await rejects(sending, (error: unknown) => {
+        originalError = error;
+        if (phase === "key-resolution") {
+          // Key-dispatcher errors are already handled by getActorKeyPairs().
+          // Preserve the public send error from the resulting empty key set.
+          return error instanceof Error &&
+            error.message === 'No key pair found for actor "alice".';
+        }
+        return error === failure;
+      });
+      if (phase === "key-resolution" || phase === "recipient-resolution") {
+        strictEqual(keyDispatches, 1);
+      }
+      const result = preparation(events);
+      ok(result.type === "failed");
+      strictEqual(result.failure.error, originalError);
+      deepStrictEqual(result, {
         type: "failed",
-        failure: { kind: "local", phase, error: failure },
+        failure: { kind: "local", phase, error: originalError },
         planning: phase === "serialization"
           ? "complete"
           : phase === "destination-planning"
