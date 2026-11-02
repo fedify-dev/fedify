@@ -2,12 +2,21 @@ import { mockDocumentLoader, test } from "@fedify/fixture";
 import { Create, Endpoints, Note, Person, type Recipient } from "@fedify/vocab";
 import { parseIri } from "@fedify/vocab-runtime";
 import fetchMock from "fetch-mock";
-import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
+import {
+  deepStrictEqual,
+  notStrictEqual,
+  ok,
+  rejects,
+  strictEqual,
+} from "node:assert/strict";
 import { rsaPrivateKey2, rsaPublicKey2 } from "../testing/keys.ts";
 import { MemoryKvStore } from "./kv.ts";
-import { FederationImpl, InboxContextImpl } from "./middleware.ts";
+import { ContextImpl, FederationImpl, InboxContextImpl } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
-import type { OutboundDeliveryEvent } from "./outbound-report.ts";
+import type {
+  OutboundAttemptReport,
+  OutboundDeliveryEvent,
+} from "./outbound-report.ts";
 import { MAX_DELIVERY_GATEWAYS } from "./portable-delivery.ts";
 import type { FanoutMessage, Message, OutboxMessage } from "./queue.ts";
 import { extractInboxes, SendActivityError } from "./send.ts";
@@ -539,6 +548,113 @@ test("Context.sendActivity() to a portable inbox", async (t) => {
   });
 
   fetchMock.hardReset();
+});
+
+test("portable fallback attempts retain one delivery across concrete gateway sends", async (t) => {
+  for (
+    const operation of ["send", "inbox-forward", "outbox-forward"] as const
+  ) {
+    for (const accepted of [true, false]) {
+      await t.step(
+        `${operation}: ${
+          accepted ? "accepted fallback" : "exhausted gateways"
+        }`,
+        async () => {
+          const raw = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: "https://example.com/activities/forwarded",
+            actor: "https://example.com/person2",
+            extra: "preserve received payload",
+          };
+          const reports: OutboundAttemptReport[] = [];
+          const deliveries: OutboundDeliveryEvent[] = [];
+          const submitted: unknown[] = [];
+          fetchMock.mockGlobal()
+            .post("begin:https://gw1.example/", (call) => {
+              submitted.push(JSON.parse(String(call.options.body)));
+              return 503;
+            })
+            .post("begin:https://gw2.example/", (call) => {
+              submitted.push(JSON.parse(String(call.options.body)));
+              return accepted ? 202 : 502;
+            });
+          try {
+            const federation = new FederationImpl<void>({
+              kv: new MemoryKvStore(),
+              allowPrivateAddress: true,
+            });
+            federation.setOutboundObservers({
+              onDelivery(_ctx, event) {
+                deliveries.push(event);
+              },
+              onAttempt(_ctx, report) {
+                reports.push(report);
+                throw new Error(
+                  "attempt observer cannot stop gateway fallback",
+                );
+              },
+            });
+            const ctx = federation.createContext(
+              new URL("https://example.com/"),
+            );
+            ok(ctx instanceof ContextImpl);
+            const target = portableActor({
+              gateways: ["https://gw1.example", "https://gw2.example"],
+            });
+            const pending = operation === "send"
+              ? ctx.sendActivity(sender, target, createActivity(), {
+                immediate: true,
+              })
+              : (operation === "inbox-forward"
+                ? ctx.toInboxContext(null, raw, raw.id, Create.typeId.href)
+                : ctx.toOutboxContext("alice", raw, raw.id, Create.typeId.href))
+                .forwardActivity(sender, target, {
+                  immediate: true,
+                  skipIfUnsigned: false,
+                });
+            if (accepted) await pending;
+            else {await rejects(pending, (error: unknown) =>
+                error instanceof SendActivityError &&
+                error.statusCode === 502);}
+            strictEqual(reports.length, 2);
+            deepStrictEqual(
+              reports.map((report) => report.inboxUrl),
+              [
+                inboxOn("https://gw1.example"),
+                inboxOn("https://gw2.example"),
+              ],
+            );
+            notStrictEqual(reports[0].attemptId, reports[1].attemptId);
+            strictEqual(reports[0].deliveryId, reports[1].deliveryId);
+            deepStrictEqual(reports[0].broadcast, reports[1].broadcast);
+            for (const report of reports) {
+              strictEqual(
+                report.destinationInbox,
+                inboxOn("https://gw1.example"),
+              );
+              strictEqual(report.portableInbox, PORTABLE_INBOX);
+              strictEqual(report.deliveryId, deliveries[0].deliveryId);
+            }
+            strictEqual(reports[0].outcome.type, "failed");
+            strictEqual(
+              reports[1].outcome.type,
+              accepted ? "succeeded" : "failed",
+            );
+            deepStrictEqual(reports.map((report) => report.outcome.response), [
+              { status: 503 },
+              { status: accepted ? 202 : 502 },
+            ]);
+            if (operation !== "send") {
+              for (const payload of submitted) deepStrictEqual(payload, raw);
+            }
+          } finally {
+            fetchMock.hardReset();
+          }
+        },
+      );
+    }
+  }
 });
 
 test("InboxContext.forwardActivity() to a portable inbox", async (t) => {

@@ -47,6 +47,7 @@ import { createFederation } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
 import { observeOutboundBroadcast } from "./outbound-observation.ts";
 import type {
+  OutboundAttemptReport,
   OutboundBroadcastEvent,
   OutboundDeliveryEvent,
 } from "./outbound-report.ts";
@@ -2595,6 +2596,121 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
       assertStrictEquals(queue.outbox[0].activity, parameters.activity);
     },
   );
+});
+
+test("portable replication attempts settle independently after the forwarding deadline", async () => {
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let fetched!: () => void;
+  const fetching = new Promise<void>((resolve) => {
+    fetched = resolve;
+  });
+  let failed!: () => void;
+  const failureReported = new Promise<void>((resolve) => {
+    failed = resolve;
+  });
+  let succeeded!: () => void;
+  const successReported = new Promise<void>((resolve) => {
+    succeeded = resolve;
+  });
+  let ended!: () => void;
+  const concreteSendsEnded = new Promise<void>((resolve) => {
+    ended = resolve;
+  });
+  const exportSpans = exporter.export.bind(exporter);
+  exporter.export = (spans, callback) => {
+    exportSpans(spans, callback);
+    if (exporter.getSpans("activitypub.send_activity").length === 2) ended();
+  };
+  const attempts: OutboundAttemptReport[] = [];
+  const submitted: unknown[] = [];
+  fetchMock.spyGlobal()
+    .post(`begin:${GATEWAY2}/`, (call) => {
+      submitted.push(JSON.parse(String(call.options.body)));
+      return 503;
+    })
+    .post(`begin:${GATEWAY3}/`, async (call) => {
+      submitted.push(JSON.parse(String(call.options.body)));
+      fetched();
+      await gate;
+      return 202;
+    });
+  try {
+    const { federation, reports } = setup({
+      keyPairs: false,
+      options: {
+        allowPrivateAddress: true,
+        tracerProvider,
+        portableInboxForwarding: { deadline: { milliseconds: 0 } },
+      },
+    });
+    let replacements = 0;
+    federation.setOutboundObservers({
+      onAttempt(_ctx, report) {
+        attempts.push(report);
+        if (report.outcome.type === "failed") failed();
+        else succeeded();
+        throw new Error("replication observer failure must be isolated");
+      },
+    });
+    const json = await signedFollow();
+    const response = await federation.fetch(post(inboxUrl(), json), {
+      contextData: undefined,
+    });
+    assertEquals(response.status, 202);
+    await Promise.all([fetching, failureReported]);
+    // The pending gateway has no synthetic timeout attempt outcome.
+    assertEquals(attempts.length, 1);
+    assertEquals(attempts[0].outcome.type, "failed");
+    assertEquals(attempts[0].outcome.response, { status: 503 });
+    federation.setOutboundObservers({
+      onAttempt() {
+        replacements++;
+      },
+    });
+    release();
+    await Promise.all([successReported, concreteSendsEnded]);
+    assertEquals(attempts.length, 2);
+    assertEquals(attempts[1].outcome, {
+      type: "succeeded",
+      response: { status: 202 },
+    });
+    assertEquals(replacements, 0);
+    assert(attempts[0].attemptId !== attempts[1].attemptId);
+    assert(attempts[0].deliveryId !== attempts[1].deliveryId);
+    assertEquals(attempts[0].broadcast, attempts[1].broadcast);
+    for (const report of attempts) {
+      assertEquals(report.destinationInbox, report.inboxUrl);
+      assertEquals(report.portableInbox, `ap+ef61://${did}/users/alice/inbox`);
+      assertEquals(
+        report.provenance.inboxRequest?.inboxRequestId,
+        reports[0].inboxRequestId,
+      );
+      assert(report.provenance.inboxRequest);
+      const span = exporter.spans.find((span) =>
+        span.spanContext().spanId === report.trace?.spanId
+      );
+      assert(span);
+      assertEquals(span.name, "activitypub.send_activity");
+    }
+    assertEquals(submitted, [json, json]);
+    // Swallowed send failures retain their claims, rather than causing retries.
+    assertEquals(
+      (await federation.fetch(post(inboxUrl(), json), {
+        contextData: undefined,
+      })).status,
+      202,
+    );
+    assertEquals(submitted.length, 2);
+    assertEquals(replacements, 0);
+  } finally {
+    release();
+    fetchMock.hardReset();
+    await tracerProvider.shutdown();
+  }
 });
 
 test("portable replication observers retain preparation after the forwarding deadline", async (t) => {

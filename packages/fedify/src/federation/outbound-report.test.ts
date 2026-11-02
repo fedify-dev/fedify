@@ -1928,8 +1928,12 @@ test("forwarding observers retain readiness and registration through late immedi
         );
         const events: OutboundBroadcastEvent[] = [];
         const deliveries: OutboundDeliveryEvent[] = [];
+        const attempts: OutboundAttemptReport[] = [];
         let replacements = 0;
         federation.setOutboundObservers({
+          onAttempt(_ctx, report) {
+            attempts.push(report);
+          },
           onDelivery(_ctx, event) {
             deliveries.push(event);
           },
@@ -1964,6 +1968,9 @@ test("forwarding observers retain readiness and registration through late immedi
           destinationCount: 1,
         });
         federation.setOutboundObservers({
+          onAttempt() {
+            replacements++;
+          },
           onBroadcast() {
             replacements++;
           },
@@ -1981,6 +1988,20 @@ test("forwarding observers retain readiness and registration through late immedi
         const handoff = deliveries[1];
         ok(handoff.stage === "handoff");
         deepStrictEqual(handoff.result, { type: "direct" });
+        strictEqual(attempts.length, 1);
+        const attempt = attempts[0];
+        strictEqual(attempt.deliveryId, handoff.deliveryId);
+        deepStrictEqual(attempt.broadcast, handoff.broadcast);
+        strictEqual(attempt.inboxUrl, recipient.inboxId!.href);
+        strictEqual(
+          attempt.outcome.type,
+          status === 202 ? "succeeded" : "failed",
+        );
+        deepStrictEqual(attempt.outcome.response, { status });
+        if (attempt.outcome.type === "failed") {
+          strictEqual(attempt.outcome.failure.kind, "http");
+          strictEqual(attempt.outcome.failure.error, attempt.outcome.error);
+        }
         strictEqual(events.length, 2);
         strictEqual(replacements, 0);
         for (const event of events) strictEqual(event.operation, "forward");

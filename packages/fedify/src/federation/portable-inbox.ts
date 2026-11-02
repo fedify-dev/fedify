@@ -623,6 +623,7 @@ async function forwardImmediately<TContextData>(
         let pending: Promise<void>;
         try {
           pending = sendActivity({
+            observation: delivery,
             activity,
             activityId: activityId.href,
             activityType,

@@ -3404,9 +3404,7 @@ export class FederationImpl<TContextData>
             inbox,
             inboxes[inbox].gatewayInboxes,
             {
-              observation: inboxes[inbox].portableInbox == null
-                ? delivery
-                : undefined,
+              observation: delivery,
               allowPrivateAddress: this.allowPrivateAddress,
               keys,
               activity: jsonLd,
@@ -7218,6 +7216,7 @@ async function forwardActivityInternal<TContextData>(
           inbox,
           inboxes[inbox].gatewayInboxes,
           {
+            observation: delivery,
             allowPrivateAddress: ctx.federation.allowPrivateAddress,
             keys,
             activity: ctx.activity,

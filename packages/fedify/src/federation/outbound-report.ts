@@ -170,10 +170,10 @@ type OutboundAttemptFailure =
   };
 
 /**
- * The terminal result of one ordinary immediate concrete send.
+ * The terminal result of one immediate concrete send.
  *
  * A send that fails before submitting HTTP still constitutes an attempt.
- * Forwarding, portable gateways, and queued worker sends are not observed yet.
+ * Queued worker sends are not observed yet.
  * @since 2.5.0
  */
 export type OutboundAttemptReport = OutboundSourceMetadata & {
@@ -185,6 +185,8 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
   readonly deliveryId: string;
   /** Original planned inbox, independent of the concrete route. */
   readonly destinationInbox: string;
+  /** Canonical portable inbox when the planned destination represents one. */
+  readonly portableInbox?: string;
   /** Inbox selected for this invocation of the concrete sender. */
   readonly inboxUrl: string;
   /** Settled execution result, separate from producer preparation. */
@@ -225,7 +227,7 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
  */
 export interface OutboundObservers<TContextData> {
   /**
-   * Observes settlement of ordinary immediate sends, including pre-fetch
+   * Observes settlement of immediate sends and forwarding, including pre-fetch
    * failures. Callback errors cannot replace the sender's result.
    */
   readonly onAttempt?: (
