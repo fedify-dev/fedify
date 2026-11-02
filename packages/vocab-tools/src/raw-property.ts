@@ -115,9 +115,10 @@ function isSameRawPropertyNode(source: unknown, destination: unknown): boolean {
 
 // Copies the retained unknown properties of a decoded object and of the
 // objects nested in it to a copy of the same graph that was decoded again,
-// pairing nested objects by property and position.  When the decoding dropped
-// some values of a property, positions no longer correspond, so only objects
-// with the same id are paired:
+// pairing nested objects by property and position.  Only objects of the same
+// class and id are paired.  When the decoding dropped some values of
+// a property, positions no longer correspond, so nested objects are paired
+// by id alone:
 function copyRawPropertiesDeep(
   source: object,
   destination: object,
@@ -125,8 +126,10 @@ function copyRawPropertiesDeep(
 ): void {
   if (visited.has(destination)) return;
   visited.add(destination);
-  copyRawProperties(source, destination);
+  // A different class classifies properties differently, so the retention
+  // of the copy, decoded again by that class, is the one to keep:
   if (!isSameRawPropertyNode(source, destination)) return;
+  copyRawProperties(source, destination);
   const descriptors = new Set<RawPropertyDescriptor>();
   let prototype: object | null = globalThis.Object.getPrototypeOf(destination);
   while (prototype != null) {

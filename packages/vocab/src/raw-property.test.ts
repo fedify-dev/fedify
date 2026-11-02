@@ -210,6 +210,29 @@ test("getRawPropertyValues() does not mix up objects dropped by a reparse", asyn
   );
 });
 
+test("getRawPropertyValues() keeps unknown properties when a reparse changes the class", async () => {
+  const create = await Create.fromJsonLd({
+    "@context": [AS, { Poll: `${AS}#Question` }],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object: {
+      "@context": AS,
+      id: "https://example.com/questions/1",
+      // Only the outer context defines this type alias:
+      type: ["Poll", "Object"],
+      oneOf: [{ type: "Note", name: "Yes" }],
+    },
+  });
+  const object = await create.getObject();
+  ok(object != null);
+  ok(!(object instanceof Question));
+  deepStrictEqual(
+    (await getRawPropertyValues(object, `${AS}#oneOf`)).length,
+    1,
+  );
+});
+
 test("getRawPropertyValues() keeps unknown properties across copies", async () => {
   const note = await Note.fromJsonLd(structuredNote);
   const expected = [{ "@id": "https://example.com/data/1?token=abc" }];
