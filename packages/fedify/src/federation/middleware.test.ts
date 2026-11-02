@@ -5643,6 +5643,52 @@ test("ContextImpl.sendActivity()", async (t) => {
         ),
     );
 
+    // Equivalent timestamps with a different lexical form must not make the
+    // captured proof look newly supplied by a transformer.
+    const staleTimestampBase = new vocab.Create({
+      id: new URL("https://example.com/activity/stale-timestamp"),
+      actor: ctx3.getActorUri("rsa-only"),
+    });
+    const staleTimestampSigned = await signObject(
+      staleTimestampBase,
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const staleTimestampJson = await staleTimestampSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const staleTimestampProof = (
+      Array.isArray(staleTimestampJson.proof)
+        ? staleTimestampJson.proof[0]
+        : staleTimestampJson.proof
+    ) as Record<string, unknown>;
+    staleTimestampProof.created = "2026-01-01T00:00:00+00:00";
+    const staleTimestamp = await vocab.Create.fromJsonLd(staleTimestampJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      staleTimestamp,
+      { fanout: "force" },
+    );
+    const staleTimestampFanout = queue.messages.at(-1);
+    assert(
+      staleTimestampFanout != null && staleTimestampFanout.type === "fanout",
+    );
+    assertEquals(
+      detachSignature(staleTimestampFanout.activity),
+      staleTimestampJson,
+    );
+
     // A proofless activity should not be serialized just to look for proofs.
     const proofless = new vocab.Create({
       id: new URL("https://example.com/activity/proofless"),

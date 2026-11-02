@@ -3604,8 +3604,26 @@ function getProofEntries(value: unknown): unknown[] {
   return Array.isArray(proof) ? proof : [proof];
 }
 
+function normalizeProofEntry(proof: unknown): unknown {
+  const stripped = stripContexts(proof);
+  if (
+    typeof stripped !== "object" || stripped == null || Array.isArray(stripped)
+  ) {
+    return stripped;
+  }
+  const record = { ...(stripped as Record<string, unknown>) };
+  if (typeof record.created === "string") {
+    try {
+      record.created = Temporal.Instant.from(record.created).toString();
+    } catch {
+      // Keep unrecognized timestamps as they are.
+    }
+  }
+  return record;
+}
+
 function getProofEntryFields(proof: unknown): string {
-  return JSON.stringify(sortJsonKeys(stripContexts(proof)));
+  return JSON.stringify(sortJsonKeys(normalizeProofEntry(proof)));
 }
 
 function getProofFields(value: unknown): string {
