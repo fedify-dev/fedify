@@ -528,7 +528,6 @@ test({
     const jsonLd = await activity.toJsonLd();
     deepStrictEqual(jsonLd, {
       "@context": [
-        "https://w3id.org/identity/v1",
         "https://www.w3.org/ns/activitystreams",
         "https://w3id.org/security/v1",
         "https://w3id.org/security/data-integrity/v1",

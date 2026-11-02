@@ -18,6 +18,7 @@ import {
   rsaPublicKey2,
 } from "../testing/keys.ts";
 import type { KeyCache } from "./key.ts";
+import { detachSignature, signJsonLd, verifySignature } from "./ld.ts";
 import {
   createProof,
   signObject,
@@ -82,8 +83,8 @@ test("createProof()", async () => {
   assertEquals(
     proof.proofValue,
     decodeHex(
-      "203e6afc5b7c6affe08d2d67ad100cc6cdcf1f5a438063d16766204956aa8fdd" +
-        "67cc04088ccf69de36225cab19377b5a032542fd2454b9b9dd001ffbdef5aa03",
+      "22c2d53f7ac073d2e4ee74c8ccec2bf01984740729e8e13d2b02e185e2d490ab" +
+        "f82f809fa7347fce78e564a166d78beccd819e1a78414c7fd8aed59fa7aaa90d",
     ),
   );
   assertEquals(proof.created, created);
@@ -266,6 +267,71 @@ test("signObject()", async () => {
   );
 });
 
+test("signObject() migrates proofs from an older context", async () => {
+  const oldContext = [
+    "https://w3id.org/identity/v1",
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+  ];
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+  const oldSigned = await signObject(
+    activity,
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    { contextLoader: mockDocumentLoader, context: oldContext },
+  );
+  const oldJson = await oldSigned.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+    context: oldContext,
+  });
+  const restored = await Create.fromJsonLd(oldJson, {
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+  });
+  const resigned = await signObject(
+    restored,
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    { contextLoader: mockDocumentLoader },
+  );
+  const json = await resigned.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const proofs = Array.isArray(json.proof) ? json.proof : [json.proof];
+  assertEquals(proofs.length, 1);
+  assertEquals(
+    (proofs[0] as Record<string, unknown>).verificationMethod,
+    ed25519Multikey.id!.href,
+  );
+});
+
+test("signObject() skips context comparison for proofless objects", async () => {
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+  let unformattedSerializations = 0;
+  const originalToJsonLd = activity.toJsonLd.bind(activity);
+  Object.defineProperty(activity, "toJsonLd", {
+    value: async (options?: { format?: "compact" | "expand" }) => {
+      if (options?.format == null) unformattedSerializations++;
+      return await originalToJsonLd(options);
+    },
+  });
+  await signObject(
+    activity,
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    { contextLoader: mockDocumentLoader },
+  );
+  assertEquals(unformattedSerializations, 0);
+});
+
 test("verifyProof()", async () => {
   const cache: Record<string, CryptographicKey | Multikey | null> = {};
   const options: VerifyProofOptions = {
@@ -345,6 +411,47 @@ test("verifyProof()", async () => {
 
   const wrongProof = proof.clone({ created: Temporal.Now.instant() });
   assertEquals(await verifyProof(jsonLd, wrongProof, options), null);
+});
+
+test("signJsonLd() does not invalidate an existing proof", async () => {
+  const options = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  const note = new Note({
+    id: new URL("https://example.com/notes/1"),
+    attribution: new URL("https://example.com/users/alice"),
+    content: "Hello",
+  });
+  const proof = await createProof(
+    note,
+    ed25519PrivateKey,
+    ed25519PublicKey.id!,
+    options,
+  );
+  const jsonLd = await note.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const withProof: Record<string, unknown> = {
+    ...jsonLd,
+    proof: await proof.toJsonLd({
+      format: "compact",
+      contextLoader: mockDocumentLoader,
+    }),
+  };
+  const signed = await signJsonLd(
+    withProof,
+    rsaPrivateKey2,
+    rsaPublicKey2.id!,
+    options,
+  ) as Record<string, unknown>;
+  assertEquals(signed["@context"], withProof["@context"]);
+  assertEquals(
+    await verifyProof(detachSignature(signed), proof, options),
+    ed25519Multikey,
+  );
+  assertEquals(await verifySignature(signed, options), rsaPublicKey2);
 });
 
 test("verifyObject()", async () => {

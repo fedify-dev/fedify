@@ -10,6 +10,7 @@ import type {
 import {
   Activity,
   CryptographicKey,
+  type DataIntegrityProof,
   getTypeId,
   lookupObject,
   Multikey,
@@ -718,6 +719,9 @@ export class FederationImpl<TContextData>
       collectionSync: message.collectionSync,
       orderingKey: message.orderingKey,
       context,
+      activityJsonLd: hasTopLevelProof(message.activity)
+        ? message.activity
+        : undefined,
     });
   }
 
@@ -1377,10 +1381,12 @@ export class FederationImpl<TContextData>
         }
       }
     }
-    let jsonLd = await activity.toJsonLd({
-      format: "compact",
-      contextLoader,
-    });
+    let jsonLd = options.activityJsonLd != null
+      ? detachSignature(options.activityJsonLd)
+      : await activity.toJsonLd({
+        format: "compact",
+        contextLoader,
+      });
     if (rsaKey == null) {
       logger.warn(
         "No supported key found to create a Linked Data signature for " +
@@ -2459,7 +2465,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     });
   }
 
-  sendActivity(
+  async sendActivity(
     sender:
       | SenderKeyPair
       | SenderKeyPair[]
@@ -2469,6 +2475,25 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activity: Activity,
     options: SendActivityOptionsForCollection = {},
   ): Promise<void> {
+    // Capture the proof-covered serialization before the span attributes below
+    // read lazy accessors that invalidate the object's cached JSON-LD.  A
+    // proofless activity has nothing to preserve, so skip the serialization.
+    let activityJsonLd: unknown = undefined;
+    let hasProof = activity.proofIds.length > 0;
+    if (!hasProof) {
+      for await (
+        const _ of activity.getProofs({ contextLoader: this.contextLoader })
+      ) {
+        hasProof = true;
+        break;
+      }
+    }
+    if (hasProof) {
+      activityJsonLd = await activity.toJsonLd({
+        contextLoader: this.contextLoader,
+      });
+      if (!hasTopLevelProof(activityJsonLd)) activityJsonLd = undefined;
+    }
     const tracer = this.tracerProvider.getTracer(
       metadata.name,
       metadata.version,
@@ -2500,6 +2525,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
             activity,
             options,
             span,
+            activityJsonLd,
           );
         } catch (e) {
           span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
@@ -2521,6 +2547,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activity: Activity,
     options: SendActivityOptionsForCollection,
     span: Span,
+    activityJsonLd?: unknown,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     let keys: SenderKeyPair[];
@@ -2605,15 +2632,40 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     } else {
       expandedRecipients = [recipients];
     }
-    const opts: SendActivityInternalOptions<TContextData> = {
-      context: this,
-      orderingKey: options.orderingKey,
-      collectionSync,
-      immediate: options.immediate,
-    };
     span.setAttribute("activitypub.inboxes", expandedRecipients.length);
     for (const activityTransformer of this.federation.activityTransformers) {
       activity = activityTransformer(activity, this);
+    }
+    let contextMatches = false;
+    if (activityJsonLd != null) {
+      const capturedJsonLd = activityJsonLd;
+      const transformedJsonLd = await activity.toJsonLd({
+        format: "compact",
+        contextLoader: this.contextLoader,
+      });
+      const contentChanged = getContentFields(transformedJsonLd) !==
+        getContentFields(capturedJsonLd);
+      contextMatches = getContextFields(transformedJsonLd) ===
+        getContextFields(capturedJsonLd);
+      const proofsChanged = getProofFields(transformedJsonLd) !==
+        getProofFields(capturedJsonLd);
+      if (contentChanged || (!contextMatches && proofsChanged)) {
+        // Drop proofs that covered the captured content or context, but keep
+        // proofs the transformer supplied for the current serialization.
+        activity = activity.clone({
+          proofs: await getUncapturedProofs(
+            activity,
+            capturedJsonLd,
+            this.contextLoader,
+          ),
+        });
+        activityJsonLd = undefined;
+      } else if (proofsChanged) {
+        // The transformer only changed the proofs.  Their content still
+        // matches, so keep the transformed proofs and serialize the
+        // transformed activity instead of the captured snapshot.
+        activityJsonLd = undefined;
+      }
     }
     span?.setAttribute("activitypub.activity.id", activity?.id?.href ?? "");
     if (activity.actorId == null) {
@@ -2630,6 +2682,18 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     // verifiers can look up the correct key type in the actor document.
     if (actorKeyPairs != null) {
       const contextLoader = this.contextLoader;
+      const willSign = actorKeyPairs.some((kp) =>
+        kp.privateKey.algorithm.name === "Ed25519" &&
+        kp.multikey.id != null
+      );
+      if (willSign) {
+        // A new proof covers the current serialization.  Existing proofs can
+        // stay only if they already cover the same context.
+        if (activityJsonLd != null && !contextMatches) {
+          activity = activity.clone({ proofs: [] });
+        }
+      }
+      let proofAdded = false;
       for (const kp of actorKeyPairs) {
         if (
           kp.privateKey.algorithm.name !== "Ed25519" ||
@@ -2639,8 +2703,18 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           contextLoader,
           tracerProvider: this.tracerProvider,
         });
+        proofAdded = true;
       }
+      // The captured JSON-LD predates a new proof, if one was added.
+      if (proofAdded) activityJsonLd = undefined;
     }
+    const opts: SendActivityInternalOptions<TContextData> = {
+      context: this,
+      orderingKey: options.orderingKey,
+      collectionSync,
+      immediate: options.immediate,
+      activityJsonLd,
+    };
     const inboxes = extractInboxes({
       recipients: expandedRecipients,
       preferSharedInbox: options.preferSharedInbox,
@@ -2677,10 +2751,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           [k, { actorIds, sharedInbox }],
         ) => [k, { actorIds: [...actorIds], sharedInbox }]),
       ),
-      activity: await activity.toJsonLd({
-        format: "compact",
-        contextLoader: this.contextLoader,
-      }),
+      activity: activityJsonLd != null
+        ? detachSignature(activityJsonLd)
+        : await activity.toJsonLd({
+          format: "compact",
+          contextLoader: this.contextLoader,
+        }),
       activityId: activity.id?.href,
       activityType: getTypeId(activity).href,
       collectionSync: opts.collectionSync,
@@ -3452,6 +3528,11 @@ interface SendActivityInternalOptions<TContextData> {
   readonly collectionSync?: string;
   readonly orderingKey?: string;
   readonly context: Context<TContextData>;
+  /**
+   * The JSON-LD document as it was queued, used to preserve proof-covered
+   * bytes when replaying a fanout message created before an upgrade.
+   */
+  readonly activityJsonLd?: unknown;
 }
 
 export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {
@@ -3488,6 +3569,110 @@ export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {
 
 function notFound(_request: Request): Response {
   return new Response("Not Found", { status: 404 });
+}
+
+function hasTopLevelProof(value: unknown): boolean {
+  return typeof value === "object" && value != null && !Array.isArray(value) &&
+    globalThis.Object.prototype.hasOwnProperty.call(value, "proof");
+}
+
+function getContentFields(value: unknown): string {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return JSON.stringify(sortJsonKeys(value));
+  }
+  const record = { ...(value as Record<string, unknown>) };
+  delete record["@context"];
+  delete record.proof;
+  delete record.signature;
+  return JSON.stringify(sortJsonKeys(record));
+}
+
+function getContextFields(value: unknown): string {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return JSON.stringify(sortJsonKeys(value));
+  }
+  const context = (value as Record<string, unknown>)["@context"];
+  return JSON.stringify(sortJsonKeys(context ?? null));
+}
+
+function getProofEntries(value: unknown): unknown[] {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return [];
+  }
+  const proof = (value as Record<string, unknown>).proof;
+  if (proof == null) return [];
+  return Array.isArray(proof) ? proof : [proof];
+}
+
+function normalizeProofEntry(proof: unknown): unknown {
+  const stripped = stripContexts(proof);
+  if (
+    typeof stripped !== "object" || stripped == null || Array.isArray(stripped)
+  ) {
+    return stripped;
+  }
+  const record = { ...(stripped as Record<string, unknown>) };
+  if (typeof record.created === "string") {
+    try {
+      record.created = Temporal.Instant.from(record.created).toString();
+    } catch {
+      // Keep unrecognized timestamps as they are.
+    }
+  }
+  return record;
+}
+
+function getProofEntryFields(proof: unknown): string {
+  return JSON.stringify(sortJsonKeys(normalizeProofEntry(proof)));
+}
+
+function getProofFields(value: unknown): string {
+  return JSON.stringify(
+    getProofEntries(value).map(getProofEntryFields).sort(),
+  );
+}
+
+async function getUncapturedProofs(
+  activity: Activity,
+  capturedJsonLd: unknown,
+  contextLoader: DocumentLoader,
+): Promise<DataIntegrityProof[]> {
+  const capturedProofs = new Set(
+    getProofEntries(capturedJsonLd).map(getProofEntryFields),
+  );
+  const retainedProofs: DataIntegrityProof[] = [];
+  for await (const proof of activity.getProofs({ contextLoader })) {
+    const proofJsonLd = await proof.toJsonLd({
+      format: "compact",
+      contextLoader,
+    });
+    if (!capturedProofs.has(getProofEntryFields(proofJsonLd))) {
+      retainedProofs.push(proof);
+    }
+  }
+  return retainedProofs;
+}
+
+function stripContexts(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripContexts);
+  if (typeof value !== "object" || value == null) return value;
+  const record = { ...(value as Record<string, unknown>) };
+  delete record["@context"];
+  delete record.signature;
+  for (const key of globalThis.Object.keys(record)) {
+    record[key] = stripContexts(record[key]);
+  }
+  return record;
+}
+
+function sortJsonKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortJsonKeys);
+  if (typeof value !== "object" || value == null) return value;
+  return globalThis.Object.fromEntries(
+    globalThis.Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+      .map(([key, item]) => [key, sortJsonKeys(item)]),
+  );
 }
 
 function notAcceptable(_request: Request): Response {

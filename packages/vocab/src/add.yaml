@@ -10,7 +10,7 @@ description: |
   to be determined implicitly by context.  The `origin` can be used to identify
   the context from which the `object` originated.
 defaultContext:
-- "https://w3id.org/identity/v1"
 - "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/v1"
 - "https://w3id.org/security/data-integrity/v1"
 properties: []

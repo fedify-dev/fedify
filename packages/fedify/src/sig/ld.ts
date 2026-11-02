@@ -2,6 +2,7 @@ import { Activity, CryptographicKey, getTypeId, Object } from "@fedify/vocab";
 import {
   type DocumentLoader,
   getDocumentLoader,
+  preloadedContexts,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
@@ -621,12 +622,141 @@ export function assertSafeJsonLd(jsonLd: unknown): void {
   }
 }
 
+const signatureTermDefinition = {
+  "signature": "https://w3id.org/security#signature",
+} as const;
+const signatureDefiningContexts: ReadonlySet<string> = new Set([
+  "https://w3id.org/identity/v1",
+  "https://w3id.org/security/v1",
+]);
+// Preloaded contexts that do not define `signature`.  Unrecognized remote
+// contexts stay out of this set, since resolving them requires a loader that
+// attachSignature() does not have.
+const signatureFreeContexts: ReadonlySet<string> = getSignatureFreeContexts();
+
+function getSignatureFreeContexts(): ReadonlySet<string> {
+  const urls = new Set<string>();
+  for (
+    const [url, document] of globalThis.Object.entries(preloadedContexts)
+  ) {
+    if (typeof document !== "object" || document == null) continue;
+    const context = (document as Record<string, unknown>)["@context"];
+    if (
+      typeof context !== "object" || context == null || Array.isArray(context)
+    ) {
+      continue;
+    }
+    const record = context as Record<string, unknown>;
+    if (
+      !globalThis.Object.prototype.hasOwnProperty.call(record, "signature")
+    ) {
+      urls.add(url);
+    }
+  }
+  return urls;
+}
+
+type SignatureTermState = "defined" | "absent" | "unknown";
+type ContextEntryEffect = "defines" | "resets" | "absent" | "unknown";
+
+function getContextEntryEffect(entry: unknown): ContextEntryEffect {
+  if (entry == null) return "resets";
+  if (typeof entry === "string") {
+    if (signatureDefiningContexts.has(entry)) return "defines";
+    if (signatureFreeContexts.has(entry)) return "absent";
+    return "unknown";
+  }
+  if (typeof entry !== "object") return "absent";
+  const record = entry as Record<string, unknown>;
+  if (globalThis.Object.prototype.hasOwnProperty.call(record, "signature")) {
+    const definition = record["signature"];
+    const contextProtected = record["@protected"] === true;
+    const imported = globalThis.Object.prototype.hasOwnProperty.call(
+      record,
+      "@import",
+    );
+    if (definition == null) {
+      if (contextProtected) return "defines";
+      // An imported context may protect the term through @protected.
+      return imported ? "unknown" : "resets";
+    }
+    if (typeof definition === "object" && !Array.isArray(definition)) {
+      const term = definition as Record<string, unknown>;
+      const protectedTerm = contextProtected || term["@protected"] === true;
+      if (
+        globalThis.Object.prototype.hasOwnProperty.call(term, "@id") &&
+        term["@id"] == null
+      ) {
+        if (protectedTerm) return "defines";
+        // An imported context may protect the null definition.
+        return imported ? "unknown" : "resets";
+      }
+    }
+    return "defines";
+  }
+  if (globalThis.Object.prototype.hasOwnProperty.call(record, "@import")) {
+    return "unknown";
+  }
+  return "absent";
+}
+
+function getSignatureTermState(context: unknown): SignatureTermState {
+  if (context == null) return "absent";
+  if (!Array.isArray(context)) {
+    const effect = getContextEntryEffect(context);
+    return effect === "defines"
+      ? "defined"
+      : effect === "unknown"
+      ? "unknown"
+      : "absent";
+  }
+  let state: SignatureTermState = "absent";
+  for (const entry of context) {
+    const effect = getContextEntryEffect(entry);
+    if (effect === "defines") {
+      state = "defined";
+    } else if (effect === "resets") {
+      state = "absent";
+    } else if (effect === "unknown" && state !== "defined") {
+      state = "unknown";
+    }
+  }
+  return state;
+}
+
+function prepareSignatureDocument(jsonLd: unknown): unknown {
+  if (typeof jsonLd !== "object" || jsonLd == null || Array.isArray(jsonLd)) {
+    return jsonLd;
+  }
+  const document = jsonLd as Record<string, unknown>;
+  // A proof covers the literal JSON, including the @context.  Adding a term
+  // would invalidate it, so leave proof-bearing documents unchanged.
+  if (document["proof"] != null) return { ...document };
+  const context = document["@context"];
+  // An unknown remote context may already define `signature`, possibly as a
+  // protected term, so leave it unchanged rather than risk redefining it.
+  if (getSignatureTermState(context) !== "absent") return { ...document };
+  // Copy the template so callers that mutate the returned document cannot
+  // change the definition used by later signing calls.
+  const definition = { ...signatureTermDefinition };
+  return {
+    ...document,
+    "@context": context == null
+      ? [definition]
+      : Array.isArray(context)
+      ? [...context, definition]
+      : [context, definition],
+  };
+}
+
 /**
  * A signature of a JSON-LD document.
  * @since 1.0.0
  */
 export interface Signature {
-  "@context"?: "https://w3id.org/identity/v1";
+  "@context"?:
+    | "https://w3id.org/identity/v1"
+    | "https://w3id.org/security/v1";
   type: "RsaSignature2017";
   id?: string;
   creator: string;
@@ -636,23 +766,40 @@ export interface Signature {
 
 /**
  * Attaches a LD signature to the given JSON-LD document.
+ *
+ * When the document's context does not already define the `signature`
+ * property, the returned document adds a minimal inline context for it.
+ * Without that definition, expanding the attached signature would produce a
+ * blank node predicate, which is not valid RDF.  Documents that already carry
+ * a `proof` are left unchanged, since a new context definition would invalidate
+ * the proof.  Documents whose context includes an unrecognized remote context
+ * are also left unchanged, since that context may already define `signature`.
  * @param jsonLd The JSON-LD document to attach the signature to.  It is not
  *               modified.
  * @param signature The signature to attach.
  * @returns The JSON-LD document with the attached signature.
  * @throws {TypeError} If the input document is not a valid JSON-LD document.
+ *                    Top-level arrays are rejected, since a Linked Data
+ *                    Signature is attached to a single node.
  * @since 1.0.0
  */
 export function attachSignature(
   jsonLd: unknown,
   signature: Signature,
-): { signature: Signature } {
-  if (typeof jsonLd !== "object" || jsonLd == null) {
+): { signature: Signature } & Record<string, unknown> {
+  if (
+    typeof jsonLd !== "object" || jsonLd == null || Array.isArray(jsonLd)
+  ) {
     throw new TypeError(
       "Failed to attach signature; invalid JSON-LD document.",
     );
   }
-  return { ...jsonLd, signature };
+  const document = jsonLd as Record<string, unknown>;
+  const output = prepareSignatureDocument(document) as {
+    signature: Signature;
+  } & Record<string, unknown>;
+  output.signature = signature;
+  return output;
 }
 
 /**
@@ -674,6 +821,12 @@ export interface CreateSignatureOptions {
 
 /**
  * Creates a LD signature for the given JSON-LD document.
+ *
+ * If the document's context does not define the `signature` property, the
+ * signature is computed over the document with a minimal inline definition
+ * added.  Use {@link attachSignature} to attach the signature to that exact
+ * document.  Documents that already carry a `proof`, or whose context includes
+ * an unrecognized remote context, are hashed unchanged.
  * @param jsonLd The JSON-LD document to sign.
  * @param privateKey The private key to sign the document.
  * @param keyId The ID of the public key that corresponds to the private key.
@@ -694,12 +847,21 @@ export async function createSignature(
     throw new TypeError("Unsupported algorithm: " + privateKey.algorithm.name);
   }
   const options = {
-    "@context": "https://w3id.org/identity/v1" as const,
     creator: keyId.href,
     created: created?.toString() ?? new Date().toISOString(),
   };
-  const optionsHash = await hashJsonLd(options, contextLoader);
-  const docHash = await hashJsonLd(jsonLd, contextLoader);
+  // The signature options are hashed against identity/v1 because that is the
+  // context Linked Data Signature verifiers, including Mastodon, reconstruct
+  // when they verify.  The context no longer resolves, so the attached
+  // signature advertises security/v1 instead, which defines the same terms.
+  const optionsHash = await hashJsonLd(
+    { "@context": "https://w3id.org/identity/v1", ...options },
+    contextLoader,
+  );
+  const docHash = await hashJsonLd(
+    prepareSignatureDocument(jsonLd),
+    contextLoader,
+  );
   const message = optionsHash + docHash;
   const encoder = new TextEncoder();
   const messageBytes = encoder.encode(message);
@@ -709,6 +871,7 @@ export async function createSignature(
     messageBytes,
   );
   return {
+    "@context": "https://w3id.org/security/v1",
     ...options,
     type: "RsaSignature2017",
     signatureValue: encodeBase64(signature),

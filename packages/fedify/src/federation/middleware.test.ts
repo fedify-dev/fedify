@@ -31,6 +31,7 @@ import person2Fixture from "../../../fixture/src/fixtures/example.com/person2.js
 import { signRequest, verifyRequest } from "../sig/http.ts";
 import type { KeyCache } from "../sig/key.ts";
 import {
+  attachSignature,
   compactJsonLd,
   detachSignature,
   signJsonLd,
@@ -5083,16 +5084,21 @@ test("ContextImpl.sendActivity()", async (t) => {
   });
   federation2
     .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
-      if (identifier !== "john") return null;
+      if (identifier !== "john" && identifier !== "rsa-only") return null;
       const keys = await ctx.getActorKeyPairs(identifier);
       return new vocab.Person({
         id: ctx.getActorUri(identifier),
-        preferredUsername: "john",
+        preferredUsername: identifier,
         publicKey: keys[0].cryptographicKey,
         assertionMethods: keys.map((k) => k.multikey),
       });
     })
     .setKeyPairsDispatcher((_ctx, identifier) => {
+      if (identifier === "rsa-only") {
+        return [
+          { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
+        ];
+      }
       if (identifier !== "john") return [];
       return [
         { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
@@ -5163,6 +5169,550 @@ test("ContextImpl.sendActivity()", async (t) => {
       proofCount++;
     }
     assertEquals(proofCount, 1);
+
+    // Replaying a fanout message created before the context change must keep
+    // the proof-covered context when it is queued for delivery.
+    const oldContext = [
+      "https://w3id.org/identity/v1",
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ];
+    const oldActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/1"),
+      actor: new URL("https://example.com/john"),
+    });
+    const oldSigned = await signObject(
+      oldActivity,
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const oldJson = await oldSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    queue.clear();
+    await federation2.processQueuedTask(undefined, {
+      ...fanoutMsg,
+      id: crypto.randomUUID(),
+      activity: oldJson,
+    });
+    const replayed = queue.messages.at(-1);
+    assert(replayed != null && replayed.type === "outbox");
+    assertEquals(detachSignature(replayed.activity), oldJson);
+
+    const proofless = { ...oldJson };
+    delete proofless.proof;
+    queue.clear();
+    await federation2.processQueuedTask(undefined, {
+      ...fanoutMsg,
+      id: crypto.randomUUID(),
+      activity: proofless,
+    });
+    const signedReplay = queue.messages.at(-1);
+    assert(signedReplay != null && signedReplay.type === "outbox");
+    assert(
+      typeof signedReplay.activity === "object" &&
+        signedReplay.activity != null &&
+        "proof" in signedReplay.activity,
+    );
+
+    // The public direct-send path must also keep a pre-upgrade proof covered.
+    const actorKeys = await ctx2.getActorKeyPairs("john");
+    const edKey = actorKeys.find((key) =>
+      key.privateKey.algorithm.name === "Ed25519"
+    );
+    assert(edKey != null && edKey.multikey.id != null);
+    const restoredActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/old"),
+      actor: ctx2.getActorUri("john"),
+    });
+    const restoredSigned = await signObject(
+      restoredActivity,
+      edKey.privateKey,
+      edKey.multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const restoredJson = await restoredSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const restored = await vocab.Create.fromJsonLd(restoredJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx2.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restored,
+    );
+    const resent = queue.messages.at(-1);
+    assert(resent != null && resent.type === "outbox");
+    assertEquals(detachSignature(resent.activity), restoredJson);
+
+    queue.clear();
+    await ctx2.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restored,
+      { fanout: "force" },
+    );
+    const queuedFanout = queue.messages.at(-1);
+    assert(queuedFanout != null && queuedFanout.type === "fanout");
+    assertEquals(queuedFanout.activity, restoredJson);
+
+    const oldSignature = {
+      "@context": "https://w3id.org/identity/v1",
+      type: "RsaSignature2017",
+      creator: "https://example.com/person2#key4",
+      created: "2026-01-01T00:00:00Z",
+      signatureValue: "abc",
+    } as const;
+    const restoredWithSignature = await vocab.Create.fromJsonLd(
+      attachSignature(restoredJson, oldSignature),
+      { contextLoader: documentLoader, documentLoader },
+    );
+    queue.clear();
+    await ctx2.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restoredWithSignature,
+    );
+    const resigned = queue.messages.at(-1);
+    assert(resigned != null && resigned.type === "outbox");
+    assertEquals(detachSignature(resigned.activity), restoredJson);
+
+    const rsaOnlyActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/rsa-only"),
+      actor: new URL("https://example.com/rsa-only"),
+    });
+    const rsaOnlySigned = await signObject(
+      rsaOnlyActivity,
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const rsaOnlyJson = await rsaOnlySigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const rsaOnlyRestored = await vocab.Create.fromJsonLd(rsaOnlyJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx2.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      rsaOnlyRestored,
+      { fanout: "force" },
+    );
+    const rsaOnlyMessage = queue.messages.at(-1);
+    assert(rsaOnlyMessage != null && rsaOnlyMessage.type === "fanout");
+    assertEquals(rsaOnlyMessage.activity, rsaOnlyJson);
+
+    queue.clear();
+    await ctx2.sendActivity(
+      { username: "john" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restored,
+      { fanout: "force" },
+    );
+    const namedFanout = queue.messages.at(-1);
+    assert(namedFanout != null && namedFanout.type === "fanout");
+    const namedJson = detachSignature(namedFanout.activity) as Record<
+      string,
+      unknown
+    >;
+    const namedProofs = Array.isArray(namedJson.proof)
+      ? namedJson.proof
+      : [namedJson.proof];
+    assertEquals(namedProofs.length, 1);
+    assert(
+      (namedJson["@context"] as string[]).includes(
+        "https://w3id.org/security/v1",
+      ),
+    );
+
+    const noIdActivity = new vocab.Create({
+      actor: ctx2.getActorUri("john"),
+    });
+    const noIdSigned = await signObject(
+      noIdActivity,
+      edKey.privateKey,
+      edKey.multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const noIdJson = await noIdSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const noIdRestored = await vocab.Create.fromJsonLd(noIdJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx2.sendActivity(
+      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      noIdRestored,
+    );
+    const noIdQueued = queue.messages.at(-1);
+    assert(noIdQueued != null && noIdQueued.type === "outbox");
+    const noIdQueuedJson = detachSignature(noIdQueued.activity) as Record<
+      string,
+      unknown
+    >;
+    assert(typeof noIdQueuedJson.id === "string");
+
+    const currentActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/current"),
+      actor: ctx2.getActorUri("john"),
+    });
+    const currentSigned = await signObject(
+      currentActivity,
+      edKey.privateKey,
+      edKey.multikey.id!,
+      { contextLoader: documentLoader },
+    );
+    const currentJson = await currentSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+    }) as Record<string, unknown>;
+    const currentRestored = await vocab.Create.fromJsonLd(currentJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx2.sendActivity(
+      { username: "john" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      currentRestored,
+      { fanout: "force" },
+    );
+    const currentFanout = queue.messages.at(-1);
+    assert(currentFanout != null && currentFanout.type === "fanout");
+    const currentQueued = detachSignature(currentFanout.activity) as Record<
+      string,
+      unknown
+    >;
+    const currentProofs = Array.isArray(currentQueued.proof)
+      ? currentQueued.proof
+      : [currentQueued.proof];
+    assertEquals(currentProofs.length, 2);
+  });
+
+  queue.clear();
+
+  await t.step("activity transformers preserve proofs", async () => {
+    const originalProof = new vocab.DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: new URL("https://example.com/rsa-only#multikey-2"),
+      proofPurpose: "assertionMethod",
+      proofValue: new Uint8Array([1, 2, 3, 4]),
+      created: Temporal.Instant.from("2026-01-01T00:00:00Z"),
+    });
+    const addedProof = new vocab.DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: new URL("https://example.com/rsa-only#multikey-2"),
+      proofPurpose: "assertionMethod",
+      proofValue: new Uint8Array([5, 6, 7, 8]),
+      created: Temporal.Instant.from("2026-01-02T00:00:00Z"),
+    });
+    const replacementProof = new vocab.DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: new URL("https://example.com/rsa-only#multikey-2"),
+      proofPurpose: "assertionMethod",
+      proofValue: new Uint8Array([9, 10, 11, 12]),
+      created: Temporal.Instant.from("2026-01-03T00:00:00Z"),
+    });
+    const restoredProof = new vocab.DataIntegrityProof({
+      cryptosuite: "eddsa-jcs-2022",
+      verificationMethod: new URL("https://example.com/rsa-only#multikey-2"),
+      proofPurpose: "assertionMethod",
+      proofValue: new Uint8Array([13, 14, 15, 16]),
+      created: Temporal.Instant.from("2026-01-04T00:00:00Z"),
+    });
+    const restoredProofHolder: { old?: vocab.DataIntegrityProof } = {};
+    const federation3 = new FederationImpl<void>({
+      kv,
+      allowPrivateAddress: true,
+      queue,
+      activityTransformers: [
+        (activity) => {
+          if (
+            activity.id?.href ===
+              "https://example.com/activity/transformed-proof"
+          ) {
+            return activity.clone({ proofs: [originalProof, addedProof] });
+          }
+          if (
+            activity.id?.href ===
+              "https://example.com/activity/replaced-proof"
+          ) {
+            return new vocab.Create({
+              id: activity.id,
+              actor: new URL("https://example.com/rsa-only"),
+              object: new URL("https://example.com/note/replaced"),
+              proofs: [replacementProof],
+            });
+          }
+          if (
+            activity.id?.href === "https://example.com/activity/restored-proof"
+          ) {
+            return activity.clone({
+              proofs: [restoredProofHolder.old!, restoredProof],
+            });
+          }
+          return activity;
+        },
+      ],
+    });
+    federation3
+      .setActorDispatcher("/{identifier}", async (ctx, identifier) => {
+        if (identifier !== "rsa-only") return null;
+        const keys = await ctx.getActorKeyPairs(identifier);
+        return new vocab.Person({
+          id: ctx.getActorUri(identifier),
+          preferredUsername: identifier,
+          publicKey: keys[0].cryptographicKey,
+          assertionMethods: keys.map((k) => k.multikey),
+        });
+      })
+      .setKeyPairsDispatcher((_ctx, identifier) =>
+        identifier === "rsa-only"
+          ? [
+            {
+              privateKey: rsaPrivateKey2,
+              publicKey: rsaPublicKey2.publicKey!,
+            },
+          ]
+          : []
+      );
+    const ctx3 = new ContextImpl({
+      data: undefined,
+      federation: federation3,
+      url: new URL("https://example.com/"),
+      documentLoader: documentLoader,
+      contextLoader: documentLoader,
+    });
+    const activity = new vocab.Create({
+      id: new URL("https://example.com/activity/transformed-proof"),
+      actor: ctx3.getActorUri("rsa-only"),
+      proofs: [originalProof],
+    });
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      activity,
+      { fanout: "force" },
+    );
+    const fanout = queue.messages.at(-1);
+    assert(fanout != null && fanout.type === "fanout");
+    const fanoutJson = detachSignature(fanout.activity) as Record<
+      string,
+      unknown
+    >;
+    const fanoutProofs = Array.isArray(fanoutJson.proof)
+      ? fanoutJson.proof
+      : [fanoutJson.proof];
+    assertEquals(fanoutProofs.length, 2);
+
+    // A transformer may also replace the content and supply a new proof.
+    const replacedActivity = new vocab.Create({
+      id: new URL("https://example.com/activity/replaced-proof"),
+      actor: ctx3.getActorUri("rsa-only"),
+      proofs: [originalProof],
+    });
+    queue.clear();
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      replacedActivity,
+      { fanout: "force" },
+    );
+    const replacedFanout = queue.messages.at(-1);
+    assert(replacedFanout != null && replacedFanout.type === "fanout");
+    const replacedJson = detachSignature(replacedFanout.activity) as Record<
+      string,
+      unknown
+    >;
+    assertEquals(
+      replacedJson.object,
+      "https://example.com/note/replaced",
+    );
+    const replacedProofs = Array.isArray(replacedJson.proof)
+      ? replacedJson.proof
+      : [replacedJson.proof];
+    assertEquals(replacedProofs.length, 1);
+    const [keptProof] = replacedProofs as Record<string, unknown>[];
+    assertEquals(keptProof.created, "2026-01-03T00:00:00Z");
+
+    // A restored activity with an old context must still use proof changes
+    // made by a transformer instead of the captured old-context snapshot.
+    const oldContext = [
+      "https://w3id.org/identity/v1",
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ];
+    const restoredBase = new vocab.Create({
+      id: new URL("https://example.com/activity/restored-proof"),
+      actor: ctx3.getActorUri("rsa-only"),
+    });
+    const restoredSigned = await signObject(
+      restoredBase,
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const restoredJson = await restoredSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const restored = await vocab.Create.fromJsonLd(restoredJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    for await (
+      const proof of restored.getProofs({ contextLoader: documentLoader })
+    ) {
+      restoredProofHolder.old = proof;
+      break;
+    }
+    queue.clear();
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      restored,
+      { fanout: "force" },
+    );
+    const restoredFanout = queue.messages.at(-1);
+    assert(restoredFanout != null && restoredFanout.type === "fanout");
+    const restoredFanoutJson = detachSignature(
+      restoredFanout.activity,
+    ) as Record<
+      string,
+      unknown
+    >;
+    const restoredProofs = Array.isArray(restoredFanoutJson.proof)
+      ? restoredFanoutJson.proof
+      : [restoredFanoutJson.proof];
+    assertEquals(restoredProofs.length, 1);
+    const [transformedProof] = restoredProofs as Record<string, unknown>[];
+    assertEquals(transformedProof.created, "2026-01-04T00:00:00Z");
+    assert(
+      Array.isArray(restoredFanoutJson["@context"]) &&
+        restoredFanoutJson["@context"].includes(
+          "https://w3id.org/security/v1",
+        ),
+    );
+
+    // Equivalent timestamps with a different lexical form must not make the
+    // captured proof look newly supplied by a transformer.
+    const staleTimestampBase = new vocab.Create({
+      id: new URL("https://example.com/activity/stale-timestamp"),
+      actor: ctx3.getActorUri("rsa-only"),
+    });
+    const staleTimestampSigned = await signObject(
+      staleTimestampBase,
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: documentLoader, context: oldContext },
+    );
+    const staleTimestampJson = await staleTimestampSigned.toJsonLd({
+      format: "compact",
+      contextLoader: documentLoader,
+      context: oldContext,
+    }) as Record<string, unknown>;
+    const staleTimestampProof = (
+      Array.isArray(staleTimestampJson.proof)
+        ? staleTimestampJson.proof[0]
+        : staleTimestampJson.proof
+    ) as Record<string, unknown>;
+    staleTimestampProof.created = "2026-01-01T00:00:00+00:00";
+    const staleTimestamp = await vocab.Create.fromJsonLd(staleTimestampJson, {
+      contextLoader: documentLoader,
+      documentLoader,
+    });
+    queue.clear();
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      staleTimestamp,
+      { fanout: "force" },
+    );
+    const staleTimestampFanout = queue.messages.at(-1);
+    assert(
+      staleTimestampFanout != null && staleTimestampFanout.type === "fanout",
+    );
+    assertEquals(
+      detachSignature(staleTimestampFanout.activity),
+      staleTimestampJson,
+    );
+
+    // A proofless activity should not be serialized just to look for proofs.
+    const proofless = new vocab.Create({
+      id: new URL("https://example.com/activity/proofless"),
+      actor: ctx3.getActorUri("rsa-only"),
+    });
+    let unformattedSerializations = 0;
+    const originalToJsonLd = proofless.toJsonLd.bind(proofless);
+    Object.defineProperty(proofless, "toJsonLd", {
+      value: async (options?: { format?: "compact" | "expand" }) => {
+        if (options?.format == null) unformattedSerializations++;
+        return await originalToJsonLd(options);
+      },
+    });
+    queue.clear();
+    await ctx3.sendActivity(
+      { identifier: "rsa-only" },
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+      proofless,
+      { fanout: "skip" },
+    );
+    assertEquals(unformattedSerializations, 0);
   });
 
   queue.clear();

@@ -1,5 +1,6 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import { CryptographicKey } from "@fedify/vocab";
+import jsonld from "@fedify/vocab-runtime/jsonld";
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertFalse } from "@std/assert/assert-false";
@@ -51,11 +52,14 @@ test("isInvalidUrlTypeError()", () => {
 
 test("attachSignature()", () => {
   const sig: Signature = {
-    "@context": "https://w3id.org/identity/v1",
+    "@context": "https://w3id.org/security/v1",
     type: "RsaSignature2017",
     creator: "https://activitypub.academy/users/brauca_darradiul#main-key",
     created: "2024-09-12T16:50:46Z",
     signatureValue: "asdf",
+  };
+  const signatureTerm = {
+    "signature": "https://w3id.org/security#signature",
   };
   const doc = {
     "@context": "https://www.w3.org/ns/activitystreams",
@@ -63,10 +67,79 @@ test("attachSignature()", () => {
   };
   assertEquals(attachSignature(doc, sig), {
     ...doc,
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      signatureTerm,
+    ],
+    signature: sig,
+  });
+  const arrayDoc = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    id: "https://example.com/1",
+  };
+  assertEquals(attachSignature(arrayDoc, sig), {
+    ...arrayDoc,
+    "@context": [...arrayDoc["@context"], signatureTerm],
+    signature: sig,
+  });
+  for (
+    const context of [
+      ["https://w3id.org/identity/v1", "https://www.w3.org/ns/activitystreams"],
+      ["https://www.w3.org/ns/activitystreams", "https://w3id.org/security/v1"],
+      ["https://www.w3.org/ns/activitystreams", signatureTerm],
+      { "signature": "https://w3id.org/security#signature" },
+    ]
+  ) {
+    const contextDoc = { "@context": context, id: "https://example.com/1" };
+    assertEquals(attachSignature(contextDoc, sig), {
+      ...contextDoc,
+      signature: sig,
+    });
+  }
+  assertEquals(
+    attachSignature({ "@context": null, id: "https://example.com/1" }, sig),
+    {
+      "@context": [signatureTerm],
+      id: "https://example.com/1",
+      signature: sig,
+    },
+  );
+  const resetDoc = {
+    "@context": [
+      "https://w3id.org/security/v1",
+      null,
+      "https://www.w3.org/ns/activitystreams",
+    ],
+    id: "https://example.com/1",
+  };
+  assertEquals(attachSignature(resetDoc, sig), {
+    ...resetDoc,
+    "@context": [...resetDoc["@context"], signatureTerm],
+    signature: sig,
+  });
+  const disabledTermDoc = {
+    "@context": [
+      { "signature": { "@id": null } },
+      "https://www.w3.org/ns/activitystreams",
+    ],
+    id: "https://example.com/1",
+  };
+  assertEquals(attachSignature(disabledTermDoc, sig), {
+    ...disabledTermDoc,
+    "@context": [...disabledTermDoc["@context"], signatureTerm],
+    signature: sig,
+  });
+  assertEquals(attachSignature({ id: "https://example.com/1" }, sig), {
+    id: "https://example.com/1",
+    "@context": [signatureTerm],
     signature: sig,
   });
   assertThrows(() => attachSignature(null, sig), TypeError);
   assertThrows(() => attachSignature(1234, sig), TypeError);
+  assertThrows(() => attachSignature([], sig), TypeError);
 });
 
 test("createSignature()", async () => {
@@ -78,6 +151,7 @@ test("createSignature()", async () => {
   const sig = await createSignature(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
     contextLoader: mockDocumentLoader,
   });
+  assertEquals(sig["@context"], "https://w3id.org/security/v1");
   const key = await verifySignature(attachSignature(doc, sig), {
     documentLoader: mockDocumentLoader,
     contextLoader: mockDocumentLoader,
@@ -115,6 +189,184 @@ test("signJsonLd()", async () => {
     contextLoader: mockDocumentLoader,
   });
   assert(verified);
+});
+
+test("signJsonLd() defines the signature term when the context lacks it", async () => {
+  const doc = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://example.com/notes/1",
+    type: "Note",
+    content: "Hello",
+  };
+  const signed = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  assert(Array.isArray(signed["@context"]));
+  assertEquals(
+    (signed["@context"] as unknown[])[1],
+    { "signature": "https://w3id.org/security#signature" },
+  );
+  const quads = await jsonld.canonize(signed, {
+    format: "application/n-quads",
+    documentLoader: mockDocumentLoader,
+  });
+  assert(quads.includes("<https://w3id.org/security#signature>"));
+  const key = await verifySignature(signed, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertEquals(key, rsaPublicKey2);
+});
+
+test("signJsonLd() signs documents that use the signature term", async () => {
+  const signatureTerm = { "signature": "https://w3id.org/security#signature" };
+  for (
+    const object of [
+      { type: "Note", signature: "nested value" },
+      { type: "signature" },
+    ]
+  ) {
+    const doc = {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        { "@vocab": "https://example.com/" },
+      ],
+      id: "https://example.com/1",
+      type: "Create",
+      object,
+    };
+    const signed = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+      contextLoader: mockDocumentLoader,
+    }) as Record<string, unknown>;
+    assertEquals(signed["@context"], [...doc["@context"], signatureTerm]);
+    assertEquals(signed["object"], object);
+    const key = await verifySignature(signed, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    assertEquals(key, rsaPublicKey2);
+  }
+});
+
+test("signJsonLd() does not share the inline signature definition", async () => {
+  const doc = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://example.com/notes/1",
+    type: "Note",
+  };
+  const first = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const firstContext = first["@context"] as Record<string, unknown>[];
+  firstContext[1]["signature"] = "https://example.com/signature";
+  const second = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  assertEquals((second["@context"] as unknown[])[1], {
+    "signature": "https://w3id.org/security#signature",
+  });
+});
+
+test("signJsonLd() respects a protected null signature definition", async () => {
+  for (
+    const context of [
+      { "@protected": true, "signature": { "@id": null } },
+      { "signature": { "@id": null, "@protected": true } },
+    ]
+  ) {
+    const doc = {
+      "@context": ["https://www.w3.org/ns/activitystreams", context],
+      id: "https://example.com/1",
+      type: "Note",
+    };
+    const signed = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+      contextLoader: mockDocumentLoader,
+    }) as Record<string, unknown>;
+    assertEquals(signed["@context"], doc["@context"]);
+    const key = await verifySignature(signed, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    assertEquals(key, rsaPublicKey2);
+  }
+});
+
+test("signJsonLd() respects protection from imported contexts", async () => {
+  const importUrl = "https://example.com/contexts/imported-protected";
+  const contextLoader = async (url: string) => {
+    if (new URL(url).href === importUrl) {
+      return {
+        contextUrl: null,
+        documentUrl: url,
+        document: {
+          "@context": {
+            "@protected": true,
+            "name": "https://example.com/name",
+          },
+        },
+      };
+    }
+    return await mockDocumentLoader(url);
+  };
+  for (const signature of [null, { "@id": null }]) {
+    const doc = {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        { "@import": importUrl, signature },
+      ],
+      id: "https://example.com/1",
+      type: "Note",
+      name: "Alice",
+    };
+    const signed = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+      contextLoader,
+    }) as Record<string, unknown>;
+    assertEquals(signed["@context"], doc["@context"]);
+    const key = await verifySignature(signed, {
+      documentLoader: mockDocumentLoader,
+      contextLoader,
+    });
+    assertEquals(key, rsaPublicKey2);
+  }
+});
+
+test("signJsonLd() leaves unrecognized remote contexts unchanged", async () => {
+  const contextUrl = "https://example.com/contexts/custom";
+  const contextLoader = async (url: string) => {
+    if (new URL(url).href === contextUrl) {
+      return {
+        contextUrl: null,
+        documentUrl: url,
+        document: {
+          "@context": {
+            "@protected": true,
+            "signature": {
+              "@id": "https://w3id.org/security#signature",
+              "@type": "@id",
+            },
+          },
+        },
+      };
+    }
+    return await mockDocumentLoader(url);
+  };
+  const doc = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      contextUrl,
+    ],
+    id: "https://example.com/1",
+    type: "Note",
+  };
+  const signed = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+    contextLoader,
+  }) as Record<string, unknown>;
+  assertEquals(signed["@context"], doc["@context"]);
+  const key = await verifySignature(signed, {
+    documentLoader: mockDocumentLoader,
+    contextLoader,
+  });
+  assertEquals(key, rsaPublicKey2);
 });
 
 const document = {
