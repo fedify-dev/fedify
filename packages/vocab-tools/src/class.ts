@@ -317,6 +317,7 @@ export async function* generateClasses(
 ): AsyncIterable<string> {
   validateTypeSchemas(types);
   yield "// deno-lint-ignore-file ban-unused-ignore no-explicit-any no-unused-vars prefer-const verbatim-module-syntax\n";
+  yield "// oxlint-disable typescript/no-explicit-any, no-unused-vars, prefer-const\n";
   yield 'import jsonld from "@fedify/vocab-runtime/jsonld";\n';
   yield 'import { getLogger } from "@logtape/logtape";\n';
   yield `import { type Span, SpanStatusCode, type TracerProvider, trace }
