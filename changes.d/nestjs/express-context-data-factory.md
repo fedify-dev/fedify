@@ -9,3 +9,7 @@ links:
     can now use Express APIs such as `req.get()` without type errors.
     Factories whose parameters are annotated with the Fetch API types need
     those annotations updated.  [[#1287], [#1357]]
+
+    Since the type now refers to Express's types, `@types/express` is
+    declared as an optional peer dependency.  TypeScript users should
+    install it alongside `express`.

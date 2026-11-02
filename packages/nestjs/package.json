@@ -46,7 +46,13 @@
   "peerDependencies": {
     "@fedify/fedify": "workspace:^",
     "@nestjs/common": "catalog:",
+    "@types/express": "^4.0.0 || ^5.0.0",
     "express": "^4.0.0 || ^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/express": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/express": "catalog:",
