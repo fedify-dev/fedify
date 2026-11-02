@@ -670,13 +670,19 @@ function getContextEntryEffect(entry: unknown): ContextEntryEffect {
   const record = entry as Record<string, unknown>;
   if (globalThis.Object.prototype.hasOwnProperty.call(record, "signature")) {
     const definition = record["signature"];
-    if (definition == null) return "resets";
-    if (
-      typeof definition === "object" && !Array.isArray(definition) &&
-      globalThis.Object.prototype.hasOwnProperty.call(definition, "@id") &&
-      (definition as Record<string, unknown>)["@id"] == null
-    ) {
-      return "resets";
+    const contextProtected = record["@protected"] === true;
+    if (definition == null) {
+      return contextProtected ? "defines" : "resets";
+    }
+    if (typeof definition === "object" && !Array.isArray(definition)) {
+      const term = definition as Record<string, unknown>;
+      const protectedTerm = contextProtected || term["@protected"] === true;
+      if (
+        globalThis.Object.prototype.hasOwnProperty.call(term, "@id") &&
+        term["@id"] == null
+      ) {
+        return protectedTerm ? "defines" : "resets";
+      }
     }
     return "defines";
   }

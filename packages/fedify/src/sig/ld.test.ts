@@ -267,6 +267,30 @@ test("signJsonLd() does not share the inline signature definition", async () => 
   });
 });
 
+test("signJsonLd() respects a protected null signature definition", async () => {
+  for (
+    const context of [
+      { "@protected": true, "signature": { "@id": null } },
+      { "signature": { "@id": null, "@protected": true } },
+    ]
+  ) {
+    const doc = {
+      "@context": ["https://www.w3.org/ns/activitystreams", context],
+      id: "https://example.com/1",
+      type: "Note",
+    };
+    const signed = await signJsonLd(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
+      contextLoader: mockDocumentLoader,
+    }) as Record<string, unknown>;
+    assertEquals(signed["@context"], doc["@context"]);
+    const key = await verifySignature(signed, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    assertEquals(key, rsaPublicKey2);
+  }
+});
+
 test("signJsonLd() leaves unrecognized remote contexts unchanged", async () => {
   const contextUrl = "https://example.com/contexts/custom";
   const contextLoader = async (url: string) => {
