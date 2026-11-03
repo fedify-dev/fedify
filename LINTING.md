@@ -137,6 +137,7 @@ a note here.  The current additions are:
  -  `promise/no-return-wrap`.
  -  `eslint/no-throw-literal`.
  -  `eslint/no-unsafe-optional-chaining`.
+ -  `eslint/no-self-compare`.
 
 Vendored [anti-slop] rules live in *tools/oxlint/anti-slop/*.  They are copied
 from upstream and recorded in *tools/oxlint/anti-slop/UPSTREAM.md*; update
