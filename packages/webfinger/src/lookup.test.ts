@@ -862,3 +862,105 @@ test("lookupWebFinger() does not wait for cancelling response bodies", async (t)
     fetchMock.hardReset();
   }
 });
+
+test("lookupWebFinger() caller abort releases a stalled session open", async () => {
+  const controller = new AbortController();
+  let finishOpen!: (session: PublicFetchSession) => void;
+  let closed = false;
+  const opening = new Promise<PublicFetchSession>((resolve) => {
+    finishOpen = resolve;
+  });
+  const lookup = lookupWebFingerInternal("acct:alice@example.com", {
+    signal: controller.signal,
+  }, { openHop: () => opening });
+  controller.abort();
+  deepStrictEqual(await settleWithin(lookup, 1000), null);
+  finishOpen({
+    url: new URL("https://example.com"),
+    fetch: () => {
+      throw new Error("fetch after abort");
+    },
+    close: () => {
+      closed = true;
+      return Promise.resolve();
+    },
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  ok(closed);
+});
+
+test("lookupWebFinger() deadline covers session opening", async () => {
+  const result = lookupWebFingerInternal("acct:alice@example.com", {}, {
+    timeoutMs: 20,
+    openHop: () => new Promise(() => {}),
+  });
+  deepStrictEqual(await settleWithin(result, 1000), null);
+});
+
+test("lookupWebFinger() deadline covers response headers", async () => {
+  let closed = false;
+  const result = lookupWebFingerInternal("acct:alice@example.com", {}, {
+    timeoutMs: 20,
+    openHop: () =>
+      Promise.resolve({
+        url: new URL("https://example.com"),
+        fetch: () => new Promise(() => {}),
+        close: () => {
+          closed = true;
+          return Promise.resolve();
+        },
+      }),
+  });
+  deepStrictEqual(await settleWithin(result, 1000), null);
+  await Promise.resolve();
+  ok(closed);
+});
+
+test("lookupWebFinger() discards completed JSON when body stalls", async () => {
+  const descriptor: ResourceDescriptor = {
+    subject: "acct:alice@example.com",
+    links: [],
+  };
+  const result = lookupWebFingerInternal("acct:alice@example.com", {}, {
+    timeoutMs: 20,
+    openHop: () =>
+      Promise.resolve({
+        url: new URL("https://example.com"),
+        fetch: () =>
+          Promise.resolve(
+            new Response(
+              new ReadableStream<Uint8Array>({
+                start(controller) {
+                  controller.enqueue(
+                    new TextEncoder().encode(JSON.stringify(descriptor)),
+                  );
+                },
+              }),
+            ),
+          ),
+        close: async () => {},
+      }),
+  });
+  deepStrictEqual(await settleWithin(result, 1000), null);
+});
+
+test("lookupWebFinger() accepts a response before its deadline", async () => {
+  const descriptor: ResourceDescriptor = {
+    subject: "acct:alice@example.com",
+    links: [],
+  };
+  deepStrictEqual(
+    await lookupWebFingerInternal("acct:alice@example.com", {}, {
+      timeoutMs: 1000,
+      openHop: () =>
+        Promise.resolve({
+          url: new URL("https://example.com"),
+          fetch: () =>
+            Promise.resolve(new Response(JSON.stringify(descriptor))),
+          close: async () => {},
+        }),
+    }),
+    descriptor,
+  );
+});
