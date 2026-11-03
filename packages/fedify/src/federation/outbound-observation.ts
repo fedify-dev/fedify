@@ -139,6 +139,17 @@ function logObserverFailure(unit: string, error: unknown): void {
   }
 }
 
+function warnInvalidDeliveryIdentity(messageId: string, error: unknown): void {
+  try {
+    getLogger(["fedify", "federation", "outbox"]).warn(
+      "Ignoring invalid outbound delivery identity in queue message {messageId}: {error}",
+      { messageId, error },
+    );
+  } catch {
+    // Logging must not prevent a queued delivery either.
+  }
+}
+
 function snapshotTrace(
   span: Span,
   parentSpanContext?: SpanContext,
@@ -361,7 +372,13 @@ export class OutboundAttemptObservation {
   }
 
   succeeded(): Promise<void> {
-    return this.#finish({ type: "succeeded", response: this.#finalResponse! });
+    if (this.#finished) return Promise.resolve();
+    if (this.#finalResponse == null) {
+      throw new Error(
+        "A successful outbound attempt must have an observed final response.",
+      );
+    }
+    return this.#finish({ type: "succeeded", response: this.#finalResponse });
   }
 
   failed(error: unknown): Promise<void> {
@@ -413,15 +430,20 @@ type AttemptIdentity = Pick<
 >;
 
 function snapshotOutboxIdentity(message: OutboxMessage): AttemptIdentity {
-  return message.outbound == null
-    ? Object.freeze({
-      broadcast: Object.freeze({ type: "unknown" as const }),
-      deliveryId: message.id,
-      ...(message.portableInbox == null
-        ? {}
-        : { portableInbox: message.portableInbox }),
-    })
-    : snapshotDeliveryIdentity(message.outbound);
+  if (message.outbound != null) {
+    try {
+      return snapshotDeliveryIdentity(message.outbound);
+    } catch (error) {
+      warnInvalidDeliveryIdentity(message.id, error);
+    }
+  }
+  return Object.freeze({
+    broadcast: Object.freeze({ type: "unknown" as const }),
+    deliveryId: message.id,
+    ...(message.portableInbox == null
+      ? {}
+      : { portableInbox: message.portableInbox }),
+  });
 }
 
 type WorkerPreparationFailure = Extract<
@@ -458,12 +480,7 @@ export class OutboundWorkerObservation<TContextData> {
       ...(message.type === "outbox" ? { queueAttempt: message.attempt } : {}),
     });
     if (message.type === "outbox") {
-      try {
-        this.#delivery = snapshotOutboxIdentity(message);
-      } catch {
-        // Invalid optional grouping cannot change the worker's own execution.
-        this.#delivery = undefined;
-      }
+      this.#delivery = snapshotOutboxIdentity(message);
     }
   }
 
@@ -1002,12 +1019,25 @@ export class OutboundBroadcastObservation<TContextData> {
     observation.#finished = true;
     observation.planned(Object.keys(message.inboxes).length);
     for (const [inbox, destination] of Object.entries(message.inboxes)) {
-      const identity = destination.outbound ??
-        await legacyFanoutIdentity(
-          message.id,
-          inbox,
-          destination.portableInbox,
-        );
+      let identity: SerializedOutboundDelivery | undefined;
+      if (destination.outbound != null) {
+        try {
+          const snapshot = snapshotDeliveryIdentity(destination.outbound);
+          if (snapshot.destinationInbox !== inbox) {
+            throw new TypeError(
+              "Outbound delivery identity does not match its fanout destination.",
+            );
+          }
+          identity = snapshot;
+        } catch (error) {
+          warnInvalidDeliveryIdentity(message.id, error);
+        }
+      }
+      identity ??= await legacyFanoutIdentity(
+        message.id,
+        inbox,
+        destination.portableInbox,
+      );
       observation.#deliveries.set(
         inbox,
         observation.#createDelivery(inbox, destination, identity),
