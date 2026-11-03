@@ -274,7 +274,7 @@ async function renderFavicon(url: URL, userAgent?: string): Promise<string[]> {
     }
     buffer = images[0].buffer;
   } else if (
-    contentType === "image/svg+xml" || (!isPng(buffer) && isSvg(buffer))
+    !isPng(buffer) && (contentType === "image/svg+xml" || isSvg(buffer))
   ) {
     buffer = await rasterizeSvg(buffer);
   }
