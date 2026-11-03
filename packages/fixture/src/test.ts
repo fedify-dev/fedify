@@ -257,7 +257,7 @@ function caller() {
   };
   const _ = Trace.prepareStackTrace;
   Trace.prepareStackTrace = (_, stack) => stack;
-  const { stack } = new Error();
+  const { stack } = new Error("capture stack");
   Trace.prepareStackTrace = _;
   const caller = (stack as unknown as CallSite[])[2];
   return caller.getFileName().replaceAll("\\", "/");

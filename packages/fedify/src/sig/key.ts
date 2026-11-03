@@ -1911,7 +1911,11 @@ async function fetchKeyInternal<T extends CryptographicKey | Multikey>(
         } catch {
           // A custom loader can provide a response whose body is already used.
           // Collecting evidence must preserve the original verification result.
-          result = { error: error instanceof Error ? error : new Error() };
+          result = {
+            error: error instanceof Error
+              ? error
+              : new Error("Unknown verification error"),
+          };
         }
         check.reason = {
           type: "keyFetchError",

@@ -141,6 +141,7 @@ a note here.  The current additions are:
  -  `eslint/no-useless-escape`.
  -  `unicorn/prefer-node-protocol`.
  -  `unicorn/prefer-includes`.
+ -  `unicorn/error-message`.
 
 Vendored [anti-slop] rules live in *tools/oxlint/anti-slop/*.  They are copied
 from upstream and recorded in *tools/oxlint/anti-slop/UPSTREAM.md*; update

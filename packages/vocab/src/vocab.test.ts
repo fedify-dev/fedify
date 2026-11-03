@@ -6542,7 +6542,7 @@ test("attribution chains alternate ordinary and portable suppression", async () 
   const contextLoader: DocumentLoader = (url, options) => {
     if (url !== contextUrl) return mockDocumentLoader(url, options);
     states.push(options?.suppressError);
-    const stack = new Error().stack;
+    const stack = new Error("capture stack").stack;
     ok(stack);
     depths[hop]?.push(stack.split("\n").length);
     return Promise.resolve({

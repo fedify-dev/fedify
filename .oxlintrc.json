@@ -191,7 +191,8 @@
     "eslint/no-self-compare": "error",
     "eslint/no-useless-escape": "error",
     "unicorn/prefer-node-protocol": "error",
-    "unicorn/prefer-includes": "error"
+    "unicorn/prefer-includes": "error",
+    "unicorn/error-message": "error"
   },
   "ignorePatterns": [
     "**/pnpm-lock.yaml",
