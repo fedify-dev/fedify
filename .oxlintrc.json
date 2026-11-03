@@ -185,7 +185,8 @@
     "anti-slop/no-reflect-apply": "error",
     "import/no-duplicates": "error",
     "promise/no-nesting": "error",
-    "promise/no-return-wrap": "error"
+    "promise/no-return-wrap": "error",
+    "eslint/no-throw-literal": "error"
   },
   "ignorePatterns": [
     "**/pnpm-lock.yaml",

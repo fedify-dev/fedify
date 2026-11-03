@@ -4065,6 +4065,8 @@ class HandlerError extends Error {
    * @returns Never returns, always throws.
    */
   throw(): never {
+    // The receiver is the error instance itself.
+    // oxlint-disable-next-line eslint/no-throw-literal
     throw this;
   }
 }
