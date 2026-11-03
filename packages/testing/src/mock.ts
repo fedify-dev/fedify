@@ -1732,14 +1732,25 @@ class MockContext<TContextData> implements Context<TContextData> {
     activity: Activity,
     options?: any,
   ): Promise<void> {
+    const dispatchId: unknown = options?.dispatchId;
+    if (dispatchId !== undefined && typeof dispatchId !== "string") {
+      return Promise.reject(new TypeError("dispatchId must be a string."));
+    }
+    if (
+      dispatchId !== undefined &&
+      (dispatchId.length > 1024 ||
+        new TextEncoder().encode(dispatchId).byteLength > 1024)
+    ) {
+      return Promise.reject(
+        new RangeError("dispatchId must not exceed 1,024 UTF-8 bytes."),
+      );
+    }
     this.sentActivities.push({
       sender,
       recipients,
       activity,
       rawActivity: options?.rawActivity,
-      ...(options?.dispatchId === undefined
-        ? {}
-        : { dispatchId: options.dispatchId }),
+      ...(dispatchId === undefined ? {} : { dispatchId }),
     });
 
     // If this is a MockFederation, also record it there
@@ -1750,9 +1761,7 @@ class MockContext<TContextData> implements Context<TContextData> {
         queue: queued ? "outbox" : undefined,
         activity,
         rawActivity: options?.rawActivity,
-        ...(options?.dispatchId === undefined
-          ? {}
-          : { dispatchId: options.dispatchId }),
+        ...(dispatchId === undefined ? {} : { dispatchId }),
         sentOrder: ++this.federation.sentCounter,
       });
     }

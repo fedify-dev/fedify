@@ -215,6 +215,63 @@ test("sent activity records preserve dispatch IDs", async () => {
   strictEqual(Object.hasOwn(federationRecords[2], "dispatchId"), false);
 });
 
+test("sendActivity validates dispatch IDs before recording", async () => {
+  const federation = createFederation<void>();
+  const context = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  const sender = { identifier: "alice" };
+  const recipient = new Person({
+    id: new URL("https://example.com/users/bob"),
+  });
+  const activity = new Create({
+    id: new URL("https://example.com/activities/invalid-dispatch-id"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  for (const dispatchId of [null, 1, {}]) {
+    await rejects(
+      context.sendActivity(sender, recipient, activity, {
+        dispatchId,
+      } as never),
+      {
+        name: "TypeError",
+        message: "dispatchId must be a string.",
+      },
+    );
+  }
+  for (const dispatchId of ["x".repeat(1025), "한".repeat(342)]) {
+    await rejects(
+      context.sendActivity(sender, recipient, activity, { dispatchId }),
+      {
+        name: "RangeError",
+        message: "dispatchId must not exceed 1,024 UTF-8 bytes.",
+      },
+    );
+  }
+
+  strictEqual(context.getSentActivities().length, 0);
+  strictEqual(federation.sentActivities.length, 0);
+
+  for (const dispatchId of ["x".repeat(1024), "한".repeat(341) + "a"]) {
+    await context.sendActivity(sender, recipient, activity, { dispatchId });
+  }
+  deepStrictEqual(
+    federation.sentActivities.map((record) => record.sentOrder),
+    [1, 2],
+  );
+  const expectedDispatchIds = ["x".repeat(1024), "한".repeat(341) + "a"];
+  deepStrictEqual(
+    context.getSentActivities().map((record) => record.dispatchId),
+    expectedDispatchIds,
+  );
+  deepStrictEqual(
+    federation.sentActivities.map((record) => record.dispatchId),
+    expectedDispatchIds,
+  );
+});
+
 test("reset clears sent activities", async () => {
   const mockFederation = createFederation<void>();
   const context = mockFederation.createContext(

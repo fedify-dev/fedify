@@ -329,8 +329,9 @@ To be released.
  -  Added outbound observer registration support to mock federations and
     dispatch IDs to recorded sends. Tests can inspect `dispatchId` through
     `context.getSentActivities()` and `federation.sentActivities` to assert
-    application correlation. Mock sends do not invoke outbound observer
-    callbacks. [[#1316], [#1359] by Jiwon Kwon\]
+    application correlation. Mock sends reject invalid dispatch IDs before
+    recording, using production's 1,024-byte UTF-8 limit. Mock sends do not
+    invoke outbound observer callbacks. [[#1316], [#1359] by Jiwon Kwon\]
  -  Mock inbox contexts made by `createInboxContext()` now have the
     `authentication` property, which can be given as an option and defaults
     to evidence that nothing was authenticated.  [[#1290], [#1299]]
