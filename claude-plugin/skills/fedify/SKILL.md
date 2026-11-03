@@ -420,6 +420,11 @@ Do not choose *@fedify/denokv* for new projects: it is deprecated since
 Fedify 2.5.0 and will be removed in Fedify 3.0.0.  It remains supported for
 existing Deno applications throughout the 2.x series.
 
+On Cloudflare Workers, use `WorkersD1KvStore` (backed by D1) rather than
+`WorkersKvStore` (backed by Workers KV).  Fedify's key–value workload is
+write-heavy and needs strong consistency, and only `WorkersD1KvStore`
+supports `cas()`.
+
 For `PostgresKvStore`, existing populated tables and externally managed DDL
 (`initialized: true`) need the [expiry expression index] to accelerate cleanup.
 Run concurrent index creation outside a transaction, followed by `ANALYZE`.

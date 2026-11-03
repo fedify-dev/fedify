@@ -2,8 +2,9 @@
  * `KvStore` & `MessageQueue` adapters for Cloudflare Workers
  * ==========================================================
  *
- * This package provides `KvStore` and `MessageQueue` implementations that use
- * Cloudflare Workers' KV and Queues bindings, respectively.
+ * This package provides `KvStore` implementations that use Cloudflare Workers'
+ * KV and D1 bindings, and a `MessageQueue` implementation that uses
+ * Cloudflare Queues binding.
  *
  * @module
  * @since 1.9.0
@@ -247,6 +248,310 @@ export class WorkersKvStore implements KvStore {
         };
       }
     } while (cursor != null);
+  }
+}
+
+/**
+ * Minimal Cloudflare D1 prepared statement shape used by this package.
+ * Compatible with both `@cloudflare/workers-types` and `wrangler types`
+ * generated declarations.
+ * @since 2.5.0
+ */
+export interface WorkersD1PreparedStatementLike {
+  bind(...values: unknown[]): WorkersD1PreparedStatementLike;
+  first<T = Record<string, unknown>>(): Promise<T | null>;
+  all<T = Record<string, unknown>>(): Promise<{ readonly results: T[] }>;
+  run(): Promise<{ readonly meta: { readonly changes: number } }>;
+}
+
+/**
+ * Minimal Cloudflare D1 binding shape used by this package.  Compatible with
+ * both `D1Database` and `D1DatabaseSession`, as declared by
+ * `@cloudflare/workers-types` and `wrangler types`.
+ * @since 2.5.0
+ */
+export interface WorkersD1DatabaseLike {
+  prepare(query: string): WorkersD1PreparedStatementLike;
+  batch(statements: WorkersD1PreparedStatementLike[]): Promise<unknown[]>;
+}
+
+/**
+ * Options for {@link WorkersD1KvStore}.
+ * @since 2.5.0
+ */
+export interface WorkersD1KvStoreOptions {
+  /**
+   * The table name to use for the key–value store.
+   * Only letters, digits, and underscores are allowed.
+   * `"fedify_kv"` by default.
+   * @default `"fedify_kv"`
+   */
+  readonly tableName?: string;
+
+  /**
+   * Whether the table has already been created, for example, by a D1
+   * migration.  If `false`, the store creates the table on its first use.
+   * `false` by default.
+   * @default `false`
+   */
+  readonly initialized?: boolean;
+}
+
+/**
+ * Implementation of the {@link KvStore} interface for Cloudflare D1 binding.
+ *
+ * Unlike {@link WorkersKvStore}, this store is strongly consistent and is
+ * priced for balanced read and write workloads, which suits Fedify's usage
+ * of the key–value store.  It also supports the {@link KvStore.cas}
+ * operation: since D1 has no interactive transactions, each compare-and-swap
+ * is performed by a single conditional SQL statement.
+ *
+ * The store uses a table with the following schema, which it creates on
+ * its first use unless the `initialized` option is set:
+ *
+ * ```sql
+ * CREATE TABLE IF NOT EXISTS fedify_kv (
+ *   key TEXT PRIMARY KEY NOT NULL,
+ *   value TEXT NOT NULL,
+ *   expires INTEGER
+ * );
+ * CREATE INDEX IF NOT EXISTS fedify_kv_expires ON fedify_kv (expires);
+ * ```
+ *
+ * @example
+ * ```typescript ignore
+ * import { createFederation } from "@fedify/fedify";
+ * import { WorkersD1KvStore } from "@fedify/cfworkers";
+ *
+ * export default {
+ *   async fetch(request, env, ctx) {
+ *     const federation = createFederation({
+ *       kv: new WorkersD1KvStore(env.DB),
+ *       // ... other options
+ *     });
+ *     return federation.fetch(request, { contextData: env });
+ *   },
+ * } satisfies ExportedHandler<{ DB: D1Database }>;
+ * ```
+ * @since 2.5.0
+ */
+export class WorkersD1KvStore implements KvStore {
+  static readonly #defaultTableName = "fedify_kv";
+  static readonly #tableNameRegex = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+  readonly #db: WorkersD1DatabaseLike;
+  readonly #tableName: string;
+  #initialized: Promise<void> | null;
+
+  /**
+   * Constructs a new {@link WorkersD1KvStore} with the given D1 binding.
+   * @param db The Cloudflare D1 binding (or a D1 session).
+   * @param options Options for the key–value store.
+   * @throws {TypeError} If the table name is invalid.
+   */
+  constructor(
+    db: WorkersD1DatabaseLike,
+    options: WorkersD1KvStoreOptions = {},
+  ) {
+    this.#db = db;
+    this.#tableName = options.tableName ??
+      WorkersD1KvStore.#defaultTableName;
+    if (!WorkersD1KvStore.#tableNameRegex.test(this.#tableName)) {
+      throw new TypeError(
+        `Invalid table name for the key–value store: ${this.#tableName}`,
+      );
+    }
+    this.#initialized = options.initialized ? Promise.resolve() : null;
+  }
+
+  /**
+   * Creates the table used by the key–value store if it does not already
+   * exist.  Does nothing if the table already exists.  It is called
+   * automatically on the first use of the store unless the `initialized`
+   * option is set.
+   */
+  initialize(): Promise<void> {
+    this.#initialized ??= this.#db.batch([
+      this.#db.prepare(`
+        CREATE TABLE IF NOT EXISTS "${this.#tableName}" (
+          key TEXT PRIMARY KEY NOT NULL,
+          value TEXT NOT NULL,
+          expires INTEGER
+        )
+      `),
+      this.#db.prepare(`
+        CREATE INDEX IF NOT EXISTS "${this.#tableName}_expires"
+        ON "${this.#tableName}" (expires)
+      `),
+    ]).then(() => undefined, (error) => {
+      // Let a later call retry the initialization:
+      this.#initialized = null;
+      throw error;
+    });
+    return this.#initialized;
+  }
+
+  #encodeKey(key: KvKey): string {
+    return JSON.stringify(key);
+  }
+
+  #getExpires(now: number, options?: KvStoreSetOptions): number | null {
+    return options?.ttl == null
+      ? null
+      : now + options.ttl.total("milliseconds");
+  }
+
+  /**
+   * {@inheritDoc KvStore.get}
+   */
+  async get<T = unknown>(key: KvKey): Promise<T | undefined> {
+    await this.initialize();
+    const row = await this.#db.prepare(`
+      SELECT value FROM "${this.#tableName}"
+      WHERE key = ? AND (expires IS NULL OR expires > ?)
+    `).bind(this.#encodeKey(key), Date.now()).first<{ value: string }>();
+    return row == null ? undefined : JSON.parse(row.value) as T;
+  }
+
+  /**
+   * {@inheritDoc KvStore.set}
+   */
+  async set(
+    key: KvKey,
+    value: unknown,
+    options?: KvStoreSetOptions,
+  ): Promise<void> {
+    await this.initialize();
+    const now = Date.now();
+    // Purge expired entries in the same round trip:
+    await this.#db.batch([
+      this.#db.prepare(`
+        DELETE FROM "${this.#tableName}"
+        WHERE expires IS NOT NULL AND expires <= ?
+      `).bind(now),
+      this.#db.prepare(`
+        INSERT INTO "${this.#tableName}" (key, value, expires)
+        VALUES (?, ?, ?)
+        ON CONFLICT (key) DO UPDATE SET
+          value = excluded.value,
+          expires = excluded.expires
+      `).bind(
+        this.#encodeKey(key),
+        JSON.stringify(value),
+        this.#getExpires(now, options),
+      ),
+    ]);
+  }
+
+  /**
+   * {@inheritDoc KvStore.delete}
+   */
+  async delete(key: KvKey): Promise<void> {
+    await this.initialize();
+    await this.#db.prepare(`DELETE FROM "${this.#tableName}" WHERE key = ?`)
+      .bind(this.#encodeKey(key))
+      .run();
+  }
+
+  /**
+   * {@inheritDoc KvStore.cas}
+   */
+  async cas(
+    key: KvKey,
+    expectedValue: unknown,
+    newValue: unknown,
+    options?: KvStoreSetOptions,
+  ): Promise<boolean> {
+    await this.initialize();
+    const encodedKey = this.#encodeKey(key);
+    const now = Date.now();
+
+    if (expectedValue === undefined) {
+      // No mutation is needed; this read is the operation's atomic point:
+      if (newValue === undefined) return await this.get(key) === undefined;
+      // Insert the entry unless an unexpired entry already exists:
+      const { meta } = await this.#db.prepare(`
+        INSERT INTO "${this.#tableName}" (key, value, expires)
+        VALUES (?, ?, ?)
+        ON CONFLICT (key) DO UPDATE SET
+          value = excluded.value,
+          expires = excluded.expires
+        WHERE "${this.#tableName}".expires IS NOT NULL
+          AND "${this.#tableName}".expires <= ?
+      `).bind(
+        encodedKey,
+        JSON.stringify(newValue),
+        this.#getExpires(now, options),
+        now,
+      ).run();
+      return meta.changes > 0;
+    }
+
+    // Compares the JSON trees in both directions so that the order of object
+    // members is ignored, while the order of array elements, container types,
+    // and scalar types matter.  The predicate runs inside the mutation itself,
+    // so neither a read–write race nor an interactive transaction is involved:
+    const expectedJson = JSON.stringify(expectedValue);
+    // The column must be qualified, since json_tree() has a value column too:
+    const current = `"${this.#tableName}".value`;
+    const matches = `
+      key = ?1 AND (expires IS NULL OR expires > ?2)
+      AND NOT EXISTS (
+        SELECT fullkey, type, atom FROM json_tree(${current})
+        EXCEPT SELECT fullkey, type, atom FROM json_tree(?3)
+      )
+      AND NOT EXISTS (
+        SELECT fullkey, type, atom FROM json_tree(?3)
+        EXCEPT SELECT fullkey, type, atom FROM json_tree(${current})
+      )
+    `;
+    const statement = newValue === undefined
+      ? this.#db.prepare(`DELETE FROM "${this.#tableName}" WHERE ${matches}`)
+        .bind(encodedKey, now, expectedJson)
+      : this.#db.prepare(`
+        UPDATE "${this.#tableName}" SET value = ?4, expires = ?5
+        WHERE ${matches}
+      `).bind(
+        encodedKey,
+        now,
+        expectedJson,
+        JSON.stringify(newValue),
+        this.#getExpires(now, options),
+      );
+    const { meta } = await statement.run();
+    return meta.changes > 0;
+  }
+
+  /**
+   * {@inheritDoc KvStore.list}
+   */
+  async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+    await this.initialize();
+    const now = Date.now();
+    let statement: WorkersD1PreparedStatementLike;
+    if (prefix == null || prefix.length === 0) {
+      statement = this.#db.prepare(`
+        SELECT key, value FROM "${this.#tableName}"
+        WHERE expires IS NULL OR expires > ?
+        ORDER BY key
+      `).bind(now);
+    } else {
+      // Keys are JSON encoded, so '["prefix","a"]' and '["prefix"]' both
+      // start with '["prefix"', while '["prefixed"]' does not:
+      const encodedPrefix = JSON.stringify(prefix).slice(0, -1);
+      statement = this.#db.prepare(`
+        SELECT key, value FROM "${this.#tableName}"
+        WHERE substr(key, 1, length(?1)) = ?1
+          AND (expires IS NULL OR expires > ?2)
+        ORDER BY key
+      `).bind(encodedPrefix, now);
+    }
+    const { results } = await statement.all<{ key: string; value: string }>();
+    for (const row of results) {
+      yield {
+        key: JSON.parse(row.key) as KvKey,
+        value: JSON.parse(row.value),
+      };
+    }
   }
 }
 
