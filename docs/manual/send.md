@@ -227,42 +227,30 @@ establish a worker's scheduling result.
 ### Worker execution and actions
 
 `onWorker` receives one `OutboundWorkerReport` after a fanout or outbox worker's
-local execution settles, including its existing metrics and cleanup. It receives
-the current worker context and application data. It also works when attempt and
-exchange observers are disabled; inbox and custom-task workers are separate.
+local execution and instrumentation settle. `role` and `queue` identify the
+current worker/task. `attemptsStarted` counts concrete sender entries, including
+fallback gateways; child enqueues count zero. Outbox `delivery` identifies its
+obligation. Fanout has no single delivery; child actions carry their references.
 
-`role` identifies `fanout` or `outbox`. `queue` identifies the current task and,
-for outbox tasks, its Fedify retry counter. `attemptsStarted` counts actual
-concrete sender entries: expanding fanout into child tasks counts zero, while
-direct sends and alternate gateways each count when entered. An outbox report's
-`delivery` identifies its obligation when available. Fanout has no single
-`delivery`; its child actions carry their own delivery references.
+| `result.type`        | Meaning                                                                    |
+| -------------------- | -------------------------------------------------------------------------- |
+| `completed`          | Local normal return, including handled send failures and abandonment.      |
+| `failed`             | The original error escaped, even if an earlier attempt succeeded.          |
+| `preparation-failed` | `failure.phase` identifies the preparation operation producing that error. |
 
-Narrow `result.type` to read the execution result:
+Read `actions` independently of `result` and attempt outcomes:
 
-| Type                 | Meaning                                                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `completed`          | The local worker path returned normally, including handled send failures and abandonment.                                |
-| `failed`             | Processing escaped with the original `error`, even if an earlier attempt succeeded.                                      |
-| `preparation-failed` | Key import, activity parsing, context creation, or request preparation failed; `failure.phase` identifies the operation. |
+| `type`          | Evidence                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| `scheduled`     | An `enqueue`, `retry`, or `defer` call resolved; `queue` identifies its actual task/counter.   |
+| `action-failed` | Enqueue rejection with unknown acceptance and original error, or a failed `drop` step.         |
+| `handoff`       | A fanout worker entered a concrete sender (`action: "direct"`), without claiming HTTP success. |
+| `abandoned`     | Work stopped locally for the listed routes, with a reason such as `permanent-failure`.         |
 
-`actions` records actual local decisions and enqueue settlements independently
-of the result. An empty array means no such action was observed in that
-execution. Narrow an action's `type`, then its `action` when present:
-
-| Type            | Evidence                                                                                                        |
-| --------------- | --------------------------------------------------------------------------------------------------------------- |
-| `scheduled`     | An `enqueue`, `retry`, or `defer` call resolved. `queue` identifies the submitted task and counter.             |
-| `action-failed` | An enqueue rejected, with `acceptance: "unknown"` and the original `error`, or an available `drop` step failed. |
-| `handoff`       | A fanout worker entered a concrete sender (`action: "direct"`); this does not establish HTTP success.           |
-| `abandoned`     | The local path stopped work for the listed routes, with a `reason` such as `permanent-failure`.                 |
-
-Each action's `inboxUrls` contains its affected routes. Gateway abandonment can
-remove one route while another succeeds or is rescheduled. Retry/defer actions
-include the actual ISO 8601 `delay` passed to the queue and any per-route
-`notBefore` constraints retained in the continuation. Child `enqueue` actions
-and direct handoffs include their known `delivery` references. Constructing a
-child or deciding to retry does not itself establish an enqueue.
+`inboxUrls` lists affected routes; one gateway can be abandoned while another
+continues. Retry/defer includes the actual ISO `delay` and any per-route
+`notBefore` constraints. Child enqueues/direct handoffs retain delivery
+references. An empty action list means no action was observed by settlement.
 
 ~~~~ typescript twoslash
 import type { Federation } from "@fedify/fedify";
@@ -270,43 +258,23 @@ declare const federation: Federation<void>;
 // ---cut-before---
 federation.setOutboundObservers({
   onWorker(_ctx, report) {
-    console.log(report.role, report.queue.queueMessageId, report.attemptsStarted);
-    if (report.result.type === "preparation-failed") {
-      console.error(report.result.failure.phase, report.result.error);
-    }
+    console.log(report.role, report.result.type, report.attemptsStarted);
     for (const action of report.actions) {
       if (action.type === "scheduled") {
         console.log(action.action, action.queue.queueMessageId, action.inboxUrls);
-        if (action.action === "enqueue") {
-          console.log(action.delivery?.deliveryId);
-        } else {
-          console.log(action.delay, action.notBefore);
-        }
-      } else if (action.type === "action-failed") {
-        console.error(action.action, action.error);
-        if (action.action !== "drop") {
-          console.error("Queue acceptance is unknown", action.queue.queueMessageId);
-        }
+        if (action.action !== "enqueue") console.log(action.delay);
       }
     }
   },
 });
 ~~~~
 
-Accepted child tasks remain in the report when another child fails or later
-bookkeeping throws. A rejected batch leaves acceptance unknown for every
-submitted child, even if the backend accepted some of them. Fanout replay keeps
-known delivery IDs while creating fresh child task IDs, without another
-broadcast or a change to the producer's preparation result. A later destination
-setup failure can leave earlier direct sends running; the worker report captures
-entries observed by its settlement, while those attempt callbacks may arrive
-later.
-
-Worker settlement does not establish backend acknowledgment, a future native
-retry, or remote application effects. A native rethrow records failure without
-claiming a scheduled continuation; native redelivery can reuse the task and
-Fedify retry counter. See [message queues](./mq.md#observing-outgoing-workers)
-for how this relates to queue processing.
+Accepted actions survive sibling or later bookkeeping failures. A rejected batch
+leaves every submitted child's acceptance unknown. Later destination setup
+failure can leave earlier direct attempts running after worker settlement.
+Neither local completion nor a native rethrow establishes backend
+acknowledgment, a future replay, or remote application effects. See
+[message queues](./mq.md#observing-outgoing-workers).
 
 ### Response versus final response
 
@@ -459,18 +427,14 @@ At an exact cap, another read does not establish EOF: access is revoked, and
 Signal abort or stream rejection can also stop an outstanding application write;
 the summary does not certify that exposed chunks were saved.
 
-Fedify uses one source reader shared with the bounded error diagnostic preview,
-pull backpressure, no additional wrapper queue, and at most one pending source
-read. It does not clone, tee, or accumulate the response body for application
-capture. Its limits do not bound upstream chunk allocations, runtime buffering,
-or memory/storage retained by the application.
+Fedify uses one source reader shared with diagnostics and pull backpressure,
+without cloning, teeing, or accumulating application response bodies. Its bounds
+exclude upstream chunk allocations, runtime buffering, and application storage.
 
-The absolute lifetime starts before callback invocation. Access is revoked on
-callback return/throw, consumer cancellation, byte cap, or deadline, including
-when an application retains a locked reader. Fedify bounds its own cleanup and
-handles late callback/cancellation rejection without waiting indefinitely.
-Signals cannot force arbitrary JavaScript or application storage to stop. Work
-that ignores the signal can continue after its observation has ended.
+The absolute lifetime starts before callback invocation and covers no-pull/slow
+consumption and cleanup. Return/throw/cancel/cap/deadline revokes even retained
+locked readers. Late rejections are handled without waiting indefinitely;
+arbitrary JavaScript or storage that ignores the signal can still continue.
 
 Capture failure or its signal does not abort the HTTP send, skip a challenge,
 change a received status into a transport failure, or trigger another send.
@@ -575,7 +539,16 @@ inbox request -> handler -> send/forward -> planned delivery
                                              +-> fanout task -> outbox tasks
 
 Queue continuations preserve known IDs and the original source.
+
+Portable fallback:    delivery D -> gateway A -> gateway B (stop on success)
+Portable replication: broadcast B -> delivery D1 -> gateway A
+                                 -> delivery D2 -> gateway B
+
+HTTP abort -> inbox report.requestCancellation
+Accepted queue work -> worker (the HTTP abort does not cancel it)
 ~~~~
+
+Diagram generated with Codex.
 
 IDs provide grouping, not ordering or deduplication. Replayed work can produce
 repeated observations. Treat IDs as opaque values.
@@ -587,6 +560,21 @@ membership; `destinationInbox` is absent when the original plan is unavailable.
 An explicit canonical `portableInbox` can still be known. Missing source and
 application correlation remain unavailable. Older consumers can discard these
 fields, so mixed-version processing can lose correlation.
+
+### Retry history
+
+Persist attempt reports by `deliveryId` and each fresh `attemptId`; correlate
+scheduled retries with worker action task IDs. For example:
+
+~~~~ text
+delivery D -> attempt A1: failed, final HTTP 503
+           -> worker: retry scheduled as task Q, queueAttempt 1
+           -> attempt A2: succeeded, final HTTP 202
+~~~~
+
+A native redelivery can reuse a task/counter but still creates a new attempt.
+The application owns this history and any later manual retry; Fedify emits no
+distributed delivery-completed result.
 
 ### Original source and current context
 
@@ -670,6 +658,11 @@ send's original result. Slow callbacks delay processing; a callback that never
 settles can delay it indefinitely. Existing portable-forwarding deadlines can
 return control while background preparation, sending, and observation continue;
 a deadline alone does not create a failed preparation result or attempt outcome.
+
+Inbox request cancellation is reported separately from processing. The queue
+listener's stop signal controls intake; this observer API does not yet report
+per-execution queue cancellation. A backend ceasing to wait is not evidence that
+its worker terminated.
 
 If you detach recording work, handle its rejections and shutdown yourself;
 Fedify does not guarantee its persistence. Incoming C2S `setOutboxListeners()`

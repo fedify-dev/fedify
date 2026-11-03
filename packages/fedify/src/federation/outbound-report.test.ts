@@ -6223,6 +6223,8 @@ test("sender payload availability never changes serialization or redirected bodi
       let getters = 0;
       const input = mode === "conversion"
         ? Object.defineProperty({}, "toJSON", {
+          // Bun ignores a non-enumerable converter; use a shared runtime fixture.
+          enumerable: true,
           value() {
             conversions++;
             return payload;

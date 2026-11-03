@@ -1,5 +1,7 @@
 // The Workers suite is deliberately bounded to tests validated on workerd.
 export const expectedTestNames = [
+  "outbound sender payload privacy on Workers",
+  "outbound body capture revocation on Workers",
   "authentication preserves the queued principal wire format",
   "proof principals adapt internal signer kinds at the public boundary",
   "ignored nested test steps return false",

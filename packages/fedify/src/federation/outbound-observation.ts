@@ -227,7 +227,7 @@ export class OutboundAttemptObservation {
       | ((facts: ExchangeFacts) => Promise<void>)
       | undefined = undefined,
     readonly headerPolicies: HeaderPolicies = {},
-    readonly bodyCapture?: BodyCapture,
+    readonly bodyCapture: BodyCapture | undefined = undefined,
     readonly senderPayload = false,
   ) {
     this.#senderPayload = Object.freeze({

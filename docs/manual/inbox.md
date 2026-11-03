@@ -206,6 +206,9 @@ federation
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
   .onRequestFinished(async (ctx, report) => {
     await saveReport(report);
+    if (report.requestCancellation.type === "aborted") {
+      console.log("Request aborted", report.requestCancellation.reason);
+    }
   });
 ~~~~
 
@@ -220,6 +223,19 @@ and `report.requestId`, including preparation failures. The former is a fresh
 server-generated ID for each HTTP delivery, even for the same Activity. The
 latter is an informational, externally supplied or generated logging label;
 it is not unique. These fields are absent when no routed source is known.
+
+`report.local` preserves the original `origin`, `host`, `hostname`, and
+`canonicalOrigin`, even when a later context's URL changes. It is absent when
+no routed source is known. `report.requestCancellation` snapshots the native
+request signal immediately before report construction: `not-aborted`, or
+`aborted` with the exact `reason`, including non-Error values. These envelopes
+are immutable; the reason object itself is not cloned or frozen.
+
+Request cancellation is separate from processing outcome. A processed or
+enqueued `202` can coexist with an aborted signal. The callback still runs once
+when processing settles; an abort after the snapshot does not change it or
+trigger another report. Observation does not cancel HTTP processing or pass its
+signal to accepted queue work or outgoing descendants.
 
 Outgoing work using the handler's context retains this source through derived
 contexts and queues. See

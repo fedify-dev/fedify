@@ -374,10 +374,15 @@ Events expose `provenance` for preserved source/app correlation and `local` for
 current URL facts. A known inbox source includes server-generated
 `inboxRequestId`, informational `requestId`, and the original URL snapshot.
 It survives context clones/conversions and queues; independent contexts do not
-infer it from ambient execution. `observedAt` is current Unix milliseconds,
-not a global ordering guarantee. Optional `trace` carries only valid IDs of the
-operation's own span, never an ambient parent fallback; grouping works without
-tracing. Entry events and exchanges omit trace when no own span exists.
+infer it from ambient execution. Inbox completion `report.local` retains the
+original URL facts. `report.requestCancellation` is `not-aborted` or `aborted`
+with the exact native request-signal `reason`, captured before report creation.
+It does not change authentication/processing outcomes, cancel accepted work,
+inherit a signal into descendants, or emit a second report after a later abort.
+`observedAt` is current Unix milliseconds, not a global ordering guarantee.
+Optional `trace` carries only valid IDs of the operation's own span, never an
+ambient parent fallback; grouping works without tracing. Entry events and
+exchanges omit trace when no own span exists.
 
 Send/forward options accept `dispatchId`, preserved exactly in event provenance
 and queues even without producer observers. Empty strings are valid; the limit
