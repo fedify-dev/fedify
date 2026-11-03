@@ -252,6 +252,38 @@ export const nodeInfoCommand = Command(
   nodeInfoMetadata,
 );
 
+async function renderFavicon(url: URL, userAgent?: string): Promise<string[]> {
+  const { response } = await fetchFaviconResource(url, userAgent);
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new Error(
+      `Failed to fetch the favicon: ${response.status} ${response.statusText}`,
+    );
+  }
+  const contentType = response.headers.get("Content-Type")
+    ?.split(";")[0].trim().toLowerCase();
+  let buffer: ImageBuffer = await response.arrayBuffer();
+  if (
+    contentType === "image/vnd.microsoft.icon" ||
+    contentType === "image/x-icon" ||
+    isICO(buffer)
+  ) {
+    const images = await parseICO(buffer);
+    if (images.length < 1) {
+      throw new Error("No images found in the ICO file.");
+    }
+    buffer = images[0].buffer;
+  } else if (
+    contentType === "image/svg+xml" || (!isPng(buffer) && isSvg(buffer))
+  ) {
+    buffer = await rasterizeSvg(buffer);
+  }
+  const image = await readImage(buffer);
+  const colorSupport = checkTerminalColorSupport();
+  return getAsciiArt(image, DEFAULT_IMAGE_WIDTH, colorSupport, colors)
+    .split("\n").map((line) => ` ${line}  `);
+}
+
 export async function runNodeInfo(
   command: InferValue<typeof nodeInfoCommand>,
 ) {
@@ -303,41 +335,18 @@ export async function runNodeInfo(
     spinner.text = "Fetching the favicon...";
     try {
       const faviconUrl = await getFaviconUrl(url, command.userAgent);
-      const { response } = await fetchFaviconResource(
-        faviconUrl,
-        command.userAgent,
-      );
-      if (response.ok) {
-        const contentType = response.headers.get("Content-Type")
-          ?.split(";")[0].trim().toLowerCase();
-        let buffer: ImageBuffer = await response.arrayBuffer();
-        if (
-          contentType === "image/vnd.microsoft.icon" ||
-          contentType === "image/x-icon" ||
-          isICO(buffer)
-        ) {
-          const images = await parseICO(buffer);
-          if (images.length < 1) {
-            throw new Error("No images found in the ICO file.");
-          }
-          buffer = images[0].buffer;
-        } else if (
-          contentType === "image/svg+xml" || (!isPng(buffer) && isSvg(buffer))
-        ) {
-          buffer = await rasterizeSvg(buffer);
-        }
-        const image = await readImage(buffer);
-        const colorSupport = checkTerminalColorSupport();
-        layout = getAsciiArt(image, DEFAULT_IMAGE_WIDTH, colorSupport, colors)
-          .split("\n").map((line) => ` ${line}  `);
-        defaultWidth = 41;
-      } else {
-        logger.error(
-          "Failed to fetch the favicon: {status} {statusText}",
-          { status: response.status, statusText: response.statusText },
+      const fallbackUrl = new URL("/favicon.ico", url);
+      try {
+        layout = await renderFavicon(faviconUrl, command.userAgent);
+      } catch (error) {
+        if (faviconUrl.href === fallbackUrl.href) throw error;
+        logger.debug(
+          "Failed to fetch or render {url}; retrying {fallbackUrl}: {error}",
+          { url: faviconUrl.href, fallbackUrl: fallbackUrl.href, error },
         );
-        layout = [""];
+        layout = await renderFavicon(fallbackUrl, command.userAgent);
       }
+      defaultWidth = 41;
     } catch (error) {
       logger.error(
         "Failed to fetch or render the favicon: {error}",

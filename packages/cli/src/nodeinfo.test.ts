@@ -524,9 +524,14 @@ test("nodeinfo rejects private and non-HTTP icon URLs", async () => {
       nodeInfoRoutes('<link rel="icon" href="' + href + '">'),
       async (calls) => {
         await runNodeInfoWithFavicon();
-        assert.equal(
-          calls.length,
-          3,
+        assert.deepEqual(
+          calls.map((call) => call.url),
+          [
+            "https://8.8.8.8/.well-known/nodeinfo",
+            "https://8.8.8.8/nodeinfo/2.1",
+            "https://8.8.8.8/",
+            "https://8.8.8.8/favicon.ico",
+          ],
           "No icon fetch should occur for " + href,
         );
         assert.ok(calls.every((call) => call.redirect === "manual"));
@@ -550,6 +555,7 @@ test("nodeinfo rejects an icon redirect to loopback", async () => {
       "https://8.8.8.8/nodeinfo/2.1",
       "https://8.8.8.8/",
       "https://8.8.8.8/icon.png",
+      "https://8.8.8.8/favicon.ico",
     ]);
     assert.ok(calls.every((call) => call.redirect === "manual"));
   });
@@ -630,6 +636,22 @@ test("nodeinfo falls back when an SVG favicon cannot be rendered", async () => {
   );
   assert.match(output, /test v1\.0\.0/);
   assert.doesNotMatch(output, /[█▓▒░]/);
+});
+
+test("nodeinfo retries /favicon.ico when the chosen favicon fails", async () => {
+  const png = await new Jimp({ width: 4, height: 4, color: 0x000000ff })
+    .getBuffer("image/png");
+  const routes = nodeInfoRoutes('<link rel="icon" href="/icon.svg">');
+  routes["https://8.8.8.8/icon.svg"] = () =>
+    new Response(null, { status: 404 });
+  routes["https://8.8.8.8/favicon.ico"] = () =>
+    new Response(Uint8Array.from(png).buffer, {
+      headers: { "Content-Type": "image/png" },
+    });
+  const output = await captureOutput(() =>
+    withMockFetch(routes, runNodeInfoWithFavicon)
+  );
+  assert.match(output, /█/);
 });
 
 test("rasterizeSvg - fits a wide SVG to the width", async () => {
