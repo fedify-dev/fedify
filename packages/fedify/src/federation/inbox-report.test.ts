@@ -9,7 +9,8 @@ import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
 import { createFederationBuilder } from "./builder.ts";
 import type { InboxRequestReport } from "./inbox-report.ts";
 import { MemoryKvStore } from "./kv.ts";
-import { createFederation } from "./middleware.ts";
+import { ContextImpl, createFederation } from "./middleware.ts";
+import type { Message } from "./queue.ts";
 import { signRequest } from "../sig/http.ts";
 import { signJsonLd } from "../sig/ld.ts";
 import { signObject } from "../sig/proof.ts";
@@ -672,4 +673,247 @@ test("onRequestFinished observes the final response decoration result", async ()
       disposition: "customResponse",
     });
   }
+});
+
+test("inbox request cancellation snapshots preserve exact reasons without stopping processing", async (t) => {
+  for (
+    const [label, reason] of [
+      ["live", undefined],
+      ["object", { kind: "client disconnect" }],
+      ["zero", 0],
+      ["nan", NaN],
+      ["symbol", Symbol("client")],
+    ] as const
+  ) {
+    await t.step(label, async () => {
+      const { federation, setters, reports } = setup(true);
+      let processed = 0;
+      setters.on(Create, () => {
+        processed++;
+      });
+      const controller = new AbortController();
+      const input = new Request(request(await payload()), {
+        signal: controller.signal,
+      });
+      input.headers.set("X-Request-Id", "cancellation-case");
+      if (label !== "live") controller.abort(reason);
+      const response = await federation.fetch(input, {
+        contextData: undefined,
+      });
+      strictEqual(response.status, 202);
+      strictEqual(processed, 1);
+      strictEqual(reports.length, 1);
+      const report = reports[0];
+      deepStrictEqual(report.outcome, {
+        type: "response",
+        status: 202,
+        disposition: "processed",
+      });
+      deepStrictEqual(report.authentication, { status: "skipped" });
+      strictEqual(report.payload.status, "parsed");
+      strictEqual(report.requestId, "cancellation-case");
+      ok(report.inboxRequestId);
+      deepStrictEqual(report.local, {
+        origin: "https://example.com",
+        host: "example.com",
+        hostname: "example.com",
+        canonicalOrigin: "https://example.com",
+      });
+      ok(Object.isFrozen(report.local));
+      ok(Object.isFrozen(report.requestCancellation));
+      strictEqual(
+        report.requestCancellation.type,
+        label === "live" ? "not-aborted" : "aborted",
+      );
+      if (report.requestCancellation.type === "aborted") {
+        ok(Object.is(report.requestCancellation.reason, reason));
+        strictEqual(report.requestCancellation.reason, input.signal.reason);
+      }
+    });
+  }
+});
+
+test("inbox request cancellation waits for processing and preserves original local facts", async () => {
+  const { federation, setters, reports } = setup(true);
+  let entered!: () => void;
+  const listening = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  setters.on(Create, async (ctx) => {
+    ok(ctx instanceof ContextImpl);
+    ctx.url.hostname = "changed.example";
+    entered();
+    await gate;
+  });
+  const controller = new AbortController();
+  const reason = Symbol("mid-processing disconnect");
+  const input = new Request(request(await payload()), {
+    signal: controller.signal,
+  });
+  const processing = federation.fetch(input, { contextData: undefined });
+  try {
+    await listening;
+    controller.abort(reason);
+    strictEqual(reports.length, 0);
+    release();
+    strictEqual((await processing).status, 202);
+    strictEqual(reports.length, 1);
+    deepStrictEqual(reports[0].outcome, {
+      type: "response",
+      status: 202,
+      disposition: "processed",
+    });
+    deepStrictEqual(reports[0].requestCancellation, {
+      type: "aborted",
+      reason,
+    });
+    strictEqual(reports[0].local?.hostname, "example.com");
+    controller.abort("later reason");
+    await Promise.resolve();
+    strictEqual(reports.length, 1);
+    strictEqual(reports[0].local?.origin, "https://example.com");
+  } finally {
+    release();
+    await processing;
+  }
+});
+
+test("inbox request cancellation after report construction does not rewrite its snapshot", async () => {
+  const { federation, setters, reports } = setup(true);
+  setters.on(Create, () => {});
+  let entered!: () => void;
+  const observing = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  setters.onRequestFinished(async (_ctx, report) => {
+    reports.push(report);
+    entered();
+    await gate;
+    throw new Error("recording failure");
+  });
+  const controller = new AbortController();
+  const input = new Request(request(await payload()), {
+    signal: controller.signal,
+  });
+  const processing = federation.fetch(input, { contextData: undefined });
+  try {
+    await observing;
+    controller.abort({ kind: "late disconnect" });
+    deepStrictEqual(reports[0].requestCancellation, { type: "not-aborted" });
+    release();
+    strictEqual((await processing).status, 202);
+    await Promise.resolve();
+    strictEqual(reports.length, 1);
+    deepStrictEqual(reports[0].requestCancellation, { type: "not-aborted" });
+    deepStrictEqual(reports[0].outcome, {
+      type: "response",
+      status: 202,
+      disposition: "processed",
+    });
+  } finally {
+    release();
+    await processing;
+  }
+});
+
+test("inbox request cancellation retains accepted queue work and its separate lifetime", async () => {
+  const controller = new AbortController();
+  const reason = Symbol("disconnect after acceptance");
+  const messages: Message[] = [];
+  const reports: InboxRequestReport[] = [];
+  let processed = 0;
+  let workerSignal: AbortSignal | undefined;
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    skipSignatureVerification: true,
+    manuallyStartQueue: true,
+    documentLoaderFactory: () => mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
+    queue: {
+      inbox: {
+        enqueue(message) {
+          messages.push(message);
+          controller.abort(reason);
+          return Promise.resolve();
+        },
+        listen: () => Promise.resolve(),
+      },
+    },
+  });
+  federation.setActorDispatcher("/users/{identifier}", () => new Person({}));
+  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .on(Create, (ctx) => {
+      processed++;
+      workerSignal = Reflect.get(ctx, "signal");
+    })
+    .onRequestFinished((_ctx, report) => {
+      reports.push(report);
+    });
+  const input = new Request(request(await payload()), {
+    signal: controller.signal,
+  });
+  strictEqual(
+    (await federation.fetch(input, { contextData: undefined })).status,
+    202,
+  );
+  strictEqual(messages.length, 1);
+  strictEqual(processed, 0);
+  strictEqual(reports.length, 1);
+  deepStrictEqual(reports[0].outcome, {
+    type: "response",
+    status: 202,
+    disposition: "enqueued",
+  });
+  deepStrictEqual(reports[0].requestCancellation, { type: "aborted", reason });
+  strictEqual(Object.hasOwn(messages[0], "signal"), false);
+  strictEqual(Object.hasOwn(messages[0], "requestCancellation"), false);
+  await federation.processQueuedTask(undefined, messages[0]);
+  strictEqual(processed, 1);
+  strictEqual(workerSignal?.aborted === true, false);
+  strictEqual(reports.length, 1);
+});
+
+test("inbox request cancellation preserves early preparation failures and canonical source", async () => {
+  const error = new Error("initial loader factory failed");
+  const reason = { kind: "client disconnected" };
+  const controller = new AbortController();
+  const reports: InboxRequestReport[] = [];
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    origin: "https://canonical.example",
+    documentLoaderFactory: () => {
+      throw error;
+    },
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  federation.setActorDispatcher("/users/{identifier}", () => new Person({}));
+  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .onRequestFinished((_ctx, report) => {
+      reports.push(report);
+    });
+  const input = new Request(request({}), { signal: controller.signal });
+  controller.abort(reason);
+  await rejects(
+    federation.fetch(input, { contextData: undefined }),
+    (value: unknown) => value === error,
+  );
+  strictEqual(reports.length, 1);
+  deepStrictEqual(reports[0].outcome, {
+    type: "exception",
+    stage: "prepare",
+    error,
+  });
+  deepStrictEqual(reports[0].authentication, { status: "notDetermined" });
+  deepStrictEqual(reports[0].payload, { status: "unavailable" });
+  deepStrictEqual(reports[0].requestCancellation, { type: "aborted", reason });
+  strictEqual(reports[0].local?.origin, "https://example.com");
+  strictEqual(reports[0].local?.canonicalOrigin, "https://canonical.example");
 });

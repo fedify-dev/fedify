@@ -7,6 +7,7 @@ import type {
   FederationStartQueueOptions,
   GetObjectOptions,
   Message,
+  OutboundObservers,
   ParseUriOptions,
   ParseUriResult,
   PortableRequest,
@@ -274,6 +275,8 @@ interface SentActivity {
   activity: Activity;
   /** The raw forwarded payload, if preserved by the caller. */
   rawActivity?: unknown;
+  /** Application-provided correlation identifier, if present. */
+  dispatchId?: string;
   /** The order in which the activity was sent (auto-incrementing counter). */
   sentOrder: number;
 }
@@ -308,6 +311,7 @@ interface TestContext<TContextData>
     recipients: any;
     activity: Activity;
     rawActivity?: unknown;
+    dispatchId?: string;
   }>;
   reset(): void;
 }
@@ -590,6 +594,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       authorize: () => setters,
     };
     return setters;
+  }
+
+  setOutboundObservers(_observers: OutboundObservers<TContextData>): void {
+    // Registration compatibility; mock sends do not run transport observers.
   }
 
   setInboxListeners(inboxPath: any, sharedInboxPath?: string): any {
@@ -1205,6 +1213,7 @@ class MockContext<TContextData> implements Context<TContextData> {
     recipients: any;
     activity: Activity;
     rawActivity?: unknown;
+    dispatchId?: string;
   }> = [];
 
   constructor(
@@ -1723,11 +1732,25 @@ class MockContext<TContextData> implements Context<TContextData> {
     activity: Activity,
     options?: any,
   ): Promise<void> {
+    const dispatchId: unknown = options?.dispatchId;
+    if (dispatchId !== undefined && typeof dispatchId !== "string") {
+      return Promise.reject(new TypeError("dispatchId must be a string."));
+    }
+    if (
+      dispatchId !== undefined &&
+      (dispatchId.length > 1024 ||
+        new TextEncoder().encode(dispatchId).byteLength > 1024)
+    ) {
+      return Promise.reject(
+        new RangeError("dispatchId must not exceed 1,024 UTF-8 bytes."),
+      );
+    }
     this.sentActivities.push({
       sender,
       recipients,
       activity,
       rawActivity: options?.rawActivity,
+      ...(dispatchId === undefined ? {} : { dispatchId }),
     });
 
     // If this is a MockFederation, also record it there
@@ -1738,6 +1761,7 @@ class MockContext<TContextData> implements Context<TContextData> {
         queue: queued ? "outbox" : undefined,
         activity,
         rawActivity: options?.rawActivity,
+        ...(dispatchId === undefined ? {} : { dispatchId }),
         sentOrder: ++this.federation.sentCounter,
       });
     }
@@ -1765,6 +1789,7 @@ class MockContext<TContextData> implements Context<TContextData> {
     recipients: any;
     activity: Activity;
     rawActivity?: unknown;
+    dispatchId?: string;
   }> {
     return [...this.sentActivities];
   }

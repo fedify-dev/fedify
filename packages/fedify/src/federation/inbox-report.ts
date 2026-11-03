@@ -1,3 +1,4 @@
+import type { OutboundLocalContext } from "./outbound-report.ts";
 import type { Activity } from "@fedify/vocab";
 import type { RequestContext } from "./context.ts";
 import type {
@@ -25,6 +26,15 @@ export type InboxJsonValue =
   | string
   | readonly InboxJsonValue[]
   | { readonly [key: string]: InboxJsonValue };
+
+/** Request-signal state at inbox report construction, separate from processing outcome. @since 2.5.0 */
+export type InboxRequestCancellation =
+  | { readonly type: "not-aborted" }
+  | {
+    readonly type: "aborted";
+    /** Exact Request.signal reason, including non-Error values. */
+    readonly reason: unknown;
+  };
 
 /**
  * The final inbox authentication decision.
@@ -132,6 +142,31 @@ export type InboxRequestOutcome =
  * @since 2.4.0
  */
 export interface InboxRequestReport {
+  /**
+   * Fresh server-generated identity for one routed HTTP inbox request,
+   * including preparation failures and duplicate deliveries. Preserved on
+   * outgoing causal descendants; absent without a known routed source.
+   * @since 2.5.0
+   */
+  readonly inboxRequestId?: string;
+  /**
+   * Original informational logging label; externally controlled and nonunique,
+   * independent of inboxRequestId. Absent without a known routed source.
+   * @since 2.5.0
+   */
+  readonly requestId?: string;
+  /**
+   * Original local URL facts from the routed request, independent of later contexts.
+   * Absent without a known routed source.
+   * @since 2.5.0
+   */
+  readonly local?: OutboundLocalContext;
+  /**
+   * Request.signal state immediately before report construction. An aborted request
+   * does not imply processing stopped or retract confirmed processing/enqueue outcomes.
+   * @since 2.5.0
+   */
+  readonly requestCancellation: InboxRequestCancellation;
   /** The delivery route, including a portable gateway route. */
   readonly inbox: {
     readonly kind: "personal" | "shared" | "portable";

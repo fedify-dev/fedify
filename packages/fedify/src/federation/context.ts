@@ -1868,6 +1868,15 @@ export type ParseUriResult =
  */
 export interface SendActivityOptions {
   /**
+   * Application-owned correlation for this invocation, never a deduplication
+   * key. Preserved exactly, including an empty string. At most 1,024 UTF-8
+   * bytes; invalid types and oversized values are rejected before preparation.
+   * Omission means no application dispatch ID for this new invocation.
+   * @since 2.5.0
+   */
+  readonly dispatchId?: string;
+
+  /**
    * Whether to prefer the shared inbox for the recipients.
    */
   readonly preferSharedInbox?: boolean;

@@ -19,7 +19,7 @@ Fetch and explain Fedify documentation about “$ARGUMENTS”.
 
     The documentation index is at <https://fedify.dev/llms.txt>.
 
-2.  Summarise the key points with runnable TypeScript examples.
+2.  Summarize the key points with runnable TypeScript examples.
 
 3.  Mention related pages the user might also want to read.
 

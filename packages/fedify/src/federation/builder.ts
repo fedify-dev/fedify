@@ -1,3 +1,7 @@
+import { snapshotSenderPayloadOption } from "./outbound-document.ts";
+import { snapshotBodyCapture } from "./outbound-capture.ts";
+import { snapshotHeaderPolicy } from "./outbound-headers.ts";
+import type { OutboundObservers } from "./outbound-report.ts";
 import type { InboxRequestFinishedHandler } from "./inbox-report.ts";
 import {
   assertPath,
@@ -183,6 +187,9 @@ export class FederationBuilderImpl<TContextData>
   inboxListeners?: ActivityListenerSet<InboxContext<TContextData>>;
   outboxListeners?: ActivityListenerSet<OutboxContext<TContextData>>;
   inboxRequestFinishedHandler?: InboxRequestFinishedHandler<TContextData>;
+  outboundObservers: OutboundObservers<TContextData> = globalThis.Object.freeze(
+    {},
+  );
 
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
   outboxListenerErrorHandler?: OutboxListenerErrorHandler<TContextData>;
@@ -288,6 +295,7 @@ export class FederationBuilderImpl<TContextData>
     f.inboxListeners = this.inboxListeners?.clone();
     f.outboxListeners = this.outboxListeners?.clone();
     f.inboxRequestFinishedHandler = this.inboxRequestFinishedHandler;
+    f.setOutboundObservers(this.outboundObservers);
     f.inboxErrorHandler = this.inboxErrorHandler;
     f.outboxListenerErrorHandler = this.outboxListenerErrorHandler;
     f.outboxAuthorizePredicate = this.outboxAuthorizePredicate;
@@ -656,6 +664,20 @@ export class FederationBuilderImpl<TContextData>
       },
     };
     return setters;
+  }
+
+  setOutboundObservers(observers: OutboundObservers<TContextData>): void {
+    this.outboundObservers = globalThis.Object.freeze({
+      senderPayload: snapshotSenderPayloadOption(observers.senderPayload),
+      responseBodyCapture: snapshotBodyCapture(observers.responseBodyCapture),
+      requestHeaders: snapshotHeaderPolicy(observers.requestHeaders),
+      responseHeaders: snapshotHeaderPolicy(observers.responseHeaders),
+      onBroadcast: observers.onBroadcast,
+      onDelivery: observers.onDelivery,
+      onAttempt: observers.onAttempt,
+      onHttpExchange: observers.onHttpExchange,
+      onWorker: observers.onWorker,
+    });
   }
 
   setNodeInfoDispatcher(

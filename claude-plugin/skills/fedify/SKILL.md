@@ -244,7 +244,66 @@ deliveries have no retry.
 > those must be distinct activities.  Use a fresh UUID or counter in the
 > fragment.
 
-See <https://fedify.dev/manual/send.md>.
+### Observing outbound delivery
+
+Register callbacks with `federation.setOutboundObservers()` or the builder's
+matching method.  Registration replaces the whole set; `{}` clears it.  Active
+sends keep the callbacks selected when they began.  Observers use the existing
+context and work without OpenTelemetry.
+
+Choose callbacks by the question you need to answer:
+
+| Callback         | Reports                                                                    |
+| ---------------- | -------------------------------------------------------------------------- |
+| `onBroadcast`    | One send or forward invocation, including preparation and its result.      |
+| `onDelivery`     | Each destination's plan, handoff, or preparation failure.                  |
+| `onAttempt`      | The outcome of one concrete send, including each retry or gateway attempt. |
+| `onHttpExchange` | Each actual HTTP request and its response or fetch error.                  |
+| `onWorker`       | The local result and scheduling actions of a fanout or outbox worker.      |
+
+`onBroadcast` and `onDelivery` also cover automatic portable replication.
+Broadcasts have a `broadcastId`; destinations have a `deliveryId`.  An
+`onDelivery` event can refer to an unknown broadcast when it comes from legacy
+fanout work.  These IDs group reports; they do not prove remote receipt.
+The `event.activity` reference is a snapshot of known `id` and `type` IRI
+strings; it may be empty on `started` and can gain facts later.
+
+For broadcasts, narrow `event.stage` before reading `event.result.type`.
+For deliveries, narrow `event.stage` and, for handoffs, `event.result.type`.
+Attempt reports have a fresh `attemptId` and an `outcome`; their
+`httpExchangeCount` counts actual fetches, including redirects and signature
+challenges.  A failure before the first fetch has a count of zero.  Worker
+reports distinguish normal local completion from an escaping error.  Their
+`actions` record enqueues, retries, deferrals, direct handoffs, abandonment,
+and failed drops.  A completed worker does not imply remote success or queue
+acknowledgment.
+
+Header capture is off by default.  Set `requestHeaders` or `responseHeaders`
+with an allowlist and byte limit to add redacted header snapshots to exchange
+reports.  `responseBodyCapture` separately invokes `onBody` with a bounded
+stream and deadline; read it incrementally and honor its cancellation signal.
+Use `senderPayload: true` only when the attempt report needs a privacy-filtered
+projection of the outgoing activity.  These options do not change the bytes
+sent or signed.  Treat all captured evidence as sensitive application data.
+
+Callbacks are awaited, and callback or logging errors do not replace delivery
+results.  A callback that never settles can still delay the send.  If you
+record events in the background, handle rejection, shutdown, and persistence
+in the application.
+
+Use the `dispatchId` send or forward option to carry an application correlation
+ID through queues.  Event `provenance` preserves known source facts; `local`
+describes the current execution.  Optional `trace` contains the operation's
+own span IDs when tracing is enabled.  Older queue messages can lack these
+facts.  Consumers warn and omit malformed queued provenance so delivery can
+continue.  Invalid `dispatchId` values on new sends raise an error before
+preparation; the limit is 1,024 UTF-8 bytes.  Reusing an ID does not
+deduplicate sends.
+
+For typed examples, report variants, and capture limits, see the
+[sending manual].
+
+[sending manual]: https://fedify.dev/manual/send.md
 
 
 Vocabulary imports

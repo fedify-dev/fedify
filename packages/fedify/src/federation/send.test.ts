@@ -1837,3 +1837,53 @@ function recordHops(
     },
   };
 }
+
+test("sendActivity() bounds a stalled diagnostic preview without changing HTTP failure", async () => {
+  const inbox = new URL("https://example.com/lifecycle/stalled-error");
+  let reads = 0;
+  let cancels = 0;
+  let closed = 0;
+  let submissions = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (reads++ === 0) {
+        controller.enqueue(new TextEncoder().encode("partial error"));
+      }
+    },
+    cancel() {
+      cancels++;
+      return new Promise<void>(() => {});
+    },
+  }, { highWaterMark: 0 });
+  const error = await assertRejects(() =>
+    sendActivity({
+      activity: lifecycleActivity,
+      keys: unsignedKeys,
+      inbox,
+    }, {
+      openHop: () =>
+        Promise.resolve({
+          url: inbox,
+          fetch: () => {
+            submissions++;
+            return Promise.resolve(
+              new Response(body, {
+                status: 503,
+                headers: { "Retry-After": "1" },
+              }),
+            );
+          },
+          close: () => {
+            closed++;
+            assertFalse(body.locked);
+            return Promise.resolve();
+          },
+        }),
+    }), SendActivityError);
+  assertEquals(error.statusCode, 503);
+  assertEquals(error.responseBody, "partial error… (timed out)");
+  assertEquals(error.responseHeaders.get("Retry-After"), "1");
+  assertEquals(submissions, 1);
+  assertEquals(cancels, 1);
+  assertEquals(closed, 1);
+});

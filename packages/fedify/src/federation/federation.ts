@@ -1,3 +1,4 @@
+import type { OutboundObservers } from "./outbound-report.ts";
 import type { InboxListenerOptions } from "./activity-listener.ts";
 import type { InboxRequestFinishedHandler } from "./inbox-report.ts";
 import type {
@@ -82,6 +83,32 @@ export interface FederationStartQueueOptions {
  * @since 1.6.0
  */
 export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
+  /**
+   * Registers observers for outgoing activity processing.
+   *
+   * Each call replaces all previously registered outbound observers.
+   * Pass an empty object to clear them.  Fedify copies callbacks and capture policies;
+   * later changes to the supplied object do not affect registration.
+   * Available on builders and directly created federations.  Building copies
+   * the callbacks, and an active send keeps the callback selected at entry.
+   * Observes send, original-payload forwarding, and automatic portable
+   * replication preparation, destination planning, and handoffs, including
+   * outbox-context operations and fanout continuation handoffs. Separate
+   * callbacks report concrete send attempts and actual HTTP exchanges, including
+   * queued retries and gateway fallback. Worker reports retain local execution
+   * results and actual enqueue, retry, deferral, and abandonment actions,
+   * separately from attempts and backend acknowledgment.
+   * Known IDs, original inbox source, and
+   * application correlation survive queue work; workers use current context data.
+   * Header values, bounded response-body streaming and sender-payload projections
+   * are independently opt-in. Body consumers require explicit byte/time limits;
+   * other metadata callbacks have no default timeout.
+   * This is separate from incoming C2S {@link Federatable.setOutboxListeners}.
+   * @param observers The optional callbacks to register.
+   * @since 2.5.0
+   */
+  setOutboundObservers(observers: OutboundObservers<TContextData>): void;
+
   /**
    * Registers a NodeInfo dispatcher.
    * @param path The URI path pattern for the NodeInfo dispatcher.  The syntax

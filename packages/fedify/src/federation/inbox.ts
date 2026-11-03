@@ -1,3 +1,7 @@
+import {
+  getOutboundProvenance,
+  serializeProvenance,
+} from "./outbound-provenance.ts";
 import { getTypeId } from "@fedify/vocab";
 import type { Activity } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
@@ -425,6 +429,7 @@ export async function routeActivity<TContextData>(
     propagation.inject(context.active(), carrier);
     message = {
       type: "inbox",
+      ...serializeProvenance(getOutboundProvenance(ctx)),
       id: crypto.randomUUID(),
       baseUrl: ctx.origin,
       activity: originalJson ?? json,

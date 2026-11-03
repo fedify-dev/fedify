@@ -177,6 +177,101 @@ test("getSentActivities returns sent activities", async () => {
   deepStrictEqual(mockFederation.sentActivities[0].sentOrder, 1);
 });
 
+test("sent activity records preserve dispatch IDs", async () => {
+  const federation = createFederation<void>();
+  const context = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  const sender = { identifier: "alice" };
+  const recipient = new Person({
+    id: new URL("https://example.com/users/bob"),
+  });
+  const activity = new Create({
+    id: new URL("https://example.com/activities/dispatch-id"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await context.sendActivity(sender, recipient, activity, {
+    dispatchId: "same-id",
+  });
+  await context.sendActivity(sender, recipient, activity, {
+    dispatchId: "same-id",
+  });
+  await context.sendActivity(sender, recipient, activity);
+  await context.sendActivity(sender, recipient, activity, { dispatchId: "" });
+
+  const contextRecords = context.getSentActivities();
+  const federationRecords = federation.sentActivities;
+  deepStrictEqual(contextRecords.length, 4);
+  deepStrictEqual(federationRecords.length, 4);
+  strictEqual(contextRecords[0].dispatchId, "same-id");
+  strictEqual(contextRecords[1].dispatchId, "same-id");
+  strictEqual(federationRecords[0].dispatchId, "same-id");
+  strictEqual(federationRecords[1].dispatchId, "same-id");
+  strictEqual(contextRecords[3].dispatchId, "");
+  strictEqual(federationRecords[3].dispatchId, "");
+  strictEqual(Object.hasOwn(contextRecords[2], "dispatchId"), false);
+  strictEqual(Object.hasOwn(federationRecords[2], "dispatchId"), false);
+});
+
+test("sendActivity validates dispatch IDs before recording", async () => {
+  const federation = createFederation<void>();
+  const context = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  const sender = { identifier: "alice" };
+  const recipient = new Person({
+    id: new URL("https://example.com/users/bob"),
+  });
+  const activity = new Create({
+    id: new URL("https://example.com/activities/invalid-dispatch-id"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  for (const dispatchId of [null, 1, {}]) {
+    await rejects(
+      context.sendActivity(sender, recipient, activity, {
+        dispatchId,
+      } as never),
+      {
+        name: "TypeError",
+        message: "dispatchId must be a string.",
+      },
+    );
+  }
+  for (const dispatchId of ["x".repeat(1025), "한".repeat(342)]) {
+    await rejects(
+      context.sendActivity(sender, recipient, activity, { dispatchId }),
+      {
+        name: "RangeError",
+        message: "dispatchId must not exceed 1,024 UTF-8 bytes.",
+      },
+    );
+  }
+
+  strictEqual(context.getSentActivities().length, 0);
+  strictEqual(federation.sentActivities.length, 0);
+
+  for (const dispatchId of ["x".repeat(1024), "한".repeat(341) + "a"]) {
+    await context.sendActivity(sender, recipient, activity, { dispatchId });
+  }
+  deepStrictEqual(
+    federation.sentActivities.map((record) => record.sentOrder),
+    [1, 2],
+  );
+  const expectedDispatchIds = ["x".repeat(1024), "한".repeat(341) + "a"];
+  deepStrictEqual(
+    context.getSentActivities().map((record) => record.dispatchId),
+    expectedDispatchIds,
+  );
+  deepStrictEqual(
+    federation.sentActivities.map((record) => record.dispatchId),
+    expectedDispatchIds,
+  );
+});
+
 test("reset clears sent activities", async () => {
   const mockFederation = createFederation<void>();
   const context = mockFederation.createContext(
@@ -205,6 +300,15 @@ test("reset clears sent activities", async () => {
 
   // Verify they were cleared
   deepStrictEqual(mockFederation.sentActivities.length, 0);
+});
+
+test("MockFederation accepts outbound observer registration", () => {
+  const federation = createFederation<void>();
+  federation.setOutboundObservers({
+    onBroadcast: () => {},
+    onDelivery: () => {},
+  });
+  federation.setOutboundObservers({});
 });
 
 test("MockFederation accepts inbox request observation registration", () => {

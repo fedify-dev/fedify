@@ -1,5 +1,9 @@
 import type { InboxRequestReport } from "./inbox-report.ts";
-import { mockDocumentLoader, test } from "@fedify/fixture";
+import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
 import {
   type Activity,
   Create,
@@ -16,7 +20,13 @@ import {
   parseIri,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
-import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertFalse,
+  assertStrictEquals,
+  assertThrows,
+} from "@std/assert";
 import { encodeBase64 } from "byte-encodings/base64";
 import fetchMock from "fetch-mock";
 import { signRequest, verifyRequestDetailed } from "../sig/http.ts";
@@ -35,6 +45,12 @@ import { type KvKey, type KvStore, MemoryKvStore } from "./kv.ts";
 import type { FederationOptions } from "./federation.ts";
 import { createFederation } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
+import { observeOutboundBroadcast } from "./outbound-observation.ts";
+import type {
+  OutboundAttemptReport,
+  OutboundBroadcastEvent,
+  OutboundDeliveryEvent,
+} from "./outbound-report.ts";
 import {
   coversDelivery,
   forwardPortableInboxActivity,
@@ -2279,4 +2295,554 @@ test("onRequestFinished covers portable ingress and recipient lookup failures", 
     stage: "prepare",
     error: failure,
   });
+});
+
+function replicationResult(events: OutboundBroadcastEvent[]) {
+  assertEquals(events.map((event) => event.stage), [
+    "started",
+    "preparation-finished",
+  ]);
+  assertEquals(events.map((event) => event.operation), [
+    "portable-replication",
+    "portable-replication",
+  ]);
+  assertEquals(events[0].broadcastId, events[1].broadcastId);
+  const event = events[1];
+  assert(event.stage === "preparation-finished");
+  return event.result;
+}
+
+test("portable replication observers distinguish disabled, unavailable, and unclaimed work", async (t) => {
+  for (const scenario of ["disabled", "unavailable", "no-targets"] as const) {
+    await t.step(scenario, async () => {
+      const memory = new MemoryKvStore();
+      const kv: KvStore = scenario === "unavailable"
+        ? {
+          get: (key) => memory.get(key),
+          set: (key, value, options) => memory.set(key, value, options),
+          delete: (key) => memory.delete(key),
+          list: (prefix) => memory.list(prefix),
+        }
+        : memory;
+      const queue = new RecordingQueue();
+      const { federation } = setup({
+        kv,
+        queue,
+        keyPairs: false,
+        gateways: scenario === "no-targets" ? [LOCAL] : [LOCAL, GATEWAY2],
+        options: {
+          portableInboxForwarding: {
+            maxTargets: scenario === "disabled" ? 0 : 10,
+          },
+        },
+      });
+      const events: OutboundBroadcastEvent[] = [];
+      const deliveries: OutboundDeliveryEvent[] = [];
+      const contexts: unknown[] = [];
+      federation.setOutboundObservers({
+        onDelivery(_ctx, event) {
+          deliveries.push(event);
+        },
+        onBroadcast(ctx, event) {
+          contexts.push(ctx);
+          events.push(event);
+        },
+      });
+      const response = await federation.fetch(
+        post(inboxUrl(), await signedFollow()),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(replicationResult(events), {
+        type: "skipped",
+        reason: scenario === "disabled"
+          ? "forwarding-disabled"
+          : scenario === "unavailable"
+          ? "forwarding-unavailable"
+          : "no-forwarding-targets",
+      });
+      assertEquals(events[0].activity, {});
+      assertEquals(events[1].activity.type, Follow.typeId.href);
+      assert(events[1].activity.id?.startsWith("ap+ef61://"));
+      assert(Object.isFrozen(events[1].activity));
+      assertStrictEquals(contexts[0], contexts[1]);
+      assertEquals(deliveries, []);
+      assertEquals(queue.outbox.length, 0);
+    });
+  }
+});
+
+test("portable replication observers preserve lazy enqueue, unsigned fallback, and failed claims", async (t) => {
+  await t.step(
+    "readiness precedes acceptance without delaying earlier handoffs",
+    async () => {
+      const queue = new RecordingQueue();
+      let accept!: () => void;
+      const acceptance = new Promise<void>((resolve) => {
+        accept = resolve;
+      });
+      queue.enqueue = (message) => {
+        queue.messages.push(message);
+        return queue.messages.length === 1
+          ? acceptance.then(() => {
+            throw new Error("acceptance unknown");
+          })
+          : Promise.resolve();
+      };
+      const { federation, reports } = setup({ queue, keyPairs: false });
+      const events: OutboundBroadcastEvent[] = [];
+      const deliveries: OutboundDeliveryEvent[] = [];
+      let ready!: () => void;
+      const prepared = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      let release!: () => void;
+      const observerGate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      federation.setOutboundObservers({
+        onDelivery(_ctx, event) {
+          deliveries.push(event);
+        },
+        async onBroadcast(_ctx, event) {
+          events.push(event);
+          if (event.stage === "preparation-finished") {
+            ready();
+            await observerGate;
+          }
+          throw new Error("recorder failed");
+        },
+      });
+      const json = await signedFollow();
+      let settled = false;
+      const pending = federation.fetch(post(inboxUrl(), json), {
+        contextData: undefined,
+      })
+        .finally(() => {
+          settled = true;
+        });
+      await prepared;
+      assertEquals(queue.outbox.length, 1);
+      assertFalse(settled);
+      assertEquals(replicationResult(events), {
+        type: "prepared",
+        preparedFor: "delivery",
+        destinationCount: 2,
+      });
+      accept();
+      release();
+      assertEquals((await pending).status, 202);
+      assertEquals(queue.outbox.length, 2);
+      for (const message of queue.outbox) {
+        assertEquals(message.activity, json);
+        assertEquals(message.keys, []);
+        assertFalse("broadcastId" in message);
+        const plan = deliveries.find((event) =>
+          event.stage === "planned" && event.destinationInbox === message.inbox
+        );
+        assert(plan);
+        assertEquals(message.outbound, {
+          broadcast: plan.broadcast,
+          deliveryId: plan.deliveryId,
+          destinationInbox: plan.destinationInbox,
+          portableInbox: plan.portableInbox,
+        });
+        assertEquals(
+          JSON.parse(JSON.stringify(message.outbound)),
+          message.outbound,
+        );
+        assertEquals(structuredClone(message.outbound), message.outbound);
+      }
+      assertEquals(
+        deliveries.filter((event) => event.stage === "planned").length,
+        2,
+      );
+      const handoffs = deliveries.filter((event) => event.stage === "handoff");
+      assertEquals(handoffs.length, 2);
+      assertEquals(
+        handoffs.filter((event) =>
+          event.stage === "handoff" && event.result.type === "enqueued"
+        ).length,
+        1,
+      );
+      assertEquals(
+        handoffs.filter((event) =>
+          event.stage === "handoff" && event.result.type === "enqueue-failed" &&
+          event.result.acceptance === "unknown"
+        ).length,
+        1,
+      );
+      for (const event of deliveries) {
+        assertEquals(event.portableInbox, `ap+ef61://${did}/users/alice/inbox`);
+        if (event.stage === "planned") {
+          assertEquals(event.mode, "portable-replication");
+        }
+      }
+      assertEquals(events.length, 2);
+      const source = events[0].provenance.inboxRequest;
+      assert(source);
+      assertEquals(source.inboxRequestId, reports[0].inboxRequestId);
+      assertEquals(source.requestId, reports[0].requestId);
+      assertEquals(source.context.origin, LOCAL);
+      for (const message of queue.outbox) {
+        assertEquals(message.provenance?.inboxRequest, source);
+      }
+      for (const event of [...events, ...deliveries]) {
+        assertEquals(event.provenance.inboxRequest, source);
+      }
+      // A swallowed enqueue failure keeps its claim; redelivery is not retried.
+      federation.setOutboundObservers({
+        onDelivery(_ctx, event) {
+          deliveries.push(event);
+        },
+        onBroadcast(_ctx, event) {
+          events.push(event);
+        },
+      });
+      assertEquals(
+        (await federation.fetch(post(inboxUrl(), json), {
+          contextData: undefined,
+        })).status,
+        202,
+      );
+      assertEquals(replicationResult(events.slice(2)), {
+        type: "skipped",
+        reason: "no-forwarding-targets",
+      });
+      assert(events[0].broadcastId !== events[2].broadcastId);
+      assertEquals(queue.outbox.length, 2);
+    },
+  );
+  await t.step(
+    "partial claim failure is incomplete planning and preserves ingress acceptance",
+    async () => {
+      const memory = new MemoryKvStore();
+      const cas = memory.cas.bind(memory);
+      const failure = { failed: "second claim" };
+      let claims = 0;
+      memory.cas = (...args) => {
+        if (args[0][1] === "portableInboxForwarding" && ++claims === 2) {
+          return Promise.reject(failure);
+        }
+        return cas(...args);
+      };
+      const queue = new RecordingQueue();
+      const { federation } = setup({ kv: memory, queue, keyPairs: false });
+      const events: OutboundBroadcastEvent[] = [];
+      const deliveries: OutboundDeliveryEvent[] = [];
+      federation.setOutboundObservers({
+        onDelivery(_ctx, event) {
+          deliveries.push(event);
+        },
+        onBroadcast(_ctx, event) {
+          events.push(event);
+        },
+      });
+      const response = await federation.fetch(
+        post(inboxUrl(), await signedFollow()),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(replicationResult(events), {
+        type: "failed",
+        failure: {
+          kind: "local",
+          phase: "destination-planning",
+          error: failure,
+        },
+        planning: "incomplete",
+        plannedDestinationCount: 1,
+      });
+      assertEquals(deliveries.map((event) => event.stage), ["planned"]);
+      assertEquals(queue.outbox.length, 0);
+    },
+  );
+  await t.step(
+    "a handled key failure prepares unsigned queue messages",
+    async () => {
+      const queue = new RecordingQueue();
+      const parameters = forwardingParameters({
+        outboxQueue: queue,
+        getKeys: () => Promise.reject(new Error("no keys")),
+      });
+      const ctx = createFederation<void>({ kv: parameters.kv }).createContext(
+        new URL(LOCAL),
+      );
+      const events: OutboundBroadcastEvent[] = [];
+      const deliveries: OutboundDeliveryEvent[] = [];
+      await observeOutboundBroadcast(
+        ctx,
+        {
+          onDelivery(_ctx, event) {
+            deliveries.push(event);
+          },
+          onBroadcast: (_ctx, event) => {
+            events.push(event);
+          },
+        },
+        (observation) => forwardPortableInboxActivity(parameters, observation),
+        "portable-replication",
+      );
+      assertEquals(replicationResult(events), {
+        type: "prepared",
+        preparedFor: "delivery",
+        destinationCount: 1,
+      });
+      assertEquals(deliveries.map((event) => event.stage), [
+        "planned",
+        "handoff",
+      ]);
+      const accepted = deliveries[1];
+      assert(
+        accepted.stage === "handoff" && accepted.result.type === "enqueued",
+      );
+      assertEquals(queue.outbox[0].keys, []);
+      assertStrictEquals(queue.outbox[0].activity, parameters.activity);
+    },
+  );
+});
+
+test("portable replication attempts settle independently after the forwarding deadline", async () => {
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let fetched!: () => void;
+  const fetching = new Promise<void>((resolve) => {
+    fetched = resolve;
+  });
+  let failed!: () => void;
+  const failureReported = new Promise<void>((resolve) => {
+    failed = resolve;
+  });
+  let succeeded!: () => void;
+  const successReported = new Promise<void>((resolve) => {
+    succeeded = resolve;
+  });
+  let ended!: () => void;
+  const concreteSendsEnded = new Promise<void>((resolve) => {
+    ended = resolve;
+  });
+  const exportSpans = exporter.export.bind(exporter);
+  exporter.export = (spans, callback) => {
+    exportSpans(spans, callback);
+    if (exporter.getSpans("activitypub.send_activity").length === 2) ended();
+  };
+  const attempts: OutboundAttemptReport[] = [];
+  const submitted: unknown[] = [];
+  fetchMock.spyGlobal()
+    .post(`begin:${GATEWAY2}/`, (call) => {
+      submitted.push(JSON.parse(String(call.options.body)));
+      return 503;
+    })
+    .post(`begin:${GATEWAY3}/`, async (call) => {
+      submitted.push(JSON.parse(String(call.options.body)));
+      fetched();
+      await gate;
+      return 202;
+    });
+  try {
+    const { federation, reports } = setup({
+      keyPairs: false,
+      options: {
+        allowPrivateAddress: true,
+        tracerProvider,
+        portableInboxForwarding: { deadline: { milliseconds: 0 } },
+      },
+    });
+    let replacements = 0;
+    federation.setOutboundObservers({
+      senderPayload: true,
+      onAttempt(_ctx, report) {
+        attempts.push(report);
+        if (report.outcome.type === "failed") failed();
+        else succeeded();
+        throw new Error("replication observer failure must be isolated");
+      },
+    });
+    const json = await signedFollow();
+    const response = await federation.fetch(post(inboxUrl(), json), {
+      contextData: undefined,
+    });
+    assertEquals(response.status, 202);
+    await Promise.all([fetching, failureReported]);
+    // The pending gateway has no synthetic timeout attempt outcome.
+    assertEquals(attempts.length, 1);
+    assertEquals(attempts[0].outcome.type, "failed");
+    assert(attempts[0].outcome.response.type === "final");
+    assertEquals(attempts[0].outcome.response.metadata.status, 503);
+    assertEquals(attempts[0].httpExchangeCount, 1);
+    federation.setOutboundObservers({
+      onAttempt() {
+        replacements++;
+      },
+    });
+    release();
+    await Promise.all([successReported, concreteSendsEnded]);
+    assertEquals(attempts.length, 2);
+    assertEquals(attempts[1].outcome.type, "succeeded");
+    assert(attempts[1].outcome.response.type === "final");
+    assertEquals(attempts[1].outcome.response.metadata.status, 202);
+    assertEquals(attempts[1].httpExchangeCount, 1);
+    assertEquals(replacements, 0);
+    assert(attempts[0].attemptId !== attempts[1].attemptId);
+    assert(attempts[0].deliveryId !== attempts[1].deliveryId);
+    assertEquals(attempts[0].broadcast, attempts[1].broadcast);
+    for (const report of attempts) {
+      assertEquals(report.senderPayload.stage, "sender-payload");
+      if (report.senderPayload.type === "unavailable") {
+        assertEquals(report.senderPayload.reason, "privacy-filter-unavailable");
+      } else {
+        assertEquals(report.senderPayload.representation, "privacy-projection");
+        assert(Object.isFrozen(report.senderPayload.value));
+      }
+      assertEquals(report.destinationInbox, report.inboxUrl);
+      assertEquals(report.portableInbox, `ap+ef61://${did}/users/alice/inbox`);
+      assertEquals(
+        report.provenance.inboxRequest?.inboxRequestId,
+        reports[0].inboxRequestId,
+      );
+      assert(report.provenance.inboxRequest);
+      const span = exporter.spans.find((span) =>
+        span.spanContext().spanId === report.trace?.spanId
+      );
+      assert(span);
+      assertEquals(span.name, "activitypub.send_activity");
+    }
+    assertEquals(submitted, [json, json]);
+    // Swallowed send failures retain their claims, rather than causing retries.
+    assertEquals(
+      (await federation.fetch(post(inboxUrl(), json), {
+        contextData: undefined,
+      })).status,
+      202,
+    );
+    assertEquals(submitted.length, 2);
+    assertEquals(replacements, 0);
+  } finally {
+    release();
+    fetchMock.hardReset();
+    await tracerProvider.shutdown();
+  }
+});
+
+test("portable replication observers retain preparation after the forwarding deadline", async (t) => {
+  for (const failed of [false, true]) {
+    await t.step(
+      failed ? "late preparation failure" : "late unsigned readiness",
+      async () => {
+        let release!: () => void;
+        const keyGate = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        const [tracerProvider, exporter] = createTestTracerProvider();
+        let ended!: () => void;
+        const concreteSendEnded = new Promise<void>((resolve) => {
+          ended = resolve;
+        });
+        const exportSpans = exporter.export.bind(exporter);
+        exporter.export = (spans, callback) => {
+          exportSpans(spans, callback);
+          if (spans.some((span) => span.name === "activitypub.send_activity")) {
+            ended();
+          }
+        };
+        const failure = { failed: "late local preparation" };
+        const parameters = forwardingParameters({
+          tracerProvider,
+          options: resolvePortableInboxForwardingOptions({
+            deadline: { milliseconds: 0 },
+          }),
+          getKeys: async () => {
+            await keyGate;
+            if (failed) {
+              Object.defineProperty(parameters.activityId, "href", {
+                get() {
+                  throw failure;
+                },
+              });
+            }
+            return [];
+          },
+        });
+        const ctx = createFederation<void>({ kv: parameters.kv }).createContext(
+          new URL(LOCAL),
+        );
+        const events: OutboundBroadcastEvent[] = [];
+        const deliveries: OutboundDeliveryEvent[] = [];
+        let finished!: () => void;
+        const preparation = new Promise<void>((resolve) => {
+          finished = resolve;
+        });
+        let fetched!: () => void;
+        const fetching = new Promise<void>((resolve) => {
+          fetched = resolve;
+        });
+        fetchMock.spyGlobal().post(`begin:${GATEWAY2}/`, () => {
+          fetched();
+          return new Response(null, { status: 503 });
+        });
+        try {
+          const forwarded = await observeOutboundBroadcast(
+            ctx,
+            {
+              onDelivery(_ctx, event) {
+                deliveries.push(event);
+              },
+              onBroadcast: (_ctx, event) => {
+                events.push(event);
+                if (event.stage === "preparation-finished") finished();
+              },
+            },
+            (observation) =>
+              forwardPortableInboxActivity(parameters, observation),
+            "portable-replication",
+          );
+          assertEquals(forwarded.length, 1);
+          assertEquals(events.map((event) => event.stage), ["started"]);
+          release();
+          await preparation;
+          assertEquals(deliveries.map((event) => event.stage), [
+            "planned",
+            failed ? "preparation-failed" : "handoff",
+          ]);
+          assertEquals(deliveries[0].deliveryId, deliveries[1].deliveryId);
+          if (failed) {
+            const failedDelivery = deliveries[1];
+            assert(failedDelivery.stage === "preparation-failed");
+            assertStrictEquals(failedDelivery.failure.error, failure);
+            assertEquals(replicationResult(events), {
+              type: "failed",
+              failure: {
+                kind: "local",
+                phase: "request-preparation",
+                error: failure,
+              },
+              planning: "complete",
+              plannedDestinationCount: 1,
+            });
+            assertEquals(fetchMock.callHistory.calls().length, 0);
+          } else {
+            assertEquals(replicationResult(events), {
+              type: "prepared",
+              preparedFor: "delivery",
+              destinationCount: 1,
+            });
+            await fetching;
+            await concreteSendEnded;
+            // Only now drain the late catch/logging continuation.
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            assertEquals(events.length, 2);
+            // The next request sees the retained claim and cannot forward again.
+            assertEquals(await forwardPortableInboxActivity(parameters), []);
+          }
+        } finally {
+          release();
+          fetchMock.hardReset();
+          await tracerProvider.shutdown();
+        }
+      },
+    );
+  }
 });

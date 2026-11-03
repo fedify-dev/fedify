@@ -1,5 +1,16 @@
+import type { OutboundProvenance } from "./outbound-report.ts";
 import type { SerializedInboxAuthentication } from "./inbox-authentication.ts";
 import type { SerializedVerifiedActivityView } from "./inbox-view.ts";
+
+/** Serializable grouping facts, separate from queue task identity. @internal */
+export interface SerializedOutboundDelivery {
+  readonly broadcast:
+    | { readonly type: "known"; readonly id: string }
+    | { readonly type: "unknown" };
+  readonly deliveryId: string;
+  readonly destinationInbox: string;
+  readonly portableInbox?: string;
+}
 
 export interface SenderKeyJwkPair {
   readonly keyId: string;
@@ -22,6 +33,8 @@ export type Message =
   | TaskMessage;
 
 export interface FanoutMessage {
+  /** Historical source facts; absent on legacy/independent messages. */
+  readonly provenance?: OutboundProvenance;
   readonly type: "fanout";
   readonly id: ReturnType<typeof crypto.randomUUID>;
   readonly baseUrl: string;
@@ -32,6 +45,8 @@ export interface FanoutMessage {
       {
         readonly actorIds: readonly string[];
         readonly sharedInbox: boolean;
+        /** Optional for continuations created before outbound observation. */
+        readonly outbound?: SerializedOutboundDelivery;
         /**
          * The canonical form of the FEP-ef61 portable inbox that the inbox
          * stands for.
@@ -65,8 +80,12 @@ export interface FanoutMessage {
 }
 
 export interface OutboxMessage {
+  /** Historical source facts; absent on legacy/independent messages. */
+  readonly provenance?: OutboundProvenance;
   readonly type: "outbox";
   readonly id: ReturnType<typeof crypto.randomUUID>;
+  /** Original delivery identity; absent on legacy/unobserved producers. */
+  readonly outbound?: SerializedOutboundDelivery;
   readonly baseUrl: string;
   readonly keys: readonly SenderKeyJwkPair[];
   readonly activity: unknown;
@@ -134,6 +153,8 @@ export interface TaskMessage {
 }
 
 export interface InboxMessage {
+  /** Historical source facts; absent on legacy/independent messages. */
+  readonly provenance?: OutboundProvenance;
   readonly type: "inbox";
   readonly id: ReturnType<typeof crypto.randomUUID>;
   readonly baseUrl: string;

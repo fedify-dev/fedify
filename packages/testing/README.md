@@ -87,6 +87,12 @@ const sent = context.getSentActivities();
 console.log(sent[0].activity);
 ~~~~
 
+Both `context.getSentActivities()` and `federation.sentActivities` retain the
+optional `dispatchId` supplied to `sendActivity()`. Reusing a dispatch ID
+records another send, so tests can check correlation across application-managed
+retries. Mock federations also accept `setOutboundObservers()` registration,
+but mock sends do not invoke those callbacks.
+
 ### Helper functions
 
 The package also exports helper functions for creating various context types:

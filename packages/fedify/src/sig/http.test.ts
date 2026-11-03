@@ -3280,6 +3280,59 @@ const lifecycleIdentity = {
   privateKey: rsaPrivateKey2,
 };
 
+test("doubleKnockScoped() observes each actual GET and HEAD transport retry", async (t) => {
+  for (const method of ["GET", "HEAD"]) {
+    await t.step(method, async () => {
+      const url = "https://example.com/transport-observation";
+      const observed: Request[] = [];
+      let submissions = 0;
+      let closes = 0;
+      const result = await doubleKnockScoped(
+        new Request(url, { method }),
+        {
+          keyId: rsaPublicKey2.id!,
+          privateKey: rsaPrivateKey2,
+        },
+        {},
+        () =>
+          Promise.resolve({
+            url: new URL(url),
+            fetch() {
+              submissions++;
+              return submissions === 1
+                ? Promise.reject(new TypeError("temporary failure"))
+                : Promise.resolve(new Response(null, { status: 202 }));
+            },
+            close() {
+              closes++;
+              return Promise.resolve();
+            },
+          }),
+        (response) => Promise.resolve(response.status),
+        {
+          fetch(request, submit) {
+            observed.push(request);
+            return submit();
+          },
+          response() {},
+          error() {
+            throw new Error("transport retry must not be a local failure");
+          },
+        },
+      );
+      assertEquals(result, 202);
+      assertEquals(submissions, 2);
+      assertEquals(observed.length, 2);
+      assert(
+        observed[0] === observed[1],
+        "transport retry reuses the signed request",
+      );
+      assertEquals(observed[0].method, method);
+      assertEquals(closes, 1);
+    });
+  }
+});
+
 test("doubleKnockScoped() keeps challenge retries and fallback in the validated hop", async () => {
   const url = "https://example.com/lifecycle/challenge-fallback";
   const hops = recordHops((_, index): RecordedResponseInit =>

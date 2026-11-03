@@ -1,3 +1,24 @@
+import {
+  createInboxRequestSource,
+  emptyProvenance,
+  getOutboundProvenance,
+  outboundProvenance,
+  restoreProvenance,
+  serializeProvenance,
+  sourceLogContext,
+} from "./outbound-provenance.ts";
+import type {
+  OutboundInboxRequest,
+  OutboundObservers,
+  OutboundProvenance,
+  OutboundWorkerPreparationDiagnostic,
+} from "./outbound-report.ts";
+import {
+  observeOutboundBroadcast,
+  OutboundAttemptObserver,
+  OutboundBroadcastObservation,
+  OutboundWorkerObservation,
+} from "./outbound-observation.ts";
 import { InboxObservation } from "./inbox-observation.ts";
 import { type Path, RouterError } from "@fedify/uri-template";
 import type {
@@ -46,6 +67,7 @@ import {
   metrics,
   propagation,
   type Span,
+  type SpanContext,
   SpanKind,
   SpanStatusCode,
   trace,
@@ -1208,7 +1230,7 @@ export class FederationImpl<TContextData>
     await Promise.all(promises);
   }
 
-  processQueuedTask(
+  async processQueuedTask(
     contextData: TContextData,
     message: Message,
   ): Promise<void> {
@@ -1216,46 +1238,109 @@ export class FederationImpl<TContextData>
       context.active(),
       message.traceContext,
     );
-    return withContext({ messageId: message.id }, async () => {
+    let provenance: OutboundProvenance = emptyProvenance;
+    if (message.type !== "task") {
+      try {
+        provenance = restoreProvenance(message.provenance);
+      } catch (error) {
+        try {
+          getLogger(["fedify", "federation", "queue"]).warn(
+            "Ignoring invalid provenance in queue message {messageId}: {error}",
+            { messageId: message.id, error },
+          );
+        } catch {
+          // A logging sink must not prevent processing a queued task.
+        }
+      }
+    }
+    if (message.type !== "task" && message.provenance !== undefined) {
+      message = { ...message, provenance };
+    }
+    return await withContext({
+      messageId: message.id,
+      inboxRequestId: undefined,
+      ...sourceLogContext(provenance),
+    }, async () => {
       if (message.type === "fanout") {
+        const observers = this.outboundObservers;
+        const worker = this.#createOutboundWorkerObservation(
+          contextData,
+          message,
+          provenance,
+          observers.onWorker,
+        );
         const common: QueueTaskCommonAttributes = {
           role: "fanout",
           queue: this.fanoutQueue,
           activityType: message.activityType,
         };
-        await this.#runWorkerSpan(
-          "activitypub.fanout",
-          { "activitypub.activity.type": message.activityType },
-          extractedContext,
-          this.#instrumentWorkerBody(common, async (span) => {
-            if (message.activityId != null) {
-              span.setAttribute("activitypub.activity.id", message.activityId);
-            }
-            await this.#listenFanoutMessage(contextData, message);
-            return { outcome: "completed" };
-          }, classifyAbortableError),
-        );
+        const execute = () =>
+          this.#runWorkerSpan(
+            "activitypub.fanout",
+            { "activitypub.activity.type": message.activityType },
+            extractedContext,
+            this.#instrumentWorkerBody(common, async (span) => {
+              if (message.activityId != null) {
+                span.setAttribute(
+                  "activitypub.activity.id",
+                  message.activityId,
+                );
+              }
+              await this.#listenFanoutMessage(
+                contextData,
+                message,
+                provenance,
+                span,
+                trace.getSpanContext(extractedContext),
+                observers,
+                worker,
+              );
+              return { outcome: "completed" };
+            }, classifyAbortableError),
+            worker,
+          );
+        await (worker == null ? execute() : worker.run(execute));
       } else if (message.type === "outbox") {
+        const observers = this.outboundObservers;
+        const worker = this.#createOutboundWorkerObservation(
+          contextData,
+          message,
+          provenance,
+          observers.onWorker,
+        );
         const common: QueueTaskCommonAttributes = {
           role: "outbox",
           queue: this.outboxQueue,
           activityType: message.activityType,
         };
-        await this.#runWorkerSpan(
-          "activitypub.outbox",
-          {
-            "activitypub.activity.type": message.activityType,
-            "activitypub.activity.retries": message.attempt,
-          },
-          extractedContext,
-          this.#instrumentWorkerBody(common, async (span) => {
-            if (message.activityId != null) {
-              span.setAttribute("activitypub.activity.id", message.activityId);
-            }
-            await this.#listenOutboxMessage(contextData, message, span);
-            return { outcome: "completed" };
-          }, classifyAbortableError),
-        );
+        const execute = () =>
+          this.#runWorkerSpan(
+            "activitypub.outbox",
+            {
+              "activitypub.activity.type": message.activityType,
+              "activitypub.activity.retries": message.attempt,
+            },
+            extractedContext,
+            this.#instrumentWorkerBody(common, async (span) => {
+              if (message.activityId != null) {
+                span.setAttribute(
+                  "activitypub.activity.id",
+                  message.activityId,
+                );
+              }
+              await this.#listenOutboxMessage(
+                contextData,
+                message,
+                span,
+                provenance,
+                observers,
+                worker,
+              );
+              return { outcome: "completed" };
+            }, classifyAbortableError),
+            worker,
+          );
+        await (worker == null ? execute() : worker.run(execute));
       } else if (message.type === "inbox") {
         const common: QueueTaskCommonAttributes = {
           role: "inbox",
@@ -1270,6 +1355,7 @@ export class FederationImpl<TContextData>
               contextData,
               message,
               span,
+              provenance,
               (activityType) => {
                 common.activityType = activityType;
               },
@@ -1301,6 +1387,39 @@ export class FederationImpl<TContextData>
     });
   }
 
+  #createOutboundWorkerObservation(
+    contextData: TContextData,
+    message: FanoutMessage | OutboxMessage,
+    provenance: OutboundProvenance,
+    callback: OutboundObservers<TContextData>["onWorker"],
+  ): OutboundWorkerObservation<TContextData> | undefined {
+    if (callback == null) return undefined;
+    let documentLoader: DocumentLoader | undefined;
+    let contextLoader: DocumentLoader | undefined;
+    return new OutboundWorkerObservation(
+      () => {
+        const loaderOptions = this.#getLoaderOptions(message.baseUrl);
+        return new ContextImpl({
+          [outboundProvenance]: provenance,
+          federation: this,
+          url: new URL("/", message.baseUrl),
+          data: contextData,
+          documentLoader: (...args) =>
+            (documentLoader ??= this.documentLoaderFactory(loaderOptions))(
+              ...args,
+            ),
+          contextLoader: (...args) =>
+            (contextLoader ??= this.contextLoaderFactory(loaderOptions))(
+              ...args,
+            ),
+        });
+      },
+      callback,
+      message,
+      provenance,
+    );
+  }
+
   /**
    * Opens a CONSUMER span for a queue worker and scopes the extracted trace
    * context around its body.  The body—typically built by
@@ -1317,12 +1436,14 @@ export class FederationImpl<TContextData>
     spanAttributes: Attributes,
     extractedContext: ReturnType<typeof propagation.extract>,
     instrumentedBody: (span: Span) => () => Promise<void>,
+    worker?: OutboundWorkerObservation<TContextData>,
   ): Promise<void> {
     await this._getTracer().startActiveSpan(
       spanName,
       { kind: SpanKind.CONSUMER, attributes: spanAttributes },
       extractedContext,
       async (span: Span) => {
+        worker?.setSpan(span, trace.getSpanContext(extractedContext));
         const spanCtx = span.spanContext();
         return await withContext(
           { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
@@ -1384,7 +1505,13 @@ export class FederationImpl<TContextData>
   async #listenFanoutMessage(
     data: TContextData,
     message: FanoutMessage,
+    provenance: OutboundProvenance,
+    span: Span,
+    parentSpanContext: SpanContext | undefined,
+    observers: OutboundObservers<TContextData>,
+    worker?: OutboundWorkerObservation<TContextData>,
   ): Promise<void> {
+    worker?.enableActions();
     const logger = getLogger(["fedify", "federation", "fanout"]);
     logger.debug(
       "Fanning out activity {activityId} to {inboxes} inbox(es)...",
@@ -1393,47 +1520,75 @@ export class FederationImpl<TContextData>
         inboxes: globalThis.Object.keys(message.inboxes).length,
       },
     );
-    const keys: SenderKeyPair[] = await Promise.all(
-      message.keys.map(async ({ keyId, privateKey }) => ({
-        keyId: new URL(keyId),
-        privateKey: await importJwk(privateKey, "private"),
-      })),
-    );
-    const activity = await Activity.fromJsonLd(message.activity, {
-      contextLoader: this.contextLoaderFactory({
-        allowPrivateAddress: this.allowPrivateAddress,
-        userAgent: this.userAgent,
-      }),
-      documentLoader: this.documentLoaderFactory({
-        allowPrivateAddress: this.allowPrivateAddress,
-        userAgent: this.userAgent,
-      }),
-      tracerProvider: this.tracerProvider,
-    });
-    const context = this.#createContext(
-      new URL(message.baseUrl),
-      data,
-      {
+    const importKeys = () =>
+      Promise.all(
+        message.keys.map(async ({ keyId, privateKey }) => ({
+          keyId: new URL(keyId),
+          privateKey: await importJwk(privateKey, "private"),
+        })),
+      );
+    const keys: SenderKeyPair[] = worker == null
+      ? await importKeys()
+      : await worker.prepare("key-import", importKeys);
+    const parseActivity = () =>
+      Activity.fromJsonLd(message.activity, {
+        contextLoader: this.contextLoaderFactory({
+          allowPrivateAddress: this.allowPrivateAddress,
+          userAgent: this.userAgent,
+        }),
         documentLoader: this.documentLoaderFactory({
           allowPrivateAddress: this.allowPrivateAddress,
           userAgent: this.userAgent,
         }),
-      },
+        tracerProvider: this.tracerProvider,
+      });
+    const activity = worker == null
+      ? await parseActivity()
+      : await worker.prepare("activity-parsing", parseActivity);
+    const createContext = () =>
+      this.#createContext(
+        new URL(message.baseUrl),
+        data,
+        {
+          [outboundProvenance]: provenance,
+          documentLoader: this.documentLoaderFactory({
+            allowPrivateAddress: this.allowPrivateAddress,
+            userAgent: this.userAgent,
+          }),
+        },
+      );
+    const context = worker == null
+      ? createContext()
+      : await worker.prepare("context-preparation", createContext);
+    worker?.useContext(context);
+    const observation = await OutboundBroadcastObservation.resumeFanout(
+      context,
+      observers,
+      message,
+      span,
+      parentSpanContext,
     );
     await this.sendActivity(keys, message.inboxes, activity, {
       collectionSync: message.collectionSync,
       orderingKey: message.orderingKey,
       normalizeExistingProofs: message.normalizeExistingProofs,
       activityJsonLd: message.activity,
+      observation,
+      worker,
       context,
     });
   }
 
   async #listenOutboxMessage(
-    _: TContextData,
+    contextData: TContextData,
     message: OutboxMessage,
     span: Span,
+    provenance: OutboundProvenance,
+    observers: OutboundObservers<TContextData>,
+    worker?: OutboundWorkerObservation<TContextData>,
   ): Promise<void> {
+    const { onAttempt, onHttpExchange } = observers;
+    worker?.enableActions();
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const logData = {
       keyIds: message.keys.map((pair) => pair.keyId),
@@ -1446,10 +1601,13 @@ export class FederationImpl<TContextData>
     const keys: SenderKeyPair[] = [];
     let rsaKeyPair: SenderKeyPair | null = null;
     for (const { keyId, privateKey } of message.keys) {
-      const pair: SenderKeyPair = {
+      const importPair = async (): Promise<SenderKeyPair> => ({
         keyId: new URL(keyId),
         privateKey: await importJwk(privateKey, "private"),
-      };
+      });
+      const pair = worker == null
+        ? await importPair()
+        : await worker.prepare("key-import", importPair);
       if (
         rsaKeyPair == null &&
         pair.privateKey.algorithm.name === "RSASSA-PKCS1-v1_5"
@@ -1459,6 +1617,33 @@ export class FederationImpl<TContextData>
       keys.push(pair);
     }
     const loaderOptions = this.#getLoaderOptions(message.baseUrl);
+    let observationContext: ContextImpl<TContextData> | undefined;
+    let observationDocumentLoader: DocumentLoader | undefined;
+    let observationContextLoader: DocumentLoader | undefined;
+    const observation = OutboundAttemptObserver.resumeOutbox(
+      () =>
+        worker?.getContext() ?? (observationContext ??= new ContextImpl({
+          [outboundProvenance]: provenance,
+          federation: this,
+          url: new URL("/", message.baseUrl),
+          data: contextData,
+          // Observing settlement must not create loaders or perform lookups.
+          documentLoader: (...args) =>
+            (observationDocumentLoader ??= this.documentLoaderFactory(
+              loaderOptions,
+            ))(...args),
+          contextLoader: (...args) =>
+            (observationContextLoader ??= this.contextLoaderFactory(
+              loaderOptions,
+            ))(...args),
+        })),
+      onAttempt,
+      message,
+      provenance,
+      onHttpExchange,
+      observers,
+      observers.responseBodyCapture,
+    );
     let parsedActorIds: URL[] | undefined;
     const getActorIds = () => {
       parsedActorIds ??= (message.actorIds ?? []).flatMap((id) => {
@@ -1493,6 +1678,7 @@ export class FederationImpl<TContextData>
     const enqueueHeldOutboxMessage = async (
       delay: Temporal.Duration,
       heldSince: Temporal.Instant,
+      preparationFailures?: readonly OutboundWorkerPreparationDiagnostic[],
     ) => {
       const { outboxQueue } = this;
       if (outboxQueue == null) return;
@@ -1501,10 +1687,19 @@ export class FederationImpl<TContextData>
         circuitHeld: true,
         circuitHeldSince: heldSince.toString(),
       } satisfies OutboxMessage;
-      await outboxQueue.enqueue(heldMessage, {
+      const enqueueOptions = {
         delay: clampNegativeDelay(delay),
         orderingKey: message.orderingKey,
-      });
+      };
+      await (worker == null
+        ? outboxQueue.enqueue(heldMessage, enqueueOptions)
+        : worker.enqueue(
+          "defer",
+          heldMessage,
+          enqueueOptions.delay,
+          () => outboxQueue.enqueue(heldMessage, enqueueOptions),
+          preparationFailures,
+        ));
       this.metrics.recordQueueTaskEnqueued(
         {
           role: "outbox",
@@ -1532,8 +1727,9 @@ export class FederationImpl<TContextData>
       if (this.outboxPermanentFailureHandler != null) {
         const ctx = this.#createContext(
           new URL(message.baseUrl),
-          _,
+          contextData,
           {
+            [outboundProvenance]: provenance,
             documentLoader: this.documentLoaderFactory(loaderOptions),
           },
         );
@@ -1553,6 +1749,7 @@ export class FederationImpl<TContextData>
             actorIds: getActorIds(),
           });
         } catch (handlerError) {
+          worker?.dropFailure([inbox.href], handlerError);
           logger.error(
             "An unexpected error occurred in " +
               "outboxPermanentFailureHandler:\n{error}",
@@ -1569,13 +1766,16 @@ export class FederationImpl<TContextData>
     const { gatewayInboxes } = message;
     if (gatewayInboxes != null && gatewayInboxes.length > 1) {
       await this.#listenGatewayOutboxMessage(
-        _,
+        contextData,
         {
           ...message,
           gatewayInboxes,
         },
         span,
         {
+          observation,
+          worker,
+          provenance,
           keys,
           logData,
           getActorIds,
@@ -1586,7 +1786,10 @@ export class FederationImpl<TContextData>
       return;
     }
     try {
-      const inbox = new URL(message.inbox);
+      const parseInbox = () => new URL(message.inbox);
+      const inbox = worker == null
+        ? parseInbox()
+        : await worker.prepare("validation", parseInbox);
       const circuit = this.outboxQueue == null
         ? undefined
         : this.circuitBreaker;
@@ -1610,14 +1813,18 @@ export class FederationImpl<TContextData>
           return;
         }
         if (decision.type === "drop") {
-          const activity = await parseActivity();
-          await dropHeldOutboxMessage(
-            circuit,
-            remoteHost,
-            inbox,
-            decision.heldSince,
-            activity,
-          );
+          worker?.abandon("held-ttl-expired", [inbox.href]);
+          const drop = async () => {
+            const activity = await parseActivity();
+            await dropHeldOutboxMessage(
+              circuit,
+              remoteHost,
+              inbox,
+              decision.heldSince,
+              activity,
+            );
+          };
+          await (worker == null ? drop() : worker.drop([inbox.href], drop));
           return;
         }
         if (decision.stateChange != null) {
@@ -1629,6 +1836,8 @@ export class FederationImpl<TContextData>
         }
       }
       await sendActivity({
+        attemptStarted: worker?.attemptStarted,
+        observation,
         allowPrivateAddress: this.allowPrivateAddress,
         keys,
         activity: message.activity,
@@ -1636,7 +1845,10 @@ export class FederationImpl<TContextData>
         activityType: message.activityType,
         inbox,
         sharedInbox: message.sharedInbox,
-        headers: new Headers(message.headers),
+        headers: worker == null
+          ? new Headers(message.headers)
+          : await worker.prepare("request-preparation", () =>
+            new Headers(message.headers)),
         specDeterminer: new KvSpecDeterminer(
           this.kv,
           this.kvPrefixes.httpMessageSignaturesSpec,
@@ -1661,6 +1873,10 @@ export class FederationImpl<TContextData>
         }
       }
     } catch (error) {
+      const preparationFailures = worker?.recordPreparationFailure(
+        error,
+        message.inbox,
+      ) ?? [];
       span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
       const remoteHost = (() => {
         if (error instanceof SendActivityError) {
@@ -1668,7 +1884,7 @@ export class FederationImpl<TContextData>
         }
         try {
           return getRemoteHost(new URL(message.inbox));
-        } catch (_) {
+        } catch {
           logger.warn(
             "Invalid inbox URL in queued outbox message: {inbox}",
             logData,
@@ -1791,13 +2007,22 @@ export class FederationImpl<TContextData>
       }
 
       if (circuitDrop != null) {
-        await dropHeldOutboxMessage(
-          circuitDrop.circuit,
-          circuitDrop.remoteHost,
-          circuitDrop.inbox,
-          circuitDrop.heldSince,
-          activity,
+        worker?.abandon(
+          "held-ttl-expired",
+          [circuitDrop.inbox.href],
+          preparationFailures,
         );
+        const drop = () =>
+          dropHeldOutboxMessage(
+            circuitDrop.circuit,
+            circuitDrop.remoteHost,
+            circuitDrop.inbox,
+            circuitDrop.heldSince,
+            activity,
+          );
+        await (worker == null
+          ? drop()
+          : worker.drop([circuitDrop.inbox.href], drop));
         return;
       }
 
@@ -1805,6 +2030,11 @@ export class FederationImpl<TContextData>
       if (
         isPermanentFailure
       ) {
+        worker?.abandon(
+          "permanent-failure",
+          [message.inbox],
+          preparationFailures,
+        );
         this.metrics.recordPermanentFailure(
           error.inbox,
           error.statusCode,
@@ -1818,29 +2048,34 @@ export class FederationImpl<TContextData>
           },
         );
         if (this.outboxPermanentFailureHandler != null) {
-          const ctx = this.#createContext(
-            new URL(message.baseUrl),
-            _,
-            {
-              documentLoader: this.documentLoaderFactory(loaderOptions),
-            },
-          );
-          try {
-            await this.outboxPermanentFailureHandler(ctx, {
-              reason: "http",
-              inbox: new URL(message.inbox),
-              activity,
-              error,
-              statusCode: error.statusCode,
-              actorIds: getActorIds(),
-            });
-          } catch (handlerError) {
-            logger.error(
-              "An unexpected error occurred in " +
-                "outboxPermanentFailureHandler:\n{error}",
-              { ...logData, error: handlerError },
+          const drop = async () => {
+            const ctx = this.#createContext(
+              new URL(message.baseUrl),
+              contextData,
+              {
+                [outboundProvenance]: provenance,
+                documentLoader: this.documentLoaderFactory(loaderOptions),
+              },
             );
-          }
+            try {
+              await this.outboxPermanentFailureHandler!(ctx, {
+                reason: "http",
+                inbox: new URL(message.inbox),
+                activity,
+                error,
+                statusCode: error.statusCode,
+                actorIds: getActorIds(),
+              });
+            } catch (handlerError) {
+              worker?.dropFailure([message.inbox], handlerError);
+              logger.error(
+                "An unexpected error occurred in " +
+                  "outboxPermanentFailureHandler:\n{error}",
+                { ...logData, error: handlerError },
+              );
+            }
+          };
+          await (worker == null ? drop() : worker.drop([message.inbox], drop));
         }
         recordOutboxActivity(
           this.meterProvider,
@@ -1871,6 +2106,7 @@ export class FederationImpl<TContextData>
         await enqueueHeldOutboxMessage(
           holdDelay,
           circuitHold.heldSince,
+          preparationFailures,
         );
         return;
       }
@@ -1898,13 +2134,19 @@ export class FederationImpl<TContextData>
         } satisfies OutboxMessage;
         const { outboxQueue } = this;
         if (outboxQueue != null) {
-          await outboxQueue.enqueue(
-            retryMessage,
-            {
-              delay: clampNegativeDelay(delay),
-              orderingKey: message.orderingKey,
-            },
-          );
+          const enqueueOptions = {
+            delay: clampNegativeDelay(delay),
+            orderingKey: message.orderingKey,
+          };
+          await (worker == null
+            ? outboxQueue.enqueue(retryMessage, enqueueOptions)
+            : worker.enqueue(
+              "retry",
+              retryMessage,
+              enqueueOptions.delay,
+              () => outboxQueue.enqueue(retryMessage, enqueueOptions),
+              preparationFailures,
+            ));
           this.metrics.recordQueueTaskEnqueued(
             {
               role: "outbox",
@@ -1918,8 +2160,19 @@ export class FederationImpl<TContextData>
             "retried",
             retryMessage.activityType,
           );
+        } else {
+          worker?.abandon(
+            "queue-unavailable",
+            [message.inbox],
+            preparationFailures,
+          );
         }
       } else {
+        worker?.abandon(
+          "retry-policy-declined",
+          [message.inbox],
+          preparationFailures,
+        );
         logger.error(
           "Failed to send activity {activityId} to {inbox} after {attempt} " +
             "attempts; giving up:\n{error}",
@@ -1957,6 +2210,9 @@ export class FederationImpl<TContextData>
     message: OutboxMessage & { readonly gatewayInboxes: readonly string[] },
     span: Span,
     helpers: {
+      readonly observation: SendActivityParameters["observation"];
+      readonly worker: OutboundWorkerObservation<TContextData> | undefined;
+      readonly provenance: OutboundProvenance;
       readonly keys: readonly SenderKeyPair[];
       readonly logData: Record<string, unknown>;
       readonly getActorIds: () => URL[];
@@ -1972,8 +2228,16 @@ export class FederationImpl<TContextData>
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
     const circuitLogger = getLogger(["fedify", "federation", "circuit"]);
-    const { keys, logData, getActorIds, parseActivity, dropHeldOutboxMessage } =
-      helpers;
+    const {
+      observation,
+      worker,
+      provenance,
+      keys,
+      logData,
+      getActorIds,
+      parseActivity,
+      dropHeldOutboxMessage,
+    } = helpers;
     const circuit = this.outboxQueue == null ? undefined : this.circuitBreaker;
     const specDeterminer = new KvSpecDeterminer(
       this.kv,
@@ -1994,6 +2258,11 @@ export class FederationImpl<TContextData>
       readonly retryAfter?: Temporal.Duration;
     }
     const survivors: Survivor[] = [];
+    const preparationFailuresByRoute = new Map<
+      string,
+      readonly OutboundWorkerPreparationDiagnostic[]
+    >();
+    const permanentRoutes = new Set<string>();
     let lastError: unknown;
     let lastPermanent: { error: SendActivityError; inbox: URL } | undefined;
     let activity: Activity | undefined;
@@ -2004,13 +2273,23 @@ export class FederationImpl<TContextData>
       inbox: URL,
       heldSince: Temporal.Instant,
     ) => {
-      await dropHeldOutboxMessage(
-        circuit,
-        remoteHost,
-        inbox,
-        heldSince,
-        await getActivity(),
+      const routes = message.gatewayInboxes.filter((route) =>
+        !permanentRoutes.has(route)
       );
+      worker?.abandon(
+        "held-ttl-expired",
+        routes,
+        routes.flatMap((route) => preparationFailuresByRoute.get(route) ?? []),
+      );
+      const execute = async () =>
+        dropHeldOutboxMessage(
+          circuit,
+          remoteHost,
+          inbox,
+          heldSince,
+          await getActivity(),
+        );
+      await (worker == null ? execute() : worker.drop(routes, execute));
     };
     // Checked up front, as gateways deferred by Retry-After are skipped
     // without asking the circuit breaker, which would otherwise tell:
@@ -2022,12 +2301,18 @@ export class FederationImpl<TContextData>
           Temporal.Now.instant(),
         ) <= 0
     ) {
-      const inbox = new URL(message.gatewayInboxes[0]);
+      const parseInbox = () => new URL(message.gatewayInboxes[0]);
+      const inbox = worker == null
+        ? parseInbox()
+        : await worker.prepare("validation", parseInbox);
       await drop(circuit, getRemoteHost(inbox), inbox, heldSince);
       return;
     }
     for (const inboxHref of message.gatewayInboxes) {
-      const inbox = new URL(inboxHref);
+      const parseInbox = () => new URL(inboxHref);
+      const inbox = worker == null
+        ? parseInbox()
+        : await worker.prepare("validation", parseInbox);
       const remoteHost = getRemoteHost(inbox);
       const now = Temporal.Now.instant();
       const notBefore = parseInstant(message.gatewayNotBefore?.[inboxHref]);
@@ -2074,6 +2359,8 @@ export class FederationImpl<TContextData>
       }
       try {
         await sendActivity({
+          attemptStarted: worker?.attemptStarted,
+          observation,
           allowPrivateAddress: this.allowPrivateAddress,
           keys,
           activity: message.activity,
@@ -2081,12 +2368,22 @@ export class FederationImpl<TContextData>
           activityType: message.activityType,
           inbox,
           sharedInbox: message.sharedInbox,
-          headers: new Headers(message.headers),
+          headers: worker == null
+            ? new Headers(message.headers)
+            : await worker.prepare("request-preparation", () =>
+              new Headers(message.headers)),
           specDeterminer,
           meterProvider: this.meterProvider,
           tracerProvider: this.tracerProvider,
         });
       } catch (error) {
+        const preparationFailures = worker?.recordPreparationFailure(
+          error,
+          inboxHref,
+        ) ?? [];
+        if (preparationFailures.length > 0) {
+          preparationFailuresByRoute.set(inboxHref, preparationFailures);
+        }
         lastError = error;
         const isPermanentFailure = error instanceof SendActivityError &&
           this.permanentFailureStatusCodes.includes(error.statusCode);
@@ -2154,6 +2451,12 @@ export class FederationImpl<TContextData>
           );
         }
         if (isPermanentFailure) {
+          permanentRoutes.add(inboxHref);
+          worker?.abandon(
+            "permanent-failure",
+            [inboxHref],
+            preparationFailures,
+          );
           logger.warn(
             "Permanent delivery failure for activity {activityId} to " +
               "{inbox} ({status}); not trying the gateway again.",
@@ -2227,31 +2530,38 @@ export class FederationImpl<TContextData>
         { ...logData, portableInbox: message.portableInbox },
       );
       if (this.outboxPermanentFailureHandler != null) {
-        const ctx = this.#createContext(
-          new URL(message.baseUrl),
-          contextData,
-          {
-            documentLoader: this.documentLoaderFactory(
-              this.#getLoaderOptions(message.baseUrl),
-            ),
-          },
-        );
-        try {
-          await this.outboxPermanentFailureHandler(ctx, {
-            reason: "http",
-            inbox,
-            activity: await getActivity(),
-            error,
-            statusCode: error.statusCode,
-            actorIds: getActorIds(),
-          });
-        } catch (handlerError) {
-          logger.error(
-            "An unexpected error occurred in " +
-              "outboxPermanentFailureHandler:\n{error}",
-            { ...logData, error: handlerError },
+        const drop = async () => {
+          const ctx = this.#createContext(
+            new URL(message.baseUrl),
+            contextData,
+            {
+              [outboundProvenance]: provenance,
+              documentLoader: this.documentLoaderFactory(
+                this.#getLoaderOptions(message.baseUrl),
+              ),
+            },
           );
-        }
+          try {
+            await this.outboxPermanentFailureHandler!(ctx, {
+              reason: "http",
+              inbox,
+              activity: await getActivity(),
+              error,
+              statusCode: error.statusCode,
+              actorIds: getActorIds(),
+            });
+          } catch (handlerError) {
+            worker?.dropFailure(message.gatewayInboxes, handlerError);
+            logger.error(
+              "An unexpected error occurred in " +
+                "outboxPermanentFailureHandler:\n{error}",
+              { ...logData, error: handlerError },
+            );
+          }
+        };
+        await (worker == null
+          ? drop()
+          : worker.drop(message.gatewayInboxes, drop));
       }
       recordOutboxActivity(
         this.meterProvider,
@@ -2312,10 +2622,21 @@ export class FederationImpl<TContextData>
           "until one of its gateways can be tried again.",
         { ...logData, portableInbox: message.portableInbox },
       );
-      await outboxQueue.enqueue(heldMessage, {
+      const enqueueOptions = {
         delay: clampNegativeDelay(delay),
         orderingKey: message.orderingKey,
-      });
+      };
+      await (worker == null
+        ? outboxQueue.enqueue(heldMessage, enqueueOptions)
+        : worker.enqueue(
+          "defer",
+          heldMessage,
+          enqueueOptions.delay,
+          () => outboxQueue.enqueue(heldMessage, enqueueOptions),
+          survivors.flatMap((route) =>
+            preparationFailuresByRoute.get(route.inbox) ?? []
+          ),
+        ));
       this.metrics.recordQueueTaskEnqueued(
         {
           role: "outbox",
@@ -2342,6 +2663,13 @@ export class FederationImpl<TContextData>
       throw lastError;
     }
     if (policyDelay == null || outboxQueue == null) {
+      worker?.abandon(
+        outboxQueue == null ? "queue-unavailable" : "retry-policy-declined",
+        survivors.map((route) => route.inbox),
+        survivors.flatMap((route) =>
+          preparationFailuresByRoute.get(route.inbox) ?? []
+        ),
+      );
       logger.error(
         "Failed to send activity {activityId} to every gateway of " +
           "{portableInbox} after {attempt} attempts; giving up:\n{error}",
@@ -2368,10 +2696,21 @@ export class FederationImpl<TContextData>
         "{portableInbox} (attempt #{attempt}); retry...:\n{error}",
       { ...logData, portableInbox: message.portableInbox, error: lastError },
     );
-    await outboxQueue.enqueue(retryMessage, {
+    const enqueueOptions = {
       delay: clampNegativeDelay(delay),
       orderingKey: message.orderingKey,
-    });
+    };
+    await (worker == null
+      ? outboxQueue.enqueue(retryMessage, enqueueOptions)
+      : worker.enqueue(
+        "retry",
+        retryMessage,
+        enqueueOptions.delay,
+        () => outboxQueue.enqueue(retryMessage, enqueueOptions),
+        survivors.flatMap((route) =>
+          preparationFailuresByRoute.get(route.inbox) ?? []
+        ),
+      ));
     this.metrics.recordQueueTaskEnqueued(
       {
         role: "outbox",
@@ -2391,11 +2730,14 @@ export class FederationImpl<TContextData>
     ctxData: TContextData,
     message: InboxMessage,
     span: Span,
+    provenance: OutboundProvenance,
     onActivityType?: (activityType: string) => void,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "inbox"]);
     const baseUrl = new URL(message.baseUrl);
-    let context = this.#createContext(baseUrl, ctxData);
+    let context = this.#createContext(baseUrl, ctxData, {
+      [outboundProvenance]: provenance,
+    });
     // A portable actor does not necessarily have key pairs for authorized
     // fetch, so fall back to the default document loader without them:
     if (
@@ -2403,6 +2745,7 @@ export class FederationImpl<TContextData>
       this.actorCallbacks?.keyPairsDispatcher != null
     ) {
       context = this.#createContext(baseUrl, ctxData, {
+        [outboundProvenance]: provenance,
         documentLoader: await context.getDocumentLoader({
           identifier: message.identifier,
         }),
@@ -2413,6 +2756,7 @@ export class FederationImpl<TContextData>
       const identity = await this.sharedInboxKeyDispatcher(context);
       if (identity != null) {
         context = this.#createContext(baseUrl, ctxData, {
+          [outboundProvenance]: provenance,
           documentLoader: "identifier" in identity || "username" in identity
             ? await context.getDocumentLoader(identity)
             : context.getDocumentLoader(identity),
@@ -3093,13 +3437,17 @@ export class FederationImpl<TContextData>
   #createContext(
     baseUrl: URL,
     contextData: TContextData,
-    opts?: { documentLoader?: DocumentLoader },
+    opts?: {
+      documentLoader?: DocumentLoader;
+      [outboundProvenance]?: OutboundProvenance;
+    },
   ): ContextImpl<TContextData>;
 
   #createContext(
     request: Request,
     contextData: TContextData,
     opts?: {
+      [outboundProvenance]?: OutboundProvenance;
       documentLoader?: DocumentLoader;
       invokedFromActorDispatcher?: { identifier: string };
       invokedFromObjectDispatcher?: {
@@ -3114,6 +3462,7 @@ export class FederationImpl<TContextData>
     urlOrRequest: Request | URL,
     contextData: TContextData,
     opts: {
+      [outboundProvenance]?: OutboundProvenance;
       documentLoader?: DocumentLoader;
       invokedFromActorDispatcher?: { identifier: string };
       invokedFromObjectDispatcher?: {
@@ -3134,6 +3483,7 @@ export class FederationImpl<TContextData>
     }
     const loaderOptions = this.#getLoaderOptions(url.origin);
     const ctxOptions: ContextOptions<TContextData> = {
+      [outboundProvenance]: opts[outboundProvenance],
       url,
       federation: this,
       data: contextData,
@@ -3179,68 +3529,105 @@ export class FederationImpl<TContextData>
     options: SendActivityInternalOptions<TContextData>,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
-    const { immediate, collectionSync, orderingKey, context: ctx } = options;
-    if (activity.id == null) {
-      throw new TypeError("The activity to send must have an id.");
-    }
-    if (activity.actorId == null) {
-      throw new TypeError(
-        "The activity to send must have at least one actor property.",
-      );
-    } else if (keys.length < 1) {
-      throw new TypeError("The keys must not be empty.");
-    }
-    const contextLoader = this.contextLoaderFactory(
-      this.#getLoaderOptions(ctx.origin),
-    );
-    const activityId = activity.id.href;
-    let rsaKey: { keyId: URL; privateKey: CryptoKey } | null = null;
+    const {
+      immediate,
+      collectionSync,
+      orderingKey,
+      context: ctx,
+      observation,
+      worker,
+      provenance = getOutboundProvenance(ctx),
+    } = options;
+    observation?.setPhase("validation");
+    const validateActivity = () => {
+      if (activity.id == null) {
+        throw new TypeError("The activity to send must have an id.");
+      }
+      if (activity.actorId == null) {
+        throw new TypeError(
+          "The activity to send must have at least one actor property.",
+        );
+      } else if (keys.length < 1) {
+        throw new TypeError("The keys must not be empty.");
+      }
+      return activity.id.href;
+    };
+    const activityId = worker == null
+      ? validateActivity()
+      : await worker.prepare("validation", validateActivity);
+    observation?.setPhase("serialization");
+    const createContextLoader = () =>
+      this.contextLoaderFactory(this.#getLoaderOptions(ctx.origin));
+    const contextLoader = worker == null
+      ? createContextLoader()
+      : await worker.prepare("serialization", createContextLoader);
     // A Linked Data Signature attests authorship, which neither a gateway key
     // nor any key other than the DID's can do for a portable actor's
     // activity; its Object Integrity Proof does that instead:
-    const ldSignable = !hasPortableActor(activity);
-    for (const { keyId, privateKey } of keys) {
-      validateCryptoKey(privateKey, "private");
-      if (
-        ldSignable && rsaKey == null &&
-        privateKey.algorithm.name === "RSASSA-PKCS1-v1_5" &&
-        !isPortableKeyId(keyId)
-      ) {
-        rsaKey = { keyId, privateKey };
+    const resolveRsaKey = () => {
+      const ldSignable = !hasPortableActor(activity);
+      let rsaKey: { keyId: URL; privateKey: CryptoKey } | null = null;
+      for (const { keyId, privateKey } of keys) {
+        validateCryptoKey(privateKey, "private");
+        if (
+          ldSignable && rsaKey == null &&
+          privateKey.algorithm.name === "RSASSA-PKCS1-v1_5" &&
+          !isPortableKeyId(keyId)
+        ) {
+          rsaKey = { keyId, privateKey };
+        }
       }
-    }
+      return { rsaKey, ldSignable };
+    };
+    observation?.setPhase("key-resolution");
+    const { rsaKey, ldSignable } = worker == null
+      ? resolveRsaKey()
+      : await worker.prepare("key-resolution", resolveRsaKey);
     // If Object Integrity Proofs were already created before fanout (e.g., in
     // sendActivityInternal()), skip signing to avoid duplicates.
-    const signed = await signOutgoingActivity(
-      activity,
-      keys.map(({ keyId, privateKey }) => ({
-        verificationMethod: keyId,
-        privateKey,
-      })),
-      {
-        contextLoader,
-        tracerProvider: this.tracerProvider,
-        appendToExistingProofs: false,
-      },
-    );
+    observation?.setPhase("signing");
+    const signActivity = () =>
+      signOutgoingActivity(
+        activity,
+        keys.map(({ keyId, privateKey }) => ({
+          verificationMethod: keyId,
+          privateKey,
+        })),
+        {
+          contextLoader,
+          tracerProvider: this.tracerProvider,
+          appendToExistingProofs: false,
+        },
+      );
+    const signed = worker == null
+      ? await signActivity()
+      : await worker.prepare("signing", signActivity);
     activity = signed.activity;
     const { hasProof, proofCreated } = signed;
-    let jsonLd = !proofCreated && options.activityJsonLd != null
-      ? options.activityJsonLd
-      : await activity.toJsonLd({
-        format: "compact",
-        contextLoader,
-      });
-    // Existing proofs are preserved by default because they may have been
-    // created over the compact JSON-LD bytes exactly as supplied.  Fedify can
-    // safely normalize unsigned activities, proofs it just created, or
-    // locally pre-signed activities when callers opt in.
-    if (proofCreated || !hasProof || options.normalizeExistingProofs) {
-      jsonLd = await normalizeOutgoingActivityJsonLd(jsonLd, contextLoader, {
-        preserveNestedSecuredDocuments: true,
-      });
-    }
-    assertSupportedCompoundProofShape(jsonLd, activityId);
+    observation?.setPhase("serialization");
+    const serializeActivity = async () => {
+      let result = !proofCreated && options.activityJsonLd != null
+        ? options.activityJsonLd
+        : await activity.toJsonLd({ format: "compact", contextLoader });
+      // Existing proofs are preserved by default because they may have been
+      // created over the compact JSON-LD bytes exactly as supplied.  Fedify can
+      // safely normalize unsigned activities, proofs it just created, or
+      // locally pre-signed activities when callers opt in.
+      if (proofCreated || !hasProof || options.normalizeExistingProofs) {
+        result = await normalizeOutgoingActivityJsonLd(result, contextLoader, {
+          preserveNestedSecuredDocuments: true,
+        });
+      }
+      return result;
+    };
+    let jsonLd = worker == null
+      ? await serializeActivity()
+      : await worker.prepare("serialization", serializeActivity);
+    observation?.setPhase("validation");
+    const validateProofShape = () =>
+      assertSupportedCompoundProofShape(jsonLd, activityId);
+    if (worker == null) validateProofShape();
+    else await worker.prepare("validation", validateProofShape);
     if (rsaKey == null && !ldSignable) {
       logger.debug(
         "The activity {activityId} is performed by a portable actor, so it " +
@@ -3262,20 +3649,27 @@ export class FederationImpl<TContextData>
         },
       );
     } else {
-      try {
-        jsonLd = await signJsonLd(jsonLd, rsaKey.privateKey, rsaKey.keyId, {
-          contextLoader,
-          tracerProvider: this.tracerProvider,
-        });
-      } catch (error) {
-        if (!isLinkedDataSignatureJsonLdProcessingError(error)) throw error;
-        logger.warn(
-          "Failed to create a Linked Data signature for the activity " +
-            "{activityId}.  The activity will be sent without a Linked " +
-            "Data signature.",
-          { activityId, error },
-        );
-      }
+      const signLinkedData = async () => {
+        try {
+          observation?.setPhase("signing");
+          return await signJsonLd(jsonLd, rsaKey.privateKey, rsaKey.keyId, {
+            contextLoader,
+            tracerProvider: this.tracerProvider,
+          });
+        } catch (error) {
+          if (!isLinkedDataSignatureJsonLdProcessingError(error)) throw error;
+          logger.warn(
+            "Failed to create a Linked Data signature for the activity " +
+              "{activityId}.  The activity will be sent without a Linked " +
+              "Data signature.",
+            { activityId, error },
+          );
+          return jsonLd;
+        }
+      };
+      jsonLd = worker == null
+        ? await signLinkedData()
+        : await worker.prepare("signing", signLinkedData);
     }
     if (!hasProof) {
       logger.warn(
@@ -3291,6 +3685,7 @@ export class FederationImpl<TContextData>
         },
       );
     }
+    observation?.setPhase("request-preparation");
     if (immediate || this.outboxQueue == null) {
       if (immediate) {
         logger.debug(
@@ -3306,32 +3701,71 @@ export class FederationImpl<TContextData>
       }
       const promises: Promise<void>[] = [];
       for (const inbox in inboxes) {
-        promises.push(
-          sendActivityToInbox(inbox, inboxes[inbox].gatewayInboxes, {
-            allowPrivateAddress: this.allowPrivateAddress,
-            keys,
-            activity: jsonLd,
-            activityId: activity.id?.href,
-            activityType: getTypeId(activity).href,
-            sharedInbox: inboxes[inbox].sharedInbox,
-            headers: collectionSync == null ? undefined : new Headers({
-              "Collection-Synchronization":
-                await buildCollectionSynchronizationHeader(
-                  collectionSync,
-                  inboxes[inbox].actorIds,
-                ),
-            }),
-            specDeterminer: new KvSpecDeterminer(
-              this.kv,
-              this.kvPrefixes.httpMessageSignaturesSpec,
-              this.firstKnock,
-              { specTtl: this.httpMessageSignaturesSpecTtl },
-            ),
-            meterProvider: this.meterProvider,
-            tracerProvider: this.tracerProvider,
-          }),
-        );
+        const delivery = observation?.delivery(inbox);
+        let sending: Promise<void>;
+        try {
+          const createHeaders = collectionSync == null
+            ? undefined
+            : async () =>
+              new Headers({
+                "Collection-Synchronization":
+                  await buildCollectionSynchronizationHeader(
+                    collectionSync,
+                    inboxes[inbox].actorIds,
+                  ),
+              });
+          const sendActivityId = activity.id?.href;
+          const activityType = getTypeId(activity).href;
+          observation?.setActivity({
+            ...(sendActivityId == null ? {} : { id: sendActivityId }),
+            type: activityType,
+          });
+          sending = sendActivityToInbox(
+            inbox,
+            inboxes[inbox].gatewayInboxes,
+            {
+              attemptStarted: worker == null
+                ? undefined
+                : (target) =>
+                  worker.directAttemptStarted(
+                    target,
+                    observation?.continuation(inbox)?.outbound,
+                  ),
+              observation: delivery,
+              allowPrivateAddress: this.allowPrivateAddress,
+              keys,
+              activity: jsonLd,
+              activityId: sendActivityId,
+              activityType,
+              sharedInbox: inboxes[inbox].sharedInbox,
+              headers: createHeaders == null
+                ? undefined
+                : await (worker == null
+                  ? createHeaders()
+                  : worker.prepare("request-preparation", createHeaders)),
+              specDeterminer: new KvSpecDeterminer(
+                this.kv,
+                this.kvPrefixes.httpMessageSignaturesSpec,
+                this.firstKnock,
+                { specTtl: this.httpMessageSignaturesSpecTtl },
+              ),
+              meterProvider: this.meterProvider,
+              tracerProvider: this.tracerProvider,
+            },
+          );
+        } catch (error) {
+          if (delivery != null) await delivery.failed(error);
+          throw error;
+        }
+        if (observation != null) {
+          // The preparation callback may await while an earlier send rejects.
+          // Keep its original rejection for Promise.all without an unhandled one.
+          sending.catch(() => {});
+        }
+        if (delivery != null) await delivery.handoff({ type: "direct" });
+        promises.push(sending);
       }
+      if (observation != null) await observation.prepared("delivery");
       await Promise.all(promises);
       return;
     }
@@ -3339,46 +3773,77 @@ export class FederationImpl<TContextData>
       "Enqueuing activity {activityId} to send later.",
       { activityId: activity.id!.href, activity: jsonLd },
     );
+    observation?.setPhase("key-resolution");
     const keyJwkPairs: SenderKeyJwkPair[] = [];
     for (const { keyId, privateKey } of keys) {
-      const privateKeyJwk = await exportJwk(privateKey);
+      const exportPrivateKey = () => exportJwk(privateKey);
+      const privateKeyJwk = worker == null
+        ? await exportPrivateKey()
+        : await worker.prepare("key-export", exportPrivateKey);
       keyJwkPairs.push({ keyId: keyId.href, privateKey: privateKeyJwk });
     }
     if (!this.manuallyStartQueue) this._startQueueInternal(ctx.data);
+    observation?.setPhase("request-preparation");
     const carrier: Record<string, string> = {};
-    propagation.inject(context.active(), carrier);
+    const injectTraceContext = () =>
+      propagation.inject(context.active(), carrier);
+    if (worker == null) injectTraceContext();
+    else await worker.prepare("request-preparation", injectTraceContext);
     const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
     for (const inbox in inboxes) {
-      const { portableInbox, gatewayInboxes } = inboxes[inbox];
-      const messageOrderingKey = orderingKey == null
-        ? undefined
-        : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`;
-      const message: OutboxMessage = {
-        type: "outbox",
-        id: crypto.randomUUID(),
-        baseUrl: ctx.origin,
-        keys: keyJwkPairs,
-        activity: jsonLd,
-        activityId: activity.id?.href,
-        activityType: getTypeId(activity).href,
-        inbox,
-        sharedInbox: inboxes[inbox].sharedInbox,
-        actorIds: [...inboxes[inbox].actorIds],
-        started: new Date().toISOString(),
-        attempt: 0,
-        headers: collectionSync == null ? {} : {
-          "Collection-Synchronization":
-            await buildCollectionSynchronizationHeader(
-              collectionSync,
-              inboxes[inbox].actorIds,
-            ),
-        },
-        orderingKey: messageOrderingKey,
-        ...getPortableMessageFields(portableInbox, gatewayInboxes),
-        traceContext: carrier,
-      };
-      messages.push({ message, orderingKey: messageOrderingKey });
+      try {
+        const prepareMessage = async () => {
+          const { portableInbox, gatewayInboxes } = inboxes[inbox];
+          const messageOrderingKey = orderingKey == null
+            ? undefined
+            : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`;
+          const messageActivityId = activity.id?.href;
+          const messageActivityType = getTypeId(activity).href;
+          observation?.setActivity({
+            ...(messageActivityId == null ? {} : { id: messageActivityId }),
+            type: messageActivityType,
+          });
+          const message: OutboxMessage = {
+            type: "outbox",
+            ...serializeProvenance(provenance),
+            id: crypto.randomUUID(),
+            baseUrl: ctx.origin,
+            keys: keyJwkPairs,
+            activity: jsonLd,
+            activityId: messageActivityId,
+            activityType: messageActivityType,
+            inbox,
+            ...observation?.continuation(inbox),
+            sharedInbox: inboxes[inbox].sharedInbox,
+            actorIds: [...inboxes[inbox].actorIds],
+            started: new Date().toISOString(),
+            attempt: 0,
+            headers: collectionSync == null ? {} : {
+              "Collection-Synchronization":
+                await buildCollectionSynchronizationHeader(
+                  collectionSync,
+                  inboxes[inbox].actorIds,
+                ),
+            },
+            orderingKey: messageOrderingKey,
+            ...getPortableMessageFields(portableInbox, gatewayInboxes),
+            traceContext: carrier,
+          };
+          return { message, orderingKey: messageOrderingKey };
+        };
+        messages.push(
+          await (worker == null
+            ? prepareMessage()
+            : worker.prepare("request-preparation", prepareMessage)),
+        );
+      } catch (error) {
+        if (observation != null) {
+          await observation.delivery(inbox)?.failed(error);
+        }
+        throw error;
+      }
     }
+    if (observation != null) await observation.prepared("delivery");
     const { outboxQueue } = this;
     // enqueueMany does not support per-message orderingKey, so fall back to
     // individual enqueues whenever orderingKey is specified or the backend
@@ -3386,7 +3851,21 @@ export class FederationImpl<TContextData>
     if (outboxQueue.enqueueMany == null || orderingKey != null) {
       const promises: PromiseSettledResult<void>[] = await Promise.allSettled(
         messages.map(async (m) => {
-          await outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey });
+          const enqueue = () =>
+            worker == null
+              ? outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
+              : worker.enqueueChildren(
+                [m.message],
+                () =>
+                  outboxQueue.enqueue(m.message, {
+                    orderingKey: m.orderingKey,
+                  }),
+              );
+          await (observation == null ? enqueue() : observation.enqueue(
+            [{ inbox: m.message.inbox, queueMessageId: m.message.id }],
+            "outbox",
+            enqueue,
+          ));
           recordOutboxEnqueue(this.meterProvider, outboxQueue, m.message);
         }),
       );
@@ -3408,7 +3887,21 @@ export class FederationImpl<TContextData>
       }
     } else {
       try {
-        await outboxQueue.enqueueMany(messages.map((m) => m.message));
+        const enqueue = () =>
+          worker == null
+            ? outboxQueue.enqueueMany!(messages.map((m) => m.message))
+            : worker.enqueueChildren(
+              messages.map((m) => m.message),
+              () => outboxQueue.enqueueMany!(messages.map((m) => m.message)),
+            );
+        await (observation == null ? enqueue() : observation.enqueue(
+          messages.map(({ message }) => ({
+            inbox: message.inbox,
+            queueMessageId: message.id,
+          })),
+          "outbox",
+          enqueue,
+        ));
       } catch (error) {
         logger.error(
           "Failed to enqueue activity {activityId} to send later: {error}",
@@ -3427,9 +3920,17 @@ export class FederationImpl<TContextData>
     options: FederationFetchOptions<TContextData>,
   ): Promise<Response> {
     const requestId = getRequestId(request);
-    return withContext({ requestId }, async () => {
+    return withContext({
+      requestId,
+      // Each HTTP ingress owns its current identity; async ancestry is not
+      // evidence that this request came from another inbox request.
+      inboxRequestId: undefined,
+      dispatchId: undefined,
+      sourceInboxRequestId: undefined,
+      sourceRequestId: undefined,
+    }, async () => {
       const tracer = this._getTracer();
-      const metricState: HttpMetricState = {};
+      const metricState: HttpMetricState = { requestId };
       const metricStart = performance.now();
       return await tracer.startActiveSpan(
         request.method,
@@ -3493,7 +3994,14 @@ export class FederationImpl<TContextData>
                   logger.error(
                     "An error occurred while serving request " +
                       "{method} {url}: {error}",
-                    { method: request.method, url: request.url, error },
+                    {
+                      method: request.method,
+                      url: request.url,
+                      error,
+                      ...(metricState.inboxRequest == null ? {} : {
+                        inboxRequestId: metricState.inboxRequest.inboxRequestId,
+                      }),
+                    },
                   );
                   throw error;
                 }
@@ -3525,6 +4033,9 @@ export class FederationImpl<TContextData>
                 const url = new URL(request.url);
                 const logTpl = "{method} {path}: {status}";
                 const values = {
+                  ...(metricState.inboxRequest == null ? {} : {
+                    inboxRequestId: metricState.inboxRequest.inboxRequestId,
+                  }),
                   method: request.method,
                   path: `${url.pathname}${url.search}`,
                   url: request.url,
@@ -3611,9 +4122,24 @@ export class FederationImpl<TContextData>
     metricState.endpoint = getEndpointCategory(route.name);
     span.updateName(`${request.method} ${route.template}`);
     const routeName = route.name.replace(/:.*$/, "");
+    const source = request.method === "POST" &&
+        (routeName === "inbox" || routeName === "sharedInbox")
+      ? this.#createInboxRequestSource(request, metricState)
+      : undefined;
+    const provenance = globalThis.Object.freeze(
+      source == null
+        ? { originatingRequestId: metricState.requestId }
+        : { inboxRequest: source },
+    );
     let context: RequestContextImpl<TContextData>;
     try {
-      context = this.#createContext(request, contextData);
+      context = withContext(
+        source == null ? {} : { inboxRequestId: source.inboxRequestId },
+        () =>
+          this.#createContext(request, contextData, {
+            [outboundProvenance]: provenance,
+          }),
+      );
     } catch (error) {
       if (
         request.method !== "POST" ||
@@ -3731,36 +4257,42 @@ export class FederationImpl<TContextData>
       const observation = new InboxObservation({
         kind: routeName === "inbox" ? "personal" : "shared",
         recipient,
-      });
+      }, source);
       this.#setInboxCompletion(metricState, observation, () => context);
-      return await observation.run(
-        async () => {
-          if (routeName === "inbox") {
-            context = this.#createContext(request, contextData, {
-              documentLoader: await context.getDocumentLoader({
-                identifier: recipient!,
-              }),
-            });
-          } else if (this.sharedInboxKeyDispatcher != null) {
-            const identity = await this.sharedInboxKeyDispatcher(context);
-            if (identity != null) {
-              context = this.#createContext(request, contextData, {
-                documentLoader:
-                  "identifier" in identity || "username" in identity
-                    ? await context.getDocumentLoader(identity)
-                    : context.getDocumentLoader(identity),
+      return await withContext(
+        { inboxRequestId: source!.inboxRequestId },
+        () =>
+          observation.run(
+            async () => {
+              if (routeName === "inbox") {
+                context = this.#createContext(request, contextData, {
+                  [outboundProvenance]: getOutboundProvenance(context),
+                  documentLoader: await context.getDocumentLoader({
+                    identifier: recipient!,
+                  }),
+                });
+              } else if (this.sharedInboxKeyDispatcher != null) {
+                const identity = await this.sharedInboxKeyDispatcher(context);
+                if (identity != null) {
+                  context = this.#createContext(request, contextData, {
+                    [outboundProvenance]: getOutboundProvenance(context),
+                    documentLoader:
+                      "identifier" in identity || "username" in identity
+                        ? await context.getDocumentLoader(identity)
+                        : context.getDocumentLoader(identity),
+                  });
+                }
+              }
+              return await this.#handleInbox(request, {
+                recipient,
+                context,
+                contextData,
+                onNotFound,
+                observation,
               });
-            }
-          }
-          return await this.#handleInbox(request, {
-            recipient,
-            context,
-            contextData,
-            onNotFound,
-            observation,
-          });
-        },
-        span,
+            },
+            span,
+          ),
       );
     }
     switch (routeName) {
@@ -3770,6 +4302,7 @@ export class FederationImpl<TContextData>
           ? route.name.substring(ACTOR_ALIAS_PREFIX.length)
           : route.values.identifier;
         context = this.#createContext(request, contextData, {
+          [outboundProvenance]: getOutboundProvenance(context),
           invokedFromActorDispatcher: { identifier },
         });
         return await handleActor(request, {
@@ -3786,6 +4319,7 @@ export class FederationImpl<TContextData>
         const callbacks = this.objectCallbacks[typeId];
         const cls = this.objectTypeIds[typeId];
         context = this.#createContext(request, contextData, {
+          [outboundProvenance]: getOutboundProvenance(context),
           invokedFromObjectDispatcher: { cls, values: route.values },
         });
         return await handleObject(request, {
@@ -3854,6 +4388,7 @@ export class FederationImpl<TContextData>
           const identity = await this.sharedInboxKeyDispatcher(context);
           if (identity != null) {
             context = this.#createContext(request, contextData, {
+              [outboundProvenance]: getOutboundProvenance(context),
               documentLoader: "identifier" in identity || "username" in identity
                 ? await context.getDocumentLoader(identity)
                 : context.getDocumentLoader(identity),
@@ -4052,11 +4587,15 @@ export class FederationImpl<TContextData>
       }
       return response;
     }
+    const provenance = globalThis.Object.freeze({
+      originatingRequestId: metricState.requestId,
+    });
     if (collectionRoute != null) {
       return await this.#fetchPortableCollection(request, portable, route, {
         onNotFound,
         onUnauthorized,
         contextData,
+        provenance,
       });
     }
     if (isActor) {
@@ -4064,6 +4603,7 @@ export class FederationImpl<TContextData>
         ? route.name.substring(ACTOR_ALIAS_PREFIX.length)
         : route.values.identifier;
       const context = this.#createContext(request, contextData, {
+        [outboundProvenance]: provenance,
         invokedFromActorDispatcher: { identifier },
         portableRequest: portable.portableRequest,
       });
@@ -4088,6 +4628,7 @@ export class FederationImpl<TContextData>
     const callbacks = this.objectCallbacks[typeId];
     const cls = this.objectTypeIds[typeId];
     const context = this.#createContext(request, contextData, {
+      [outboundProvenance]: provenance,
       invokedFromObjectDispatcher: { cls, values: route.values },
       portableRequest: portable.portableRequest,
     });
@@ -4111,6 +4652,7 @@ export class FederationImpl<TContextData>
       onNotFound,
       onUnauthorized,
       contextData,
+      provenance,
     }:
       & Required<
         Pick<
@@ -4118,7 +4660,7 @@ export class FederationImpl<TContextData>
           "onNotFound" | "onUnauthorized"
         >
       >
-      & { contextData: TContextData },
+      & { contextData: TContextData; provenance: OutboundProvenance },
   ): Promise<Response> {
     const logger = getLogger(["fedify", "federation", "collection"]);
     const url = new URL(request.url);
@@ -4127,8 +4669,11 @@ export class FederationImpl<TContextData>
     // that its ID comes from the application's data rather than from
     // the authority of the request, which the portable ID helpers would
     // otherwise default to:
-    const ownerContext = this.#createContext(request, contextData);
+    const ownerContext = this.#createContext(request, contextData, {
+      [outboundProvenance]: provenance,
+    });
     const context = this.#createContext(request, contextData, {
+      [outboundProvenance]: provenance,
       portableRequest: portable.portableRequest,
     });
     const reject = async (reason: string, identifier?: string) => {
@@ -4276,6 +4821,19 @@ export class FederationImpl<TContextData>
     return await onNotFound(request);
   }
 
+  #createInboxRequestSource(
+    request: Request,
+    metricState: HttpMetricState,
+  ): OutboundInboxRequest {
+    const source = createInboxRequestSource(
+      request,
+      metricState.requestId ?? getRequestId(request),
+      this.origin?.webOrigin,
+    );
+    metricState.inboxRequest = source;
+    return source;
+  }
+
   #setInboxCompletion(
     metricState: HttpMetricState,
     observation: InboxObservation,
@@ -4327,6 +4885,9 @@ export class FederationImpl<TContextData>
   ): Promise<Response> {
     const unavailableLoader: DocumentLoader = () => Promise.reject(error);
     const context = new RequestContextImpl({
+      [outboundProvenance]: globalThis.Object.freeze({
+        inboxRequest: metricState.inboxRequest,
+      }),
       url: new URL(request.url),
       request,
       federation: this,
@@ -4334,7 +4895,7 @@ export class FederationImpl<TContextData>
       documentLoader: unavailableLoader,
       contextLoader: unavailableLoader,
     });
-    const observation = new InboxObservation(inbox);
+    const observation = new InboxObservation(inbox, metricState.inboxRequest);
     this.#setInboxCompletion(metricState, observation, () => context);
     return await observation.run(
       () => Promise.reject(error),
@@ -4431,9 +4992,18 @@ export class FederationImpl<TContextData>
     metricState.endpoint = "inbox";
     span.updateName(`${request.method} ${metricState.routeTemplate}`);
     const identifier = route.values.identifier;
+    const source = this.#createInboxRequestSource(request, metricState);
     let context: RequestContextImpl<TContextData>;
     try {
-      context = this.#createContext(request, contextData);
+      context = withContext(
+        { inboxRequestId: source.inboxRequestId },
+        () =>
+          this.#createContext(request, contextData, {
+            [outboundProvenance]: globalThis.Object.freeze({
+              inboxRequest: source,
+            }),
+          }),
+      );
     } catch (error) {
       return await this.#reportInboxPreparationError(
         request,
@@ -4447,104 +5017,128 @@ export class FederationImpl<TContextData>
     const observation = new InboxObservation({
       kind: "portable",
       recipient: identifier,
-    });
+    }, source);
     this.#setInboxCompletion(metricState, observation, () => context);
-    return await observation.run(
-      async () => {
-        // The actor is looked up only by its identifier, as for ordinary inbox
-        // deliveries, so that the identifier alone determines the recipient,
-        // also for inbox listeners and queued deliveries:
-        const actor = this.actorCallbacks?.dispatcher == null
-          ? null
-          : await this.actorCallbacks.dispatcher(context, identifier);
-        const localOrigin = context.canonicalOrigin;
-        const resolution = resolvePortableInboxRecipient(
-          actor == null || actor instanceof Tombstone ? null : actor,
-          {
-            authority: portable.portableRequest.authority,
-            canonicalInboxId: portable.canonicalId,
-            localOrigin,
-          },
-        );
-        if (resolution.status === "rejected") {
-          logger.debug(
-            "Not accepting a delivery to the portable inbox {inbox} on behalf " +
-              "of the actor {identifier}: {reason}.",
-            {
-              inbox: portable.canonicalId,
-              identifier,
-              reason: resolution.reason,
-            },
-          );
-          return await onNotFound(request);
-        }
-        const { recipient } = resolution;
-        // A portable actor does not necessarily have key pairs for authorized
-        // fetch, so fall back to the default document loader without them:
-        if (this.actorCallbacks?.keyPairsDispatcher != null) {
-          context = this.#createContext(request, contextData, {
-            documentLoader: await context.getDocumentLoader({ identifier }),
-          });
-        }
-        const excludedOrigins = [localOrigin, new URL(request.url).origin];
-        return await this.#handleInbox(request, {
-          recipient: identifier,
-          observation,
-          context,
-          contextData,
-          onNotFound,
-          portableInbox: {
-            recipient,
-            forward: async (activity, activityId, activityType, signatures) => {
-              if (this.portableInboxForwarding.maxTargets < 1) return;
-              if (this.kv.cas == null) {
-                if (!this.#portableInboxForwardingWarned) {
-                  this.#portableInboxForwardingWarned = true;
-                  logger.warn(
-                    "Activities delivered to FEP-ef61 portable inboxes are not " +
-                      "forwarded to the other gateways, as the key–value store " +
-                      "does not support compare-and-swap (KvStore.cas()), which " +
-                      "is needed to forward each activity at most once.",
-                  );
-                }
-                return;
-              }
-              await forwardPortableInboxActivity({
-                recipient,
-                activity,
-                activityId,
-                activityType,
-                excludedOrigins,
-                baseUrl: context.origin,
-                kv: this.kv,
-                kvPrefix: this.kvPrefixes.portableInboxForwarding,
-                outboxQueue: this.outboxQueue,
-                startQueue: this.manuallyStartQueue
-                  ? undefined
-                  : () => this._startQueueInternal(contextData),
-                allowPrivateAddress: this.allowPrivateAddress,
-                getKeys: () =>
-                  this.#getPortableGatewayKeyPairs(
-                    context,
-                    identifier,
-                    recipient,
-                  ),
-                specDeterminer: new KvSpecDeterminer(
-                  this.kv,
-                  this.kvPrefixes.httpMessageSignaturesSpec,
-                  this.firstKnock,
-                  { specTtl: this.httpMessageSignaturesSpecTtl },
-                ),
-                signatures,
-                options: this.portableInboxForwarding,
-                meterProvider: this.meterProvider,
-                tracerProvider: this.tracerProvider,
+    return await withContext(
+      { inboxRequestId: source.inboxRequestId },
+      () =>
+        observation.run(
+          async () => {
+            // The actor is looked up only by its identifier, as for ordinary inbox
+            // deliveries, so that the identifier alone determines the recipient,
+            // also for inbox listeners and queued deliveries:
+            const actor = this.actorCallbacks?.dispatcher == null
+              ? null
+              : await this.actorCallbacks.dispatcher(context, identifier);
+            const localOrigin = context.canonicalOrigin;
+            const resolution = resolvePortableInboxRecipient(
+              actor == null || actor instanceof Tombstone ? null : actor,
+              {
+                authority: portable.portableRequest.authority,
+                canonicalInboxId: portable.canonicalId,
+                localOrigin,
+              },
+            );
+            if (resolution.status === "rejected") {
+              logger.debug(
+                "Not accepting a delivery to the portable inbox {inbox} on behalf " +
+                  "of the actor {identifier}: {reason}.",
+                {
+                  inbox: portable.canonicalId,
+                  identifier,
+                  reason: resolution.reason,
+                },
+              );
+              return await onNotFound(request);
+            }
+            const { recipient } = resolution;
+            // A portable actor does not necessarily have key pairs for authorized
+            // fetch, so fall back to the default document loader without them:
+            if (this.actorCallbacks?.keyPairsDispatcher != null) {
+              context = this.#createContext(request, contextData, {
+                [outboundProvenance]: getOutboundProvenance(context),
+                documentLoader: await context.getDocumentLoader({ identifier }),
               });
-            },
+            }
+            const excludedOrigins = [localOrigin, new URL(request.url).origin];
+            return await this.#handleInbox(request, {
+              recipient: identifier,
+              observation,
+              context,
+              contextData,
+              onNotFound,
+              portableInbox: {
+                recipient,
+                forward: (activity, activityId, activityType, signatures) =>
+                  observeOutboundBroadcast(
+                    context,
+                    this.outboundObservers,
+                    async (observation) => {
+                      observation?.setActivity({
+                        ...(activityId == null ? {} : { id: activityId.href }),
+                        type: activityType,
+                      });
+                      if (this.portableInboxForwarding.maxTargets < 1) {
+                        if (observation != null) {
+                          await observation.skipped("forwarding-disabled");
+                        }
+                        return;
+                      }
+                      if (this.kv.cas == null) {
+                        if (!this.#portableInboxForwardingWarned) {
+                          this.#portableInboxForwardingWarned = true;
+                          logger.warn(
+                            "Activities delivered to FEP-ef61 portable inboxes are not " +
+                              "forwarded to the other gateways, as the key–value store " +
+                              "does not support compare-and-swap (KvStore.cas()), which " +
+                              "is needed to forward each activity at most once.",
+                          );
+                        }
+                        if (observation != null) {
+                          await observation.skipped("forwarding-unavailable");
+                        }
+                        return;
+                      }
+                      await forwardPortableInboxActivity({
+                        provenance: getOutboundProvenance(context),
+                        recipient,
+                        activity,
+                        activityId,
+                        activityType,
+                        excludedOrigins,
+                        baseUrl: context.origin,
+                        kv: this.kv,
+                        kvPrefix: this.kvPrefixes.portableInboxForwarding,
+                        outboxQueue: this.outboxQueue,
+                        startQueue: this.manuallyStartQueue
+                          ? undefined
+                          : () => this._startQueueInternal(contextData),
+                        allowPrivateAddress: this.allowPrivateAddress,
+                        getKeys: () =>
+                          this.#getPortableGatewayKeyPairs(
+                            context,
+                            identifier,
+                            recipient,
+                          ),
+                        specDeterminer: new KvSpecDeterminer(
+                          this.kv,
+                          this.kvPrefixes.httpMessageSignaturesSpec,
+                          this.firstKnock,
+                          { specTtl: this.httpMessageSignaturesSpecTtl },
+                        ),
+                        signatures,
+                        options: this.portableInboxForwarding,
+                        meterProvider: this.meterProvider,
+                        tracerProvider: this.tracerProvider,
+                      }, observation);
+                    },
+                    "portable-replication",
+                  ),
+              },
+            });
           },
-        });
-      },
-      span,
+          span,
+        ),
     );
   }
 
@@ -4653,7 +5247,11 @@ export class FederationImpl<TContextData>
         },
       );
     }
-    const context = this.#createContext(request, contextData);
+    const context = this.#createContext(request, contextData, {
+      [outboundProvenance]: globalThis.Object.freeze({
+        originatingRequestId: metricState.requestId,
+      }),
+    });
     const response = await this.hashlinkMediaDispatcher!(context, media.media);
     // The onNotFound response is returned as is, since integrations may
     // recognize it by its identity:
@@ -4769,6 +5367,8 @@ type FedifyEndpoint =
   | "error";
 
 interface HttpMetricState {
+  requestId?: string;
+  inboxRequest?: OutboundInboxRequest;
   inboxCompletion?: {
     observation: InboxObservation;
     finish(
@@ -4847,6 +5447,7 @@ function getCollectionMetricRoute(routeName: string):
 }
 
 interface ContextOptions<TContextData> {
+  [outboundProvenance]?: OutboundProvenance;
   url: URL;
   federation: FederationImpl<TContextData>;
   data: TContextData;
@@ -4909,9 +5510,13 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       documentLoader,
       contextLoader,
       invokedFromActorKeyPairsDispatcher,
+      [outboundProvenance]: provenance = emptyProvenance,
     }: ContextOptions<TContextData>,
   ) {
     this.url = url;
+    // Keep internal symbol metadata enumerable for context spreads, without
+    // exposing a computed class field in generated declarations.
+    globalThis.Object.assign(this, { [outboundProvenance]: provenance });
     this.federation = federation;
     this.data = data;
     this.documentLoader = documentLoader;
@@ -4941,6 +5546,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   clone(data: TContextData): Context<TContextData> {
     return new ContextImpl<TContextData>({
+      [outboundProvenance]: getOutboundProvenance(this),
       url: this.url,
       federation: this.federation,
       data,
@@ -4959,6 +5565,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     metadata?: InboxContextMetadata,
   ): InboxContextImpl<TContextData> {
     return new InboxContextImpl(recipient, activity, activityId, activityType, {
+      [outboundProvenance]: getOutboundProvenance(this),
       url: this.url,
       federation: this.federation,
       data: this.data,
@@ -4981,6 +5588,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       activityId,
       activityType,
       {
+        [outboundProvenance]: getOutboundProvenance(this),
         url: this.url,
         federation: this.federation,
         data: this.data,
@@ -5646,45 +6254,71 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activity: Activity,
     options: SendActivityOptionsForCollection = {},
   ): Promise<void> {
-    const tracer = this.tracerProvider.getTracer(
-      metadata.name,
-      metadata.version,
-    );
-    return tracer.startActiveSpan(
-      this.federation.outboxQueue == null || options.immediate
-        ? "activitypub.outbox"
-        : "activitypub.fanout",
-      {
-        kind: this.federation.outboxQueue == null || options.immediate
-          ? SpanKind.CLIENT
-          : SpanKind.PRODUCER,
-        attributes: {
-          "activitypub.activity.type": getTypeId(activity).href,
-          "activitypub.activity.to": activity.toIds.map((to) => to.href),
-          "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
-          "activitypub.activity.bto": activity.btoIds.map((bto) => bto.href),
-          "activitypub.activity.bcc": activity.bccIds.map((bcc) => bcc.href),
-        },
+    return observeOutboundBroadcast(
+      this,
+      this.federation.outboundObservers,
+      (observation, provenance) => {
+        const tracer = this.tracerProvider.getTracer(
+          metadata.name,
+          metadata.version,
+        );
+        const parentSpanContext = trace.getSpanContext(context.active());
+        const activityType = getTypeId(activity).href;
+        observation?.setActivity({ type: activityType });
+        return tracer.startActiveSpan(
+          this.federation.outboxQueue == null || options.immediate
+            ? "activitypub.outbox"
+            : "activitypub.fanout",
+          {
+            kind: this.federation.outboxQueue == null || options.immediate
+              ? SpanKind.CLIENT
+              : SpanKind.PRODUCER,
+            attributes: {
+              "activitypub.activity.type": activityType,
+              "activitypub.activity.to": activity.toIds.map((to) => to.href),
+              "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
+              "activitypub.activity.bto": activity.btoIds.map((bto) =>
+                bto.href
+              ),
+              "activitypub.activity.bcc": activity.bccIds.map((bcc) =>
+                bcc.href
+              ),
+            },
+          },
+          async (span) => {
+            observation?.setSpan(span, parentSpanContext);
+            try {
+              const activityId = activity.id?.href;
+              if (activityId != null) {
+                span.setAttribute("activitypub.activity.id", activityId);
+              }
+              observation?.setActivity({
+                type: activityType,
+                ...(activityId == null ? {} : { id: activityId }),
+              });
+              await this.sendActivityInternal(
+                sender,
+                recipients,
+                activity,
+                options,
+                span,
+                observation,
+                provenance,
+              );
+            } catch (e) {
+              span.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: String(e),
+              });
+              throw e;
+            } finally {
+              span.end();
+            }
+          },
+        );
       },
-      async (span) => {
-        try {
-          if (activity.id != null) {
-            span.setAttribute("activitypub.activity.id", activity.id.href);
-          }
-          await this.sendActivityInternal(
-            sender,
-            recipients,
-            activity,
-            options,
-            span,
-          );
-        } catch (e) {
-          span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
-          throw e;
-        } finally {
-          span.end();
-        }
-      },
+      "send",
+      options.dispatchId,
     );
   }
 
@@ -5698,8 +6332,11 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activity: Activity,
     options: SendActivityOptionsForCollection,
     span: Span,
+    observation?: OutboundBroadcastObservation<TContextData>,
+    provenance: OutboundProvenance = getOutboundProvenance(this),
   ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
+    observation?.setPhase("sender-resolution");
     let keys: SenderKeyPair[];
     let identifier: string | null = null;
     let actorKeyPairs: ActorKeyPair[] | null = null;
@@ -5726,6 +6363,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         }
       }
       span.setAttribute("fedify.actor.identifier", identifier);
+      observation?.setPhase("key-resolution");
       if (this.federation.actorCallbacks?.keyPairsDispatcher == null) {
         throw new Error("No actor key pairs dispatcher registered.");
       }
@@ -5740,6 +6378,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         privateKey: kp.privateKey,
       }));
     } else if (Array.isArray(sender)) {
+      observation?.setPhase("key-resolution");
       if (sender.length < 1) {
         throw new Error("The sender's key pairs are empty.");
       }
@@ -5750,9 +6389,11 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     if (keys.length < 1) {
       throw new TypeError("The sender's keys must not be empty.");
     }
+    observation?.setPhase("key-resolution");
     for (const { privateKey } of keys) {
       validateCryptoKey(privateKey, "private");
     }
+    observation?.setPhase("recipient-resolution");
     let expandedRecipients: Recipient[];
     let collectionSync: string | undefined;
     if (Array.isArray(recipients)) {
@@ -5784,16 +6425,43 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     }
     const opts: SendActivityInternalOptions<TContextData> = {
       context: this,
+      observation,
+      provenance,
       orderingKey: options.orderingKey,
       collectionSync,
       immediate: options.immediate,
       normalizeExistingProofs: options.normalizeExistingProofs,
     };
     span.setAttribute("activitypub.inboxes", expandedRecipients.length);
+    observation?.setPhase("transformation");
+    if (this.federation.activityTransformers.length > 0) {
+      // A transformer can replace the Activity; do not retain its old ID/type.
+      observation?.setActivity({});
+    }
     for (const activityTransformer of this.federation.activityTransformers) {
       activity = activityTransformer(activity, this);
     }
-    span?.setAttribute("activitypub.activity.id", activity?.id?.href ?? "");
+    let transformedActivityId: string | undefined;
+    try {
+      transformedActivityId = activity?.id?.href;
+    } finally {
+      if (observation != null) {
+        let activityType: string | undefined;
+        try {
+          activityType = getTypeId(activity)?.href;
+        } catch {
+          // Observation must not replace an error from reading the Activity.
+        }
+        observation.setActivity({
+          ...(transformedActivityId == null
+            ? {}
+            : { id: transformedActivityId }),
+          ...(activityType == null ? {} : { type: activityType }),
+        });
+      }
+    }
+    span?.setAttribute("activitypub.activity.id", transformedActivityId ?? "");
+    observation?.setPhase("validation");
     if (activity.actorId == null) {
       logger.error(
         "Activity {activityId} to send does not have an actor.",
@@ -5820,6 +6488,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     // does not accept.  This mirrors the guard `FederationImpl.sendActivity()`
     // applies before signing.  Actor key pairs keep appending outside that
     // profile, as they always have.
+    observation?.setPhase("signing");
     const { activity: signedActivity, proofCreated } =
       await signOutgoingActivity(
         activity,
@@ -5841,16 +6510,19 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         },
       );
     activity = signedActivity;
+    observation?.setPhase("destination-planning");
     const inboxes = extractInboxes({
       recipients: expandedRecipients,
       preferSharedInbox: options.preferSharedInbox,
       excludeBaseUris: options.excludeBaseUris,
     });
+    if (observation != null) await observation.planDestinations(inboxes);
     if (globalThis.Object.keys(inboxes).length < 1) {
       logger.debug("No inboxes found for activity {activityId}.", {
         activityId: activity.id?.href,
         activity,
       });
+      if (observation != null) await observation.skipped();
       return false;
     }
     logger.debug("Sending activity {activityId} to inboxes:\n{inboxes}", {
@@ -5858,6 +6530,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       activityId: activity.id?.href,
       activity,
     });
+    observation?.setPhase("serialization");
     const activityJsonLd = await activity.toJsonLd({
       format: "compact",
       contextLoader: this.contextLoader,
@@ -5890,17 +6563,27 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     }
     // Reject before anything is enqueued, so the caller learns about it
     // instead of the fanout worker.
+    observation?.setPhase("validation");
     assertSupportedCompoundProofShape(activityJsonLd, activity.id?.href);
+    observation?.setPhase("key-resolution");
     const keyJwkPairs = await Promise.all(
       keys.map(async ({ keyId, privateKey }) => ({
         keyId: keyId.href,
         privateKey: await exportJwk(privateKey),
       })),
     );
+    observation?.setPhase("request-preparation");
     const carrier: Record<string, string> = {};
     propagation.inject(context.active(), carrier);
+    const activityId = activity.id?.href;
+    const activityType = getTypeId(activity).href;
+    observation?.setActivity({
+      ...(activityId == null ? {} : { id: activityId }),
+      type: activityType,
+    });
     const message: FanoutMessage = {
       type: "fanout",
+      ...serializeProvenance(provenance),
       id: crypto.randomUUID(),
       baseUrl: this.origin,
       keys: keyJwkPairs,
@@ -5909,13 +6592,14 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           [k, { actorIds, sharedInbox, portableInbox, gatewayInboxes }],
         ) => [k, {
           actorIds: [...actorIds],
+          ...observation?.continuation(k),
           sharedInbox,
           ...getPortableMessageFields(portableInbox, gatewayInboxes),
         }]),
       ),
       activity: activityJsonLd,
-      activityId: activity.id?.href,
-      activityType: getTypeId(activity).href,
+      activityId,
+      activityType,
       collectionSync: opts.collectionSync,
       orderingKey: options.orderingKey,
       normalizeExistingProofs: proofCreated || options.normalizeExistingProofs,
@@ -5924,10 +6608,22 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     if (!this.federation.manuallyStartQueue) {
       this.federation._startQueueInternal(this.data);
     }
-    await this.federation.fanoutQueue.enqueue(
-      message,
-      { orderingKey: options.orderingKey },
-    );
+    if (observation != null) await observation.prepared("fanout");
+    await (observation == null
+      ? this.federation.fanoutQueue.enqueue(message, {
+        orderingKey: options.orderingKey,
+      })
+      : observation.enqueue(
+        globalThis.Object.keys(inboxes).map((inbox) => ({
+          inbox,
+          queueMessageId: message.id,
+        })),
+        "fanout",
+        () =>
+          this.federation.fanoutQueue!.enqueue(message, {
+            orderingKey: options.orderingKey,
+          }),
+      ));
     getFederationMetrics(this.federation.meterProvider).recordQueueTaskEnqueued(
       {
         role: "fanout",
@@ -6364,6 +7060,7 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
 
   override clone(data: TContextData): RequestContext<TContextData> {
     return new RequestContextImpl<TContextData>({
+      [outboundProvenance]: getOutboundProvenance(this),
       url: this.url,
       federation: this.federation,
       data,
@@ -6729,39 +7426,55 @@ function forwardActivity<TContextData>(
   recipients: Recipient | Recipient[] | "followers",
   options?: ForwardActivityOptions,
 ): Promise<boolean> {
-  const tracer = ctx.tracerProvider.getTracer(
-    metadata.name,
-    metadata.version,
-  );
-  return tracer.startActiveSpan(
-    ctx.federation.outboxQueue == null || options?.immediate
-      ? `activitypub.${loggerCategory}`
-      : "activitypub.fanout",
-    {
-      kind: ctx.federation.outboxQueue == null || options?.immediate
-        ? SpanKind.CLIENT
-        : SpanKind.PRODUCER,
-      attributes: { "activitypub.activity.type": ctx.activityType },
+  return observeOutboundBroadcast(
+    ctx,
+    ctx.federation.outboundObservers,
+    (observation, provenance) => {
+      observation?.setActivity({
+        ...(ctx.activityId == null ? {} : { id: ctx.activityId }),
+        type: ctx.activityType,
+      });
+      const tracer = ctx.tracerProvider.getTracer(
+        metadata.name,
+        metadata.version,
+      );
+      const parentSpanContext = trace.getSpanContext(context.active());
+      return tracer.startActiveSpan(
+        ctx.federation.outboxQueue == null || options?.immediate
+          ? `activitypub.${loggerCategory}`
+          : "activitypub.fanout",
+        {
+          kind: ctx.federation.outboxQueue == null || options?.immediate
+            ? SpanKind.CLIENT
+            : SpanKind.PRODUCER,
+          attributes: { "activitypub.activity.type": ctx.activityType },
+        },
+        async (span) => {
+          observation?.setSpan(span, parentSpanContext);
+          try {
+            if (ctx.activityId != null) {
+              span.setAttribute("activitypub.activity.id", ctx.activityId);
+            }
+            return await forwardActivityInternal(
+              ctx,
+              loggerCategory,
+              forwarder,
+              recipients,
+              options,
+              observation,
+              provenance,
+            );
+          } catch (e) {
+            span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+            throw e;
+          } finally {
+            span.end();
+          }
+        },
+      );
     },
-    async (span) => {
-      try {
-        if (ctx.activityId != null) {
-          span.setAttribute("activitypub.activity.id", ctx.activityId);
-        }
-        return await forwardActivityInternal(
-          ctx,
-          loggerCategory,
-          forwarder,
-          recipients,
-          options,
-        );
-      } catch (e) {
-        span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
-        throw e;
-      } finally {
-        span.end();
-      }
-    },
+    "forward",
+    options?.dispatchId,
   );
 }
 
@@ -6775,8 +7488,11 @@ async function forwardActivityInternal<TContextData>(
     | { username: string },
   recipients: Recipient | Recipient[] | "followers",
   options?: ForwardActivityOptions,
+  observation?: OutboundBroadcastObservation<TContextData>,
+  provenance: OutboundProvenance = getOutboundProvenance(ctx),
 ): Promise<boolean> {
   const logger = getLogger(["fedify", "federation", loggerCategory]);
+  observation?.setPhase("sender-resolution");
   let keys: SenderKeyPair[];
   let identifier: string | null = null;
   if (
@@ -6803,6 +7519,7 @@ async function forwardActivityInternal<TContextData>(
         identifier = mapped;
       }
     }
+    observation?.setPhase("key-resolution");
     const actorKeyPairs = await ctx.getActorKeyPairs(identifier);
     if (actorKeyPairs.length < 1) {
       throw new Error(
@@ -6814,6 +7531,7 @@ async function forwardActivityInternal<TContextData>(
       privateKey: kp.privateKey,
     }));
   } else if (Array.isArray(forwarder)) {
+    observation?.setPhase("key-resolution");
     if (forwarder.length < 1) {
       throw new Error("The forwarder's key pairs are empty.");
     }
@@ -6821,10 +7539,14 @@ async function forwardActivityInternal<TContextData>(
   } else {
     keys = [forwarder];
   }
+  observation?.setPhase("validation");
   if (!hasSignatureLike(ctx.activity)) {
     const hasProof = hasProofLike(ctx.activity);
     if (!hasProof) {
-      if (options?.skipIfUnsigned) return false;
+      if (options?.skipIfUnsigned) {
+        if (observation != null) await observation.skipped("unsigned");
+        return false;
+      }
       logger.warn(
         "The activity {activityId} is not signed; even if it is " +
           "forwarded to other servers as is, it may not be accepted by " +
@@ -6837,6 +7559,7 @@ async function forwardActivityInternal<TContextData>(
       );
     }
   }
+  observation?.setPhase("recipient-resolution");
   if (recipients === "followers") {
     if (identifier == null) {
       throw new Error(
@@ -6850,17 +7573,20 @@ async function forwardActivityInternal<TContextData>(
     }
     recipients = followers;
   }
+  observation?.setPhase("destination-planning");
   const inboxes = extractInboxes({
     recipients: Array.isArray(recipients) ? recipients : [recipients],
     preferSharedInbox: options?.preferSharedInbox,
     excludeBaseUris: options?.excludeBaseUris,
   });
+  if (observation != null) await observation.planDestinations(inboxes);
   if (globalThis.Object.keys(inboxes).length < 1) {
     logger.debug("No inboxes found for activity {activityId}.", {
       activityId: ctx.activityId,
       activityType: ctx.activityType,
       identifier: identifier ?? undefined,
     });
+    if (observation != null) await observation.skipped();
     return false;
   }
   logger.debug("Forwarding activity {activityId} to inboxes:\n{inboxes}", {
@@ -6880,27 +7606,45 @@ async function forwardActivityInternal<TContextData>(
           "set.",
       );
     }
+    observation?.setPhase("request-preparation");
     const promises: Promise<void>[] = [];
     for (const inbox in inboxes) {
-      promises.push(
-        sendActivityToInbox(inbox, inboxes[inbox].gatewayInboxes, {
-          allowPrivateAddress: ctx.federation.allowPrivateAddress,
-          keys,
-          activity: ctx.activity,
-          activityId: ctx.activityId,
-          activityType: ctx.activityType,
-          sharedInbox: inboxes[inbox].sharedInbox,
-          meterProvider: ctx.meterProvider,
-          tracerProvider: ctx.tracerProvider,
-          specDeterminer: new KvSpecDeterminer(
-            ctx.federation.kv,
-            ctx.federation.kvPrefixes.httpMessageSignaturesSpec,
-            ctx.federation.firstKnock,
-            { specTtl: ctx.federation.httpMessageSignaturesSpecTtl },
-          ),
-        }),
-      );
+      const delivery = observation?.delivery(inbox);
+      let sending: Promise<void>;
+      try {
+        sending = sendActivityToInbox(
+          inbox,
+          inboxes[inbox].gatewayInboxes,
+          {
+            observation: delivery,
+            allowPrivateAddress: ctx.federation.allowPrivateAddress,
+            keys,
+            activity: ctx.activity,
+            activityId: ctx.activityId,
+            activityType: ctx.activityType,
+            sharedInbox: inboxes[inbox].sharedInbox,
+            meterProvider: ctx.meterProvider,
+            tracerProvider: ctx.tracerProvider,
+            specDeterminer: new KvSpecDeterminer(
+              ctx.federation.kv,
+              ctx.federation.kvPrefixes.httpMessageSignaturesSpec,
+              ctx.federation.firstKnock,
+              { specTtl: ctx.federation.httpMessageSignaturesSpecTtl },
+            ),
+          },
+        );
+      } catch (error) {
+        if (delivery != null) await delivery.failed(error);
+        throw error;
+      }
+      if (observation != null) {
+        // Preserve early rejections while the preparation observer is awaited.
+        sending.catch(() => {});
+      }
+      if (delivery != null) await delivery.handoff({ type: "direct" });
+      promises.push(sending);
     }
+    if (observation != null) await observation.prepared("delivery");
     await Promise.all(promises);
     return true;
   }
@@ -6908,51 +7652,69 @@ async function forwardActivityInternal<TContextData>(
     "Enqueuing activity {activityId} to forward later.",
     { activityId: ctx.activityId, activity: ctx.activity },
   );
+  observation?.setPhase("request-preparation");
   if (!ctx.federation.manuallyStartQueue) {
     ctx.federation._startQueueInternal(ctx.data);
   }
+  observation?.setPhase("key-resolution");
   const keyJwkPairs: SenderKeyJwkPair[] = [];
   for (const { keyId, privateKey } of keys) {
     const privateKeyJwk = await exportJwk(privateKey);
     keyJwkPairs.push({ keyId: keyId.href, privateKey: privateKeyJwk });
   }
+  observation?.setPhase("request-preparation");
   const carrier: Record<string, string> = {};
   propagation.inject(context.active(), carrier);
   const orderingKey = options?.orderingKey;
   const started = new Date().toISOString();
   const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
   for (const inbox in inboxes) {
-    const { portableInbox, gatewayInboxes } = inboxes[inbox];
-    const message: OutboxMessage = {
-      type: "outbox",
-      id: crypto.randomUUID(),
-      baseUrl: ctx.origin,
-      keys: keyJwkPairs,
-      activity: ctx.activity,
-      activityId: ctx.activityId,
-      activityType: ctx.activityType,
-      inbox,
-      sharedInbox: inboxes[inbox].sharedInbox,
-      actorIds: [...inboxes[inbox].actorIds],
-      started,
-      attempt: 0,
-      headers: {},
-      orderingKey: orderingKey == null
-        ? undefined
-        : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`,
-      ...getPortableMessageFields(portableInbox, gatewayInboxes),
-      traceContext: carrier,
-    };
-    messages.push({
-      message,
-      orderingKey: message.orderingKey,
-    });
+    try {
+      const { portableInbox, gatewayInboxes } = inboxes[inbox];
+      const message: OutboxMessage = {
+        type: "outbox",
+        ...serializeProvenance(provenance),
+        id: crypto.randomUUID(),
+        baseUrl: ctx.origin,
+        keys: keyJwkPairs,
+        activity: ctx.activity,
+        activityId: ctx.activityId,
+        activityType: ctx.activityType,
+        inbox,
+        ...observation?.continuation(inbox),
+        sharedInbox: inboxes[inbox].sharedInbox,
+        actorIds: [...inboxes[inbox].actorIds],
+        started,
+        attempt: 0,
+        headers: {},
+        orderingKey: orderingKey == null
+          ? undefined
+          : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`,
+        ...getPortableMessageFields(portableInbox, gatewayInboxes),
+        traceContext: carrier,
+      };
+      messages.push({
+        message,
+        orderingKey: message.orderingKey,
+      });
+    } catch (error) {
+      if (observation != null) await observation.delivery(inbox)?.failed(error);
+      throw error;
+    }
   }
+  if (observation != null) await observation.prepared("delivery");
   const { outboxQueue } = ctx.federation;
   if (outboxQueue.enqueueMany == null || orderingKey != null) {
     const promises: PromiseSettledResult<void>[] = await Promise.allSettled(
       messages.map(async (m) => {
-        await outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey });
+        await (observation == null
+          ? outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
+          : observation.enqueue(
+            [{ inbox: m.message.inbox, queueMessageId: m.message.id }],
+            "outbox",
+            () =>
+              outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey }),
+          ));
         recordOutboxEnqueue(
           ctx.federation.meterProvider,
           outboxQueue,
@@ -6978,7 +7740,16 @@ async function forwardActivityInternal<TContextData>(
     }
   } else {
     try {
-      await outboxQueue.enqueueMany(messages.map((m) => m.message));
+      await (observation == null
+        ? outboxQueue.enqueueMany(messages.map((m) => m.message))
+        : observation.enqueue(
+          messages.map(({ message }) => ({
+            inbox: message.inbox,
+            queueMessageId: message.id,
+          })),
+          "outbox",
+          () => outboxQueue.enqueueMany!(messages.map((m) => m.message)),
+        ));
     } catch (error) {
       logger.error(
         "Failed to enqueue activity {activityId} to forward later:\n{error}",
@@ -7036,6 +7807,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
       this.activityId,
       this.activityType,
       {
+        [outboundProvenance]: getOutboundProvenance(this),
         url: this.url,
         federation: this.federation,
         data,
@@ -7116,46 +7888,72 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
     activity: Activity,
     options: SendActivityOptionsForCollection = {},
   ): Promise<void> {
-    const tracer = this.tracerProvider.getTracer(
-      metadata.name,
-      metadata.version,
-    );
-    return tracer.startActiveSpan(
-      this.federation.outboxQueue == null || options.immediate
-        ? "activitypub.outbox"
-        : "activitypub.fanout",
-      {
-        kind: this.federation.outboxQueue == null || options.immediate
-          ? SpanKind.CLIENT
-          : SpanKind.PRODUCER,
-        attributes: {
-          "activitypub.activity.type": getTypeId(activity).href,
-          "activitypub.activity.to": activity.toIds.map((to) => to.href),
-          "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
-          "activitypub.activity.bto": activity.btoIds.map((bto) => bto.href),
-          "activitypub.activity.bcc": activity.bccIds.map((bcc) => bcc.href),
-        },
+    return observeOutboundBroadcast(
+      this,
+      this.federation.outboundObservers,
+      (observation, provenance) => {
+        const tracer = this.tracerProvider.getTracer(
+          metadata.name,
+          metadata.version,
+        );
+        const parentSpanContext = trace.getSpanContext(context.active());
+        const activityType = getTypeId(activity).href;
+        observation?.setActivity({ type: activityType });
+        return tracer.startActiveSpan(
+          this.federation.outboxQueue == null || options.immediate
+            ? "activitypub.outbox"
+            : "activitypub.fanout",
+          {
+            kind: this.federation.outboxQueue == null || options.immediate
+              ? SpanKind.CLIENT
+              : SpanKind.PRODUCER,
+            attributes: {
+              "activitypub.activity.type": activityType,
+              "activitypub.activity.to": activity.toIds.map((to) => to.href),
+              "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
+              "activitypub.activity.bto": activity.btoIds.map((bto) =>
+                bto.href
+              ),
+              "activitypub.activity.bcc": activity.bccIds.map((bcc) =>
+                bcc.href
+              ),
+            },
+          },
+          async (span) => {
+            observation?.setSpan(span, parentSpanContext);
+            try {
+              const activityId = activity.id?.href;
+              if (activityId != null) {
+                span.setAttribute("activitypub.activity.id", activityId);
+              }
+              observation?.setActivity({
+                type: activityType,
+                ...(activityId == null ? {} : { id: activityId }),
+              });
+              const delivered = await this.sendActivityInternal(
+                sender,
+                recipients,
+                activity,
+                options,
+                span,
+                observation,
+                provenance,
+              );
+              if (delivered) this.#deliveryState.delivered = true;
+            } catch (e) {
+              span.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: String(e),
+              });
+              throw e;
+            } finally {
+              span.end();
+            }
+          },
+        );
       },
-      async (span) => {
-        try {
-          if (activity.id != null) {
-            span.setAttribute("activitypub.activity.id", activity.id.href);
-          }
-          const delivered = await this.sendActivityInternal(
-            sender,
-            recipients,
-            activity,
-            options,
-            span,
-          );
-          if (delivered) this.#deliveryState.delivered = true;
-        } catch (e) {
-          span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
-          throw e;
-        } finally {
-          span.end();
-        }
-      },
+      "send",
+      options.dispatchId,
     );
   }
 
@@ -7197,6 +7995,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
       this.activityId,
       this.activityType,
       {
+        [outboundProvenance]: getOutboundProvenance(this),
         url: this.url,
         federation: this.federation,
         data,
@@ -7211,6 +8010,9 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
 }
 
 interface SendActivityInternalOptions<TContextData> {
+  readonly worker?: OutboundWorkerObservation<TContextData>;
+  readonly provenance?: OutboundProvenance;
+  readonly observation?: OutboundBroadcastObservation<TContextData>;
   readonly immediate?: boolean;
   readonly collectionSync?: string;
   readonly orderingKey?: string;

@@ -48,6 +48,20 @@ To be released.
     `idempotency` strategy, as direct processing already did, instead of always
     deduplicating them per origin.  Activities recorded by workers of older
     versions are still recognized.  [[#1290], [#1299]]
+ -  Added application-facing outbound observers for sends, forwarding,
+    replication, and queued retries, independently of OpenTelemetry. Optional
+    callbacks report preparation, delivery handoffs, send/HTTP results, and
+    worker actions with correlation IDs and preparation failure details.
+    Applications can opt in to redacted headers, bounded streaming response
+    capture, and privacy-filtered sender payloads. Inbox reports now preserve
+    original request context and snapshot request cancellation without changing
+    processing outcomes. Malformed optional queue metadata no longer prevents
+    delivery; consumers warn and continue without its correlation facts. Error
+    diagnostic reads have a one-second deadline.
+    The public `Federatable` interface now requires `setOutboundObservers()`,
+    breaking source compatibility for custom implementations. Update custom
+    mocks, decorators, and wrappers to implement this method.
+    [[#1316], [#1359] by Jiwon Kwon\]
  -  Added the `activity-origin-mismatch` reason to rejected
     `InboxAuthentication` decisions in `onRequestFinished` reports.  Inbox
     deliveries rejected because the activity's ID does not have the same origin
@@ -87,9 +101,11 @@ To be released.
 [#1289]: https://github.com/fedify-dev/fedify/issues/1289
 [#1290]: https://github.com/fedify-dev/fedify/issues/1290
 [#1299]: https://github.com/fedify-dev/fedify/pull/1299
+[#1316]: https://github.com/fedify-dev/fedify/issues/1316
 [#1318]: https://github.com/fedify-dev/fedify/issues/1318
 [#1328]: https://github.com/fedify-dev/fedify/pull/1328
 [#1353]: https://github.com/fedify-dev/fedify/pull/1353
+[#1359]: https://github.com/fedify-dev/fedify/pull/1359
 
 ### @fedify/cli
 
@@ -312,6 +328,12 @@ To be released.
 
 ### @fedify/testing
 
+ -  Added outbound observer registration support to mock federations and
+    dispatch IDs to recorded sends. Tests can inspect `dispatchId` through
+    `context.getSentActivities()` and `federation.sentActivities` to assert
+    application correlation. Mock sends reject invalid dispatch IDs before
+    recording, using production's 1,024-byte UTF-8 limit. Mock sends do not
+    invoke outbound observer callbacks. [[#1316], [#1359] by Jiwon Kwon\]
  -  Mock inbox contexts made by `createInboxContext()` now have the
     `authentication` property, which can be given as an option and defaults
     to evidence that nothing was authenticated.  [[#1290], [#1299]]

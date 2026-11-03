@@ -1,3 +1,5 @@
+import { takeCapturedDiagnostic } from "./outbound-capture.ts";
+import { ResponseBodyPump } from "./outbound-body.ts";
 import type { Recipient } from "@fedify/vocab";
 import { FetchError, UrlError } from "@fedify/vocab-runtime";
 import {
@@ -8,6 +10,7 @@ import {
 import { getLogger, withContext } from "@logtape/logtape";
 import {
   type Attributes,
+  context,
   type MeterProvider,
   type Span,
   SpanKind,
@@ -22,6 +25,7 @@ import {
   type HttpMessageSignaturesSpecDeterminer,
 } from "../sig/http.ts";
 import { isPortableUri } from "../sig/portable-key-id.ts";
+import type { OutboundAttemptObservation } from "./outbound-observation.ts";
 import { getDurationMs, getFederationMetrics } from "./metrics.ts";
 import {
   mergeGatewayInboxes,
@@ -205,6 +209,13 @@ export interface SenderKeyPair {
  * Parameters for {@link sendActivity}.
  */
 export interface SendActivityParameters {
+  /** Count actual sender entry for the current outgoing worker. @internal */
+  readonly attemptStarted?: (inboxUrl: string) => void;
+  /** In-process destination observation; never serialized. @internal */
+  readonly observation?: {
+    startAttempt(inboxUrl: string): OutboundAttemptObservation | undefined;
+  };
+
   /**
    * The activity to send.
    */
@@ -296,6 +307,9 @@ export function sendActivity(
   options: SendActivityParameters,
   deps: SendActivityDependencies = {},
 ): Promise<void> {
+  options.attemptStarted?.(options.inbox.href);
+  const attempt = options.observation?.startAttempt(options.inbox.href);
+  const parentSpanContext = trace.getSpanContext(context.active());
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   return tracer.startActiveSpan(
@@ -307,6 +321,7 @@ export function sendActivity(
       },
     },
     async (span) => {
+      attempt?.setSpan(span, parentSpanContext);
       if (options.activityId != null) {
         span.setAttribute("activitypub.activity.id", options.activityId);
       }
@@ -318,10 +333,17 @@ export function sendActivity(
         await withContext(
           { traceId: spanContext.traceId, spanId: spanContext.spanId },
           () =>
-            sendActivityInternal({ ...options, tracerProvider }, span, deps),
+            sendActivityInternal(
+              { ...options, tracerProvider },
+              span,
+              deps,
+              attempt,
+            ),
         );
+        await attempt?.succeeded();
       } catch (e) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+        await attempt?.failed(e);
         throw e;
       } finally {
         span.end();
@@ -368,6 +390,9 @@ export async function sendActivityThroughGateways(
 }
 
 const MAX_ERROR_RESPONSE_BODY_BYTES = 1024;
+// Diagnostic previews must not indefinitely delay an already known HTTP failure.
+// This budget is independent of opt-in application response-body capture.
+const ERROR_RESPONSE_BODY_TIMEOUT_MS = 1000;
 
 function getActivityActorId(activity: unknown): string | undefined {
   if (!isRecord(activity)) return undefined;
@@ -396,18 +421,30 @@ async function readLimitedResponseBody(
   response: Response,
   maxBytes: number,
 ): Promise<string> {
+  const captured = takeCapturedDiagnostic(response);
+  if (captured !== undefined) return captured;
   if (response.body == null) {
     return "";
   }
-  const reader = response.body.getReader();
+  const pump = new ResponseBodyPump(
+    response.body,
+    ERROR_RESPONSE_BODY_TIMEOUT_MS,
+  );
   const decoder = new TextDecoder();
   const chunks: string[] = [];
   let totalBytes = 0;
   let truncated = false;
+  let timedOut = false;
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      const result = await pump.read();
+      if (result == null) {
+        timedOut = true;
+        break;
+      }
+      const { done, value } = result;
       if (done) break;
+      if (value.length === 0) continue;
       if (totalBytes + value.length > maxBytes) {
         const remaining = maxBytes - totalBytes;
         if (remaining > 0) {
@@ -422,15 +459,13 @@ async function readLimitedResponseBody(
       totalBytes += value.length;
     }
   } finally {
-    // Start cancelling the rest of a truncated body instead of leaving it
-    // unread.  It is not awaited, since the cancellation of a tee branch
-    // (e.g., a body cloned by a fetch mock) may never settle:
-    if (truncated) reader.cancel().catch(() => {});
-    reader.releaseLock();
+    pump.close();
   }
   let result = chunks.join("");
   if (truncated) {
     result += "… (truncated)";
+  } else if (timedOut) {
+    result += "… (timed out)";
   }
   return result;
 }
@@ -463,6 +498,7 @@ async function sendActivityInternal(
   }: SendActivityParameters,
   span: Span,
   deps: SendActivityDependencies,
+  attempt?: OutboundAttemptObservation,
 ): Promise<void> {
   const logger = getLogger(["fedify", "federation", "outbox"]);
   const federationMetrics = getFederationMetrics(meterProvider);
@@ -476,17 +512,40 @@ async function sendActivityInternal(
       session = await openUnvalidatedHop(url);
     } catch (error) {
       if (error instanceof UrlError && error.reason === "dns") {
+        attempt?.failure({ kind: "transport", phase: "validation", error });
         logger.error("DNS resolution failed for URL: {url}", { url, error });
         const failure = new FetchError(url, error.message);
         failure.cause = error;
         throw failure;
       }
       if (error instanceof UrlError) {
+        if (error.reason === "disallowed") {
+          attempt?.failure({ kind: "policy", phase: "validation", error });
+        }
         logger.error("Disallowed private URL: {url}", { url, error });
       }
       throw error;
     }
-    return session;
+    if (attempt == null) return session;
+    return {
+      url: session.url,
+      async fetch(input, init) {
+        try {
+          return await session.fetch(input, init);
+        } catch (error) {
+          attempt.failure({ kind: "transport", phase: "request", error });
+          throw error;
+        }
+      },
+      async close() {
+        try {
+          await session.close();
+        } catch (error) {
+          attempt.failure({ kind: "local", phase: "cleanup", error });
+          throw error;
+        }
+      },
+    };
   }
 
   let initialSession: PublicFetchSession;
@@ -514,14 +573,33 @@ async function sendActivityInternal(
     return openHop(url);
   };
   try {
-    headers = new Headers(headers);
-    headers.set("Content-Type", "application/activity+json");
-    const request = new Request(inbox, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(activity),
-      redirect: "manual",
-    });
+    let request: Request;
+    let body: string | undefined;
+    try {
+      headers = new Headers(headers);
+      headers.set("Content-Type", "application/activity+json");
+    } catch (error) {
+      attempt?.failure({ kind: "local", phase: "request-preparation", error });
+      throw error;
+    }
+    try {
+      attempt?.snapshotSenderPayload(activity);
+      body = JSON.stringify(activity);
+    } catch (error) {
+      attempt?.failure({ kind: "local", phase: "serialization", error });
+      throw error;
+    }
+    try {
+      request = new Request(inbox, {
+        method: "POST",
+        headers,
+        body,
+        redirect: "manual",
+      });
+    } catch (error) {
+      attempt?.failure({ kind: "local", phase: "request-preparation", error });
+      throw error;
+    }
     let rsaKey: SenderKeyPair | null = null;
     for (const key of keys) {
       if (key.privateKey.algorithm.name === "RSASSA-PKCS1-v1_5") {
@@ -549,22 +627,34 @@ async function sendActivityInternal(
         },
       );
     }
+    const consume = (response: Response) => {
+      return consumeSendActivityResponse(response, inbox);
+    };
     let outcome: SendActivityOutcome;
     try {
       outcome = rsaKey == null
         ? await fetchWithValidatedRedirects(
           request,
           openDeliveryHop,
-          (response) => consumeSendActivityResponse(response, inbox),
+          consume,
+          attempt,
         )
         : await doubleKnockScoped(
           request,
           rsaKey,
           { tracerProvider, specDeterminer },
           openDeliveryHop,
-          (response) => consumeSendActivityResponse(response, inbox),
+          consume,
+          attempt == null ? undefined : {
+            fetch: (request, submit) => attempt.fetch(request, submit),
+            response: (response, disposition) =>
+              attempt.response(response, disposition),
+            error: (phase, error) =>
+              attempt.failure({ kind: "local", phase, error }),
+          },
         );
     } catch (error) {
+      attempt?.unknown(error);
       // A refused redirect remains a policy error rather than a transport
       // failure, just as a refused initial inbox does.
       const failure = error instanceof FetchError || error instanceof UrlError
@@ -590,7 +680,7 @@ async function sendActivityInternal(
             "{statusText}):\n{error}",
           { activityId, inbox: inbox.href, status, statusText, error },
         );
-        throw new SendActivityError(
+        const failure = new SendActivityError(
           inbox,
           status,
           `Failed to send activity ${activityId} to ${inbox.href} ` +
@@ -598,6 +688,8 @@ async function sendActivityInternal(
           error,
           responseHeaders,
         );
+        attempt?.failure({ kind: "http", phase: "response", error: failure });
+        throw failure;
       }
       deliverySuccess = true;
 
@@ -654,7 +746,7 @@ function cancelResponseBody(response: Response, url: string): void {
 /**
  * Reads what is needed from the final response of a delivery while its
  * session is open: the body of a successful response is cancelled, and at
- * most 1 KiB of an error response body is read.
+ * most 1 KiB of an error response body is read within its diagnostic budget.
  */
 async function consumeSendActivityResponse(
   response: Response,
@@ -691,12 +783,14 @@ async function consumeSendActivityResponse(
  * @param request The request to send.
  * @param openHop The function to open a session for each hop.
  * @param consume The function to consume the final response.
+ * @param attempt The in-process attempt observation, if registered.
  * @returns The value returned by `consume`.
  */
 export async function fetchWithValidatedRedirects<T>(
   request: Request,
   openHop: DoubleKnockOpenHop,
   consume: (response: Response) => Promise<T>,
+  attempt?: OutboundAttemptObservation,
 ): Promise<T> {
   const logger = getLogger(["fedify", "federation", "outbox"]);
   let body: string | undefined = await request.clone().text();
@@ -705,7 +799,10 @@ export async function fetchWithValidatedRedirects<T>(
     let response: Response;
     try {
       // Bun also needs the redirect option on fetch() itself.
-      response = await session.fetch(request, { redirect: "manual" });
+      response = await (attempt == null
+        ? session.fetch(request, { redirect: "manual" })
+        : attempt.fetch(request, () =>
+          session.fetch(request, { redirect: "manual" })));
     } catch (error) {
       await closeAfterError(session, logger);
       throw error;
@@ -714,6 +811,7 @@ export async function fetchWithValidatedRedirects<T>(
     if (
       ![301, 302, 303, 307, 308].includes(response.status) || location == null
     ) {
+      attempt?.response(response, "final");
       try {
         return await consume(response);
       } catch (error) {
@@ -728,6 +826,7 @@ export async function fetchWithValidatedRedirects<T>(
       }
     }
     // The current hop is closed before the next one is validated and opened:
+    attempt?.response(response, "intermediate");
     cancelResponseBody(response, request.url);
     await session.close();
     if (redirects >= 20) throw new TypeError("Too many redirects");
@@ -796,7 +895,9 @@ export class SendActivityError extends Error {
    * The response body from the inbox, if any.  Note that this may be
    * truncated to a maximum of 1 KiB to prevent excessive memory consumption
    * when remote servers return large error pages (e.g., Cloudflare error pages).
-   * If truncated, the string will end with `"… (truncated)"`.
+   * If truncated, the string will end with `"… (truncated)"`. Diagnostic reading
+   * has a separate one-second budget; a deadline retains any partial preview and
+   * appends `"… (timed out)"`. This is independent of application body capture.
    */
   readonly responseBody: string;
 
