@@ -601,6 +601,7 @@ test("nodeinfo falls back when an SVG favicon cannot be rendered", async () => {
     withMockFetch(routes, runNodeInfoWithFavicon)
   );
   assert.match(output, /test v1\.0\.0/);
+  assert.doesNotMatch(output, /[█▓▒░]/);
 });
 
 test("rasterizeSvg - limits the size of a large SVG", async () => {
