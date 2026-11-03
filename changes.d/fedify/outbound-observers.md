@@ -1,6 +1,7 @@
 ---
 links:
   '#1316': https://github.com/fedify-dev/fedify/issues/1316
+  '#1359': https://github.com/fedify-dev/fedify/pull/1359
 ---
  -  Added application-facing outbound observers for sends, forwarding,
     replication, and queued retries, independently of OpenTelemetry. Optional
@@ -9,4 +10,4 @@ links:
     headers, bounded streaming response capture, and privacy-filtered sender
     payloads. Inbox reports now preserve original request context and snapshot
     request cancellation without changing processing outcomes. Error diagnostic
-    reads have a one-second deadline. [[#1316] by Jiwon Kwon]
+    reads have a one-second deadline. [[#1316], [#1359] by Jiwon Kwon]

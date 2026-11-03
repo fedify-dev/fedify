@@ -55,7 +55,7 @@ To be released.
     headers, bounded streaming response capture, and privacy-filtered sender
     payloads. Inbox reports now preserve original request context and snapshot
     request cancellation without changing processing outcomes. Error diagnostic
-    reads have a one-second deadline. [[#1316] by Jiwon Kwon\]
+    reads have a one-second deadline. [[#1316], [#1359] by Jiwon Kwon\]
  -  Added the `activity-origin-mismatch` reason to rejected
     `InboxAuthentication` decisions in `onRequestFinished` reports.  Inbox
     deliveries rejected because the activity's ID does not have the same origin
@@ -99,6 +99,7 @@ To be released.
 [#1318]: https://github.com/fedify-dev/fedify/issues/1318
 [#1328]: https://github.com/fedify-dev/fedify/pull/1328
 [#1353]: https://github.com/fedify-dev/fedify/pull/1353
+[#1359]: https://github.com/fedify-dev/fedify/pull/1359
 
 ### @fedify/cli
 
