@@ -11,11 +11,12 @@ class PostStore {
   #timeline: URL[] = [];
   constructor() {}
   #append(posts: Note[]) {
-    posts.filter((p) => p.id && !this.#map.has(p.id.toString()))
-      .forEach((p) => {
-        this.#map.set(p.id!.toString(), p);
-        this.#timeline.push(p.id!);
-      });
+    for (
+      const p of posts.filter((p) => p.id && !this.#map.has(p.id.toString()))
+    ) {
+      this.#map.set(p.id!.toString(), p);
+      this.#timeline.push(p.id!);
+    }
   }
   append = this.#append.bind(this);
   #get(id: URL) {

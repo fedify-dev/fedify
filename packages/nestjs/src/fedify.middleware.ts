@@ -93,7 +93,7 @@ function fromERequest(req: ERequest): Request {
 
 function setEResponse(res: EResponse, response: Response): Promise<void> {
   res.status(response.status);
-  response.headers.forEach((value, key) => res.setHeader(key, value));
+  for (const [key, value] of response.headers) res.setHeader(key, value);
   if (response.body == null) return Promise.resolve();
   const body = response.body;
   return new Promise((resolve) => {

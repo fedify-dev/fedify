@@ -87,18 +87,18 @@ export function findIntroducedEntries(
   );
   if (before.length < 1 && existing.size < 1) return "all";
   for (const key of ["paragraph", "firstLine", "references"] as const) {
-    after.forEach((entry, index) => {
-      if (existing.has(index) || entry[key] == null) return;
+    for (const [index, entry] of after.entries()) {
+      if (existing.has(index) || entry[key] == null) continue;
       const origin = before.findIndex((old, i) =>
         !matched.has(i) && old[key] === entry[key]
       );
-      if (origin < 0) return;
+      if (origin < 0) continue;
       // The same entry usually appears in several previous revisions:
       for (const [i, old] of before.entries()) {
         if (old.paragraph === before[origin].paragraph) matched.add(i);
       }
       existing.add(index);
-    });
+    }
   }
   return new Set([...after.keys()].filter((index) => !existing.has(index)));
 }

@@ -999,13 +999,17 @@ test("Integration: ❌ Multiple errors - missing id and inbox", () =>
     map(prop("id")),
     toArray,
     (ids) =>
-      [
-        "actor-id-required",
-        "actor-inbox-property-required",
-      ].forEach((ruleName) =>
-        ok(
-          ids.includes(`${PLUGIN_NAME}/${ruleName}`),
-          `Expected ${ruleName} error`,
-        )
-      ),
+      (() => {
+        for (
+          const ruleName of [
+            "actor-id-required",
+            "actor-inbox-property-required",
+          ]
+        ) {
+          ok(
+            ids.includes(`${PLUGIN_NAME}/${ruleName}`),
+            `Expected ${ruleName} error`,
+          );
+        }
+      })(),
   ));

@@ -141,8 +141,8 @@ async function writeFetchResponse(
   outgoing: ServerResponse,
 ): Promise<void> {
   outgoing.statusCode = response.status;
-  response.headers.forEach((value, name) => {
+  for (const [name, value] of response.headers) {
     outgoing.setHeader(name, value);
-  });
+  }
   outgoing.end(Buffer.from(await response.arrayBuffer()));
 }

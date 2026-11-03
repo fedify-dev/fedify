@@ -242,7 +242,7 @@ function waitForReadable(
 // oxlint-disable-next-line typescript/no-explicit-any
 function setResponse(ctx: any, response: Response): void {
   ctx.status = response.status;
-  response.headers.forEach((value, key) => ctx.set(key, value));
+  for (const [key, value] of response.headers) ctx.set(key, value);
   if (response.body == null) return;
   const body = response.body;
   const reader = body.getReader();

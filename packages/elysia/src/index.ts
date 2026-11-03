@@ -51,9 +51,9 @@ export const fedify = <TContextData = unknown>(
             return response;
           }
 
-          response.headers.forEach((value, key) => {
+          for (const [key, value] of response.headers) {
             set.headers[key] = value;
-          });
+          }
 
           // Return empty response for successful requests without body
           return new Response(null, { status: response.status });

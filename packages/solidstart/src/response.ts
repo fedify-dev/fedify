@@ -69,7 +69,7 @@ export function interceptNotAcceptable(
     }
     const negotiated = notAcceptableHeaders(headers, new Headers());
     for (const name of representationHeaders) this.removeHeader(name);
-    negotiated.forEach((value, name) => this.setHeader(name, value));
+    for (const [name, value] of negotiated) this.setHeader(name, value);
     const callback = args.at(-1);
     return Reflect.apply(originalEnd, this, [
       NOT_ACCEPTABLE_BODY,

@@ -192,7 +192,8 @@
     "eslint/no-useless-escape": "error",
     "unicorn/prefer-node-protocol": "error",
     "unicorn/prefer-includes": "error",
-    "unicorn/error-message": "error"
+    "unicorn/error-message": "error",
+    "unicorn/no-array-for-each": "error"
   },
   "ignorePatterns": [
     "**/pnpm-lock.yaml",
