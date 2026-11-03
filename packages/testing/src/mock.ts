@@ -275,6 +275,8 @@ interface SentActivity {
   activity: Activity;
   /** The raw forwarded payload, if preserved by the caller. */
   rawActivity?: unknown;
+  /** Application-provided correlation identifier, if present. */
+  dispatchId?: string;
   /** The order in which the activity was sent (auto-incrementing counter). */
   sentOrder: number;
 }
@@ -309,6 +311,7 @@ interface TestContext<TContextData>
     recipients: any;
     activity: Activity;
     rawActivity?: unknown;
+    dispatchId?: string;
   }>;
   reset(): void;
 }
@@ -1210,6 +1213,7 @@ class MockContext<TContextData> implements Context<TContextData> {
     recipients: any;
     activity: Activity;
     rawActivity?: unknown;
+    dispatchId?: string;
   }> = [];
 
   constructor(
@@ -1733,6 +1737,9 @@ class MockContext<TContextData> implements Context<TContextData> {
       recipients,
       activity,
       rawActivity: options?.rawActivity,
+      ...(options?.dispatchId === undefined
+        ? {}
+        : { dispatchId: options.dispatchId }),
     });
 
     // If this is a MockFederation, also record it there
@@ -1743,6 +1750,9 @@ class MockContext<TContextData> implements Context<TContextData> {
         queue: queued ? "outbox" : undefined,
         activity,
         rawActivity: options?.rawActivity,
+        ...(options?.dispatchId === undefined
+          ? {}
+          : { dispatchId: options.dispatchId }),
         sentOrder: ++this.federation.sentCounter,
       });
     }
@@ -1770,6 +1780,7 @@ class MockContext<TContextData> implements Context<TContextData> {
     recipients: any;
     activity: Activity;
     rawActivity?: unknown;
+    dispatchId?: string;
   }> {
     return [...this.sentActivities];
   }

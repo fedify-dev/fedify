@@ -177,6 +177,44 @@ test("getSentActivities returns sent activities", async () => {
   deepStrictEqual(mockFederation.sentActivities[0].sentOrder, 1);
 });
 
+test("sent activity records preserve dispatch IDs", async () => {
+  const federation = createFederation<void>();
+  const context = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  const sender = { identifier: "alice" };
+  const recipient = new Person({
+    id: new URL("https://example.com/users/bob"),
+  });
+  const activity = new Create({
+    id: new URL("https://example.com/activities/dispatch-id"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await context.sendActivity(sender, recipient, activity, {
+    dispatchId: "same-id",
+  });
+  await context.sendActivity(sender, recipient, activity, {
+    dispatchId: "same-id",
+  });
+  await context.sendActivity(sender, recipient, activity);
+  await context.sendActivity(sender, recipient, activity, { dispatchId: "" });
+
+  const contextRecords = context.getSentActivities();
+  const federationRecords = federation.sentActivities;
+  deepStrictEqual(contextRecords.length, 4);
+  deepStrictEqual(federationRecords.length, 4);
+  strictEqual(contextRecords[0].dispatchId, "same-id");
+  strictEqual(contextRecords[1].dispatchId, "same-id");
+  strictEqual(federationRecords[0].dispatchId, "same-id");
+  strictEqual(federationRecords[1].dispatchId, "same-id");
+  strictEqual(contextRecords[3].dispatchId, "");
+  strictEqual(federationRecords[3].dispatchId, "");
+  strictEqual(Object.hasOwn(contextRecords[2], "dispatchId"), false);
+  strictEqual(Object.hasOwn(federationRecords[2], "dispatchId"), false);
+});
+
 test("reset clears sent activities", async () => {
   const mockFederation = createFederation<void>();
   const context = mockFederation.createContext(

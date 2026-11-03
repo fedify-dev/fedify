@@ -398,8 +398,10 @@ is 1,024 UTF-8 bytes. Invalid types raise `TypeError` and oversized values
 broadcast ID. New public calls supply their own app ID; queued continuations
 retain it.
 
-Mock federations accept registration without executing observers. Incoming C2S
-listeners use the separate `setOutboxListeners()` API.
+Mock federations accept registration without executing observers. Both
+`context.getSentActivities()` and `federation.sentActivities` preserve optional
+`dispatchId` values, including repeated IDs without suppressing sends. Incoming
+C2S listeners use the separate `setOutboxListeners()` API.
 
 See <https://fedify.dev/manual/send.md>.
 
