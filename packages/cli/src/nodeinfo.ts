@@ -450,13 +450,6 @@ export async function getFaviconUrl(
     }
     const rel = attrs.rel?.toLowerCase()?.trim()?.split(/\s+/) ?? [];
     if (!rel.includes("icon") && !rel.includes("apple-touch-icon")) continue;
-    const tokens = attrs.sizes?.match(/\d+x\d+/g);
-    if (
-      tokens != null && !tokens.some((token) => {
-        const [w, h] = token.split("x").map((v) => Number.parseInt(v));
-        return w >= 38 && h >= 19;
-      })
-    ) continue;
     if ("href" in attrs) {
       const parsedUrl = new URL(attrs.href, finalUrl);
       if (
@@ -466,6 +459,13 @@ export async function getFaviconUrl(
         svgCandidate ??= parsedUrl;
         continue;
       }
+      const tokens = attrs.sizes?.match(/\d+x\d+/g);
+      if (
+        tokens != null && !tokens.some((token) => {
+          const [w, h] = token.split("x").map((v) => Number.parseInt(v));
+          return w >= 38 && h >= 19;
+        })
+      ) continue;
       return parsedUrl;
     }
   }
