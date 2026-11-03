@@ -25,7 +25,7 @@ export class Base {
 
   decode(string: string): Uint8Array {
     for (const char of string) {
-      if (this.alphabet && this.alphabet.indexOf(char) < 0) {
+      if (this.alphabet && !this.alphabet.includes(char)) {
         throw new Error(`invalid character '${char}' in '${string}'`);
       }
     }
