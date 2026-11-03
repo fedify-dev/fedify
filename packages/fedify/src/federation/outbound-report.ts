@@ -55,15 +55,16 @@ export type OutboundPreparationResult =
 /**
  * Known Activity ID and type at a broadcast observation boundary.
  *
- * Fields are included only after the send path has already obtained them.
+ * Fields are captured without serializing the Activity or loading contexts.
+ * Successful transformation refreshes both the ID and the Activity class type.
  * A `started` event may have an empty reference, and later events may reflect
  * Activity transformations that happened after that event.
  * @since 2.5.0
  */
 export type OutboundActivityReference = {
-  /** Activity identifier, when already available in the send path. */
+  /** Activity identifier, when available at the observation boundary. */
   readonly id?: string;
-  /** Activity type IRI, when already available in the send path. */
+  /** Activity class type IRI, when available at the observation boundary. */
   readonly type?: string;
 };
 
@@ -80,7 +81,7 @@ export type OutboundBroadcastEvent =
     readonly broadcastId: string;
     /** The outgoing operation being observed. */
     readonly operation: "send" | "forward" | "portable-replication";
-    /** Immutable Activity identity facts already obtained by the send path. */
+    /** Immutable Activity identity facts captured by the send path. */
     readonly activity: OutboundActivityReference;
   }
   & (

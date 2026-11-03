@@ -6441,9 +6441,26 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     for (const activityTransformer of this.federation.activityTransformers) {
       activity = activityTransformer(activity, this);
     }
-    const transformedActivityId = activity?.id?.href;
+    let transformedActivityId: string | undefined;
+    try {
+      transformedActivityId = activity?.id?.href;
+    } finally {
+      if (observation != null) {
+        let activityType: string | undefined;
+        try {
+          activityType = getTypeId(activity)?.href;
+        } catch {
+          // Observation must not replace an error from reading the Activity.
+        }
+        observation.setActivity({
+          ...(transformedActivityId == null
+            ? {}
+            : { id: transformedActivityId }),
+          ...(activityType == null ? {} : { type: activityType }),
+        });
+      }
+    }
     span?.setAttribute("activitypub.activity.id", transformedActivityId ?? "");
-    observation?.setActivityId(transformedActivityId);
     observation?.setPhase("validation");
     if (activity.actorId == null) {
       logger.error(

@@ -1895,9 +1895,133 @@ test("broadcast activity references are immutable and follow transformed activit
     });
     ok(Object.isFrozen(event.activity));
   }
-  deepStrictEqual(finishes[2].activity, { id: transformedId });
-  ok(!("type" in finishes[2].activity));
+  deepStrictEqual(finishes[2].activity, {
+    id: transformedId,
+    type: Follow.typeId.href,
+  });
   ok(Object.isFrozen(starts[0].activity));
+});
+
+test("transformed activity type capture does not mask validation failures", async () => {
+  const validationMessage =
+    "The activity to send must have at least one actor property.";
+  class UnreadableTypeFollow extends Follow {
+    static override get typeId(): URL {
+      throw new Error("type must not be read");
+    }
+  }
+  for (const unreadableType of [false, true]) {
+    const transformedId = unreadableType
+      ? "https://example.com/unreadable"
+      : "https://example.com/missing-actor";
+    const federation = createFederation<void>({
+      ...options,
+      activityTransformers: [() => {
+        const ActivityClass = unreadableType ? UnreadableTypeFollow : Follow;
+        return new ActivityClass({ id: new URL(transformedId) } as never);
+      }],
+    });
+    const events: OutboundBroadcastEvent[] = [];
+    federation.setOutboundObservers({
+      onBroadcast(_ctx, event) {
+        events.push(event);
+      },
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com"),
+      undefined,
+    );
+
+    let rejected: unknown;
+    await rejects(
+      ctx.sendActivity(sender, recipient, activity),
+      (error: unknown) => {
+        rejected = error;
+        return error instanceof TypeError &&
+          error.message === validationMessage;
+      },
+    );
+    const finished = events.find((event) =>
+      event.stage === "preparation-finished"
+    );
+    ok(finished);
+    strictEqual(finished.activity.id, transformedId);
+    if (unreadableType) {
+      ok(!("type" in finished.activity));
+    } else {
+      strictEqual(finished.activity.type, Follow.typeId.href);
+    }
+    strictEqual(finished.result.type, "failed");
+    if (finished.result.type === "failed") {
+      strictEqual(finished.result.failure.phase, "validation");
+      strictEqual(finished.result.failure.error, rejected);
+    }
+    ok(Object.isFrozen(finished.activity));
+  }
+});
+
+test("transformed activity ID getter failures retain the readable type", async () => {
+  const failure = new Error("transformed ID is unreadable");
+  for (const unreadableType of [false, true]) {
+    let idReads = 0;
+    const transformed = new Follow({
+      id: new URL("https://example.com/transformed"),
+      actor: new URL("https://example.com/alice"),
+      object: new URL("https://example.com/bob"),
+    });
+    Object.defineProperty(transformed, "id", {
+      get() {
+        idReads++;
+        throw failure;
+      },
+    });
+    if (unreadableType) {
+      Object.defineProperty(transformed, "constructor", {
+        get() {
+          throw new Error("transformed type is unreadable");
+        },
+      });
+    }
+    const federation = createFederation<void>({
+      ...options,
+      activityTransformers: [() => transformed],
+    });
+    const events: OutboundBroadcastEvent[] = [];
+    federation.setOutboundObservers({
+      onBroadcast(_ctx, event) {
+        events.push(event);
+      },
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com"),
+      undefined,
+    );
+
+    await rejects(ctx.sendActivity(sender, recipient, activity), (error) => {
+      strictEqual(error, failure);
+      return true;
+    });
+
+    strictEqual(idReads, 1);
+    const started = events.find((event) => event.stage === "started");
+    ok(started);
+    deepStrictEqual(started.activity, {});
+    ok(Object.isFrozen(started.activity));
+    const finished = events.find((event) =>
+      event.stage === "preparation-finished"
+    );
+    ok(finished);
+    deepStrictEqual(
+      finished.activity,
+      unreadableType ? {} : { type: Follow.typeId.href },
+    );
+    ok(Object.isFrozen(finished.activity));
+    strictEqual(finished.result.type, "failed");
+    if (finished.result.type === "failed") {
+      strictEqual(finished.result.failure.phase, "transformation");
+      strictEqual(finished.result.failure.error, failure);
+    }
+  }
 });
 
 test("outbound preparation precedes queue acceptance and is not rewritten by enqueue failure", async (t) => {

@@ -470,12 +470,14 @@ Routing and source metadata are immutable snapshots; the context, application
 data, Activity objects, and original exceptions are not deep-copied.
 
 Broadcast events include an immutable `activity` reference with optional `id`
-and `type` strings; `type` is the Activity's type IRI. These are facts already
-obtained by the send path, not a copy of the payload. The `started` event can
+and `type` strings; `type` is the Activity class's type IRI. The reference
+contains identity facts, not a copy of the payload. The `started` event can
 have an empty reference, and later events can contain more information. After
-transformation, unavailable facts are omitted rather than copied from the old
-Activity. Observation does not read additional Activity properties, parse
-payloads, or load contexts to fill the reference. Activity IDs can repeat
+successful transformation, both fields are refreshed from the resulting
+Activity, including for skipped or early-failed sends. Unavailable facts are
+omitted rather than copied from the old Activity. Reading the class type for
+observation cannot replace a send error. Observation does not parse payloads or
+load contexts to fill the reference. Activity IDs can repeat
 across broadcasts; use `broadcastId` for invocation identity and `dispatchId`
 for application correlation. A reported Activity ID does not establish
 authentication.

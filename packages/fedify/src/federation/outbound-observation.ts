@@ -1146,18 +1146,9 @@ export class OutboundBroadcastObservation<TContextData> {
     if (phase === "destination-planning") this.#planning = "incomplete";
   }
 
-  /** Replace the Activity facts already obtained by the producer path. */
+  /** Replace the Activity facts captured by the producer path. */
   setActivity(reference: OutboundActivityReference): void {
     this.#activity = Object.freeze({ ...reference });
-  }
-
-  /** Refresh the identifier from a producer read without retaining stale IDs. */
-  setActivityId(id: string | undefined): void {
-    const reference: { id?: string; type?: string } = {
-      ...(id == null ? {} : { id }),
-      ...(this.#activity.type == null ? {} : { type: this.#activity.type }),
-    };
-    this.#activity = Object.freeze(reference);
   }
 
   planned(destinationCount: number): void {

@@ -265,9 +265,8 @@ Choose callbacks by the question you need to answer:
 Broadcasts have a `broadcastId`; destinations have a `deliveryId`.  An
 `onDelivery` event can refer to an unknown broadcast when it comes from legacy
 fanout work.  These IDs group reports; they do not prove remote receipt.
-The optional `event.activity` is a snapshot of known `id` and type IRI strings,
-not the activity payload or an authentication result.  A transformer may change
-those facts during preparation.
+The event.activity reference is a snapshot of known id and type IRI strings; it
+may be empty on started and can gain facts later.
 
 For broadcasts, narrow `event.stage` before reading `event.result.type`.
 For deliveries, narrow `event.stage` and, for handoffs, `event.result.type`.
