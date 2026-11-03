@@ -186,7 +186,8 @@
     "import/no-duplicates": "error",
     "promise/no-nesting": "error",
     "promise/no-return-wrap": "error",
-    "eslint/no-throw-literal": "error"
+    "eslint/no-throw-literal": "error",
+    "eslint/no-unsafe-optional-chaining": "error"
   },
   "ignorePatterns": [
     "**/pnpm-lock.yaml",

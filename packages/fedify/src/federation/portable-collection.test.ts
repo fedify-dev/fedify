@@ -679,7 +679,7 @@ test("Federation.fetch() serves portable custom collections", async (t) => {
       portableId("/users/alice/bookmarks?tag=fedify&cursor=1"),
     );
     assertEquals(
-      (json?.orderedItems as Record<string, unknown>[])[0].id,
+      (json?.orderedItems as Record<string, unknown>[] | undefined)?.[0]?.id,
       portableId("/notes/fedify-0"),
     );
   });

@@ -9409,7 +9409,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     ]);
     assertEquals(state?.state, "open");
     assertEquals(Array.isArray(state?.failures), true);
-    assertEquals((state?.failures as unknown[]).length, 1);
+    assertEquals((state?.failures as unknown[] | undefined)?.length, 1);
     assertExists(state?.opened);
   });
 
@@ -9909,7 +9909,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       "unavailable.example",
     ]);
     assertEquals(state?.state, "closed");
-    assertEquals((state?.failures as unknown[]).length, 1);
+    assertEquals((state?.failures as unknown[] | undefined)?.length, 1);
   });
 
   await t.step("503 Retry-After delays newly opened circuit hold", async () => {

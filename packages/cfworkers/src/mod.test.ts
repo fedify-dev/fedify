@@ -227,7 +227,8 @@ describe("WorkersKvStore", () => {
     const entry = namespace.entries.get('["short-ttl"]');
     expect(entry?.options?.expirationTtl).toBe(60);
 
-    const { expires } = entry?.metadata as { expires: number };
+    const expires = (entry?.metadata as { expires: number } | undefined)
+      ?.expires;
     expect(expires).toBeGreaterThanOrEqual(before + 5000);
     expect(expires).toBeLessThanOrEqual(Date.now() + 5000);
   });
