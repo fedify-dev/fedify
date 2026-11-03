@@ -593,6 +593,20 @@ test("nodeinfo renders an SVG favicon", async () => {
   assert.match(output, /█/);
 });
 
+test("nodeinfo renders an SVG favicon served as octet-stream", async () => {
+  const routes = nodeInfoRoutes('<link rel="icon" href="/icon.svg">');
+  routes["https://8.8.8.8/icon.svg"] = () =>
+    new Response(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4">' +
+        '<rect width="4" height="4"/></svg>',
+      { headers: { "Content-Type": "application/octet-stream" } },
+    );
+  const output = await captureOutput(() =>
+    withMockFetch(routes, runNodeInfoWithFavicon)
+  );
+  assert.match(output, /█/);
+});
+
 test("nodeinfo falls back when an SVG favicon cannot be rendered", async () => {
   const routes = nodeInfoRoutes('<link rel="icon" href="/icon.svg">');
   routes["https://8.8.8.8/icon.svg"] = () =>
@@ -604,7 +618,7 @@ test("nodeinfo falls back when an SVG favicon cannot be rendered", async () => {
   assert.doesNotMatch(output, /[█▓▒░]/);
 });
 
-test("rasterizeSvg - limits the size of a large SVG", async () => {
+test("rasterizeSvg - fits a wide SVG to the width", async () => {
   const png = await rasterizeSvg(
     new TextEncoder().encode(
       '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="256"/>',
@@ -612,6 +626,16 @@ test("rasterizeSvg - limits the size of a large SVG", async () => {
   );
   const image = await readImage(png);
   assert.deepEqual([image.width, image.height], [38, 19]);
+});
+
+test("rasterizeSvg - fits a tall SVG to the height", async () => {
+  const png = await rasterizeSvg(
+    new TextEncoder().encode(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="512"/>',
+    ),
+  );
+  const image = await readImage(png);
+  assert.deepEqual([image.width, image.height], [19, 38]);
 });
 
 test("rasterizeSvg - rejects an SVG whose size rounds to zero", async () => {
