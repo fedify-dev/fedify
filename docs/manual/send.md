@@ -59,615 +59,6 @@ async function sendFollow(
 > the *Context* section.
 
 
-Observing outgoing activities
------------------------------
-
-*This API is available since Fedify 2.5.0.*
-
-Use `Federatable.setOutboundObservers()` on a federation builder or a directly
-created federation to observe sends, original-payload forwarding, and automatic
-portable-inbox replication. Each callback is optional. This example records
-producer preparation and delivery handoffs:
-
-~~~~ typescript twoslash
-import type {
-  Federation,
-  OutboundBroadcastEvent,
-  OutboundDeliveryEvent,
-} from "@fedify/fedify";
-declare const federation: Federation<{ requestId: string }>;
-declare function recordBroadcast(
-  requestId: string,
-  event: OutboundBroadcastEvent,
-): Promise<void>;
-declare function recordDelivery(
-  requestId: string,
-  event: OutboundDeliveryEvent,
-): Promise<void>;
-// ---cut-before---
-federation.setOutboundObservers({
-  async onBroadcast(ctx, event) {
-    await recordBroadcast(ctx.data.requestId, event);
-    if (event.stage === "preparation-finished" && event.result.type === "failed") {
-      console.error(event.result.failure.phase, event.result.failure.error);
-    }
-  },
-  async onDelivery(ctx, event) {
-    await recordDelivery(ctx.data.requestId, event);
-    if (event.stage === "handoff" && event.result.type === "enqueue-failed") {
-      console.error("Queue acceptance is unknown", event.result.error);
-    }
-  },
-});
-~~~~
-
-Here, `recordBroadcast()` and `recordDelivery()` are your application's
-recording functions. Callbacks receive context and application data without
-loading additional data for observation. Queued work uses the current worker's
-context and data; the original HTTP cause is recorded separately in
-`provenance`. The report fields contain immutable snapshots of known routing
-and source facts; original thrown values remain available as `unknown` values.
-The context, application data, Activity objects, and exceptions are not
-deep-copied by this API.
-
-### Broadcast lifecycle
-
-Each invocation has a fresh `broadcastId`, shared by its `started` and
-`preparation-finished` events. The `operation` is `send`, `forward`, or
-`portable-replication`. Broadcast and delivery identities work without
-OpenTelemetry, including when no tracer provider is configured or sampling is
-disabled.
-
-`started` precedes failure-prone preparation. The `preparation-finished` event
-contains an `OutboundPreparationResult`:
-
- -  `prepared` means the current producer reached readiness for fanout or
-    delivery. `destinationCount` counts deduplicated destinations or confirmed
-    replication targets, not successful deliveries. Fanout workers still need
-    to prepare deliveries.
- -  `skipped` records an existing no-send decision: `no-destinations`,
-    `unsigned` when forwarding skips an unsigned payload,
-    `forwarding-disabled`, `forwarding-unavailable` when replication cannot
-    claim targets, or `no-forwarding-targets` when none remain claimed.
- -  `failed` reports the preparation phase, the original thrown value (which
-    need not be an `Error`), and the extent of destination planning. An
-    incomplete plan's count covers confirmed obligations so far.
-
-The `unsigned` reason reflects the existing `skipIfUnsigned` signature/proof
-shape check; it does not establish authentication.
-
-Preparation readiness does not confirm queue acceptance or successful delivery.
-Immediate sends can already be running when preparation finishes, and a later
-send or enqueue failure does not replace the preparation result. A crash or
-nonsettling operation can leave a start without a later result.
-
-### Destination observations
-
-`onDelivery` receives an `OutboundDeliveryEvent` for each established delivery
-obligation. Its `broadcast` reference is `{ type: "known", id }` when the
-invocation is known, or `{ type: "unknown" }` for legacy fanout work. Its
-`deliveryId` groups events for one deduplicated destination or confirmed
-replication target. Different inboxes on the same host remain distinct.
-
-| Stage                              | Meaning                                                                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `planned`                          | The destination was established. `actorIds` lists actors already known to share it; `sharedInbox` describes the selected route.             |
-| `handoff`, result `direct`         | Control entered the direct-send path. This does not confirm an HTTP request or remote success.                                              |
-| `handoff`, result `enqueued`       | The enqueue resolved. `queue` identifies `fanout` or `outbox`, and `queueMessageId` identifies the accepted task.                           |
-| `handoff`, result `enqueue-failed` | Enqueue rejected. `acceptance` remains `unknown`, because a backend effect may already have happened; `error` retains the original failure. |
-| `preparation-failed`               | Destination-local setup failed before concrete send entry. This creates no synthetic attempt.                                               |
-
-`destinationInbox` retains the planned destination. For a portable inbox,
-`portableInbox` contains its canonical portable ID. The planned event's `mode`
-is `ordinary`, `portable-fallback`, or `portable-replication`. Alternate
-fallback gateways share one obligation; automatic replication establishes a
-separate obligation for each successfully claimed target.
-
-Several deliveries can share one accepted fanout task and therefore the same
-`queueMessageId`; this task ID is separate from their delivery IDs. Acceptance
-is reported before later bookkeeping, so a metrics or logging failure does not
-turn an accepted enqueue into an enqueue failure.
-
-Recipients filtered out before planning create no delivery. Common producer
-failures are broadcast failures; a destination-local failure is also reported
-for that destination. Earlier handoffs remain valid, and later unvisited
-destinations can remain planned without a handoff. Parallel work can interleave
-callbacks, so IDs provide grouping rather than a total event order.
-
-### Attempts and HTTP exchanges
-
-`onAttempt` receives an `OutboundAttemptReport` once a concrete send settles,
-including immediate sends, forwarding, portable replication, and queue workers.
-Each entry into the sender gets a fresh `attemptId` under its `deliveryId`.
-Alternate gateways and retries create new attempts; signature challenges and
-redirects can create several fetches within one attempt. `inboxUrl` is the
-inbox selected for that attempt, while `request.url` on an exchange identifies
-the actual URL fetched at that step.
-
-`onHttpExchange` receives an `OutboundHttpExchangeReport` for each actual fetch
-submission. `exchangeIndex` starts at zero within its `attemptId`. Its `request`
-copies the submitted URL and method, including those of signed requests. A
-`response` outcome records status, status text, and the response URL when fetch
-supplies it; a `failed` outcome retains the original fetch rejection. A non-2xx
-response is still a received response. Reports contain immutable metadata;
-optional header snapshots and body-capture summaries are described below.
-A separate bounded callback supplies selected response bytes, without exposing
-live transport objects.
-
-~~~~ typescript twoslash
-import type { Federation } from "@fedify/fedify";
-declare const federation: Federation<void>;
-// ---cut-before---
-federation.setOutboundObservers({
-  onHttpExchange(_ctx, report) {
-    console.log(report.attemptId, report.exchangeIndex, report.request.url);
-    if (report.outcome.type === "response") {
-      console.log("HTTP response", report.outcome.response.status);
-    }
-  },
-  onAttempt(_ctx, report) {
-    console.log(report.attemptId, report.httpExchangeCount);
-    const response = report.outcome.response;
-    if (response.type === "final") {
-      console.log("Final response", response.exchangeIndex, response.metadata.status);
-    }
-    if (report.outcome.type === "failed") {
-      console.error(report.outcome.failure.kind, report.outcome.failure.error);
-    }
-  },
-});
-~~~~
-
-An attempt can fail before fetch, for example during URL validation or signing.
-It still has an attempt ID, with `httpExchangeCount: 0` and no exchange report.
-Failures before sender entry, such as queue key import or fanout parsing, and
-worker holds, drops, or deferrals do not create attempts. Attempt reports do not
-establish a worker's scheduling result.
-
-### Worker execution and actions
-
-`onWorker` receives one `OutboundWorkerReport` after a fanout or outbox worker's
-local execution and instrumentation settle. `role` and `queue` identify the
-current worker/task. `attemptsStarted` counts concrete sender entries, including
-fallback gateways; child enqueues count zero. Outbox `delivery` identifies its
-obligation. Fanout has no single delivery; child actions carry their references.
-
-| `result.type`        | Meaning                                                                    |
-| -------------------- | -------------------------------------------------------------------------- |
-| `completed`          | Local normal return, including handled send failures and abandonment.      |
-| `failed`             | The original error escaped, even if an earlier attempt succeeded.          |
-| `preparation-failed` | `failure.phase` identifies the preparation operation producing that error. |
-
-Read `actions` independently of `result` and attempt outcomes:
-
-| `type`          | Evidence                                                                                       |
-| --------------- | ---------------------------------------------------------------------------------------------- |
-| `scheduled`     | An `enqueue`, `retry`, or `defer` call resolved; `queue` identifies its actual task/counter.   |
-| `action-failed` | Enqueue rejection with unknown acceptance and original error, or a failed `drop` step.         |
-| `handoff`       | A fanout worker entered a concrete sender (`action: "direct"`), without claiming HTTP success. |
-| `abandoned`     | Work stopped locally for the listed routes, with a reason such as `permanent-failure`.         |
-
-`inboxUrls` lists affected routes; one gateway can be abandoned while another
-continues. Retry/defer includes the actual ISO `delay` and any per-route
-`notBefore` constraints. Child enqueues/direct handoffs retain delivery
-references. An empty action list means no action was observed by settlement.
-
-~~~~ typescript twoslash
-import type { Federation } from "@fedify/fedify";
-declare const federation: Federation<void>;
-// ---cut-before---
-federation.setOutboundObservers({
-  onWorker(_ctx, report) {
-    console.log(report.role, report.result.type, report.attemptsStarted);
-    for (const action of report.actions) {
-      if (action.type === "scheduled") {
-        console.log(action.action, action.queue.queueMessageId, action.inboxUrls);
-        if (action.action !== "enqueue") console.log(action.delay);
-      }
-    }
-  },
-});
-~~~~
-
-Accepted actions survive sibling or later bookkeeping failures. A rejected batch
-leaves every submitted child's acceptance unknown. Later destination setup
-failure can leave earlier direct attempts running after worker settlement.
-Neither local completion nor a native rethrow establishes backend
-acknowledgment, a future replay, or remote application effects. See
-[message queues](./mq.md#observing-outgoing-workers).
-
-### Response versus final response
-
-A response means one fetch received HTTP headers. A final response is the
-response that the HTTP flow selected as the attempt's result. For example:
-
-~~~~ text
-401 challenge -> retry -> 202 accepted
-exchange 0              exchange 1 (final)
-~~~~
-
-If signing the retry fails, the 401 stays intermediate; being the last response
-does not make it final. An attempt's `outcome.response` makes that distinction
-explicit:
-
-| Type                | Evidence                                                                                           |
-| ------------------- | -------------------------------------------------------------------------------------------------- |
-| `final`             | The flow selected this response. `exchangeIndex` and immutable `metadata` identify it.             |
-| `not-observed`      | No response headers were received, including pre-fetch failures and rejected fetches.              |
-| `intermediate-only` | The flow chose to continue past the received response. `lastObserved` retains its index/metadata.  |
-| `undetermined`      | Execution failed before finality was established. `lastObserved` retains the known response facts. |
-
-`httpExchangeCount` counts actual fetch submissions, including challenge,
-redirect, and transport retries. It does not count signing or preparation work.
-A `succeeded` attempt has a successful final HTTP response after the send
-execution settles; it does not establish subsequent remote application work.
-
-A selected final response survives later cache or cleanup failures. With a
-final non-OK response, `failure.kind` remains `http` and `diagnostics` retains
-additional local failures. With a final 2xx response and a local failure, the
-attempt is `failed` with the 2xx evidence retained. `failure.error` preserves
-original operation evidence when available; an HTTP failure can lack an error
-if execution failed before constructing its usual HTTP exception. The separate
-`outcome.error` is the exact value that escaped the sender, including any
-existing wrapping. Observer errors never become attempt diagnostics.
-
-### Capturing headers
-
-Header values are disabled by default. Enable `requestHeaders` and
-`responseHeaders` independently to add immutable `headers` snapshots to actual
-exchange requests and responses. Each policy requires an explicit `allow` list
-of literal HTTP field names and a positive safe-integer `maxBytes`. An optional
-`redact` list adds application-specific secret headers. Names are normalized to
-lowercase and deduplicated; wildcards are not supported.
-
-~~~~ typescript twoslash
-import type { Federation } from "@fedify/fedify";
-declare const federation: Federation<void>;
-// ---cut-before---
-federation.setOutboundObservers({
-  requestHeaders: { allow: ["content-type", "signature"], maxBytes: 2048 },
-  responseHeaders: { allow: ["content-type", "retry-after", "set-cookie"], maxBytes: 1024 },
-  onHttpExchange(_ctx, report) {
-    console.log(report.request.headers?.entries);
-    if (report.outcome.type === "response") {
-      console.log(report.outcome.response.headers?.entries);
-      console.log(report.outcome.response.headers?.limitReached);
-    }
-  },
-});
-~~~~
-
-Selected credentials, signatures, and cookies always become `[redacted]`, even
-if allowlisted. The protected names are `authorization`, `proxy-authorization`,
-`cookie`, `set-cookie`, `signature`, `signature-input`, `authentication-info`,
-`proxy-authentication-info`, `x-api-key`, and `x-auth-token`. Application
-redactions also take precedence over the allowlist. There is no raw-secret
-option; add custom credential names to your redaction policy.
-
-`entries` contains readonly name/value pairs in lexical name order, using the
-runtime's representation of repeated values. It does not promise raw wire
-ordering or recover values already combined by the runtime. Each pair costs the
-UTF-8 bytes of `name + ": " + value + "\r\n"`, after redaction. An oversized
-entry is omitted whole while later entries remain eligible; `limitReached`
-records any budget omission. An absent `headers` field means disabled, while an
-enabled empty allowlist produces an empty snapshot. Signed/challenge/redirect
-requests are captured at their actual submission, including changed headers.
-
-### Streaming response bodies
-
-Application body capture is disabled unless `responseBodyCapture` is supplied.
-It is independent of header capture and can be registered without metadata
-callbacks. It requires `onBody`, a positive safe-integer `maxBytes`, and a
-finite positive `timeoutMs`; there are no numeric defaults. Fractional
-milliseconds round up, and the rounded lifetime cannot exceed 2,147,483,647 ms.
-Invalid configuration leaves the previous registration intact.
-
-`responses` defaults to `all` only when capture is enabled. The other selector,
-`non-success-http-responses`, selects actual statuses outside 200–299, including
-intermediate challenges and redirects. Selection does not predict the attempt
-outcome. This example uses illustrative limits, not performance guarantees:
-
-~~~~ typescript twoslash
-import type { Federation } from "@fedify/fedify";
-declare const federation: Federation<void>;
-declare function saveChunk(
-  attemptId: string,
-  exchangeIndex: number,
-  chunk: Uint8Array,
-  signal: AbortSignal,
-): Promise<void>;
-// ---cut-before---
-federation.setOutboundObservers({
-  responseBodyCapture: {
-    maxBytes: 64 * 1024,
-    timeoutMs: 5000,
-    responses: "non-success-http-responses",
-    async onBody(_ctx, event) {
-      const reader = event.body.getReader();
-      try {
-        while (true) {
-          const chunk = await reader.read();
-          if (chunk.done) break;
-          await saveChunk(event.attemptId, event.exchangeIndex, chunk.value, event.signal);
-        }
-      } catch (error) {
-        if (!event.signal.aborted) throw error;
-      } finally {
-        reader.releaseLock();
-      }
-    },
-  },
-  onHttpExchange(_ctx, report) {
-    console.log(report.attemptId, report.exchangeIndex, report.bodyCapture);
-  },
-});
-~~~~
-
-`onBody` receives the current context/data, grouping metadata, an immutable
-request/response snapshot, a controlled `ReadableStream<Uint8Array>`, and a
-capture-only signal. The callback runs after headers and before the terminal
-exchange report. Finished reports contain `bodyCapture` summaries, never
-streams:
-
-| Summary type        | Meaning                                                                                      |
-| ------------------- | -------------------------------------------------------------------------------------------- |
-| Absent              | Application capture was disabled, or fetch produced no response.                             |
-| `filtered`          | The response was not selected; no callback ran.                                              |
-| `no-body`           | A selected response had no body; distinct from an empty stream reaching EOF.                 |
-| `complete`          | EOF was observed and the callback settled successfully within its lifetime.                  |
-| `limit-reached`     | The byte cap was reached without observed EOF; completeness and truncation remain uncertain. |
-| `deadline`          | The absolute capture lifetime expired, including no-pull or slow-consumer time.              |
-| `callback-returned` | The callback returned before EOF or another stopping condition.                              |
-| `consumer-stopped`  | The consumer cancelled; `reason` retains its original value.                                 |
-| `failed`            | `phase` identifies a `body` or `observer` failure and `error` retains its original value.    |
-
-`bytesExposed` counts bytes handed to application code, not durable storage.
-At an exact cap, another read does not establish EOF: access is revoked, and
-`limit-reached` remains uncertain even if the remote body might end there.
-Signal abort or stream rejection can also stop an outstanding application write;
-the summary does not certify that exposed chunks were saved.
-
-Fedify uses one source reader shared with diagnostics and pull backpressure,
-without cloning, teeing, or accumulating application response bodies. Its bounds
-exclude upstream chunk allocations, runtime buffering, and application storage.
-
-The absolute lifetime starts before callback invocation and covers no-pull/slow
-consumption and cleanup. Return/throw/cancel/cap/deadline revokes even retained
-locked readers. Late rejections are handled without waiting indefinitely;
-arbitrary JavaScript or storage that ignores the signal can still continue.
-
-Capture failure or its signal does not abort the HTTP send, skip a challenge,
-change a received status into a transport failure, or trigger another send.
-The final error diagnostic can continue under its separate one-second budget
-after application access ends. Error previews retain at most 1 KiB and append
-`… (timed out)` when that diagnostic deadline expires, or `… (truncated)` when
-additional body bytes establish truncation. Several selected exchanges can
-accumulate waiting time; capture does not promise zero timing influence.
-
-### Inspecting the sender payload
-
-Enable `senderPayload: true` to include an independent privacy projection of the
-concrete sender's existing JSON input in terminal attempt reports. It covers
-immediate sends, worker/fanout execution, original forwarding, and portable
-replication. It does not expose a producer's earlier Activity or perform extra
-hydration, JSON-LD processing, context loading, or serialization.
-
-~~~~ typescript twoslash
-import type { Federation } from "@fedify/fedify";
-declare const federation: Federation<void>;
-// ---cut-before---
-federation.setOutboundObservers({
-  senderPayload: true,
-  onAttempt(_ctx, report) {
-    const document = report.senderPayload;
-    if (document.type === "available") {
-      console.log(document.stage, document.representation, document.redacted);
-      console.log(document.value);
-    } else {
-      console.log("Sender payload unavailable", document.reason);
-    }
-  },
-});
-~~~~
-
-`stage` is `sender-payload`, and available values use
-`representation: "privacy-projection"`. `redacted` means blind-recipient fields
-were removed. The immutable copy removes compact, `as:`-prefixed, and full-IRI
-`bto`/`bcc` fields throughout nested objects, arrays, and proof-bearing content.
-It never changes the transport payload or signing input. A projection is not
-exact wire evidence and does not establish signature/proof validity, including
-when `redacted` is false. An unsigned redirect can drop its request body while
-the attempt still retains this input projection.
-
-The supported subset includes ordinary plain JSON under audited ActivityStreams,
-identity, security, data-integrity v1/v2, and GoToSocial context URLs; exact
-Fedify-generated root extension definitions; and audited nested context URLs
-under a supported compact root. Context-free expanded JSON-LD with unambiguous
-IRI property names is also supported. Arbitrary inline aliases, context
-overrides, unknown remote contexts, getters/custom JSON conversion, and
-unsupported or cyclic/deep data produce an unavailable result. There is no
-raw-data fallback.
-
-An unavailable payload has one of these reasons:
-
-| Reason                       | Meaning                                                          |
-| ---------------------------- | ---------------------------------------------------------------- |
-| `disabled`                   | Sender-payload export was not enabled.                           |
-| `not-materialized`           | The attempt failed before reaching the sender snapshot boundary. |
-| `privacy-filter-unavailable` | A safe independent projection could not be established.          |
-
-Header, body, and document evidence remain privileged application data. URLs and
-content may contain other private values; blind-recipient filtering is not a
-general personal-data sanitizer or permission to publish the evidence. Your
-application owns access control, further redaction, archival, and saved original
-dispatch documents.
-
-### Observation time and tracing
-
-Each event or report includes `observedAt`, Unix milliseconds captured at its
-observation boundary before awaiting the callback. Replay gets a new observation
-time while retaining known grouping and historical source facts. Wall clocks do
-not establish a global order across workers.
-
-Optional `trace` contains valid `traceId` and `spanId` from the observed
-operation's own span, including unsampled spans. Fedify omits it when no valid
-own span exists. Producer entry precedes span creation, and exchanges have no
-dedicated span; their reports omit `trace`. Ambient parent/server spans are not
-substituted. Grouping IDs and observations work independently of tracing or
-exporter storage.
-
-### Identities across queues
-
-Observed broadcasts and deliveries retain their IDs through fanout expansion,
-retries, holds, and gateway changes. Fanout expansion can create new outbox task
-IDs without starting another broadcast. Source metadata and `dispatchId` are
-serialized even when producer observers are disabled; broadcast/delivery
-metadata is allocated when producer observation is enabled.
-
-| Boundary                            | Identity behavior                                                                                   |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Observed send or forward invocation | Fresh `broadcastId`; one `deliveryId` per deduplicated destination or confirmed replication target. |
-| Fanout expansion                    | Existing broadcast/delivery IDs, with new child outbox task IDs.                                    |
-| Retry, hold, or deferral            | Same delivery identity and provenance.                                                              |
-| Portable fallback                   | One delivery across alternate gateways; the planned destination remains unchanged.                  |
-| Portable replication                | A separate delivery for each confirmed target claim.                                                |
-
-~~~~ text
-inbox request -> handler -> send/forward -> planned delivery
-                                             +-> direct handoff
-                                             +-> outbox task -> retry/hold
-                                             +-> fanout task -> outbox tasks
-
-Queue continuations preserve known IDs and the original source.
-
-Portable fallback:    delivery D -> gateway A -> gateway B (stop on success)
-Portable replication: broadcast B -> delivery D1 -> gateway A
-                                 -> delivery D2 -> gateway B
-
-HTTP abort -> inbox report.requestCancellation
-Accepted queue work -> worker (the HTTP abort does not cancel it)
-~~~~
-
-IDs provide grouping, not ordering or deduplication. Replayed work can produce
-repeated observations. Treat IDs as opaque values.
-
-Older messages remain processable. Fanout tasks without identity metadata get
-stable delivery IDs with `broadcast: { type: "unknown" }`. Legacy outbox attempt
-reports use the current task UUID as `deliveryId` and unknown broadcast
-membership; `destinationInbox` is absent when the original plan is unavailable.
-An explicit canonical `portableInbox` can still be known. Missing source and
-application correlation remain unavailable. Older consumers can discard these
-fields, so mixed-version processing can lose correlation.
-
-### Retry history
-
-Persist attempt reports by `deliveryId` and each fresh `attemptId`; correlate
-scheduled retries with worker action task IDs. For example:
-
-~~~~ text
-delivery D -> attempt A1: failed, final HTTP 503
-           -> worker: retry scheduled as task Q, queueAttempt 1
-           -> attempt A2: succeeded, final HTTP 202
-~~~~
-
-A native redelivery can reuse a task/counter but still creates a new attempt.
-The application owns this history and any later manual retry; Fedify emits no
-distributed delivery-completed result.
-
-### Original source and current context
-
-Outgoing events distinguish preserved source facts from current URL facts:
-
- -  `provenance.inboxRequest`, when known, contains the original
-    `inboxRequestId`, informational `requestId`, and a `context` snapshot.
- -  `local` describes the context invoking this callback now.
- -  `provenance.originatingRequestId` retains the logging label for
-    HTTP-derived work without an inbox cause.
-
-Both URL snapshots contain `origin`, `host`, `hostname`, and `canonicalOrigin`.
-`host` includes an optional port; `hostname` does not. `canonicalOrigin` uses
-the configured web origin or falls back to `origin`.
-
-The original source survives derived sends, forwarding, context clones and
-conversions, and queues. Its snapshot stays unchanged if a derived context's
-URL changes. Independent contexts do not acquire an inbox cause from ambient
-execution. See [observing inbox requests](./inbox.md#observing-inbox-requests)
-for the difference between the server-generated `inboxRequestId` and the
-informational logging `requestId`.
-
-Worker logs use `sourceInboxRequestId` and `sourceRequestId` for historical
-correlation, preserving an unrelated current `requestId`.
-
-### Application dispatch correlation
-
-Send and forward options accept an application-owned `dispatchId`. Fedify
-preserves it exactly in `event.provenance.dispatchId` and outgoing queue
-continuations. Empty strings are valid; the limit is 1,024 UTF-8 bytes. A
-non-string value raises `TypeError`, and an oversized string raises `RangeError`
-before preparation. Queue consumers enforce the same limit.
-
-This example adds application correlation to an inbox-triggered acceptance:
-
-~~~~ typescript twoslash
-import type { Federation } from "@fedify/fedify";
-declare const federation: Federation<void>;
-declare function saveAcceptance(follow: import("@fedify/vocab").Follow): Promise<string>;
-// ---cut-before---
-import { Accept, Follow } from "@fedify/vocab";
-
-federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
-  .on(Follow, async (ctx, follow) => {
-    if (follow.id == null || follow.objectId == null) return;
-    const actor = ctx.parseUri(follow.objectId);
-    if (actor?.type !== "actor") return;
-    const follower = await follow.getActor(ctx);
-    if (follower == null) return;
-    const dispatchId = await saveAcceptance(follow);
-    await ctx.sendActivity(
-      { identifier: actor.identifier },
-      follower,
-      new Accept({ actor: follow.objectId, object: follow.id }),
-      { dispatchId },
-    );
-  });
-~~~~
-
-`saveAcceptance()` represents your application's record creation; its ID must
-satisfy the byte limit. The new Activity retains the incoming request's source.
-Reusing a `dispatchId` sends again with a fresh broadcast ID. A new public call
-that omits it does not inherit a previous app ID; queued continuations of the
-existing call retain it.
-
-### Registration and callback behavior
-
-Each registration call replaces all previous outbound observers; pass `{}` to
-clear them. Fedify copies the supplied callbacks, and building a federation
-copies the builder's registration. An active invocation or worker execution
-keeps its selected callbacks even if registration changes while it is running.
-You can register any callback independently, including `onWorker` alone. On
-attempt/exchange reports, `queue` contains the current `queueMessageId` and an
-available Fedify `queueAttempt` counter. Native redelivery can repeat that
-counter while creating fresh attempts.
-
-Metadata callbacks are awaited without a default timeout; body consumers use
-an explicit bounded capture lifetime. Callback return values and errors
-cannot veto sending, and callback or error-logging failures do not replace the
-send's original result. Slow callbacks delay processing; a callback that never
-settles can delay it indefinitely. Existing portable-forwarding deadlines can
-return control while background preparation, sending, and observation continue;
-a deadline alone does not create a failed preparation result or attempt outcome.
-
-Inbox request cancellation is reported separately from processing. The queue
-listener's stop signal controls intake; this observer API does not yet report
-per-execution queue cancellation. A backend ceasing to wait is not evidence that
-its worker terminated.
-
-If you detach recording work, handle its rejections and shutdown yourself;
-Fedify does not guarantee its persistence. Incoming C2S `setOutboxListeners()`
-registration is separate. Mock federations accept outbound observer
-registration but do not execute these observers.
-
-
 Specifying a sender
 -------------------
 
@@ -1026,6 +417,425 @@ an error and does not retry the delivery.
 [`@fedify/redis`]: https://github.com/fedify-dev/fedify/tree/main/packages/redis
 [`MysqlMessageQueue`]: https://jsr.io/@fedify/mysql/doc/mq/~/MysqlMessageQueue
 [`@fedify/mysql`]: https://github.com/fedify-dev/fedify/tree/main/packages/mysql
+
+
+Observing outgoing activities
+-----------------------------
+
+*This API is available since Fedify 2.5.0.*
+
+Register callbacks with `Federatable.setOutboundObservers()` to record outgoing
+sends, original-payload forwarding, and automatic portable-inbox replication.
+The method is available on federation builders and directly created federations.
+Each callback receives the current `Context` and an event or report, and is
+awaited at its observation boundary:
+
+~~~~ typescript twoslash
+import type {
+  Federation,
+  OutboundBroadcastEvent,
+  OutboundDeliveryEvent,
+} from "@fedify/fedify";
+declare const federation: Federation<{ requestId: string }>;
+declare function recordBroadcast(
+  requestId: string,
+  event: OutboundBroadcastEvent,
+): Promise<void>;
+declare function recordDelivery(
+  requestId: string,
+  event: OutboundDeliveryEvent,
+): Promise<void>;
+// ---cut-before---
+federation.setOutboundObservers({
+  async onBroadcast(ctx, event) {
+    await recordBroadcast(ctx.data.requestId, event);
+    if (event.stage === "preparation-finished" && event.result.type === "failed") {
+      console.error(event.result.failure.phase, event.result.failure.error);
+    }
+  },
+  async onDelivery(ctx, event) {
+    await recordDelivery(ctx.data.requestId, event);
+    if (event.stage === "handoff" && event.result.type === "enqueue-failed") {
+      console.error("Queue acceptance is unknown", event.result.error);
+    }
+  },
+});
+~~~~
+
+`recordBroadcast()` and `recordDelivery()` represent your application's
+recording functions. Queued work uses the current worker's context and data.
+The original HTTP source, when known, is recorded separately in `provenance`.
+Observation does not load additional data or serialize an activity again.
+Routing and source metadata are immutable snapshots; the context, application
+data, Activity objects, and original exceptions are not deep-copied.
+
+`onBroadcast` reports one send or forward invocation. Its `started` event runs
+before preparation; `preparation-finished` describes whether the producer
+prepared work for delivery or fanout, skipped sending, or failed. Fanout-ready
+work still needs worker-side delivery preparation. A prepared result does not
+confirm queue acceptance or HTTP delivery, and later send failures do not
+rewrite it. Skips such as `no-destinations` or `forwarding-disabled` describe
+existing decisions; an `unsigned` skip reflects the forwarding signature/proof
+shape check, not authentication.
+
+`onDelivery` reports each deduplicated destination or claimed replication
+target. Different inboxes on one host remain separate deliveries. A `planned`
+event identifies the destination; a `handoff` records direct sender entry or
+the result of enqueueing work. An `enqueued` result confirms producer
+acceptance. An `enqueue-failed` result leaves backend acceptance unknown,
+because the backend may have accepted work before rejecting the call.
+Destination-local preparation failures are reported without inventing an
+attempt. Earlier handoffs remain valid if preparation for a later destination
+fails.
+
+`onAttempt` reports the result when a concrete send settles. Each sender entry
+gets a fresh `attemptId`; retries and alternative gateways create new attempts.
+`onHttpExchange` reports each actual fetch within an attempt, including signed
+requests, redirects, and signature challenges. The pair of `attemptId` and
+`exchangeIndex` identifies an exchange. A fetch that receives non-2xx headers
+still has a `response` outcome; a rejected fetch has a `failed` outcome.
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+declare const federation: Federation<void>;
+// ---cut-before---
+federation.setOutboundObservers({
+  onHttpExchange(_ctx, report) {
+    console.log(report.attemptId, report.exchangeIndex, report.request.url);
+    if (report.outcome.type === "response") {
+      console.log("HTTP response", report.outcome.response.status);
+    }
+  },
+  onAttempt(_ctx, report) {
+    console.log(report.attemptId, report.httpExchangeCount);
+    const response = report.outcome.response;
+    if (response.type === "final") {
+      console.log("Final response", response.exchangeIndex, response.metadata.status);
+    }
+    if (report.outcome.type === "failed") {
+      console.error(report.outcome.failure.kind, report.outcome.failure.error);
+    }
+  },
+});
+~~~~
+
+An attempt can fail during URL validation or signing before any fetch, leaving
+`httpExchangeCount` at zero. Failures before sender entry, such as queue key
+import or fanout parsing, and worker holds or drops create no attempt.
+
+An exchange response and an attempt's final response are different. A 401
+challenge followed by a successful retry produces two exchanges; the later
+response is final. If signing the retry fails, the 401 remains intermediate.
+`outcome.response` distinguishes `final`, `intermediate-only`, `not-observed`,
+and `undetermined` evidence. A final response is retained even when later cache
+or cleanup work fails. For a final non-OK response, HTTP failure remains primary
+and additional local errors appear in `diagnostics`; a local failure after a
+final 2xx still makes the attempt fail. `outcome.error` retains the value that
+escaped the sender, while `failure.error` retains operation evidence when
+available. Neither queue acceptance nor remote HTTP acceptance proves that the
+remote application applied the activity.
+
+### Worker execution and actions
+
+`onWorker` receives one `OutboundWorkerReport` when a fanout or outbox worker's
+local execution and instrumentation settle. `attemptsStarted` counts concrete
+sender entries, including fallback gateways; enqueueing a child task does not
+increase it. Outbox reports identify one delivery, while fanout reports carry
+delivery references on their child actions.
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+declare const federation: Federation<void>;
+// ---cut-before---
+federation.setOutboundObservers({
+  onWorker(_ctx, report) {
+    console.log(report.role, report.result.type, report.attemptsStarted);
+    for (const action of report.actions) {
+      if (action.type === "scheduled") {
+        console.log(action.action, action.queue.queueMessageId, action.inboxUrls);
+        if (action.action !== "enqueue") console.log(action.delay);
+      }
+    }
+  },
+});
+~~~~
+
+Read `actions` separately from `result`. A `completed` result means the worker
+returned normally, including handled failures or abandonment. Its actions record
+accepted enqueues, retries and deferrals, direct handoffs, abandoned routes, and
+failed scheduling or drop operations. Retry and deferral actions include their
+actual delay and any per-route constraints. One gateway can be abandoned while
+another continues. An empty action list means none was observed by settlement.
+
+Accepted actions survive later failures; a rejected batch leaves every submitted
+child's acceptance unknown. Earlier direct attempts can continue after a later
+preparation failure settles the worker. A local result does not establish
+backend acknowledgment or future native redelivery. See
+[observing outgoing workers](./mq.md#observing-outgoing-workers).
+
+### Identities across queues
+
+`broadcastId` groups an invocation and its continuations. `deliveryId`
+identifies one destination obligation and survives fanout replay, retries,
+holds, and route changes. Alternative portable gateways share one delivery;
+automatic replication creates independent deliveries. Each concrete attempt
+gets a new `attemptId`. Queue task IDs and `queueAttempt` describe scheduling,
+not the number of send executions. Native redelivery can reuse both while
+creating a fresh attempt.
+
+The identity relationships are:
+
+| Unit          | Identity and lifetime                                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Broadcast     | Fresh `broadcastId` for an observed invocation; retained through queue continuations.                              |
+| Delivery      | One `deliveryId` per deduplicated destination or claimed replication target; retained across retries and fallback. |
+| Attempt       | Fresh `attemptId` at each concrete sender entry.                                                                   |
+| HTTP exchange | `attemptId` plus `exchangeIndex`, starting at zero within the attempt.                                             |
+| Queue task    | Current `queueMessageId` and, when available, `queueAttempt`; fanout replay can create new task IDs.               |
+
+IDs provide grouping, not ordering, deduplication, or remote idempotency.
+Callbacks can interleave or repeat, and a crash or operation that never settles
+can leave an invocation without a terminal report. Applications own persistence
+and aggregate delivery state.
+
+A failed attempt receiving HTTP 503 and a later successful retry receiving HTTP
+202 share the same `deliveryId`, but have different `attemptId` values. The
+worker report records the scheduled retry and its queue task ID.
+
+### Original source and current context
+
+`local` describes the context invoking the callback. For inbox-derived work,
+`provenance.inboxRequest` preserves the original `inboxRequestId`, informational
+logging `requestId`, and URL snapshot through context clones, conversions, new
+sends, forwarding, and queues. Both URL snapshots contain `origin`, `host`,
+`hostname`, and `canonicalOrigin`. Independent contexts do not acquire an inbox
+cause from ambient execution. Worker logs use `sourceInboxRequestId` and
+`sourceRequestId` without replacing an unrelated current request's label.
+See [observing inbox requests](./inbox.md#observing-inbox-requests).
+
+Send and forward options accept an application-owned `dispatchId` for grouping
+related calls, including manual retries. It is preserved exactly through
+outgoing queue continuations and never suppresses a send. For example, an inbox
+listener can associate an acceptance with its application record:
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+declare const federation: Federation<void>;
+declare function saveAcceptance(follow: import("@fedify/vocab").Follow): Promise<string>;
+// ---cut-before---
+import { Accept, Follow } from "@fedify/vocab";
+
+federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (follow.id == null || follow.objectId == null) return;
+    const actor = ctx.parseUri(follow.objectId);
+    if (actor?.type !== "actor") return;
+    const follower = await follow.getActor(ctx);
+    if (follower == null) return;
+    const dispatchId = await saveAcceptance(follow);
+    await ctx.sendActivity(
+      { identifier: actor.identifier },
+      follower,
+      new Accept({ actor: follow.objectId, object: follow.id }),
+      { dispatchId },
+    );
+  });
+~~~~
+
+`saveAcceptance()` represents your application's record creation. Dispatch IDs
+may be empty but must fit within 1,024 UTF-8 bytes. Invalid types raise
+`TypeError` and oversized strings raise `RangeError` before preparation; queue
+consumers apply the same validation. A new call that omits the ID does not
+inherit it from a previous invocation.
+
+Older messages remain processable, with missing relationships explicitly
+unknown. Legacy fanout can recover stable delivery grouping; legacy outbox
+reports use the current task UUID as the delivery ID and cannot recover
+broadcast membership. Unavailable original destinations and source facts remain
+absent. Older consumers can discard new metadata, so mixed-version processing
+can lose correlation. Source metadata and dispatch IDs propagate even without
+producer observers; broadcast and delivery metadata is allocated when producer
+observation is enabled.
+
+### Capturing headers
+
+Header values are disabled by default. Configure `requestHeaders` and
+`responseHeaders` independently with literal names in `allow` and a positive
+safe-integer `maxBytes`. Optional `redact` names add application-specific
+secrets. Names are normalized to lowercase; wildcards are not supported.
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+declare const federation: Federation<void>;
+// ---cut-before---
+federation.setOutboundObservers({
+  requestHeaders: { allow: ["content-type", "signature"], maxBytes: 2048 },
+  responseHeaders: { allow: ["content-type", "retry-after", "set-cookie"], maxBytes: 1024 },
+  onHttpExchange(_ctx, report) {
+    console.log(report.request.headers?.entries);
+    if (report.outcome.type === "response") {
+      console.log(report.outcome.response.headers?.entries);
+      console.log(report.outcome.response.headers?.limitReached);
+    }
+  },
+});
+~~~~
+
+Credentials, signatures, and cookies in the built-in protected set are always
+redacted, even when allowlisted. Add custom credential headers to `redact`.
+Snapshots contain immutable name/value pairs in lexical name order, using the
+runtime's representation of repeated headers. The budget counts UTF-8 bytes of
+`name + ": " + value + "\r\n"` after redaction. Oversized entries are omitted
+whole, and `limitReached` records omissions. An absent snapshot means capture
+was disabled; an enabled empty allowlist produces an empty snapshot. Each
+signed request, challenge retry, and redirect captures its actual submitted
+headers.
+
+### Streaming response bodies
+
+Body capture is disabled unless `responseBodyCapture` is supplied. It is
+independent of header capture and can be used without metadata callbacks.
+Provide `onBody`, a positive safe-integer `maxBytes`, and a finite positive
+`timeoutMs`. Fractional milliseconds round up; the rounded lifetime cannot
+exceed 2,147,483,647 ms. Invalid configuration preserves the previous
+registration.
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+declare const federation: Federation<void>;
+declare function saveChunk(
+  attemptId: string,
+  exchangeIndex: number,
+  chunk: Uint8Array,
+  signal: AbortSignal,
+): Promise<void>;
+// ---cut-before---
+federation.setOutboundObservers({
+  responseBodyCapture: {
+    maxBytes: 64 * 1024,
+    timeoutMs: 5000,
+    responses: "non-success-http-responses",
+    async onBody(_ctx, event) {
+      const reader = event.body.getReader();
+      try {
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          await saveChunk(event.attemptId, event.exchangeIndex, chunk.value, event.signal);
+        }
+      } catch (error) {
+        if (!event.signal.aborted) throw error;
+      } finally {
+        reader.releaseLock();
+      }
+    },
+  },
+  onHttpExchange(_ctx, report) {
+    console.log(report.attemptId, report.exchangeIndex, report.bodyCapture);
+  },
+});
+~~~~
+
+`responses` defaults to `all` when capture is enabled. The example selects
+`non-success-http-responses`, including intermediate challenges and redirects;
+selection does not predict the attempt's final result. Its limits are
+illustrative.
+
+`onBody` receives the current context, grouping metadata, immutable HTTP
+metadata, a controlled stream, and a capture-only signal. It runs after
+response headers and before the exchange report. Fedify uses one source reader
+for capture and diagnostics, with backpressure and no clone, tee, or whole-body
+accumulation. Runtime buffering, upstream chunk allocation, and application
+storage remain outside these bounds.
+
+The report's `bodyCapture` summary distinguishes disabled or filtered capture,
+a missing body, EOF, a byte limit, a deadline, early callback return, consumer
+cancellation, and body or observer failure. `bytesExposed` counts bytes handed
+to application code, not bytes durably saved. Reaching the exact cap does not
+establish EOF, so `limit-reached` leaves completeness uncertain.
+
+The lifetime includes waiting for a consumer that is slow or never reads, as
+well as cleanup. Callback settlement, consumer cancellation, the cap, or the
+deadline revokes access even through retained locked readers. Late promise
+rejections are handled, but application storage that ignores the signal can
+continue. Applications must handle interrupted writes and archive cleanup
+themselves.
+
+Capture failures retain observed HTTP facts and do not independently trigger a
+retry or skip a challenge. Error diagnostics have a separate one-second budget
+and retain at most 1 KiB, appending `… (timed out)` or `… (truncated)` as
+appropriate. Waiting for capture on multiple exchanges can add to total send
+time.
+
+### Inspecting the sender payload
+
+Enable `senderPayload: true` to include a privacy-filtered copy of the concrete
+sender's existing JSON input in attempt reports. It covers immediate and queued
+sends, forwarding, and portable replication without additional serialization or
+context loading:
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+declare const federation: Federation<void>;
+// ---cut-before---
+federation.setOutboundObservers({
+  senderPayload: true,
+  onAttempt(_ctx, report) {
+    const document = report.senderPayload;
+    if (document.type === "available") {
+      console.log(document.stage, document.representation, document.redacted);
+      console.log(document.value);
+    } else {
+      console.log("Sender payload unavailable", document.reason);
+    }
+  },
+});
+~~~~
+
+An available payload is an immutable `privacy-projection`. It removes compact,
+`as:`-prefixed, and full-IRI `bto`/`bcc` fields throughout nested content,
+including proof-bearing objects. `redacted` indicates that fields were removed.
+It does not modify transport or signing input, establish proof validity, or
+represent exact wire bytes. Redirects can change the actual request body
+independently.
+
+Unsupported contexts, aliases, getters, custom JSON conversion, cyclic data, or
+excessive nesting fail closed with `privacy-filter-unavailable`; there is no raw
+fallback. `disabled` means export was not enabled, and `not-materialized` means
+the sender did not reach the snapshot boundary. Supported context forms and
+field definitions are described by `OutboundSenderPayload`.
+
+Headers, bodies, and payloads remain privileged application data. URLs and
+content can contain private values beyond blind recipients. Your application
+owns access control, additional redaction, archival, and saved original
+dispatch documents.
+
+### Registration and callback behavior
+
+Registering again replaces the complete observer set; pass `{}` to clear it.
+Builders copy registrations into built federations, and active invocations and
+workers retain their selected callbacks. Any callback can be registered alone.
+Mock federations accept registration but do not execute these observers.
+
+Observer errors, including logging errors, are isolated from the original result
+and retry ownership. Metadata callbacks are awaited without a default timeout;
+a callback that never settles can delay processing indefinitely. Detached
+recording must handle its own rejections and shutdown. Neither awaited recording
+nor detached work makes persistence atomic with network effects or queue
+acceptance. Portable-forwarding deadlines can return control while sends and
+observation continue; the deadline alone does not create a failed attempt.
+
+Each event or report has an `observedAt` Unix timestamp in milliseconds. It does
+not establish ordering across workers. Observation works without OpenTelemetry
+or sampling. Optional `trace` references the operation's own valid span,
+including unsampled spans; broadcast starts and HTTP exchanges omit it because
+they have no span of their own at those boundaries.
+
+Inbox request cancellation is observed separately from processing. Queue intake
+shutdown and per-execution cancellation are also distinct. Execution
+cancellation is not currently reported by this API. Incoming C2S
+`setOutboxListeners()` registration serves a separate purpose from outbound
+observation.
 
 
 Optimizing activity delivery for large audiences
