@@ -109,6 +109,12 @@ To be released.
 
 ### @fedify/cli
 
+ -  Added SVG favicon support to `fedify nodeinfo`.  SVG icons are now
+    rasterized and shown as terminal art instead of being skipped, so servers
+    that only declare an SVG favicon get an icon too.  Bitmap icons are still
+    preferred when a page declares both. If the chosen favicon cannot be
+    fetched or rendered, the command now retries `/favicon.ico` once.
+    [[#1238], [#1346] by Lee Jeongmin\]
  -  Added a `fedify-cli` Agent Skill for command-line ActivityPub diagnostics
     and testing, including servers built without Fedify. Install it through
     the Claude Code plugin, the `@fedify/cli` npm package, or a manual
@@ -125,10 +131,11 @@ To be released.
     project excludes the matching deprecation lint rule so that `deno lint`
     succeeds.  [[#1335], [#1340]]
  -  Changed the `fedify nodeinfo` favicon selector to pick a usable bitmap
-    icon more often.  It now skips SVG icons declared with
-    `type="image/svg+xml"`, not just those with a `.svg` URL, and it considers
-    every declared size instead of only the first, so an icon offering a large
-    size is no longer discarded because its smallest size is too small.
+    icon more often.  It now recognizes SVG icons declared with
+    `type="image/svg+xml"`, not just those with a `.svg` URL, so a bitmap
+    icon is preferred over them, and it considers every declared size instead
+    of only the first, so an icon offering a large size is no longer
+    discarded because its smallest size is too small.
     [[#893], [#1187] by Lee Jeongmin\]
  -  Changed the `fedify webfinger` command's error message when a lookup
     fails.  It now explains why—resource not found, a network error, a
@@ -140,12 +147,14 @@ To be released.
 [#897]: https://github.com/fedify-dev/fedify/issues/897
 [#901]: https://github.com/fedify-dev/fedify/issues/901
 [#1187]: https://github.com/fedify-dev/fedify/pull/1187
+[#1238]: https://github.com/fedify-dev/fedify/issues/1238
 [#1265]: https://github.com/fedify-dev/fedify/pull/1265
 [#1296]: https://github.com/fedify-dev/fedify/pull/1296
 [#1329]: https://github.com/fedify-dev/fedify/issues/1329
 [#1330]: https://github.com/fedify-dev/fedify/pull/1330
 [#1335]: https://github.com/fedify-dev/fedify/issues/1335
 [#1340]: https://github.com/fedify-dev/fedify/pull/1340
+[#1346]: https://github.com/fedify-dev/fedify/pull/1346
 [#1352]: https://github.com/fedify-dev/fedify/pull/1352
 
 ### @fedify/debugger

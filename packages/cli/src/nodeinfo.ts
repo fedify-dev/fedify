@@ -22,6 +22,7 @@ import type { ChalkInstance } from "chalk";
 import { isICO, parseICO } from "icojs";
 import { defaultFormats, defaultPlugins, intToRGBA } from "jimp";
 import { Buffer } from "node:buffer";
+import { readFile } from "node:fs/promises";
 import os from "node:os";
 import process from "node:process";
 import ora from "ora";
@@ -33,6 +34,7 @@ import { colors, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "nodeinfo"]);
 const MAX_FAVICON_REDIRECTS = 5;
+const SVG_SNIFF_LENGTH = 1024;
 
 async function fetchFaviconResource(
   url: URL | string,
@@ -73,6 +75,69 @@ type JimpImage = Awaited<ReturnType<typeof Jimp.read>>;
 type ImageBuffer = ArrayBuffer | Uint8Array;
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+type ResvgModule = typeof import("@resvg/resvg-wasm");
+
+let svgRasterizer: Promise<ResvgModule> | undefined;
+
+function loadSvgRasterizer(): Promise<ResvgModule> {
+  return svgRasterizer ??= (async () => {
+    try {
+      const resvg = await import("@resvg/resvg-wasm");
+      const wasmUrl = import.meta.resolve("@resvg/resvg-wasm/index_bg.wasm");
+      await resvg.initWasm(await readFile(new URL(wasmUrl)));
+      return resvg;
+    } catch (error) {
+      logger.debug("Failed to load the SVG rasterizer: {error}", { error });
+      throw error;
+    }
+  })();
+}
+
+export async function rasterizeSvg(buffer: ImageBuffer): Promise<Uint8Array> {
+  const svg = toUint8Array(buffer);
+  const { Resvg } = await loadSvgRasterizer();
+  const probe = new Resvg(svg);
+  const { width, height } = probe;
+  probe.free();
+  if (width < 1 || height < 1) {
+    throw new RangeError(`Unusable SVG dimensions: ${width}x${height}`);
+  }
+  const resvg = new Resvg(svg, {
+    fitTo: {
+      mode: width >= height ? "width" : "height",
+      value: DEFAULT_IMAGE_WIDTH,
+    },
+  });
+  try {
+    const rendered = resvg.render();
+    try {
+      // Resvg WASM has no fonts, so text-only SVGs render fully transparent
+      if (!hasVisiblePixel(rendered.pixels)) {
+        throw new Error("The SVG favicon has no visible pixels.");
+      }
+      return rendered.asPng();
+    } finally {
+      rendered.free();
+    }
+  } finally {
+    resvg.free();
+  }
+}
+
+function hasVisiblePixel(pixels: Uint8Array): boolean {
+  for (let i = 3; i < pixels.length; i += 4) {
+    if (pixels[i] !== 0) return true;
+  }
+  return false;
+}
+
+function isSvg(buffer: ImageBuffer): boolean {
+  const text = new TextDecoder().decode(
+    toUint8Array(buffer).subarray(0, SVG_SNIFF_LENGTH),
+  );
+  return /<svg[\s/>]/i.test(text);
+}
 
 function toUint8Array(buffer: ImageBuffer): Uint8Array {
   return buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
@@ -187,6 +252,38 @@ export const nodeInfoCommand = Command(
   nodeInfoMetadata,
 );
 
+async function renderFavicon(url: URL, userAgent?: string): Promise<string[]> {
+  const { response } = await fetchFaviconResource(url, userAgent);
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new Error(
+      `Failed to fetch the favicon: ${response.status} ${response.statusText}`,
+    );
+  }
+  const contentType = response.headers.get("Content-Type")
+    ?.split(";")[0].trim().toLowerCase();
+  let buffer: ImageBuffer = await response.arrayBuffer();
+  if (
+    contentType === "image/vnd.microsoft.icon" ||
+    contentType === "image/x-icon" ||
+    isICO(buffer)
+  ) {
+    const images = await parseICO(buffer);
+    if (images.length < 1) {
+      throw new Error("No images found in the ICO file.");
+    }
+    buffer = images[0].buffer;
+  } else if (
+    !isPng(buffer) && (contentType === "image/svg+xml" || isSvg(buffer))
+  ) {
+    buffer = await rasterizeSvg(buffer);
+  }
+  const image = await readImage(buffer);
+  const colorSupport = checkTerminalColorSupport();
+  return getAsciiArt(image, DEFAULT_IMAGE_WIDTH, colorSupport, colors)
+    .split("\n").map((line) => ` ${line}  `);
+}
+
 export async function runNodeInfo(
   command: InferValue<typeof nodeInfoCommand>,
 ) {
@@ -238,36 +335,18 @@ export async function runNodeInfo(
     spinner.text = "Fetching the favicon...";
     try {
       const faviconUrl = await getFaviconUrl(url, command.userAgent);
-      const { response } = await fetchFaviconResource(
-        faviconUrl,
-        command.userAgent,
-      );
-      if (response.ok) {
-        const contentType = response.headers.get("Content-Type");
-        let buffer: ArrayBuffer = await response.arrayBuffer();
-        if (
-          contentType === "image/vnd.microsoft.icon" ||
-          contentType === "image/x-icon" ||
-          isICO(buffer)
-        ) {
-          const images = await parseICO(buffer);
-          if (images.length < 1) {
-            throw new Error("No images found in the ICO file.");
-          }
-          buffer = images[0].buffer;
-        }
-        const image = await readImage(buffer);
-        const colorSupport = checkTerminalColorSupport();
-        layout = getAsciiArt(image, DEFAULT_IMAGE_WIDTH, colorSupport, colors)
-          .split("\n").map((line) => ` ${line}  `);
-        defaultWidth = 41;
-      } else {
-        logger.error(
-          "Failed to fetch the favicon: {status} {statusText}",
-          { status: response.status, statusText: response.statusText },
+      const fallbackUrl = new URL("/favicon.ico", url);
+      try {
+        layout = await renderFavicon(faviconUrl, command.userAgent);
+      } catch (error) {
+        if (faviconUrl.href === fallbackUrl.href) throw error;
+        logger.debug(
+          "Failed to fetch or render {url}; retrying {fallbackUrl}: {error}",
+          { url: faviconUrl.href, fallbackUrl: fallbackUrl.href, error },
         );
-        layout = [""];
+        layout = await renderFavicon(fallbackUrl, command.userAgent);
       }
+      defaultWidth = 41;
     } catch (error) {
       logger.error(
         "Failed to fetch or render the favicon: {error}",
@@ -388,6 +467,7 @@ export async function getFaviconUrl(
     userAgent,
   );
   const text = await response.text();
+  let svgCandidate: URL | undefined;
   for (const match of text.matchAll(LINK_REGEXP)) {
     const attrs: Record<string, string> = {};
     for (const attrMatch of match[1].matchAll(LINK_ATTRS_REGEXP)) {
@@ -398,21 +478,26 @@ export async function getFaviconUrl(
     }
     const rel = attrs.rel?.toLowerCase()?.trim()?.split(/\s+/) ?? [];
     if (!rel.includes("icon") && !rel.includes("apple-touch-icon")) continue;
-    const tokens = attrs.sizes?.match(/\d+x\d+/g);
-    if (
-      tokens != null && !tokens.some((token) => {
-        const [w, h] = token.split("x").map((v) => Number.parseInt(v));
-        return w >= 38 && h >= 19;
-      })
-    ) continue;
     if ("href" in attrs) {
       const parsedUrl = new URL(attrs.href, finalUrl);
-      if (parsedUrl.pathname.toLowerCase().endsWith(".svg")) continue;
-      if (attrs.type?.toLowerCase()?.trim() === "image/svg+xml") continue;
+      if (
+        parsedUrl.pathname.toLowerCase().endsWith(".svg") ||
+        attrs.type?.toLowerCase()?.trim() === "image/svg+xml"
+      ) {
+        svgCandidate ??= parsedUrl;
+        continue;
+      }
+      const tokens = attrs.sizes?.match(/\d+x\d+/g);
+      if (
+        tokens != null && !tokens.some((token) => {
+          const [w, h] = token.split("x").map((v) => Number.parseInt(v));
+          return w >= 38 && h >= 19;
+        })
+      ) continue;
       return parsedUrl;
     }
   }
-  return new URL("/favicon.ico", finalUrl);
+  return svgCandidate ?? new URL("/favicon.ico", finalUrl);
 }
 
 function checkTerminalColorSupport(): "truecolor" | "256color" | "none" {

@@ -1392,7 +1392,9 @@ visualized along with the favicon.](cli/fedify-nodeinfo.png)
 
 The `fedify nodeinfo` command fetches the given instance's [NodeInfo] document
 and visualizes it in [`neofetch`]-style.  The argument can be either a bare
-hostname or a full URL.
+hostname or a full URL.  SVG favicons are rasterized, but `<text>` elements
+are not drawn because the rasterizer loads no fonts, and a text-only SVG falls
+back to `/favicon.ico`.
 
 > [!TIP]
 > Not all instances provide the NodeInfo document.  If the given instance does

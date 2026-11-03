@@ -1233,6 +1233,9 @@ importers:
       '@poppanator/http-constants':
         specifier: ^1.1.1
         version: 1.1.1
+      '@resvg/resvg-wasm':
+        specifier: ^2.6.2
+        version: 2.6.2
       '@standard-schema/spec':
         specifier: 'catalog:'
         version: 1.1.0
@@ -7520,6 +7523,10 @@ packages:
 
   '@repeaterjs/repeater@3.1.0':
     resolution: {integrity: sha512-TaoVksZRSx2KWYYpyLQtMQXXeS98VsgZImzW65xmiVgbYhXLk+aEsmzPLirqVuE4/XuUapH2iMtxUzaBNDzdSQ==}
+
+  '@resvg/resvg-wasm@2.6.2':
+    resolution: {integrity: sha512-FqALmHI8D4o6lk/LRWDnhw95z5eO+eAa6ORjVg09YRR7BkcM6oPHU9uyC0gtQG5vpFLvgpeU4+zEAz2H8APHNw==}
+    engines: {node: '>= 10'}
 
   '@rolldown/binding-android-arm64@1.0.0-rc.12':
     resolution: {integrity: sha512-pv1y2Fv0JybcykuiiD3qBOBdz6RteYojRFY1d+b95WVuzx211CRh+ytI/+9iVyWQ6koTh5dawe4S/yRfOFjgaA==}
@@ -25713,6 +25720,8 @@ snapshots:
       react: 19.2.4
 
   '@repeaterjs/repeater@3.1.0': {}
+
+  '@resvg/resvg-wasm@2.6.2': {}
 
   '@rolldown/binding-android-arm64@1.0.0-rc.12':
     optional: true
