@@ -2148,6 +2148,12 @@ export class FederationImpl<TContextData>
             "retried",
             retryMessage.activityType,
           );
+        } else {
+          worker?.abandon(
+            "queue-unavailable",
+            [message.inbox],
+            preparationFailures,
+          );
         }
       } else {
         worker?.abandon(

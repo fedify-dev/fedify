@@ -3941,7 +3941,14 @@ test("ordinary outbox worker actions record actual retry and hold enqueues", asy
 });
 
 test("handled header preparation failures stay attached to actual retry actions", async (t) => {
-  for (const mode of ["accepted", "enqueue-failed", "declined"] as const) {
+  for (
+    const mode of [
+      "accepted",
+      "enqueue-failed",
+      "declined",
+      "queue-unavailable",
+    ] as const
+  ) {
     await t.step(mode, async () => {
       const reports: OutboundWorkerReport[] = [];
       const enqueueError = new Error("queue unavailable");
@@ -3958,17 +3965,19 @@ test("handled header preparation failures stay attached to actual retry actions"
         onOutboxError(error) {
           preparationErrors.push(error);
         },
-        queue: {
-          outbox: {
-            enqueue() {
-              enqueueCalls++;
-              return mode === "enqueue-failed"
-                ? Promise.reject(enqueueError)
-                : Promise.resolve();
+        ...(mode === "queue-unavailable" ? {} : {
+          queue: {
+            outbox: {
+              enqueue() {
+                enqueueCalls++;
+                return mode === "enqueue-failed"
+                  ? Promise.reject(enqueueError)
+                  : Promise.resolve();
+              },
+              listen: () => Promise.resolve(),
             },
-            listen: () => Promise.resolve(),
           },
-        },
+        }),
       });
       federation.setOutboundObservers({
         onWorker(_ctx, report) {
@@ -3992,11 +4001,18 @@ test("handled header preparation failures stay attached to actual retry actions"
           strictEqual(report.result.error, enqueueError);
         } else deepStrictEqual(report.result, { type: "completed" });
         strictEqual(report.attemptsStarted, 0);
-        strictEqual(enqueueCalls, mode === "declined" ? 0 : 1);
+        strictEqual(
+          enqueueCalls,
+          mode === "declined" || mode === "queue-unavailable" ? 0 : 1,
+        );
+        strictEqual(report.actions?.length, 1);
         const action = report.actions?.[0];
-        if (mode === "declined") {
+        if (mode === "declined" || mode === "queue-unavailable") {
           ok(action?.type === "abandoned");
-          strictEqual(action.reason, "retry-policy-declined");
+          strictEqual(
+            action.reason,
+            mode === "declined" ? "retry-policy-declined" : "queue-unavailable",
+          );
         } else {
           ok(
             action?.type ===
@@ -4118,6 +4134,7 @@ test("ordinary outbox worker actions retain local abandonment and failed drop st
     const mode of [
       "permanent",
       "declined",
+      "queue-unavailable",
       "ttl",
       "ttl-parse",
       "ttl-handler",
@@ -4133,17 +4150,22 @@ test("ordinary outbox worker actions retain local abandonment and failed drop st
         kv: new MemoryKvStore(),
         allowPrivateAddress: true,
         manuallyStartQueue: true,
-        outboxRetryPolicy: () => null,
+        outboxRetryPolicy: () =>
+          mode === "queue-unavailable"
+            ? Temporal.Duration.from({ seconds: 1 })
+            : null,
         circuitBreaker: ttl ? { heldActivityTtl: { seconds: 1 } } : false,
-        queue: {
-          outbox: {
-            enqueue(message) {
-              queued.push(message);
-              return Promise.resolve();
+        ...(mode === "queue-unavailable" ? {} : {
+          queue: {
+            outbox: {
+              enqueue(message) {
+                queued.push(message);
+                return Promise.resolve();
+              },
+              listen: () => Promise.resolve(),
             },
-            listen: () => Promise.resolve(),
           },
-        },
+        }),
       });
       federation.setOutboundObservers({
         onWorker(_ctx, report) {
@@ -4199,6 +4221,8 @@ test("ordinary outbox worker actions retain local abandonment and failed drop st
             ? "held-ttl-expired"
             : mode === "declined"
             ? "retry-policy-declined"
+            : mode === "queue-unavailable"
+            ? "queue-unavailable"
             : "permanent-failure",
         );
         deepStrictEqual(abandoned.inboxUrls, [message.inbox]);
