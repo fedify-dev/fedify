@@ -87,8 +87,9 @@ catalog:
   "@electric-sql/pglite": ^0.5.8
   "@fxts/core": ^1.21.1
   "@js-temporal/polyfill": ^0.5.1
-  "@logtape/file": ^2.2.0
-  "@logtape/logtape": ^2.2.0
+  "@logtape/file": 2.4.2
+  "@logtape/lint": 2.4.2
+  "@logtape/logtape": 2.4.2
   "@multiformats/base-x": ^4.0.1
   "@nestjs/common": ^11.0.1
   "@netlify/async-workloads": ^0.0.106

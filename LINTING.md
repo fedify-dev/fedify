@@ -147,6 +147,11 @@ a note here.  The current additions are:
  -  `typescript/prefer-for-of`.
  -  `typescript/no-extraneous-class`.
 
+The [LogTape lint plugin] is registered as `@logtape` with its recommended
+rules: `no-message-interpolation` and `no-unawaited-log` as errors, and
+`prefer-lazy-evaluation` and `require-meta-sink` as warnings.  The opt-in
+`no-dynamic-message` and `no-unrendered-properties` rules remain off.
+
 Vendored [anti-slop] rules live in *tools/oxlint/anti-slop/*.  They are copied
 from upstream and recorded in *tools/oxlint/anti-slop/UPSTREAM.md*; update
 them by following the upstream install skill and recording the new revision.
@@ -172,4 +177,5 @@ API refactoring: `no-chained-type-assertions`,
 `require-safety-comment-for-type-assertion`. `require-readable-spacing` is not
 enabled because formatting is owned by the formatter.
 
+[LogTape lint plugin]: https://logtape.org/lint
 [anti-slop]: https://github.com/dmmulroy/anti-slop

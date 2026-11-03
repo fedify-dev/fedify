@@ -845,9 +845,11 @@ export class FederationImpl<TContextData>
       );
       const relaxationSummary = formatBenchmarkRelaxations(relaxations);
       getLogger(["fedify", "federation", "benchmark"]).warn(
-        `Fedify benchmarkMode is enabled; ${relaxationSummary}. Benchmark endpoints are active and must not be used in production.`,
+        "Fedify benchmarkMode is enabled; {relaxationSummary}. " +
+          "Benchmark endpoints are active and must not be used in production.",
         {
           relaxations,
+          relaxationSummary,
         },
       );
     }

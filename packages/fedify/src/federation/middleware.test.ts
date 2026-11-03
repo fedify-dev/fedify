@@ -274,10 +274,15 @@ test("createFederation()", async (t) => {
           assertEquals(records[0].level, "warning");
           assertEquals(
             records[0].rawMessage,
-            "Fedify benchmarkMode is enabled; private address checks " +
-              "disabled (allowPrivateAddress=true); HTTP Signature time " +
-              "window disabled (signatureTimeWindow=false). Benchmark " +
-              "endpoints are active and must not be used in production.",
+            "Fedify benchmarkMode is enabled; {relaxationSummary}. " +
+              "Benchmark endpoints are active and must not be used in " +
+              "production.",
+          );
+          assertEquals(
+            records[0].properties.relaxationSummary,
+            "private address checks disabled (allowPrivateAddress=true); " +
+              "HTTP Signature time window disabled " +
+              "(signatureTimeWindow=false)",
           );
           assertEquals(
             records[0].properties.relaxations,

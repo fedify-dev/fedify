@@ -26,6 +26,10 @@
     {
       "name": "anti-slop",
       "specifier": "./tools/oxlint/anti-slop/index.ts"
+    },
+    {
+      "name": "@logtape",
+      "specifier": "@logtape/lint/eslint"
     }
   ],
   "overrides": [
@@ -196,7 +200,11 @@
     "unicorn/no-array-for-each": "error",
     "typescript/no-import-type-side-effects": "error",
     "typescript/prefer-for-of": "error",
-    "typescript/no-extraneous-class": "error"
+    "typescript/no-extraneous-class": "error",
+    "@logtape/no-message-interpolation": "error",
+    "@logtape/prefer-lazy-evaluation": "warn",
+    "@logtape/no-unawaited-log": "error",
+    "@logtape/require-meta-sink": "warn"
   },
   "ignorePatterns": [
     "**/pnpm-lock.yaml",

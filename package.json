@@ -15,6 +15,7 @@
     "@types/bun": "catalog:",
     "@types/deno": "catalog:",
     "@oxlint/plugins": "catalog:",
+    "@logtape/lint": "catalog:",
     "oxlint": "catalog:",
     "tsdown": "catalog:"
   },
