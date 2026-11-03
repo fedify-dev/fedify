@@ -51,11 +51,12 @@ To be released.
  -  Added application-facing outbound observers for sends, forwarding,
     replication, and queued retries, independently of OpenTelemetry. Optional
     callbacks report preparation, delivery handoffs, send/HTTP results, and
-    worker actions with correlation IDs. Applications can opt in to redacted
-    headers, bounded streaming response capture, and privacy-filtered sender
-    payloads. Inbox reports now preserve original request context and snapshot
-    request cancellation without changing processing outcomes. Error diagnostic
-    reads have a one-second deadline. [[#1316], [#1359] by Jiwon Kwon\]
+    worker actions with correlation IDs and preparation failure details.
+    Applications can opt in to redacted headers, bounded streaming response
+    capture, and privacy-filtered sender payloads. Inbox reports now preserve
+    original request context and snapshot request cancellation without changing
+    processing outcomes. Error diagnostic reads have a one-second deadline.
+    [[#1316], [#1359] by Jiwon Kwon\]
  -  Added the `activity-origin-mismatch` reason to rejected
     `InboxAuthentication` decisions in `onRequestFinished` reports.  Inbox
     deliveries rejected because the activity's ID does not have the same origin

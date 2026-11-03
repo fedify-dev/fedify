@@ -302,13 +302,20 @@ Retry/defer includes ISO `delay` and optional per-route `notBefore` constraints.
 `action-failed` retains enqueue rejection with `acceptance: "unknown"`, or a
 failed `drop` step. `handoff`/`direct` records concrete fanout sender entry;
 `abandoned` records a local reason. Each action lists affected `inboxUrls`, so
-gateway outcomes can differ by route. Child enqueues and direct handoffs carry
-known delivery references. Accepted children survive sibling/bookkeeping
-failure; a rejected batch leaves all submitted children uncertain. Replay keeps
-delivery IDs with fresh child task IDs, without another broadcast. Worker
-settlement does not establish backend acknowledgment, a scheduled native retry,
-or remote success; later direct attempts may settle after a setup failure has
-already ended the worker. Do not infer scheduling from an attempt result.
+gateway outcomes can differ by route. Retry, deferral, and abandonment actions
+retain contributing local preparation failures in `preparationFailures` entries
+with `inboxUrl` and `failure` (phase/original error), even on a `completed`
+worker. Worker-level `preparationFailures` retains all caught route preparation
+failures even when a later gateway succeeds or native retry rethrows without a
+scheduling action. An enqueue rejection remains the action's separate `error`.
+These diagnostics are not serialized into retry messages. Child enqueues and
+direct handoffs carry known delivery references. Accepted children survive
+sibling/bookkeeping failure; a rejected batch leaves all submitted children
+uncertain. Replay keeps delivery IDs with fresh child task IDs, without another
+broadcast. Worker settlement does not establish backend acknowledgment, a
+scheduled native retry, or remote success; later direct attempts may settle
+after a setup failure has already ended the worker. Do not infer scheduling
+from an attempt result.
 
 Header values default to disabled. `requestHeaders` and `responseHeaders`
 independently accept `allow`, positive safe-integer `maxBytes`, and optional

@@ -11,6 +11,7 @@ import type {
   OutboundInboxRequest,
   OutboundObservers,
   OutboundProvenance,
+  OutboundWorkerPreparationDiagnostic,
 } from "./outbound-report.ts";
 import {
   observeOutboundBroadcast,
@@ -1665,6 +1666,7 @@ export class FederationImpl<TContextData>
     const enqueueHeldOutboxMessage = async (
       delay: Temporal.Duration,
       heldSince: Temporal.Instant,
+      preparationFailures?: readonly OutboundWorkerPreparationDiagnostic[],
     ) => {
       const { outboxQueue } = this;
       if (outboxQueue == null) return;
@@ -1684,6 +1686,7 @@ export class FederationImpl<TContextData>
           heldMessage,
           enqueueOptions.delay,
           () => outboxQueue.enqueue(heldMessage, enqueueOptions),
+          preparationFailures,
         ));
       this.metrics.recordQueueTaskEnqueued(
         {
@@ -1858,6 +1861,10 @@ export class FederationImpl<TContextData>
         }
       }
     } catch (error) {
+      const preparationFailures = worker?.recordPreparationFailure(
+        error,
+        message.inbox,
+      ) ?? [];
       span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
       const remoteHost = (() => {
         if (error instanceof SendActivityError) {
@@ -1988,7 +1995,11 @@ export class FederationImpl<TContextData>
       }
 
       if (circuitDrop != null) {
-        worker?.abandon("held-ttl-expired", [circuitDrop.inbox.href]);
+        worker?.abandon(
+          "held-ttl-expired",
+          [circuitDrop.inbox.href],
+          preparationFailures,
+        );
         const drop = () =>
           dropHeldOutboxMessage(
             circuitDrop.circuit,
@@ -2007,7 +2018,11 @@ export class FederationImpl<TContextData>
       if (
         isPermanentFailure
       ) {
-        worker?.abandon("permanent-failure", [message.inbox]);
+        worker?.abandon(
+          "permanent-failure",
+          [message.inbox],
+          preparationFailures,
+        );
         this.metrics.recordPermanentFailure(
           error.inbox,
           error.statusCode,
@@ -2079,6 +2094,7 @@ export class FederationImpl<TContextData>
         await enqueueHeldOutboxMessage(
           holdDelay,
           circuitHold.heldSince,
+          preparationFailures,
         );
         return;
       }
@@ -2117,6 +2133,7 @@ export class FederationImpl<TContextData>
               retryMessage,
               enqueueOptions.delay,
               () => outboxQueue.enqueue(retryMessage, enqueueOptions),
+              preparationFailures,
             ));
           this.metrics.recordQueueTaskEnqueued(
             {
@@ -2133,7 +2150,11 @@ export class FederationImpl<TContextData>
           );
         }
       } else {
-        worker?.abandon("retry-policy-declined", [message.inbox]);
+        worker?.abandon(
+          "retry-policy-declined",
+          [message.inbox],
+          preparationFailures,
+        );
         logger.error(
           "Failed to send activity {activityId} to {inbox} after {attempt} " +
             "attempts; giving up:\n{error}",
@@ -2219,6 +2240,10 @@ export class FederationImpl<TContextData>
       readonly retryAfter?: Temporal.Duration;
     }
     const survivors: Survivor[] = [];
+    const preparationFailuresByRoute = new Map<
+      string,
+      readonly OutboundWorkerPreparationDiagnostic[]
+    >();
     const permanentRoutes = new Set<string>();
     let lastError: unknown;
     let lastPermanent: { error: SendActivityError; inbox: URL } | undefined;
@@ -2233,7 +2258,11 @@ export class FederationImpl<TContextData>
       const routes = message.gatewayInboxes.filter((route) =>
         !permanentRoutes.has(route)
       );
-      worker?.abandon("held-ttl-expired", routes);
+      worker?.abandon(
+        "held-ttl-expired",
+        routes,
+        routes.flatMap((route) => preparationFailuresByRoute.get(route) ?? []),
+      );
       const execute = async () =>
         dropHeldOutboxMessage(
           circuit,
@@ -2330,6 +2359,13 @@ export class FederationImpl<TContextData>
           tracerProvider: this.tracerProvider,
         });
       } catch (error) {
+        const preparationFailures = worker?.recordPreparationFailure(
+          error,
+          inboxHref,
+        ) ?? [];
+        if (preparationFailures.length > 0) {
+          preparationFailuresByRoute.set(inboxHref, preparationFailures);
+        }
         lastError = error;
         const isPermanentFailure = error instanceof SendActivityError &&
           this.permanentFailureStatusCodes.includes(error.statusCode);
@@ -2398,7 +2434,11 @@ export class FederationImpl<TContextData>
         }
         if (isPermanentFailure) {
           permanentRoutes.add(inboxHref);
-          worker?.abandon("permanent-failure", [inboxHref]);
+          worker?.abandon(
+            "permanent-failure",
+            [inboxHref],
+            preparationFailures,
+          );
           logger.warn(
             "Permanent delivery failure for activity {activityId} to " +
               "{inbox} ({status}); not trying the gateway again.",
@@ -2575,6 +2615,9 @@ export class FederationImpl<TContextData>
           heldMessage,
           enqueueOptions.delay,
           () => outboxQueue.enqueue(heldMessage, enqueueOptions),
+          survivors.flatMap((route) =>
+            preparationFailuresByRoute.get(route.inbox) ?? []
+          ),
         ));
       this.metrics.recordQueueTaskEnqueued(
         {
@@ -2605,6 +2648,9 @@ export class FederationImpl<TContextData>
       worker?.abandon(
         outboxQueue == null ? "queue-unavailable" : "retry-policy-declined",
         survivors.map((route) => route.inbox),
+        survivors.flatMap((route) =>
+          preparationFailuresByRoute.get(route.inbox) ?? []
+        ),
       );
       logger.error(
         "Failed to send activity {activityId} to every gateway of " +
@@ -2638,8 +2684,15 @@ export class FederationImpl<TContextData>
     };
     await (worker == null
       ? outboxQueue.enqueue(retryMessage, enqueueOptions)
-      : worker.enqueue("retry", retryMessage, enqueueOptions.delay, () =>
-        outboxQueue.enqueue(retryMessage, enqueueOptions)));
+      : worker.enqueue(
+        "retry",
+        retryMessage,
+        enqueueOptions.delay,
+        () => outboxQueue.enqueue(retryMessage, enqueueOptions),
+        survivors.flatMap((route) =>
+          preparationFailuresByRoute.get(route.inbox) ?? []
+        ),
+      ));
     this.metrics.recordQueueTaskEnqueued(
       {
         role: "outbox",

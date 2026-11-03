@@ -449,6 +449,21 @@ type OutboundWorkerSchedule = {
   readonly delay: string;
   /** Per-route ISO instants retained by the scheduled continuation, if any. */
   readonly notBefore?: Readonly<Record<string, string>>;
+  /** Local preparation failures that contributed to this actual action. */
+  readonly preparationFailures?: readonly OutboundWorkerPreparationDiagnostic[];
+};
+
+/**
+ * One local preparation failure associated with a worker route.
+ * @since 2.5.0
+ */
+export type OutboundWorkerPreparationDiagnostic = {
+  /** Route whose local setup produced the failure. */
+  readonly inboxUrl: string;
+  /** Existing worker preparation classification and original thrown value. */
+  readonly failure: Extract<OutboundWorkerReport["result"], {
+    type: "preparation-failed";
+  }>["failure"];
 };
 
 type OutboundWorkerChild = {
@@ -487,6 +502,9 @@ type OutboundWorkerAction =
       | "queue-unavailable";
     /** Routes locally abandoned; other routes of the delivery may continue. */
     readonly inboxUrls: readonly string[];
+    /** Local preparation failures that contributed to this abandonment. */
+    readonly preparationFailures?:
+      readonly OutboundWorkerPreparationDiagnostic[];
   }
   | {
     readonly type: "action-failed";
@@ -518,6 +536,11 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
    * submitted child uncertain. Empty when no action was observed by settlement.
    */
   readonly actions: readonly OutboundWorkerAction[];
+  /**
+   * Caught preparation failures retained when later routes succeed or when
+   * the worker exits without scheduling a continuation. Omitted when none.
+   */
+  readonly preparationFailures?: readonly OutboundWorkerPreparationDiagnostic[];
   /**
    * Outbox obligation, with unavailable legacy relationships omitted.
    * Fanout has no single delivery; its child actions carry their own references.

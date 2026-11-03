@@ -567,6 +567,14 @@ failed scheduling or drop operations. Retry and deferral actions include their
 actual delay and any per-route constraints. One gateway can be abandoned while
 another continues. An empty action list means none was observed by settlement.
 
+`report.preparationFailures` retains caught preparation failures with their
+`inboxUrl`, phase, and original error, even if another gateway later succeeds or
+native retry handling rethrows a later error without scheduling an action.
+When a failure contributes to a retry, deferral, or abandonment, the action's
+`preparationFailures` also identifies that cause. The worker can still be
+`completed` after handling a failure. If enqueueing fails, the action's `error`
+describes the enqueue failure separately.
+
 Accepted actions survive later failures; a rejected batch leaves every submitted
 child's acceptance unknown. Earlier direct attempts can continue after a later
 preparation failure settles the worker. A local result does not establish

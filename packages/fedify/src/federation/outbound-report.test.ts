@@ -3310,6 +3310,61 @@ function continuationMessage(
   };
 }
 
+test("gateway retry preparation diagnostics include only the failed route", async () => {
+  const gateways = [
+    "https://gw1.example/inbox",
+    "https://gw2.example/inbox",
+  ];
+  const queued: Message[] = [];
+  const reports: OutboundWorkerReport[] = [];
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    allowPrivateAddress: true,
+    manuallyStartQueue: true,
+    circuitBreaker: false,
+    outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 1 }),
+    queue: {
+      outbox: {
+        enqueue(message) {
+          queued.push(message);
+          return Promise.resolve();
+        },
+        listen: () => Promise.resolve(),
+      },
+    },
+  });
+  federation.setOutboundObservers({
+    onWorker(_ctx, report) {
+      reports.push(report);
+    },
+  });
+  const message = {
+    ...continuationMessage(gateways[0], true),
+    gatewayInboxes: gateways,
+    gatewayNotBefore: { [gateways[0]]: "2999-01-01T00:00:00Z" },
+    headers: { "bad\nname": "value" },
+  };
+  try {
+    await federation.processQueuedTask(undefined, message);
+    strictEqual(reports.length, 1);
+    strictEqual(reports[0].attemptsStarted, 0);
+    strictEqual(queued.length, 1);
+    const action = reports[0].actions?.[0];
+    ok(action?.type === "scheduled");
+    strictEqual(action.action, "retry");
+    deepStrictEqual(action.inboxUrls, gateways);
+    deepStrictEqual(action.preparationFailures?.map((item) => item.inboxUrl), [
+      gateways[1],
+    ]);
+    strictEqual(
+      action.preparationFailures?.[0].failure.phase,
+      "request-preparation",
+    );
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
 test("gateway worker actions retain route abandonment without claiming an unqueued deferral", async () => {
   const gateways = [
     "https://gw1.example/inbox",
@@ -3712,6 +3767,92 @@ test("ordinary outbox worker actions record actual retry and hold enqueues", asy
   }
 });
 
+test("handled header preparation failures stay attached to actual retry actions", async (t) => {
+  for (const mode of ["accepted", "enqueue-failed", "declined"] as const) {
+    await t.step(mode, async () => {
+      const reports: OutboundWorkerReport[] = [];
+      const enqueueError = new Error("queue unavailable");
+      const preparationErrors: unknown[] = [];
+      let enqueueCalls = 0;
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        manuallyStartQueue: true,
+        outboxRetryPolicy: () =>
+          mode === "declined"
+            ? null
+            : Temporal.Duration.from({ milliseconds: 250 }),
+        onOutboxError(error) {
+          preparationErrors.push(error);
+        },
+        queue: {
+          outbox: {
+            enqueue() {
+              enqueueCalls++;
+              return mode === "enqueue-failed"
+                ? Promise.reject(enqueueError)
+                : Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          },
+        },
+      });
+      federation.setOutboundObservers({
+        onWorker(_ctx, report) {
+          reports.push(report);
+        },
+      });
+      const message = {
+        ...continuationMessage(recipient.inboxId!.href, true),
+        headers: { "bad\nname": "value" },
+      };
+      try {
+        if (mode === "enqueue-failed") {
+          await rejects(
+            federation.processQueuedTask(undefined, message),
+            (error: unknown) => error === enqueueError,
+          );
+        } else await federation.processQueuedTask(undefined, message);
+        const report = reports[0];
+        if (mode === "enqueue-failed") {
+          ok(report.result.type === "failed");
+          strictEqual(report.result.error, enqueueError);
+        } else deepStrictEqual(report.result, { type: "completed" });
+        strictEqual(report.attemptsStarted, 0);
+        strictEqual(enqueueCalls, mode === "declined" ? 0 : 1);
+        const action = report.actions?.[0];
+        if (mode === "declined") {
+          ok(action?.type === "abandoned");
+          strictEqual(action.reason, "retry-policy-declined");
+        } else {
+          ok(
+            action?.type ===
+              (mode === "accepted" ? "scheduled" : "action-failed"),
+          );
+          strictEqual(action.action, "retry");
+        }
+        deepStrictEqual(action.inboxUrls, [message.inbox]);
+        const [diagnostic] = action.preparationFailures!;
+        const [workerDiagnostic] = report.preparationFailures!;
+        strictEqual(workerDiagnostic, diagnostic);
+        strictEqual(diagnostic.inboxUrl, message.inbox);
+        strictEqual(diagnostic.failure.kind, "local");
+        strictEqual(diagnostic.failure.phase, "request-preparation");
+        strictEqual(diagnostic.failure.error, preparationErrors[0]);
+        if (mode === "enqueue-failed") {
+          ok(action.type === "action-failed");
+          strictEqual(action.error, enqueueError);
+          strictEqual(diagnostic.failure.error === enqueueError, false);
+        } else {
+          strictEqual(Object.isFrozen(action.preparationFailures), true);
+        }
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
 test("ordinary outbox worker actions preserve enqueue uncertainty and accepted bookkeeping failures", async (t) => {
   for (const mode of ["rejected", "accepted"] as const) {
     await t.step(mode, async () => {
@@ -3911,6 +4052,7 @@ test("outbound worker-only observers count real sends and report local settlemen
       "native",
       "gateway",
       "recovered-preparation",
+      "recovered-preparation-success",
     ] as const
   ) {
     await t.step(mode, async () => {
@@ -3951,18 +4093,26 @@ test("outbound worker-only observers count real sends and report local settlemen
         },
       });
       const message = continuationMessage(recipient.inboxId!.href, true);
-      if (mode === "gateway" || mode === "recovered-preparation") {
+      if (
+        mode === "gateway" || mode === "recovered-preparation" ||
+        mode === "recovered-preparation-success"
+      ) {
         Object.assign(message, {
           gatewayInboxes: [message.inbox, "https://gateway.example/inbox"],
         });
       }
-      if (mode === "recovered-preparation") {
+      let preparationError: Error | undefined;
+      if (
+        mode === "recovered-preparation" ||
+        mode === "recovered-preparation-success"
+      ) {
         let reads = 0;
+        preparationError = new Error("first gateway header preparation");
         Object.assign(message, {
           headers: new Proxy({}, {
             get(target, property, receiver) {
               if (property === Symbol.iterator && ++reads === 1) {
-                throw new Error("first gateway header preparation");
+                throw preparationError;
               }
               return Reflect.get(target, property, receiver);
             },
@@ -3974,10 +4124,15 @@ test("outbound worker-only observers count real sends and report local settlemen
         message.inbox,
         mode === "success" ? 202 : 503,
       );
-      if (mode === "gateway" || mode === "recovered-preparation") {
+      if (
+        mode === "gateway" || mode === "recovered-preparation" ||
+        mode === "recovered-preparation-success"
+      ) {
         fetchMock.post(
           "https://gateway.example/inbox",
-          mode === "gateway" ? 202 : 503,
+          mode === "gateway" || mode === "recovered-preparation-success"
+            ? 202
+            : 503,
         );
       }
       let outward: unknown;
@@ -3999,7 +4154,30 @@ test("outbound worker-only observers count real sends and report local settlemen
         } else if (mode === "handled") {
           ok(report.actions?.[0].type === "scheduled");
         } else deepStrictEqual(report.actions, []);
-        strictEqual(report.attemptsStarted, mode === "gateway" ? 2 : 1);
+        strictEqual(
+          report.attemptsStarted,
+          mode === "gateway" ? 2 : 1,
+        );
+        if (
+          mode === "recovered-preparation" ||
+          mode === "recovered-preparation-success"
+        ) {
+          deepStrictEqual(
+            report.preparationFailures?.map((item) => item.inboxUrl),
+            [
+              message.inbox,
+            ],
+          );
+          strictEqual(report.preparationFailures?.length, 1);
+          strictEqual(Object.isFrozen(report.preparationFailures), true);
+          const [diagnostic] = report.preparationFailures!;
+          strictEqual(Object.isFrozen(diagnostic), true);
+          strictEqual(diagnostic.failure.error, preparationError);
+          strictEqual(
+            report.result.type,
+            mode === "recovered-preparation-success" ? "completed" : "failed",
+          );
+        } else strictEqual("preparationFailures" in report, false);
         deepStrictEqual(report.queue, {
           queueMessageId: message.id,
           queueAttempt: 0,

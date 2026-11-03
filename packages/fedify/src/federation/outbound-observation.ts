@@ -30,6 +30,7 @@ import type {
   OutboundPreparationResult,
   OutboundProvenance,
   OutboundResponseBodyEvent,
+  OutboundWorkerPreparationDiagnostic,
   OutboundWorkerReport,
 } from "./outbound-report.ts";
 
@@ -430,6 +431,8 @@ type WorkerPreparationFailure = Extract<
 
 type WorkerAction = NonNullable<OutboundWorkerReport["actions"]>[number];
 type WorkerAbandonment = Extract<WorkerAction, { type: "abandoned" }>;
+type WorkerPreparationDiagnostic =
+  readonly OutboundWorkerPreparationDiagnostic[];
 
 /** Per-execution state, independent of concrete attempt/exchange callbacks. */
 export class OutboundWorkerObservation<TContextData> {
@@ -437,6 +440,7 @@ export class OutboundWorkerObservation<TContextData> {
   #actions: WorkerAction[] | undefined;
   #trace: OutboundWorkerReport["trace"];
   #preparationFailure: WorkerPreparationFailure | undefined;
+  #preparationFailures: OutboundWorkerPreparationDiagnostic[] = [];
   readonly #queue: OutboundWorkerReport["queue"];
   readonly #delivery: AttemptIdentity | undefined;
   readonly #role: OutboundWorkerReport["role"];
@@ -529,6 +533,7 @@ export class OutboundWorkerObservation<TContextData> {
     message: OutboxMessage,
     delay: Temporal.Duration,
     enqueue: () => Promise<void>,
+    preparationFailures?: WorkerPreparationDiagnostic,
   ): Promise<void> {
     if (this.#actions == null) return await enqueue();
     const facts = {
@@ -543,6 +548,13 @@ export class OutboundWorkerObservation<TContextData> {
           : [message.inbox],
       ),
       delay: delay.toString(),
+      ...(preparationFailures == null || preparationFailures.length === 0
+        ? {}
+        : {
+          preparationFailures: Object.freeze(
+            [...preparationFailures],
+          ),
+        }),
       ...(message.gatewayNotBefore == null ? {} : {
         notBefore: Object.freeze({ ...message.gatewayNotBefore }),
       }),
@@ -566,12 +578,20 @@ export class OutboundWorkerObservation<TContextData> {
   abandon(
     reason: WorkerAbandonment["reason"],
     inboxUrls: readonly string[],
+    preparationFailures?: WorkerPreparationDiagnostic,
   ): void {
     this.#actions?.push(
       Object.freeze({
         type: "abandoned",
         reason,
         inboxUrls: Object.freeze([...inboxUrls]),
+        ...(preparationFailures == null || preparationFailures.length === 0
+          ? {}
+          : {
+            preparationFailures: Object.freeze(
+              [...preparationFailures],
+            ),
+          }),
       }),
     );
   }
@@ -625,6 +645,17 @@ export class OutboundWorkerObservation<TContextData> {
     }
   }
 
+  recordPreparationFailure(
+    error: unknown,
+    inboxUrl: string,
+  ): WorkerPreparationDiagnostic {
+    const failure = this.#preparationFailure;
+    if (failure == null || !Object.is(failure.error, error)) return [];
+    const diagnostic = Object.freeze({ inboxUrl, failure });
+    this.#preparationFailures.push(diagnostic);
+    return [diagnostic];
+  }
+
   async run(operation: () => Promise<void>): Promise<void> {
     try {
       await operation();
@@ -657,6 +688,9 @@ export class OutboundWorkerObservation<TContextData> {
           ...(this.#delivery == null ? {} : { delivery: this.#delivery }),
           attemptsStarted: this.#attemptsStarted,
           actions: Object.freeze([...(this.#actions ?? [])]),
+          ...(this.#preparationFailures.length === 0 ? {} : {
+            preparationFailures: Object.freeze([...this.#preparationFailures]),
+          }),
           observedAt,
           ...(this.#trace == null ? {} : { trace: this.#trace }),
           provenance: this.provenance,
