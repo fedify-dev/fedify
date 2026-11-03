@@ -741,6 +741,220 @@ const unsignedKeys = [{
   keyId: ed25519Multikey.id!,
 }];
 
+test("sendActivity() bounds slow response headers on both signing paths", async (t) => {
+  for (const signed of [false, true]) {
+    await t.step(`signed: ${signed}`, async () => {
+      let requests = 0;
+      let closes = 0;
+      const error = await assertRejects(
+        () =>
+          sendActivity({
+            activity: lifecycleActivity,
+            keys: signed ? signedKeys : unsignedKeys,
+            inbox: new URL("https://example.com/slow-headers"),
+          }, {
+            timeoutMs: 100,
+            openHop: (url) =>
+              Promise.resolve({
+                url: new URL(url),
+                fetch(input, init) {
+                  requests++;
+                  const signal = init?.signal ??
+                    (input instanceof Request ? input.signal : undefined);
+                  assert(signal != null);
+                  return new Promise<Response>((_, reject) => {
+                    signal.addEventListener(
+                      "abort",
+                      () => reject(signal.reason),
+                      { once: true },
+                    );
+                  });
+                },
+                close() {
+                  closes++;
+                  return Promise.resolve();
+                },
+              }),
+          }),
+        FetchError,
+      );
+      assert(error.message.includes("Timed out after 100 ms"));
+      assertInstanceOf(error.cause, DOMException);
+      assertEquals(error.cause.name, "TimeoutError");
+      assertEquals(requests, 1);
+      assertEquals(closes, 1);
+    });
+  }
+});
+
+test("sendActivity() closes a session opened after the deadline", async () => {
+  let resolveOpen: ((session: PublicFetchSession) => void) | undefined;
+  let closes = 0;
+  const error = await assertRejects(
+    () =>
+      sendActivity({
+        activity: lifecycleActivity,
+        keys: unsignedKeys,
+        inbox: new URL("https://example.com/late-open"),
+      }, {
+        timeoutMs: 20,
+        openHop: () => new Promise((resolve) => resolveOpen = resolve),
+      }),
+    FetchError,
+  );
+  assertInstanceOf(error.cause, DOMException);
+  assertEquals(error.cause.name, "TimeoutError");
+  assert(resolveOpen != null);
+  resolveOpen({
+    url: new URL("https://example.com/late-open"),
+    fetch: () => Promise.reject(new Error("A late session must not fetch")),
+    close: () => {
+      closes++;
+      return Promise.resolve();
+    },
+  });
+  await Promise.resolve();
+  assertEquals(closes, 1);
+});
+
+test("sendActivity() keeps its deadline across redirects", async (t) => {
+  for (const signed of [false, true]) {
+    await t.step(`signed: ${signed}`, async () => {
+      const first = "https://example.com/first-inbox";
+      const second = "https://example.com/second-inbox";
+      const requests: Request[] = [];
+      let closes = 0;
+      await assertRejects(
+        () =>
+          sendActivity({
+            activity: lifecycleActivity,
+            keys: signed ? signedKeys : unsignedKeys,
+            inbox: new URL(first),
+          }, {
+            timeoutMs: 100,
+            openHop: (url) =>
+              Promise.resolve({
+                url: new URL(url),
+                async fetch(input, init) {
+                  const request = new Request(input, init);
+                  requests.push(request);
+                  if (url === first) {
+                    await new Promise((resolve) => setTimeout(resolve, 30));
+                    return new Response(null, {
+                      status: 307,
+                      headers: { Location: second },
+                    });
+                  }
+                  return await new Promise<Response>((_, reject) => {
+                    request.signal.addEventListener(
+                      "abort",
+                      () => reject(request.signal.reason),
+                      { once: true },
+                    );
+                  });
+                },
+                close() {
+                  closes++;
+                  return Promise.resolve();
+                },
+              }),
+          }),
+        FetchError,
+      );
+      assertEquals(requests.map((request) => request.url), [first, second]);
+      assert(requests.every((request) => request.signal.aborted));
+      assertEquals(closes, 2);
+    });
+  }
+});
+
+test("sendActivity() keeps its deadline across signature attempts", async () => {
+  let requests = 0;
+  let closes = 0;
+  await assertRejects(
+    () =>
+      sendActivity({
+        activity: lifecycleActivity,
+        keys: signedKeys,
+        inbox: new URL("https://example.com/double-knock-timeout"),
+      }, {
+        timeoutMs: 100,
+        openHop: (url) =>
+          Promise.resolve({
+            url: new URL(url),
+            fetch(input, init) {
+              requests++;
+              if (requests === 1) {
+                return Promise.resolve(new Response(null, { status: 401 }));
+              }
+              const signal = init?.signal ??
+                (input instanceof Request ? input.signal : undefined);
+              assert(signal != null);
+              return new Promise<Response>((_, reject) => {
+                signal.addEventListener(
+                  "abort",
+                  () => reject(signal.reason),
+                  { once: true },
+                );
+              });
+            },
+            close() {
+              closes++;
+              return Promise.resolve();
+            },
+          }),
+      }),
+    FetchError,
+  );
+  assertEquals(requests, 2);
+  assertEquals(closes, 1);
+});
+
+test("sendActivity() preserves an error status when its body stalls", async (t) => {
+  for (const signed of [false, true]) {
+    for (const status of [410, 500]) {
+      await t.step(`signed: ${signed}, status: ${status}`, async () => {
+        let requests = 0;
+        let closes = 0;
+        const error = await assertRejects(
+          () =>
+            sendActivity({
+              activity: lifecycleActivity,
+              keys: signed ? signedKeys : unsignedKeys,
+              inbox: new URL("https://example.com/slow-body"),
+            }, {
+              timeoutMs: 100,
+              openHop: (url) =>
+                Promise.resolve({
+                  url: new URL(url),
+                  fetch() {
+                    requests++;
+                    return Promise.resolve(
+                      new Response(
+                        new ReadableStream({
+                          pull: () => new Promise<void>(() => {}),
+                        }),
+                        { status },
+                      ),
+                    );
+                  },
+                  close() {
+                    closes++;
+                    return Promise.resolve();
+                  },
+                }),
+            }),
+          SendActivityError,
+        );
+        assertEquals(error.statusCode, status);
+        assertEquals(error.responseBody, "");
+        assertEquals(requests, signed ? 2 : 1);
+        assertEquals(closes, 1);
+      });
+    }
+  }
+});
+
 test("sendActivity() cancels a successful response body", async (t) => {
   for (const signed of [true, false]) {
     await t.step(`signed: ${signed}`, async () => {

@@ -811,6 +811,10 @@ queue, the `~Context.sendActivity()` method does not throw an error even if
 the delivery fails.  Instead, the delivery failure is reported to the queue
 and retried later.
 
+Each delivery attempt has a 30-second deadline, including redirects and
+HTTP signature retries.  A timeout is reported as a delivery failure and
+follows the queue's retry schedule.
+
 If you want to handle the delivery failure, you can register an error handler
 to the queue:
 
