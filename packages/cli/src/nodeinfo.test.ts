@@ -621,7 +621,8 @@ test("nodeinfo falls back when an SVG favicon cannot be rendered", async () => {
 test("rasterizeSvg - fits a wide SVG to the width", async () => {
   const png = await rasterizeSvg(
     new TextEncoder().encode(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="256"/>',
+      '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="256">' +
+        '<rect width="512" height="256"/></svg>',
     ),
   );
   const image = await readImage(png);
@@ -631,7 +632,8 @@ test("rasterizeSvg - fits a wide SVG to the width", async () => {
 test("rasterizeSvg - fits a tall SVG to the height", async () => {
   const png = await rasterizeSvg(
     new TextEncoder().encode(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="512"/>',
+      '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="512">' +
+        '<rect width="256" height="512"/></svg>',
     ),
   );
   const image = await readImage(png);
@@ -643,6 +645,14 @@ test("rasterizeSvg - rejects an SVG whose size rounds to zero", async () => {
     '<svg xmlns="http://www.w3.org/2000/svg" width="0.00001" height="0.49"/>',
   );
   await assert.rejects(() => rasterizeSvg(svg), RangeError);
+});
+
+test("rasterizeSvg - rejects an SVG with only text", async () => {
+  const svg = new TextEncoder().encode(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">' +
+      '<text x="0" y="24" font-size="24">F</text></svg>',
+  );
+  await assert.rejects(() => rasterizeSvg(svg), /no visible pixels/);
 });
 
 test("getFaviconUrl resolves fallback from final page URL", async () => {

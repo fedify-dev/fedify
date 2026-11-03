@@ -107,6 +107,10 @@ export async function rasterizeSvg(buffer: ImageBuffer): Promise<Uint8Array> {
   try {
     const rendered = resvg.render();
     try {
+      // Resvg WASM has no fonts, so text-only SVGs render fully transparent
+      if (!hasVisiblePixel(rendered.pixels)) {
+        throw new Error("The SVG favicon has no visible pixels.");
+      }
       return rendered.asPng();
     } finally {
       rendered.free();
@@ -114,6 +118,13 @@ export async function rasterizeSvg(buffer: ImageBuffer): Promise<Uint8Array> {
   } finally {
     resvg.free();
   }
+}
+
+function hasVisiblePixel(pixels: Uint8Array): boolean {
+  for (let i = 3; i < pixels.length; i += 4) {
+    if (pixels[i] !== 0) return true;
+  }
+  return false;
 }
 
 function isSvg(buffer: ImageBuffer): boolean {
