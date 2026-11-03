@@ -14,11 +14,19 @@ import type {
   OutboundWorkerReport,
 } from "./outbound-report.ts";
 
+const { Deno: deno } = globalThis as typeof globalThis & {
+  Deno?: {
+    permissions: {
+      query(options: { name: "net" }): Promise<{ state: string }>;
+    };
+  };
+};
+
 test({
   name: "outbound recorder archives real HTTP exchanges across a queued retry",
   // The package Deno suite is offline; focused --allow-all and Node/Bun run it.
-  ignore: "Deno" in globalThis &&
-    (await Deno.permissions.query({ name: "net" })).state !== "granted",
+  ignore: deno != null &&
+    (await deno.permissions.query({ name: "net" })).state !== "granted",
   async fn() {
     let accepting = false;
     const received: { status: number; activity: unknown }[] = [];

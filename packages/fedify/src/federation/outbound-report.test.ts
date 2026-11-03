@@ -5325,7 +5325,9 @@ test("outbound header snapshots redact secrets and budget complete UTF-8 entries
     "x-api-key",
     "x-auth-token",
   ];
-  const headers = new Headers(secrets.map((name) => [name, "do-not-export"]));
+  const headers = new Headers(
+    secrets.map((name): [string, string] => [name, "do-not-export"]),
+  );
   headers.append("X-Visible", "first");
   headers.append("x-visible", "second");
   headers.set("X-Custom", "also-secret");

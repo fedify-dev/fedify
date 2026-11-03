@@ -88,7 +88,7 @@ export async function captureResponseBody(
     );
   } catch (error) {
     return Object.freeze({
-      type: "failed",
+      type: "failed" as const,
       phase: "body" as const,
       error,
       bytesExposed: 0,
