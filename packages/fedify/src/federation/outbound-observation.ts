@@ -21,6 +21,7 @@ import type {
   SerializedOutboundDelivery,
 } from "./queue.ts";
 import type {
+  OutboundActivityReference,
   OutboundAttemptReport,
   OutboundBodyCaptureSummary,
   OutboundBroadcastEvent,
@@ -947,6 +948,7 @@ export class OutboundBroadcastObservation<TContextData> {
   #planning: PreparationFailure["planning"] = "not-started";
   #destinationCount = 0;
   #trace: OutboundBroadcastEvent["trace"];
+  #activity: OutboundActivityReference = Object.freeze({});
 
   readonly #onBroadcast: OutboundObservers<TContextData>["onBroadcast"];
   readonly #onDelivery: OutboundObservers<TContextData>["onDelivery"];
@@ -1144,6 +1146,20 @@ export class OutboundBroadcastObservation<TContextData> {
     if (phase === "destination-planning") this.#planning = "incomplete";
   }
 
+  /** Replace the Activity facts already obtained by the producer path. */
+  setActivity(reference: OutboundActivityReference): void {
+    this.#activity = Object.freeze({ ...reference });
+  }
+
+  /** Refresh the identifier from a producer read without retaining stale IDs. */
+  setActivityId(id: string | undefined): void {
+    const reference: { id?: string; type?: string } = {
+      ...(id == null ? {} : { id }),
+      ...(this.#activity.type == null ? {} : { type: this.#activity.type }),
+    };
+    this.#activity = Object.freeze(reference);
+  }
+
   planned(destinationCount: number): void {
     this.#planning = "complete";
     this.#destinationCount = destinationCount;
@@ -1188,6 +1204,7 @@ export class OutboundBroadcastObservation<TContextData> {
         broadcastId: this.#broadcast.id,
         operation: this.operation,
         stage: "started",
+        activity: this.#activity,
       }));
     }
     try {
@@ -1221,6 +1238,7 @@ export class OutboundBroadcastObservation<TContextData> {
         operation: this.operation,
         stage: "preparation-finished",
         result,
+        activity: this.#activity,
       }));
     }
   }

@@ -469,14 +469,26 @@ Observation does not load additional data or serialize an activity again.
 Routing and source metadata are immutable snapshots; the context, application
 data, Activity objects, and original exceptions are not deep-copied.
 
-`onBroadcast` reports one send or forward invocation. Its `started` event runs
-before preparation; `preparation-finished` describes whether the producer
-prepared work for delivery or fanout, skipped sending, or failed. Fanout-ready
-work still needs worker-side delivery preparation. A prepared result does not
-confirm queue acceptance or HTTP delivery, and later send failures do not
-rewrite it. Skips such as `no-destinations` or `forwarding-disabled` describe
-existing decisions; an `unsigned` skip reflects the forwarding signature/proof
-shape check, not authentication.
+Broadcast events include an immutable `activity` reference with optional `id`
+and `type` strings; `type` is the Activity's type IRI. These are facts already
+obtained by the send path, not a copy of the payload. The `started` event can
+have an empty reference, and later events can contain more information. After
+transformation, unavailable facts are omitted rather than copied from the old
+Activity. Observation does not read additional Activity properties, parse
+payloads, or load contexts to fill the reference. Activity IDs can repeat
+across broadcasts; use `broadcastId` for invocation identity and `dispatchId`
+for application correlation. A reported Activity ID does not establish
+authentication.
+
+`onBroadcast` reports one send, forward, or automatic portable-replication
+invocation. Its `started` event runs before preparation; `preparation-finished`
+describes whether the producer prepared work for delivery or fanout, skipped
+sending, or failed. Fanout-ready work still needs worker-side delivery
+preparation. A prepared result does not confirm queue acceptance or HTTP
+delivery, and later send failures do not rewrite it. Skips such as
+`no-destinations` or `forwarding-disabled` describe existing decisions; an
+`unsigned` skip reflects the forwarding signature/proof shape check, not
+authentication.
 
 `onDelivery` reports each deduplicated destination or claimed replication
 target. Different inboxes on one host remain separate deliveries. A `planned`

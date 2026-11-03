@@ -2361,6 +2361,10 @@ test("portable replication observers distinguish disabled, unavailable, and uncl
           ? "forwarding-unavailable"
           : "no-forwarding-targets",
       });
+      assertEquals(events[0].activity, {});
+      assertEquals(events[1].activity.type, Follow.typeId.href);
+      assert(events[1].activity.id?.startsWith("ap+ef61://"));
+      assert(Object.isFrozen(events[1].activity));
       assertStrictEquals(contexts[0], contexts[1]);
       assertEquals(deliveries, []);
       assertEquals(queue.outbox.length, 0);

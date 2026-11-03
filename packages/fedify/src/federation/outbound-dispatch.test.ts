@@ -236,6 +236,18 @@ test("dispatch IDs correlate send and forward entries without deduplication or c
       const starts = broadcasts.filter((event) => event.stage === "started");
       strictEqual(starts.length, 3);
       strictEqual(new Set(starts.map((event) => event.broadcastId)).size, 3);
+      deepStrictEqual(starts.map((event) => event.activity), [{}, {}, {}]);
+      const finishes = broadcasts.filter((event) =>
+        event.stage === "preparation-finished"
+      );
+      strictEqual(finishes.length, 3);
+      for (const event of finishes) {
+        deepStrictEqual(event.activity, {
+          id: activity.id!.href,
+          type: Create.typeId.href,
+        });
+        ok(Object.isFrozen(event.activity));
+      }
       for (const ctx of contexts) strictEqual(ctx, context);
       for (let index = 0; index < 3; index++) {
         const message = messages[index];

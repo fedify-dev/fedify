@@ -1,4 +1,3 @@
-import { withContext } from "@logtape/logtape";
 import type { Context } from "./context.ts";
 import type {
   OutboundInboxRequest,
@@ -46,12 +45,6 @@ export function createInboxRequestSource(
       canonicalOrigin: canonicalOrigin ?? url.origin,
     }),
   });
-}
-
-export function withOutboundSource<T>(context: object, operation: () => T): T {
-  const source = getOutboundProvenance(context);
-  // Explicit absence masks unrelated ambient source labels as well.
-  return withContext(sourceLogContext(source), operation);
 }
 
 /** The same exact-string budget applies to public input and queued metadata. */

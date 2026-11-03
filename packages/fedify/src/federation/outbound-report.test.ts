@@ -4,7 +4,7 @@ import {
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
-import { Create, Person } from "@fedify/vocab";
+import { Create, Follow, Person } from "@fedify/vocab";
 import { FetchError, UrlError } from "@fedify/vocab-runtime";
 import { configure, reset } from "@logtape/logtape";
 import {
@@ -1838,6 +1838,68 @@ test("outbound preparation preserves failure provenance and plan completeness", 
   }
 });
 
+test("broadcast activity references are immutable and follow transformed activities", async () => {
+  const messages: Message[] = [];
+  const queue: MessageQueue = {
+    enqueue(message) {
+      messages.push(message);
+      return Promise.resolve();
+    },
+    listen: () => Promise.resolve(),
+  };
+  const transformedId = "https://example.com/transformed";
+  const federation = createFederation<void>({
+    ...options,
+    queue: { fanout: queue },
+    manuallyStartQueue: true,
+    activityTransformers: [() =>
+      new Follow({
+        id: new URL(transformedId),
+        actor: new URL("https://example.com/alice"),
+        object: new URL("https://example.com/bob"),
+      })],
+  });
+  const events: OutboundBroadcastEvent[] = [];
+  federation.setOutboundObservers({
+    onBroadcast(_ctx, event) {
+      events.push(event);
+    },
+  });
+  const ctx = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  await ctx.sendActivity(sender, recipient, activity, { fanout: "force" });
+  await ctx.sendActivity(sender, recipient, activity, { fanout: "force" });
+  await ctx.sendActivity(
+    sender,
+    new Person({
+      id: new URL("https://receiver.example/no-inbox"),
+    }),
+    activity,
+  );
+
+  strictEqual(messages.length, 2);
+  const starts = events.filter((event) => event.stage === "started");
+  const finishes = events.filter((event) =>
+    event.stage === "preparation-finished"
+  );
+  strictEqual(starts.length, 3);
+  strictEqual(finishes.length, 3);
+  deepStrictEqual(starts.map((event) => event.activity), [{}, {}, {}]);
+  strictEqual(new Set(starts.map((event) => event.broadcastId)).size, 3);
+  for (const event of finishes.slice(0, 2)) {
+    deepStrictEqual(event.activity, {
+      id: transformedId,
+      type: Follow.typeId.href,
+    });
+    ok(Object.isFrozen(event.activity));
+  }
+  deepStrictEqual(finishes[2].activity, { id: transformedId });
+  ok(!("type" in finishes[2].activity));
+  ok(Object.isFrozen(starts[0].activity));
+});
+
 test("outbound preparation precedes queue acceptance and is not rewritten by enqueue failure", async (t) => {
   for (const role of ["outbox", "fanout"] as const) {
     for (const rejected of [false, true]) {
@@ -2678,6 +2740,13 @@ test("forwarding observers await readiness before enqueue while preserving raw p
           ok(messages[0].type === "outbox");
           strictEqual(messages[0].activity, forwardingPayload);
           ok(!("broadcastId" in messages[0]));
+          deepStrictEqual(events[0].activity, {});
+          deepStrictEqual(events[1].activity, {
+            id: forwardingPayload.id,
+            type: Create.typeId.href,
+          });
+          ok(Object.isFrozen(events[0].activity));
+          ok(Object.isFrozen(events[1].activity));
           for (const event of events) strictEqual(event.operation, "forward");
           if (ctx instanceof OutboxContextImpl) {
             strictEqual(ctx.hasDeliveredActivity(), !rejected);

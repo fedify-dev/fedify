@@ -253,7 +253,12 @@ portable replication. Add `onAttempt(ctx, report)` and
 callbacks are optional. Registration replaces the whole set; `{}` clears it.
 Registration and builds copy callbacks, and active executions retain their
 selection. Callbacks receive existing context/data without extra loading and
-work without OpenTelemetry.
+work without OpenTelemetry. Broadcast `event.activity` snapshots optional known
+`id` and `type` strings, with `type` containing the Activity type IRI. The
+reference contains no payload and does not establish authentication. Early
+events can have an empty reference. Transformers can change it; missing new
+facts must not be inferred from the old Activity. Activity IDs do not replace
+broadcast or application dispatch identities.
 
 `onBroadcast` groups start and preparation results with an independent
 `broadcastId`; `operation` distinguishes `send`, `forward`, and

@@ -3696,6 +3696,12 @@ export class FederationImpl<TContextData>
                     inboxes[inbox].actorIds,
                   ),
               });
+          const sendActivityId = activity.id?.href;
+          const activityType = getTypeId(activity).href;
+          observation?.setActivity({
+            ...(sendActivityId == null ? {} : { id: sendActivityId }),
+            type: activityType,
+          });
           sending = sendActivityToInbox(
             inbox,
             inboxes[inbox].gatewayInboxes,
@@ -3711,8 +3717,8 @@ export class FederationImpl<TContextData>
               allowPrivateAddress: this.allowPrivateAddress,
               keys,
               activity: jsonLd,
-              activityId: activity.id?.href,
-              activityType: getTypeId(activity).href,
+              activityId: sendActivityId,
+              activityType,
               sharedInbox: inboxes[inbox].sharedInbox,
               headers: createHeaders == null
                 ? undefined
@@ -3773,6 +3779,12 @@ export class FederationImpl<TContextData>
           const messageOrderingKey = orderingKey == null
             ? undefined
             : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`;
+          const messageActivityId = activity.id?.href;
+          const messageActivityType = getTypeId(activity).href;
+          observation?.setActivity({
+            ...(messageActivityId == null ? {} : { id: messageActivityId }),
+            type: messageActivityType,
+          });
           const message: OutboxMessage = {
             type: "outbox",
             ...serializeProvenance(provenance),
@@ -3780,8 +3792,8 @@ export class FederationImpl<TContextData>
             baseUrl: ctx.origin,
             keys: keyJwkPairs,
             activity: jsonLd,
-            activityId: activity.id?.href,
-            activityType: getTypeId(activity).href,
+            activityId: messageActivityId,
+            activityType: messageActivityType,
             inbox,
             ...observation?.continuation(inbox),
             sharedInbox: inboxes[inbox].sharedInbox,
@@ -5044,6 +5056,10 @@ export class FederationImpl<TContextData>
                     context,
                     this.outboundObservers,
                     async (observation) => {
+                      observation?.setActivity({
+                        ...(activityId == null ? {} : { id: activityId.href }),
+                        type: activityType,
+                      });
                       if (this.portableInboxForwarding.maxTargets < 1) {
                         if (observation != null) {
                           await observation.skipped("forwarding-disabled");
@@ -6229,6 +6245,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           metadata.version,
         );
         const parentSpanContext = trace.getSpanContext(context.active());
+        const activityType = getTypeId(activity).href;
+        observation?.setActivity({ type: activityType });
         return tracer.startActiveSpan(
           this.federation.outboxQueue == null || options.immediate
             ? "activitypub.outbox"
@@ -6238,7 +6256,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
               ? SpanKind.CLIENT
               : SpanKind.PRODUCER,
             attributes: {
-              "activitypub.activity.type": getTypeId(activity).href,
+              "activitypub.activity.type": activityType,
               "activitypub.activity.to": activity.toIds.map((to) => to.href),
               "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
               "activitypub.activity.bto": activity.btoIds.map((bto) =>
@@ -6252,9 +6270,14 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           async (span) => {
             observation?.setSpan(span, parentSpanContext);
             try {
-              if (activity.id != null) {
-                span.setAttribute("activitypub.activity.id", activity.id.href);
+              const activityId = activity.id?.href;
+              if (activityId != null) {
+                span.setAttribute("activitypub.activity.id", activityId);
               }
+              observation?.setActivity({
+                type: activityType,
+                ...(activityId == null ? {} : { id: activityId }),
+              });
               await this.sendActivityInternal(
                 sender,
                 recipients,
@@ -6393,10 +6416,16 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     };
     span.setAttribute("activitypub.inboxes", expandedRecipients.length);
     observation?.setPhase("transformation");
+    if (this.federation.activityTransformers.length > 0) {
+      // A transformer can replace the Activity; do not retain its old ID/type.
+      observation?.setActivity({});
+    }
     for (const activityTransformer of this.federation.activityTransformers) {
       activity = activityTransformer(activity, this);
     }
-    span?.setAttribute("activitypub.activity.id", activity?.id?.href ?? "");
+    const transformedActivityId = activity?.id?.href;
+    span?.setAttribute("activitypub.activity.id", transformedActivityId ?? "");
+    observation?.setActivityId(transformedActivityId);
     observation?.setPhase("validation");
     if (activity.actorId == null) {
       logger.error(
@@ -6511,6 +6540,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     observation?.setPhase("request-preparation");
     const carrier: Record<string, string> = {};
     propagation.inject(context.active(), carrier);
+    const activityId = activity.id?.href;
+    const activityType = getTypeId(activity).href;
+    observation?.setActivity({
+      ...(activityId == null ? {} : { id: activityId }),
+      type: activityType,
+    });
     const message: FanoutMessage = {
       type: "fanout",
       ...serializeProvenance(provenance),
@@ -6528,8 +6563,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         }]),
       ),
       activity: activityJsonLd,
-      activityId: activity.id?.href,
-      activityType: getTypeId(activity).href,
+      activityId,
+      activityType,
       collectionSync: opts.collectionSync,
       orderingKey: options.orderingKey,
       normalizeExistingProofs: proofCreated || options.normalizeExistingProofs,
@@ -7360,6 +7395,10 @@ function forwardActivity<TContextData>(
     ctx,
     ctx.federation.outboundObservers,
     (observation, provenance) => {
+      observation?.setActivity({
+        ...(ctx.activityId == null ? {} : { id: ctx.activityId }),
+        type: ctx.activityType,
+      });
       const tracer = ctx.tracerProvider.getTracer(
         metadata.name,
         metadata.version,
@@ -7823,6 +7862,8 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
           metadata.version,
         );
         const parentSpanContext = trace.getSpanContext(context.active());
+        const activityType = getTypeId(activity).href;
+        observation?.setActivity({ type: activityType });
         return tracer.startActiveSpan(
           this.federation.outboxQueue == null || options.immediate
             ? "activitypub.outbox"
@@ -7832,7 +7873,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
               ? SpanKind.CLIENT
               : SpanKind.PRODUCER,
             attributes: {
-              "activitypub.activity.type": getTypeId(activity).href,
+              "activitypub.activity.type": activityType,
               "activitypub.activity.to": activity.toIds.map((to) => to.href),
               "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
               "activitypub.activity.bto": activity.btoIds.map((bto) =>
@@ -7846,9 +7887,14 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
           async (span) => {
             observation?.setSpan(span, parentSpanContext);
             try {
-              if (activity.id != null) {
-                span.setAttribute("activitypub.activity.id", activity.id.href);
+              const activityId = activity.id?.href;
+              if (activityId != null) {
+                span.setAttribute("activitypub.activity.id", activityId);
               }
+              observation?.setActivity({
+                type: activityType,
+                ...(activityId == null ? {} : { id: activityId }),
+              });
               const delivered = await this.sendActivityInternal(
                 sender,
                 recipients,
