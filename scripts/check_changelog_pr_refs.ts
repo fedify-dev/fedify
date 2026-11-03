@@ -216,7 +216,7 @@ function extractEntries(content: string): Entry[] {
  * `[[#123], [#456] by John Doe]` or `\[[GHSA-xxxx-xxxx-xxxx], [#456]]`.
  */
 const TRAILING_REFERENCES_PATTERN =
-  /\\?\[(\[[^\[\]]+\](?:\s*,\s*\[[^\[\]]+\])*)(?:\s+by\s+[^\[\]]+)?\]\s*$/;
+  /\\?\[(\[[^[\]]+\](?:\s*,\s*\[[^[\]]+\])*)(?:\s+by\s+[^[\]]+)?\]\s*$/;
 
 /**
  * Return the trailing references of a paragraph, such as `#123` or
@@ -225,7 +225,7 @@ const TRAILING_REFERENCES_PATTERN =
 function extractTrailingReferences(paragraph: string): string[] | null {
   const match = TRAILING_REFERENCES_PATTERN.exec(paragraph);
   if (match == null) return null;
-  return Array.from(match[1].matchAll(/\[([^\[\]]+)\]/g), (m) => m[1]);
+  return Array.from(match[1].matchAll(/\[([^[\]]+)\]/g), (m) => m[1]);
 }
 
 /** Return the issue and pull request numbers among trailing references. */
