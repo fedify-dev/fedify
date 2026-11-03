@@ -143,7 +143,11 @@ export type OutboundDeliveryEvent =
     }
   );
 
-type OutboundAttemptFailure =
+/**
+ * The failure classification and available error evidence for a send attempt.
+ * @since 2.5.0
+ */
+export type OutboundAttemptFailure =
   | {
     readonly kind: "http";
     readonly phase: "response";
@@ -305,7 +309,11 @@ export interface OutboundHeaderSnapshot {
   readonly limitReached: boolean;
 }
 
-interface OutboundHttpResponseMetadata {
+/**
+ * Immutable HTTP response facts captured from a received response.
+ * @since 2.5.0
+ */
+export interface OutboundHttpResponseMetadata {
   /** Actual HTTP status returned by fetch. */
   readonly status: number;
   /** Copied HTTP status text. */
@@ -314,7 +322,11 @@ interface OutboundHttpResponseMetadata {
   readonly url?: string;
 }
 
-type OutboundAttemptResponse =
+/**
+ * Response evidence and finality established during a send attempt.
+ * @since 2.5.0
+ */
+export type OutboundAttemptResponse =
   | {
     /** The HTTP flow selected this response before follow-up work. */
     readonly type: "final";
@@ -439,7 +451,11 @@ export type OutboundHttpExchangeReport =
       | { readonly type: "failed"; readonly error: unknown };
   };
 
-type OutboundWorkerSchedule = {
+/**
+ * A worker retry or deferral submission, separate from its enqueue outcome.
+ * @since 2.5.0
+ */
+export type OutboundWorkerSchedule = {
   readonly action: "retry" | "defer";
   /** Actual continuation task and Fedify retry counter. */
   readonly queue: NonNullable<OutboundAttemptReport["queue"]>;
@@ -466,7 +482,11 @@ export type OutboundWorkerPreparationDiagnostic = {
   }>["failure"];
 };
 
-type OutboundWorkerChild = {
+/**
+ * A child outbox task submitted by a fanout worker.
+ * @since 2.5.0
+ */
+export type OutboundWorkerChild = {
   readonly action: "enqueue";
   /** Actual child task identity and initial Fedify retry counter. */
   readonly queue: NonNullable<OutboundAttemptReport["queue"]>;
@@ -476,7 +496,11 @@ type OutboundWorkerChild = {
   readonly delivery?: OutboundWorkerReport["delivery"];
 };
 
-type OutboundWorkerAction =
+/**
+ * An observed worker handoff, scheduling outcome, or local abandonment.
+ * @since 2.5.0
+ */
+export type OutboundWorkerAction =
   | ((OutboundWorkerSchedule | OutboundWorkerChild) & {
     readonly type: "scheduled";
   })
@@ -710,7 +734,11 @@ export interface OutboundProvenance {
   readonly originatingRequestId?: string;
 }
 
-interface OutboundSourceMetadata {
+/**
+ * Observation time, optional tracing, original provenance, and current context.
+ * @since 2.5.0
+ */
+export interface OutboundSourceMetadata {
   /** Unix milliseconds at observation; wall clocks do not ensure global ordering. */
   readonly observedAt: number;
   /** Valid IDs of this operation's own span, when one is available. */
