@@ -56,6 +56,9 @@ function canExpandTo(
   const count = (text: string, delta: number): void => {
     // Code units compose across token boundaries, even when non-strict literal
     // tokens supply the two halves of a surrogate pair around an empty value.
+    // Must count UTF-16 code units so surrogate halves split across tokens
+    // still cancel.
+    // oxlint-disable-next-line typescript/prefer-for-of
     for (let index = 0; index < text.length; index++) {
       const char = text[index];
       counts.set(char, (counts.get(char) ?? 0) + delta);

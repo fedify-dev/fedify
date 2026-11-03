@@ -61,9 +61,9 @@ const encode = (
 
   let bits = 0; // Number of bits currently in the buffer
   let buffer = 0; // Bits waiting to be written out, MSB first
-  for (let i = 0; i < data.length; ++i) {
+  for (const byte of data) {
     // Slurp data into the buffer:
-    buffer = (buffer << 8) | data[i];
+    buffer = (buffer << 8) | byte;
     bits += 8;
 
     // Write out as much as we can:

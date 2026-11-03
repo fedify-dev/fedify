@@ -570,8 +570,8 @@ test("forced fanout selects the DID-matching key before enqueueing", async () =>
     // Every transport key still travels with the message.
     assertEquals(message.keys.length, 3);
     assertEquals(message.keys[0].keyId, rsaKey.keyId.href);
-    for (let i = 0; i < queued.length; i++) {
-      await federation.processQueuedTask(undefined, queued[i]);
+    for (const message of queued) {
+      await federation.processQueuedTask(undefined, message);
     }
   });
   assertEquals(bodies.length, 1);
@@ -972,8 +972,8 @@ test("forced fanout selects the DID-matching key for a compatible-ID activity", 
       { fanout: "force" },
     );
     assertEquals(queued.length, 1);
-    for (let i = 0; i < queued.length; i++) {
-      await federation.processQueuedTask(undefined, queued[i]);
+    for (const message of queued) {
+      await federation.processQueuedTask(undefined, message);
     }
   });
   assertEquals(bodies.length, 1);
@@ -1187,8 +1187,8 @@ test("fanout warns once before enqueueing a compatible activity", async () => {
         { fanout: "force" },
       );
       assertEquals(queued.length, 1);
-      for (let i = 0; i < queued.length; i++) {
-        await federation.processQueuedTask(undefined, queued[i]);
+      for (const message of queued) {
+        await federation.processQueuedTask(undefined, message);
       }
     })
   );
