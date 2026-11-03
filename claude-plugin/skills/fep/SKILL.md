@@ -15,7 +15,7 @@ explain how to implement it with Fedify.
 Normalization
 -------------
 
-Normalise the identifier first: strip any leading `FEP-` or `fep-` prefix
+Normalize the identifier first: strip any leading `FEP-` or `fep-` prefix
 and lowercase the result to get the bare four-character hex id (e.g. `8fcf`).
 Call that `$ID` in the steps below.  If the result does not match
 `^[0-9a-f]{4}$`, stop and ask the user to provide a valid FEP identifier.
@@ -39,7 +39,7 @@ cat "$FEP_DIR/fep/$ID/fep-$ID.md"
 Summary
 -------
 
-Summarise: status, what problem it solves, and what extensions it defines
+Summarize: status, what problem it solves, and what extensions it defines
 (new JSON-LD terms, HTTP endpoints, or activity shapes).
 
 

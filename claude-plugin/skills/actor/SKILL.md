@@ -20,7 +20,7 @@ Walk through:
 3.  Chaining `.setKeyPairsDispatcher()` to supply RSA and Ed25519 keys.
 4.  Optionally configuring `mapActorAlias()` for handle-based or
     fixed-path aliases.
-5.  Making the actor discoverable via WebFinger. Fedify handles
+5.  Making the actor discoverable via WebFinger.  Fedify handles
     `/.well-known/webfinger` automatically once the actor dispatcher
     is registered.
 

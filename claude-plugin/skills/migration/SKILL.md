@@ -16,7 +16,8 @@ Migration workflow
 1.  Fetch *CHANGES.md* from the repo to identify breaking changes between
     the versions in question:
     `https://raw.githubusercontent.com/fedify-dev/fedify/main/CHANGES.md`
-2.  List every breaking change that affects the user's code range.
+2.  List the breaking changes between those versions that affect the user's
+    code.
 3.  For each breaking change, show the old API, the new API, and a concrete
     before/after code snippet.
 4.  Search the user's codebase for usages of deprecated symbols and suggest
