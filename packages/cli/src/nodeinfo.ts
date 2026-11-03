@@ -92,13 +92,28 @@ function loadSvgRasterizer(): Promise<ResvgModule> {
 export async function rasterizeSvg(buffer: ImageBuffer): Promise<Uint8Array> {
   const svg = toUint8Array(buffer);
   const { Resvg } = await loadSvgRasterizer();
-  const { width, height } = new Resvg(svg);
-  return new Resvg(svg, {
+  const probe = new Resvg(svg);
+  const { width, height } = probe;
+  probe.free();
+  if (width < 1 || height < 1) {
+    throw new RangeError(`Unusable SVG dimensions: ${width}x${height}`);
+  }
+  const resvg = new Resvg(svg, {
     fitTo: {
       mode: width >= height ? "width" : "height",
       value: DEFAULT_IMAGE_WIDTH,
     },
-  }).render().asPng();
+  });
+  try {
+    const rendered = resvg.render();
+    try {
+      return rendered.asPng();
+    } finally {
+      rendered.free();
+    }
+  } finally {
+    resvg.free();
+  }
 }
 
 function isSvg(buffer: ImageBuffer): boolean {

@@ -613,6 +613,13 @@ test("rasterizeSvg - limits the size of a large SVG", async () => {
   assert.deepEqual([image.width, image.height], [38, 19]);
 });
 
+test("rasterizeSvg - rejects an SVG whose size rounds to zero", async () => {
+  const svg = new TextEncoder().encode(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="0.00001" height="0.49"/>',
+  );
+  await assert.rejects(() => rasterizeSvg(svg), RangeError);
+});
+
 test("getFaviconUrl resolves fallback from final page URL", async () => {
   await withMockFetch(
     {
