@@ -195,7 +195,8 @@
     "unicorn/error-message": "error",
     "unicorn/no-array-for-each": "error",
     "typescript/no-import-type-side-effects": "error",
-    "typescript/prefer-for-of": "error"
+    "typescript/prefer-for-of": "error",
+    "typescript/no-extraneous-class": "error"
   },
   "ignorePatterns": [
     "**/pnpm-lock.yaml",

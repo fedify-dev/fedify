@@ -8,6 +8,8 @@ import {
 import { FEDIFY_FEDERATION } from "./fedify.constants.ts";
 
 @Module({})
+// NestJS modules are classes that expose static factory methods by convention.
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class FedifyModule {
   static forRoot(options: FederationOptions<unknown>): DynamicModule {
     const providers: Provider[] = [

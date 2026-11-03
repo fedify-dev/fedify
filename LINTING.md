@@ -145,6 +145,7 @@ a note here.  The current additions are:
  -  `unicorn/no-array-for-each`.
  -  `typescript/no-import-type-side-effects`.
  -  `typescript/prefer-for-of`.
+ -  `typescript/no-extraneous-class`.
 
 Vendored [anti-slop] rules live in *tools/oxlint/anti-slop/*.  They are copied
 from upstream and recorded in *tools/oxlint/anti-slop/UPSTREAM.md*; update
