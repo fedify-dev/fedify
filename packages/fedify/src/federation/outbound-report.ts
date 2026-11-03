@@ -541,6 +541,11 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
           | "key-import"
           | "activity-parsing"
           | "context-preparation"
+          | "validation"
+          | "key-resolution"
+          | "signing"
+          | "serialization"
+          | "key-export"
           | "request-preparation";
         readonly error: unknown;
       };

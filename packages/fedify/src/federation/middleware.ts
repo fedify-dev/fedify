@@ -1771,7 +1771,10 @@ export class FederationImpl<TContextData>
       return;
     }
     try {
-      const inbox = new URL(message.inbox);
+      const parseInbox = () => new URL(message.inbox);
+      const inbox = worker == null
+        ? parseInbox()
+        : await worker.prepare("validation", parseInbox);
       const circuit = this.outboxQueue == null
         ? undefined
         : this.circuitBreaker;
@@ -2251,12 +2254,18 @@ export class FederationImpl<TContextData>
           Temporal.Now.instant(),
         ) <= 0
     ) {
-      const inbox = new URL(message.gatewayInboxes[0]);
+      const parseInbox = () => new URL(message.gatewayInboxes[0]);
+      const inbox = worker == null
+        ? parseInbox()
+        : await worker.prepare("validation", parseInbox);
       await drop(circuit, getRemoteHost(inbox), inbox, heldSince);
       return;
     }
     for (const inboxHref of message.gatewayInboxes) {
-      const inbox = new URL(inboxHref);
+      const parseInbox = () => new URL(inboxHref);
+      const inbox = worker == null
+        ? parseInbox()
+        : await worker.prepare("validation", parseInbox);
       const remoteHost = getRemoteHost(inbox);
       const now = Temporal.Now.instant();
       const notBefore = parseInstant(message.gatewayNotBefore?.[inboxHref]);
@@ -3459,72 +3468,95 @@ export class FederationImpl<TContextData>
       provenance = getOutboundProvenance(ctx),
     } = options;
     observation?.setPhase("validation");
-    if (activity.id == null) {
-      throw new TypeError("The activity to send must have an id.");
-    }
-    if (activity.actorId == null) {
-      throw new TypeError(
-        "The activity to send must have at least one actor property.",
-      );
-    } else if (keys.length < 1) {
-      throw new TypeError("The keys must not be empty.");
-    }
+    const validateActivity = () => {
+      if (activity.id == null) {
+        throw new TypeError("The activity to send must have an id.");
+      }
+      if (activity.actorId == null) {
+        throw new TypeError(
+          "The activity to send must have at least one actor property.",
+        );
+      } else if (keys.length < 1) {
+        throw new TypeError("The keys must not be empty.");
+      }
+      return activity.id.href;
+    };
+    const activityId = worker == null
+      ? validateActivity()
+      : await worker.prepare("validation", validateActivity);
     observation?.setPhase("serialization");
-    const contextLoader = this.contextLoaderFactory(
-      this.#getLoaderOptions(ctx.origin),
-    );
-    const activityId = activity.id.href;
-    let rsaKey: { keyId: URL; privateKey: CryptoKey } | null = null;
+    const createContextLoader = () =>
+      this.contextLoaderFactory(this.#getLoaderOptions(ctx.origin));
+    const contextLoader = worker == null
+      ? createContextLoader()
+      : await worker.prepare("serialization", createContextLoader);
     // A Linked Data Signature attests authorship, which neither a gateway key
     // nor any key other than the DID's can do for a portable actor's
     // activity; its Object Integrity Proof does that instead:
-    const ldSignable = !hasPortableActor(activity);
-    observation?.setPhase("key-resolution");
-    for (const { keyId, privateKey } of keys) {
-      validateCryptoKey(privateKey, "private");
-      if (
-        ldSignable && rsaKey == null &&
-        privateKey.algorithm.name === "RSASSA-PKCS1-v1_5" &&
-        !isPortableKeyId(keyId)
-      ) {
-        rsaKey = { keyId, privateKey };
+    const resolveRsaKey = () => {
+      const ldSignable = !hasPortableActor(activity);
+      let rsaKey: { keyId: URL; privateKey: CryptoKey } | null = null;
+      for (const { keyId, privateKey } of keys) {
+        validateCryptoKey(privateKey, "private");
+        if (
+          ldSignable && rsaKey == null &&
+          privateKey.algorithm.name === "RSASSA-PKCS1-v1_5" &&
+          !isPortableKeyId(keyId)
+        ) {
+          rsaKey = { keyId, privateKey };
+        }
       }
-    }
+      return { rsaKey, ldSignable };
+    };
+    observation?.setPhase("key-resolution");
+    const { rsaKey, ldSignable } = worker == null
+      ? resolveRsaKey()
+      : await worker.prepare("key-resolution", resolveRsaKey);
     // If Object Integrity Proofs were already created before fanout (e.g., in
     // sendActivityInternal()), skip signing to avoid duplicates.
     observation?.setPhase("signing");
-    const signed = await signOutgoingActivity(
-      activity,
-      keys.map(({ keyId, privateKey }) => ({
-        verificationMethod: keyId,
-        privateKey,
-      })),
-      {
-        contextLoader,
-        tracerProvider: this.tracerProvider,
-        appendToExistingProofs: false,
-      },
-    );
+    const signActivity = () =>
+      signOutgoingActivity(
+        activity,
+        keys.map(({ keyId, privateKey }) => ({
+          verificationMethod: keyId,
+          privateKey,
+        })),
+        {
+          contextLoader,
+          tracerProvider: this.tracerProvider,
+          appendToExistingProofs: false,
+        },
+      );
+    const signed = worker == null
+      ? await signActivity()
+      : await worker.prepare("signing", signActivity);
     activity = signed.activity;
     const { hasProof, proofCreated } = signed;
     observation?.setPhase("serialization");
-    let jsonLd = !proofCreated && options.activityJsonLd != null
-      ? options.activityJsonLd
-      : await activity.toJsonLd({
-        format: "compact",
-        contextLoader,
-      });
-    // Existing proofs are preserved by default because they may have been
-    // created over the compact JSON-LD bytes exactly as supplied.  Fedify can
-    // safely normalize unsigned activities, proofs it just created, or
-    // locally pre-signed activities when callers opt in.
-    if (proofCreated || !hasProof || options.normalizeExistingProofs) {
-      jsonLd = await normalizeOutgoingActivityJsonLd(jsonLd, contextLoader, {
-        preserveNestedSecuredDocuments: true,
-      });
-    }
+    const serializeActivity = async () => {
+      let result = !proofCreated && options.activityJsonLd != null
+        ? options.activityJsonLd
+        : await activity.toJsonLd({ format: "compact", contextLoader });
+      // Existing proofs are preserved by default because they may have been
+      // created over the compact JSON-LD bytes exactly as supplied.  Fedify can
+      // safely normalize unsigned activities, proofs it just created, or
+      // locally pre-signed activities when callers opt in.
+      if (proofCreated || !hasProof || options.normalizeExistingProofs) {
+        result = await normalizeOutgoingActivityJsonLd(result, contextLoader, {
+          preserveNestedSecuredDocuments: true,
+        });
+      }
+      return result;
+    };
+    let jsonLd = worker == null
+      ? await serializeActivity()
+      : await worker.prepare("serialization", serializeActivity);
     observation?.setPhase("validation");
-    assertSupportedCompoundProofShape(jsonLd, activityId);
+    const validateProofShape = () =>
+      assertSupportedCompoundProofShape(jsonLd, activityId);
+    if (worker == null) validateProofShape();
+    else await worker.prepare("validation", validateProofShape);
     if (rsaKey == null && !ldSignable) {
       logger.debug(
         "The activity {activityId} is performed by a portable actor, so it " +
@@ -3546,21 +3578,27 @@ export class FederationImpl<TContextData>
         },
       );
     } else {
-      try {
-        observation?.setPhase("signing");
-        jsonLd = await signJsonLd(jsonLd, rsaKey.privateKey, rsaKey.keyId, {
-          contextLoader,
-          tracerProvider: this.tracerProvider,
-        });
-      } catch (error) {
-        if (!isLinkedDataSignatureJsonLdProcessingError(error)) throw error;
-        logger.warn(
-          "Failed to create a Linked Data signature for the activity " +
-            "{activityId}.  The activity will be sent without a Linked " +
-            "Data signature.",
-          { activityId, error },
-        );
-      }
+      const signLinkedData = async () => {
+        try {
+          observation?.setPhase("signing");
+          return await signJsonLd(jsonLd, rsaKey.privateKey, rsaKey.keyId, {
+            contextLoader,
+            tracerProvider: this.tracerProvider,
+          });
+        } catch (error) {
+          if (!isLinkedDataSignatureJsonLdProcessingError(error)) throw error;
+          logger.warn(
+            "Failed to create a Linked Data signature for the activity " +
+              "{activityId}.  The activity will be sent without a Linked " +
+              "Data signature.",
+            { activityId, error },
+          );
+          return jsonLd;
+        }
+      };
+      jsonLd = worker == null
+        ? await signLinkedData()
+        : await worker.prepare("signing", signLinkedData);
     }
     if (!hasProof) {
       logger.warn(
@@ -3661,13 +3699,19 @@ export class FederationImpl<TContextData>
     observation?.setPhase("key-resolution");
     const keyJwkPairs: SenderKeyJwkPair[] = [];
     for (const { keyId, privateKey } of keys) {
-      const privateKeyJwk = await exportJwk(privateKey);
+      const exportPrivateKey = () => exportJwk(privateKey);
+      const privateKeyJwk = worker == null
+        ? await exportPrivateKey()
+        : await worker.prepare("key-export", exportPrivateKey);
       keyJwkPairs.push({ keyId: keyId.href, privateKey: privateKeyJwk });
     }
     if (!this.manuallyStartQueue) this._startQueueInternal(ctx.data);
     observation?.setPhase("request-preparation");
     const carrier: Record<string, string> = {};
-    propagation.inject(context.active(), carrier);
+    const injectTraceContext = () =>
+      propagation.inject(context.active(), carrier);
+    if (worker == null) injectTraceContext();
+    else await worker.prepare("request-preparation", injectTraceContext);
     const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
     for (const inbox in inboxes) {
       try {

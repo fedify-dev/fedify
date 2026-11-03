@@ -9,6 +9,7 @@ import { FetchError, UrlError } from "@fedify/vocab-runtime";
 import { configure, reset } from "@logtape/logtape";
 import {
   isSpanContextValid,
+  propagation,
   SpanKind,
   SpanStatusCode,
   trace,
@@ -52,6 +53,7 @@ import {
 import { OutboundBroadcastObservation } from "./outbound-observation.ts";
 import { snapshotHeaderPolicy, snapshotHeaders } from "./outbound-headers.ts";
 import { rsaPrivateKey2, rsaPublicKey2 } from "../testing/keys.ts";
+import { exportJwk } from "../sig/key.ts";
 
 const activity = new Create({
   id: new URL("https://example.com/create"),
@@ -4103,6 +4105,279 @@ test("outbound worker observers report explicit key and fanout parse failures wi
       }
     });
   }
+});
+
+test("outbound worker classifies inbox URL parsing failures as validation", async (t) => {
+  for (const mode of ["ordinary", "gateway", "held-gateway"] as const) {
+    await t.step(mode, async () => {
+      const reports: OutboundWorkerReport[] = [];
+      const queued: Message[] = [];
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        manuallyStartQueue: true,
+        circuitBreaker: mode === "held-gateway"
+          ? { heldActivityTtl: { seconds: 1 } }
+          : false,
+        outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 1 }),
+        queue: {
+          outbox: {
+            nativeRetrial: true,
+            enqueue(message) {
+              queued.push(message);
+              return Promise.resolve();
+            },
+            listen: () => Promise.resolve(),
+          },
+        },
+      });
+      federation.setOutboundObservers({
+        onWorker(_ctx, report) {
+          reports.push(report);
+        },
+      });
+      const original = continuationMessage(recipient.inboxId!.href, true);
+      const malformed = "not a URL";
+      const message: OutboxMessage = mode === "ordinary"
+        ? { ...original, inbox: malformed }
+        : {
+          ...original,
+          gatewayInboxes: [malformed, "https://gateway.example/inbox"],
+          ...(mode === "held-gateway"
+            ? { circuitHeld: true, circuitHeldSince: "2000-01-01T00:00:00Z" }
+            : {}),
+        };
+      let outward: unknown;
+      await rejects(
+        federation.processQueuedTask(undefined, message),
+        (error: unknown) => {
+          outward = error;
+          return error instanceof TypeError;
+        },
+      );
+      strictEqual(reports.length, 1);
+      strictEqual(reports[0].attemptsStarted, 0);
+      deepStrictEqual(reports[0].result, {
+        type: "preparation-failed",
+        failure: { kind: "local", phase: "validation", error: outward },
+        error: outward,
+      });
+      strictEqual(queued.length, 0);
+    });
+  }
+});
+
+test("fanout worker classifies sendActivity validation, signing, serialization, and normalization failures as preparation", async (t) => {
+  for (
+    const phase of [
+      "validation",
+      "signing",
+      "serialization",
+      "normalization",
+      "key-export",
+    ] as const
+  ) {
+    await t.step(phase, async () => {
+      const failure = Symbol(phase);
+      const reports: OutboundWorkerReport[] = [];
+      const federation = createFederation<void>({
+        ...options,
+        ...(phase === "key-export"
+          ? {
+            queue: {
+              outbox: {
+                enqueue: () => Promise.resolve(),
+                listen: () => Promise.resolve(),
+              },
+            },
+          }
+          : {}),
+      }) as FederationImpl<void>;
+      federation.setOutboundObservers({
+        onWorker(_ctx, report) {
+          reports.push(report);
+        },
+      });
+      const originalSendActivity = federation.sendActivity;
+      Object.defineProperty(federation, "sendActivity", {
+        value: async (...args: Parameters<typeof originalSendActivity>) => {
+          const [keys, inboxes, outgoing, sendOptions] = args;
+          if (phase === "validation") {
+            Object.defineProperty(outgoing, "actorId", {
+              get() {
+                throw failure;
+              },
+            });
+          } else if (phase === "signing") {
+            Object.defineProperty(outgoing, "getProofs", {
+              value() {
+                throw failure;
+              },
+            });
+          } else if (phase === "serialization") {
+            Object.defineProperty(outgoing, "toJsonLd", {
+              value() {
+                throw failure;
+              },
+            });
+          } else if (phase === "normalization") {
+            Object.defineProperty(outgoing, "toJsonLd", {
+              value: () =>
+                new Proxy({}, {
+                  ownKeys() {
+                    throw failure;
+                  },
+                }),
+            });
+          }
+          const options = phase === "serialization" || phase === "normalization"
+            ? { ...sendOptions, activityJsonLd: undefined }
+            : sendOptions;
+          return await originalSendActivity.call(
+            federation,
+            keys,
+            inboxes,
+            outgoing,
+            options,
+          );
+        },
+      });
+      const activityJsonLd = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: activity.id!.href,
+        type: "Create",
+        actor: activity.actorId!.href,
+      };
+      const message: FanoutMessage = {
+        type: "fanout",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        keys: [{
+          keyId: sender.keyId.href,
+          privateKey: await exportJwk(sender.privateKey),
+        }],
+        inboxes: {
+          [recipient.inboxId!.href]: {
+            actorIds: [],
+            sharedInbox: false,
+          },
+        },
+        activity: activityJsonLd,
+        activityId: activity.id!.href,
+        activityType: Create.typeId.href,
+        traceContext: {},
+      };
+      let outward: unknown;
+      const exportKeyDescriptor = Object.getOwnPropertyDescriptor(
+        crypto.subtle,
+        "exportKey",
+      );
+      try {
+        if (phase === "key-export") {
+          Object.defineProperty(crypto.subtle, "exportKey", {
+            configurable: true,
+            value: () => Promise.reject(failure),
+          });
+        }
+        await rejects(
+          federation.processQueuedTask(undefined, message),
+          (error) => {
+            outward = error;
+            return error === failure;
+          },
+        );
+      } finally {
+        if (phase === "key-export") {
+          if (exportKeyDescriptor == null) {
+            Reflect.deleteProperty(crypto.subtle, "exportKey");
+          } else {
+            Object.defineProperty(
+              crypto.subtle,
+              "exportKey",
+              exportKeyDescriptor,
+            );
+          }
+        }
+      }
+      strictEqual(reports.length, 1);
+      deepStrictEqual(reports[0].result, {
+        type: "preparation-failed",
+        failure: {
+          kind: "local",
+          phase: phase === "normalization" ? "serialization" : phase,
+          error: outward,
+        },
+        error: outward,
+      });
+      strictEqual(reports[0].attemptsStarted, 0);
+    });
+  }
+});
+
+test("fanout worker preserves a trace propagator failure as request preparation", async () => {
+  const failure = Symbol("trace injection");
+  const reports: OutboundWorkerReport[] = [];
+  const fanouts: Message[] = [];
+  const outboxMessages: Message[] = [];
+  const federation = createFederation<void>({
+    ...options,
+    manuallyStartQueue: true,
+    queue: {
+      fanout: {
+        enqueue(message) {
+          fanouts.push(message);
+          return Promise.resolve();
+        },
+        listen: () => Promise.resolve(),
+      },
+      outbox: {
+        enqueue(message) {
+          outboxMessages.push(message);
+          return Promise.resolve();
+        },
+        listen: () => Promise.resolve(),
+      },
+    },
+  });
+  federation.setOutboundObservers({
+    onWorker(_ctx, report) {
+      reports.push(report);
+    },
+  });
+  await federation.createContext(new URL("https://example.com"), undefined)
+    .sendActivity(sender, [recipient], activity, { fanout: "force" });
+  const message = fanouts[0];
+  ok(message?.type === "fanout");
+  try {
+    strictEqual(
+      propagation.setGlobalPropagator({
+        inject() {
+          throw failure;
+        },
+        extract(ctx) {
+          return ctx;
+        },
+        fields() {
+          return [];
+        },
+      }),
+      true,
+    );
+    await rejects(
+      federation.processQueuedTask(undefined, message),
+      (error: unknown) => error === failure,
+    );
+  } finally {
+    propagation.disable();
+  }
+  strictEqual(reports.length, 1);
+  deepStrictEqual(reports[0].result, {
+    type: "preparation-failed",
+    failure: { kind: "local", phase: "request-preparation", error: failure },
+    error: failure,
+  });
+  strictEqual(reports[0].attemptsStarted, 0);
+  strictEqual(outboxMessages.length, 0);
 });
 
 test("outbound worker reports distinguish fanout child tasks from concrete sends", async (t) => {
