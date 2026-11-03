@@ -1238,9 +1238,21 @@ export class FederationImpl<TContextData>
       context.active(),
       message.traceContext,
     );
-    const provenance = message.type === "task"
-      ? emptyProvenance
-      : restoreProvenance(message.provenance);
+    let provenance: OutboundProvenance = emptyProvenance;
+    if (message.type !== "task") {
+      try {
+        provenance = restoreProvenance(message.provenance);
+      } catch (error) {
+        try {
+          getLogger(["fedify", "federation", "queue"]).warn(
+            "Ignoring invalid provenance in queue message {messageId}: {error}",
+            { messageId: message.id, error },
+          );
+        } catch {
+          // A logging sink must not prevent processing a queued task.
+        }
+      }
+    }
     if (message.type !== "task" && message.provenance !== undefined) {
       message = { ...message, provenance };
     }

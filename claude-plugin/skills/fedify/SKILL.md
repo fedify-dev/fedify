@@ -296,8 +296,10 @@ Use the `dispatchId` send or forward option to carry an application correlation
 ID through queues.  Event `provenance` preserves known source facts; `local`
 describes the current execution.  Optional `trace` contains the operation's
 own span IDs when tracing is enabled.  Older queue messages can lack these
-facts.  Invalid `dispatchId` values raise an error before preparation; the
-limit is 1,024 UTF-8 bytes.  Reusing an ID does not deduplicate sends.
+facts.  Consumers warn and omit malformed queued provenance so delivery can
+continue.  Invalid `dispatchId` values on new sends raise an error before
+preparation; the limit is 1,024 UTF-8 bytes.  Reusing an ID does not
+deduplicate sends.
 
 For typed examples, report variants, and capture limits, see the
 [sending manual].

@@ -670,9 +670,8 @@ federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
 
 `saveAcceptance()` represents your application's record creation. Dispatch IDs
 may be empty but must fit within 1,024 UTF-8 bytes. Invalid types raise
-`TypeError` and oversized strings raise `RangeError` before preparation; queue
-consumers apply the same validation. A new call that omits the ID does not
-inherit it from a previous invocation.
+`TypeError` and oversized strings raise `RangeError` before preparation. A new
+call that omits the ID does not inherit it from a previous invocation.
 
 To forward the received payload instead of constructing a new Activity, use the
 inbox handler's `forwardActivity()` method with the same application correlation
@@ -700,10 +699,12 @@ Older messages remain processable, with missing relationships explicitly
 unknown. Legacy fanout can recover stable delivery grouping; legacy outbox
 reports use the current task UUID as the delivery ID and cannot recover
 broadcast membership. Unavailable original destinations and source facts remain
-absent. Older consumers can discard new metadata, so mixed-version processing
-can lose correlation. Source metadata and dispatch IDs propagate even without
-producer observers; broadcast and delivery metadata is allocated when producer
-observation is enabled.
+absent. If queued source metadata is malformed, the consumer warns and continues
+without its provenance; a retry carries the empty provenance rather than the
+invalid value. Older consumers can discard new metadata, so mixed-version
+processing can lose correlation. Source metadata and dispatch IDs propagate even
+without producer observers; broadcast and delivery metadata is allocated when
+producer observation is enabled.
 
 ### Capturing headers
 

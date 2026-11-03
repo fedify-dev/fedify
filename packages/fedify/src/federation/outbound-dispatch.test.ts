@@ -285,7 +285,7 @@ test("dispatch IDs correlate send and forward entries without deduplication or c
   }
 });
 
-test("dispatch ID byte limits and queue validation preserve exact values", async () => {
+test("dispatch ID byte limits and queue fallback preserve exact values", async () => {
   const messages: Message[] = [];
   const queue: MessageQueue = {
     enqueue(message) {
@@ -312,6 +312,10 @@ test("dispatch ID byte limits and queue validation preserve exact values", async
       category: ["test", "dispatch"],
       sinks: ["buffer"],
       lowestLevel: "info",
+    }, {
+      category: ["fedify", "federation", "queue"],
+      sinks: ["buffer"],
+      lowestLevel: "warning",
     }, { category: ["logtape", "meta"], sinks: [] }],
     contextLocalStorage: new AsyncLocalStorage(),
   });
@@ -336,16 +340,41 @@ test("dispatch ID byte limits and queue validation preserve exact values", async
   try {
     const queued = messages[0];
     ok(queued.type === "outbox");
-    for (const dispatchId of [null, "x".repeat(1025), "😀".repeat(257)]) {
-      await rejects(
-        async () =>
-          await consumer.processQueuedTask(undefined, {
+    const malformed = [
+      { dispatchId: null },
+      { dispatchId: "x".repeat(1025) },
+      { dispatchId: "😀".repeat(257) },
+      {
+        inboxRequest: {
+          inboxRequestId: "",
+          requestId: "bad",
+          context: {
+            origin: "x",
+            host: "x",
+            hostname: "x",
+            canonicalOrigin: "x",
+          },
+        },
+      },
+    ];
+    for (const provenance of malformed) {
+      await withContext(
+        { requestId: "current-request", dispatchId: "ambient-dispatch" },
+        () =>
+          consumer.processQueuedTask(undefined, {
             ...queued,
-            provenance: { dispatchId: dispatchId as string },
+            provenance: provenance as NonNullable<typeof queued.provenance>,
           }),
-        dispatchId === null ? TypeError : RangeError,
       );
-      strictEqual(fetchMock.callHistory.calls().length, 0);
+    }
+    ok(fetchMock.callHistory.calls().length >= malformed.length);
+    const warnings = records.filter((record) =>
+      record.rawMessage ===
+        "Ignoring invalid provenance in queue message {messageId}: {error}"
+    );
+    strictEqual(warnings.length, malformed.length);
+    for (const warning of warnings) {
+      strictEqual(warning.properties.messageId, queued.id);
     }
     for (let index = 0; index < messages.length; index++) {
       const message = messages[index];
@@ -363,16 +392,61 @@ test("dispatch ID byte limits and queue validation preserve exact values", async
     const logs = records.filter((record) =>
       record.rawMessage === "original dispatch"
     );
-    deepStrictEqual(logs.map((record) => record.properties.dispatchId), valid);
+    deepStrictEqual(
+      logs.map((record) => record.properties.dispatchId),
+      [...malformed.map(() => undefined), ...valid],
+    );
     for (const record of logs) {
       strictEqual(record.properties.requestId, "current-request");
     }
-    strictEqual(descendants.length, 6);
+    strictEqual(descendants.length, 2 * (malformed.length + valid.length));
     for (const event of descendants) {
       strictEqual(event.provenance.dispatchId, undefined);
     }
   } finally {
     fetchMock.hardReset();
     await reset();
+  }
+});
+
+test("malformed queued provenance does not poison a retry", async () => {
+  const messages: Message[] = [];
+  const queue: MessageQueue = {
+    enqueue(message) {
+      messages.push(message);
+      return Promise.resolve();
+    },
+    listen: () => Promise.resolve(),
+  };
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    allowPrivateAddress: true,
+    manuallyStartQueue: true,
+    outboxRetryPolicy: () => Temporal.Duration.from({ milliseconds: 1 }),
+    queue: { outbox: queue },
+  });
+  await federation.createContext(new URL("https://example.com"), undefined)
+    .sendActivity(sender, target, activity, { fanout: "skip" });
+  const original = messages[0];
+  ok(original.type === "outbox");
+  const malformed = {
+    ...original,
+    provenance: { inboxRequest: { inboxRequestId: "" } },
+  } as Message;
+  fetchMock.mockGlobal().post(target.inboxId!.href, 503);
+  try {
+    await federation.processQueuedTask(undefined, malformed);
+    strictEqual(messages.length, 2);
+    const retry = messages[1];
+    ok(retry.type === "outbox");
+    deepStrictEqual(retry.provenance, {});
+    strictEqual(retry.attempt, 1);
+    await federation.processQueuedTask(undefined, retry);
+    strictEqual(messages.length, 3);
+    const next = messages[2];
+    ok(next.type === "outbox");
+    deepStrictEqual(next.provenance, {});
+  } finally {
+    fetchMock.hardReset();
   }
 });

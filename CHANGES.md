@@ -55,7 +55,9 @@ To be released.
     Applications can opt in to redacted headers, bounded streaming response
     capture, and privacy-filtered sender payloads. Inbox reports now preserve
     original request context and snapshot request cancellation without changing
-    processing outcomes. Error diagnostic reads have a one-second deadline.
+    processing outcomes. Malformed optional queue metadata no longer prevents
+    delivery; consumers warn and continue without its correlation facts. Error
+    diagnostic reads have a one-second deadline.
     The public `Federatable` interface now requires `setOutboundObservers()`,
     breaking source compatibility for custom implementations. Update custom
     mocks, decorators, and wrappers to implement this method.

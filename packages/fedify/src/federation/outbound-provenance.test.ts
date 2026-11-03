@@ -608,26 +608,6 @@ test("queued provenance survives inbox retries, fanout, and outbox worker recons
               sourceInboxRequestId: "ambient-source",
               sourceRequestId: "ambient-label",
             }, () => federation.processQueuedTask(undefined, message));
-          if (!legacy && !native) {
-            await rejects(async () =>
-              await execute({
-                ...task,
-                provenance: {
-                  inboxRequest: {
-                    inboxRequestId: "",
-                    requestId: "bad",
-                    context: {
-                      origin: "x",
-                      host: "x",
-                      hostname: "x",
-                      canonicalOrigin: "x",
-                    },
-                  },
-                },
-              }), TypeError);
-            strictEqual(calls, 0);
-            strictEqual(events.length, 0);
-          }
           messages.length = 0;
           const logStart = records.length;
           if (native) {
