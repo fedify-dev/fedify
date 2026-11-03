@@ -303,7 +303,8 @@ export async function runNodeInfo(
         command.userAgent,
       );
       if (response.ok) {
-        const contentType = response.headers.get("Content-Type");
+        const contentType = response.headers.get("Content-Type")
+          ?.split(";")[0].trim().toLowerCase();
         let buffer: ImageBuffer = await response.arrayBuffer();
         if (
           contentType === "image/vnd.microsoft.icon" ||
@@ -315,7 +316,9 @@ export async function runNodeInfo(
             throw new Error("No images found in the ICO file.");
           }
           buffer = images[0].buffer;
-        } else if (contentType === "image/svg+xml" || isSvg(buffer)) {
+        } else if (
+          contentType === "image/svg+xml" || (!isPng(buffer) && isSvg(buffer))
+        ) {
           buffer = await rasterizeSvg(buffer);
         }
         const image = await readImage(buffer);

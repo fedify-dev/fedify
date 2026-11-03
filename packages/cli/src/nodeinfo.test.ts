@@ -607,6 +607,20 @@ test("nodeinfo renders an SVG favicon served as octet-stream", async () => {
   assert.match(output, /█/);
 });
 
+test("nodeinfo renders an SVG favicon with a content type parameter", async () => {
+  const routes = nodeInfoRoutes('<link rel="icon" href="/icon.svg">');
+  routes["https://8.8.8.8/icon.svg"] = () =>
+    new Response(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4">' +
+        '<rect width="4" height="4"/></svg>',
+      { headers: { "Content-Type": "Image/SVG+XML; charset=utf-8" } },
+    );
+  const output = await captureOutput(() =>
+    withMockFetch(routes, runNodeInfoWithFavicon)
+  );
+  assert.match(output, /█/);
+});
+
 test("nodeinfo falls back when an SVG favicon cannot be rendered", async () => {
   const routes = nodeInfoRoutes('<link rel="icon" href="/icon.svg">');
   routes["https://8.8.8.8/icon.svg"] = () =>
