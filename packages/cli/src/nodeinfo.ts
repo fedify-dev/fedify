@@ -82,10 +82,15 @@ let svgRasterizer: Promise<ResvgModule> | undefined;
 
 function loadSvgRasterizer(): Promise<ResvgModule> {
   return svgRasterizer ??= (async () => {
-    const resvg = await import("@resvg/resvg-wasm");
-    const wasmUrl = import.meta.resolve("@resvg/resvg-wasm/index_bg.wasm");
-    await resvg.initWasm(await readFile(new URL(wasmUrl)));
-    return resvg;
+    try {
+      const resvg = await import("@resvg/resvg-wasm");
+      const wasmUrl = import.meta.resolve("@resvg/resvg-wasm/index_bg.wasm");
+      await resvg.initWasm(await readFile(new URL(wasmUrl)));
+      return resvg;
+    } catch (error) {
+      logger.debug("Failed to load the SVG rasterizer: {error}", { error });
+      throw error;
+    }
   })();
 }
 
