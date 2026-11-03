@@ -189,7 +189,8 @@
     "eslint/no-throw-literal": "error",
     "eslint/no-unsafe-optional-chaining": "error",
     "eslint/no-self-compare": "error",
-    "eslint/no-useless-escape": "error"
+    "eslint/no-useless-escape": "error",
+    "unicorn/prefer-node-protocol": "error"
   },
   "ignorePatterns": [
     "**/pnpm-lock.yaml",
