@@ -171,16 +171,16 @@ The in-memory defaults are for development only.
 in-flight activity; neither survives horizontal scaling.  Pick a persistent
 backend before you take traffic:
 
-| Backend                            | KV store          | Message queue          | When to choose                        |
-| ---------------------------------- | ----------------- | ---------------------- | ------------------------------------- |
-| PostgreSQL                         | `PostgresKvStore` | `PostgresMessageQueue` | You already run Postgres for app data |
-| Redis                              | `RedisKvStore`    | `RedisMessageQueue`    | Dedicated cache/queue infrastructure  |
-| MySQL/MariaDB                      | `MysqlKvStore`    | `MysqlMessageQueue`    | You already run MySQL or MariaDB      |
-| SQLite                             | `SqliteKvStore`   | `SqliteMessageQueue`   | Single-node/embedded deployments      |
-| RabbitMQ                           | —                 | `AmqpMessageQueue`     | Existing AMQP infrastructure          |
-| Deno KV (deprecated)               | `DenoKvStore`     | `DenoKvMessageQueue`   | Existing Deno Deploy applications     |
-| Cloudflare KV + Queues             | `WorkersKvStore`  | `WorkersMessageQueue`  | Cloudflare Workers                    |
-| Netlify Database + Async Workloads | `PostgresKvStore` | `NetlifyMessageQueue`  | Netlify Functions                     |
+| Backend                            | KV store           | Message queue          | When to choose                        |
+| ---------------------------------- | ------------------ | ---------------------- | ------------------------------------- |
+| PostgreSQL                         | `PostgresKvStore`  | `PostgresMessageQueue` | You already run Postgres for app data |
+| Redis                              | `RedisKvStore`     | `RedisMessageQueue`    | Dedicated cache/queue infrastructure  |
+| MySQL/MariaDB                      | `MysqlKvStore`     | `MysqlMessageQueue`    | You already run MySQL or MariaDB      |
+| SQLite                             | `SqliteKvStore`    | `SqliteMessageQueue`   | Single-node/embedded deployments      |
+| RabbitMQ                           | —                  | `AmqpMessageQueue`     | Existing AMQP infrastructure          |
+| Deno KV (deprecated)               | `DenoKvStore`      | `DenoKvMessageQueue`   | Existing Deno Deploy applications     |
+| Cloudflare D1 + Queues             | `WorkersD1KvStore` | `WorkersMessageQueue`  | Cloudflare Workers                    |
+| Netlify Database + Async Workloads | `PostgresKvStore`  | `NetlifyMessageQueue`  | Netlify Functions                     |
 
 See the [*Key–value store*](./kv.md) and [*Message queue*](./mq.md) chapters
 for setup details and trade-offs between backends (connection pooling,
@@ -919,8 +919,12 @@ and no mutable global state between invocations.  Platform services—KV,
 Queues, R2, D1—are exposed through the `env` parameter of the request
 handler rather than as ambient imports.  Fedify accommodates this through
 the [builder pattern](./federation.md#builder-pattern-for-structuring) and
-the [`@fedify/cfworkers`] package, which provides `WorkersKvStore` and
-`WorkersMessageQueue`.
+the [`@fedify/cfworkers`] package, which provides `WorkersD1KvStore`,
+`WorkersKvStore`, and `WorkersMessageQueue`.  Prefer `WorkersD1KvStore`
+over `WorkersKvStore`: Fedify's key–value workload is write-heavy and needs
+strong consistency, which D1 provides and Workers KV does not.  See the
+[*`WorkersD1KvStore`*](./kv.md#workersd1kvstore-cloudflare-workers-only)
+section for details.
 
 #### Node.js compatibility
 
@@ -944,13 +948,13 @@ dispatchers and build the `Federation` object per request:
 ~~~~ typescript twoslash
 // @noErrors: 2345
 type Env = {
-  KV_NAMESPACE: KVNamespace<string>;
+  DB: D1Database;
   QUEUE: Queue;
 };
 import { Person } from "@fedify/vocab";
 // ---cut-before---
 import { createFederationBuilder } from "@fedify/fedify";
-import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
+import { WorkersD1KvStore, WorkersMessageQueue } from "@fedify/cfworkers";
 
 const builder = createFederationBuilder<Env>();
 
@@ -964,7 +968,7 @@ builder.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const federation = await builder.build({
-      kv: new WorkersKvStore(env.KV_NAMESPACE),
+      kv: new WorkersD1KvStore(env.DB),
       queue: new WorkersMessageQueue(env.QUEUE),
     });
     return federation.fetch(request, { contextData: env });
@@ -982,10 +986,10 @@ manually:
 ~~~~ typescript twoslash
 // @noErrors: 2345
 import { createFederationBuilder, type Message } from "@fedify/fedify";
-import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
+import { WorkersD1KvStore, WorkersMessageQueue } from "@fedify/cfworkers";
 
 type Env = {
-  KV_NAMESPACE: KVNamespace<string>;
+  DB: D1Database;
   QUEUE: Queue;
 };
 
@@ -996,7 +1000,7 @@ export default {
 
   async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
     const federation = await builder.build({
-      kv: new WorkersKvStore(env.KV_NAMESPACE),
+      kv: new WorkersD1KvStore(env.DB),
       queue: new WorkersMessageQueue(env.QUEUE),
     });
 
