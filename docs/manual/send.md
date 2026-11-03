@@ -591,15 +591,21 @@ gets a new `attemptId`. Queue task IDs and `queueAttempt` describe scheduling,
 not the number of send executions. Native redelivery can reuse both while
 creating a fresh attempt.
 
-The identity relationships are:
+Identity allocation and propagation follow these rules:
 
-| Unit          | Identity and lifetime                                                                                              |
-| ------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Broadcast     | Fresh `broadcastId` for an observed invocation; retained through queue continuations.                              |
-| Delivery      | One `deliveryId` per deduplicated destination or claimed replication target; retained across retries and fallback. |
-| Attempt       | Fresh `attemptId` at each concrete sender entry.                                                                   |
-| HTTP exchange | `attemptId` plus `exchangeIndex`, starting at zero within the attempt.                                             |
-| Queue task    | Current `queueMessageId` and, when available, `queueAttempt`; fanout replay can create new task IDs.               |
+| Field                        | Allocation or source                                                                                                       | Propagation and replacement                                                                                                                                                                |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `inboxRequestId`             | Fresh server-generated ID for each routed HTTP inbox request, before preparation.                                          | Preserved through inbox retries, derived contexts, outgoing sends, fanout, outbox retries, and replication. Repeated deliveries of the same Activity have different IDs.                   |
+| Original logging `requestId` | The existing logging label selected at HTTP ingress; externally supplied values are informational and nonunique.           | Preserved as source metadata through queues. It does not replace an unrelated worker's current logging label.                                                                              |
+| Original URL snapshot        | The incoming request context's `origin`, `host`, `hostname`, and `canonicalOrigin`.                                        | Preserved unchanged through derived contexts and queues, independently of current worker configuration.                                                                                    |
+| `dispatchId`                 | Optional application-owned send or forward option.                                                                         | Preserved through that invocation's descendants. New calls can reuse it without suppressing sends; a call that omits it does not inherit a previous invocation's value.                    |
+| `broadcastId`                | Fresh ID for each observed public send/forward invocation or internal portable-replication invocation, before preparation. | Preserved through fanout replay and retries. Another public invocation creates a new broadcast, even for the same Activity.                                                                |
+| `deliveryId`                 | Allocated for each deduplicated destination or claimed replication target, before its handoff.                             | Preserved through fanout replay, native redelivery, retries, holds, fallback, and gateway-list changes. Alternative routes share a delivery; replication targets have separate deliveries. |
+| `attemptId`                  | Fresh ID at each concrete sender entry.                                                                                    | Never reused on retries or native redelivery, and never derived from a queue round or trace ID.                                                                                            |
+| `exchangeIndex`              | Starts at zero and increments for actual fetch submissions within an attempt.                                              | Identifies an exchange together with `attemptId`; redirects and signature challenges remain within their attempt.                                                                          |
+| `queueMessageId`             | The current queue task's actual UUID.                                                                                      | Fanout expansion or replay can create new task IDs without creating new logical deliveries.                                                                                                |
+| `queueAttempt`               | The current message's Fedify retry counter, when available.                                                                | Native redelivery can leave it unchanged. One round can include multiple gateway attempts; it is not an execution ordinal.                                                                 |
+| Trace/span IDs               | The observed operation's own valid OpenTelemetry span, when available.                                                     | Optional supplementary context. Worker and attempt reports use their own spans; trace IDs never replace grouping identities.                                                               |
 
 IDs provide grouping, not ordering, deduplication, or remote idempotency.
 Callbacks can interleave or repeat, and a crash or operation that never settles
@@ -655,6 +661,28 @@ may be empty but must fit within 1,024 UTF-8 bytes. Invalid types raise
 `TypeError` and oversized strings raise `RangeError` before preparation; queue
 consumers apply the same validation. A new call that omits the ID does not
 inherit it from a previous invocation.
+
+To forward the received payload instead of constructing a new Activity, use the
+inbox handler's `forwardActivity()` method with the same application correlation
+option:
+
+~~~~ typescript twoslash
+import type { InboxContext } from "@fedify/fedify";
+declare const ctx: InboxContext<void>;
+declare const dispatchId: string;
+// ---cut-before---
+await ctx.forwardActivity(
+  { identifier: "alice" },
+  "followers",
+  { dispatchId, skipIfUnsigned: true },
+);
+~~~~
+
+This creates a `forward` broadcast, preserves the received payload, and carries
+the original inbox provenance and `dispatchId` into outgoing observations and
+queue continuations. The example skips unsigned activities. See
+[forwarding activities](./inbox.md#forwarding-activities-to-another-server) for
+delivery and signature considerations.
 
 Older messages remain processable, with missing relationships explicitly
 unknown. Legacy fanout can recover stable delivery grouping; legacy outbox

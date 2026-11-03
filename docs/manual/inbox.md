@@ -989,6 +989,9 @@ federation.setInboxListeners("/{identifier}/inbox", "/inbox")
 })
 ~~~~
 
+To record forwarding preparation, delivery attempts, and HTTP results, see
+[observing outgoing activities](./send.md#observing-outgoing-activities).
+
 > [!NOTE]
 > The `~InboxContext.forwardActivity()` method does not guarantee that the
 > forwarded activity is successfully delivered to the recipient, since
