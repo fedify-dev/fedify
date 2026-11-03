@@ -17,7 +17,7 @@
  *   CHALLENGE_ENABLED=0 deno run -A main.ts
  */
 
-import { type InboxChallengePolicy } from "@fedify/fedify";
+import type { InboxChallengePolicy } from "@fedify/fedify";
 import type { HttpMessageSignaturesSpec } from "@fedify/fedify/sig";
 import { getLogger } from "@logtape/logtape";
 import createApp from "./app.ts";
