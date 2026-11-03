@@ -548,8 +548,6 @@ HTTP abort -> inbox report.requestCancellation
 Accepted queue work -> worker (the HTTP abort does not cancel it)
 ~~~~
 
-Diagram generated with Codex.
-
 IDs provide grouping, not ordering or deduplication. Replayed work can produce
 repeated observations. Treat IDs as opaque values.
 

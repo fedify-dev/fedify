@@ -1229,7 +1229,7 @@ export class FederationImpl<TContextData>
     await Promise.all(promises);
   }
 
-  processQueuedTask(
+  async processQueuedTask(
     contextData: TContextData,
     message: Message,
   ): Promise<void> {
@@ -1243,7 +1243,7 @@ export class FederationImpl<TContextData>
     if (message.type !== "task" && message.provenance !== undefined) {
       message = { ...message, provenance };
     }
-    return withContext({
+    return await withContext({
       messageId: message.id,
       inboxRequestId: undefined,
       ...sourceLogContext(provenance),
