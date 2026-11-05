@@ -31,20 +31,20 @@ following packages:
 ::: code-group
 
 ~~~~ sh [Node.js]
-npm add @opentelemetry/sdk-node@^0.211.0 \
-  @opentelemetry/exporter-trace-otlp-proto@^0.211.0 \
+npm add @opentelemetry/sdk-node@^0.217.0 \
+  @opentelemetry/exporter-trace-otlp-proto@^0.217.0 \
   @opentelemetry/api@~1.9.1
 ~~~~
 
 ~~~~ sh [Bun]
-bun add @opentelemetry/sdk-node@^0.211.0 \
-  @opentelemetry/exporter-trace-otlp-proto@^0.211.0 \
+bun add @opentelemetry/sdk-node@^0.217.0 \
+  @opentelemetry/exporter-trace-otlp-proto@^0.217.0 \
   @opentelemetry/api@~1.9.1
 ~~~~
 
 ~~~~ sh [Deno]
-deno add npm:@opentelemetry/sdk-node@^0.211.0 \
-  npm:@opentelemetry/exporter-trace-otlp-proto@^0.211.0 \
+deno add npm:@opentelemetry/sdk-node@^0.217.0 \
+  npm:@opentelemetry/exporter-trace-otlp-proto@^0.217.0 \
   npm:@opentelemetry/api@~1.9.1
 ~~~~
 
