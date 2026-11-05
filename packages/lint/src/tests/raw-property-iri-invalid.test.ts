@@ -211,6 +211,15 @@ cases.push(
     "namespace with values shadows",
     `${setup} namespace Outer { namespace read { export const x = 1; } read(obj, "content"); }`,
   ],
+  [
+    "enum members shadow outer bindings",
+    `${setup} const iri = "content"; enum E { iri = "https://example/p", V = (read(obj, iri), 0) }`,
+  ],
+  [
+    "enum initializers are checked",
+    `${setup} enum E { V = (read(obj, "content"), 0) }`,
+    "must be a full",
+  ],
   ["IPv6 authority", `${setup} read(obj, "https://[::1]/property");`],
   [
     "escaped template",

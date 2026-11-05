@@ -108,6 +108,8 @@ function children(node: Ast): Ast[] {
     "quasi",
     "quasis",
     "children",
+    "members",
+    "initializer",
   ]);
   for (const key of keys) {
     // ESTree providers attach the token and comment arrays to Program:
@@ -239,6 +241,7 @@ export function checkRawPropertyIris(
       "ClassDeclaration",
       "StaticBlock",
       "TSModuleBlock",
+      "TSEnumDeclaration",
     ].includes(node.type);
     const scope: Scope = scoped
       ? {
@@ -258,6 +261,15 @@ export function checkRawPropertyIris(
       bind(node.id, scope);
     }
     if (node.type === "CatchClause") bind(node.param, scope);
+    if (node.type === "TSEnumDeclaration") {
+      // Initializers can refer to members by their bare names:
+      const body = ast(node.body);
+      const members = (node.members ?? body?.members ?? []) as Ast[];
+      for (const member of members) {
+        const id = name(member.id);
+        if (id != null) scope.bindings.set(id, {});
+      }
+    }
     if (node.type === "ImportDeclaration") {
       const source = name(node.source);
       const included = source != null && (
