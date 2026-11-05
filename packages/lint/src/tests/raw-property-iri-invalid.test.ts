@@ -13,6 +13,8 @@ const cases: [string, string, string?][] = [
     "",
     "as:",
     "https://example/path[0]",
+    "https://[abc]/x",
+    "https://a[::1]/x",
     "https://example/\ud800",
     "@id",
     "_:node",
@@ -221,6 +223,11 @@ cases.push(
     "must be a full",
   ],
   ["IPv6 authority", `${setup} read(obj, "https://[::1]/property");`],
+  [
+    "IPvFuture authority",
+    `${setup} read(obj, "urn://[v1.fe80::a+en1]/p");`,
+    "non-HTTP scheme",
+  ],
   [
     "escaped template",
     `${setup} read(obj, \`con\\u0074ent\`);`,

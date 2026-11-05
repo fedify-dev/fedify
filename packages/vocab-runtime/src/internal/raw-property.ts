@@ -346,9 +346,31 @@ function isIriSyntax(rest: string): boolean {
   let path = rest;
   if (rest.startsWith("//")) {
     const end = rest.slice(2).search(/[/?#]/);
+    const authority = end < 0 ? rest.slice(2) : rest.slice(2, 2 + end);
+    if (!isAuthoritySyntax(authority)) return false;
     path = end < 0 ? "" : rest.slice(2 + end);
   }
   return !path.includes("[") && !path.includes("]");
+}
+
+const IP_LITERAL_PATTERN = /^\[([^\[\]]*)\](?::[0-9]*)?$/;
+const IP_FUTURE_PATTERN = /^v[0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+$/i;
+
+/**
+ * Checks that square brackets in an authority delimit an IPv6 address or an
+ * IPvFuture literal as the whole host, as RFC 3986 requires.
+ */
+function isAuthoritySyntax(authority: string): boolean {
+  const hostPort = authority.slice(authority.lastIndexOf("@") + 1);
+  const userinfo = authority.slice(0, authority.length - hostPort.length);
+  if (/[[\]]/.test(userinfo)) return false;
+  if (!/[[\]]/.test(hostPort)) return true;
+  const match = IP_LITERAL_PATTERN.exec(hostPort);
+  if (match == null) return false;
+  const literal = match[1];
+  return IP_FUTURE_PATTERN.test(literal) ||
+    // The WHATWG URL parser accepts IPv6 addresses, but not IPvFuture:
+    URL.canParse(`http://[${literal}]/`);
 }
 
 /**

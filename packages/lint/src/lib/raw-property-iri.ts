@@ -170,6 +170,25 @@ function toJsonString(raw: string): string | null {
   return result + '"';
 }
 
+const IP_LITERAL_PATTERN = /^\[([^\[\]]*)\](?::[0-9]*)?$/;
+const IP_FUTURE_PATTERN = /^v[0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+$/i;
+
+/**
+ * Checks that square brackets in an authority delimit an IPv6 address or an
+ * IPvFuture literal as the whole host, as the runtime does.
+ */
+function isAuthoritySyntax(authority: string): boolean {
+  const hostPort = authority.slice(authority.lastIndexOf("@") + 1);
+  const userinfo = authority.slice(0, authority.length - hostPort.length);
+  if (/[[\]]/.test(userinfo)) return false;
+  if (!/[[\]]/.test(hostPort)) return true;
+  const match = IP_LITERAL_PATTERN.exec(hostPort);
+  if (match == null) return false;
+  const literal = match[1];
+  return IP_FUTURE_PATTERN.test(literal) ||
+    URL.canParse(`http://[${literal}]/`);
+}
+
 /**
  * Whether a TypeScript namespace declares a value, as opposed to containing
  * only types.  Only such a namespace shadows an outer value binding.
@@ -378,14 +397,17 @@ export function checkRawPropertyIris(
     const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(value);
     const rest = scheme == null ? "" : value.slice(scheme[0].length);
     let path = rest;
+    let authority = "";
     if (rest.startsWith("//")) {
       const end = rest.slice(2).search(/[/?#]/);
+      authority = end < 0 ? rest.slice(2) : rest.slice(2, 2 + end);
       path = end < 0 ? "" : rest.slice(2 + end);
     }
     // These checks follow the raw-property API's IRI syntax contract, rather
     // than WHATWG URL parsing (which normalizes spaces and malformed escapes).
     if (
       !scheme || rest === "" || value.startsWith("_:") ||
+      !isAuthoritySyntax(authority) ||
       path.includes("[") || path.includes("]") ||
       /["<>\\^`{|}]/u.test(value) ||
       Array.from(value).some((char) => {
