@@ -99,31 +99,31 @@ function copyRawProperties(source: object, destination: object): void {
 
 // Embeds the context of a cached document in a document embedded in it, so
 // that decoding the embedded document alone resolves its terms the same way
-// as decoding the whole document did.  Entries that the embedded document's
-// own context repeats are left out, since applying them again later yields
-// the same terms.  Property-scoped contexts of the parent are not applied, as
-// the embedded document is decoded as a top-level node:
+// as decoding the whole document did.  The parent's context entries keep
+// their order, as later entries can refer to terms earlier ones define.
+// When the embedded document's own context already begins with all of them,
+// it is used as is, since applying the same entries again yields the same
+// terms.  Property-scoped contexts of the parent are not applied, as the
+// embedded document is decoded as a top-level node:
 function inheritJsonLdContext(
   parentContext: unknown,
   document: object,
 ): object {
   const own = (document as { "@context"?: unknown })["@context"];
   const ownEntries = globalThis.Array.isArray(own) ? own : [own];
-  const ownKeys = new Set(
-    ownEntries.map((entry) => globalThis.JSON.stringify(entry)),
-  );
-  const context = [
-    ...(globalThis.Array.isArray(parentContext)
-      ? parentContext
-      : [parentContext]).filter((entry) =>
-        !ownKeys.has(globalThis.JSON.stringify(entry))
-      ),
-    ...ownEntries,
-  ];
-  return {
-    ...document,
-    "@context": context.length === 1 ? context[0] : context,
-  };
+  const parentEntries = globalThis.Array.isArray(parentContext)
+    ? parentContext
+    : [parentContext];
+  if (
+    parentEntries.length <= ownEntries.length &&
+    parentEntries.every((entry, i) =>
+      globalThis.JSON.stringify(entry) ===
+        globalThis.JSON.stringify(ownEntries[i])
+    )
+  ) {
+    return document;
+  }
+  return { ...document, "@context": [...parentEntries, ...ownEntries] };
 }
 
 // The property IRIs each key of a compacted document expands to, keyed by

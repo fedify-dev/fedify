@@ -225,6 +225,28 @@ test("getRawPropertyValues() reads embedded objects that rely on the parent's co
   }
 });
 
+test("embedded objects keep the order of the parent's context", async () => {
+  const create = await Create.fromJsonLd({
+    // The second entry refers to a term the first one defines:
+    "@context": [AS, { Alias: "Note", quant: QUANT }],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object: {
+      "@context": AS,
+      id: "https://example.com/notes/1",
+      type: "Alias",
+      content: "Hello",
+      "quant:structuredUrl": { "@id": "https://example.com/data/1" },
+    },
+  });
+  const note = await create.getObject();
+  ok(note instanceof Note);
+  deepStrictEqual(await getRawPropertyValues(note, STRUCTURED_URL), [
+    { "@id": "https://example.com/data/1" },
+  ]);
+});
+
 test("getRawPropertyValues() reads embedded objects under terms of the parent's context", async () => {
   const note = await Note.fromJsonLd({
     "@context": [AS, { extra: `${AS}#attachment`, attachment: null }],
