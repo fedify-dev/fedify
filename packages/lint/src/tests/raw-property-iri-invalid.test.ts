@@ -194,6 +194,14 @@ cases.push(
     `${setup} namespace N { const iri = "content"; read(obj, iri); }`,
     "must be a full",
   ],
+  [
+    "namespace shadows namespace import",
+    'import * as vocab from "@fedify/vocab"; namespace vocab { export function getRawPropertyValue(o: unknown, i: string) {} } vocab.getRawPropertyValue({}, "content");',
+  ],
+  [
+    "enum shadows namespace import",
+    'import * as vocab from "@fedify/vocab"; enum vocab { getRawPropertyValue } vocab.getRawPropertyValue({}, "content");',
+  ],
   ["IPv6 authority", `${setup} read(obj, "https://[::1]/property");`],
   [
     "escaped template",

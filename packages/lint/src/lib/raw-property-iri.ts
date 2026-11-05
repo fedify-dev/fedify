@@ -194,7 +194,11 @@ export function checkRawPropertyIris(
       /^(?:FunctionDeclaration|FunctionExpression|ArrowFunctionExpression)$/
         .test(node.type);
     if (
-      node.type === "FunctionDeclaration" || node.type === "ClassDeclaration"
+      node.type === "FunctionDeclaration" ||
+      node.type === "ClassDeclaration" ||
+      // Namespaces and enums also declare a value binding:
+      node.type === "TSModuleDeclaration" ||
+      node.type === "TSEnumDeclaration"
     ) {
       bind(node.id, outer);
     }
