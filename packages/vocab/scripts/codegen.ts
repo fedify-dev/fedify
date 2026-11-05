@@ -60,20 +60,29 @@ function isGeneratorSource(relativePath: string): boolean {
  * @param schemaDir The directory holding the vocabulary schemas.
  * @param generatedPath The generated file.
  * @param generatorDir The directory holding the code generator sources.
+ * @param generatorMetadata The generator's *deno.json*, whose version is
+ *                          embedded in the generated code.
  */
 async function isUpToDate(
   schemaDir: Path,
   generatedPath: Path,
   generatorDir: Path,
+  generatorMetadata: Path,
 ): Promise<boolean> {
   try {
-    const [schemaMtime, generatorMtime, generatedStat] = await Promise.all([
-      getLatestMtime(schemaDir, isSchemaFile),
-      getLatestMtime(generatorDir, isGeneratorSource),
-      generatedPath.stat(),
-    ]);
+    const [schemaMtime, generatorMtime, metadataStat, generatedStat] =
+      await Promise.all([
+        getLatestMtime(schemaDir, isSchemaFile),
+        getLatestMtime(generatorDir, isGeneratorSource),
+        generatorMetadata.stat(),
+        generatedPath.stat(),
+      ]);
     if (!generatedStat?.mtime) return false;
-    const sourceMtime = Math.max(schemaMtime, generatorMtime);
+    const sourceMtime = Math.max(
+      schemaMtime,
+      generatorMtime,
+      metadataStat?.mtime?.getTime() ?? 0,
+    );
     return generatedStat.mtime.getTime() >= sourceMtime;
   } catch {
     // If generated file doesn't exist, it's not up to date
@@ -150,6 +159,10 @@ async function codegen() {
   const packageDir = scriptsDir.parent()!;
   const schemaDir = packageDir.join("src");
   const generatorDir = packageDir.parent()!.join("vocab-tools", "src");
+  const generatorMetadata = packageDir.parent()!.join(
+    "vocab-tools",
+    "deno.json",
+  );
   const realPath = schemaDir.join("vocab.ts");
   const lockPath = packageDir.join(".vocab-codegen.lock");
 
@@ -157,7 +170,9 @@ async function codegen() {
   const lock = await acquireLock(lockPath);
   try {
     // Check if regeneration is needed (after acquiring lock)
-    if (await isUpToDate(schemaDir, realPath, generatorDir)) {
+    if (
+      await isUpToDate(schemaDir, realPath, generatorDir, generatorMetadata)
+    ) {
       $.log("vocab.ts is up to date, skipping codegen");
       return;
     }
