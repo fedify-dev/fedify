@@ -168,6 +168,32 @@ function toJsonString(raw: string): string | null {
   return result + '"';
 }
 
+/**
+ * Whether a TypeScript namespace declares a value, as opposed to containing
+ * only types.  Only such a namespace shadows an outer value binding.
+ */
+function isInstantiated(node: Ast): boolean {
+  const body = ast(node.body);
+  if (body == null) return true;
+  if (body.type === "TSModuleDeclaration") return isInstantiated(body);
+  for (const statement of (body.body ?? []) as Ast[]) {
+    const declaration = statement.type === "ExportNamedDeclaration"
+      ? ast(statement.declaration)
+      : statement;
+    if (declaration == null) continue;
+    if (
+      declaration.type === "TSInterfaceDeclaration" ||
+      declaration.type === "TSTypeAliasDeclaration" ||
+      (declaration.type === "TSModuleDeclaration" &&
+        !isInstantiated(declaration))
+    ) {
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
 function lookup(
   scope: Scope | undefined,
   identifier: string,
@@ -196,9 +222,9 @@ export function checkRawPropertyIris(
     if (
       node.type === "FunctionDeclaration" ||
       node.type === "ClassDeclaration" ||
-      // Namespaces and enums also declare a value binding:
-      node.type === "TSModuleDeclaration" ||
-      node.type === "TSEnumDeclaration"
+      // Enums and namespaces with values also declare a value binding:
+      node.type === "TSEnumDeclaration" ||
+      (node.type === "TSModuleDeclaration" && isInstantiated(node))
     ) {
       bind(node.id, outer);
     }

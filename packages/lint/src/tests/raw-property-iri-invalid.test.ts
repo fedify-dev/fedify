@@ -202,6 +202,15 @@ cases.push(
     "enum shadows namespace import",
     'import * as vocab from "@fedify/vocab"; enum vocab { getRawPropertyValue } vocab.getRawPropertyValue({}, "content");',
   ],
+  [
+    "type-only namespace does not shadow",
+    `${setup} namespace Outer { namespace read { export interface X {} } read(obj, "content"); }`,
+    "must be a full",
+  ],
+  [
+    "namespace with values shadows",
+    `${setup} namespace Outer { namespace read { export const x = 1; } read(obj, "content"); }`,
+  ],
   ["IPv6 authority", `${setup} read(obj, "https://[::1]/property");`],
   [
     "escaped template",
