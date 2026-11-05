@@ -993,6 +993,19 @@ test({
         protocols: ["activitypub", "diaspora"],
         usage: { users: {}, localPosts: 123, localComments: 456 },
       });
+
+      await assertRejects(
+        () => ctx.lookupNodeInfo("https://example.com/", { timeout: 0 }),
+        RangeError,
+      );
+      await assertRejects(
+        () =>
+          ctx.lookupNodeInfo("https://example.com/", {
+            parse: "none",
+            timeout: 0,
+          }),
+        RangeError,
+      );
     });
 
     await t.step("RequestContext", async () => {
