@@ -1,5 +1,6 @@
 ---
 links:
+  '#1272': https://github.com/fedify-dev/fedify/issues/1272
   '#1356': https://github.com/fedify-dev/fedify/pull/1356
 ---
  -  Fixed accessors of objects decoded by `fromJsonLd()` returning wrong
@@ -13,4 +14,4 @@ links:
     whole document when the cached JSON-LD cannot be matched with it.
     The `toJsonLd()` result of such an embedded object now also includes the
     entries of the enclosing context that its own context does not repeat,
-    so it means the same when used on its own.  [[#1356]]
+    so it means the same when used on its own.  [[#1272], [#1356]]
