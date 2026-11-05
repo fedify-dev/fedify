@@ -10,7 +10,6 @@ import {
   Object as ASObject,
   Person,
   Question,
-  Service,
 } from "./mod.ts";
 
 const AS = "https://www.w3.org/ns/activitystreams";
@@ -174,19 +173,27 @@ test("getRawPropertyValues() reads objects nested in reparsed embedded objects",
   ]);
 });
 
-test("getRawPropertyValues() does not mix up objects dropped by a reparse", async () => {
+test("getRawPropertyValues() reads embedded objects that rely on the parent's context", async () => {
+  // Only the outer context defines these terms, and the embedded objects
+  // have their own contexts, so accessors decode them from the cache again:
   const create = await Create.fromJsonLd({
-    "@context": [AS, { quant: QUANT, Doc: `${AS}#Document` }],
+    "@context": [AS, {
+      Doc: `${AS}#Document`,
+      Poll: `${AS}#Question`,
+      choices: `${AS}#oneOf`,
+      quant: QUANT,
+    }],
     id: "https://example.com/activities/1",
     type: "Create",
     actor: "https://example.com/users/alice",
     object: {
       "@context": AS,
-      id: "https://example.com/notes/1",
-      type: "Note",
+      id: "https://example.com/questions/1",
+      type: ["Poll", "Object"],
+      choices: [{ type: "Note", name: "Yes" }],
+      "quant:structuredUrl": { "@id": "https://example.com/data/1" },
       attachment: [
         {
-          // Only the outer context defines this type alias:
           type: "Doc",
           "quant:structuredUrl": { "@id": "https://example.com/data/a" },
         },
@@ -197,82 +204,68 @@ test("getRawPropertyValues() does not mix up objects dropped by a reparse", asyn
       ],
     },
   });
-  const note = await create.getObject();
-  ok(note instanceof Note);
-  const attachments = await Array.fromAsync(note.getAttachments());
-  // Reparsed without the outer context, the first attachment is dropped:
-  strictEqual(attachments.length, 1);
-  ok(attachments[0] != null);
-  // Without an id to match, the remaining attachment cannot be paired with
-  // its original, so it must not receive the dropped attachment's values:
+  const question = await create.getObject();
+  ok(question instanceof Question);
   deepStrictEqual(
-    await getRawPropertyValues(attachments[0], STRUCTURED_URL),
-    [],
+    (await Array.fromAsync(question.getExclusiveOptions())).map((o) =>
+      o.name?.toString()
+    ),
+    ["Yes"],
   );
+  deepStrictEqual(await getRawPropertyValues(question, STRUCTURED_URL), [
+    { "@id": "https://example.com/data/1" },
+  ]);
+  const attachments = await Array.fromAsync(question.getAttachments());
+  deepStrictEqual(attachments.length, 2);
+  for (const [i, attachment] of attachments.entries()) {
+    ok(attachment != null);
+    deepStrictEqual(await getRawPropertyValues(attachment, STRUCTURED_URL), [
+      { "@id": `https://example.com/data/${"ab"[i]}` },
+    ]);
+  }
 });
 
-test("getRawPropertyValues() keeps unknown properties when a reparse changes the class", async () => {
-  const create = await Create.fromJsonLd({
-    "@context": [AS, { Poll: `${AS}#Question`, quant: QUANT }],
-    id: "https://example.com/activities/1",
-    type: "Create",
-    actor: "https://example.com/users/alice",
-    object: {
-      "@context": AS,
-      id: "https://example.com/questions/1",
-      // Only the outer context defines this type alias and prefix:
-      type: ["Poll", "Object"],
-      oneOf: [{ type: "Note", name: "Yes" }],
-      "quant:structuredUrl": { "@id": "https://example.com/data/1" },
-      attachment: {
+test("getRawPropertyValues() reads embedded objects under terms of the parent's context", async () => {
+  const note = await Note.fromJsonLd({
+    "@context": [AS, { extra: `${AS}#attachment`, attachment: null }],
+    id: "https://example.com/notes/1",
+    type: "Note",
+    // The outer context ignores this term and maps another to as:attachment,
+    // so the cached documents under the default term are not the values:
+    attachment: [
+      {
+        "@context": AS,
         type: "Document",
-        "quant:structuredUrl": { "@id": "https://example.com/data/2" },
+        name: "Ignored",
+        [STRUCTURED_URL]: { "@id": "https://example.com/data/0" },
       },
-    },
-  });
-  const object = await create.getObject();
-  ok(object != null);
-  ok(!(object instanceof Question));
-  // Retained only by the reparse, as the original class knew it:
-  deepStrictEqual(
-    (await getRawPropertyValues(object, `${AS}#oneOf`)).length,
-    1,
-  );
-  // Retained only by the original decode, which had the outer context:
-  deepStrictEqual(await getRawPropertyValues(object, STRUCTURED_URL), [
-    { "@id": "https://example.com/data/1" },
-  ]);
-  const [attachment] = await Array.fromAsync(object.getAttachments());
-  ok(attachment != null);
-  deepStrictEqual(await getRawPropertyValues(attachment, STRUCTURED_URL), [
-    { "@id": "https://example.com/data/2" },
-  ]);
-});
-
-test("getRawPropertyValues() follows properties shared by sibling classes", async () => {
-  const create = await Create.fromJsonLd({
-    "@context": [AS, { Human: `${AS}#Person`, quant: QUANT }],
-    id: "https://example.com/activities/1",
-    type: "Create",
-    actor: "https://example.com/users/alice",
-    object: {
-      "@context": AS,
-      id: "https://example.com/users/bot",
-      // Only the outer context defines this type alias and prefix:
-      type: ["Human", "Service"],
-      endpoints: {
-        sharedInbox: "https://example.com/inbox",
-        "quant:structuredUrl": { "@id": "https://example.com/data/1" },
+    ],
+    extra: [
+      {
+        "@context": AS,
+        type: "Document",
+        name: "First",
+        [STRUCTURED_URL]: { "@id": "https://example.com/data/1" },
       },
-    },
+      {
+        "@context": AS,
+        type: "Document",
+        name: "Second",
+        [STRUCTURED_URL]: { "@id": "https://example.com/data/2" },
+      },
+    ],
   });
-  const actor = await create.getObject();
-  ok(actor instanceof Service);
-  const endpoints = actor.endpoints;
-  ok(endpoints != null);
-  deepStrictEqual(await getRawPropertyValues(endpoints, STRUCTURED_URL), [
-    { "@id": "https://example.com/data/1" },
+  const attachments = await Array.fromAsync(note.getAttachments());
+  deepStrictEqual(attachments.map((a) => a?.name?.toString()), [
+    "First",
+    "Second",
   ]);
+  for (const [i, attachment] of attachments.entries()) {
+    ok(attachment != null);
+    deepStrictEqual(await getRawPropertyValues(attachment, STRUCTURED_URL), [
+      { "@id": `https://example.com/data/${i + 1}` },
+    ]);
+  }
 });
 
 test("getRawPropertyValues() keeps unknown properties across copies", async () => {

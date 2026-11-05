@@ -2234,7 +2234,14 @@ test({
 function embeddedPropertyDocument(property: "attachment" | "object") {
   const context = "https://www.w3.org/ns/activitystreams";
   return {
-    "@context": [context, { CustomImage: `${context}#Image` }],
+    "@context": [context, {
+      // A property-scoped context applies only while the whole document is
+      // decoded, so reparsing the cached embedded value alone fails:
+      [property]: {
+        "@id": `${context}#${property}`,
+        "@context": { CustomImage: `${context}#Image` },
+      },
+    }],
     type: property === "attachment" ? "Note" : "Create",
     [property]: [
       {

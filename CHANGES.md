@@ -405,6 +405,19 @@ To be released.
      -  Fedify does not fill in a default license for objects without license
         metadata and never fetches a license URI.
 
+ -  Fixed accessors of objects decoded by `fromJsonLd()` returning wrong
+    values for embedded objects that have their own `@context`.  Such an
+    object was decoded again from its cached JSON-LD without the enclosing
+    document's context, so a type or property term that only the enclosing
+    context defined could yield an object of another class or drop
+    property values.  It could also pick embedded objects under a term that
+    the enclosing context mapped to another property.  The accessors now
+    apply the enclosing context and fall back to the object decoded with the
+    whole document when the cached JSON-LD cannot be matched with it.
+    The `toJsonLd()` result of such an embedded object now also includes the
+    entries of the enclosing context that its own context does not repeat,
+    so it means the same when used on its own.  [[#1356]]
+
 [FEP-6757]: https://w3id.org/fep/6757
 [#1212]: https://github.com/fedify-dev/fedify/issues/1212
 [#1241]: https://github.com/fedify-dev/fedify/pull/1241
@@ -454,6 +467,11 @@ To be released.
     `https://w3id.org/identity/v1`.  Previously, such a property compacted to
     a prefixed name like `dc:license` without the extra context.
     [[#1212], [#1241]]
+ -  Fixed generated accessors decoding embedded objects that have their own
+    `@context` without the enclosing document's context, which could
+    return objects of another class, drop property values, or pick objects
+    under a term the enclosing context mapped to another property.
+    [[#1356]]
  -  Generated vocabulary modules now export `getRawPropertyValues()` and
     `getRawPropertyValue()`, which read any property of a generated object
     by its full IRI, and their root classes implement `VocabularyObject` from

@@ -66,7 +66,6 @@ type RawPropertyEncoder = (
 interface RawPropertyDescriptor {
   readonly canonicalIri: string;
   readonly encode: RawPropertyEncoder;
-  readonly values: (object: object) => readonly unknown[];
 }
 
 // Unknown properties retained while decoding, keyed by the decoded object:
@@ -98,97 +97,88 @@ function copyRawProperties(source: object, destination: object): void {
   else retainedRawProperties.set(destination, retained);
 }
 
-function isSameRawPropertyNode(source: unknown, destination: unknown): boolean {
-  if (
-    source == null || destination == null ||
-    typeof source !== "object" || typeof destination !== "object" ||
-    !(RAW_PROPERTY_PROTOCOL in source) || !(RAW_PROPERTY_PROTOCOL in destination)
-  ) {
-    return false;
-  }
-  const sourceId = (source as unknown as { id: URL | null }).id;
-  const destinationId = (destination as unknown as { id: URL | null }).id;
-  return sourceId?.href === destinationId?.href;
-}
-
-function getRawPropertyDescriptors(object: object): Set<RawPropertyDescriptor> {
-  const descriptors = new Set<RawPropertyDescriptor>();
-  let prototype: object | null = globalThis.Object.getPrototypeOf(object);
-  while (prototype != null) {
-    for (const descriptor of rawPropertyDescriptors.get(prototype)?.values() ?? []) {
-      descriptors.add(descriptor);
-    }
-    prototype = globalThis.Object.getPrototypeOf(prototype);
-  }
-  return descriptors;
-}
-
-// Merges the retained unknown properties of a decoded object into a copy that
-// was decoded again by a different class.  The classes classify properties
-// differently, so the copy keeps what it retained itself and gains the
-// original's values for the properties its own class does not know either:
-function mergeRawProperties(source: object, destination: object): void {
-  const retained = retainedRawProperties.get(source);
-  if (retained == null) return;
-  const merged: Record<string, readonly unknown[]> = {
-    ...retainedRawProperties.get(destination),
+// Embeds the context of a cached document in a document embedded in it, so
+// that decoding the embedded document alone resolves its terms the same way
+// as decoding the whole document did.  Entries that the embedded document's
+// own context repeats are left out, since applying them again later yields
+// the same terms.  Property-scoped contexts of the parent are not applied, as
+// the embedded document is decoded as a top-level node:
+function inheritJsonLdContext(
+  parentContext: unknown,
+  document: object,
+): object {
+  const own = (document as { "@context"?: unknown })["@context"];
+  const ownEntries = globalThis.Array.isArray(own) ? own : [own];
+  const ownKeys = new Set(
+    ownEntries.map((entry) => globalThis.JSON.stringify(entry)),
+  );
+  const context = [
+    ...(globalThis.Array.isArray(parentContext)
+      ? parentContext
+      : [parentContext]).filter((entry) =>
+        !ownKeys.has(globalThis.JSON.stringify(entry))
+      ),
+    ...ownEntries,
+  ];
+  return {
+    ...document,
+    "@context": context.length === 1 ? context[0] : context,
   };
-  let changed = false;
-  for (const [iri, values] of globalThis.Object.entries(retained)) {
-    if (getRawPropertyDescriptor(destination, iri) != null) continue;
-    merged[iri] = values;
-    changed = true;
-  }
-  if (changed) {
-    retainedRawProperties.set(
-      destination,
-      globalThis.Object.freeze(merged) as RetainedRawProperties,
-    );
-  }
 }
 
-// Copies the retained unknown properties of a decoded object and of the
-// objects nested in it to a copy of the same graph that was decoded again,
-// pairing nested objects by property and position.  Only objects with the same
-// id are paired.  When the decoding dropped some values of a property,
-// positions no longer correspond, so nested objects are paired by id alone.
-// When the copy was decoded by a different class, the retained properties are
-// merged rather than replaced, and only the properties both classes declare,
-// matched by their IRIs, are followed:
-function copyRawPropertiesDeep(
-  source: object,
-  destination: object,
-  visited: Set<object> = new Set(),
-): void {
-  if (visited.has(destination)) return;
-  visited.add(destination);
-  if (!isSameRawPropertyNode(source, destination)) return;
-  const sameClass = globalThis.Object.getPrototypeOf(source) ===
-    globalThis.Object.getPrototypeOf(destination);
-  if (sameClass) copyRawProperties(source, destination);
-  else mergeRawProperties(source, destination);
-  for (const descriptor of getRawPropertyDescriptors(destination)) {
-    // Sibling classes declare the same property with distinct descriptors, so
-    // each object is read through its own class's descriptor:
-    const sourceDescriptor = sameClass
-      ? descriptor
-      : getRawPropertyDescriptor(source, descriptor.canonicalIri);
-    if (sourceDescriptor == null) continue;
-    const sources = sourceDescriptor.values(source);
-    const destinations = descriptor.values(destination);
-    const aligned = sources.length === destinations.length;
-    for (let i = 0; i < destinations.length; i++) {
-      const destination = destinations[i];
-      const source = aligned
-        ? sources[i]
-        : (destination as { id?: URL | null } | null)?.id == null
-        ? undefined
-        : sources.find((s) => isSameRawPropertyNode(s, destination));
-      if (source !== destination && isSameRawPropertyNode(source, destination)) {
-        copyRawPropertiesDeep(source as object, destination as object, visited);
-      }
-    }
+// The property IRIs each key of a compacted document expands to, keyed by
+// the document:
+const expandedKeys = new WeakMap<object, Map<string, Promise<string[]>>>();
+
+function expandKey(
+  document: Record<string, unknown>,
+  key: string,
+  contextLoader: DocumentLoader,
+): Promise<string[]> {
+  let keys = expandedKeys.get(document);
+  if (keys == null) {
+    keys = new Map();
+    expandedKeys.set(document, keys);
   }
+  const cached = keys.get(key);
+  if (cached != null) return cached;
+  const iris = jsonld.expand(
+    { "@context": document["@context"], [key]: [] },
+    { documentLoader: contextLoader, keepFreeFloatingNodes: true },
+  ).then((expanded: unknown[]) =>
+    globalThis.Object.keys(expanded[0] ?? {}).filter((iri) =>
+      !iri.startsWith("@")
+    )
+  );
+  // A failure, such as of the context loader, is not remembered, as another
+  // call can pass another loader:
+  const map = keys;
+  iris.catch(() => map.delete(key));
+  keys.set(key, iris);
+  return iris;
+}
+
+// Whether a compacted document maps the given key, and no other key, to
+// a property, so that the embedded documents under the key are the values
+// decoded for the property.  A context can remap the key to another property
+// or map another term to the property, in which case the cached documents
+// cannot be matched with the decoded values:
+async function isCachedPropertyKey(
+  document: Record<string, unknown>,
+  key: string,
+  iris: readonly string[],
+  contextLoader: DocumentLoader,
+): Promise<boolean> {
+  const own = await expandKey(document, key, contextLoader);
+  if (own.length !== 1 || own[0] !== iris[0]) return false;
+  const others = await globalThis.Promise.all(
+    globalThis.Object.keys(document)
+      .filter((k) => k !== key && !k.startsWith("@"))
+      // Keyword aliases, such as id, cannot take an empty array, and are
+      // not properties anyway:
+      .map((k) => expandKey(document, k, contextLoader).catch(() => [])),
+  );
+  return !others.flat().some((iri) => iris.includes(iri));
 }
 
 async function readRawProperty(
@@ -395,9 +385,6 @@ export async function* generateRawPropertyDescriptors(
         ? `{ "@list": array }`
         : "array"
     };
-      },
-      values(object: object): readonly unknown[] {
-        return (object as ${type.name}).${await getFieldName(property.uri)};
       },
     };
     descriptors.set(${JSON.stringify(property.uri)}, descriptor);
