@@ -65,6 +65,7 @@ import {
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
 import { RouterError } from "./router.ts";
+import { SendActivityError } from "./send.ts";
 
 test("createFederation()", async (t) => {
   const kv = new MemoryKvStore();
@@ -7272,6 +7273,275 @@ test("ContextImpl.sendActivity() honors the private-address policy", async (t) =
         fetchMock.hardReset();
       }
     });
+  }
+});
+
+interface DeferredSignal {
+  readonly promise: Promise<void>;
+  readonly resolve: () => void;
+}
+
+function deferredSignal(): DeferredSignal {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => resolve = r);
+  return { promise, resolve };
+}
+
+test("ContextImpl.sendActivity() waits for sibling deliveries on failure", async () => {
+  const failingInbox = "http://127.0.0.1:3001/inbox/fail";
+  const slowInbox = "http://127.0.0.1:3002/inbox/slow";
+  const failingEntered = deferredSignal();
+  const slowEntered = deferredSignal();
+  const slowCompleted = deferredSignal();
+  let releaseSlow!: () => void;
+  const slowGate = new Promise<void>((resolve) => releaseSlow = resolve);
+  let slowStarted = false;
+  let slowSettled = false;
+
+  fetchMock.spyGlobal();
+  fetchMock.post(failingInbox, () => {
+    failingEntered.resolve();
+    return new Response(null, { status: 500 });
+  });
+  fetchMock.post(slowInbox, async () => {
+    slowStarted = true;
+    slowEntered.resolve();
+    await slowGate;
+    slowSettled = true;
+    slowCompleted.resolve();
+    return new Response(null, { status: 202 });
+  });
+
+  let observed: Promise<void> | undefined;
+  let released = false;
+  try {
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      allowPrivateAddress: true,
+    });
+    const ctx = federation.createContext(new URL("https://example.com/"));
+    const activity = new Create({
+      id: new URL("https://example.com/activity/fanout"),
+      actor: new URL("https://example.com/person"),
+    });
+    let outerSettled = false;
+    let outerError: unknown;
+    const sending = ctx.sendActivity(
+      [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
+      [
+        new Person({
+          id: new URL("https://example.com/recipients/failing"),
+          inbox: new URL(failingInbox),
+        }),
+        new Person({
+          id: new URL("https://example.com/recipients/slow"),
+          inbox: new URL(slowInbox),
+        }),
+      ],
+      activity,
+      { immediate: true },
+    );
+    observed = sending.then(
+      () => {
+        outerSettled = true;
+      },
+      (error) => {
+        outerSettled = true;
+        outerError = error;
+      },
+    );
+    await Promise.all([failingEntered.promise, slowEntered.promise]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertFalse(
+      outerSettled,
+      "sendActivity() must wait for sibling deliveries before rejecting",
+    );
+    releaseSlow();
+    released = true;
+    await observed;
+    assert(slowSettled, "the delayed delivery should have settled");
+    assertInstanceOf(outerError, SendActivityError);
+  } finally {
+    if (!released) releaseSlow();
+    if (slowStarted) await slowCompleted.promise;
+    await observed;
+    fetchMock.hardReset();
+  }
+});
+
+test("InboxContextImpl.forwardActivity() waits for sibling deliveries on failure", async () => {
+  const failingInbox = "http://127.0.0.1:3003/inbox/fail";
+  const slowInbox = "http://127.0.0.1:3004/inbox/slow";
+  const failingEntered = deferredSignal();
+  const slowEntered = deferredSignal();
+  const slowCompleted = deferredSignal();
+  let releaseSlow!: () => void;
+  const slowGate = new Promise<void>((resolve) => releaseSlow = resolve);
+  let slowStarted = false;
+  let slowSettled = false;
+
+  fetchMock.spyGlobal();
+  fetchMock.post(failingInbox, () => {
+    failingEntered.resolve();
+    return new Response(null, { status: 500 });
+  });
+  fetchMock.post(slowInbox, async () => {
+    slowStarted = true;
+    slowEntered.resolve();
+    await slowGate;
+    slowSettled = true;
+    slowCompleted.resolve();
+    return new Response(null, { status: 202 });
+  });
+
+  let observed: Promise<void> | undefined;
+  let released = false;
+  try {
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      allowPrivateAddress: true,
+    });
+    const activity = await signObject(
+      new vocab.Create({
+        id: new URL("https://example.com/activity/forward"),
+        actor: new URL("https://example.com/person2"),
+      }),
+      ed25519PrivateKey,
+      ed25519Multikey.id!,
+      { contextLoader: mockDocumentLoader, documentLoader: mockDocumentLoader },
+    );
+    const ctx = new InboxContextImpl(
+      null,
+      await activity.toJsonLd({ contextLoader: mockDocumentLoader }),
+      activity.id?.href,
+      getTypeId(activity).href,
+      {
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      },
+    );
+    let outerSettled = false;
+    let outerError: unknown;
+    const sending = ctx.forwardActivity(
+      [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
+      [
+        {
+          id: new URL("https://example.com/recipients/failing"),
+          inboxId: new URL(failingInbox),
+        },
+        {
+          id: new URL("https://example.com/recipients/slow"),
+          inboxId: new URL(slowInbox),
+        },
+      ],
+      { immediate: true, skipIfUnsigned: true },
+    );
+    observed = sending.then(
+      () => {
+        outerSettled = true;
+      },
+      (error) => {
+        outerSettled = true;
+        outerError = error;
+      },
+    );
+    await Promise.all([failingEntered.promise, slowEntered.promise]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertFalse(
+      outerSettled,
+      "forwardActivity() must wait for sibling deliveries before rejecting",
+    );
+    releaseSlow();
+    released = true;
+    await observed;
+    assert(slowSettled, "the delayed delivery should have settled");
+    assertInstanceOf(outerError, SendActivityError);
+  } finally {
+    if (!released) releaseSlow();
+    if (slowStarted) await slowCompleted.promise;
+    await observed;
+    fetchMock.hardReset();
+  }
+});
+
+test("FederationImpl.sendActivity() drains deliveries when fan-out setup fails", async () => {
+  const slowInbox = "http://127.0.0.1:3005/inbox/slow";
+  const slowEntered = deferredSignal();
+  const slowCompleted = deferredSignal();
+  let releaseSlow!: () => void;
+  const slowGate = new Promise<void>((resolve) => releaseSlow = resolve);
+  let slowStarted = false;
+  let slowSettled = false;
+
+  fetchMock.spyGlobal();
+  fetchMock.post(slowInbox, async () => {
+    slowStarted = true;
+    slowEntered.resolve();
+    await slowGate;
+    slowSettled = true;
+    slowCompleted.resolve();
+    return new Response(null, { status: 202 });
+  });
+
+  let observed: Promise<void> | undefined;
+  let released = false;
+  try {
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      allowPrivateAddress: true,
+    });
+    const context = federation.createContext(new URL("https://example.com/"));
+    const activity = new Create({
+      id: new URL("https://example.com/activity/setup-failure"),
+      actor: new URL("https://example.com/person"),
+    });
+    let outerSettled = false;
+    let outerError: unknown;
+    const sending = federation.sendActivity(
+      [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
+      {
+        [slowInbox]: {
+          actorIds: ["https://example.com/recipients/slow"],
+          sharedInbox: false,
+        },
+        // Synthetic invalid input: the fan-out fails while preparing the
+        // second recipient, after the first delivery has already started.
+        "not a url": {
+          actorIds: ["https://example.com/recipients/invalid"],
+          sharedInbox: false,
+        },
+      },
+      activity,
+      { context, immediate: true },
+    );
+    observed = sending.then(
+      () => {
+        outerSettled = true;
+      },
+      (error) => {
+        outerSettled = true;
+        outerError = error;
+      },
+    );
+    await slowEntered.promise;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertFalse(
+      outerSettled,
+      "sendActivity() must drain started deliveries when fan-out setup fails",
+    );
+    releaseSlow();
+    released = true;
+    await observed;
+    assert(slowSettled, "the started delivery should have settled");
+    assertInstanceOf(outerError, TypeError);
+  } finally {
+    if (!released) releaseSlow();
+    if (slowStarted) await slowCompleted.promise;
+    await observed;
+    fetchMock.hardReset();
   }
 });
 

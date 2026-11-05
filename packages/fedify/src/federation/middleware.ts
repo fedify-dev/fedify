@@ -1473,9 +1473,9 @@ export class FederationImpl<TContextData>
         );
       }
       const promises: Promise<void>[] = [];
-      for (const inbox in inboxes) {
-        promises.push(
-          sendActivity({
+      try {
+        for (const inbox in inboxes) {
+          const promise = sendActivity({
             allowPrivateAddress: this.allowPrivateAddress,
             keys,
             activity: jsonLd,
@@ -1496,10 +1496,22 @@ export class FederationImpl<TContextData>
               this.firstKnock,
             ),
             tracerProvider: this.tracerProvider,
-          }),
-        );
+          });
+          // Mark the delivery as handled so an early rejection does not
+          // surface as an unhandled rejection while a later recipient is
+          // still being prepared.  Promise.all() and Promise.allSettled()
+          // still observe the original rejection.
+          promise.catch(() => {});
+          promises.push(promise);
+        }
+        await Promise.all(promises);
+      } finally {
+        // Drain the deliveries that were already started before propagating
+        // the original error, so that a failing recipient cannot cancel its
+        // siblings when the runtime tears down the request context (e.g.,
+        // Cloudflare Workers).
+        await Promise.allSettled(promises);
       }
-      await Promise.all(promises);
       return;
     }
     logger.debug(
@@ -3432,9 +3444,9 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
         );
       }
       const promises: Promise<void>[] = [];
-      for (const inbox in inboxes) {
-        promises.push(
-          sendActivity({
+      try {
+        for (const inbox in inboxes) {
+          const promise = sendActivity({
             allowPrivateAddress: this.federation.allowPrivateAddress,
             keys,
             activity: this.activity,
@@ -3448,10 +3460,21 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
               this.federation.kvPrefixes.httpMessageSignaturesSpec,
               this.federation.firstKnock,
             ),
-          }),
-        );
+          });
+          // Mark the delivery as handled so an early rejection does not
+          // surface as an unhandled rejection if the loop fails before
+          // Promise.all() attaches its handlers.
+          promise.catch(() => {});
+          promises.push(promise);
+        }
+        await Promise.all(promises);
+      } finally {
+        // Drain the deliveries that were already started before propagating
+        // the original error, so that a failing recipient cannot cancel its
+        // siblings when the runtime tears down the request context (e.g.,
+        // Cloudflare Workers).
+        await Promise.allSettled(promises);
       }
-      await Promise.all(promises);
       return;
     }
     logger.debug(

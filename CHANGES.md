@@ -10,6 +10,13 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Fixed `Context.sendActivity()` and `InboxContext.forwardActivity()` giving
+    up on the remaining deliveries when one recipient failed.  The immediate
+    delivery paths now wait for every delivery they have already started before
+    propagating the error, so the remaining recipients are still reached on
+    runtimes such as Cloudflare Workers, which may terminate an isolate once
+    the error response is returned.  This applies both to `immediate: true` and
+    to federations without an outbox queue.  [[#1380], [#1388]]
  -  Fixed Linked Data Signatures being emitted with a JSON-LD context that no
     longer resolves.  The attached `signature` object now uses
     `https://w3id.org/security/v1` instead of
@@ -46,7 +53,9 @@ To be released.
 [#664]: https://github.com/fedify-dev/fedify/issues/664
 [#1339]: https://github.com/fedify-dev/fedify/issues/1339
 [#1347]: https://github.com/fedify-dev/fedify/pull/1347
+[#1380]: https://github.com/fedify-dev/fedify/issues/1380
 [#1381]: https://github.com/fedify-dev/fedify/issues/1381
+[#1388]: https://github.com/fedify-dev/fedify/pull/1388
 [#1390]: https://github.com/fedify-dev/fedify/pull/1390
 
 ### @fedify/vocab
