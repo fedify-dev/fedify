@@ -504,6 +504,31 @@ export class FederationImpl<TContextData>
     return this.tracerProvider.getTracer(metadata.name, metadata.version);
   }
 
+  /**
+   * Starts listening on a queue, converting a synchronous throw into
+   * a rejected promise.
+   *
+   * `MessageQueue.listen()` is documented to never reject, but some
+   * implementations (e.g., `WorkersMessageQueue`) throw synchronously.  Without
+   * this normalization, one such throw aborts {@link _startQueueInternal} while
+   * it is still collecting listener promises, so listeners started earlier are
+   * never awaited and later queues are never started.
+   */
+  #listenQueue(
+    queue: MessageQueue,
+    ctxData: TContextData,
+    signal: AbortSignal | undefined,
+  ): Promise<void> {
+    try {
+      return queue.listen(
+        (msg) => this.processQueuedTask(ctxData, msg),
+        { signal },
+      );
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
   async _startQueueInternal(
     ctxData: TContextData,
     signal?: AbortSignal,
@@ -518,12 +543,7 @@ export class FederationImpl<TContextData>
     ) {
       logger.debug("Starting an inbox task worker.");
       this.inboxQueueStarted = true;
-      promises.push(
-        this.inboxQueue.listen(
-          (msg) => this.processQueuedTask(ctxData, msg),
-          { signal },
-        ),
-      );
+      promises.push(this.#listenQueue(this.inboxQueue, ctxData, signal));
     }
     if (
       this.outboxQueue != null &&
@@ -533,12 +553,7 @@ export class FederationImpl<TContextData>
     ) {
       logger.debug("Starting an outbox task worker.");
       this.outboxQueueStarted = true;
-      promises.push(
-        this.outboxQueue.listen(
-          (msg) => this.processQueuedTask(ctxData, msg),
-          { signal },
-        ),
-      );
+      promises.push(this.#listenQueue(this.outboxQueue, ctxData, signal));
     }
     if (
       this.fanoutQueue != null &&
@@ -549,14 +564,27 @@ export class FederationImpl<TContextData>
     ) {
       logger.debug("Starting a fanout task worker.");
       this.fanoutQueueStarted = true;
-      promises.push(
-        this.fanoutQueue.listen(
-          (msg) => this.processQueuedTask(ctxData, msg),
-          { signal },
-        ),
-      );
+      promises.push(this.#listenQueue(this.fanoutQueue, ctxData, signal));
     }
     await Promise.all(promises);
+  }
+
+  /**
+   * Starts the queue workers automatically, reporting a failure instead of
+   * leaving the returned promise unobserved.
+   *
+   * Automatic startup is best-effort: call sites cannot await it, so a failing
+   * listener (e.g., `WorkersMessageQueue`, whose `listen()` throws) must not
+   * become an unhandled rejection.  {@link startQueue} keeps rejecting for
+   * callers that start workers deliberately.
+   */
+  _startQueueAutomatically(ctxData: TContextData): void {
+    this._startQueueInternal(ctxData).catch((error) => {
+      getLogger(["fedify", "federation", "queue"]).warn(
+        "Failed to start queue workers automatically: {error}",
+        { error },
+      );
+    });
   }
 
   processQueuedTask(
@@ -1483,7 +1511,7 @@ export class FederationImpl<TContextData>
       const privateKeyJwk = await exportJwk(privateKey);
       keyJwkPairs.push({ keyId: keyId.href, privateKey: privateKeyJwk });
     }
-    if (!this.manuallyStartQueue) this._startQueueInternal(ctx.data);
+    if (!this.manuallyStartQueue) this._startQueueAutomatically(ctx.data);
     const carrier: Record<string, string> = {};
     propagation.inject(context.active(), carrier);
     const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
@@ -1781,7 +1809,9 @@ export class FederationImpl<TContextData>
             });
           }
         }
-        if (!this.manuallyStartQueue) this._startQueueInternal(contextData);
+        if (!this.manuallyStartQueue) {
+          this._startQueueAutomatically(contextData);
+        }
         const inboxContextFactory = context.toInboxContext.bind(context) as
           & typeof context.toInboxContext
           & {
@@ -2764,7 +2794,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       traceContext: carrier,
     };
     if (!this.federation.manuallyStartQueue) {
-      this.federation._startQueueInternal(this.data);
+      this.federation._startQueueAutomatically(this.data);
     }
     await this.federation.fanoutQueue.enqueue(
       message,
