@@ -49,6 +49,13 @@ To be released.
     `2024-02-31T10:00.5Z`, are now treated as malformed instead of being
     accepted with `closed` discarded.
     [[#1339], [#1347] by ChanHaeng Lee\]
+ -  Fixed the fanout worker never starting when the `fanout` queue was the only
+    configured queue.  `Federation.startQueue()` returned without calling
+    `fanoutQueue.listen()`, so fanout messages were enqueued but never
+    consumed; the implicit startup triggered by a fanout enqueue silently did
+    nothing.  Both paths now start the fanout worker, and deployments that
+    configure only `queue: { fanout: ... }` no longer need to add an unused
+    `inbox` or `outbox` queue to make fanout delivery work.  [[#1389], [#1392]]
 
 [#664]: https://github.com/fedify-dev/fedify/issues/664
 [#1339]: https://github.com/fedify-dev/fedify/issues/1339
@@ -56,7 +63,9 @@ To be released.
 [#1380]: https://github.com/fedify-dev/fedify/issues/1380
 [#1381]: https://github.com/fedify-dev/fedify/issues/1381
 [#1388]: https://github.com/fedify-dev/fedify/pull/1388
+[#1389]: https://github.com/fedify-dev/fedify/issues/1389
 [#1390]: https://github.com/fedify-dev/fedify/pull/1390
+[#1392]: https://github.com/fedify-dev/fedify/pull/1392
 
 ### @fedify/vocab
 

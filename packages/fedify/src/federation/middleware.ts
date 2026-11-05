@@ -534,7 +534,12 @@ export class FederationImpl<TContextData>
     signal?: AbortSignal,
     queue?: keyof FederationQueueOptions,
   ): Promise<void> {
-    if (this.inboxQueue == null && this.outboxQueue == null) return;
+    if (
+      this.inboxQueue == null && this.outboxQueue == null &&
+      this.fanoutQueue == null
+    ) {
+      return;
+    }
     const logger = getLogger(["fedify", "federation", "queue"]);
     const promises: Promise<void>[] = [];
     if (
