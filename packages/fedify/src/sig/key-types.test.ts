@@ -89,6 +89,16 @@ export type NodeKeyTypeChecks = [
     NodeCryptoKey,
     NonNullable<ConstructorParameters<typeof Multikey>[0]["publicKey"]>
   >,
+  AssertAssignable<
+    NodeCryptoKey,
+    NonNullable<
+      NonNullable<Parameters<CryptographicKey["clone"]>[0]>["publicKey"]
+    >
+  >,
+  AssertAssignable<
+    NodeCryptoKey,
+    NonNullable<NonNullable<Parameters<Multikey["clone"]>[0]>["publicKey"]>
+  >,
 ];
 
 test("Node.js Web Crypto keys are accepted by the public key types", () => {
