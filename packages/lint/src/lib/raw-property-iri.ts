@@ -203,6 +203,9 @@ function isInstantiated(node: Ast): boolean {
       : statement;
     if (declaration == null) continue;
     if (
+      // A non-exported import alias does not make a namespace a value:
+      (statement.type === "TSImportEqualsDeclaration" &&
+        statement.isExport !== true) ||
       declaration.type === "TSInterfaceDeclaration" ||
       declaration.type === "TSTypeAliasDeclaration" ||
       (declaration.type === "TSModuleDeclaration" &&
@@ -280,6 +283,9 @@ export function checkRawPropertyIris(
       bind(node.id, scope);
     }
     if (node.type === "CatchClause") bind(node.param, scope);
+    // An import alias, such as import iri = M.iri, binds a value that is
+    // not statically known here:
+    if (node.type === "TSImportEqualsDeclaration") bind(node.id, scope);
     if (node.type === "TSEnumDeclaration") {
       // Initializers can refer to members by their bare names:
       const body = ast(node.body);

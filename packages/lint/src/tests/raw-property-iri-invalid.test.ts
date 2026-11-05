@@ -214,6 +214,15 @@ cases.push(
     `${setup} namespace Outer { namespace read { export const x = 1; } read(obj, "content"); }`,
   ],
   [
+    "namespace with only an import alias does not shadow",
+    `${setup} namespace Outer { namespace read { import X = Outer.Y; } read(obj, "content"); }`,
+    "must be a full",
+  ],
+  [
+    "import alias shadows outer bindings",
+    `${setup} const iri = "content"; namespace M { export const iri = "https://example/p"; } namespace N { import iri = M.iri; read(obj, iri); }`,
+  ],
+  [
     "enum members shadow outer bindings",
     `${setup} const iri = "content"; enum E { iri = "https://example/p", V = (read(obj, iri), 0) }`,
   ],
