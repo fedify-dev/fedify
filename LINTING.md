@@ -76,6 +76,11 @@ following Deno rules have no equivalent and are accepted gaps:
 `no-dupe-args` and `no-await-in-sync-fn` are parser-covered.
 `no-new-symbol` is handled by `no-new-native-nonconstructor` above.
 
+Oxlint's `getter-return` does not currently report TypeScript getters that
+return nothing, although Deno does.  `eslint/no-useless-return` catches the
+common bare-`return` form; the wider missing-return case remains an accepted
+Oxlint gap.
+
 
 Suppressions
 ------------
@@ -137,6 +142,7 @@ a note here.  The current additions are:
  -  `promise/no-return-wrap`.
  -  `eslint/no-throw-literal`.
  -  `eslint/no-unsafe-optional-chaining`.
+ -  `eslint/no-useless-return`.
  -  `eslint/no-self-compare`.
  -  `eslint/no-useless-escape`.
  -  `unicorn/prefer-node-protocol`.

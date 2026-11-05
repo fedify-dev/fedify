@@ -204,7 +204,8 @@
     "@logtape/no-message-interpolation": "error",
     "@logtape/prefer-lazy-evaluation": "warn",
     "@logtape/no-unawaited-log": "error",
-    "@logtape/require-meta-sink": "warn"
+    "@logtape/require-meta-sink": "warn",
+    "eslint/no-useless-return": "error"
   },
   "ignorePatterns": [
     "**/pnpm-lock.yaml",

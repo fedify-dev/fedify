@@ -2610,7 +2610,6 @@ test("Federation.fetch()", async (t) => {
     federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(vocab.Create, (_ctx, activity) => {
         inbox.push(activity.id!.toString());
-        return;
       });
 
     return {

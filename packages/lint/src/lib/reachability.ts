@@ -296,7 +296,6 @@ export function collectReachableStatements(
 
     default:
       out.push(node);
-      return;
   }
 }
 
@@ -468,7 +467,6 @@ function collectBoundNames(pattern: unknown, out: string[]): void {
           out,
         );
       }
-      return;
   }
 }
 

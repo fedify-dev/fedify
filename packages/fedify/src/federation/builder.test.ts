@@ -797,9 +797,7 @@ test("FederationBuilder", async (t) => {
         _ctx: unknown,
         _activity: Activity,
         _reason: UnverifiedActivityReason,
-      ) => {
-        return;
-      };
+      ) => {};
 
       builder
         .setInboxListeners("/users/{identifier}/inbox")

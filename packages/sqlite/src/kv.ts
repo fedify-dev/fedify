@@ -130,7 +130,6 @@ export class SqliteKvStore implements KvStore {
       .run(encodedKey, encodedValue, now, expiresAt);
 
     this.#expire();
-    return;
   }
 
   /**
