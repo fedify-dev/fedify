@@ -8,6 +8,13 @@ import {
   getTypeNames,
 } from "./type.ts";
 
+/**
+ * Generates the TypeScript type of a property in the `values` object that the
+ * constructor and `clone()` accept.
+ * @param property The property to generate the type for.
+ * @param types The vocabulary types in scope.
+ * @returns The generated type expression.
+ */
 function generateParameterType(
   property: PropertySchema,
   types: Record<string, TypeSchema>,

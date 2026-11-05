@@ -438,6 +438,15 @@ const scalarTypes: Record<string, ScalarType> = {
   },
 };
 
+/**
+ * Gets the TypeScript type name for a type URI.
+ * @param typeUri The type URI to resolve.
+ * @param types The vocabulary types in scope.
+ * @param forInput Whether to return the type accepted as input by
+ *                 constructors and `clone()`, which can be wider than the type
+ *                 those APIs return.
+ * @returns The TypeScript type name.
+ */
 export function getTypeName(
   typeUri: string,
   types: Record<string, TypeSchema>,
@@ -451,6 +460,15 @@ export function getTypeName(
   throw new Error(`Unknown type: ${typeUri}`);
 }
 
+/**
+ * Gets the TypeScript type names for a list of type URIs.
+ * @param typeUris The type URIs to resolve.
+ * @param types The vocabulary types in scope.
+ * @param parentheses Whether to wrap a union in parentheses.
+ * @param forInput Whether to return the types accepted as input by
+ *                 constructors and `clone()`.
+ * @returns The TypeScript type expression.
+ */
 export function getTypeNames(
   typeUris: string[],
   types: Record<string, TypeSchema>,
