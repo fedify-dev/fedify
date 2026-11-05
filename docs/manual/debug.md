@@ -386,6 +386,13 @@ If you need full control over the OpenTelemetry setup (for example, to use
 a custom `KvStore` or to add additional span processors), you can pass an
 explicit `exporter` option:
 
+The example constructs the tracer provider directly, so it also needs
+`@opentelemetry/api`, `@opentelemetry/context-async-hooks`,
+`@opentelemetry/core`, and `@opentelemetry/sdk-trace-base`.  Install them with
+the pinned versions in the
+[*OpenTelemetry* chapter](./opentelemetry.md#setting-up-opentelemetry), which
+keeps them on the 2.x generation that Fedify 2.x supports.
+
 ~~~~ typescript twoslash
 // @noErrors: 2345
 import { createFederation, MemoryKvStore } from "@fedify/fedify";

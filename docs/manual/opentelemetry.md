@@ -31,15 +31,21 @@ following packages:
 ::: code-group
 
 ~~~~ sh [Node.js]
-npm add @opentelemetry/sdk-node @opentelemetry/exporter-trace-otlp-proto
+npm add @opentelemetry/sdk-node@^0.211.0 \
+  @opentelemetry/exporter-trace-otlp-proto@^0.211.0 \
+  @opentelemetry/api@~1.9.1
 ~~~~
 
 ~~~~ sh [Bun]
-bun add @opentelemetry/sdk-node @opentelemetry/exporter-trace-otlp-proto
+bun add @opentelemetry/sdk-node@^0.211.0 \
+  @opentelemetry/exporter-trace-otlp-proto@^0.211.0 \
+  @opentelemetry/api@~1.9.1
 ~~~~
 
 ~~~~ sh [Deno]
-deno add npm:@opentelemetry/sdk-node npm:@opentelemetry/exporter-trace-otlp-proto
+deno add npm:@opentelemetry/sdk-node@^0.211.0 \
+  npm:@opentelemetry/exporter-trace-otlp-proto@^0.211.0 \
+  npm:@opentelemetry/api@~1.9.1
 ~~~~
 
 :::
@@ -66,6 +72,55 @@ sdk.start();
 > [!CAUTION]
 > The above code which sets up the OpenTelemetry SDK needs to be executed before
 > the Fedify server starts.  Otherwise, the tracing may not work as expected.
+
+Some examples in this manual, including the ones later in this chapter that
+construct a `TracerProvider` or a custom exporter, import additional
+OpenTelemetry packages.  Install them with these version pins:
+
+::: code-group
+
+~~~~ sh [Node.js]
+npm add @opentelemetry/api@~1.9.1 \
+  @opentelemetry/sdk-trace-base@^2.7.1 \
+  @opentelemetry/sdk-trace-node@^2.7.1 \
+  @opentelemetry/core@^2.7.1 \
+  @opentelemetry/context-async-hooks@^2.7.1
+~~~~
+
+~~~~ sh [Bun]
+bun add @opentelemetry/api@~1.9.1 \
+  @opentelemetry/sdk-trace-base@^2.7.1 \
+  @opentelemetry/sdk-trace-node@^2.7.1 \
+  @opentelemetry/core@^2.7.1 \
+  @opentelemetry/context-async-hooks@^2.7.1
+~~~~
+
+~~~~ sh [Deno]
+deno add npm:@opentelemetry/api@~1.9.1 \
+  npm:@opentelemetry/sdk-trace-base@^2.7.1 \
+  npm:@opentelemetry/sdk-trace-node@^2.7.1 \
+  npm:@opentelemetry/core@^2.7.1 \
+  npm:@opentelemetry/context-async-hooks@^2.7.1
+~~~~
+
+:::
+
+> [!NOTE]
+> Fedify 2.x is built against OpenTelemetry JS SDK 2.x.  SDK 3.x became the
+> `latest` version on npm on 20 October 2026.  SDK 3.x requires
+> `@opentelemetry/api` 1.10 or later, while SDK 2.x requires a version below
+> 1.10, so the two generations cannot be installed as direct dependencies in
+> one project.  Installing the packages above without a version can select
+> SDK 3.x packages and fail with a peer dependency conflict.  Keep the version
+> pins above.  Support for SDK 3.x is planned for Fedify 3.0; see [#1345] for
+> progress.
+>
+> If an existing project has already resolved SDK 3.x, reinstall with the
+> pinned versions above.  npm's `--legacy-peer-deps` option bypasses npm's peer
+> dependency check, but it does not make SDK 3.x compatible with Fedify 2.x;
+> treat it as a temporary workaround.
+
+[#1345]: https://github.com/fedify-dev/fedify/issues/1345
 
 
 Using Deno's built-in OpenTelemetry support
