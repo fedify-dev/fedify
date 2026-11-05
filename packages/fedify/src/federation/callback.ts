@@ -1,4 +1,5 @@
 import type { Activity, Actor, Object } from "@fedify/vocab";
+import type { CryptoKeyPairLike } from "@fedify/vocab-runtime";
 import type { Link } from "@fedify/webfinger";
 import type { NodeInfo } from "../nodeinfo/types.ts";
 import type { PageItems } from "./collection.ts";
@@ -41,16 +42,25 @@ export type ActorDispatcher<TContextData> = (
 /**
  * A callback that dispatches key pairs for an actor.
  *
+ * The returned key pairs may come from any supported runtime, including keys
+ * obtained from `node:crypto`'s Web Crypto API, so the key pair type is
+ * parameterized.  It defaults to the ambient `CryptoKeyPair` type for
+ * compatibility with code that calls a dispatcher directly.
+ *
  * @template TContextData The context data to pass to the {@link Context}.
+ * @template TKeyPair The type of the key pairs the dispatcher returns.
  * @param context The context.
  * @param identifier The actor's internal identifier or username.
  * @returns The key pairs.
  * @since 0.10.0
  */
-export type ActorKeyPairsDispatcher<TContextData> = (
+export type ActorKeyPairsDispatcher<
+  TContextData,
+  TKeyPair extends CryptoKeyPairLike = CryptoKeyPair,
+> = (
   context: Context<TContextData>,
   identifier: string,
-) => CryptoKeyPair[] | Promise<CryptoKeyPair[]>;
+) => TKeyPair[] | Promise<TKeyPair[]>;
 
 /**
  * A callback that maps a WebFinger username to the corresponding actor's

@@ -7,6 +7,7 @@ import type {
 } from "@fedify/vocab";
 import type {
   AuthenticatedDocumentLoaderFactory,
+  CryptoKeyPairLike,
   DocumentLoaderFactory,
   GetUserAgentOptions,
 } from "@fedify/vocab-runtime";
@@ -1001,7 +1002,7 @@ export interface ActorCallbackSetters<TContextData> {
    * @since 0.10.0
    */
   setKeyPairsDispatcher(
-    dispatcher: ActorKeyPairsDispatcher<TContextData>,
+    dispatcher: ActorKeyPairsDispatcher<TContextData, CryptoKeyPairLike>,
   ): ActorCallbackSetters<TContextData>;
 
   /**

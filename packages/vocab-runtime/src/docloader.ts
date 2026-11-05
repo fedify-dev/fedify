@@ -3,6 +3,7 @@ import { type Span, SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import metadata from "../deno.json" with { type: "json" };
 import { MAX_BODY_SIZE, readBoundedText } from "./body.ts";
 import preloadedContexts from "./contexts.ts";
+import type { CryptoKeyLike } from "./crypto-key.ts";
 import { HttpHeaderLink } from "./link.ts";
 import {
   openDirectFetch,
@@ -107,7 +108,7 @@ export interface DocumentLoaderFactoryOptions {
  * @since 0.4.0
  */
 export type AuthenticatedDocumentLoaderFactory = (
-  identity: { keyId: URL; privateKey: CryptoKey },
+  identity: { keyId: URL; privateKey: CryptoKeyLike },
   options?: DocumentLoaderFactoryOptions,
 ) => DocumentLoader;
 

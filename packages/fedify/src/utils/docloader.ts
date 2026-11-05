@@ -1,5 +1,6 @@
 import {
   createActivityPubRequest,
+  type CryptoKeyLike,
   type DocumentLoader,
   type DocumentLoaderFactoryOptions,
   type DocumentLoaderOptions,
@@ -65,7 +66,7 @@ export interface GetAuthenticatedDocumentLoaderOptions
  * @since 0.4.0
  */
 export function getAuthenticatedDocumentLoader(
-  identity: { keyId: URL; privateKey: CryptoKey },
+  identity: { keyId: URL; privateKey: CryptoKeyLike },
   options: GetAuthenticatedDocumentLoaderOptions = {},
 ): DocumentLoader {
   return createAuthenticatedDocumentLoader(identity, options);
@@ -107,7 +108,7 @@ type LoadResult =
  * @throws {TypeError} If the key is invalid or unsupported.
  */
 export function createAuthenticatedDocumentLoader(
-  identity: { keyId: URL; privateKey: CryptoKey },
+  identity: { keyId: URL; privateKey: CryptoKeyLike },
   { allowPrivateAddress, userAgent, specDeterminer, tracerProvider }:
     GetAuthenticatedDocumentLoaderOptions = {},
   deps: AuthenticatedDocumentLoaderDependencies = {},

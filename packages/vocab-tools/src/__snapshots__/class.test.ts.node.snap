@@ -5,6 +5,7 @@ import { getLogger } from \\"@logtape/logtape\\";
 import { type Span, SpanStatusCode, type TracerProvider, trace }
     from \\"@opentelemetry/api\\";
 import {
+    type CryptoKeyLike,
     decodeMultibase,
     type DocumentLoader,
     encodeMultibase,
@@ -19113,7 +19114,7 @@ export class CryptographicKey {
     values:
   {
 id?: URL | null;
-owner?: Application | Group | Organization | Person | Service | URL | null;publicKey?: CryptoKey | null;}
+owner?: Application | Group | Organization | Person | Service | URL | null;publicKey?: CryptoKeyLike | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -19179,7 +19180,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
     values:
   {
 id?: URL | null;
-owner?: Application | Group | Organization | Person | Service | URL | null;publicKey?: CryptoKey | null;}
+owner?: Application | Group | Organization | Person | Service | URL | null;publicKey?: CryptoKeyLike | null;}
 
     = {},
     options: {
@@ -20034,7 +20035,7 @@ export class Multikey {
     values:
   {
 id?: URL | null;
-controller?: Application | Group | Organization | Person | Service | URL | null;publicKey?: CryptoKey | null;}
+controller?: Application | Group | Organization | Person | Service | URL | null;publicKey?: CryptoKeyLike | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -20100,7 +20101,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
     values:
   {
 id?: URL | null;
-controller?: Application | Group | Organization | Person | Service | URL | null;publicKey?: CryptoKey | null;}
+controller?: Application | Group | Organization | Person | Service | URL | null;publicKey?: CryptoKeyLike | null;}
 
     = {},
     options: {

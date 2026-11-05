@@ -5,7 +5,8 @@ import {
   Multikey,
   type Object,
 } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type { CryptoKeyLike, DocumentLoader } from "@fedify/vocab-runtime";
+import { asCryptoKey } from "@fedify/vocab-runtime/internal";
 import { getLogger } from "@logtape/logtape";
 import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
 import { encodeHex } from "byte-encodings/hex";
@@ -57,7 +58,7 @@ export interface CreateProofOptions {
  */
 export async function createProof(
   object: Object,
-  privateKey: CryptoKey,
+  privateKey: CryptoKeyLike,
   keyId: URL,
   options: CreateProofOptions = {},
 ): Promise<DataIntegrityProof> {
@@ -71,7 +72,7 @@ interface CreateProofResult {
 
 async function createProofInternal(
   object: Object,
-  privateKey: CryptoKey,
+  privateKey: CryptoKeyLike,
   keyId: URL,
   { contextLoader, context, created }: CreateProofOptions = {},
 ): Promise<CreateProofResult> {
@@ -105,7 +106,11 @@ async function createProofInternal(
   const digest = new Uint8Array(proofDigest.byteLength + msgDigest.byteLength);
   digest.set(new Uint8Array(proofDigest), 0);
   digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
-  const sig = await crypto.subtle.sign("Ed25519", privateKey, digest);
+  const sig = await crypto.subtle.sign(
+    "Ed25519",
+    asCryptoKey(privateKey),
+    digest,
+  );
   return {
     proof: new DataIntegrityProof({
       cryptosuite: "eddsa-jcs-2022",
@@ -166,7 +171,7 @@ export interface SignObjectOptions extends CreateProofOptions {
  */
 export async function signObject<T extends Object>(
   object: T,
-  privateKey: CryptoKey,
+  privateKey: CryptoKeyLike,
   keyId: URL,
   options: SignObjectOptions = {},
 ): Promise<T> {

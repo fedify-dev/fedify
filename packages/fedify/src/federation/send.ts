@@ -1,5 +1,9 @@
 import type { Recipient } from "@fedify/vocab";
-import { FetchError, UrlError } from "@fedify/vocab-runtime";
+import {
+  type CryptoKeyLike,
+  FetchError,
+  UrlError,
+} from "@fedify/vocab-runtime";
 import {
   openDirectFetch,
   openPublicFetch,
@@ -90,7 +94,7 @@ export interface SenderKeyPair {
   /**
    * The actor's private key to sign the request.
    */
-  readonly privateKey: CryptoKey;
+  readonly privateKey: CryptoKeyLike;
 
   /**
    * The public key ID that corresponds to the private key.

@@ -18,12 +18,14 @@ function generateParameterType(
   if (hasSingularAccessor(property)) {
     if (scalar) {
       code.push(
-        `${property.singularName}?: ${getTypeNames(range, types)} | null;`,
+        `${property.singularName}?: ${
+          getTypeNames(range, types, false, true)
+        } | null;`,
       );
     } else {
       code.push(
         `${property.singularName}?: ${
-          getTypeNames(range, types)
+          getTypeNames(range, types, false, true)
         } | URL | null;`,
       );
     }
@@ -31,11 +33,15 @@ function generateParameterType(
   if (isNonFunctionalProperty(property)) {
     if (scalar) {
       code.push(
-        `${property.pluralName}?: (${getTypeNames(range, types, true)})[];`,
+        `${property.pluralName}?: (${
+          getTypeNames(range, types, true, true)
+        })[];`,
       );
     } else {
       code.push(
-        `${property.pluralName}?: (${getTypeNames(range, types)} | URL)[];`,
+        `${property.pluralName}?: (${
+          getTypeNames(range, types, false, true)
+        } | URL)[];`,
       );
     }
   }

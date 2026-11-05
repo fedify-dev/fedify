@@ -7,6 +7,7 @@ import type {
   Recipient,
 } from "@fedify/vocab";
 import { getTypeId } from "@fedify/vocab";
+import type { CryptoKeyPairLike } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import type { Tracer } from "@opentelemetry/api";
@@ -445,7 +446,7 @@ export class FederationBuilderImpl<TContextData>
     this.actorCallbacks = callbacks;
     const setters: ActorCallbackSetters<TContextData> = {
       setKeyPairsDispatcher: (
-        dispatcher: ActorKeyPairsDispatcher<TContextData>,
+        dispatcher: ActorKeyPairsDispatcher<TContextData, CryptoKeyPairLike>,
       ) => {
         callbacks.keyPairsDispatcher = (ctx, identifier) =>
           this._getTracer().startActiveSpan(
@@ -1535,7 +1536,7 @@ export function createFederationBuilder<TContextData>(): FederationBuilder<
 
 interface ActorCallbacks<TContextData> {
   dispatcher?: ActorDispatcher<TContextData>;
-  keyPairsDispatcher?: ActorKeyPairsDispatcher<TContextData>;
+  keyPairsDispatcher?: ActorKeyPairsDispatcher<TContextData, CryptoKeyPairLike>;
   handleMapper?: ActorHandleMapper<TContextData>;
   aliasMapper?: ActorAliasMapper<TContextData>;
   authorizePredicate?: AuthorizePredicate<TContextData>;

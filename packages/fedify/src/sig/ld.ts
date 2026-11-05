@@ -1,10 +1,12 @@
 import { Activity, CryptographicKey, getTypeId, Object } from "@fedify/vocab";
 import {
+  type CryptoKeyLike,
   type DocumentLoader,
   getDocumentLoader,
   preloadedContexts,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
+import { asCryptoKey } from "@fedify/vocab-runtime/internal";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { getLogger } from "@logtape/logtape";
 import { SpanStatusCode, trace, type TracerProvider } from "@opentelemetry/api";
@@ -838,7 +840,7 @@ export interface CreateSignatureOptions {
  */
 export async function createSignature(
   jsonLd: unknown,
-  privateKey: CryptoKey,
+  privateKey: CryptoKeyLike,
   keyId: URL,
   { contextLoader, created }: CreateSignatureOptions = {},
 ): Promise<Signature> {
@@ -867,7 +869,7 @@ export async function createSignature(
   const messageBytes = encoder.encode(message);
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
-    privateKey,
+    asCryptoKey(privateKey),
     messageBytes,
   );
   return {
@@ -906,7 +908,7 @@ export interface SignJsonLdOptions extends CreateSignatureOptions {
  */
 export async function signJsonLd(
   jsonLd: unknown,
-  privateKey: CryptoKey,
+  privateKey: CryptoKeyLike,
   keyId: URL,
   options: SignJsonLdOptions,
 ): Promise<{ signature: Signature }> {

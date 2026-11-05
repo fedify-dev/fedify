@@ -10,7 +10,7 @@ import type {
   Recipient,
   TraverseCollectionOptions,
 } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type { CryptoKeyLike, DocumentLoader } from "@fedify/vocab-runtime";
 import type {
   LookupWebFingerOptions,
   ResourceDescriptor,
@@ -239,7 +239,7 @@ export interface Context<TContextData> {
    * @since 0.4.0
    */
   getDocumentLoader(
-    identity: { keyId: URL; privateKey: CryptoKey },
+    identity: { keyId: URL; privateKey: CryptoKeyLike },
   ): DocumentLoader;
 
   /**
