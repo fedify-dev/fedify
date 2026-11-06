@@ -24,6 +24,8 @@ interface Binding {
 interface Scope {
   parent?: Scope;
   functionScope: boolean;
+  /** Whether declarations merged from elsewhere can add to this scope. */
+  mergeable?: boolean;
   bindings: Map<string, Binding>;
 }
 
@@ -228,6 +230,21 @@ function lookup(
 }
 
 /**
+ * Looks up a binding to follow for its value.  Another declaration of the same
+ * namespace or enum can export a member that shadows an outer binding, so
+ * the lookup does not leave such a scope.
+ */
+function lookupConstant(
+  scope: Scope | undefined,
+  identifier: string,
+): Binding | undefined {
+  for (; scope; scope = scope.parent) {
+    if (scope.bindings.has(identifier)) return scope.bindings.get(identifier);
+    if (scope.mergeable) return undefined;
+  }
+}
+
+/**
  * Analyze a complete program after collecting lexical bindings, including
  * declarations that shadow imports before their textual declaration.
  */
@@ -271,6 +288,8 @@ export function checkRawPropertyIris(
         // A TypeScript namespace body is compiled to a function body:
         functionScope: isFunction || node.type === "StaticBlock" ||
           node.type === "TSModuleBlock",
+        mergeable: node.type === "TSModuleBlock" ||
+          node.type === "TSEnumDeclaration",
         bindings: new Map(),
       }
       : outer;
@@ -374,7 +393,7 @@ export function checkRawPropertyIris(
     }
     if (node.type === "Identifier") {
       return staticString(
-        lookup(scopes.get(node), node.name as string)?.init,
+        lookupConstant(scopes.get(node), node.name as string)?.init,
         seen,
         true,
       );

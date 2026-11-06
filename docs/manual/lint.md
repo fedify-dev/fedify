@@ -1815,7 +1815,9 @@ The rule checks string literals, templates without expressions, `const`
 bindings to those, and global `new URL("…")` calls without a base argument.
 Dynamic values, `new URL(relative, base)`, and `URL` objects bound to
 a variable are ignored, since a `URL` object can be changed after it is
-constructed.
+constructed.  Inside a TypeScript namespace or enum, `const` bindings declared
+outside of it are ignored too, since another declaration of the same namespace
+or enum can shadow them.
 
 By default, only imports from `@fedify/vocab` are inspected, including
 `jsr:`/`npm:` and versioned specifiers.  The deprecated

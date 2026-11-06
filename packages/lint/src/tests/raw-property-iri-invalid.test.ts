@@ -223,6 +223,14 @@ cases.push(
     `${setup} const iri = "content"; namespace M { export const iri = "https://example/p"; } namespace N { import iri = M.iri; read(obj, iri); }`,
   ],
   [
+    "merged namespace members hide outer bindings",
+    `${setup} const iri = "content"; namespace N { export const iri = "https://example/p"; } namespace N { read(obj, iri); }`,
+  ],
+  [
+    "merged enum members hide outer bindings",
+    `${setup} const iri = "content"; enum E { iri = "https://example/p" } enum E { V = (read(obj, iri), 0) }`,
+  ],
+  [
     "enum members shadow outer bindings",
     `${setup} const iri = "content"; enum E { iri = "https://example/p", V = (read(obj, iri), 0) }`,
   ],
