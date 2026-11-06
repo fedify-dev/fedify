@@ -124,7 +124,7 @@ test("getRawPropertyValues() reads embedded objects", async () => {
 
 test("getRawPropertyValues() reads embedded objects with their own contexts", async () => {
   // The prefix comes from the parent, while the embedded note has its own
-  // context, so the accessors reparse it from the cached JSON-LD:
+  // context, so the accessors find it in the cached JSON-LD:
   const create = await Create.fromJsonLd({
     "@context": [AS, { quant: QUANT }],
     id: "https://example.com/activities/1",
@@ -148,7 +148,7 @@ test("getRawPropertyValues() reads embedded objects with their own contexts", as
   ]);
 });
 
-test("getRawPropertyValues() reads objects nested in reparsed embedded objects", async () => {
+test("getRawPropertyValues() reads objects nested in cached embedded objects", async () => {
   const create = await Create.fromJsonLd({
     "@context": [AS, { quant: QUANT }],
     id: "https://example.com/activities/1",

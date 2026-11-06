@@ -10,6 +10,7 @@ links:
     context defined could yield an object of another class or drop
     property values.  It could also pick embedded objects under a term that
     the enclosing context mapped to another property.  The accessors now
-    apply the enclosing context and fall back to the object decoded with the
-    whole document when the cached JSON-LD cannot be matched with it.
-    [[#1272], [#1356]]
+    return the object decoded with the whole document, which keeps the JSON-LD
+    it was received as for `toJsonLd()`.  As a result, they return the same
+    object on each call, and an embedded object no longer takes the document
+    loaders passed to the accessor.  [[#1272], [#1356]]

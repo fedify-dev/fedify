@@ -97,73 +97,46 @@ function copyRawProperties(source: object, destination: object): void {
   else retainedRawProperties.set(destination, retained);
 }
 
-// The contexts embedded objects were decoded with, keyed by the objects.  Their
-// cached JSON-LD stays as it was received, as a proof can cover its context, so
-// this is what decoding the objects nested in them has to start from:
-const inheritedContexts = new WeakMap<object, unknown>();
+// The contexts in effect for the cached JSON-LD of embedded objects, which
+// stays as it was received, keyed by the objects.  Telling which keys of such
+// a document are which properties takes the contexts of its parents as well:
+const cachedJsonLdContexts = new WeakMap<object, unknown>();
 
 function getCachedJsonLdContext(object: object, context: unknown): unknown {
-  return inheritedContexts.has(object)
-    ? inheritedContexts.get(object)
+  return cachedJsonLdContexts.has(object)
+    ? cachedJsonLdContexts.get(object)
     : context;
 }
 
-// Puts the document an embedded object was received as back into its cache,
-// after decoding it from the result of inheritJsonLdContext():
-async function keepCachedJsonLd(
+// Objects that were given the document they were received as:
+const receivedJsonLd = new WeakSet<object>();
+
+// Gives an embedded object, decoded along with the whole document, the document
+// it was received as, which toJsonLd() has to return as is, as a proof can
+// cover it.  The object is not decoded from that document, since an embedded
+// document alone cannot rebuild what its parents' contexts contributed to it,
+// such as type-scoped and property-scoped contexts:
+function keepReceivedJsonLd(
   object: unknown,
   document: object,
-  decoded: object,
-  contextLoader: DocumentLoader,
-): Promise<void> {
-  // A preprocessor can turn the value into a scalar:
-  if (decoded === document || object == null || typeof object !== "object") {
+  parentContext: unknown,
+): void {
+  if (
+    object == null || typeof object !== "object" ||
+    !(RAW_PROPERTY_PROTOCOL in object) || receivedJsonLd.has(object)
+  ) {
     return;
   }
-  const target = object as unknown as { _cachedJsonLd?: unknown };
-  const cached = target._cachedJsonLd;
-  if (cached == null) return;
-  inheritedContexts.set(object, (decoded as { "@context"?: unknown })["@context"]);
-  // The decoder can normalize what it caches, e.g., portable object IRIs:
-  target._cachedJsonLd =
-    globalThis.JSON.stringify(cached) === globalThis.JSON.stringify(decoded)
-      ? structuredClone(document)
-      : await compactJsonLdCache(
-        await jsonld.expand(cached, {
-          documentLoader: contextLoader,
-          keepFreeFloatingNodes: true,
-        }),
-        document,
-        contextLoader,
-      );
-}
-
-// Embeds the context of a cached document in a document embedded in it, so
-// that decoding the embedded document alone resolves its terms the same way
-// as decoding the whole document did.  The parent's context entries keep
-// their order, as later entries can refer to terms earlier ones define.
-// When the embedded document's own context already begins with all of them,
-// it is used as is, since applying the same entries again yields the same
-// terms:
-function inheritJsonLdContext(
-  parentContext: unknown,
-  document: object,
-): object {
+  receivedJsonLd.add(object);
+  (object as unknown as { _cachedJsonLd?: unknown })._cachedJsonLd =
+    structuredClone(document);
   const own = (document as { "@context"?: unknown })["@context"];
-  const ownEntries = globalThis.Array.isArray(own) ? own : [own];
-  const parentEntries = globalThis.Array.isArray(parentContext)
-    ? parentContext
-    : [parentContext];
-  if (
-    parentEntries.length <= ownEntries.length &&
-    parentEntries.every((entry, i) =>
-      globalThis.JSON.stringify(entry) ===
-        globalThis.JSON.stringify(ownEntries[i])
-    )
-  ) {
-    return document;
-  }
-  return { ...document, "@context": [...parentEntries, ...ownEntries] };
+  cachedJsonLdContexts.set(object, [
+    ...(globalThis.Array.isArray(parentContext)
+      ? parentContext
+      : [parentContext]),
+    ...(globalThis.Array.isArray(own) ? own : [own]),
+  ]);
 }
 
 // The results of isCachedPropertyKey(), keyed by the document and then by the
@@ -211,94 +184,6 @@ async function mapsOnlyKeyToProperty(
     // Some other term could not take the placeholder, so nothing is known:
     return false;
   }
-}
-
-// Only the first entry of a context can declare that it does not propagate:
-function isNonPropagatingContext(context: unknown): boolean {
-  const first = globalThis.Array.isArray(context) ? context[0] : context;
-  return first != null && typeof first === "object" &&
-    (first as Record<string, unknown>)["@propagate"] === false;
-}
-
-// Objects whose contexts could not be rebuilt, so that neither they nor the
-// objects nested in them can be decoded again from their cached JSON-LD:
-const fixedCachedJsonLd = new WeakSet<object>();
-
-// Whether an embedded document under a key of the cached JSON-LD of an object
-// can be decoded again.  Prepending a context cannot rebuild what a context
-// that does not propagate to embedded nodes, in the document or in the embedded
-// document, or a type-scoped or property-scoped context took part in:
-function canDecodeCachedJsonLd(
-  object: object,
-  context: unknown,
-  embedded: object,
-): boolean {
-  return !fixedCachedJsonLd.has(object) &&
-    !isNonPropagatingContext(context) &&
-    !isNonPropagatingContext(
-      (embedded as { "@context"?: unknown })["@context"],
-    ) &&
-    !hasScopedContext(context);
-}
-
-// Gives an object decoded with the whole document the document it was received
-// as, which a proof can cover, when it cannot be decoded from that document:
-function fixCachedJsonLd(object: unknown, document: object): void {
-  if (
-    object == null || typeof object !== "object" ||
-    !(RAW_PROPERTY_PROTOCOL in object)
-  ) {
-    return;
-  }
-  (object as unknown as { _cachedJsonLd?: unknown })._cachedJsonLd =
-    structuredClone(document);
-  fixedCachedJsonLd.add(object);
-}
-
-function hasScopedContext(context: unknown): boolean {
-  const entries = globalThis.Array.isArray(context) ? context : [context];
-  return entries.some((entry) =>
-    entry != null && typeof entry === "object" &&
-    globalThis.Object.values(entry).some((term) =>
-      term != null && typeof term === "object" && "@context" in term
-    )
-  );
-}
-
-// Context loaders that load each URL once, keyed by the cached document whose
-// embedded documents they decode and then by the wrapped loader.  The documents
-// can come from a remote peer, and decoding each of them with the parent's
-// context must not multiply outbound requests by their number:
-const sharedContextLoaders = new WeakMap<
-  object,
-  WeakMap<DocumentLoader, DocumentLoader>
->();
-
-function shareContextLoader(
-  document: object,
-  contextLoader: DocumentLoader,
-): DocumentLoader {
-  let loaders = sharedContextLoaders.get(document);
-  if (loaders == null) {
-    loaders = new WeakMap();
-    sharedContextLoaders.set(document, loaders);
-  }
-  let shared = loaders.get(contextLoader);
-  if (shared == null) {
-    const loads = new Map<string, ReturnType<DocumentLoader>>();
-    shared = (url, options) => {
-      let load = loads.get(url);
-      if (load == null) {
-        load = contextLoader(url, options);
-        loads.set(url, load);
-        // A failure is not remembered, so that a later call can try again:
-        load.catch(() => loads.delete(url));
-      }
-      return load;
-    };
-    loaders.set(contextLoader, shared);
-  }
-  return shared;
 }
 
 // Whether the embedded documents under a key of a compacted document are the
