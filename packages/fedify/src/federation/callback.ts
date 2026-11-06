@@ -1,5 +1,5 @@
 import type { Activity, Actor, Object } from "@fedify/vocab";
-import type { CryptoKeyPairLike } from "@fedify/vocab-runtime";
+import type { CryptoKeyLike, CryptoKeyPairLike } from "@fedify/vocab-runtime";
 import type { Link } from "@fedify/webfinger";
 import type { NodeInfo } from "../nodeinfo/types.ts";
 import type { PageItems } from "./collection.ts";
@@ -213,15 +213,18 @@ export type InboxErrorHandler<TContextData> = (
  *          not authorized.
  * @since 0.11.0
  */
-export type SharedInboxKeyDispatcher<TContextData> = (
+export type SharedInboxKeyDispatcher<
+  TContextData,
+  TKeyPair extends CryptoKeyLike = CryptoKey,
+> = (
   context: Context<TContextData>,
 ) =>
-  | SenderKeyPair
+  | SenderKeyPair<TKeyPair>
   | { identifier: string }
   | { username: string }
   | null
   | Promise<
-    | SenderKeyPair
+    | SenderKeyPair<TKeyPair>
     | { identifier: string }
     | { username: string }
     | null

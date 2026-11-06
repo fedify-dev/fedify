@@ -7,6 +7,7 @@ import type {
 } from "@fedify/vocab";
 import type {
   AuthenticatedDocumentLoaderFactory,
+  CryptoKeyLike,
   CryptoKeyPairLike,
   DocumentLoaderFactory,
   GetUserAgentOptions,
@@ -1188,7 +1189,7 @@ export interface InboxListenerSetters<TContextData> {
    * @since 0.11.0
    */
   setSharedKeyDispatcher(
-    dispatcher: SharedInboxKeyDispatcher<TContextData>,
+    dispatcher: SharedInboxKeyDispatcher<TContextData, CryptoKeyLike>,
   ): InboxListenerSetters<TContextData>;
 
   /**

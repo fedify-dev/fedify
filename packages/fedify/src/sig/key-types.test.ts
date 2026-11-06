@@ -9,8 +9,12 @@ import type {
 } from "@fedify/vocab-runtime";
 import type { ActorKeyPairsDispatcher } from "../federation/callback.ts";
 import type { Context } from "../federation/context.ts";
-import type { ActorCallbackSetters } from "../federation/federation.ts";
+import type {
+  ActorCallbackSetters,
+  InboxListenerSetters,
+} from "../federation/federation.ts";
 import type { SenderKeyPair } from "../federation/send.ts";
+import type { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import type { signRequest } from "./http.ts";
 import type { createSignature, signJsonLd } from "./ld.ts";
 import type { createProof, signObject } from "./proof.ts";
@@ -66,10 +70,19 @@ export type NodeKeyTypeChecks = [
     ActorKeyPairsDispatcher<void, CryptoKeyPairLike>,
     Parameters<ActorCallbackSetters<void>["setKeyPairsDispatcher"]>[0]
   >,
-  AssertAssignable<NodeCryptoKey, SenderKeyPair["privateKey"]>,
+  AssertAssignable<SenderKeyPair["privateKey"], CryptoKey>,
+  AssertAssignable<NodeCryptoKey, SenderKeyPair<CryptoKeyLike>["privateKey"]>,
+  AssertAssignable<
+    (context: Context<void>) => SenderKeyPair<CryptoKeyLike>,
+    Parameters<InboxListenerSetters<void>["setSharedKeyDispatcher"]>[0]
+  >,
+  AssertAssignable<
+    Parameters<AuthenticatedDocumentLoaderFactory>[0]["privateKey"],
+    CryptoKey
+  >,
   AssertAssignable<
     NodeCryptoKey,
-    Parameters<AuthenticatedDocumentLoaderFactory>[0]["privateKey"]
+    Parameters<typeof getAuthenticatedDocumentLoader>[0]["privateKey"]
   >,
   AssertAssignable<NodeCryptoKey, Parameters<typeof signRequest>[1]>,
   AssertAssignable<NodeCryptoKey, Parameters<typeof createProof>[1]>,

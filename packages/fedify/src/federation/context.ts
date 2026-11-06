@@ -371,8 +371,8 @@ export interface Context<TContextData> {
    */
   sendActivity(
     sender:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[],
@@ -624,8 +624,8 @@ export interface InboxContext<TContextData> extends Context<TContextData> {
    */
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[],
