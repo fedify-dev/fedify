@@ -340,8 +340,7 @@ node scripts/test_testing_pack.mjs
 """
 
 [tasks."test:deno"]
-depends = ["deno:cache"]
-wait_for = ["build"]
+depends = ["deno:cache", "build"]
 description = "Run the test suite using Deno"
 env = { FEDIFY_REQUIRE_OXLINT_TESTS = "1" }
 run = "deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel"
