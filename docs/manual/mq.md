@@ -477,6 +477,9 @@ export default {
       kv: undefined as unknown as KvStore,
 // ---cut-end---
       queue: new WorkersMessageQueue(env.QUEUE_BINDING),
+      // Cloudflare Queues cannot be polled, so the queue() handler below
+      // consumes the messages instead of Federation.startQueue():
+      manuallyStartQueue: true,
     });
     // Omit the rest of the code for brevity
   },
@@ -491,6 +494,10 @@ export default {
       kv: undefined as unknown as KvStore,
 // ---cut-end---
       queue: new WorkersMessageQueue(env.QUEUE_BINDING),
+      // Inbox listeners run inside processQueuedTask() and may call
+      // ctx.sendActivity(), which would otherwise start the queue workers
+      // automatically:
+      manuallyStartQueue: true,
     });
     for (const msg of batch.messages) {
       await federation.processQueuedTask(
@@ -521,6 +528,13 @@ export default {
 > method, you need to call `Federation.processQueuedTask()` method to manually
 > process the messages.  The `queue()` method is the only way to consume
 > messages from the queue in Cloudflare Workers.
+>
+> Set `~FederationOptions.manuallyStartQueue` to `true` for the same reason.
+> Otherwise Fedify tries to start the queue workers automatically the first time
+> an activity is received or sent, and since `listen()` throws, it logs a
+> warning through [LogTape](./log.md) that the workers could not be started.
+> The workers are not started on this runtime either way; the option prevents
+> that unsuccessful attempt and the warning.
 
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Cloudflare Queues]: https://developers.cloudflare.com/queues/

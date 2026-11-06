@@ -7,6 +7,7 @@ import type { DocumentLoader } from "@fedify/vocab-runtime";
 import type { TracerProvider } from "@opentelemetry/api";
 import * as vocab from "@fedify/vocab";
 import { Create, getTypeId, lookupObject, Offer, Person } from "@fedify/vocab";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import {
   assert,
   assertEquals,
@@ -2273,6 +2274,419 @@ test("FederationImpl.sendActivity()", async (t) => {
   });
 
   fetchMock.hardReset();
+});
+
+const QUEUE_STARTUP_WARNING =
+  "Failed to start queue workers automatically: {error}";
+
+interface UnhandledRejectionCapture {
+  reasons: unknown[];
+  settle(): Promise<void>;
+  stop(): void;
+}
+
+/**
+ * Captures unhandled promise rejections for the duration of a test step.
+ *
+ * Deno dispatches `unhandledrejection` on `globalThis`, while Node.js and Bun
+ * dispatch `unhandledRejection` on `process`.  Bun's test runner currently
+ * fires neither, so there the native runner's own unhandled-rejection failure
+ * remains the signal; the assertion is harmless otherwise.
+ */
+function captureUnhandledRejections(): UnhandledRejectionCapture {
+  const reasons: unknown[] = [];
+  const isDeno = "Deno" in globalThis;
+  interface RejectionEvent {
+    reason: unknown;
+    preventDefault(): void;
+  }
+  const onRejectionEvent = (event: RejectionEvent): void => {
+    // Keep Deno from treating a deliberate pre-fix failure as a fatal error
+    // that cancels the remaining tests in this file.
+    event.preventDefault();
+    reasons.push(event.reason);
+  };
+  const onProcessRejection = (reason: unknown): void => {
+    reasons.push(reason);
+  };
+  const globalTarget = globalThis as unknown as {
+    addEventListener?(
+      type: string,
+      listener: (event: RejectionEvent) => void,
+    ): void;
+    removeEventListener?(
+      type: string,
+      listener: (event: RejectionEvent) => void,
+    ): void;
+  };
+  const proc = (globalThis as unknown as {
+    process?: {
+      on?(type: string, listener: (reason: unknown) => void): void;
+      off?(type: string, listener: (reason: unknown) => void): void;
+    };
+  }).process;
+  if (isDeno) {
+    globalTarget.addEventListener?.("unhandledrejection", onRejectionEvent);
+  } else {
+    proc?.on?.("unhandledRejection", onProcessRejection);
+  }
+  async function settle(): Promise<void> {
+    // Deno dispatches `unhandledrejection` only after two timer turns.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  return {
+    reasons,
+    settle,
+    stop() {
+      if (isDeno) {
+        globalTarget.removeEventListener?.(
+          "unhandledrejection",
+          onRejectionEvent,
+        );
+      } else {
+        proc?.off?.("unhandledRejection", onProcessRejection);
+      }
+    },
+  };
+}
+
+async function configureQueueStartupWarningCapture(
+  records: LogRecord[],
+): Promise<void> {
+  await configure({
+    sinks: {
+      buffer(record: LogRecord): void {
+        records.push(record);
+      },
+    },
+    loggers: [
+      { category: "fedify", sinks: ["buffer"], lowestLevel: "warning" },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+    reset: true,
+  });
+}
+
+function queueStartupWarnings(
+  records: LogRecord[],
+  error: unknown,
+): LogRecord[] {
+  return records.filter((record) =>
+    record.level === "warning" &&
+    record.category.length === 3 &&
+    record.category[0] === "fedify" &&
+    record.category[1] === "federation" &&
+    record.category[2] === "queue" &&
+    record.rawMessage === QUEUE_STARTUP_WARNING &&
+    record.properties.error === error
+  );
+}
+
+test("Federation.fetch() reports automatic queue startup failures", async (t) => {
+  const listenError = new TypeError("simulated listen() failure");
+  const queue: MessageQueue = {
+    enqueue() {
+      return Promise.resolve();
+    },
+    listen() {
+      throw listenError;
+    },
+  };
+  const capture = captureUnhandledRejections();
+  const records: LogRecord[] = [];
+  await configureQueueStartupWarningCapture(records);
+  try {
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      queue,
+      skipSignatureVerification: true,
+      documentLoaderFactory: () => mockDocumentLoader,
+      contextLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setActorDispatcher(
+      "/actors/{identifier}",
+      () => new Person({ id: new URL("https://example.com/actor") }),
+    );
+    federation.setInboxListeners("/actors/{identifier}/inbox", "/inbox")
+      .on(Create, () => {});
+    const post = (id: string) =>
+      federation.fetch(
+        new Request("https://example.com/inbox", {
+          method: "POST",
+          headers: { "Content-Type": "application/activity+json" },
+          body: JSON.stringify({
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id,
+            type: "Create",
+            actor: "https://example.com/actor",
+          }),
+        }),
+        { contextData: undefined },
+      );
+
+    await t.step("synchronous failure", async () => {
+      const response = await post("https://example.com/activities/queued-1");
+      assertEquals(response.status, 202);
+      await capture.settle();
+      assertEquals(queueStartupWarnings(records, listenError).length, 1);
+      assertEquals(capture.reasons, []);
+
+      const second = await post("https://example.com/activities/queued-2");
+      assertEquals(second.status, 202);
+      await capture.settle();
+      assertEquals(
+        queueStartupWarnings(records, listenError).length,
+        1,
+        "the warning must be logged only once per federation instance",
+      );
+      assertEquals(capture.reasons, []);
+    });
+
+    await t.step("asynchronous failure", async () => {
+      const asyncError = new TypeError("simulated async listen() failure");
+      let rejectListen: ((error: unknown) => void) | undefined;
+      const asyncQueue: MessageQueue = {
+        enqueue() {
+          return Promise.resolve();
+        },
+        listen() {
+          return new Promise<void>((_resolve, reject) => {
+            rejectListen = reject;
+          });
+        },
+      };
+      const asyncFederation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        queue: asyncQueue,
+        skipSignatureVerification: true,
+        documentLoaderFactory: () => mockDocumentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
+      });
+      asyncFederation.setActorDispatcher(
+        "/actors/{identifier}",
+        () => new Person({ id: new URL("https://example.com/actor") }),
+      );
+      asyncFederation.setInboxListeners(
+        "/actors/{identifier}/inbox",
+        "/inbox",
+      ).on(Create, () => {});
+      const response = await asyncFederation.fetch(
+        new Request("https://example.com/inbox", {
+          method: "POST",
+          headers: { "Content-Type": "application/activity+json" },
+          body: JSON.stringify({
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: "https://example.com/activities/queued-async",
+            type: "Create",
+            actor: "https://example.com/actor",
+          }),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      await capture.settle();
+      assertEquals(queueStartupWarnings(records, asyncError).length, 0);
+      assert(rejectListen != null);
+      rejectListen(asyncError);
+      await capture.settle();
+      assertEquals(
+        queueStartupWarnings(records, asyncError).length,
+        1,
+        "a listener that rejects after startup must still be reported",
+      );
+      assertEquals(capture.reasons, []);
+    });
+  } finally {
+    await capture.settle();
+    capture.stop();
+    await reset();
+  }
+});
+
+test("Federation.startQueue() rejects when a queue cannot listen", async () => {
+  const listenError = new TypeError("simulated listen() failure");
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    queue: {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        throw listenError;
+      },
+    },
+    manuallyStartQueue: true,
+  });
+  const error = await assertRejects(() => federation.startQueue(undefined));
+  assertStrictEquals(error, listenError);
+});
+
+test("Federation.startQueue() keeps other queue workers running", async () => {
+  const outboxError = new TypeError("simulated outbox listen() failure");
+  const lateInboxError = new TypeError("simulated late inbox failure");
+  let rejectInbox: ((error: unknown) => void) | undefined;
+  let fanoutStarted = false;
+  const inbox: MessageQueue = {
+    enqueue() {
+      return Promise.resolve();
+    },
+    listen() {
+      return new Promise<void>((_resolve, reject) => {
+        rejectInbox = reject;
+      });
+    },
+  };
+  const outbox: MessageQueue = {
+    enqueue() {
+      return Promise.resolve();
+    },
+    listen() {
+      throw outboxError;
+    },
+  };
+  const fanout: MessageQueue = {
+    enqueue() {
+      return Promise.resolve();
+    },
+    listen() {
+      fanoutStarted = true;
+      return new Promise<void>(() => {});
+    },
+  };
+  const capture = captureUnhandledRejections();
+  try {
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      queue: { inbox, outbox, fanout },
+      manuallyStartQueue: true,
+    });
+    const error = await assertRejects(() => federation.startQueue(undefined));
+    assertStrictEquals(error, outboxError);
+    assert(
+      fanoutStarted,
+      "a synchronous throw from one queue must not prevent later queues from starting",
+    );
+    assert(rejectInbox != null);
+    rejectInbox(lateInboxError);
+    await capture.settle();
+    assertEquals(
+      capture.reasons,
+      [],
+      "an earlier listener rejection must remain handled after startup fails",
+    );
+  } finally {
+    await capture.settle();
+    capture.stop();
+  }
+});
+
+test("ContextImpl.sendActivity() reports automatic queue startup failures", async (t) => {
+  const sender = [{
+    privateKey: ed25519PrivateKey,
+    keyId: ed25519Multikey.id!,
+  }];
+  const recipient = {
+    id: new URL("https://example.com/recipient"),
+    inboxId: new URL("https://example.com/inbox"),
+  };
+  const createActivity = () =>
+    new Create({
+      id: new URL("https://example.com/activities/queue-startup-send"),
+      actor: new URL("https://example.com/actor"),
+    });
+
+  await t.step("outbox", async () => {
+    const listenError = new TypeError("simulated outbox listen() failure");
+    const messages: Message[] = [];
+    const queue: MessageQueue = {
+      enqueue(message) {
+        messages.push(message as Message);
+        return Promise.resolve();
+      },
+      listen() {
+        throw listenError;
+      },
+    };
+    const capture = captureUnhandledRejections();
+    const records: LogRecord[] = [];
+    await configureQueueStartupWarningCapture(records);
+    try {
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue: { outbox: queue },
+        documentLoaderFactory: () => mockDocumentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
+      });
+      const ctx = new ContextImpl({
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      await ctx.sendActivity(sender, recipient, createActivity());
+      assertEquals(messages.map((message) => message.type), ["outbox"]);
+      await capture.settle();
+      assertEquals(queueStartupWarnings(records, listenError).length, 1);
+      assertEquals(capture.reasons, []);
+    } finally {
+      await capture.settle();
+      capture.stop();
+      await reset();
+    }
+  });
+
+  await t.step("fanout", async () => {
+    const listenError = new TypeError("simulated fanout listen() failure");
+    const messages: Message[] = [];
+    const outbox: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+    };
+    const fanout: MessageQueue = {
+      enqueue(message) {
+        messages.push(message as Message);
+        return Promise.resolve();
+      },
+      listen() {
+        throw listenError;
+      },
+    };
+    const capture = captureUnhandledRejections();
+    const records: LogRecord[] = [];
+    await configureQueueStartupWarningCapture(records);
+    try {
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue: { outbox, fanout },
+        documentLoaderFactory: () => mockDocumentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
+      });
+      const ctx = new ContextImpl({
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      await ctx.sendActivity(sender, recipient, createActivity(), {
+        fanout: "force",
+      });
+      assertEquals(messages.map((message) => message.type), ["fanout"]);
+      await capture.settle();
+      assertEquals(queueStartupWarnings(records, listenError).length, 1);
+      assertEquals(capture.reasons, []);
+    } finally {
+      await capture.settle();
+      capture.stop();
+      await reset();
+    }
+  });
 });
 
 test("FederationImpl.processQueuedTask()", async (t) => {

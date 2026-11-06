@@ -149,6 +149,9 @@ export default {
     const federation: Federation<ContextData> = await builder.build({
       kv: new WorkersKvStore(env.FEDIFY_KV),
       queue: new WorkersMessageQueue(env.FEDIFY_QUEUE),
+      // Cloudflare Queues cannot be polled, so the queue() handler below
+      // consumes the messages instead of Federation.startQueue():
+      manuallyStartQueue: true,
     });
     const url = new URL(req.url);
     if (url.pathname === "/") return await listFollowers(req, env);
@@ -163,6 +166,10 @@ export default {
     const federation: Federation<ContextData> = await builder.build({
       kv: new WorkersKvStore(env.FEDIFY_KV),
       queue: new WorkersMessageQueue(env.FEDIFY_QUEUE),
+      // Inbox listeners run inside processQueuedTask() and may call
+      // ctx.sendActivity(), which would otherwise start the queue workers
+      // automatically:
+      manuallyStartQueue: true,
     });
     for (const message of batch.messages) {
       await federation.processQueuedTask(

@@ -194,12 +194,25 @@ Further details are explained in the [*Message queue* section](./mq.md).
 Whether to start the task queue manually or automatically.
 
 If `true`, the task queue will not start automatically and you need to
-manually start it by calling the `Federation.startQueue()` method.
+manually start it by calling the `Federation.startQueue()` method.  On runtimes
+that cannot start workers in the request process, such as Cloudflare Workers,
+`Federation.processQueuedTask()` consumes the messages instead, so you still set
+this option to `true`.
 
 If `false`, the task queue will start automatically as soon as the first
 task is enqueued.
 
 By default, the queue starts automatically.
+
+> [!NOTE]
+> Automatic startup is best-effort.  If a queue cannot start listening
+> (for example, when `MessageQueue.listen()` throws), Fedify logs a warning
+> through [LogTape](./log.md) once per `Federation` instance instead of
+> producing an unhandled promise rejection.  The failed worker is not retried by
+> later requests, and the application keeps running without it, so restart the
+> process or recreate the federation after fixing the queue.  Explicitly calling
+> `Federation.startQueue()` reports the error to the caller instead of logging
+> it.
 
 > [!TIP]
 > This option is useful when you want to separately deploy the web server

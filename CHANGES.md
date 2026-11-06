@@ -22,6 +22,18 @@ To be released.
     fanout before the upgrade also keep their original proof-covered JSON when
     replayed.  Incoming signatures that still use `identity/v1` continue to
     verify.  [[#664]]
+ -  Fixed automatic queue worker startup failures becoming unhandled promise
+    rejections.  When `manuallyStartQueue` was left `false` and a `MessageQueue`
+    implementation could not start listening, such as `WorkersMessageQueue` on
+    Cloudflare Workers whose `listen()` throws a `TypeError`, the rejection from
+    the implicit startup in inbox handling and in `Context.sendActivity()` was
+    discarded.  It is now logged as a warning once per `Federation` instance,
+    and a synchronous throw from one queue no longer prevents the remaining
+    queues from starting.  The failed worker is not retried, so restart the
+    process after fixing the queue.  `Federation.startQueue()` still rejects so
+    callers that start workers deliberately see the error, and Cloudflare
+    Workers deployments should set `manuallyStartQueue: true` to avoid the
+    warning entirely.  [[#1381], [#1390]]
  -  Fixed inbox handling that treated valid date-times without seconds, such
     as `2024-01-01T10:00Z` or `2024-01-01T10:00.5Z`, as permanently malformed.
     Activity Streams 2.0 allows seconds to be omitted, so activities with such
@@ -34,6 +46,8 @@ To be released.
 [#664]: https://github.com/fedify-dev/fedify/issues/664
 [#1339]: https://github.com/fedify-dev/fedify/issues/1339
 [#1347]: https://github.com/fedify-dev/fedify/pull/1347
+[#1381]: https://github.com/fedify-dev/fedify/issues/1381
+[#1390]: https://github.com/fedify-dev/fedify/pull/1390
 
 ### @fedify/vocab
 
