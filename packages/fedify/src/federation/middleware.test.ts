@@ -21,6 +21,7 @@ import { FetchError, getDocumentLoader, UrlError } from "@fedify/vocab-runtime";
 import type { LookupWebFingerOptions } from "@fedify/webfinger";
 import {
   configure,
+  getTextFormatter,
   type LogRecord,
   reset,
   withContext,
@@ -283,6 +284,17 @@ test("createFederation()", async (t) => {
             "private address checks disabled (allowPrivateAddress=true); " +
               "HTTP Signature time window disabled " +
               "(signatureTimeWindow=false)",
+          );
+          const formatted = getTextFormatter({ timestamp: "disabled" })(
+            records[0],
+          );
+          assert(
+            formatted.includes(
+              '"private address checks disabled (allowPrivateAddress=true); ' +
+                "HTTP Signature time window disabled " +
+                '(signatureTimeWindow=false)"',
+            ),
+            formatted,
           );
           assertEquals(
             records[0].properties.relaxations,
