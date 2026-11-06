@@ -24,8 +24,11 @@ interface Binding {
 interface Scope {
   parent?: Scope;
   functionScope: boolean;
-  /** Whether declarations merged from elsewhere can add to this scope. */
-  mergeable?: boolean;
+  /**
+   * The names that declarations merged with this namespace or enum export.
+   * It is set on the scopes of those, and only of those.
+   */
+  merged?: Set<string>;
   bindings: Map<string, Binding>;
 }
 
@@ -226,7 +229,35 @@ function lookup(
 ): Binding | undefined {
   for (; scope; scope = scope.parent) {
     if (scope.bindings.has(identifier)) return scope.bindings.get(identifier);
+    if (scope.merged?.has(identifier)) return {};
   }
+}
+
+/** Lists the values that the body of a TypeScript namespace exports. */
+function exportedNames(block: Ast): string[] {
+  const scope: Scope = { functionScope: true, bindings: new Map() };
+  for (const statement of (block.body ?? []) as Ast[]) {
+    const declaration = statement.type === "ExportNamedDeclaration"
+      ? ast(statement.declaration)
+      : statement.type === "TSImportEqualsDeclaration" &&
+          statement.isExport === true
+      ? statement
+      : undefined;
+    if (declaration?.type === "VariableDeclaration") {
+      for (const variable of declaration.declarations as Ast[]) {
+        bind(variable.id, scope);
+      }
+    } else if (
+      declaration != null &&
+      declaration.type !== "TSInterfaceDeclaration" &&
+      declaration.type !== "TSTypeAliasDeclaration" &&
+      (declaration.type !== "TSModuleDeclaration" ||
+        isInstantiated(declaration))
+    ) {
+      bind(declaration.id, scope);
+    }
+  }
+  return [...scope.bindings.keys()];
 }
 
 /**
@@ -240,7 +271,7 @@ function lookupConstant(
 ): Binding | undefined {
   for (; scope; scope = scope.parent) {
     if (scope.bindings.has(identifier)) return scope.bindings.get(identifier);
-    if (scope.mergeable) return undefined;
+    if (scope.merged != null) return undefined;
   }
 }
 
@@ -256,7 +287,27 @@ export function checkRawPropertyIris(
   const scopes = new WeakMap<Ast, Scope>();
   const calls: Ast[] = [];
   const root: Scope = { functionScope: true, bindings: new Map() };
+  // TypeScript merges namespaces and enums of the same name in a scope, and
+  // makes what each declaration exports visible in the others:
+  const members = new Map<Scope, Map<string, Set<string>>>();
+  const blockMembers = new WeakMap<Ast, Set<string>>();
+  function mergedMembers(scope: Scope, id: string | undefined): Set<string> {
+    if (id == null) return new Set();
+    let names = members.get(scope);
+    if (names == null) members.set(scope, names = new Map());
+    let merged = names.get(id);
+    if (merged == null) names.set(id, merged = new Set());
+    return merged;
+  }
   function visit(node: Ast, outer: Scope): void {
+    if (node.type === "TSModuleDeclaration") {
+      const body = ast(node.body);
+      if (body?.type === "TSModuleBlock") {
+        const merged = mergedMembers(outer, name(node.id));
+        blockMembers.set(body, merged);
+        for (const exported of exportedNames(body)) merged.add(exported);
+      }
+    }
     const isFunction =
       /^(?:FunctionDeclaration|FunctionExpression|ArrowFunctionExpression)$/
         .test(node.type);
@@ -288,8 +339,11 @@ export function checkRawPropertyIris(
         // A TypeScript namespace body is compiled to a function body:
         functionScope: isFunction || node.type === "StaticBlock" ||
           node.type === "TSModuleBlock",
-        mergeable: node.type === "TSModuleBlock" ||
-          node.type === "TSEnumDeclaration",
+        merged: node.type === "TSModuleBlock"
+          ? blockMembers.get(node) ?? new Set()
+          : node.type === "TSEnumDeclaration"
+          ? mergedMembers(outer, name(node.id))
+          : undefined,
         bindings: new Map(),
       }
       : outer;
@@ -311,7 +365,9 @@ export function checkRawPropertyIris(
       const members = (node.members ?? body?.members ?? []) as Ast[];
       for (const member of members) {
         const id = name(member.id);
-        if (id != null) scope.bindings.set(id, {});
+        if (id == null) continue;
+        scope.bindings.set(id, {});
+        scope.merged?.add(id);
       }
     }
     if (node.type === "ImportDeclaration") {

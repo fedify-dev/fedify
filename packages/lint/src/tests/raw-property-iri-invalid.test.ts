@@ -231,6 +231,28 @@ cases.push(
     `${setup} const iri = "content"; enum E { iri = "https://example/p" } enum E { V = (read(obj, iri), 0) }`,
   ],
   [
+    "merged namespace exports shadow helpers",
+    `${setup} namespace N { export function read(o: unknown, i: string) {} } namespace N { read({}, "content"); }`,
+  ],
+  [
+    "merged namespace exported variables shadow helpers",
+    `${setup} namespace N { export const read = (o: unknown, i: string) => {}; } namespace N { read({}, "content"); }`,
+  ],
+  [
+    "merged namespace locals do not shadow helpers",
+    `${setup} namespace N { function read(o: unknown, i: string) {} } namespace N { read({}, "content"); }`,
+    "must be a full",
+  ],
+  [
+    "unrelated namespace exports do not shadow helpers",
+    `${setup} namespace M { export function read(o: unknown, i: string) {} } namespace N { read({}, "content"); }`,
+    "must be a full",
+  ],
+  [
+    "merged enum members shadow helpers",
+    `${setup} enum E { read = 1 } enum E { V = (read({}, "content"), 0) }`,
+  ],
+  [
     "enum members shadow outer bindings",
     `${setup} const iri = "content"; enum E { iri = "https://example/p", V = (read(obj, iri), 0) }`,
   ],
