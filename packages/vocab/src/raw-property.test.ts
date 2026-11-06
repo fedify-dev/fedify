@@ -387,6 +387,34 @@ test("accessors do not load contexts once per field of a cached document", async
   ok(loads <= 5, `Loaded the context ${loads} times.`);
 });
 
+test("embedded objects keep their received JSON-LD on the fallback path", async () => {
+  const object = {
+    "@context": AS,
+    id: "https://example.com/notes/1",
+    type: "Note",
+    content: "Hello",
+    // A signature can cover a property that typed values cannot rebuild:
+    [STRUCTURED_URL]: { "@id": "https://example.com/data/1" },
+  };
+  for (
+    const context of [
+      [AS, { object: { "@id": `${AS}#object`, "@context": {} } }],
+      [{ "@propagate": false, body: `${AS}#content` }, AS],
+    ]
+  ) {
+    const create = await Create.fromJsonLd({
+      "@context": context,
+      id: "https://example.com/activities/1",
+      type: "Create",
+      actor: "https://example.com/users/alice",
+      object,
+    });
+    const note = await create.getObject();
+    ok(note instanceof Note);
+    deepStrictEqual(await note.toJsonLd(), object);
+  }
+});
+
 test("embedded objects keep values under property-scoped contexts", async () => {
   const create = await Create.fromJsonLd({
     "@context": [AS, {

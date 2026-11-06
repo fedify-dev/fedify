@@ -501,7 +501,6 @@ async function* generateProperty(
                 await isCachedPropertyKey(
                   this._cachedJsonLd as Record<string, unknown>,
                   context,
-                  doc,
                   ${JSON.stringify(property.compactName)},
                   ${
           JSON.stringify([
@@ -512,22 +511,33 @@ async function* generateProperty(
                   cachedContextLoader,
                 )
               ) {
-                const inherited = inheritJsonLdContext(context, doc);
-                v = await this.#${property.singularName}_fromJsonLd(
-                  inherited,
-                  {
-                    ...options,
-                    // Keep the parent default for embedded objects.
-                    verifyPortableObject: this._verifyPortableObject,
-                    baseUrl: ${cachedPropertyBaseUrl},
-                  },
-                );
-                await keepCachedJsonLd(
-                  v as object,
-                  doc,
-                  inherited,
-                  cachedContextLoader,
-                );
+                if (
+                  canDecodeCachedJsonLd(
+                    this,
+                    context,
+                    doc,
+                    ${JSON.stringify(property.compactName)},
+                  )
+                ) {
+                  const inherited = inheritJsonLdContext(context, doc);
+                  v = await this.#${property.singularName}_fromJsonLd(
+                    inherited,
+                    {
+                      ...options,
+                      // Keep the parent default for embedded objects.
+                      verifyPortableObject: this._verifyPortableObject,
+                      baseUrl: ${cachedPropertyBaseUrl},
+                    },
+                  );
+                  await keepCachedJsonLd(
+                    v as object,
+                    doc,
+                    inherited,
+                    cachedContextLoader,
+                  );
+                } else {
+                  fixCachedJsonLd(v, doc);
+                }
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -714,7 +724,6 @@ async function* generateProperty(
                   await isCachedPropertyKey(
                     this._cachedJsonLd as Record<string, unknown>,
                     context,
-                    obj,
                     ${JSON.stringify(property.compactName)},
                     ${
           JSON.stringify([
@@ -725,22 +734,33 @@ async function* generateProperty(
                     cachedContextLoader,
                   )
                 ) {
-                  const inherited = inheritJsonLdContext(context, obj);
-                  v = await this.#${property.singularName}_fromJsonLd(
-                    inherited,
-                    {
-                      ...options,
-                      // Keep the parent default for embedded objects.
-                      verifyPortableObject: this._verifyPortableObject,
-                      baseUrl: ${cachedPropertyBaseUrl},
-                    },
-                  );
-                  await keepCachedJsonLd(
-                    v as object,
-                    obj,
-                    inherited,
-                    cachedContextLoader,
-                  );
+                  if (
+                    canDecodeCachedJsonLd(
+                      this,
+                      context,
+                      obj,
+                      ${JSON.stringify(property.compactName)},
+                    )
+                  ) {
+                    const inherited = inheritJsonLdContext(context, obj);
+                    v = await this.#${property.singularName}_fromJsonLd(
+                      inherited,
+                      {
+                        ...options,
+                        // Keep the parent default for embedded objects.
+                        verifyPortableObject: this._verifyPortableObject,
+                        baseUrl: ${cachedPropertyBaseUrl},
+                      },
+                    );
+                    await keepCachedJsonLd(
+                      v as object,
+                      obj,
+                      inherited,
+                      cachedContextLoader,
+                    );
+                  } else {
+                    fixCachedJsonLd(v, obj);
+                  }
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;

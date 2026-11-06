@@ -217,6 +217,42 @@ function isNonPropagatingContext(context: unknown): boolean {
     (first as Record<string, unknown>)["@propagate"] === false;
 }
 
+// Objects whose contexts could not be rebuilt, so that neither they nor the
+// objects nested in them can be decoded again from their cached JSON-LD:
+const fixedCachedJsonLd = new WeakSet<object>();
+
+// Whether an embedded document under a key of the cached JSON-LD of an object
+// can be decoded again.  Prepending a context cannot rebuild what a context
+// that does not propagate to embedded nodes, in the document or in the embedded
+// document, or a property-scoped context for the key took part in:
+function canDecodeCachedJsonLd(
+  object: object,
+  context: unknown,
+  embedded: object,
+  key: string,
+): boolean {
+  return !fixedCachedJsonLd.has(object) &&
+    !isNonPropagatingContext(context) &&
+    !isNonPropagatingContext(
+      (embedded as { "@context"?: unknown })["@context"],
+    ) &&
+    !hasPropertyScopedContext(context, key);
+}
+
+// Gives an object decoded with the whole document the document it was received
+// as, which a proof can cover, when it cannot be decoded from that document:
+function fixCachedJsonLd(object: unknown, document: object): void {
+  if (
+    object == null || typeof object !== "object" ||
+    !(RAW_PROPERTY_PROTOCOL in object)
+  ) {
+    return;
+  }
+  (object as unknown as { _cachedJsonLd?: unknown })._cachedJsonLd =
+    structuredClone(document);
+  fixedCachedJsonLd.add(object);
+}
+
 function hasPropertyScopedContext(context: unknown, key: string): boolean {
   const entries = globalThis.Array.isArray(context) ? context : [context];
   return entries.some((entry) => {
@@ -227,29 +263,18 @@ function hasPropertyScopedContext(context: unknown, key: string): boolean {
   });
 }
 
-// Whether the embedded documents under a key of a compacted document can be
-// decoded again in place of the values decoded for a property.  The document
-// has to map the key, and no other key, to the property, as a context can
-// remap the key or map another term to the property, in which case the cached
-// documents cannot be matched with the decoded values.  An inline context
-// that does not propagate to embedded nodes, in the document or in the
-// embedded document, and a property-scoped context for the key rule it out as
-// well, since prepending a context cannot rebuild what they were decoded with:
+// Whether the embedded documents under a key of a compacted document are the
+// values decoded for a property.  The document has to map the key, and no other
+// key, to the property, as a context can remap the key or map another term to
+// the property, in which case the cached documents cannot be matched with the
+// decoded values:
 async function isCachedPropertyKey(
   document: Record<string, unknown>,
   context: unknown,
-  embedded: object,
   key: string,
   iris: readonly string[],
   contextLoader: DocumentLoader,
 ): Promise<boolean> {
-  if (
-    isNonPropagatingContext(context) ||
-    isNonPropagatingContext((embedded as { "@context"?: unknown })["@context"]) ||
-    hasPropertyScopedContext(context, key)
-  ) {
-    return false;
-  }
   let checks = cachedPropertyKeys.get(document);
   if (checks == null) {
     checks = new Map();
