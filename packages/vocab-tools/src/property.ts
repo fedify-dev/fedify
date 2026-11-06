@@ -491,9 +491,16 @@ async function* generateProperty(
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
             try {
+              const cachedContextLoader = options.contextLoader ??
+                this._contextLoader ?? getDocumentLoader();
+              const context = getCachedJsonLdContext(
+                this,
+                this._cachedJsonLd["@context"],
+              );
               if (
                 await isCachedPropertyKey(
                   this._cachedJsonLd as Record<string, unknown>,
+                  context,
                   doc,
                   ${JSON.stringify(property.compactName)},
                   ${
@@ -502,18 +509,24 @@ async function* generateProperty(
             ...(property.redundantProperties ?? []).map((p) => p.uri),
           ])
         },
-                  options.contextLoader ?? this._contextLoader ??
-                    getDocumentLoader(),
+                  cachedContextLoader,
                 )
               ) {
+                const inherited = inheritJsonLdContext(context, doc);
                 v = await this.#${property.singularName}_fromJsonLd(
-                  inheritJsonLdContext(this._cachedJsonLd["@context"], doc),
+                  inherited,
                   {
                     ...options,
                     // Keep the parent default for embedded objects.
                     verifyPortableObject: this._verifyPortableObject,
                     baseUrl: ${cachedPropertyBaseUrl},
                   },
+                );
+                await keepCachedJsonLd(
+                  v as object,
+                  doc,
+                  inherited,
+                  cachedContextLoader,
                 );
               }
             } catch (error) {
@@ -691,9 +704,16 @@ async function* generateProperty(
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
               try {
+                const cachedContextLoader = options.contextLoader ??
+                  this._contextLoader ?? getDocumentLoader();
+                const context = getCachedJsonLdContext(
+                  this,
+                  this._cachedJsonLd["@context"],
+                );
                 if (
                   await isCachedPropertyKey(
                     this._cachedJsonLd as Record<string, unknown>,
+                    context,
                     obj,
                     ${JSON.stringify(property.compactName)},
                     ${
@@ -702,18 +722,24 @@ async function* generateProperty(
             ...(property.redundantProperties ?? []).map((p) => p.uri),
           ])
         },
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
+                    cachedContextLoader,
                   )
                 ) {
+                  const inherited = inheritJsonLdContext(context, obj);
                   v = await this.#${property.singularName}_fromJsonLd(
-                    inheritJsonLdContext(this._cachedJsonLd["@context"], obj),
+                    inherited,
                     {
                       ...options,
                       // Keep the parent default for embedded objects.
                       verifyPortableObject: this._verifyPortableObject,
                       baseUrl: ${cachedPropertyBaseUrl},
                     },
+                  );
+                  await keepCachedJsonLd(
+                    v as object,
+                    obj,
+                    inherited,
+                    cachedContextLoader,
                   );
                 }
               } catch (error) {

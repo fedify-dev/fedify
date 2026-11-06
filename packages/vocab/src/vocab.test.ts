@@ -2234,14 +2234,7 @@ test({
 function embeddedPropertyDocument(property: "attachment" | "object") {
   const context = "https://www.w3.org/ns/activitystreams";
   return {
-    "@context": [context, {
-      // A property-scoped context applies only while the whole document is
-      // decoded, so reparsing the cached embedded value alone fails:
-      [property]: {
-        "@id": `${context}#${property}`,
-        "@context": { CustomImage: `${context}#Image` },
-      },
-    }],
+    "@context": context,
     type: property === "attachment" ? "Note" : "Create",
     [property]: [
       {
@@ -2255,12 +2248,31 @@ function embeddedPropertyDocument(property: "attachment" | "object") {
   };
 }
 
+// Decodes a document whose first embedded object is valid, and then gives the
+// decoded object a cache whose first embedded object cannot be decoded:
+async function fromJsonLdWithMalformedCache<T>(
+  fromJsonLd: (json: unknown) => Promise<T>,
+  property: "attachment" | "object",
+): Promise<T> {
+  const jsonLd = embeddedPropertyDocument(property);
+  const [, ...rest] = jsonLd[property] as unknown[];
+  const decoded = await fromJsonLd({
+    ...jsonLd,
+    [property]: [{ type: "Image", name: "Malformed when reparsed" }, ...rest],
+  });
+  (decoded as unknown as { _cachedJsonLd: unknown })._cachedJsonLd = jsonLd;
+  return decoded;
+}
+
 for (const suppressError of [undefined, false, true]) {
   test(
     `Note.getAttachments() cached parse failure (suppressError: ${suppressError})`,
     async () => {
       const jsonLd = embeddedPropertyDocument("attachment");
-      const note = await Note.fromJsonLd(jsonLd);
+      const note = await fromJsonLdWithMalformedCache(
+        (json) => Note.fromJsonLd(json),
+        "attachment",
+      );
       if (suppressError) {
         for (let i = 0; i < 2; i++) {
           const attachments: (Object | Link | PropertyValue)[] = await Array
@@ -2288,7 +2300,10 @@ for (const suppressError of [undefined, false, true]) {
     `Activity.getObject() cached parse failure (suppressError: ${suppressError})`,
     async () => {
       const jsonLd = embeddedPropertyDocument("object");
-      const activity = await Activity.fromJsonLd(jsonLd);
+      const activity = await fromJsonLdWithMalformedCache(
+        (json) => Activity.fromJsonLd(json),
+        "object",
+      );
       if (suppressError) {
         deepStrictEqual(await activity.getObject({ suppressError }), null);
         deepStrictEqual(await activity.getObject({ suppressError }), null);
@@ -2302,7 +2317,10 @@ for (const suppressError of [undefined, false, true]) {
 }
 
 test("Note.getAttachments() suppresses cached context loader failures", async () => {
-  const note = await Note.fromJsonLd(embeddedPropertyDocument("attachment"));
+  const note = await fromJsonLdWithMalformedCache(
+    (json) => Note.fromJsonLd(json),
+    "attachment",
+  );
   const contextLoader = () =>
     Promise.reject(new Error("Context loader failed"));
   await rejects(
@@ -2319,8 +2337,9 @@ test("Note.getAttachments() suppresses cached context loader failures", async ()
 });
 
 test("Activity.getObject() suppresses cached context loader failures", async () => {
-  const activity = await Activity.fromJsonLd(
-    embeddedPropertyDocument("object"),
+  const activity = await fromJsonLdWithMalformedCache(
+    (json) => Activity.fromJsonLd(json),
+    "object",
   );
   const contextLoader = () =>
     Promise.reject(new Error("Context loader failed"));

@@ -294,6 +294,89 @@ test("embedded objects keep their own non-propagating contexts", async () => {
   deepStrictEqual(attachment.contents, ["Hello"]);
 });
 
+test("embedded objects keep their cached JSON-LD as received", async () => {
+  const context = [AS, "https://w3id.org/security/data-integrity/v1"];
+  const object = {
+    "@context": context,
+    id: "https://example.com/notes/1",
+    type: "Alias",
+    content: "Hello",
+    attachment: {
+      "@context": AS,
+      type: "Doc",
+      "quant:structuredUrl": { "@id": "https://example.com/data/1" },
+    },
+  };
+  const create = await Create.fromJsonLd({
+    "@context": [AS, {
+      Alias: `${AS}#Note`,
+      Doc: `${AS}#Document`,
+      quant: QUANT,
+    }],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object,
+  });
+  const note = await create.getObject();
+  ok(note instanceof Note);
+  // A proof can cover the context, so it has to stay as it was received:
+  deepStrictEqual(await note.toJsonLd(), object);
+  // Objects nested in it still get the context of the outermost document:
+  const [attachment] = await Array.fromAsync(note.getAttachments());
+  ok(attachment != null);
+  deepStrictEqual(await getRawPropertyValues(attachment, STRUCTURED_URL), [
+    { "@id": "https://example.com/data/1" },
+  ]);
+});
+
+test("embedded portable objects keep their own contexts in the cache", async () => {
+  const did = "did:key:z6Mkpbx26hCxv3hr2gEz8iCm6SykyBU7wXPa3tTceF2fiFVr";
+  const create = await Create.fromJsonLd({
+    "@context": [AS, { Alias: `${AS}#Note` }],
+    id: `ap://${did}/activities/1`,
+    type: "Create",
+    actor: `ap://${did}/actor`,
+    object: {
+      "@context": AS,
+      id: `ap://${did}/objects/1`,
+      type: "Alias",
+      attributedTo: `ap://${did}/actor`,
+      content: "Hello",
+    },
+  });
+  const note = await create.getObject({
+    verifyPortableObject: () => Promise.resolve({ verified: true }),
+  });
+  ok(note instanceof Note);
+  const jsonLd = await note.toJsonLd() as Record<string, unknown>;
+  deepStrictEqual(jsonLd["@context"], AS);
+  strictEqual(jsonLd.content, "Hello");
+});
+
+test("embedded objects keep values under property-scoped contexts", async () => {
+  const create = await Create.fromJsonLd({
+    "@context": [AS, {
+      body: `${AS}#content`,
+      object: { "@id": `${AS}#object`, "@context": { body: null } },
+    }],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object: {
+      "@context": AS,
+      id: "https://example.com/notes/1",
+      type: "Note",
+      // The property-scoped context of the parent removes this term:
+      body: "Not the content",
+      content: "Hello",
+    },
+  });
+  const note = await create.getObject();
+  ok(note instanceof Note);
+  deepStrictEqual(note.contents, ["Hello"]);
+});
+
 test("getRawPropertyValues() reads embedded objects under terms of the parent's context", async () => {
   const note = await Note.fromJsonLd({
     "@context": [AS, { extra: `${AS}#attachment`, attachment: null }],

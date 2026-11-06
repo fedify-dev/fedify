@@ -12,7 +12,4 @@ links:
     the enclosing context mapped to another property.  The accessors now
     apply the enclosing context and fall back to the object decoded with the
     whole document when the cached JSON-LD cannot be matched with it.
-    The `toJsonLd()` result of such an embedded object now also includes the
-    enclosing context in front of its own, unless its own context already
-    begins with it, so it means the same when used on its own.
     [[#1272], [#1356]]

@@ -97,14 +97,51 @@ function copyRawProperties(source: object, destination: object): void {
   else retainedRawProperties.set(destination, retained);
 }
 
+// The contexts embedded objects were decoded with, keyed by the objects.  Their
+// cached JSON-LD stays as it was received, as a proof can cover its context, so
+// this is what decoding the objects nested in them has to start from:
+const inheritedContexts = new WeakMap<object, unknown>();
+
+function getCachedJsonLdContext(object: object, context: unknown): unknown {
+  return inheritedContexts.has(object)
+    ? inheritedContexts.get(object)
+    : context;
+}
+
+// Puts the document an embedded object was received as back into its cache,
+// after decoding it from the result of inheritJsonLdContext():
+async function keepCachedJsonLd(
+  object: object,
+  document: object,
+  decoded: object,
+  contextLoader: DocumentLoader,
+): Promise<void> {
+  if (decoded === document) return;
+  const target = object as unknown as { _cachedJsonLd?: unknown };
+  const cached = target._cachedJsonLd;
+  if (cached == null) return;
+  inheritedContexts.set(object, (decoded as { "@context"?: unknown })["@context"]);
+  // The decoder can normalize what it caches, e.g., portable object IRIs:
+  target._cachedJsonLd =
+    globalThis.JSON.stringify(cached) === globalThis.JSON.stringify(decoded)
+      ? structuredClone(document)
+      : await compactJsonLdCache(
+        await jsonld.expand(cached, {
+          documentLoader: contextLoader,
+          keepFreeFloatingNodes: true,
+        }),
+        document,
+        contextLoader,
+      );
+}
+
 // Embeds the context of a cached document in a document embedded in it, so
 // that decoding the embedded document alone resolves its terms the same way
 // as decoding the whole document did.  The parent's context entries keep
 // their order, as later entries can refer to terms earlier ones define.
 // When the embedded document's own context already begins with all of them,
 // it is used as is, since applying the same entries again yields the same
-// terms.  Property-scoped contexts of the parent are not applied, as the
-// embedded document is decoded as a top-level node:
+// terms:
 function inheritJsonLdContext(
   parentContext: unknown,
   document: object,
@@ -132,6 +169,7 @@ const expandedKeys = new WeakMap<object, Map<string, Promise<string[]>>>();
 
 function expandKey(
   document: Record<string, unknown>,
+  context: unknown,
   key: string,
   contextLoader: DocumentLoader,
 ): Promise<string[]> {
@@ -143,7 +181,7 @@ function expandKey(
   const cached = keys.get(key);
   if (cached != null) return cached;
   const iris = jsonld.expand(
-    { "@context": document["@context"], [key]: [] },
+    { "@context": context, [key]: [] },
     { documentLoader: contextLoader, keepFreeFloatingNodes: true },
   ).then((expanded: unknown[]) =>
     globalThis.Object.keys(expanded[0] ?? {}).filter((iri) =>
@@ -165,35 +203,47 @@ function isNonPropagatingContext(context: unknown): boolean {
     (first as Record<string, unknown>)["@propagate"] === false;
 }
 
+function hasPropertyScopedContext(context: unknown, key: string): boolean {
+  const entries = globalThis.Array.isArray(context) ? context : [context];
+  return entries.some((entry) => {
+    const term = entry != null && typeof entry === "object"
+      ? (entry as Record<string, unknown>)[key]
+      : undefined;
+    return term != null && typeof term === "object" && "@context" in term;
+  });
+}
+
 // Whether the embedded documents under a key of a compacted document can be
 // decoded again in place of the values decoded for a property.  The document
 // has to map the key, and no other key, to the property, as a context can
 // remap the key or map another term to the property, in which case the cached
 // documents cannot be matched with the decoded values.  An inline context
 // that does not propagate to embedded nodes, in the document or in the
-// embedded document, rules it out as well, since prepending another context
-// cannot rebuild the contexts they were decoded with:
+// embedded document, and a property-scoped context for the key rule it out as
+// well, since prepending a context cannot rebuild what they were decoded with:
 async function isCachedPropertyKey(
   document: Record<string, unknown>,
+  context: unknown,
   embedded: object,
   key: string,
   iris: readonly string[],
   contextLoader: DocumentLoader,
 ): Promise<boolean> {
   if (
-    isNonPropagatingContext(document["@context"]) ||
-    isNonPropagatingContext((embedded as { "@context"?: unknown })["@context"])
+    isNonPropagatingContext(context) ||
+    isNonPropagatingContext((embedded as { "@context"?: unknown })["@context"]) ||
+    hasPropertyScopedContext(context, key)
   ) {
     return false;
   }
-  const own = await expandKey(document, key, contextLoader);
+  const own = await expandKey(document, context, key, contextLoader);
   if (own.length !== 1 || own[0] !== iris[0]) return false;
   const others = await globalThis.Promise.all(
     globalThis.Object.keys(document)
       .filter((k) => k !== key && !k.startsWith("@"))
       // Keyword aliases, such as id, cannot take an empty array, and are
       // not properties anyway:
-      .map((k) => expandKey(document, k, contextLoader).catch(() => [])),
+      .map((k) => expandKey(document, context, k, contextLoader).catch(() => [])),
   );
   return !others.flat().some((iri) => iris.includes(iri));
 }
