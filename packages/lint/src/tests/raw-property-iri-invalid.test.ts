@@ -310,6 +310,13 @@ test("ESLint: modules option includes defaults and accepts frozen options", () =
   );
 });
 
+test("ESLint: enum initializers are reported once", () => {
+  assert.equal(
+    verify(`${setup} enum E { V = (read(obj, "content"), 0) }`).length,
+    1,
+  );
+});
+
 test("ESLint: compact prefixes offer suggestions, never autofixes", () => {
   const code = `${setup} read(obj, "as:content");`;
   const [diagnostic] = verify(code);

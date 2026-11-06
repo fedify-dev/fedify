@@ -119,6 +119,13 @@ function children(node: Ast): Ast[] {
   for (const key of keys) {
     // ESTree providers attach the token and comment arrays to Program:
     if (key === "parent" || key === "tokens" || key === "comments") continue;
+    // typescript-eslint keeps a deprecated copy of TSEnumBody.members here:
+    if (
+      key === "members" && node.type === "TSEnumDeclaration" &&
+      ast(node.body) != null
+    ) {
+      continue;
+    }
     const value = node[key];
     if (Array.isArray(value)) {
       for (const item of value) {
@@ -363,7 +370,7 @@ export function checkRawPropertyIris(
     if (node.type === "TSEnumDeclaration") {
       // Initializers can refer to members by their bare names:
       const body = ast(node.body);
-      const members = (node.members ?? body?.members ?? []) as Ast[];
+      const members = (body?.members ?? node.members ?? []) as Ast[];
       for (const member of members) {
         const id = name(member.id);
         if (id == null) continue;
