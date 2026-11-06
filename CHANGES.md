@@ -119,6 +119,11 @@ To be released.
     consider migrating from `WorkersKvStore`.
     [[#1135], [#1360] by Beiyan Yunyi\]
 
+    Pass the `D1Database` binding itself, since D1 sessions can read stale
+    data from replicas.  Because the store is constructed per request, create
+    its table with a D1 migration and pass `initialized: true` in production
+    to avoid an extra query per request.
+
 [#1135]: https://github.com/fedify-dev/fedify/issues/1135
 [#1360]: https://github.com/fedify-dev/fedify/pull/1360
 

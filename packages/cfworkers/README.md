@@ -23,7 +23,7 @@ import { WorkersD1KvStore, WorkersMessageQueue } from "@fedify/cfworkers";
 export default {
   async fetch(request, env, ctx) {
     const federation = createFederation({
-      kv: new WorkersD1KvStore(env.DB_BINDING),
+      kv: new WorkersD1KvStore(env.DB_BINDING, { initialized: true }),
       queue: new WorkersMessageQueue(env.QUEUE_BINDING),
       // ... other options
     });
@@ -33,7 +33,7 @@ export default {
 
   async queue(batch, env, ctx) {
     const federation = createFederation({
-      kv: new WorkersD1KvStore(env.DB_BINDING),
+      kv: new WorkersD1KvStore(env.DB_BINDING, { initialized: true }),
       queue: new WorkersMessageQueue(env.QUEUE_BINDING),
       // ... other options
     });
@@ -72,15 +72,16 @@ export default {
 *This API is available since Fedify 2.5.0.*
 
 `WorkersD1KvStore` is a key–value store implementation for
-[Cloudflare Workers] that uses [Cloudflare D1].  D1 is strongly consistent
-and suits Fedify's balanced read and write workload, and `WorkersD1KvStore`
-supports the atomic `cas()` operation.  It is the recommended key–value store
-for Cloudflare Workers applications.
+[Cloudflare Workers] that uses [Cloudflare D1].  D1 is strongly consistent,
+which suits Fedify's balanced read and write workload, and
+`WorkersD1KvStore` supports the atomic `cas()` operation.  It is the
+recommended key–value store for Cloudflare Workers applications.
 
-The store creates its table (`fedify_kv` by default, configurable with
-the `tableName` option) on its first use.  If you manage the schema with
-[D1 migrations] instead, create the table in a migration and pass
-`initialized: true`:
+Without `initialized: true`, each store instance creates its table
+(`fedify_kv` by default, configurable with the `tableName` option) on its
+first use, which costs an extra D1 query per request.  In production, create
+the table with [D1 migrations] and pass `initialized: true`, as in the example
+above:
 
 ~~~~ sql
 CREATE TABLE IF NOT EXISTS fedify_kv (
@@ -88,8 +89,11 @@ CREATE TABLE IF NOT EXISTS fedify_kv (
   value TEXT NOT NULL,
   expires INTEGER
 );
-CREATE INDEX IF NOT EXISTS fedify_kv_expires ON fedify_kv (expires);
+CREATE INDEX IF NOT EXISTS idx_fedify_kv_expires ON fedify_kv (expires);
 ~~~~
+
+Pass the `D1Database` binding itself rather than a D1 session: sessions only
+provide sequential consistency and can read stale data from a replica.
 
 [Cloudflare D1]: https://developers.cloudflare.com/d1/
 [D1 migrations]: https://developers.cloudflare.com/d1/reference/migrations/

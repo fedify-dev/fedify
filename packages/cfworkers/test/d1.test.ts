@@ -1,6 +1,10 @@
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { WorkersD1KvStore } from "../src/mod.ts";
+import {
+  WorkersD1KvStore,
+  type WorkersD1DatabaseLike,
+  type WorkersD1PreparedStatementLike,
+} from "../src/mod.ts";
 
 // Mock Temporal.Duration for testing in Cloudflare Workers environment
 const mockDuration = (seconds: number) => ({
@@ -23,6 +27,85 @@ async function insertRaw(
   ).bind(JSON.stringify(key), JSON.stringify(value), expires).run();
 }
 
+const delay = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+interface D1SpyOptions {
+  /** Milliseconds to delay a query or batch before sending it. */
+  readonly delay?: (queries: readonly string[]) => number;
+  /** Whether to fail a batch instead of sending it, by its statements. */
+  readonly failBatch?: (queries: readonly string[]) => boolean;
+}
+
+/** A prepared statement that remembers its query and the underlying one. */
+class SpyStatement implements WorkersD1PreparedStatementLike {
+  constructor(
+    readonly spy: D1Spy,
+    readonly query: string,
+    readonly inner: D1PreparedStatement,
+  ) {}
+
+  bind(...values: unknown[]): SpyStatement {
+    return new SpyStatement(this.spy, this.query, this.inner.bind(...values));
+  }
+
+  async first<T = Record<string, unknown>>(): Promise<T | null> {
+    await this.spy.send([this.query]);
+    return await this.inner.first<T>();
+  }
+
+  async all<T = Record<string, unknown>>(): Promise<
+    { readonly results: T[] }
+  > {
+    await this.spy.send([this.query]);
+    return await this.inner.all<T>();
+  }
+
+  async run(): Promise<{ readonly meta: { readonly changes: number } }> {
+    await this.spy.send([this.query]);
+    return await this.inner.run();
+  }
+}
+
+/**
+ * Wraps a D1 binding to record the queries it runs, and optionally to delay
+ * or fail batches.
+ */
+class D1Spy implements WorkersD1DatabaseLike {
+  readonly queries: string[] = [];
+  readonly batches: string[][] = [];
+
+  constructor(
+    readonly db: D1Database,
+    readonly options: D1SpyOptions = {},
+  ) {}
+
+  prepare(query: string): SpyStatement {
+    return new SpyStatement(this, query, this.db.prepare(query));
+  }
+
+  async send(queries: string[]): Promise<void> {
+    this.queries.push(...queries);
+    await delay(this.options.delay?.(queries) ?? 0);
+  }
+
+  async batch(
+    statements: WorkersD1PreparedStatementLike[],
+  ): Promise<{ readonly meta: { readonly changes: number } }[]> {
+    const spyStatements = statements as SpyStatement[];
+    const queries = spyStatements.map((s) => s.query);
+    this.batches.push(queries);
+    if (this.options.failBatch?.(queries)) throw new Error("Injected failure");
+    await this.send(queries);
+    return await this.db.batch(spyStatements.map((s) => s.inner));
+  }
+
+  get ddlBatches(): number {
+    return this.batches.filter((b) => b.some((q) => q.includes("CREATE")))
+      .length;
+  }
+}
+
 async function collect(
   iterable: AsyncIterable<{ key: readonly string[]; value: unknown }>,
 ): Promise<{ key: readonly string[]; value: unknown }[]> {
@@ -33,8 +116,10 @@ async function collect(
 
 describe("WorkersD1KvStore", () => {
   it("rejects an invalid table name", () => {
-    expect(() => new WorkersD1KvStore(env.D1, { tableName: "foo; DROP" }))
-      .toThrow(TypeError);
+    for (const tableName of ["foo; DROP", "sqlite_kv", "SQLITE_kv", "_cf_KV"]) {
+      expect(() => new WorkersD1KvStore(env.D1, { tableName }))
+        .toThrow(TypeError);
+    }
   });
 
   it("initialize() creates the table", async () => {
@@ -244,5 +329,211 @@ describe("WorkersD1KvStore", () => {
     expect(await collect(store.list(["expired-list"]))).toEqual([
       { key: ["expired-list", "fresh"], value: "fresh" },
     ]);
+  });
+
+  it("initializes the table once per store instance", async () => {
+    const spy = new D1Spy(env.D1);
+    const store = new WorkersD1KvStore(spy);
+    await Promise.all([store.get(["a"]), store.get(["b"])]);
+    await store.set(["a"], 1);
+    await store.cas(["a"], 1, 2);
+    expect(spy.ddlBatches).toBe(1);
+    const index = await env.D1.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
+    ).bind("idx_fedify_kv_expires").first<{ name: string }>();
+    expect(index?.name).toBe("idx_fedify_kv_expires");
+  });
+
+  it("skips initialization when initialized is set", async () => {
+    await new WorkersD1KvStore(env.D1).initialize();
+    const spy = new D1Spy(env.D1);
+    const store = new WorkersD1KvStore(spy, { initialized: true });
+    await store.set(["a"], 1);
+    expect(await store.get(["a"])).toBe(1);
+    expect(await store.cas(["a"], 1, 2)).toBe(true);
+    await collect(store.list());
+    await store.delete(["a"]);
+    expect(spy.ddlBatches).toBe(0);
+    expect(spy.queries.some((q) => q.includes("CREATE"))).toBe(false);
+  });
+
+  it("retries initialization after a failure", async () => {
+    let fail = true;
+    const spy = new D1Spy(env.D1, {
+      failBatch: (queries) => fail && queries.some((q) => q.includes("CREATE")),
+    });
+    const store = new WorkersD1KvStore(spy);
+    await expect(store.get(["a"])).rejects.toThrow("Injected failure");
+    fail = false;
+    await store.set(["a"], 1);
+    expect(await store.get(["a"])).toBe(1);
+    expect(spy.ddlBatches).toBe(2);
+  });
+
+  it("drop()", async () => {
+    const store = new WorkersD1KvStore(env.D1, { tableName: "drop_test" });
+    await store.set(["a"], 1);
+    await store.drop();
+    const row = await env.D1.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+    ).bind("drop_test").first();
+    expect(row).toBeNull();
+    // The store re-creates the table on its next use:
+    expect(await store.get(["a"])).toBeUndefined();
+  });
+
+  it("works with a D1 session", async () => {
+    const store = new WorkersD1KvStore(env.D1.withSession("first-primary"));
+    await store.set(["session"], { a: 1 });
+    expect(await store.get(["session"])).toEqual({ a: 1 });
+    expect(await store.cas(["session"], { a: 1 }, 2)).toBe(true);
+    expect(await collect(store.list(["session"]))).toEqual([
+      { key: ["session"], value: 2 },
+    ]);
+  });
+
+  it("set() purges a bounded number of expired entries", async () => {
+    const store = new WorkersD1KvStore(env.D1);
+    await store.initialize();
+    const expired = Date.now() - 1000;
+    await env.D1.batch(
+      Array.from(
+        { length: 150 },
+        (_, i) =>
+          env.D1.prepare(
+            "INSERT INTO fedify_kv (key, value, expires) VALUES (?, ?, ?)",
+          ).bind(JSON.stringify(["expired", `${i}`]), "null", expired),
+      ),
+    );
+    const countExpired = async () =>
+      (await env.D1.prepare(
+        "SELECT count(*) AS count FROM fedify_kv WHERE expires IS NOT NULL",
+      ).first<{ count: number }>())?.count;
+    await store.set(["a"], 1);
+    expect(await countExpired()).toBe(50);
+    // cas() purges them as well:
+    await store.cas(["a"], 1, 2);
+    expect(await countExpired()).toBe(0);
+  });
+
+  it("cas() does not match an entry that expires while in flight", async () => {
+    // Regression test: the expiration must be checked against the time the
+    // statement runs, not the time the Worker sent it.
+    const delayed = new WorkersD1KvStore(
+      new D1Spy(env.D1, {
+        delay: (queries) =>
+          queries.some((q) => q.trimStart().startsWith("UPDATE")) ? 600 : 0,
+      }),
+    );
+    const store = new WorkersD1KvStore(env.D1);
+    await store.initialize();
+    await insertRaw(["in-flight"], "old", Date.now() + 300);
+    const swap = delayed.cas(["in-flight"], "old", "new");
+    await delay(400);
+    expect(await store.get(["in-flight"])).toBeUndefined();
+    expect(await store.cas(["in-flight"], undefined, undefined)).toBe(true);
+    expect(await swap).toBe(false);
+    expect(await store.get(["in-flight"])).toBeUndefined();
+  });
+
+  it("cas() with an explicit TTL on update", async () => {
+    const store = new WorkersD1KvStore(env.D1);
+    await store.set(["ttl-update"], "a");
+    expect(
+      await store.cas(["ttl-update"], "a", "b", { ttl: mockDuration(3600) }),
+    ).toBe(true);
+    const row = await env.D1.prepare(
+      "SELECT expires FROM fedify_kv WHERE key = ?",
+    ).bind(JSON.stringify(["ttl-update"])).first<{ expires: number }>();
+    expect(row?.expires).toBeGreaterThan(Date.now() + 3_500_000);
+    expect(row?.expires).toBeLessThanOrEqual(Date.now() + 3_600_000);
+  });
+
+  it("cas() does not delete an expired entry", async () => {
+    const store = new WorkersD1KvStore(env.D1);
+    await store.initialize();
+    await insertRaw(["expired-delete"], "stale", Date.now() - 1000);
+    expect(await store.cas(["expired-delete"], "stale", undefined)).toBe(false);
+  });
+
+  it("cas() compares deeply nested values", async () => {
+    const store = new WorkersD1KvStore(env.D1);
+    // Deeper than json_tree() can parse:
+    let deep: unknown = "leaf";
+    for (let i = 0; i < 1001; i++) deep = [deep];
+    await store.set(["deep"], deep);
+    expect(await store.get(["deep"])).toEqual(deep);
+    expect(await store.cas(["deep"], ["other"], 1)).toBe(false);
+    expect(await store.cas(["deep"], deep, 1)).toBe(true);
+    expect(await store.cas(["deep"], 1, deep)).toBe(true);
+    expect(await store.cas(["deep"], deep, undefined)).toBe(true);
+    expect(await store.get(["deep"])).toBeUndefined();
+  });
+
+  it("cas() lets only one of separate store instances win", async () => {
+    const stores = Array.from(
+      { length: 5 },
+      () => new WorkersD1KvStore(env.D1),
+    );
+    await stores[0].initialize();
+    const absent = await Promise.all(
+      stores.map((s, i) => s.cas(["absent"], undefined, i)),
+    );
+    expect(absent.filter((r) => r).length).toBe(1);
+
+    await insertRaw(["expired-race"], "stale", Date.now() - 1000);
+    const expired = await Promise.all(
+      stores.map((s, i) => s.cas(["expired-race"], undefined, i)),
+    );
+    expect(expired.filter((r) => r).length).toBe(1);
+  });
+
+  it("list() fetches entries in bounded batches", async () => {
+    const spy = new D1Spy(env.D1);
+    const store = new WorkersD1KvStore(spy);
+    const keys = Array.from(
+      { length: 45 },
+      (_, i) => ["paged", `${i}`.padStart(2, "0")] as const,
+    );
+    for (const key of keys) await store.set(key, key[1]);
+    await store.set(["paged-other"], "other");
+    await store.set(["other"], "other");
+
+    const before = spy.queries.length;
+    const entries = await collect(store.list(["paged"]));
+    expect(entries).toEqual(keys.map((key) => ({ key, value: key[1] })));
+    // 45 entries in batches of 20:
+    expect(spy.queries.length - before).toBe(3);
+    expect((await collect(store.list())).length).toBe(47);
+  });
+
+  it("list() handles escaped, Unicode, and numeric-looking prefixes", async () => {
+    const store = new WorkersD1KvStore(env.D1);
+    const keys = [
+      ['a"b'],
+      ['a"b', "x"],
+      ['a"bc'],
+      ["a\\"],
+      ["a\\", "x"],
+      ["한글"],
+      ["한글", "1"],
+      ["한글x"],
+      ["😀"],
+      ["1"],
+      ["1", "0"],
+      ["10"],
+      ["-1"],
+      ["-10"],
+    ] as const;
+    for (const key of keys) await store.set(key, key.join("/"));
+    const listKeys = async (prefix: readonly [string, ...string[]]) =>
+      (await collect(store.list(prefix))).map((e) => e.key);
+    expect(await listKeys(['a"b'])).toEqual([['a"b', "x"], ['a"b']]);
+    expect(await listKeys(["a\\"])).toEqual([["a\\", "x"], ["a\\"]]);
+    expect(await listKeys(["한글"])).toEqual([["한글", "1"], ["한글"]]);
+    expect(await listKeys(["😀"])).toEqual([["😀"]]);
+    expect(await listKeys(["1"])).toEqual([["1", "0"], ["1"]]);
+    expect(await listKeys(["-1"])).toEqual([["-1"]]);
+    expect(await listKeys(["1", "0"])).toEqual([["1", "0"]]);
   });
 });

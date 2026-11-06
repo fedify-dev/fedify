@@ -496,8 +496,9 @@ const federation = createFederation<void>({
 > primarily for Deno Deploy, which is shutting down.  Fedify keeps supporting
 > `@fedify/denokv` throughout the 2.x series, but the package will be removed
 > in Fedify 3.0.0. Use [`SqliteKvStore`] for local or single-node deployments,
-> or [`PostgresKvStore`], [`RedisKvStore`], [`MysqlKvStore`], or
-> [`WorkersD1KvStore`] for production.  See [#1336] for the removal plan.
+> [`PostgresKvStore`], [`RedisKvStore`], or [`MysqlKvStore`] for production,
+> or [`WorkersD1KvStore`] if you move to Cloudflare Workers.  See [#1336] for
+> the removal plan.
 
 To use the [`DenoKvStore`], you need to install the *@fedify/denokv* package
 first:
@@ -602,7 +603,8 @@ import { WorkersD1KvStore } from "@fedify/cfworkers";
 export default {
   async fetch(request, env, ctx) {
     const federation: Federation<void> = await builder.build({
-      kv: new WorkersD1KvStore(env.DB),
+      // The table is created by a D1 migration; see below:
+      kv: new WorkersD1KvStore(env.DB, { initialized: true }),
     });
     return await federation.fetch(request, { contextData: undefined });
   }
@@ -610,10 +612,11 @@ export default {
 ~~~~
 
 The store keeps its entries in a table named `fedify_kv` by default, which
-you can change with the `tableName` option.  It creates the table on its
-first use in each isolate.  If you would rather manage the schema with
-[D1 migrations], create the table in a migration and pass
-`initialized: true` to skip the check:
+you can change with the `tableName` option.  Without `initialized: true`,
+each store instance creates the table on its first use.  Since you construct
+the store for every request, that costs an extra D1 query per request, so
+create the table with a [D1 migration][D1 migrations] in production and pass
+`initialized: true`:
 
 ~~~~ sql
 CREATE TABLE IF NOT EXISTS fedify_kv (
@@ -621,18 +624,18 @@ CREATE TABLE IF NOT EXISTS fedify_kv (
   value TEXT NOT NULL,
   expires INTEGER
 );
-CREATE INDEX IF NOT EXISTS fedify_kv_expires ON fedify_kv (expires);
+CREATE INDEX IF NOT EXISTS idx_fedify_kv_expires ON fedify_kv (expires);
 ~~~~
 
-~~~~ typescript twoslash
-import { WorkersD1KvStore } from "@fedify/cfworkers";
-const env = undefined as unknown as { DB: D1Database };
-// ---cut-before---
-const kv = new WorkersD1KvStore(env.DB, { initialized: true });
-~~~~
+Expired entries are never returned.  Each write also purges a bounded number
+of expired entries from the table, so the table does not grow without limit.
 
-Expired entries are never returned, and they are purged from the table
-whenever a value is set.
+> [!WARNING]
+> Pass the `D1Database` binding itself (e.g., `env.DB`) to get strongly
+> consistent reads.  `WorkersD1KvStore` also accepts a D1 session created
+> with `D1Database.withSession()`, but sessions only provide sequential
+> consistency and can read stale data from a replica, which can make Fedify
+> process the same activity twice.
 
 > [!NOTE]
 > Since your `D1Database` is not bound to a global variable, but rather

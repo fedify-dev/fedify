@@ -1799,8 +1799,9 @@ covered.
 Deno KV was built primarily for Deno Deploy, which is shutting down.
 `@fedify/denokv` remains supported throughout Fedify 2.x, but it will be
 removed in Fedify 3.0.0.  Use `SqliteKvStore` from *@fedify/sqlite* for local
-or single-node deployments, or `PostgresKvStore`, `RedisKvStore`,
-`MysqlKvStore`, or `WorkersKvStore` for production.
+or single-node deployments, `PostgresKvStore`, `RedisKvStore`, or
+`MysqlKvStore` for production, or `WorkersD1KvStore` from *@fedify/cfworkers*
+on Cloudflare Workers.
 
 ~~~~ typescript
 // ❌ Bad: importing the deprecated adapter

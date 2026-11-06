@@ -74,8 +74,9 @@ export const DENO_KV_STORE_DEPRECATED =
   "`DenoKvStore` from `@fedify/denokv` is deprecated since Fedify 2.5.0 and " +
   "will be removed in Fedify 3.0.0.  Use `SqliteKvStore` from " +
   "`@fedify/sqlite` for local or single-node deployments, or " +
-  "`PostgresKvStore`, `RedisKvStore`, `MysqlKvStore`, or `WorkersKvStore` " +
-  "for production.  See https://github.com/fedify-dev/fedify/issues/1336 " +
+  "`PostgresKvStore`, `RedisKvStore`, or `MysqlKvStore` for production, " +
+  "or `WorkersD1KvStore` from `@fedify/cfworkers` on Cloudflare Workers.  " +
+  "See https://github.com/fedify-dev/fedify/issues/1336 " +
   "for the removal plan.";
 
 /**
