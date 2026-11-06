@@ -297,12 +297,14 @@ export function checkRawPropertyIris(
   const root: Scope = { functionScope: true, bindings: new Map() };
   // TypeScript merges namespaces and enums of the same name in a scope, and
   // makes what each declaration exports visible in the others:
-  const members = new Map<Scope, Map<string, Set<string>>>();
+  const members = new Map<object, Map<string, Set<string>>>();
   const blockMembers = new WeakMap<Ast, Set<string>>();
   function mergedMembers(scope: Scope, id: string | undefined): Set<string> {
     if (id == null) return new Set();
-    let names = members.get(scope);
-    if (names == null) members.set(scope, names = new Map());
+    // Declarations nested in a merged namespace merge with each other, too:
+    const owner = scope.merged ?? scope;
+    let names = members.get(owner);
+    if (names == null) members.set(owner, names = new Map());
     let merged = names.get(id);
     if (merged == null) names.set(id, merged = new Set());
     return merged;
