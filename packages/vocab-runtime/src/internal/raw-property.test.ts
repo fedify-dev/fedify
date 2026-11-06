@@ -37,6 +37,14 @@ test("parseRawPropertyIri() accepts absolute IRIs", () => {
   deepStrictEqual(parseRawPropertyIri("urn://[v1.fe80::a+en1]/p", "f"), [
     "urn://[v1.fe80::a+en1]/p",
   ]);
+  deepStrictEqual(
+    parseRawPropertyIri("https://user:pass@example.com:8080/p", "f"),
+    ["https://user:pass@example.com:8080/p"],
+  );
+  deepStrictEqual(
+    parseRawPropertyIri("https://example.com:/p", "f")[0],
+    "https://example.com:/p",
+  );
   deepStrictEqual(parseRawPropertyIri("urn:example:prop", "f"), [
     "urn:example:prop",
   ]);
@@ -69,6 +77,9 @@ test("parseRawPropertyIri() rejects what is not an absolute IRI", () => {
       "https://a[::1]/x",
       "https://[u@]::1]/x",
       "https://[v1]/x",
+      "https://example.com:abc/p",
+      "https://example.com:80:90/p",
+      "https://user@example.com:8a/p",
       "https://example.com/\uD800",
     ]
   ) {

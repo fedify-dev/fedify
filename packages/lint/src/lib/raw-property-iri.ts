@@ -179,14 +179,15 @@ const IP_LITERAL_PATTERN = /^\[([^\[\]]*)\](?::[0-9]*)?$/;
 const IP_FUTURE_PATTERN = /^v[0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+$/i;
 
 /**
- * Checks that square brackets in an authority delimit an IPv6 address or an
- * IPvFuture literal as the whole host, as the runtime does.
+ * Checks that an authority has a numeric port, if any, and that square
+ * brackets delimit an IPv6 address or an IPvFuture literal as the whole host,
+ * as the runtime does.
  */
 function isAuthoritySyntax(authority: string): boolean {
   const hostPort = authority.slice(authority.lastIndexOf("@") + 1);
   const userinfo = authority.slice(0, authority.length - hostPort.length);
   if (/[[\]]/.test(userinfo)) return false;
-  if (!/[[\]]/.test(hostPort)) return true;
+  if (!/[[\]]/.test(hostPort)) return /^[^:]*(?::[0-9]*)?$/.test(hostPort);
   const match = IP_LITERAL_PATTERN.exec(hostPort);
   if (match == null) return false;
   const literal = match[1];

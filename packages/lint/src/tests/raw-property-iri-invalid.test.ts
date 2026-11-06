@@ -15,6 +15,8 @@ const cases: [string, string, string?][] = [
     "https://example/path[0]",
     "https://[abc]/x",
     "https://a[::1]/x",
+    "https://example:abc/p",
+    "https://example:80:90/p",
     "https://example/\ud800",
     "@id",
     "_:node",
@@ -261,6 +263,7 @@ cases.push(
     `${setup} enum E { V = (read(obj, "content"), 0) }`,
     "must be a full",
   ],
+  ["numeric port", `${setup} read(obj, "https://u:p@example:8080/p");`],
   ["IPv6 authority", `${setup} read(obj, "https://[::1]/property");`],
   [
     "IPvFuture authority",
