@@ -202,6 +202,132 @@ test("createFederation()", async (t) => {
   });
 });
 
+test("FederationImpl.startQueue()", async (t) => {
+  function createCountingQueue() {
+    const messages: Message[] = [];
+    let listenCount = 0;
+    const queue: MessageQueue & {
+      messages: Message[];
+      readonly listenCount: number;
+    } = {
+      messages,
+      get listenCount() {
+        return listenCount;
+      },
+      enqueue(message: Message) {
+        messages.push(message);
+        return Promise.resolve();
+      },
+      listen() {
+        listenCount++;
+        return Promise.resolve();
+      },
+    };
+    return queue;
+  }
+
+  await t.step(
+    "starts a fanout-only queue with an explicit selector",
+    async () => {
+      const queue = createCountingQueue();
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue: { fanout: queue },
+        manuallyStartQueue: true,
+      });
+      await federation.startQueue(undefined, { queue: "fanout" });
+      assertEquals(queue.listenCount, 1);
+      await federation.startQueue(undefined, { queue: "fanout" });
+      assertEquals(queue.listenCount, 1);
+    },
+  );
+
+  await t.step(
+    "starts a fanout-only queue without a selector",
+    async () => {
+      const queue = createCountingQueue();
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        queue: { fanout: queue },
+        manuallyStartQueue: true,
+      });
+      await federation.startQueue(undefined);
+      assertEquals(queue.listenCount, 1);
+    },
+  );
+
+  await t.step(
+    "starts a fanout-only queue after a fanout enqueue",
+    async () => {
+      const queue = createCountingQueue();
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        contextLoaderFactory: () => mockDocumentLoader,
+        queue: { fanout: queue },
+      });
+      const ctx = new ContextImpl<void>({
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      const activity = new vocab.Create({
+        id: new URL("https://example.com/activity/1"),
+        actor: new URL("https://example.com/person"),
+      });
+      await ctx.sendActivity(
+        [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+        {
+          id: new URL("https://example.com/recipient"),
+          inboxId: new URL("https://example.com/inbox"),
+        },
+        activity,
+        { fanout: "force" },
+      );
+      assertEquals(queue.listenCount, 1);
+      assertEquals(queue.messages.length, 1);
+      assertEquals(queue.messages[0].type, "fanout");
+    },
+  );
+
+  await t.step(
+    "does not start a fanout-only queue automatically when manually started",
+    async () => {
+      const queue = createCountingQueue();
+      const federation = new FederationImpl<void>({
+        kv: new MemoryKvStore(),
+        contextLoaderFactory: () => mockDocumentLoader,
+        queue: { fanout: queue },
+        manuallyStartQueue: true,
+      });
+      const ctx = new ContextImpl<void>({
+        data: undefined,
+        federation,
+        url: new URL("https://example.com/"),
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      const activity = new vocab.Create({
+        id: new URL("https://example.com/activity/1"),
+        actor: new URL("https://example.com/person"),
+      });
+      await ctx.sendActivity(
+        [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+        {
+          id: new URL("https://example.com/recipient"),
+          inboxId: new URL("https://example.com/inbox"),
+        },
+        activity,
+        { fanout: "force" },
+      );
+      assertEquals(queue.listenCount, 0);
+      assertEquals(queue.messages.length, 1);
+      assertEquals(queue.messages[0].type, "fanout");
+    },
+  );
+});
+
 test({
   name: "Federation.createContext()",
   permissions: { env: true, read: true },
