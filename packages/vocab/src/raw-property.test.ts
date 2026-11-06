@@ -1,4 +1,4 @@
-import { test } from "@fedify/fixture";
+import { mockDocumentLoader, test } from "@fedify/fixture";
 import { LanguageString } from "@fedify/vocab-runtime";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
@@ -352,6 +352,39 @@ test("embedded portable objects keep their own contexts in the cache", async () 
   const jsonLd = await note.toJsonLd() as Record<string, unknown>;
   deepStrictEqual(jsonLd["@context"], AS);
   strictEqual(jsonLd.content, "Hello");
+});
+
+test("accessors do not load contexts once per field of a cached document", async () => {
+  const context = "https://example.com/contexts/extension";
+  let loads = 0;
+  const contextLoader = (url: string) => {
+    if (url !== context) return mockDocumentLoader(url);
+    loads++;
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: { "@context": { ext: "https://example.com/ns#" } },
+    });
+  };
+  const create = await Create.fromJsonLd({
+    "@context": [AS, context],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    ...Object.fromEntries(
+      Array.from({ length: 100 }, (_, i) => [`ext:field${i}`, i]),
+    ),
+    object: {
+      "@context": AS,
+      id: "https://example.com/notes/1",
+      type: "Note",
+      content: "Hello",
+    },
+  }, { contextLoader });
+  loads = 0;
+  const note = await create.getObject({ contextLoader });
+  ok(note instanceof Note);
+  ok(loads <= 5, `Loaded the context ${loads} times.`);
 });
 
 test("embedded objects keep values under property-scoped contexts", async () => {

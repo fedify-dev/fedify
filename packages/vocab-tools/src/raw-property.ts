@@ -163,37 +163,51 @@ function inheritJsonLdContext(
   return { ...document, "@context": [...parentEntries, ...ownEntries] };
 }
 
-// The property IRIs each key of a compacted document expands to, keyed by
-// the document:
-const expandedKeys = new WeakMap<object, Map<string, Promise<string[]>>>();
+// The results of isCachedPropertyKey(), keyed by the document and then by the
+// key:
+const cachedPropertyKeys = new WeakMap<object, Map<string, Promise<boolean>>>();
 
-function expandKey(
+async function expandTopLevelKeys(
+  document: Record<string, unknown>,
+  contextLoader: DocumentLoader,
+): Promise<string[]> {
+  const expanded = await jsonld.expand(document, {
+    documentLoader: contextLoader,
+    keepFreeFloatingNodes: true,
+  });
+  return globalThis.Object.keys(expanded[0] ?? {}).filter((iri) =>
+    !iri.startsWith("@")
+  );
+}
+
+// The number of expansions must not depend on the document, which can come
+// from a remote peer, as each of them can load the contexts again:
+async function mapsOnlyKeyToProperty(
   document: Record<string, unknown>,
   context: unknown,
   key: string,
+  iris: readonly string[],
   contextLoader: DocumentLoader,
-): Promise<string[]> {
-  let keys = expandedKeys.get(document);
-  if (keys == null) {
-    keys = new Map();
-    expandedKeys.set(document, keys);
-  }
-  const cached = keys.get(key);
-  if (cached != null) return cached;
-  const iris = jsonld.expand(
+): Promise<boolean> {
+  const own = await expandTopLevelKeys(
     { "@context": context, [key]: [] },
-    { documentLoader: contextLoader, keepFreeFloatingNodes: true },
-  ).then((expanded: unknown[]) =>
-    globalThis.Object.keys(expanded[0] ?? {}).filter((iri) =>
-      !iri.startsWith("@")
-    )
+    contextLoader,
   );
-  // A failure, such as of the context loader, is not remembered, as another
-  // call can pass another loader:
-  const map = keys;
-  iris.catch(() => map.delete(key));
-  keys.set(key, iris);
-  return iris;
+  if (own.length !== 1 || own[0] !== iris[0]) return false;
+  // Only the keys matter, so nested values and their contexts are left out,
+  // while scalars stay for keyword aliases such as id, which require them:
+  const others: Record<string, unknown> = { "@context": context };
+  for (const [k, value] of globalThis.Object.entries(document)) {
+    if (k === key || k.startsWith("@")) continue;
+    others[k] = value != null && typeof value === "object" ? [] : value;
+  }
+  try {
+    const expanded = await expandTopLevelKeys(others, contextLoader);
+    return !expanded.some((iri) => iris.includes(iri));
+  } catch {
+    // Some other term could not take the placeholder, so nothing is known:
+    return false;
+  }
 }
 
 // Only the first entry of a context can declare that it does not propagate:
@@ -236,16 +250,26 @@ async function isCachedPropertyKey(
   ) {
     return false;
   }
-  const own = await expandKey(document, context, key, contextLoader);
-  if (own.length !== 1 || own[0] !== iris[0]) return false;
-  const others = await globalThis.Promise.all(
-    globalThis.Object.keys(document)
-      .filter((k) => k !== key && !k.startsWith("@"))
-      // Keyword aliases, such as id, cannot take an empty array, and are
-      // not properties anyway:
-      .map((k) => expandKey(document, context, k, contextLoader).catch(() => [])),
+  let checks = cachedPropertyKeys.get(document);
+  if (checks == null) {
+    checks = new Map();
+    cachedPropertyKeys.set(document, checks);
+  }
+  const cached = checks.get(key);
+  if (cached != null) return await cached;
+  const check = mapsOnlyKeyToProperty(
+    document,
+    context,
+    key,
+    iris,
+    contextLoader,
   );
-  return !others.flat().some((iri) => iris.includes(iri));
+  // A failure, such as of the context loader, is not remembered, as another
+  // call can pass another loader:
+  const map = checks;
+  check.catch(() => map.delete(key));
+  checks.set(key, check);
+  return await check;
 }
 
 async function readRawProperty(
