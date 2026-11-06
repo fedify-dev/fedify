@@ -17,6 +17,9 @@ Local changes:
   broad type or API refactoring remain disabled and are tracked separately.
 - `require-readable-spacing` is not enabled because formatting is owned by the
   repository formatter.
+- `shared/type-alias-resolution.ts` starts alias substitutions from an empty map
+  so caller type parameters do not leak into an alias body.  This avoids a
+  false `no-unknown-type-aliases` report and is worth upstreaming.
 - The vendored directory is excluded from Oxlint, `deno fmt`, and Hongdown.
 
 Update procedure: reinstall the skill, run its installer into a staging
