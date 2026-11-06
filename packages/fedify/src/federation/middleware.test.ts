@@ -7545,6 +7545,79 @@ test("FederationImpl.sendActivity() drains deliveries when fan-out setup fails",
   }
 });
 
+test("FederationImpl.sendActivity() handles rejections while building headers", async () => {
+  const federation = new FederationImpl<void>({
+    kv: new MemoryKvStore(),
+  });
+  const context = federation.createContext(new URL("https://example.com/"));
+  const activity = await signObject(
+    new Create({
+      id: new URL("https://example.com/activity/header-failure"),
+      actor: new URL("https://example.com/person"),
+    }),
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    { contextLoader: mockDocumentLoader, documentLoader: mockDocumentLoader },
+  );
+  const subtle = crypto.subtle;
+  const originalDigest = subtle.digest;
+  let digestCalls = 0;
+  let releaseSecondDigest!: () => void;
+  const secondDigestGate = new Promise<void>((resolve) => {
+    releaseSecondDigest = resolve;
+  });
+  let secondDigestStarted!: () => void;
+  const secondDigestEntered = new Promise<void>((resolve) => {
+    secondDigestStarted = resolve;
+  });
+  subtle.digest = async (algorithm, data) => {
+    digestCalls++;
+    if (digestCalls === 2) {
+      secondDigestStarted();
+      await secondDigestGate;
+    }
+    return await originalDigest.call(subtle, algorithm, data);
+  };
+  const capture = captureUnhandledRejections();
+  let released = false;
+  try {
+    const sending = federation.sendActivity(
+      [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
+      {
+        "ftp://example.com/fail": {
+          actorIds: ["https://example.com/recipients/failing"],
+          sharedInbox: false,
+        },
+        "http://127.0.0.1:3006/inbox": {
+          actorIds: ["https://example.com/recipients/slow"],
+          sharedInbox: false,
+        },
+      },
+      activity,
+      {
+        context,
+        immediate: true,
+        collectionSync: "https://example.com/followers",
+      },
+    );
+    const observed = sending.catch((error) => error);
+    await secondDigestEntered;
+    await capture.settle();
+    assertEquals(
+      capture.reasons,
+      [],
+      "an early rejection must not surface as an unhandled rejection",
+    );
+    releaseSecondDigest();
+    released = true;
+    await observed;
+  } finally {
+    if (!released) releaseSecondDigest();
+    subtle.digest = originalDigest;
+    capture.stop();
+  }
+});
+
 test("Federation.fetch() bounds inbox bodies before dispatch", async () => {
   let dispatched = false;
   const json = JSON.stringify({
