@@ -415,6 +415,62 @@ test("embedded objects keep their received JSON-LD on the fallback path", async 
   }
 });
 
+test("accessors do not load contexts once per embedded object", async () => {
+  const context = "https://example.com/contexts/extension";
+  let loads = 0;
+  const contextLoader = (url: string) => {
+    if (url !== context) return mockDocumentLoader(url);
+    loads++;
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: { "@context": { ext: "https://example.com/ns#" } },
+    });
+  };
+  const note = await Note.fromJsonLd({
+    "@context": [AS, context],
+    id: "https://example.com/notes/1",
+    type: "Note",
+    attachment: Array.from({ length: 50 }, (_, i) => ({
+      "@context": AS,
+      type: "Document",
+      name: `Attachment ${i}`,
+    })),
+  }, { contextLoader });
+  loads = 0;
+  const attachments = await Array.fromAsync(
+    note.getAttachments({ contextLoader }),
+  );
+  strictEqual(attachments.length, 50);
+  ok(loads <= 5, `Loaded the context ${loads} times.`);
+});
+
+test("embedded objects keep values under type-scoped contexts", async () => {
+  const create = await Create.fromJsonLd({
+    "@context": [AS, {
+      body: `${AS}#content`,
+      Create: {
+        "@id": `${AS}#Create`,
+        "@context": { "@propagate": true, body: null },
+      },
+    }],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object: {
+      "@context": AS,
+      id: "https://example.com/notes/1",
+      type: "Note",
+      // The type-scoped context of the parent removes this term:
+      body: "Not the content",
+      content: "Hello",
+    },
+  });
+  const note = await create.getObject();
+  ok(note instanceof Note);
+  deepStrictEqual(note.contents, ["Hello"]);
+});
+
 test("embedded objects keep values under property-scoped contexts", async () => {
   const create = await Create.fromJsonLd({
     "@context": [AS, {
