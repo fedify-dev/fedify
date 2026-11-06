@@ -422,8 +422,10 @@ existing Deno applications throughout the 2.x series.
 
 On Cloudflare Workers, use `WorkersD1KvStore` (backed by D1) rather than
 `WorkersKvStore` (backed by Workers KV).  Fedify's key–value workload is
-write-heavy and needs strong consistency, and only `WorkersD1KvStore`
-supports `cas()`.
+balanced between reads and writes and needs strong consistency, and only
+`WorkersD1KvStore` supports `cas()`.  Pass the `D1Database` binding itself,
+not a D1 session, and create its table with a D1 migration and
+`initialized: true`, since the store is constructed per request.
 
 For `PostgresKvStore`, existing populated tables and externally managed DDL
 (`initialized: true`) need the [expiry expression index] to accelerate cleanup.

@@ -921,8 +921,9 @@ handler rather than as ambient imports.  Fedify accommodates this through
 the [builder pattern](./federation.md#builder-pattern-for-structuring) and
 the [`@fedify/cfworkers`] package, which provides `WorkersD1KvStore`,
 `WorkersKvStore`, and `WorkersMessageQueue`.  Prefer `WorkersD1KvStore`
-over `WorkersKvStore`: Fedify's key–value workload is write-heavy and needs
-strong consistency, which D1 provides and Workers KV does not.  See the
+over `WorkersKvStore`: Fedify writes to its key–value store about as often as
+it reads from it and needs strong consistency, which D1 provides and Workers KV
+does not.  See the
 [*`WorkersD1KvStore`*](./kv.md#workersd1kvstore-cloudflare-workers-only)
 section for details.
 
@@ -968,7 +969,8 @@ builder.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const federation = await builder.build({
-      kv: new WorkersD1KvStore(env.DB),
+      // The table is created by a D1 migration:
+      kv: new WorkersD1KvStore(env.DB, { initialized: true }),
       queue: new WorkersMessageQueue(env.QUEUE),
     });
     return federation.fetch(request, { contextData: env });
@@ -1000,7 +1002,7 @@ export default {
 
   async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
     const federation = await builder.build({
-      kv: new WorkersD1KvStore(env.DB),
+      kv: new WorkersD1KvStore(env.DB, { initialized: true }),
       queue: new WorkersMessageQueue(env.QUEUE),
     });
 

@@ -272,7 +272,9 @@ export interface WorkersD1PreparedStatementLike {
  */
 export interface WorkersD1DatabaseLike {
   prepare(query: string): WorkersD1PreparedStatementLike;
-  batch(statements: WorkersD1PreparedStatementLike[]): Promise<unknown[]>;
+  batch(
+    statements: WorkersD1PreparedStatementLike[],
+  ): Promise<{ readonly meta: { readonly changes: number } }[]>;
 }
 
 /**
@@ -282,7 +284,8 @@ export interface WorkersD1DatabaseLike {
 export interface WorkersD1KvStoreOptions {
   /**
    * The table name to use for the key–value store.
-   * Only letters, digits, and underscores are allowed.
+   * Only letters, digits, and underscores are allowed, and names starting
+   * with `sqlite_` or `_cf_` are reserved by SQLite and D1.
    * `"fedify_kv"` by default.
    * @default `"fedify_kv"`
    */
@@ -290,7 +293,10 @@ export interface WorkersD1KvStoreOptions {
 
   /**
    * Whether the table has already been created, for example, by a D1
-   * migration.  If `false`, the store creates the table on its first use.
+   * migration.  If `false`, each store instance creates the table on its
+   * first use, which costs an extra D1 query per instance.  Since a store is
+   * usually constructed per request on Cloudflare Workers, create the table
+   * with a D1 migration and set this to `true` in production.
    * `false` by default.
    * @default `false`
    */
@@ -298,16 +304,42 @@ export interface WorkersD1KvStoreOptions {
 }
 
 /**
+ * The current time in milliseconds since the Unix epoch, as seen by D1.
+ * Comparing expiration against the database clock keeps each statement
+ * consistent with the moment it actually runs, rather than the moment the
+ * Worker sent it.
+ */
+const D1_NOW = "CAST(unixepoch('subsec') * 1000 AS INTEGER)";
+
+/**
+ * The maximum number of rows to fetch per query in
+ * {@link WorkersD1KvStore.list}.  D1 rows can be up to 2 MB each, so this
+ * keeps a page well under D1's 50 MB limit on query results.
+ */
+const D1_LIST_BATCH_SIZE = 20;
+
+/**
+ * The maximum number of expired rows to delete per write.
+ */
+const D1_EXPIRE_BATCH_SIZE = 100;
+
+/**
  * Implementation of the {@link KvStore} interface for Cloudflare D1 binding.
  *
- * Unlike {@link WorkersKvStore}, this store is strongly consistent and is
- * priced for balanced read and write workloads, which suits Fedify's usage
- * of the key–value store.  It also supports the {@link KvStore.cas}
- * operation: since D1 has no interactive transactions, each compare-and-swap
- * is performed by a single conditional SQL statement.
+ * Unlike {@link WorkersKvStore}, this store is strongly consistent when given
+ * a `D1Database` binding, which suits Fedify's balanced read/write usage of
+ * the key–value store.  It also supports the {@link KvStore.cas} operation:
+ * since D1 has no interactive transactions, each compare-and-swap is
+ * performed by a single conditional SQL statement.
  *
- * The store uses a table with the following schema, which it creates on
- * its first use unless the `initialized` option is set:
+ * A `D1DatabaseSession` is accepted too, but sessions only provide D1's
+ * sequential consistency, and reads may be served by a stale replica.
+ * Fedify relies on fresh reads for idempotency checks, so pass the
+ * `D1Database` binding itself (e.g., `env.DB`) unless you know you can
+ * tolerate stale reads.
+ *
+ * The store uses a table with the following schema, which each instance
+ * creates on its first use unless the `initialized` option is set:
  *
  * ```sql
  * CREATE TABLE IF NOT EXISTS fedify_kv (
@@ -315,7 +347,7 @@ export interface WorkersD1KvStoreOptions {
  *   value TEXT NOT NULL,
  *   expires INTEGER
  * );
- * CREATE INDEX IF NOT EXISTS fedify_kv_expires ON fedify_kv (expires);
+ * CREATE INDEX IF NOT EXISTS idx_fedify_kv_expires ON fedify_kv (expires);
  * ```
  *
  * @example
@@ -326,7 +358,8 @@ export interface WorkersD1KvStoreOptions {
  * export default {
  *   async fetch(request, env, ctx) {
  *     const federation = createFederation({
- *       kv: new WorkersD1KvStore(env.DB),
+ *       // The table is created by a D1 migration:
+ *       kv: new WorkersD1KvStore(env.DB, { initialized: true }),
  *       // ... other options
  *     });
  *     return federation.fetch(request, { contextData: env });
@@ -338,24 +371,28 @@ export interface WorkersD1KvStoreOptions {
 export class WorkersD1KvStore implements KvStore {
   static readonly #defaultTableName = "fedify_kv";
   static readonly #tableNameRegex = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+  static readonly #reservedTableNameRegex = /^(sqlite_|_cf_)/i;
   readonly #db: WorkersD1DatabaseLike;
   readonly #tableName: string;
   #initialized: Promise<void> | null;
 
   /**
    * Constructs a new {@link WorkersD1KvStore} with the given D1 binding.
-   * @param db The Cloudflare D1 binding (or a D1 session).
+   * @param db The Cloudflare D1 binding.  A D1 session is also accepted, but
+   *           it only provides sequential consistency.
    * @param options Options for the key–value store.
-   * @throws {TypeError} If the table name is invalid.
+   * @throws {TypeError} If the table name is invalid or reserved.
    */
   constructor(
     db: WorkersD1DatabaseLike,
     options: WorkersD1KvStoreOptions = {},
   ) {
     this.#db = db;
-    this.#tableName = options.tableName ??
-      WorkersD1KvStore.#defaultTableName;
-    if (!WorkersD1KvStore.#tableNameRegex.test(this.#tableName)) {
+    this.#tableName = options.tableName ?? WorkersD1KvStore.#defaultTableName;
+    if (
+      !WorkersD1KvStore.#tableNameRegex.test(this.#tableName) ||
+      WorkersD1KvStore.#reservedTableNameRegex.test(this.#tableName)
+    ) {
       throw new TypeError(
         `Invalid table name for the key–value store: ${this.#tableName}`,
       );
@@ -366,38 +403,65 @@ export class WorkersD1KvStore implements KvStore {
   /**
    * Creates the table used by the key–value store if it does not already
    * exist.  Does nothing if the table already exists.  It is called
-   * automatically on the first use of the store unless the `initialized`
-   * option is set.
+   * automatically on the first use of the store instance unless
+   * the `initialized` option is set.
    */
   initialize(): Promise<void> {
-    this.#initialized ??= this.#db.batch([
-      this.#db.prepare(`
+    this.#initialized ??= this.#db
+      .batch([
+        this.#db.prepare(`
         CREATE TABLE IF NOT EXISTS "${this.#tableName}" (
           key TEXT PRIMARY KEY NOT NULL,
           value TEXT NOT NULL,
           expires INTEGER
         )
       `),
-      this.#db.prepare(`
-        CREATE INDEX IF NOT EXISTS "${this.#tableName}_expires"
+        this.#db.prepare(`
+        CREATE INDEX IF NOT EXISTS "idx_${this.#tableName}_expires"
         ON "${this.#tableName}" (expires)
       `),
-    ]).then(() => undefined, (error) => {
-      // Let a later call retry the initialization:
-      this.#initialized = null;
-      throw error;
-    });
+      ])
+      .then(
+        () => undefined,
+        (error) => {
+          // Let a later call retry the initialization:
+          this.#initialized = null;
+          throw error;
+        },
+      );
     return this.#initialized;
+  }
+
+  /**
+   * Drops the table used by the key–value store.  Does nothing if the table
+   * does not exist.  Mostly useful for tests.
+   */
+  async drop(): Promise<void> {
+    await this.#db.prepare(`DROP TABLE IF EXISTS "${this.#tableName}"`).run();
+    this.#initialized = null;
   }
 
   #encodeKey(key: KvKey): string {
     return JSON.stringify(key);
   }
 
-  #getExpires(now: number, options?: KvStoreSetOptions): number | null {
-    return options?.ttl == null
-      ? null
-      : now + options.ttl.total("milliseconds");
+  #getTtl(options?: KvStoreSetOptions): number | null {
+    return options?.ttl == null ? null : options.ttl.total("milliseconds");
+  }
+
+  /**
+   * Deletes a bounded number of expired entries, so that a write never has to
+   * sweep an unbounded backlog of them at once.
+   */
+  #expire(): WorkersD1PreparedStatementLike {
+    return this.#db.prepare(`
+      DELETE FROM "${this.#tableName}"
+      WHERE key IN (
+        SELECT key FROM "${this.#tableName}"
+        WHERE expires <= ${D1_NOW}
+        LIMIT ${D1_EXPIRE_BATCH_SIZE}
+      )
+    `);
   }
 
   /**
@@ -405,11 +469,14 @@ export class WorkersD1KvStore implements KvStore {
    */
   async get<T = unknown>(key: KvKey): Promise<T | undefined> {
     await this.initialize();
-    const row = await this.#db.prepare(`
+    const row = await this.#db
+      .prepare(`
       SELECT value FROM "${this.#tableName}"
-      WHERE key = ? AND (expires IS NULL OR expires > ?)
-    `).bind(this.#encodeKey(key), Date.now()).first<{ value: string }>();
-    return row == null ? undefined : JSON.parse(row.value) as T;
+      WHERE key = ? AND (expires IS NULL OR expires > ${D1_NOW})
+    `)
+      .bind(this.#encodeKey(key))
+      .first<{ value: string }>();
+    return row == null ? undefined : (JSON.parse(row.value) as T);
   }
 
   /**
@@ -421,24 +488,21 @@ export class WorkersD1KvStore implements KvStore {
     options?: KvStoreSetOptions,
   ): Promise<void> {
     await this.initialize();
-    const now = Date.now();
-    // Purge expired entries in the same round trip:
     await this.#db.batch([
-      this.#db.prepare(`
-        DELETE FROM "${this.#tableName}"
-        WHERE expires IS NOT NULL AND expires <= ?
-      `).bind(now),
-      this.#db.prepare(`
+      this.#db
+        .prepare(`
         INSERT INTO "${this.#tableName}" (key, value, expires)
-        VALUES (?, ?, ?)
+        VALUES (?1, ?2, ${D1_NOW} + ?3)
         ON CONFLICT (key) DO UPDATE SET
           value = excluded.value,
           expires = excluded.expires
-      `).bind(
-        this.#encodeKey(key),
-        JSON.stringify(value),
-        this.#getExpires(now, options),
-      ),
+      `)
+        .bind(
+          this.#encodeKey(key),
+          JSON.stringify(value),
+          this.#getTtl(options),
+        ),
+      this.#expire(),
     ]);
   }
 
@@ -447,7 +511,8 @@ export class WorkersD1KvStore implements KvStore {
    */
   async delete(key: KvKey): Promise<void> {
     await this.initialize();
-    await this.#db.prepare(`DELETE FROM "${this.#tableName}" WHERE key = ?`)
+    await this.#db
+      .prepare(`DELETE FROM "${this.#tableName}" WHERE key = ?`)
       .bind(this.#encodeKey(key))
       .run();
   }
@@ -463,61 +528,64 @@ export class WorkersD1KvStore implements KvStore {
   ): Promise<boolean> {
     await this.initialize();
     const encodedKey = this.#encodeKey(key);
-    const now = Date.now();
+    let statement: WorkersD1PreparedStatementLike;
 
     if (expectedValue === undefined) {
       // No mutation is needed; this read is the operation's atomic point:
-      if (newValue === undefined) return await this.get(key) === undefined;
+      if (newValue === undefined) return (await this.get(key)) === undefined;
       // Insert the entry unless an unexpired entry already exists:
-      const { meta } = await this.#db.prepare(`
+      statement = this.#db
+        .prepare(`
         INSERT INTO "${this.#tableName}" (key, value, expires)
-        VALUES (?, ?, ?)
+        VALUES (?1, ?2, ${D1_NOW} + ?3)
         ON CONFLICT (key) DO UPDATE SET
           value = excluded.value,
           expires = excluded.expires
-        WHERE "${this.#tableName}".expires IS NOT NULL
-          AND "${this.#tableName}".expires <= ?
-      `).bind(
-        encodedKey,
-        JSON.stringify(newValue),
-        this.#getExpires(now, options),
-        now,
-      ).run();
-      return meta.changes > 0;
+        WHERE "${this.#tableName}".expires <= ${D1_NOW}
+      `)
+        .bind(encodedKey, JSON.stringify(newValue), this.#getTtl(options));
+    } else {
+      // Compares the JSON trees in both directions so that the order of
+      // object members is ignored, while the order of array elements,
+      // container types, and scalar types matter.  The predicate runs inside
+      // the mutation itself, so neither a read–write race nor an interactive
+      // transaction is involved.  json_tree() rejects JSON nested deeper than
+      // 1,000 levels, so such values are compared by their serialization.
+      // The column must be qualified, since json_tree() has a value column:
+      const current = `"${this.#tableName}".value`;
+      const matches = `
+        key = ?1 AND (expires IS NULL OR expires > ${D1_NOW})
+        AND CASE WHEN json_valid(${current}) AND json_valid(?2) THEN
+          NOT EXISTS (
+            SELECT fullkey, type, atom FROM json_tree(${current})
+            EXCEPT SELECT fullkey, type, atom FROM json_tree(?2)
+          )
+          AND NOT EXISTS (
+            SELECT fullkey, type, atom FROM json_tree(?2)
+            EXCEPT SELECT fullkey, type, atom FROM json_tree(${current})
+          )
+        ELSE ${current} = ?2 END
+      `;
+      const expectedJson = JSON.stringify(expectedValue);
+      statement =
+        newValue === undefined
+          ? this.#db
+              .prepare(`DELETE FROM "${this.#tableName}" WHERE ${matches}`)
+              .bind(encodedKey, expectedJson)
+          : this.#db
+              .prepare(`
+          UPDATE "${this.#tableName}"
+          SET value = ?3, expires = ${D1_NOW} + ?4
+          WHERE ${matches}
+        `)
+              .bind(
+                encodedKey,
+                expectedJson,
+                JSON.stringify(newValue),
+                this.#getTtl(options),
+              );
     }
-
-    // Compares the JSON trees in both directions so that the order of object
-    // members is ignored, while the order of array elements, container types,
-    // and scalar types matter.  The predicate runs inside the mutation itself,
-    // so neither a read–write race nor an interactive transaction is involved:
-    const expectedJson = JSON.stringify(expectedValue);
-    // The column must be qualified, since json_tree() has a value column too:
-    const current = `"${this.#tableName}".value`;
-    const matches = `
-      key = ?1 AND (expires IS NULL OR expires > ?2)
-      AND NOT EXISTS (
-        SELECT fullkey, type, atom FROM json_tree(${current})
-        EXCEPT SELECT fullkey, type, atom FROM json_tree(?3)
-      )
-      AND NOT EXISTS (
-        SELECT fullkey, type, atom FROM json_tree(?3)
-        EXCEPT SELECT fullkey, type, atom FROM json_tree(${current})
-      )
-    `;
-    const statement = newValue === undefined
-      ? this.#db.prepare(`DELETE FROM "${this.#tableName}" WHERE ${matches}`)
-        .bind(encodedKey, now, expectedJson)
-      : this.#db.prepare(`
-        UPDATE "${this.#tableName}" SET value = ?4, expires = ?5
-        WHERE ${matches}
-      `).bind(
-        encodedKey,
-        now,
-        expectedJson,
-        JSON.stringify(newValue),
-        this.#getExpires(now, options),
-      );
-    const { meta } = await statement.run();
+    const [{ meta }] = await this.#db.batch([statement, this.#expire()]);
     return meta.changes > 0;
   }
 
@@ -526,31 +594,38 @@ export class WorkersD1KvStore implements KvStore {
    */
   async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
     await this.initialize();
-    const now = Date.now();
-    let statement: WorkersD1PreparedStatementLike;
+    // Keys are JSON-encoded arrays of strings, so they all fall in the range
+    // ('[', '\\').  Keys with a prefix such as ["a"] start with '["a"', and
+    // since a closing quote is followed by ',' or ']', they all sort below
+    // '["a#'.  Neither bound is a valid key itself:
+    let cursor: string;
+    let upperBound: string;
     if (prefix == null || prefix.length === 0) {
-      statement = this.#db.prepare(`
-        SELECT key, value FROM "${this.#tableName}"
-        WHERE expires IS NULL OR expires > ?
-        ORDER BY key
-      `).bind(now);
+      cursor = "[";
+      upperBound = "\\";
     } else {
-      // Keys are JSON encoded, so '["prefix","a"]' and '["prefix"]' both
-      // start with '["prefix"', while '["prefixed"]' does not:
-      const encodedPrefix = JSON.stringify(prefix).slice(0, -1);
-      statement = this.#db.prepare(`
-        SELECT key, value FROM "${this.#tableName}"
-        WHERE substr(key, 1, length(?1)) = ?1
-          AND (expires IS NULL OR expires > ?2)
-        ORDER BY key
-      `).bind(encodedPrefix, now);
+      cursor = JSON.stringify(prefix).slice(0, -1);
+      upperBound = cursor.slice(0, -1) + "#";
     }
-    const { results } = await statement.all<{ key: string; value: string }>();
-    for (const row of results) {
-      yield {
-        key: JSON.parse(row.key) as KvKey,
-        value: JSON.parse(row.value),
-      };
+    const statement = this.#db.prepare(`
+      SELECT key, value FROM "${this.#tableName}"
+      WHERE key > ?1 AND key < ?2
+        AND (expires IS NULL OR expires > ${D1_NOW})
+      ORDER BY key
+      LIMIT ${D1_LIST_BATCH_SIZE}
+    `);
+    while (true) {
+      const { results } = await statement
+        .bind(cursor, upperBound)
+        .all<{ key: string; value: string }>();
+      for (const row of results) {
+        yield {
+          key: JSON.parse(row.key) as KvKey,
+          value: JSON.parse(row.value),
+        };
+      }
+      if (results.length < D1_LIST_BATCH_SIZE) break;
+      cursor = results[results.length - 1].key;
     }
   }
 }

@@ -641,10 +641,10 @@ export default {
 >
 > ~~~~ typescript
 > import { createFederationBuilder, type Message } from "@fedify/fedify";
-> import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
+> import { WorkersD1KvStore, WorkersMessageQueue } from "@fedify/cfworkers";
 >
 > type Env = {
->   KV_NAMESPACE: KVNamespace<string>;
+>   DB: D1Database;
 >   QUEUE_BINDING: Queue;
 >   ORDERING_KV: KVNamespace<string>;
 > };
@@ -657,7 +657,7 @@ export default {
 >       orderingKv: env.ORDERING_KV,
 >     });
 >     const federation = await builder.build({
->       kv: new WorkersKvStore(env.KV_NAMESPACE),
+>       kv: new WorkersD1KvStore(env.DB, { initialized: true }),
 >       queue,
 >     });
 >

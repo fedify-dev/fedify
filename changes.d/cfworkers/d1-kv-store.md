@@ -12,3 +12,8 @@ links:
     code paths.  It is now the recommended `KvStore` for Cloudflare Workers;
     consider migrating from `WorkersKvStore`.
     [[#1135], [#1360] by Beiyan Yunyi]
+
+    Pass the `D1Database` binding itself, since D1 sessions can read stale
+    data from replicas.  Because the store is constructed per request, create
+    its table with a D1 migration and pass `initialized: true` in production
+    to avoid an extra query per request.
