@@ -231,6 +231,31 @@ describe("checkLintDirectives()", () => {
   delete cleanGitEnv.GIT_INDEX_FILE;
   delete cleanGitEnv.GIT_PREFIX;
 
+  it("audits non-ASCII paths without quoting", () => {
+    const root = mkdtempSync(join(tmpdir(), "fedify-lint-directives-"));
+    try {
+      execFileSync("git", ["init", "--quiet"], {
+        cwd: root,
+        env: cleanGitEnv,
+      });
+      writeFileSync(
+        join(root, ".oxlintrc.json"),
+        JSON.stringify({ rules: { "typescript/no-explicit-any": "error" } }),
+      );
+      writeFileSync(join(root, "café.ts"), "// oxlint-disable\n");
+      deepStrictEqual(
+        checkLintDirectives(root, join(root, ".oxlintrc.json")),
+        [{
+          file: "café.ts",
+          line: 1,
+          message: "bare oxlint-disable must name at least one rule",
+        }],
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("skips tracked files deleted from the worktree", () => {
     const root = mkdtempSync(join(tmpdir(), "fedify-lint-directives-"));
     try {

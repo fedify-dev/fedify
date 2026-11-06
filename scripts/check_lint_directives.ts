@@ -142,6 +142,7 @@ function listFiles(root: string, paths: readonly string[]): string[] {
     "git",
     [
       "ls-files",
+      "-z",
       "--cached",
       "--others",
       "--exclude-standard",
@@ -150,7 +151,7 @@ function listFiles(root: string, paths: readonly string[]): string[] {
     ],
     { cwd: root, encoding: "utf8", env },
   );
-  return output.split(/\r?\n/).filter((path) =>
+  return output.split("\0").filter((path) =>
     path.length > 0 &&
     /\.(?:[cm]?[jt]sx?)$/.test(path) &&
     !path.endsWith(".snap") &&
