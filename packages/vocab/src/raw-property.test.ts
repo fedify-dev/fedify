@@ -247,6 +247,27 @@ test("embedded objects keep the order of the parent's context", async () => {
   ]);
 });
 
+test("embedded objects do not inherit non-propagating contexts", async () => {
+  const create = await Create.fromJsonLd({
+    // Only the first entry of a context can declare this:
+    "@context": [{ "@propagate": false, body: `${AS}#content` }, AS],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object: {
+      "@context": AS,
+      id: "https://example.com/notes/1",
+      type: "Note",
+      // The term is out of scope here, so this is not the content:
+      body: "Not the content",
+      content: "Hello",
+    },
+  });
+  const note = await create.getObject();
+  ok(note instanceof Note);
+  deepStrictEqual(note.contents, ["Hello"]);
+});
+
 test("getRawPropertyValues() reads embedded objects under terms of the parent's context", async () => {
   const note = await Note.fromJsonLd({
     "@context": [AS, { extra: `${AS}#attachment`, attachment: null }],

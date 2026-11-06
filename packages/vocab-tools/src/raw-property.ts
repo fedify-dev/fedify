@@ -158,17 +158,28 @@ function expandKey(
   return iris;
 }
 
-// Whether a compacted document maps the given key, and no other key, to
-// a property, so that the embedded documents under the key are the values
-// decoded for the property.  A context can remap the key to another property
-// or map another term to the property, in which case the cached documents
-// cannot be matched with the decoded values:
+// Whether the embedded documents under a key of a compacted document can be
+// decoded again in place of the values decoded for a property.  The document
+// has to map the key, and no other key, to the property, as a context can
+// remap the key or map another term to the property, in which case the cached
+// documents cannot be matched with the decoded values.  An inline context
+// that does not propagate to embedded nodes, which only the first entry can
+// declare, rules it out as well, since the context the embedded documents
+// were decoded with cannot be rebuilt:
 async function isCachedPropertyKey(
   document: Record<string, unknown>,
   key: string,
   iris: readonly string[],
   contextLoader: DocumentLoader,
 ): Promise<boolean> {
+  const context = document["@context"];
+  const first = globalThis.Array.isArray(context) ? context[0] : context;
+  if (
+    first != null && typeof first === "object" &&
+    (first as Record<string, unknown>)["@propagate"] === false
+  ) {
+    return false;
+  }
   const own = await expandKey(document, key, contextLoader);
   if (own.length !== 1 || own[0] !== iris[0]) return false;
   const others = await globalThis.Promise.all(
