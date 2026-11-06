@@ -158,25 +158,31 @@ function expandKey(
   return iris;
 }
 
+// Only the first entry of a context can declare that it does not propagate:
+function isNonPropagatingContext(context: unknown): boolean {
+  const first = globalThis.Array.isArray(context) ? context[0] : context;
+  return first != null && typeof first === "object" &&
+    (first as Record<string, unknown>)["@propagate"] === false;
+}
+
 // Whether the embedded documents under a key of a compacted document can be
 // decoded again in place of the values decoded for a property.  The document
 // has to map the key, and no other key, to the property, as a context can
 // remap the key or map another term to the property, in which case the cached
 // documents cannot be matched with the decoded values.  An inline context
-// that does not propagate to embedded nodes, which only the first entry can
-// declare, rules it out as well, since the context the embedded documents
-// were decoded with cannot be rebuilt:
+// that does not propagate to embedded nodes, in the document or in the
+// embedded document, rules it out as well, since prepending another context
+// cannot rebuild the contexts they were decoded with:
 async function isCachedPropertyKey(
   document: Record<string, unknown>,
+  embedded: object,
   key: string,
   iris: readonly string[],
   contextLoader: DocumentLoader,
 ): Promise<boolean> {
-  const context = document["@context"];
-  const first = globalThis.Array.isArray(context) ? context[0] : context;
   if (
-    first != null && typeof first === "object" &&
-    (first as Record<string, unknown>)["@propagate"] === false
+    isNonPropagatingContext(document["@context"]) ||
+    isNonPropagatingContext((embedded as { "@context"?: unknown })["@context"])
   ) {
     return false;
   }

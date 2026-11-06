@@ -494,6 +494,7 @@ async function* generateProperty(
               if (
                 await isCachedPropertyKey(
                   this._cachedJsonLd as Record<string, unknown>,
+                  doc,
                   ${JSON.stringify(property.compactName)},
                   ${
           JSON.stringify([
@@ -693,6 +694,7 @@ async function* generateProperty(
                 if (
                   await isCachedPropertyKey(
                     this._cachedJsonLd as Record<string, unknown>,
+                    obj,
                     ${JSON.stringify(property.compactName)},
                     ${
           JSON.stringify([
