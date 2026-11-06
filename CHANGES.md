@@ -95,10 +95,18 @@ To be released.
     redirects and HTTP signature retries, so a slow remote inbox cannot hold a
     delivery worker indefinitely.  Timed-out attempts follow the configured
     retry schedule.  \[[GHSA-fq5h-gjhp-g75x]]
+ -  NodeInfo lookups now time out after 10 seconds by default.  A remote server
+    could previously keep `getNodeInfo()` or `Context.lookupNodeInfo()` waiting
+    indefinitely by delaying a response.  The limit covers discovery,
+    redirects, and the document body as one operation.  Pass a `timeout` value
+    in milliseconds to allow more time, or `null` to disable the limit; a
+    timed-out lookup returns `undefined`.
+    [[GHSA-64hq-2hgr-q4pm]]
 
 [mastodon/mastodon\#41640]: https://github.com/mastodon/mastodon/issues/41640
 [GHSA-9pmv-w936-hj3f]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9pmv-w936-hj3f
 [GHSA-fq5h-gjhp-g75x]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-fq5h-gjhp-g75x
+[GHSA-64hq-2hgr-q4pm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-64hq-2hgr-q4pm
 [#554]: https://github.com/fedify-dev/fedify/issues/554
 [#664]: https://github.com/fedify-dev/fedify/issues/664
 [#1339]: https://github.com/fedify-dev/fedify/issues/1339

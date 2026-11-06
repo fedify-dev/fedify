@@ -6,7 +6,12 @@ import {
   type PublicFetchSession,
 } from "@fedify/vocab-runtime/internal";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
-import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
+import {
+  assertEquals,
+  assertInstanceOf,
+  assertRejects,
+  assertStrictEquals,
+} from "@std/assert";
 import fetchMock from "fetch-mock";
 import { createServer } from "node:http";
 import {
@@ -1424,16 +1429,17 @@ test({
 test("getNodeInfo() shares one timeout across discovery and document", async () => {
   const documentRequested = deferred<void>();
   const documentClosed = deferred<void>();
+  let discoverySignal: AbortSignal | undefined;
+  let documentSignal: AbortSignal | undefined;
   const descriptor = JSON.stringify({
     links: [{
       rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
       href: "https://example.com/nodeinfo/2.1",
     }],
   });
-  const started = performance.now();
   const result = getNodeInfoInternal(
     "https://example.com/",
-    { timeout: 140 },
+    { timeout: 200 },
     {
       // deno-lint-ignore require-await
       async openHop(url) {
@@ -1442,10 +1448,11 @@ test("getNodeInfo() shares one timeout across discovery and document", async () 
           url: new URL(url),
           async fetch(_input, init) {
             if (isDocument) {
+              documentSignal = init?.signal ?? undefined;
               documentRequested.resolve();
               return await waitForAbort(init?.signal);
             }
-            await new Promise((resolve) => setTimeout(resolve, 85));
+            discoverySignal = init?.signal ?? undefined;
             return new Response(descriptor);
           },
           // deno-lint-ignore require-await
@@ -1457,10 +1464,62 @@ test("getNodeInfo() shares one timeout across discovery and document", async () 
     },
   );
   await settleWithin(documentRequested.promise, 1000);
+  assertStrictEquals(documentSignal, discoverySignal);
   assertEquals(await settleWithin(result, 1000), undefined);
   await settleWithin(documentClosed.promise, 1000);
-  // A restarted 140 ms timer at the document stage would finish much later.
-  assertEquals(performance.now() - started < 205, true);
+  assertEquals(discoverySignal?.aborted, true);
+});
+
+test("getNodeInfo() honors caller cancellation without a timeout", async () => {
+  const caller = new AbortController();
+  const closed = deferred<void>();
+  let requestSignal: AbortSignal | undefined;
+  const result = getNodeInfoInternal(
+    "https://example.com/nodeinfo",
+    { direct: true, timeout: null, signal: caller.signal },
+    {
+      // deno-lint-ignore require-await
+      async openHop(url, signal) {
+        requestSignal = signal;
+        return {
+          url: new URL(url),
+          fetch(_input, init) {
+            assertStrictEquals(init?.signal, signal);
+            caller.abort(new Error("Caller stopped waiting"));
+            return waitForAbort(init?.signal);
+          },
+          // deno-lint-ignore require-await
+          async close() {
+            closed.resolve();
+          },
+        };
+      },
+    },
+  );
+  assertEquals(await settleWithin(result, 1000), undefined);
+  await settleWithin(closed.promise, 1000);
+  assertEquals(requestSignal?.aborted, true);
+});
+
+test("getNodeInfo() stops before fetching when caller already aborted", async () => {
+  const caller = new AbortController();
+  caller.abort();
+  let opened = false;
+  assertEquals(
+    await getNodeInfoInternal(
+      "https://example.com/nodeinfo",
+      { direct: true, signal: caller.signal },
+      {
+        // deno-lint-ignore require-await
+        async openHop() {
+          opened = true;
+          throw new Error("Unexpected fetch");
+        },
+      },
+    ),
+    undefined,
+  );
+  assertEquals(opened, false);
 });
 
 test("getNodeInfo() closes a session opened just after its timeout", async () => {

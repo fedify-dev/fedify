@@ -191,3 +191,6 @@ reading their response bodies.  A timed-out lookup returns `undefined`.  Pass
 `{ timeout: 30000 }` to allow 30 seconds, or `{ timeout: null }` to disable the
 limit.  The timeout is measured in milliseconds and must be a positive, finite
 number when specified.
+Pass an `AbortSignal` as `{ signal }` to cancel a lookup when its caller stops
+waiting.  Cancellation also works with `{ timeout: null }` and returns
+`undefined`.

@@ -4,6 +4,7 @@
     redirects, and the document body as one operation.  Pass a `timeout` value
     in milliseconds to allow more time, or `null` to disable the limit; a
     timed-out lookup returns `undefined`.
+    An optional `signal` can cancel the lookup, even with `timeout: null`.
     [[GHSA-64hq-2hgr-q4pm]]
 
 [GHSA-64hq-2hgr-q4pm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-64hq-2hgr-q4pm

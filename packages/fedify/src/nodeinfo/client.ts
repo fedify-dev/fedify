@@ -205,6 +205,13 @@ export interface GetNodeInfoOptions {
    * @since 2.0.36
    */
   timeout?: number | null;
+
+  /**
+   * A signal to cancel the entire NodeInfo lookup.  Cancellation returns
+   * `undefined`, including when the timeout is disabled.
+   * @since 2.0.36
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -265,15 +272,21 @@ export async function getNodeInfoInternal(
   deps: FetchPublicUrlDependencies = {},
 ): Promise<NodeInfo | JsonValue | undefined> {
   const timeout = resolveTimeout(options.timeout);
-  if (timeout == null) {
+  if (timeout == null && options.signal == null) {
     return await getNodeInfoWithSignal(url, options, deps);
   }
   const controller = new AbortController();
-  const timeoutReason = new DOMException(
+  const timeoutReason = timeout == null ? undefined : new DOMException(
     `The NodeInfo lookup timed out after ${timeout} ms.`,
     "TimeoutError",
   );
-  const timer = setTimeout(() => controller.abort(timeoutReason), timeout);
+  const timer = timeout == null ? undefined : setTimeout(
+    () => controller.abort(timeoutReason),
+    timeout,
+  );
+  const onCallerAbort = () => controller.abort(options.signal?.reason);
+  options.signal?.addEventListener("abort", onCallerAbort, { once: true });
+  if (options.signal?.aborted) onCallerAbort();
   let onAbort: (() => void) | undefined;
   const aborted = new Promise<never>((_, reject) => {
     onAbort = () => reject(controller.signal.reason);
@@ -287,16 +300,20 @@ export async function getNodeInfoInternal(
     return await Promise.race([loading, aborted]);
   } catch (error) {
     if (!controller.signal.aborted) throw error;
-    logger.error(
-      "Timed out after {timeout} ms while fetching NodeInfo: {url}",
-      {
-        timeout,
+    if (controller.signal.reason === timeoutReason) {
+      logger.error(
+        "Timed out after {timeout} ms while fetching NodeInfo: {url}",
+        { timeout, url: url.toString() },
+      );
+    } else {
+      logger.debug("Cancelled NodeInfo lookup for {url}.", {
         url: url.toString(),
-      },
-    );
+      });
+    }
     return undefined;
   } finally {
     clearTimeout(timer);
+    options.signal?.removeEventListener("abort", onCallerAbort);
     if (onAbort != null) {
       controller.signal.removeEventListener("abort", onAbort);
     }

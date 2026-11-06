@@ -998,6 +998,23 @@ test({
         () => ctx.lookupNodeInfo("https://example.com/", { timeout: 0 }),
         RangeError,
       );
+      const caller = new AbortController();
+      caller.abort();
+      assertEquals(
+        await ctx.lookupNodeInfo("https://example.com/", {
+          signal: caller.signal,
+          timeout: null,
+        }),
+        undefined,
+      );
+      assertEquals(
+        await ctx.lookupNodeInfo("https://example.com/", {
+          parse: "none",
+          signal: caller.signal,
+          timeout: null,
+        }),
+        undefined,
+      );
       await assertRejects(
         () =>
           ctx.lookupNodeInfo("https://example.com/", {
