@@ -290,9 +290,9 @@ test("createFederation()", async (t) => {
           );
           assert(
             formatted.includes(
-              '"private address checks disabled (allowPrivateAddress=true); ' +
+              "private address checks disabled (allowPrivateAddress=true); " +
                 "HTTP Signature time window disabled " +
-                '(signatureTimeWindow=false)"',
+                "(signatureTimeWindow=false)",
             ),
             formatted,
           );
