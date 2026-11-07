@@ -58,6 +58,12 @@ code.  `mise run codegen:check:deno` checks that formatting with Oxfmt, then
 checks Deno types.  Update the schemas or generator and run `mise run codegen`
 rather than editing the output by hand.
 
+Published benchmark JSON schemas under *schema/bench/* retain the exact
+`JSON.stringify()` serialization emitted by their generator.  They are excluded
+from Oxfmt because the CLI's schema guards check both generator parity and
+byte-for-byte immutability of published versions.  Other JSON files remain
+covered by Oxfmt.
+
 
 Reviewed differences
 --------------------

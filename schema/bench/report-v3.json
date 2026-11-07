@@ -25,7 +25,10 @@
     "tool": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "properties": {
         "name": {
           "type": "string"
@@ -38,7 +41,12 @@
     "environment": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["runtime", "runtimeVersion", "os", "cpuCount"],
+      "required": [
+        "runtime",
+        "runtimeVersion",
+        "os",
+        "cpuCount"
+      ],
       "properties": {
         "runtime": {
           "type": "string"
@@ -58,13 +66,19 @@
     "target": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["url", "statsAvailable"],
+      "required": [
+        "url",
+        "statsAvailable"
+      ],
       "properties": {
         "url": {
           "type": "string"
         },
         "fedifyVersion": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "statsAvailable": {
           "type": "boolean"
@@ -80,7 +94,9 @@
     "suite": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["configHash"],
+      "required": [
+        "configHash"
+      ],
       "properties": {
         "name": {
           "type": "string"
@@ -104,7 +120,13 @@
     "latencyMs": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["p50", "p95", "p99", "mean", "max"],
+      "required": [
+        "p50",
+        "p95",
+        "p99",
+        "mean",
+        "max"
+      ],
       "properties": {
         "p50": {
           "type": "number"
@@ -141,10 +163,17 @@
     "loadSummary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["model", "durationMs", "warmupMs"],
+      "required": [
+        "model",
+        "durationMs",
+        "warmupMs"
+      ],
       "properties": {
         "model": {
-          "enum": ["open", "closed"]
+          "enum": [
+            "open",
+            "closed"
+          ]
         },
         "ratePerSec": {
           "type": "number"
@@ -172,9 +201,14 @@
               "const": "open"
             }
           },
-          "required": ["ratePerSec", "arrival"],
+          "required": [
+            "ratePerSec",
+            "arrival"
+          ],
           "not": {
-            "required": ["concurrency"]
+            "required": [
+              "concurrency"
+            ]
           }
         },
         {
@@ -183,14 +217,20 @@
               "const": "closed"
             }
           },
-          "required": ["concurrency"],
+          "required": [
+            "concurrency"
+          ],
           "not": {
             "anyOf": [
               {
-                "required": ["ratePerSec"]
+                "required": [
+                  "ratePerSec"
+                ]
               },
               {
-                "required": ["arrival"]
+                "required": [
+                  "arrival"
+                ]
               }
             ]
           }
@@ -200,7 +240,12 @@
     "requestSummary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["total", "ok", "failed", "successRate"],
+      "required": [
+        "total",
+        "ok",
+        "failed",
+        "successRate"
+      ],
       "properties": {
         "total": {
           "type": "integer",
@@ -224,7 +269,9 @@
     "clientMetrics": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["latencyMs"],
+      "required": [
+        "latencyMs"
+      ],
       "properties": {
         "latencyMs": {
           "$ref": "#/$defs/latencyMs"
@@ -238,7 +285,9 @@
         "signatureVerificationMs": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["overall"],
+          "required": [
+            "overall"
+          ],
           "properties": {
             "overall": {
               "$ref": "#/$defs/partialLatencyMs"
@@ -268,7 +317,11 @@
     "errorBucket": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "reason", "count"],
+      "required": [
+        "kind",
+        "reason",
+        "count"
+      ],
       "properties": {
         "kind": {
           "type": "string"
@@ -302,19 +355,34 @@
           "type": "string"
         },
         "op": {
-          "enum": ["lt", "lte", "gt", "gte", "eq"]
+          "enum": [
+            "lt",
+            "lte",
+            "gt",
+            "gte",
+            "eq"
+          ]
         },
         "threshold": {
           "type": "number"
         },
         "unit": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "actual": {
-          "type": ["number", "null"]
+          "type": [
+            "number",
+            "null"
+          ]
         },
         "severity": {
-          "enum": ["warn", "fail"]
+          "enum": [
+            "warn",
+            "fail"
+          ]
         },
         "pass": {
           "type": "boolean"
@@ -411,7 +479,9 @@
       "allOf": [
         {
           "if": {
-            "required": ["runCount"],
+            "required": [
+              "runCount"
+            ],
             "properties": {
               "runCount": {
                 "minimum": 2
@@ -419,7 +489,9 @@
             }
           },
           "then": {
-            "required": ["runs"]
+            "required": [
+              "runs"
+            ]
           }
         }
       ]

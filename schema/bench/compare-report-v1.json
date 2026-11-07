@@ -63,7 +63,10 @@
     "tool": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "properties": {
         "name": {
           "type": "string"
@@ -76,7 +79,12 @@
     "environment": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["runtime", "runtimeVersion", "os", "cpuCount"],
+      "required": [
+        "runtime",
+        "runtimeVersion",
+        "os",
+        "cpuCount"
+      ],
       "properties": {
         "runtime": {
           "type": "string"
@@ -96,7 +104,9 @@
     "suite": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["configHash"],
+      "required": [
+        "configHash"
+      ],
       "properties": {
         "name": {
           "type": "string"
@@ -149,13 +159,19 @@
     "target": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["url", "statsAvailable"],
+      "required": [
+        "url",
+        "statsAvailable"
+      ],
       "properties": {
         "url": {
           "type": "string"
         },
         "fedifyVersion": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "statsAvailable": {
           "type": "boolean"
@@ -165,7 +181,10 @@
     "compareSide": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ref", "report"],
+      "required": [
+        "ref",
+        "report"
+      ],
       "properties": {
         "ref": {
           "type": "string"
@@ -197,16 +216,28 @@
           "type": "string"
         },
         "direction": {
-          "enum": ["lower-is-better", "higher-is-better"]
+          "enum": [
+            "lower-is-better",
+            "higher-is-better"
+          ]
         },
         "base": {
-          "type": ["number", "null"]
+          "type": [
+            "number",
+            "null"
+          ]
         },
         "head": {
-          "type": ["number", "null"]
+          "type": [
+            "number",
+            "null"
+          ]
         },
         "regression": {
-          "type": ["number", "null"]
+          "type": [
+            "number",
+            "null"
+          ]
         },
         "noiseBand": {
           "type": "number",

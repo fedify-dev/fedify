@@ -55,6 +55,7 @@ it("formats owned languages and preserves excluded files through the real CLI", 
     "settings.jsonc": '// comment\n{"answer":42}\n',
     "styles.css": ".sample{color:red}\n",
     "compose.yaml": "services:\n app: {image: example}\n",
+    "schema/example.json": '{"answer":42}\n',
     "examples/astro/Page.astro":
       "---\nconst value={answer:42};\n---\n<div>{value.answer}</div>\n",
     "examples/nuxt/Page.vue":
@@ -80,6 +81,12 @@ it("formats owned languages and preserves excluded files through the real CLI", 
     "packages/cfworkers/test/example.ts",
     "packages/vocab/src/object.yaml",
     "packages/vocab-tools/src/schema.yaml",
+    "schema/bench/scenario-v1.json",
+    "schema/bench/scenario-v2.json",
+    "schema/bench/report-v1.json",
+    "schema/bench/report-v2.json",
+    "schema/bench/report-v3.json",
+    "schema/bench/compare-report-v1.json",
     "packages/example/dist/example.ts",
   ];
   const untouched = "intentionally not formatter input  {\n";

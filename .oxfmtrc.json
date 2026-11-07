@@ -47,6 +47,7 @@
     "**/_fresh/**",
     "packages/vocab/src/*.yaml",
     "packages/vocab-tools/src/schema.yaml",
+    "schema/bench/*.json",
     "test/smoke/**/.certs/**",
     "packages/cfworkers/test/**",
     "examples/sveltekit-sample/.prettierrc",
