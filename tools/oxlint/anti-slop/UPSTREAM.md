@@ -20,6 +20,10 @@ Local changes:
 - `shared/type-alias-resolution.ts` starts alias substitutions from an empty map
   so caller type parameters do not leak into an alias body.  This avoids a
   false `no-unknown-type-aliases` report and is worth upstreaming.
+- `rules/no-widen-then-assert.ts` ignores locally declared `Record`,
+  `Readonly`, and `PropertyKey` bindings instead of treating them as the
+  built-in utility types.  This avoids false reports when a local type shadows
+  those names and is worth upstreaming.
 - The vendored directory is excluded from Oxlint, `deno fmt`, and Hongdown.
 
 Update procedure: reinstall the skill, run its installer into a staging
