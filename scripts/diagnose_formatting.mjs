@@ -83,13 +83,14 @@ console.log(
   }),
 );
 let failed = false;
-const output = process.argv[2];
+const args = process.argv.slice(2);
+const output = args.find((arg) => arg !== "--mixed");
 if (output != null) await mkdir(output, { recursive: true });
 const scratch = await mkdtemp(
   join(output ?? tmpdir(), "fedify formatter diagnosis "),
 );
 const log = join(scratch, "processes.jsonl");
-const focused = process.argv[3] === "--mixed";
+const focused = args.includes("--mixed");
 const selected = focused
   ? [
       ["mixed-default", mixedFiles],
@@ -164,7 +165,6 @@ try {
               "-accepteula",
               "-e",
               "-mm",
-              "-k",
               "-x",
               dumpDir,
               process.execPath,
@@ -183,10 +183,22 @@ try {
             try {
               const [status, stdout, stderr] = await Promise.all([
                 child.status,
-                new Response(child.stdout).text(),
-                new Response(child.stderr).text(),
+                new Response(child.stdout).arrayBuffer(),
+                new Response(child.stderr).arrayBuffer(),
               ]);
-              debuggerResult = { status: status.code, stdout, stderr };
+              const decode = (buffer) => {
+                const bytes = new Uint8Array(buffer);
+                const utf16 =
+                  bytes[1] === 0 || (bytes[0] === 0xff && bytes[1] === 0xfe);
+                return new TextDecoder(utf16 ? "utf-16le" : "utf-8").decode(
+                  bytes,
+                );
+              };
+              debuggerResult = {
+                status: status.code,
+                stdout: decode(stdout),
+                stderr: decode(stderr),
+              };
             } catch (error) {
               debuggerResult = { status: null, error: String(error) };
             } finally {
