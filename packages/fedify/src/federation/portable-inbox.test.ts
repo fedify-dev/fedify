@@ -63,10 +63,10 @@ import type { SenderKeyPair } from "./send.ts";
 
 const did = await exportDidKey(ed25519PublicKey.publicKey);
 const keyId = new URL(`${did}#${did.substring("did:key:".length)}`);
-const otherKeyPair = await crypto.subtle.generateKey("Ed25519", true, [
+const otherKeyPair = (await crypto.subtle.generateKey("Ed25519", true, [
   "sign",
   "verify",
-]) as CryptoKeyPair;
+])) as CryptoKeyPair;
 const otherDid = await exportDidKey(otherKeyPair.publicKey);
 
 const LOCAL = "https://example.com";
@@ -95,7 +95,8 @@ class RecordingQueue implements MessageQueue {
 
   enqueue(message: Message): Promise<void> {
     if (
-      this.failFor != null && message.type === "outbox" &&
+      this.failFor != null &&
+      message.type === "outbox" &&
       message.inbox.startsWith(this.failFor)
     ) {
       return Promise.reject(new Error("Enqueue failed."));
@@ -130,28 +131,28 @@ interface Setup {
   onSharedInboxKey?: () => void;
 }
 
-function setup(
-  {
-    gateways = [LOCAL, GATEWAY2, GATEWAY3],
-    kv = new MemoryKvStore(),
-    queue,
-    options = {},
-    actor,
-    listenerError = false,
-    keyPairs = true,
-    aliceKeyPairs = [],
-    mapPortableActorId,
-    onSharedInboxKey,
-  }: Setup = {},
-) {
+function setup({
+  gateways = [LOCAL, GATEWAY2, GATEWAY3],
+  kv = new MemoryKvStore(),
+  queue,
+  options = {},
+  actor,
+  listenerError = false,
+  keyPairs = true,
+  aliceKeyPairs = [],
+  mapPortableActorId,
+  onSharedInboxKey,
+}: Setup = {}) {
   const federation = createFederation<void>({
     kv,
     // allowPrivateAddress cannot be combined with custom loaders; the default
     // ones preload the JSON-LD contexts that the tests use:
-    ...(options.allowPrivateAddress ? {} : {
-      documentLoaderFactory: () => mockDocumentLoader,
-      contextLoaderFactory: () => mockDocumentLoader,
-    }),
+    ...(options.allowPrivateAddress
+      ? {}
+      : {
+          documentLoaderFactory: () => mockDocumentLoader,
+          contextLoaderFactory: () => mockDocumentLoader,
+        }),
     manuallyStartQueue: true,
     ...(queue == null ? {} : { queue: { outbox: queue } }),
     ...options,
@@ -183,22 +184,21 @@ function setup(
       identifier === "ordinary"
         ? [{ privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! }]
         : identifier === "alice"
-        ? aliceKeyPairs
-        : []
+          ? aliceKeyPairs
+          : [],
     );
   }
   if (mapPortableActorId != null) {
     actorCallbacks.mapPortableActorId((_ctx, identifier) =>
-      mapPortableActorId(identifier)
+      mapPortableActorId(identifier),
     );
   }
   const reports: InboxRequestReport[] = [];
   const inboxListeners = federation
-    .setInboxListeners("/users/{identifier}/inbox", "/inbox").onRequestFinished(
-      (_ctx, report) => {
-        reports.push(report);
-      },
-    );
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .onRequestFinished((_ctx, report) => {
+      reports.push(report);
+    });
   if (onSharedInboxKey != null) {
     inboxListeners.setSharedKeyDispatcher(() => {
       onSharedInboxKey();
@@ -406,15 +406,18 @@ test("onRequestFinished retains crypto success when a portable activity's DID mi
     "verificationMethodMismatch",
   );
   assert(
-    report.attempts.some((attempt) =>
-      attempt.mechanism === "objectIntegrity" &&
-      attempt.checks.some((check) => check.status === "verified")
+    report.attempts.some(
+      (attempt) =>
+        attempt.mechanism === "objectIntegrity" &&
+        attempt.checks.some((check) => check.status === "verified"),
     ),
   );
   assert(
-    report.attempts.some((attempt) =>
-      attempt.status === "rejected" && attempt.reason.type === "proofPolicy" &&
-      attempt.reason.reason.type === "verificationMethodMismatch"
+    report.attempts.some(
+      (attempt) =>
+        attempt.status === "rejected" &&
+        attempt.reason.type === "proofPolicy" &&
+        attempt.reason.reason.type === "verificationMethodMismatch",
     ),
   );
   assertEquals(report.outcome, {
@@ -571,13 +574,10 @@ test("Federation.fetch() forwards each portable inbox delivery at most once", as
       federation.fetch(post(inboxUrl(), json), { contextData: undefined }),
     ]);
     for (const response of responses) assertEquals(response.status, 202);
-    assertEquals(
-      queue.outbox.map((m) => m.inbox).sort(),
-      [
-        inboxUrl(did, "/users/alice/inbox", GATEWAY3),
-        inboxUrl(did, "/users/alice/inbox", GATEWAY2),
-      ],
-    );
+    assertEquals(queue.outbox.map((m) => m.inbox).sort(), [
+      inboxUrl(did, "/users/alice/inbox", GATEWAY3),
+      inboxUrl(did, "/users/alice/inbox", GATEWAY2),
+    ]);
   });
 
   await t.step("failed hand-offs are not retried", async () => {
@@ -589,9 +589,10 @@ test("Federation.fetch() forwards each portable inbox delivery at most once", as
       contextData: undefined,
     });
     assertEquals(response.status, 202);
-    assertEquals(queue.outbox.map((m) => m.inbox), [
-      inboxUrl(did, "/users/alice/inbox", GATEWAY3),
-    ]);
+    assertEquals(
+      queue.outbox.map((m) => m.inbox),
+      [inboxUrl(did, "/users/alice/inbox", GATEWAY3)],
+    );
     queue.failFor = undefined;
     response = await federation.fetch(post(inboxUrl(), json), {
       contextData: undefined,
@@ -654,9 +655,10 @@ test("Federation.fetch() forwards each portable inbox delivery at most once", as
       { contextData: undefined },
     );
     assertEquals(response.status, 202);
-    assertEquals(queue.outbox.map((m) => m.inbox), [
-      inboxUrl(did, "/users/alice/inbox", GATEWAY3),
-    ]);
+    assertEquals(
+      queue.outbox.map((m) => m.inbox),
+      [inboxUrl(did, "/users/alice/inbox", GATEWAY3)],
+    );
   });
 
   await t.step("gateway cap", async () => {
@@ -685,9 +687,10 @@ test("FederationOptions.portableInboxForwarding", async (t) => {
       { contextData: undefined },
     );
     assertEquals(response.status, 202);
-    assertEquals(queue.outbox.map((m) => m.inbox), [
-      inboxUrl(did, "/users/alice/inbox", GATEWAY2),
-    ]);
+    assertEquals(
+      queue.outbox.map((m) => m.inbox),
+      [inboxUrl(did, "/users/alice/inbox", GATEWAY2)],
+    );
   });
 
   await t.step("maxTargets: 0 turns off forwarding", async () => {
@@ -735,7 +738,10 @@ test("FederationOptions.portableInboxForwarding", async (t) => {
     );
     assertEquals(response.status, 202);
     assertEquals(queue.outbox.length, 2);
-    assertEquals(claimTtls.map((ttl) => ttl?.total("day")), [7, 7]);
+    assertEquals(
+      claimTtls.map((ttl) => ttl?.total("day")),
+      [7, 7],
+    );
   });
 
   await t.step("longest deadline", () => {
@@ -814,10 +820,7 @@ test("Federation.fetch() forwards portable inbox deliveries immediately without 
     });
     assertEquals(response.status, 202);
     assertEquals(requests.length, 1);
-    assertEquals(
-      fetchMock.callHistory.calls(`begin:${GATEWAY3}/`).length,
-      1,
-    );
+    assertEquals(fetchMock.callHistory.calls(`begin:${GATEWAY3}/`).length, 1);
   } finally {
     fetchMock.hardReset();
   }
@@ -855,7 +858,7 @@ test("Federation.fetch() forwards portable inbox deliveries when it enqueues the
 test("forwardPortableInboxActivity() does not wait for slow gateways", async () => {
   fetchMock.spyGlobal();
   let release: () => void = () => {};
-  const pending = new Promise<void>((resolve) => release = resolve);
+  const pending = new Promise<void>((resolve) => (release = resolve));
   fetchMock.post(`begin:${GATEWAY2}/`, async () => {
     await pending;
     throw new TypeError("Connection reset.");
@@ -886,9 +889,10 @@ test("forwardPortableInboxActivity() does not wait for slow gateways", async () 
     const started = performance.now();
     const forwarded = await forwardPortableInboxActivity(parameters);
     assert(performance.now() - started < 5_000);
-    assertEquals(forwarded.map((u) => u.href), [
-      inboxUrl(did, "/users/alice/inbox", GATEWAY2),
-    ]);
+    assertEquals(
+      forwarded.map((u) => u.href),
+      [inboxUrl(did, "/users/alice/inbox", GATEWAY2)],
+    );
     // The late failure is handled, and the claim is kept:
     release();
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -903,7 +907,11 @@ test("forwardPortableInboxActivity() does not wait for slow gateways", async () 
 
 function compatibleAlice(
   path = "/users/alice",
-  { authority = did, origin = LOCAL, gateways = [LOCAL, GATEWAY2, GATEWAY3] }: {
+  {
+    authority = did,
+    origin = LOCAL,
+    gateways = [LOCAL, GATEWAY2, GATEWAY3],
+  }: {
     authority?: string;
     origin?: string;
     gateways?: string[];
@@ -1009,7 +1017,7 @@ test("Federation.fetch() delivers to portable inboxes of compatible-ID actors", 
   for (const [name, actor] of rejections) {
     await t.step(name, async () => {
       const { federation, received } = setup({
-        actor: (_ctx, identifier) => identifier === "alice" ? actor : null,
+        actor: (_ctx, identifier) => (identifier === "alice" ? actor : null),
       });
       const response = await federation.fetch(post(inboxUrl(), json), {
         contextData: undefined,
@@ -1046,13 +1054,11 @@ test("forwardPortableInboxActivity() deduplicates compatible activity IDs", asyn
     1,
   );
   // The same activity in another representation is not forwarded again:
-  for (
-    const id of [
-      new URL(`${GATEWAY2}/.well-known/apgateway/${path}`),
-      new URL(`${LOCAL}/.well-known/apgateway/${path}?x=1`),
-      parseIri(`ap://${path}`),
-    ]
-  ) {
+  for (const id of [
+    new URL(`${GATEWAY2}/.well-known/apgateway/${path}`),
+    new URL(`${LOCAL}/.well-known/apgateway/${path}?x=1`),
+    parseIri(`ap://${path}`),
+  ]) {
     assertEquals(await forward(id), [], id.href);
   }
   assertEquals(queue.outbox.length, 1);
@@ -1061,7 +1067,7 @@ test("forwardPortableInboxActivity() deduplicates compatible activity IDs", asyn
 // Gateway keys
 
 const aliceId = parseIri(`ap+ef61://${did}/users/alice`);
-const rsaGatewayKeyPair = await crypto.subtle.generateKey(
+const rsaGatewayKeyPair = (await crypto.subtle.generateKey(
   {
     name: "RSASSA-PKCS1-v1_5",
     modulusLength: 2048,
@@ -1070,7 +1076,7 @@ const rsaGatewayKeyPair = await crypto.subtle.generateKey(
   },
   true,
   ["sign", "verify"],
-) as CryptoKeyPair;
+)) as CryptoKeyPair;
 
 function compatibleAliceId(origin = LOCAL): string {
   return `${origin}/.well-known/apgateway/${did}/users/alice`;
@@ -1082,8 +1088,10 @@ function mapAlice(identifier: string): URL | null {
 
 function signatureKeyId(headers: Headers): string | undefined {
   // Either an RFC 9421 Signature-Input or a draft-cavage Signature header:
-  return headers.get("Signature-Input")?.match(/keyid="([^"]+)"/)?.[1] ??
-    headers.get("Signature")?.match(/keyId="([^"]+)"/)?.[1];
+  return (
+    headers.get("Signature-Input")?.match(/keyid="([^"]+)"/)?.[1] ??
+    headers.get("Signature")?.match(/keyId="([^"]+)"/)?.[1]
+  );
 }
 
 /**
@@ -1099,7 +1107,8 @@ async function createGatewayLoader(
     aliceKeyPairs: keyPairs,
     mapPortableActorId: mapAlice,
   });
-  const keys = await federation.createContext(new URL(origin))
+  const keys = await federation
+    .createContext(new URL(origin))
     .getActorKeyPairs("alice");
   const actor = await signObject(
     new Person({
@@ -1234,7 +1243,10 @@ test("Federation.fetch() signs queued forwarded portable inbox deliveries with g
   const expectedKeyId = `${compatibleAliceId()}#key-2`;
   for (const message of queue.outbox) {
     // Only the RSA key, which signs the request, is queued:
-    assertEquals(message.keys.map((k) => k.keyId), [expectedKeyId]);
+    assertEquals(
+      message.keys.map((k) => k.keyId),
+      [expectedKeyId],
+    );
     assertEquals(message.keys[0].privateKey.kty, "RSA");
   }
   const requests = captureGatewayRequests();
@@ -1256,27 +1268,42 @@ test("Federation.fetch() forwards portable inbox deliveries unsigned without gat
   const otherActorId = parseIri(`ap+ef61://${otherDid}/users/alice`);
   const cases: [string, Setup][] = [
     ["without a mapper", { aliceKeyPairs: [rsaGatewayKeyPair] }],
-    ["the mapper returns null", {
-      aliceKeyPairs: [rsaGatewayKeyPair],
-      mapPortableActorId: () => null,
-    }],
-    ["the mapper returns another actor", {
-      aliceKeyPairs: [rsaGatewayKeyPair],
-      mapPortableActorId: () => otherActorId,
-    }],
-    ["the mapper returns another actor of the same DID", {
-      aliceKeyPairs: [rsaGatewayKeyPair],
-      mapPortableActorId: () => parseIri(`ap+ef61://${did}/users/bob`),
-    }],
-    ["without a key pairs dispatcher", {
-      keyPairs: false,
-      mapPortableActorId: mapAlice,
-    }],
+    [
+      "the mapper returns null",
+      {
+        aliceKeyPairs: [rsaGatewayKeyPair],
+        mapPortableActorId: () => null,
+      },
+    ],
+    [
+      "the mapper returns another actor",
+      {
+        aliceKeyPairs: [rsaGatewayKeyPair],
+        mapPortableActorId: () => otherActorId,
+      },
+    ],
+    [
+      "the mapper returns another actor of the same DID",
+      {
+        aliceKeyPairs: [rsaGatewayKeyPair],
+        mapPortableActorId: () => parseIri(`ap+ef61://${did}/users/bob`),
+      },
+    ],
+    [
+      "without a key pairs dispatcher",
+      {
+        keyPairs: false,
+        mapPortableActorId: mapAlice,
+      },
+    ],
     ["without key pairs", { mapPortableActorId: mapAlice }],
-    ["without an RSA key", {
-      aliceKeyPairs: [otherKeyPair],
-      mapPortableActorId: mapAlice,
-    }],
+    [
+      "without an RSA key",
+      {
+        aliceKeyPairs: [otherKeyPair],
+        mapPortableActorId: mapAlice,
+      },
+    ],
   ];
   for (const [name, options] of cases) {
     await t.step(name, async () => {
@@ -1299,9 +1326,7 @@ test("Federation.fetch() signs forwarded portable inbox deliveries if the mapper
     ["ap: URI", parseIri(`ap://${did}/users/alice`)],
     [
       "percent-encoded DID",
-      parseIri(
-        `ap+ef61://${did.replaceAll(":", "%3A")}/users/alice`,
-      ),
+      parseIri(`ap+ef61://${did.replaceAll(":", "%3A")}/users/alice`),
     ],
     ["compatible identifier", new URL(compatibleAliceId(GATEWAY2))],
   ];
@@ -1311,7 +1336,8 @@ test("Federation.fetch() signs forwarded portable inbox deliveries if the mapper
       const { federation } = setup({
         queue,
         aliceKeyPairs: [rsaGatewayKeyPair],
-        mapPortableActorId: (identifier) => identifier === "alice" ? id : null,
+        mapPortableActorId: (identifier) =>
+          identifier === "alice" ? id : null,
       });
       const response = await federation.fetch(
         post(inboxUrl(), await signedFollow()),
@@ -1320,9 +1346,10 @@ test("Federation.fetch() signs forwarded portable inbox deliveries if the mapper
       assertEquals(response.status, 202);
       assertEquals(queue.outbox.length, 2);
       for (const message of queue.outbox) {
-        assertEquals(message.keys.map((k) => k.keyId), [
-          `${compatibleAliceId()}#main-key`,
-        ]);
+        assertEquals(
+          message.keys.map((k) => k.keyId),
+          [`${compatibleAliceId()}#main-key`],
+        );
       }
     });
   }
@@ -1344,9 +1371,10 @@ test("Federation.fetch() signs forwarded portable inbox deliveries with the gate
   );
   assertEquals(response.status, 202);
   assertEquals(queue.outbox.length, 1);
-  assertEquals(queue.outbox[0].keys.map((k) => k.keyId), [
-    `${compatibleAliceId(GATEWAY2)}#main-key`,
-  ]);
+  assertEquals(
+    queue.outbox[0].keys.map((k) => k.keyId),
+    [`${compatibleAliceId(GATEWAY2)}#main-key`],
+  );
 });
 
 test("Federation.fetch() double-knocks forwarded portable inbox deliveries", async (t) => {
@@ -1378,10 +1406,11 @@ test("Federation.fetch() double-knocks forwarded portable inbox deliveries", asy
 
   await t.step("falls back to the other spec", async () => {
     // The gateways reject RFC 9421 signatures:
-    const requests = captureGatewayRequests((request) =>
-      new Response(null, {
-        status: request.headers.has("Signature-Input") ? 401 : 202,
-      })
+    const requests = captureGatewayRequests(
+      (request) =>
+        new Response(null, {
+          status: request.headers.has("Signature-Input") ? 401 : 202,
+        }),
     );
     try {
       const kv = new MemoryKvStore();
@@ -1455,17 +1484,19 @@ test("A Fedify gateway accepts signed forwarded portable inbox deliveries", asyn
   assertEquals(received[0].recipient, "alice");
   // The gateway forwards it on, except back to itself and to the gateway that
   // forwarded it:
-  assertEquals(queue.outbox.map((m) => m.inbox), [
-    inboxUrl(did, "/users/alice/inbox", GATEWAY3),
-  ]);
+  assertEquals(
+    queue.outbox.map((m) => m.inbox),
+    [inboxUrl(did, "/users/alice/inbox", GATEWAY3)],
+  );
 });
 
 // Identifying the gateway that forwarded a delivery
 
 /** Records the URLs that a document loader is asked for. */
-function recordLoader(
-  loader: DocumentLoader,
-): { loader: DocumentLoader; urls: string[] } {
+function recordLoader(loader: DocumentLoader): {
+  loader: DocumentLoader;
+  urls: string[];
+} {
   const urls: string[] = [];
   return {
     urls,
@@ -1526,7 +1557,12 @@ async function signDelivery(
 
 async function deliverToGateway(
   request: Request,
-  { loader, kv, maxTargets, maxHttpSignatures }: {
+  {
+    loader,
+    kv,
+    maxTargets,
+    maxHttpSignatures,
+  }: {
     loader: DocumentLoader;
     kv?: KvStore;
     maxTargets?: number;
@@ -1534,7 +1570,11 @@ async function deliverToGateway(
   },
 ): Promise<{ response: Response; queue: RecordingQueue; kv: KvStore }> {
   const queue = new RecordingQueue();
-  const { federation, received, kv: store } = setup({
+  const {
+    federation,
+    received,
+    kv: store,
+  } = setup({
     queue,
     kv,
     options: {
@@ -1560,10 +1600,7 @@ test("Federation.fetch() does not forward portable inbox deliveries back to the 
     [rsaGatewayKeyPair],
     GATEWAY2,
   );
-  const specs = [
-    "draft-cavage-http-signatures-12",
-    "rfc9421",
-  ] as const;
+  const specs = ["draft-cavage-http-signatures-12", "rfc9421"] as const;
   for (const spec of specs) {
     await t.step(spec, async () => {
       const { loader, urls } = recordLoader(gatewayLoader);
@@ -1581,10 +1618,10 @@ test("Federation.fetch() does not forward portable inbox deliveries back to the 
       );
       // The sending gateway is remembered, so a duplicate delivered through
       // another gateway is not forwarded to it either:
-      const { queue: queue2 } = await deliverToGateway(
-        post(inboxUrl(), json),
-        { loader, kv },
-      );
+      const { queue: queue2 } = await deliverToGateway(post(inboxUrl(), json), {
+        loader,
+        kv,
+      });
       assertEquals(queue2.outbox, []);
     });
   }
@@ -1654,14 +1691,12 @@ test("Federation.fetch() does not forward portable inbox deliveries back to the 
           headers,
           body: JSON.stringify(json),
         });
-      for (
-        const [maxHttpSignatures, expected] of [
-          [2, [GATEWAY3]],
-          // The gateway's signature is ignored, so the sending gateway is not
-          // identified, and the activity is forwarded back to it as well:
-          [1, [GATEWAY2, GATEWAY3]],
-        ] as const
-      ) {
+      for (const [maxHttpSignatures, expected] of [
+        [2, [GATEWAY3]],
+        // The gateway's signature is ignored, so the sending gateway is not
+        // identified, and the activity is forwarded back to it as well:
+        [1, [GATEWAY2, GATEWAY3]],
+      ] as const) {
         const { loader, urls } = recordLoader(gatewayLoader);
         const { queue } = await deliverToGateway(request(), {
           loader,
@@ -1725,14 +1760,12 @@ test("Federation.fetch() forwards portable inbox deliveries whose sending gatewa
     });
   };
   const json = await signedFollow();
-  const contentDigest = `sha-256=:${
-    encodeBase64(
-      await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(JSON.stringify(json)),
-      ),
-    )
-  }:`;
+  const contentDigest = `sha-256=:${encodeBase64(
+    await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(JSON.stringify(json)),
+    ),
+  )}:`;
   const cases: {
     name: string;
     sign?: Parameters<typeof signDelivery>[1];
@@ -1830,22 +1863,23 @@ test("Federation.fetch() forwards portable inbox deliveries whose sending gatewa
       kv,
     });
     assertEquals(forwardedGateways(queue), [GATEWAY3, GATEWAY2].sort());
-    const { queue: queue2 } = await deliverToGateway(
-      await signDelivery(json),
-      { loader: recorded.loader, kv },
-    );
+    const { queue: queue2 } = await deliverToGateway(await signDelivery(json), {
+      loader: recorded.loader,
+      kv,
+    });
     assertEquals(queue2.outbox, []);
     // Nothing would be saved by identifying the gateway:
-    assertEquals(recorded.urls.filter((u) => u.startsWith(GATEWAY2)), []);
+    assertEquals(
+      recorded.urls.filter((u) => u.startsWith(GATEWAY2)),
+      [],
+    );
   });
 });
 
 function forwardingParameters(
   overrides: Partial<ForwardPortableInboxActivityParameters> = {},
 ): ForwardPortableInboxActivityParameters {
-  const activityId = parseIri(
-    `ap+ef61://${did}/follows/${++activityCounter}`,
-  );
+  const activityId = parseIri(`ap+ef61://${did}/follows/${++activityCounter}`);
   return {
     recipient: {
       actorId: aliceId,
@@ -1888,7 +1922,7 @@ test("forwardPortableInboxActivity() gets keys only when it forwards", async () 
 });
 
 test("forwardPortableInboxActivity() forwards unsigned if it cannot get keys", async (t) => {
-  const nonExtractable = await crypto.subtle.generateKey(
+  const nonExtractable = (await crypto.subtle.generateKey(
     {
       name: "RSASSA-PKCS1-v1_5",
       modulusLength: 2048,
@@ -1897,14 +1931,19 @@ test("forwardPortableInboxActivity() forwards unsigned if it cannot get keys", a
     },
     false,
     ["sign", "verify"],
-  ) as CryptoKeyPair;
+  )) as CryptoKeyPair;
   const getKeysCases: [string, () => Promise<SenderKeyPair[]>][] = [
     ["getKeys() rejects", () => Promise.reject(new Error("Unavailable."))],
-    ["the key is not extractable", () =>
-      Promise.resolve([{
-        keyId: gatewayKey.keyId,
-        privateKey: nonExtractable.privateKey,
-      }])],
+    [
+      "the key is not extractable",
+      () =>
+        Promise.resolve([
+          {
+            keyId: gatewayKey.keyId,
+            privateKey: nonExtractable.privateKey,
+          },
+        ]),
+    ],
   ];
   for (const [name, getKeys] of getKeysCases) {
     await t.step(`${name} (queued)`, async () => {
@@ -1934,7 +1973,7 @@ test("forwardPortableInboxActivity() forwards unsigned if it cannot get keys", a
 
 test("forwardPortableInboxActivity() does not wait for slow keys", async () => {
   let release: () => void = () => {};
-  const pending = new Promise<void>((resolve) => release = resolve);
+  const pending = new Promise<void>((resolve) => (release = resolve));
   const requests = captureGatewayRequests();
   try {
     const started = performance.now();
@@ -2003,65 +2042,80 @@ test("forwardPortableInboxActivity() skips the gateway that forwarded the activi
           recipient,
           outboxQueue: queue,
           signatures: [
-            gatewaySignature(
-              gateway2KeyId,
-              () => Promise.resolve(gatewayKeyOf(gateway2KeyId, owner)),
+            gatewaySignature(gateway2KeyId, () =>
+              Promise.resolve(gatewayKeyOf(gateway2KeyId, owner)),
             ),
           ],
         }),
       );
-      assertEquals(forwarded.map((u) => u.origin), [GATEWAY3]);
+      assertEquals(
+        forwarded.map((u) => u.origin),
+        [GATEWAY3],
+      );
     });
   }
   const notIdentified: [string, PortableInboxSignature[]][] = [
-    ["verify() rejects", [
-      gatewaySignature(
-        gateway2KeyId,
-        () => Promise.reject(new Error("Failed.")),
-      ),
-    ]],
-    ["verify() throws", [
-      gatewaySignature(gateway2KeyId, () => {
-        throw new Error("Failed.");
-      }),
-    ]],
-    ["not verified", [
-      gatewaySignature(gateway2KeyId, () => Promise.resolve(null)),
-    ]],
-    ["the key is not owned by a portable actor", [
-      gatewaySignature(
-        gateway2KeyId,
-        () =>
+    [
+      "verify() rejects",
+      [
+        gatewaySignature(gateway2KeyId, () =>
+          Promise.reject(new Error("Failed.")),
+        ),
+      ],
+    ],
+    [
+      "verify() throws",
+      [
+        gatewaySignature(gateway2KeyId, () => {
+          throw new Error("Failed.");
+        }),
+      ],
+    ],
+    [
+      "not verified",
+      [gatewaySignature(gateway2KeyId, () => Promise.resolve(null))],
+    ],
+    [
+      "the key is not owned by a portable actor",
+      [
+        gatewaySignature(gateway2KeyId, () =>
           Promise.resolve(
             gatewayKeyOf(gateway2KeyId, new URL(`${GATEWAY2}/users/alice`)),
           ),
-      ),
-    ]],
-    ["the key is owned by another actor", [
-      gatewaySignature(
-        gateway2KeyId,
-        () =>
+        ),
+      ],
+    ],
+    [
+      "the key is owned by another actor",
+      [
+        gatewaySignature(gateway2KeyId, () =>
           Promise.resolve(
             gatewayKeyOf(gateway2KeyId, parseIri(`ap://${did}/users/bob`)),
           ),
-      ),
-    ]],
-    ["another key is verified", [
-      gatewaySignature(
-        gateway2KeyId,
-        () =>
+        ),
+      ],
+    ],
+    [
+      "another key is verified",
+      [
+        gatewaySignature(gateway2KeyId, () =>
           Promise.resolve(
             gatewayKeyOf(new URL(`${compatibleAliceId(GATEWAY3)}#main-key`)),
           ),
-      ),
-    ]],
-    ["the signature does not cover the delivery", [{
-      ...gatewaySignature(
-        gateway2KeyId,
-        () => Promise.resolve(gatewayKeyOf(gateway2KeyId)),
-      ),
-      coversDelivery: false,
-    }]],
+        ),
+      ],
+    ],
+    [
+      "the signature does not cover the delivery",
+      [
+        {
+          ...gatewaySignature(gateway2KeyId, () =>
+            Promise.resolve(gatewayKeyOf(gateway2KeyId)),
+          ),
+          coversDelivery: false,
+        },
+      ],
+    ],
   ];
   for (const [name, signatures] of notIdentified) {
     await t.step(name, async () => {
@@ -2069,17 +2123,26 @@ test("forwardPortableInboxActivity() skips the gateway that forwarded the activi
       const forwarded = await forwardPortableInboxActivity(
         forwardingParameters({ recipient, outboxQueue: queue, signatures }),
       );
-      assertEquals(forwarded.map((u) => u.origin), [GATEWAY3, GATEWAY2]);
+      assertEquals(
+        forwarded.map((u) => u.origin),
+        [GATEWAY3, GATEWAY2],
+      );
     });
   }
   await t.step("verified only if it may save a request", async (t) => {
     const cases: [string, Partial<ForwardPortableInboxActivityParameters>][] = [
-      ["forwarding is turned off", {
-        options: resolvePortableInboxForwardingOptions({ maxTargets: 0 }),
-      }],
-      ["no compare-and-swap", {
-        kv: { ...new MemoryKvStore(), cas: undefined } as unknown as KvStore,
-      }],
+      [
+        "forwarding is turned off",
+        {
+          options: resolvePortableInboxForwardingOptions({ maxTargets: 0 }),
+        },
+      ],
+      [
+        "no compare-and-swap",
+        {
+          kv: { ...new MemoryKvStore(), cas: undefined } as unknown as KvStore,
+        },
+      ],
       ["this server", { excludedOrigins: [LOCAL, GATEWAY2] }],
     ];
     for (const [name, overrides] of cases) {
@@ -2104,8 +2167,8 @@ test("forwardPortableInboxActivity() skips the gateway that forwarded the activi
   });
   await t.step("verification does not finish in time", async () => {
     let release: (key: CryptographicKey) => void = () => {};
-    const pending = new Promise<CryptographicKey>((resolve) =>
-      release = resolve
+    const pending = new Promise<CryptographicKey>(
+      (resolve) => (release = resolve),
     );
     const kv = new MemoryKvStore();
     const parameters = forwardingParameters({
@@ -2122,7 +2185,10 @@ test("forwardPortableInboxActivity() skips the gateway that forwarded the activi
     const forwarded = await forwardPortableInboxActivity(parameters);
     assert(performance.now() - started < 5_000);
     // GATEWAY2 is beyond the cap, so only GATEWAY3 is claimed:
-    assertEquals(forwarded.map((u) => u.origin), [GATEWAY3]);
+    assertEquals(
+      forwarded.map((u) => u.origin),
+      [GATEWAY3],
+    );
     // A late verification does not claim GATEWAY2:
     release(gatewayKeyOf(gateway2KeyId));
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -2140,29 +2206,45 @@ test("coversDelivery()", () => {
     label,
     components: names.map((value) => ({ value, params: {} })),
   });
-  assert(coversDelivery(
-    signature("sig1", "@method", "@target-uri", "@authority", "content-digest"),
-  ));
-  assert(coversDelivery(
-    signature(null, "(request-target)", "host", "date", "digest"),
-  ));
+  assert(
+    coversDelivery(
+      signature(
+        "sig1",
+        "@method",
+        "@target-uri",
+        "@authority",
+        "content-digest",
+      ),
+    ),
+  );
+  assert(
+    coversDelivery(
+      signature(null, "(request-target)", "host", "date", "digest"),
+    ),
+  );
   assertFalse(coversDelivery(signature("sig1", "@method", "@target-uri")));
-  assertFalse(coversDelivery(
-    signature("sig1", "@method", "@target-uri", "Content-Digest"),
-  ));
-  assertFalse(coversDelivery(
-    signature("sig1", "@method", "@authority", "@path", "content-digest"),
-  ));
+  assertFalse(
+    coversDelivery(
+      signature("sig1", "@method", "@target-uri", "Content-Digest"),
+    ),
+  );
+  assertFalse(
+    coversDelivery(
+      signature("sig1", "@method", "@authority", "@path", "content-digest"),
+    ),
+  );
   assertFalse(coversDelivery(signature(null, "(request-target)", "digest")));
-  assertFalse(coversDelivery({
-    keyId: gateway2KeyId,
-    label: "sig1",
-    components: [
-      { value: "@method", params: {} },
-      { value: "@target-uri", params: {} },
-      { value: "content-digest", params: { req: true } },
-    ],
-  }));
+  assertFalse(
+    coversDelivery({
+      keyId: gateway2KeyId,
+      label: "sig1",
+      components: [
+        { value: "@method", params: {} },
+        { value: "@target-uri", params: {} },
+        { value: "content-digest", params: { req: true } },
+      ],
+    }),
+  );
 });
 
 test("Context.getPortableInboxUri()", async (t) => {
@@ -2197,7 +2279,8 @@ test("Federation.fetch() serves and delivers to one portable actor dispatcher", 
       // hosts the actor for it.  Deliveries to portable inboxes do not set
       // portableRequest, so the actor is returned for them:
       if (
-        ctx.portableRequest != null && ctx.portableRequest.authority !== did
+        ctx.portableRequest != null &&
+        ctx.portableRequest.authority !== did
       ) {
         return null;
       }
@@ -2230,7 +2313,7 @@ test("Federation.fetch() serves and delivers to one portable actor dispatcher", 
     );
   const actor = await get(did);
   assertEquals(actor.status, 200);
-  const json = await actor.json() as Record<string, unknown>;
+  const json = (await actor.json()) as Record<string, unknown>;
   assertEquals(json.id, `ap+ef61://${did}/users/alice`);
   assertEquals(json.inbox, `ap+ef61://${did}/users/alice/inbox`);
   assertEquals((await get(otherDid)).status, 404);
@@ -2261,15 +2344,18 @@ test("onRequestFinished covers portable ingress and recipient lookup failures", 
   assertEquals(reports[0].inbox, { kind: "portable", recipient: "alice" });
   assertEquals(reports[0].authentication.status, "verified");
   assert(
-    reports[0].attempts.some((attempt) =>
-      attempt.subject.pointer === "" && attempt.status === "verified"
+    reports[0].attempts.some(
+      (attempt) =>
+        attempt.subject.pointer === "" && attempt.status === "verified",
     ),
   );
   const absent = setup({ actor: () => null });
   assertEquals(
-    (await absent.federation.fetch(post(inboxUrl(), {}), {
-      contextData: undefined,
-    })).status,
+    (
+      await absent.federation.fetch(post(inboxUrl(), {}), {
+        contextData: undefined,
+      })
+    ).status,
     404,
   );
   assertEquals(absent.reports[0].payload, { status: "unavailable" });
@@ -2298,14 +2384,14 @@ test("onRequestFinished covers portable ingress and recipient lookup failures", 
 });
 
 function replicationResult(events: OutboundBroadcastEvent[]) {
-  assertEquals(events.map((event) => event.stage), [
-    "started",
-    "preparation-finished",
-  ]);
-  assertEquals(events.map((event) => event.operation), [
-    "portable-replication",
-    "portable-replication",
-  ]);
+  assertEquals(
+    events.map((event) => event.stage),
+    ["started", "preparation-finished"],
+  );
+  assertEquals(
+    events.map((event) => event.operation),
+    ["portable-replication", "portable-replication"],
+  );
   assertEquals(events[0].broadcastId, events[1].broadcastId);
   const event = events[1];
   assert(event.stage === "preparation-finished");
@@ -2316,14 +2402,15 @@ test("portable replication observers distinguish disabled, unavailable, and uncl
   for (const scenario of ["disabled", "unavailable", "no-targets"] as const) {
     await t.step(scenario, async () => {
       const memory = new MemoryKvStore();
-      const kv: KvStore = scenario === "unavailable"
-        ? {
-          get: (key) => memory.get(key),
-          set: (key, value, options) => memory.set(key, value, options),
-          delete: (key) => memory.delete(key),
-          list: (prefix) => memory.list(prefix),
-        }
-        : memory;
+      const kv: KvStore =
+        scenario === "unavailable"
+          ? {
+              get: (key) => memory.get(key),
+              set: (key, value, options) => memory.set(key, value, options),
+              delete: (key) => memory.delete(key),
+              list: (prefix) => memory.list(prefix),
+            }
+          : memory;
       const queue = new RecordingQueue();
       const { federation } = setup({
         kv,
@@ -2355,11 +2442,12 @@ test("portable replication observers distinguish disabled, unavailable, and uncl
       assertEquals(response.status, 202);
       assertEquals(replicationResult(events), {
         type: "skipped",
-        reason: scenario === "disabled"
-          ? "forwarding-disabled"
-          : scenario === "unavailable"
-          ? "forwarding-unavailable"
-          : "no-forwarding-targets",
+        reason:
+          scenario === "disabled"
+            ? "forwarding-disabled"
+            : scenario === "unavailable"
+              ? "forwarding-unavailable"
+              : "no-forwarding-targets",
       });
       assertEquals(events[0].activity, {});
       assertEquals(events[1].activity.type, Follow.typeId.href);
@@ -2385,8 +2473,8 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
         queue.messages.push(message);
         return queue.messages.length === 1
           ? acceptance.then(() => {
-            throw new Error("acceptance unknown");
-          })
+              throw new Error("acceptance unknown");
+            })
           : Promise.resolve();
       };
       const { federation, reports } = setup({ queue, keyPairs: false });
@@ -2415,9 +2503,10 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
       });
       const json = await signedFollow();
       let settled = false;
-      const pending = federation.fetch(post(inboxUrl(), json), {
-        contextData: undefined,
-      })
+      const pending = federation
+        .fetch(post(inboxUrl(), json), {
+          contextData: undefined,
+        })
         .finally(() => {
           settled = true;
         });
@@ -2437,8 +2526,10 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
         assertEquals(message.activity, json);
         assertEquals(message.keys, []);
         assertFalse("broadcastId" in message);
-        const plan = deliveries.find((event) =>
-          event.stage === "planned" && event.destinationInbox === message.inbox
+        const plan = deliveries.find(
+          (event) =>
+            event.stage === "planned" &&
+            event.destinationInbox === message.inbox,
         );
         assert(plan);
         assertEquals(message.outbound, {
@@ -2460,15 +2551,18 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
       const handoffs = deliveries.filter((event) => event.stage === "handoff");
       assertEquals(handoffs.length, 2);
       assertEquals(
-        handoffs.filter((event) =>
-          event.stage === "handoff" && event.result.type === "enqueued"
+        handoffs.filter(
+          (event) =>
+            event.stage === "handoff" && event.result.type === "enqueued",
         ).length,
         1,
       );
       assertEquals(
-        handoffs.filter((event) =>
-          event.stage === "handoff" && event.result.type === "enqueue-failed" &&
-          event.result.acceptance === "unknown"
+        handoffs.filter(
+          (event) =>
+            event.stage === "handoff" &&
+            event.result.type === "enqueue-failed" &&
+            event.result.acceptance === "unknown",
         ).length,
         1,
       );
@@ -2500,9 +2594,11 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
         },
       });
       assertEquals(
-        (await federation.fetch(post(inboxUrl(), json), {
-          contextData: undefined,
-        })).status,
+        (
+          await federation.fetch(post(inboxUrl(), json), {
+            contextData: undefined,
+          })
+        ).status,
         202,
       );
       assertEquals(replicationResult(events.slice(2)), {
@@ -2553,7 +2649,10 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
         planning: "incomplete",
         plannedDestinationCount: 1,
       });
-      assertEquals(deliveries.map((event) => event.stage), ["planned"]);
+      assertEquals(
+        deliveries.map((event) => event.stage),
+        ["planned"],
+      );
       assertEquals(queue.outbox.length, 0);
     },
   );
@@ -2588,10 +2687,10 @@ test("portable replication observers preserve lazy enqueue, unsigned fallback, a
         preparedFor: "delivery",
         destinationCount: 1,
       });
-      assertEquals(deliveries.map((event) => event.stage), [
-        "planned",
-        "handoff",
-      ]);
+      assertEquals(
+        deliveries.map((event) => event.stage),
+        ["planned", "handoff"],
+      );
       const accepted = deliveries[1];
       assert(
         accepted.stage === "handoff" && accepted.result.type === "enqueued",
@@ -2631,7 +2730,8 @@ test("portable replication attempts settle independently after the forwarding de
   };
   const attempts: OutboundAttemptReport[] = [];
   const submitted: unknown[] = [];
-  fetchMock.spyGlobal()
+  fetchMock
+    .spyGlobal()
     .post(`begin:${GATEWAY2}/`, (call) => {
       submitted.push(JSON.parse(String(call.options.body)));
       return 503;
@@ -2704,8 +2804,8 @@ test("portable replication attempts settle independently after the forwarding de
         reports[0].inboxRequestId,
       );
       assert(report.provenance.inboxRequest);
-      const span = exporter.spans.find((span) =>
-        span.spanContext().spanId === report.trace?.spanId
+      const span = exporter.spans.find(
+        (span) => span.spanContext().spanId === report.trace?.spanId,
       );
       assert(span);
       assertEquals(span.name, "activitypub.send_activity");
@@ -2713,9 +2813,11 @@ test("portable replication attempts settle independently after the forwarding de
     assertEquals(submitted, [json, json]);
     // Swallowed send failures retain their claims, rather than causing retries.
     assertEquals(
-      (await federation.fetch(post(inboxUrl(), json), {
-        contextData: undefined,
-      })).status,
+      (
+        await federation.fetch(post(inboxUrl(), json), {
+          contextData: undefined,
+        })
+      ).status,
       202,
     );
     assertEquals(submitted.length, 2);
@@ -2800,13 +2902,16 @@ test("portable replication observers retain preparation after the forwarding dea
             "portable-replication",
           );
           assertEquals(forwarded.length, 1);
-          assertEquals(events.map((event) => event.stage), ["started"]);
+          assertEquals(
+            events.map((event) => event.stage),
+            ["started"],
+          );
           release();
           await preparation;
-          assertEquals(deliveries.map((event) => event.stage), [
-            "planned",
-            failed ? "preparation-failed" : "handoff",
-          ]);
+          assertEquals(
+            deliveries.map((event) => event.stage),
+            ["planned", failed ? "preparation-failed" : "handoff"],
+          );
           assertEquals(deliveries[0].deliveryId, deliveries[1].deliveryId);
           if (failed) {
             const failedDelivery = deliveries[1];

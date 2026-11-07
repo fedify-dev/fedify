@@ -25,9 +25,8 @@ test("downloadImage - skips private URL without fetching", async () => {
 
 test("downloadImage - writes file for public URL", async () => {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch =
-    ((_input: URL | RequestInfo) =>
-      Promise.resolve(new Response(new Uint8Array([1, 2, 3])))) as typeof fetch;
+  globalThis.fetch = ((_input: URL | RequestInfo) =>
+    Promise.resolve(new Response(new Uint8Array([1, 2, 3])))) as typeof fetch;
 
   let result: string | null = null;
   try {
@@ -176,9 +175,8 @@ test("downloadImage - cancels body for non-ok terminal response", async () => {
 
 test("downloadImage - rejects unsafe extension containing path traversal", async () => {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch =
-    ((_input: URL | RequestInfo) =>
-      Promise.resolve(new Response(new Uint8Array([1, 2, 3])))) as typeof fetch;
+  globalThis.fetch = ((_input: URL | RequestInfo) =>
+    Promise.resolve(new Response(new Uint8Array([1, 2, 3])))) as typeof fetch;
 
   try {
     const result = await downloadImage(
@@ -192,9 +190,8 @@ test("downloadImage - rejects unsafe extension containing path traversal", async
 
 test("downloadImage - falls back to jpg when URL has no extension", async () => {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch =
-    ((_input: URL | RequestInfo) =>
-      Promise.resolve(new Response(new Uint8Array([1, 2, 3])))) as typeof fetch;
+  globalThis.fetch = ((_input: URL | RequestInfo) =>
+    Promise.resolve(new Response(new Uint8Array([1, 2, 3])))) as typeof fetch;
 
   let result: string | null = null;
   try {

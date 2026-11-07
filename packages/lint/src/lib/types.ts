@@ -1,8 +1,6 @@
 import type * as ESTree from "estree";
 
-export type BlockStatement =
-  | Deno.lint.BlockStatement
-  | ESTree.BlockStatement;
+export type BlockStatement = Deno.lint.BlockStatement | ESTree.BlockStatement;
 export type CallExpression = Deno.lint.CallExpression | ESTree.CallExpression;
 export type ConditionalExpression =
   | Deno.lint.ConditionalExpression
@@ -20,9 +18,7 @@ export type Node = Deno.lint.Node | ESTree.Node;
 export type ObjectExpression =
   | Deno.lint.ObjectExpression
   | ESTree.ObjectExpression;
-export type ObjectPattern =
-  | Deno.lint.ObjectPattern
-  | ESTree.ObjectPattern;
+export type ObjectPattern = Deno.lint.ObjectPattern | ESTree.ObjectPattern;
 export type Parameter = Deno.lint.Parameter | ESTree.Pattern;
 export type PrivateIdentifier =
   | Deno.lint.PrivateIdentifier
@@ -57,11 +53,7 @@ export type CallMemberExpressionWithIdentified = CallExpression & {
   };
 };
 
-export type PropertyChecker = (
-  prop:
-    | Property
-    | SpreadElement,
-) => boolean;
+export type PropertyChecker = (prop: Property | SpreadElement) => boolean;
 
 /**
  * Configuration for nested property wrappers.

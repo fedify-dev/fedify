@@ -11,9 +11,8 @@ const makeEntry = (path: string, index = 0): RouteEntry => {
   return {
     index,
     tokens,
-    initialLiteralPrefix: tokens[0] != null && isLiteral(tokens[0])
-      ? tokens[0].text
-      : "",
+    initialLiteralPrefix:
+      tokens[0] != null && isLiteral(tokens[0]) ? tokens[0].text : "",
     literalLength: literalLengthOf(tokens),
     variableCount: variableCountOf(tokens),
   };
@@ -21,7 +20,7 @@ const makeEntry = (path: string, index = 0): RouteEntry => {
 
 const literalLengthOf = (tokens: readonly Token[]): number =>
   tokens.reduce(
-    (sum, token) => isLiteral(token) ? sum + token.text.length : sum,
+    (sum, token) => (isLiteral(token) ? sum + token.text.length : sum),
     0,
   );
 
@@ -77,31 +76,25 @@ test("FallbackTrie.remove() removes an inserted entry from candidates", () => {
   deepEqual(candidatesOf(trie, "/b/foo"), [b]);
 });
 
-test(
-  "FallbackTrie.remove() is a no-op for an entry that was never inserted",
-  () => {
-    const trie = new FallbackTrie<RouteEntry>();
-    const inserted = makeEntry("/a/{x,y}", 0);
-    const stranger = makeEntry("/b/{x,y}", 1);
-    trie.insert(inserted);
-    trie.remove(stranger);
+test("FallbackTrie.remove() is a no-op for an entry that was never inserted", () => {
+  const trie = new FallbackTrie<RouteEntry>();
+  const inserted = makeEntry("/a/{x,y}", 0);
+  const stranger = makeEntry("/b/{x,y}", 1);
+  trie.insert(inserted);
+  trie.remove(stranger);
 
-    deepEqual(candidatesOf(trie, "/a/foo"), [inserted]);
-  },
-);
+  deepEqual(candidatesOf(trie, "/a/foo"), [inserted]);
+});
 
-test(
-  "FallbackTrie.remove() is a no-op when the entry's prefix is not in the trie",
-  () => {
-    const trie = new FallbackTrie<RouteEntry>();
-    const inserted = makeEntry("/a/{x,y}", 0);
-    const stranger = makeEntry("/zzz/{x,y}", 1);
-    trie.insert(inserted);
-    trie.remove(stranger);
+test("FallbackTrie.remove() is a no-op when the entry's prefix is not in the trie", () => {
+  const trie = new FallbackTrie<RouteEntry>();
+  const inserted = makeEntry("/a/{x,y}", 0);
+  const stranger = makeEntry("/zzz/{x,y}", 1);
+  trie.insert(inserted);
+  trie.remove(stranger);
 
-    deepEqual(candidatesOf(trie, "/a/foo"), [inserted]);
-  },
-);
+  deepEqual(candidatesOf(trie, "/a/foo"), [inserted]);
+});
 
 test(
   "FallbackTrie.candidates() yields nothing " +

@@ -95,14 +95,16 @@ export function onBeforeResponse(
   const stored = notAcceptableResponses.get(event.request);
   if (stored == null || event.nativeEvent.handled) return;
   const body = payload.body;
-  const error = body instanceof Error
-    ? body as Error & { statusCode?: number; status?: number }
-    : undefined;
-  const status = body instanceof Response
-    ? body.status
-    : body === undefined && (event.response.status ?? 200) === 200
-    ? 404 // The default status falls through to Nitro's empty router.
-    : error?.statusCode ?? error?.status ?? event.response.status ?? 200;
+  const error =
+    body instanceof Error
+      ? (body as Error & { statusCode?: number; status?: number })
+      : undefined;
+  const status =
+    body instanceof Response
+      ? body.status
+      : body === undefined && (event.response.status ?? 200) === 200
+        ? 404 // The default status falls through to Nitro's empty router.
+        : (error?.statusCode ?? error?.status ?? event.response.status ?? 200);
   if (status !== 404) return;
 
   const headers = notAcceptableHeaders(

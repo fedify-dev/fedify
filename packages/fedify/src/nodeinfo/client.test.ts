@@ -48,9 +48,9 @@ function getNodeInfoValidated(
       new URL(hopUrl).hostname === "example.com"
         ? openDirectFetch(hopUrl)
         : openPublicFetch(hopUrl, {
-          lookup: () =>
-            Promise.resolve([{ address: "93.184.215.14", family: 4 }]),
-        }),
+            lookup: () =>
+              Promise.resolve([{ address: "93.184.215.14", family: 4 }]),
+          }),
   });
 }
 
@@ -97,10 +97,9 @@ test("getNodeInfo()", async (t) => {
   });
 
   await t.step("direct", async () => {
-    const info = await getNodeInfoDirect(
-      "https://example.com/nodeinfo/2.1",
-      { direct: true },
-    );
+    const info = await getNodeInfoDirect("https://example.com/nodeinfo/2.1", {
+      direct: true,
+    });
     assertEquals(info, expected);
   });
 
@@ -125,15 +124,13 @@ test("getNodeInfo()", async (t) => {
   });
 
   await t.step("direct: 404", async () => {
-    const info = await getNodeInfoDirect(
-      "https://example.com/nodeinfo/2.0",
-      { direct: true },
-    );
+    const info = await getNodeInfoDirect("https://example.com/nodeinfo/2.0", {
+      direct: true,
+    });
     assertEquals(info, undefined);
-    const info2 = await getNodeInfoDirect(
-      "https://example.com/404",
-      { direct: true },
-    );
+    const info2 = await getNodeInfoDirect("https://example.com/404", {
+      direct: true,
+    });
     assertEquals(info2, undefined);
   });
 
@@ -341,10 +338,7 @@ test("parseNodeInfo()", () => {
       metadata: output.metadata,
     },
   );
-  assertEquals(
-    parseNodeInfo({ ...input, openRegistrations: 123 }),
-    null,
-  );
+  assertEquals(parseNodeInfo({ ...input, openRegistrations: 123 }), null);
   assertEquals(
     parseNodeInfo(
       { ...input, openRegistrations: 123 },
@@ -358,10 +352,7 @@ test("parseNodeInfo()", () => {
       metadata: output.metadata,
     },
   );
-  assertEquals(
-    parseNodeInfo({ ...input, usage: 123 }),
-    null,
-  );
+  assertEquals(parseNodeInfo({ ...input, usage: 123 }), null);
   assertEquals(
     parseNodeInfo({ ...input, usage: 123 }, { tryBestEffort: true }),
     {
@@ -373,10 +364,7 @@ test("parseNodeInfo()", () => {
       metadata: output.metadata,
     },
   );
-  assertEquals(
-    parseNodeInfo({ ...input, metadata: 123 }),
-    null,
-  );
+  assertEquals(parseNodeInfo({ ...input, metadata: 123 }), null);
   assertEquals(
     parseNodeInfo({ ...input, metadata: 123 }, { tryBestEffort: true }),
     {
@@ -421,13 +409,10 @@ test("parseSoftware()", () => {
   assertEquals(parseSoftware({ name: "" }), null);
   assertEquals(parseSoftware({ name: "" }, { tryBestEffort: true }), null);
   assertEquals(parseSoftware({ name: " FOO " }), null);
-  assertEquals(
-    parseSoftware({ name: " FOO " }, { tryBestEffort: true }),
-    {
-      name: "foo",
-      version: "0.0.0",
-    },
-  );
+  assertEquals(parseSoftware({ name: " FOO " }, { tryBestEffort: true }), {
+    name: "foo",
+    version: "0.0.0",
+  });
   assertEquals(parseSoftware({ name: "foo", version: 123 }), {
     name: "foo",
     version: "123",
@@ -450,13 +435,10 @@ test("parseSoftware()", () => {
       version: "abc",
     },
   );
-  assertEquals(
-    parseSoftware({ name: "foo", version: " 1.2.3 " }),
-    {
-      name: "foo",
-      version: " 1.2.3 ",
-    },
-  );
+  assertEquals(parseSoftware({ name: "foo", version: " 1.2.3 " }), {
+    name: "foo",
+    version: " 1.2.3 ",
+  });
   assertEquals(
     parseSoftware({ name: "foo", version: " 1.2.3 " }, { tryBestEffort: true }),
     {
@@ -473,12 +455,15 @@ test("parseSoftware()", () => {
     null,
   );
   assertEquals(
-    parseSoftware({
-      name: "foo",
-      version: "1.2.3",
-      repository: 123,
-      homepage: 456,
-    }, { tryBestEffort: true }),
+    parseSoftware(
+      {
+        name: "foo",
+        version: "1.2.3",
+        repository: 123,
+        homepage: 456,
+      },
+      { tryBestEffort: true },
+    ),
     {
       name: "foo",
       version: "1.2.3",
@@ -493,48 +478,60 @@ test("parseSoftware()", () => {
     null,
   );
   assertEquals(
-    parseSoftware({
-      name: "foo",
-      version: "1.2.3",
-      repository: "",
-      homepage: "",
-    }, { tryBestEffort: true }),
+    parseSoftware(
+      {
+        name: "foo",
+        version: "1.2.3",
+        repository: "",
+        homepage: "",
+      },
+      { tryBestEffort: true },
+    ),
     {
       name: "foo",
       version: "1.2.3",
     },
   );
   assertEquals(
-    parseSoftware({
-      name: "foo",
-      version: "2.81",
-      repository: "",
-      homepage: "",
-    }, { tryBestEffort: true }),
+    parseSoftware(
+      {
+        name: "foo",
+        version: "2.81",
+        repository: "",
+        homepage: "",
+      },
+      { tryBestEffort: true },
+    ),
     {
       name: "foo",
       version: "2.81",
     },
   );
   assertEquals(
-    parseSoftware({
-      name: "foo",
-      version: "3",
-      repository: "",
-      homepage: "",
-    }, { tryBestEffort: true }),
+    parseSoftware(
+      {
+        name: "foo",
+        version: "3",
+        repository: "",
+        homepage: "",
+      },
+      { tryBestEffort: true },
+    ),
     {
       name: "foo",
       version: "3",
     },
   );
   assertEquals(
-    parseSoftware({
-      name: "foo",
-      version: "2.1.3.4",
-      repository: "",
-      homepage: "",
-    }, { tryBestEffort: true }),
+    parseSoftware(
+      {
+        name: "foo",
+        version: "2.1.3.4",
+        repository: "",
+        homepage: "",
+      },
+      { tryBestEffort: true },
+    ),
     {
       name: "foo",
       version: "2.1.3.4",
@@ -544,6 +541,7 @@ test("parseSoftware()", () => {
 
 test("parseProtocol()", () => {
   // deno-fmt-ignore
+  // oxfmt-ignore
   const protocols: Protocol[] = [
     // cSpell: disable
     "activitypub", "buddycloud", "dfrn", "diaspora", "libertree", "ostatus",
@@ -567,10 +565,9 @@ test("parseServices()", () => {
       outbound: ["atom1.0", "diaspora", "facebook"],
     },
   );
-  assertEquals(
-    parseServices({ inbound: ["atom1.0", "pop3", "twitter"] }),
-    { inbound: ["atom1.0", "pop3", "twitter"] },
-  );
+  assertEquals(parseServices({ inbound: ["atom1.0", "pop3", "twitter"] }), {
+    inbound: ["atom1.0", "pop3", "twitter"],
+  });
   assertEquals(
     parseServices({ outbound: ["atom1.0", "diaspora", "facebook"] }),
     { outbound: ["atom1.0", "diaspora", "facebook"] },
@@ -593,10 +590,13 @@ test("parseServices()", () => {
     null,
   );
   assertEquals(
-    parseServices({
-      inbound: ["atom1.0", "pop3", "twitter", "foo"],
-      outbound: ["atom1.0", "diaspora", "facebook", "bar"],
-    }, { tryBestEffort: true }),
+    parseServices(
+      {
+        inbound: ["atom1.0", "pop3", "twitter", "foo"],
+        outbound: ["atom1.0", "diaspora", "facebook", "bar"],
+      },
+      { tryBestEffort: true },
+    ),
     {
       inbound: ["atom1.0", "pop3", "twitter"],
       outbound: ["atom1.0", "diaspora", "facebook"],
@@ -606,6 +606,7 @@ test("parseServices()", () => {
 
 test("parseInboundService()", () => {
   // deno-fmt-ignore
+  // oxfmt-ignore
   const services: InboundService[] = [
     // cSpell: disable
     "atom1.0", "gnusocial", "imap", "pnut", "pop3", "pumpio", "rss2.0",
@@ -620,6 +621,7 @@ test("parseInboundService()", () => {
 
 test("parseOutboundService()", () => {
   // deno-fmt-ignore
+  // oxfmt-ignore
   const services: OutboundService[] = [
     // cSpell: disable
     "atom1.0", "blogger", "buddycloud", "diaspora", "dreamwidth", "drupal",
@@ -636,14 +638,11 @@ test("parseOutboundService()", () => {
 });
 
 test("parseUsage()", () => {
-  assertEquals(
-    parseUsage({ users: {}, localPosts: 123, localComments: 456 }),
-    {
-      users: {},
-      localPosts: 123,
-      localComments: 456,
-    },
-  );
+  assertEquals(parseUsage({ users: {}, localPosts: 123, localComments: 456 }), {
+    users: {},
+    localPosts: 123,
+    localComments: 456,
+  });
   assertEquals(
     parseUsage({
       users: {
@@ -671,9 +670,12 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({ users: {}, localPosts: "123", localComments: 456 }, {
-      tryBestEffort: true,
-    }),
+    parseUsage(
+      { users: {}, localPosts: "123", localComments: 456 },
+      {
+        tryBestEffort: true,
+      },
+    ),
     {
       users: {},
       localPosts: 123,
@@ -685,9 +687,12 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({ users: {}, localPosts: "", localComments: 456 }, {
-      tryBestEffort: true,
-    }),
+    parseUsage(
+      { users: {}, localPosts: "", localComments: 456 },
+      {
+        tryBestEffort: true,
+      },
+    ),
     {
       users: {},
       localPosts: 0,
@@ -699,9 +704,12 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({ users: {}, localPosts: [], localComments: 456 }, {
-      tryBestEffort: true,
-    }),
+    parseUsage(
+      { users: {}, localPosts: [], localComments: 456 },
+      {
+        tryBestEffort: true,
+      },
+    ),
     {
       users: {},
       localPosts: 0,
@@ -713,9 +721,12 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({ users: {}, localPosts: 123, localComments: "456" }, {
-      tryBestEffort: true,
-    }),
+    parseUsage(
+      { users: {}, localPosts: 123, localComments: "456" },
+      {
+        tryBestEffort: true,
+      },
+    ),
     {
       users: {},
       localPosts: 123,
@@ -727,9 +738,12 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({ users: {}, localPosts: 123, localComments: "" }, {
-      tryBestEffort: true,
-    }),
+    parseUsage(
+      { users: {}, localPosts: 123, localComments: "" },
+      {
+        tryBestEffort: true,
+      },
+    ),
     {
       users: {},
       localPosts: 123,
@@ -741,9 +755,12 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({ users: null, localPosts: 123, localComments: "" }, {
-      tryBestEffort: true,
-    }),
+    parseUsage(
+      { users: null, localPosts: 123, localComments: "" },
+      {
+        tryBestEffort: true,
+      },
+    ),
     {
       users: {},
       localPosts: 123,
@@ -755,9 +772,12 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({ users: {}, localPosts: 123, localComments: [] }, {
-      tryBestEffort: true,
-    }),
+    parseUsage(
+      { users: {}, localPosts: 123, localComments: [] },
+      {
+        tryBestEffort: true,
+      },
+    ),
     {
       users: {},
       localPosts: 123,
@@ -777,15 +797,18 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({
-      users: {
-        activeHalfyear: "10",
-        activeMonth: 20,
-        total: 30,
+    parseUsage(
+      {
+        users: {
+          activeHalfyear: "10",
+          activeMonth: 20,
+          total: 30,
+        },
+        localPosts: 123,
+        localComments: 456,
       },
-      localPosts: 123,
-      localComments: 456,
-    }, { tryBestEffort: true }),
+      { tryBestEffort: true },
+    ),
     {
       users: {
         activeHalfyear: 10,
@@ -809,15 +832,18 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({
-      users: {
-        activeHalfyear: "",
-        activeMonth: 20,
-        total: 30,
+    parseUsage(
+      {
+        users: {
+          activeHalfyear: "",
+          activeMonth: 20,
+          total: 30,
+        },
+        localPosts: 123,
+        localComments: 456,
       },
-      localPosts: 123,
-      localComments: 456,
-    }, { tryBestEffort: true }),
+      { tryBestEffort: true },
+    ),
     {
       users: {
         activeMonth: 20,
@@ -840,15 +866,18 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({
-      users: {
-        activeHalfyear: [],
-        activeMonth: 20,
-        total: 30,
+    parseUsage(
+      {
+        users: {
+          activeHalfyear: [],
+          activeMonth: 20,
+          total: 30,
+        },
+        localPosts: 123,
+        localComments: 456,
       },
-      localPosts: 123,
-      localComments: 456,
-    }, { tryBestEffort: true }),
+      { tryBestEffort: true },
+    ),
     {
       users: {
         activeMonth: 20,
@@ -871,15 +900,18 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({
-      users: {
-        activeHalfyear: 10,
-        activeMonth: "20",
-        total: 30,
+    parseUsage(
+      {
+        users: {
+          activeHalfyear: 10,
+          activeMonth: "20",
+          total: 30,
+        },
+        localPosts: 123,
+        localComments: 456,
       },
-      localPosts: 123,
-      localComments: 456,
-    }, { tryBestEffort: true }),
+      { tryBestEffort: true },
+    ),
     {
       users: {
         activeHalfyear: 10,
@@ -903,15 +935,18 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({
-      users: {
-        activeHalfyear: 10,
-        activeMonth: "",
-        total: 30,
+    parseUsage(
+      {
+        users: {
+          activeHalfyear: 10,
+          activeMonth: "",
+          total: 30,
+        },
+        localPosts: 123,
+        localComments: 456,
       },
-      localPosts: 123,
-      localComments: 456,
-    }, { tryBestEffort: true }),
+      { tryBestEffort: true },
+    ),
     {
       users: {
         activeHalfyear: 10,
@@ -934,15 +969,18 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({
-      users: {
-        activeHalfyear: 10,
-        activeMonth: [],
-        total: 30,
+    parseUsage(
+      {
+        users: {
+          activeHalfyear: 10,
+          activeMonth: [],
+          total: 30,
+        },
+        localPosts: 123,
+        localComments: 456,
       },
-      localPosts: 123,
-      localComments: 456,
-    }, { tryBestEffort: true }),
+      { tryBestEffort: true },
+    ),
     {
       users: {
         activeHalfyear: 10,
@@ -965,15 +1003,18 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({
-      users: {
-        activeHalfyear: 10,
-        activeMonth: 20,
-        total: "30",
+    parseUsage(
+      {
+        users: {
+          activeHalfyear: 10,
+          activeMonth: 20,
+          total: "30",
+        },
+        localPosts: 123,
+        localComments: 456,
       },
-      localPosts: 123,
-      localComments: 456,
-    }, { tryBestEffort: true }),
+      { tryBestEffort: true },
+    ),
     {
       users: {
         activeHalfyear: 10,
@@ -997,15 +1038,18 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({
-      users: {
-        activeHalfyear: 10,
-        activeMonth: 20,
-        total: "",
+    parseUsage(
+      {
+        users: {
+          activeHalfyear: 10,
+          activeMonth: 20,
+          total: "",
+        },
+        localPosts: 123,
+        localComments: 456,
       },
-      localPosts: 123,
-      localComments: 456,
-    }, { tryBestEffort: true }),
+      { tryBestEffort: true },
+    ),
     {
       users: {
         activeHalfyear: 10,
@@ -1028,15 +1072,18 @@ test("parseUsage()", () => {
     null,
   );
   assertEquals(
-    parseUsage({
-      users: {
-        activeHalfyear: 10,
-        activeMonth: 20,
-        total: [],
+    parseUsage(
+      {
+        users: {
+          activeHalfyear: 10,
+          activeMonth: 20,
+          total: [],
+        },
+        localPosts: 123,
+        localComments: 456,
       },
-      localPosts: 123,
-      localComments: 456,
-    }, { tryBestEffort: true }),
+      { tryBestEffort: true },
+    ),
     {
       users: {
         activeHalfyear: 10,
@@ -1052,10 +1099,12 @@ test("getNodeInfo() bounds both discovery and document responses", async () => {
   fetchMock.mockGlobal();
   const base = "https://8.8.8.8";
   const descriptor = {
-    links: [{
-      rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
-      href: `${base}/nodeinfo`,
-    }],
+    links: [
+      {
+        rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
+        href: `${base}/nodeinfo`,
+      },
+    ],
   };
   let oversizedDescriptor = true;
   let oversizedDocument = true;
@@ -1109,8 +1158,8 @@ test("getNodeInfo() logs DNS failures as such", async (t) => {
         result === "throws"
           ? Promise.reject(new Error("Resolver unavailable"))
           : Promise.resolve(
-            result === "empty" ? [] : [{ address: "127.0.0.1", family: 4 }],
-          );
+              result === "empty" ? [] : [{ address: "127.0.0.1", family: 4 }],
+            );
       const records: LogRecord[] = [];
       await configure({
         sinks: {
@@ -1124,21 +1173,27 @@ test("getNodeInfo() logs DNS failures as such", async (t) => {
       });
       try {
         assertEquals(
-          await getNodeInfoInternal("https://dns-failure.invalid/", {}, {
-            openHop: (url) => openPublicFetch(url, { lookup }),
-          }),
+          await getNodeInfoInternal(
+            "https://dns-failure.invalid/",
+            {},
+            {
+              openHop: (url) => openPublicFetch(url, { lookup }),
+            },
+          ),
           undefined,
         );
         const url = "https://dns-failure.invalid/.well-known/nodeinfo";
         assertEquals(
           records.map((r) => [r.level, r.rawMessage, r.properties.url]),
-          [[
-            "error",
-            result === "private"
-              ? "Refused to fetch a private or invalid URL {url}: {error}"
-              : "DNS lookup failed for {url}: {error}",
-            url,
-          ]],
+          [
+            [
+              "error",
+              result === "private"
+                ? "Refused to fetch a private or invalid URL {url}: {error}"
+                : "DNS lookup failed for {url}: {error}",
+              url,
+            ],
+          ],
         );
         const { error } = records[0].properties;
         assertInstanceOf(error, UrlError);
@@ -1201,24 +1256,27 @@ function recordHops(respond: (url: URL) => FakeResponse): HopRecorder {
           const state = { id, settled: false };
           states.push(state);
           let sent = false;
-          const body = new ReadableStream<Uint8Array>({
-            pull(controller) {
-              if (!sent && fake.body != null && fake.body !== "") {
-                sent = true;
-                controller.enqueue(new TextEncoder().encode(fake.body));
-                return;
-              }
-              state.settled = true;
-              events.push(`consumed #${id}`);
-              controller.close();
+          const body = new ReadableStream<Uint8Array>(
+            {
+              pull(controller) {
+                if (!sent && fake.body != null && fake.body !== "") {
+                  sent = true;
+                  controller.enqueue(new TextEncoder().encode(fake.body));
+                  return;
+                }
+                state.settled = true;
+                events.push(`consumed #${id}`);
+                controller.close();
+              },
+              cancel() {
+                state.settled = true;
+                events.push(`cancel #${id}`);
+                if (fake.cancelFails) throw new Error("Cancellation failed");
+                if (fake.cancelNeverSettles) return new Promise(() => {});
+              },
             },
-            cancel() {
-              state.settled = true;
-              events.push(`cancel #${id}`);
-              if (fake.cancelFails) throw new Error("Cancellation failed");
-              if (fake.cancelNeverSettles) return new Promise(() => {});
-            },
-          }, { highWaterMark: 0 });
+            { highWaterMark: 0 },
+          );
           const response = new Response(body, {
             status: fake.status ?? 200,
             headers: fake.headers,
@@ -1257,10 +1315,12 @@ test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
     usage: { users: {}, localPosts: 0, localComments: 0 },
   };
   const descriptor = JSON.stringify({
-    links: [{
-      rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
-      href: documentUrl,
-    }],
+    links: [
+      {
+        rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
+        href: documentUrl,
+      },
+    ],
   });
 
   await t.step("redirect", async () => {
@@ -1282,9 +1342,13 @@ test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
       }
     });
     assertEquals(
-      await getNodeInfoInternal("https://example.com/", { parse: "none" }, {
-        openHop: recorder.openHop,
-      }),
+      await getNodeInfoInternal(
+        "https://example.com/",
+        { parse: "none" },
+        {
+          openHop: recorder.openHop,
+        },
+      ),
       rawDocument,
     );
     assertEquals(recorder.events, [
@@ -1307,15 +1371,23 @@ test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
   await t.step("non-2xx responses", async () => {
     const recorder = recordHops(() => ({ status: 404, body: "not found" }));
     assertEquals(
-      await getNodeInfoInternal("https://example.com/", {}, {
-        openHop: recorder.openHop,
-      }),
+      await getNodeInfoInternal(
+        "https://example.com/",
+        {},
+        {
+          openHop: recorder.openHop,
+        },
+      ),
       undefined,
     );
     assertEquals(
-      await getNodeInfoInternal(documentUrl, { direct: true }, {
-        openHop: recorder.openHop,
-      }),
+      await getNodeInfoInternal(
+        documentUrl,
+        { direct: true },
+        {
+          openHop: recorder.openHop,
+        },
+      ),
       undefined,
     );
     assertEquals(recorder.events, [
@@ -1338,9 +1410,13 @@ test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
       body: "redirecting",
     }));
     assertEquals(
-      await getNodeInfoInternal("https://example.com/", {}, {
-        openHop: recorder.openHop,
-      }),
+      await getNodeInfoInternal(
+        "https://example.com/",
+        {},
+        {
+          openHop: recorder.openHop,
+        },
+      ),
       undefined,
     );
     assertEquals(
@@ -1381,20 +1457,30 @@ test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
     });
     try {
       assertEquals(
-        await getNodeInfoInternal("https://example.com/", {}, {
-          openHop: recorder.openHop,
-        }),
+        await getNodeInfoInternal(
+          "https://example.com/",
+          {},
+          {
+            openHop: recorder.openHop,
+          },
+        ),
         undefined,
       );
-      const failures = records.filter((r) =>
-        r.rawMessage ===
-          "Failed to cancel the response body from {url}: {error}"
+      const failures = records.filter(
+        (r) =>
+          r.rawMessage ===
+          "Failed to cancel the response body from {url}: {error}",
       );
       assertEquals(
         failures.map((r) => [r.level, r.properties.url]),
-        [["debug", wellKnown], ["debug", documentUrl]],
+        [
+          ["debug", wellKnown],
+          ["debug", documentUrl],
+        ],
       );
-      for (const { properties: { error } } of failures) {
+      for (const {
+        properties: { error },
+      } of failures) {
         assertInstanceOf(error, Error);
         assertEquals(error.message, "Cancellation failed");
       }
@@ -1436,9 +1522,13 @@ test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
     });
     assertEquals(
       await settleWithin(
-        getNodeInfoInternal("https://example.com/", {}, {
-          openHop: recorder.openHop,
-        }),
+        getNodeInfoInternal(
+          "https://example.com/",
+          {},
+          {
+            openHop: recorder.openHop,
+          },
+        ),
       ),
       undefined,
     );
@@ -1462,9 +1552,13 @@ test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
   await t.step("failure while consuming", async () => {
     const recorder = recordHops(() => ({ body: "not json" }));
     assertEquals(
-      await getNodeInfoInternal("https://example.com/", {}, {
-        openHop: recorder.openHop,
-      }),
+      await getNodeInfoInternal(
+        "https://example.com/",
+        {},
+        {
+          openHop: recorder.openHop,
+        },
+      ),
       undefined,
     );
     assertEquals(recorder.events, [
@@ -1524,27 +1618,24 @@ test("getNodeInfo() does not wait for cancelling response bodies", async (t) => 
   try {
     await t.step("redirect", async () => {
       fetchMock.removeRoutes();
-      fetchMock.get(
-        "https://example.com/.well-known/nodeinfo",
-        () =>
-          neverCancellableResponse({
-            status: 302,
-            headers: { Location: "/.well-known/nodeinfo2" },
-          }),
+      fetchMock.get("https://example.com/.well-known/nodeinfo", () =>
+        neverCancellableResponse({
+          status: 302,
+          headers: { Location: "/.well-known/nodeinfo2" },
+        }),
       );
-      fetchMock.get(
-        "https://example.com/.well-known/nodeinfo2",
-        () =>
-          Response.json({
-            links: [{
+      fetchMock.get("https://example.com/.well-known/nodeinfo2", () =>
+        Response.json({
+          links: [
+            {
               rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
               href: "https://example.com/nodeinfo/2.1",
-            }],
-          }),
+            },
+          ],
+        }),
       );
-      fetchMock.get(
-        "https://example.com/nodeinfo/2.1",
-        () => Response.json(rawDocument),
+      fetchMock.get("https://example.com/nodeinfo/2.1", () =>
+        Response.json(rawDocument),
       );
       assertEquals(
         await settleWithin(
@@ -1556,13 +1647,11 @@ test("getNodeInfo() does not wait for cancelling response bodies", async (t) => 
 
     await t.step("non-2xx responses", async () => {
       fetchMock.removeRoutes();
-      fetchMock.get(
-        "https://example.com/.well-known/nodeinfo",
-        () => neverCancellableResponse({ status: 404 }),
+      fetchMock.get("https://example.com/.well-known/nodeinfo", () =>
+        neverCancellableResponse({ status: 404 }),
       );
-      fetchMock.get(
-        "https://example.com/nodeinfo/2.1",
-        () => neverCancellableResponse({ status: 404 }),
+      fetchMock.get("https://example.com/nodeinfo/2.1", () =>
+        neverCancellableResponse({ status: 404 }),
       );
       assertEquals(
         await settleWithin(getNodeInfoDirect("https://example.com/")),

@@ -16,23 +16,24 @@ export const actorPropertyRequired = ({
 }: PropertyConfig): string => {
   const propertyPath = path.join(".");
 
-  const defaultRecommendation = getter == null
-    ? `Set the \`${propertyPath}\` property directly on the actor object.`
-    : `Use \`${
-      getExpectedCall({
-        ctxName: "Context",
-        methodName: getter,
-        idName: "identifier",
-        path: path.join("."),
-        requiresIdentifier,
-      })
-    }\` for the \`${propertyPath}\` property URI.`;
+  const defaultRecommendation =
+    getter == null
+      ? `Set the \`${propertyPath}\` property directly on the actor object.`
+      : `Use \`${getExpectedCall({
+          ctxName: "Context",
+          methodName: getter,
+          idName: "identifier",
+          path: path.join("."),
+          requiresIdentifier,
+        })}\` for the \`${propertyPath}\` property URI.`;
 
   const recommendation = recommendationOverride ?? defaultRecommendation;
   const reasonClause = reason == null ? "" : ` because ${reason}`;
 
-  return `When \`${setter}\` is configured, the \`${propertyPath}\` ` +
-    `property is recommended${reasonClause}. ${recommendation}`;
+  return (
+    `When \`${setter}\` is configured, the \`${propertyPath}\` ` +
+    `property is recommended${reasonClause}. ${recommendation}`
+  );
 };
 
 /**
@@ -44,17 +45,18 @@ export const actorPropertyRequired = ({
  * @param expectedCall - The expected method call
  *                       (e.g., "ctx.getActorUri(identifier)")
  */
-export const actorPropertyMismatch = (
-  context: MethodCallContext,
-): string =>
-  `Actor's \`${context.path}\` property must match \`${
-    getExpectedCall(context)
-  }\`. \
+export const actorPropertyMismatch = (context: MethodCallContext): string =>
+  `Actor's \`${context.path}\` property must match \`${getExpectedCall(
+    context,
+  )}\`. \
 Ensure you're using the correct context method.`;
 
-const getExpectedCall = (
-  { ctxName, methodName, requiresIdentifier, idName }: MethodCallContext,
-): string =>
+const getExpectedCall = ({
+  ctxName,
+  methodName,
+  requiresIdentifier,
+  idName,
+}: MethodCallContext): string =>
   requiresIdentifier
     ? `${ctxName}.${methodName}(${idName})`
     : `${ctxName}.${methodName}()`;

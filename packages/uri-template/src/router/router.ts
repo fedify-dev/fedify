@@ -145,18 +145,21 @@ export default class Router {
    */
   register = (routes: Iterable<PartialRouterRoute>): void => {
     const resolved = Iterator.from(routes)
-      .map(([pathOrPattern, name, options]) =>
-        [resolvePathPattern(pathOrPattern), name, options] as const
-      ).map(([pattern, name, options]) =>
-        [
-          name,
-          createRouteEntry({
-            index: this.#index,
+      .map(
+        ([pathOrPattern, name, options]) =>
+          [resolvePathPattern(pathOrPattern), name, options] as const,
+      )
+      .map(
+        ([pattern, name, options]) =>
+          [
             name,
-            pattern,
-            options: fillRouteOptions(options, pattern),
-          }),
-        ] as const
+            createRouteEntry({
+              index: this.#index,
+              name,
+              pattern,
+              options: fillRouteOptions(options, pattern),
+            }),
+          ] as const,
       );
 
     const pending = new Map<string, RouteEntry>(resolved);
@@ -191,22 +194,23 @@ export default class Router {
     url: Path,
     options: RouterRouteOptions = {},
   ): RouterRouteResult<TConstraints> | null => {
-    const strict = this.#route<TConstraints>(url) ??
+    const strict =
+      this.#route<TConstraints>(url) ??
       (this.trailingSlashInsensitive
         ? this.#route<TConstraints>(toggleTrailingSlash(url))
         : null);
     if (strict != null || !options.allowUnencodedColon || !url.includes(":")) {
       return strict;
     }
-    return this.#route<TConstraints>(url, true) ??
+    return (
+      this.#route<TConstraints>(url, true) ??
       (this.trailingSlashInsensitive
         ? this.#route<TConstraints>(toggleTrailingSlash(url), true)
-        : null);
+        : null)
+    );
   };
 
-  #route<
-    TConstraints extends Record<string, MinimalConstraint>,
-  >(
+  #route<TConstraints extends Record<string, MinimalConstraint>>(
     url: Path,
     allowUnencodedColon = false,
   ): RouterRouteResult<TConstraints> | null {
@@ -216,11 +220,11 @@ export default class Router {
       // variable values can contain a mixture of encoded and literal colons.
       const context = allowUnencodedColon
         ? match(
-          template.tokens,
-          url,
-          (values) => equalWithUnencodedColon(template.expand(values), url),
-          equalWithUnencodedColon,
-        )
+            template.tokens,
+            url,
+            (values) => equalWithUnencodedColon(template.expand(values), url),
+            equalWithUnencodedColon,
+          )
         : template.match(url);
       if (context == null) continue;
 
@@ -251,8 +255,10 @@ export default class Router {
   >(
     name: string,
     values: RouterRouteResult<TConstraints>["values"],
-  ): Path | null => (this.#routesByName.get(name)
-    ?.pattern.template.expand(values as ExpandContext) as Path ?? null);
+  ): Path | null =>
+    (this.#routesByName
+      .get(name)
+      ?.pattern.template.expand(values as ExpandContext) as Path) ?? null;
 
   /**
    * Creates a shallow clone of the router.  The clone shares immutable
@@ -262,10 +268,9 @@ export default class Router {
    * @returns A new router with the same routes and options as this one.
    */
   clone = (): Router =>
-    new Router(
-      this.#activeEntries(),
-      { trailingSlashInsensitive: this.trailingSlashInsensitive },
-    );
+    new Router(this.#activeEntries(), {
+      trailingSlashInsensitive: this.trailingSlashInsensitive,
+    });
 
   #activeEntries = (): RouterRoute[] =>
     Array.from(this.#routesByName.values())
@@ -323,7 +328,9 @@ const collectVariables = (tokens: readonly Token[]): ImmutableSet<string> =>
 class ImmutableSet<T> extends Set<T> implements ReadonlySet<T> {
   constructor(values?: Iterable<T>) {
     super();
-    if (values != null) { for (const value of values) super.add(value); }
+    if (values != null) {
+      for (const value of values) super.add(value);
+    }
   }
 
   override add(_value: T): this {
@@ -344,7 +351,7 @@ const getInitialLiteralPrefix = (tokens: readonly Token[]): string =>
 
 const getLiteralLength = (tokens: readonly Token[]): number =>
   tokens.reduce(
-    (sum, token) => isLiteral(token) ? sum + token.text.length : sum,
+    (sum, token) => (isLiteral(token) ? sum + token.text.length : sum),
     0,
   );
 

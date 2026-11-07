@@ -38,13 +38,17 @@ export const normalizeLinkToImage: PropertyPreprocessor<Image> = async (
 
   if (link.href == null) return undefined;
 
-  return new Image({
-    id: link.id,
-    url: link.href,
-    mediaType: link.mediaType,
-    names: link.names != null && link.names.length > 0 ? link.names : undefined,
-    width: link.width,
-    height: link.height,
-    digestMultibase: link.digestMultibase,
-  }, context);
+  return new Image(
+    {
+      id: link.id,
+      url: link.href,
+      mediaType: link.mediaType,
+      names:
+        link.names != null && link.names.length > 0 ? link.names : undefined,
+      width: link.width,
+      height: link.height,
+      digestMultibase: link.digestMultibase,
+    },
+    context,
+  );
 };

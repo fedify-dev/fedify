@@ -74,9 +74,12 @@ export function attachKeyOwnerEvidence(
   expires: Temporal.Instant,
 ): boolean {
   if (
-    !(key instanceof CryptographicKey) || key.id == null ||
-    key.ownerId == null || key.publicKey == null ||
-    document == null || typeof document !== "object" ||
+    !(key instanceof CryptographicKey) ||
+    key.id == null ||
+    key.ownerId == null ||
+    key.publicKey == null ||
+    document == null ||
+    typeof document !== "object" ||
     Array.isArray(document)
   ) {
     return false;

@@ -55,60 +55,42 @@
     "codegen": "deno task -f @fedify/vocab compile",
     "cache": {
       "command": "deno cache src/mod.ts",
-      "dependencies": [
-        "codegen"
-      ]
+      "dependencies": ["codegen"]
     },
     "check": {
       "command": "deno fmt --check && deno check src/**/*.ts",
-      "dependencies": [
-        "codegen"
-      ]
+      "dependencies": ["codegen"]
     },
     "test": {
       "command": "deno test --check --doc --allow-read --allow-write --allow-env --unstable-kv --trace-leaks --parallel",
-      "dependencies": [
-        "codegen"
-      ]
+      "dependencies": ["codegen"]
     },
     "coverage": "deno task test --clean --coverage && deno coverage --html coverage",
     "bench": {
       "command": "deno bench --allow-read --allow-write --allow-net --allow-env --allow-run --unstable-kv",
-      "dependencies": [
-        "codegen"
-      ]
+      "dependencies": ["codegen"]
     },
     "apidoc": {
       "command": "deno doc --html --name=Fedify --output=apidoc/ src/mod.ts",
-      "dependencies": [
-        "codegen"
-      ]
+      "dependencies": ["codegen"]
     },
     "publish": {
       "command": "deno publish",
-      "dependencies": [
-        "codegen"
-      ]
+      "dependencies": ["codegen"]
     },
     "pnpm:install": "pnpm install --silent",
     "pnpm:build": "pnpm --filter @fedify/fedify... run build:self",
     "test:node": {
       "command": "cd dist/ && node --test",
-      "dependencies": [
-        "pnpm:build"
-      ]
+      "dependencies": ["pnpm:build"]
     },
     "test:bun": {
       "command": "cd dist/ && bun test --timeout 60000",
-      "dependencies": [
-        "pnpm:build"
-      ]
+      "dependencies": ["pnpm:build"]
     },
     "test:cfworkers": {
       "command": "pnpm exec wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx scripts/check_cfworkers.ts && node --import=tsx src/cfworkers/client.ts",
-      "dependencies": [
-        "pnpm:build"
-      ]
+      "dependencies": ["pnpm:build"]
     },
     "test-all": {
       "dependencies": [

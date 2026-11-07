@@ -24,10 +24,7 @@ import type { Relay, RelayOptions, RelayType } from "./types.ts";
  *
  * @since 2.0.0
  */
-export function createRelay(
-  type: RelayType,
-  options: RelayOptions,
-): Relay {
+export function createRelay(type: RelayType, options: RelayOptions): Relay {
   switch (type) {
     case "mastodon":
       return new MastodonRelay(options, relayBuilder);

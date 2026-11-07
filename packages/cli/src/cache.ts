@@ -10,8 +10,8 @@ import process from "node:process";
  */
 function getDefaultCacheDir(): string {
   if (process.platform === "win32") {
-    const localAppData = process.env.LOCALAPPDATA ||
-      join(homedir(), "AppData", "Local");
+    const localAppData =
+      process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local");
     return join(localAppData, "fedify");
   }
   const xdgCacheHome = process.env.XDG_CACHE_HOME || join(homedir(), ".cache");

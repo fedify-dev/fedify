@@ -62,8 +62,8 @@ export function startCommand(
   const status = new Promise<CommandStatus>((resolve, reject) => {
     child.once("error", reject);
     child.once("close", (code, signal) => {
-      const exitCode = code ??
-        (signal == null ? 1 : 128 + constants.signals[signal]);
+      const exitCode =
+        code ?? (signal == null ? 1 : 128 + constants.signals[signal]);
       resolve({ code: exitCode, success: exitCode === 0 });
     });
   });
@@ -77,7 +77,7 @@ export function startCommand(
     stderr: Readable.toWeb(child.stderr!) as ReadableStream<Uint8Array>,
     status,
     stop() {
-      return stopPromise ??= stopTree(child, status);
+      return (stopPromise ??= stopTree(child, status));
     },
   };
   if (!options.cleanup) {
@@ -87,13 +87,15 @@ export function startCommand(
     }
     active.add(handle);
   }
-  void status.finally(() => {
-    active.delete(handle);
-    if (active.size === 0 && cleanups.size === 0) {
-      process.off("SIGINT", onSigint);
-      process.off("SIGTERM", onSigterm);
-    }
-  }).catch(() => {});
+  void status
+    .finally(() => {
+      active.delete(handle);
+      if (active.size === 0 && cleanups.size === 0) {
+        process.off("SIGINT", onSigint);
+        process.off("SIGTERM", onSigterm);
+      }
+    })
+    .catch(() => {});
   return handle;
 }
 
@@ -132,7 +134,7 @@ async function stopTree(
     // Kill remaining group members even if the original parent has exited.
     kill("SIGKILL");
   }
-  if (!await waitForClose(status)) {
+  if (!(await waitForClose(status))) {
     // An escaped descendant can keep inherited pipes open after the owned
     // process group has died. Release those handles instead of waiting forever.
     child.stdout?.destroy();
@@ -144,7 +146,10 @@ async function waitForClose(status: Promise<CommandStatus>): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      status.then(() => true, () => true),
+      status.then(
+        () => true,
+        () => true,
+      ),
       new Promise<boolean>((resolve) => {
         timer = setTimeout(() => resolve(false), 1_000);
       }),

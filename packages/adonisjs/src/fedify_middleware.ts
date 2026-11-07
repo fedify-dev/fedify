@@ -60,15 +60,17 @@ export type FedifyMiddlewareClass = new () => FedifyMiddlewareHandler;
  * otherwise omitting it is a compile error.  The tuple wrapper keeps the
  * conditional from distributing over a union.
  */
-export type FedifyMiddlewareArgs<TContextData> = [undefined] extends
-  [TContextData] ? [
-    contextDataFactory?: ContextDataFactory<TContextData>,
-    options?: FedifyMiddlewareOptions,
-  ]
+export type FedifyMiddlewareArgs<TContextData> = [undefined] extends [
+  TContextData,
+]
+  ? [
+      contextDataFactory?: ContextDataFactory<TContextData>,
+      options?: FedifyMiddlewareOptions,
+    ]
   : [
-    contextDataFactory: ContextDataFactory<TContextData>,
-    options?: FedifyMiddlewareOptions,
-  ];
+      contextDataFactory: ContextDataFactory<TContextData>,
+      options?: FedifyMiddlewareOptions,
+    ];
 
 /**
  * Context classes whose conflicting `federation` member was already reported.
@@ -94,8 +96,9 @@ function lazyRequestBody(
   return new ReadableStream<Uint8Array>(
     {
       async pull(controller) {
-        reader ??= (Readable.toWeb(message) as ReadableStream<Uint8Array>)
-          .getReader();
+        reader ??= (
+          Readable.toWeb(message) as ReadableStream<Uint8Array>
+        ).getReader();
 
         const { done, value } = await reader.read();
         if (done) controller.close();
@@ -195,14 +198,15 @@ function buildRequestUrl(
  * parses (case, default port, punycode) while a signature covers the bytes as
  * sent.  It is absent exactly when the placeholder stood in.
  */
-function toRequestUrl(
-  request: HttpContext["request"],
-): { url: URL; authority?: string; unusableAuthority?: string } {
+function toRequestUrl(request: HttpContext["request"]): {
+  url: URL;
+  authority?: string;
+  unusableAuthority?: string;
+} {
   // `protocol()` hands back the first `X-Forwarded-Proto` token as it
   // arrived; an upper-case `HTTPS` must not be read as plain `http`.
-  const protocol = request.protocol().toLowerCase() === "https"
-    ? "https"
-    : "http";
+  const protocol =
+    request.protocol().toLowerCase() === "https" ? "https" : "http";
   const host = request.authority();
   const authority = host == null ? "" : normalizeAuthority(host);
   // A target with no origin form is routed as `/`, which matches no
@@ -302,7 +306,8 @@ function writeFedifyResponse(response: Response, ctx: HttpContext): void {
     ctx.response.append("set-cookie", cookie);
   }
 
-  const bodyless = response.body === null ||
+  const bodyless =
+    response.body === null ||
     response.status === 204 ||
     response.status === 304 ||
     // `intended()`: a spoofed `_method=HEAD` must not suppress the body.
@@ -499,8 +504,9 @@ function delegatedResponse(status: number): Response {
  * verification.  An instance holds configuration only, so one serves every
  * request.
  */
-export default class FedifyMiddleware<TContextData = ContextData>
-  implements FedifyMiddlewareHandler {
+export default class FedifyMiddleware<
+  TContextData = ContextData,
+> implements FedifyMiddlewareHandler {
   #federation: Federation<TContextData>;
   #contextDataFactory: ContextDataFactory<TContextData>;
   #ignoreRoutePrefixes: string[];
@@ -527,8 +533,8 @@ export default class FedifyMiddleware<TContextData = ContextData>
     ];
 
     this.#federation = federation;
-    this.#contextDataFactory = contextDataFactory ??
-      (() => undefined as TContextData);
+    this.#contextDataFactory =
+      contextDataFactory ?? (() => undefined as TContextData);
     this.#ignoreRoutePrefixes = options?.ignoreRoutePrefixes ?? [];
   }
 
@@ -541,7 +547,8 @@ export default class FedifyMiddleware<TContextData = ContextData>
     // federation endpoints do not need the accessor.
     const contextClass = ctx.constructor as unknown as HttpContextClass;
     if (
-      !ensureFederationGetter(contextClass) && !conflicting.has(contextClass)
+      !ensureFederationGetter(contextClass) &&
+      !conflicting.has(contextClass)
     ) {
       conflicting.add(contextClass);
       ctx.logger.error(
@@ -581,9 +588,8 @@ export default class FedifyMiddleware<TContextData = ContextData>
 
     // Also for requests Fedify declines: a controller serving the HTML half of
     // a shared URL needs it.  The getter creates the context lazily.
-    setFederationContextFactory(
-      ctx,
-      () => federation.createContext(request, contextData),
+    setFederationContextFactory(ctx, () =>
+      federation.createContext(request, contextData),
     );
 
     /**
@@ -665,7 +671,9 @@ export default class FedifyMiddleware<TContextData = ContextData>
         const status = ctx.response.getStatus();
         // Not once the head is flushed: the 406 could not be written over it,
         // and `removeHeader()` would raise `ERR_HTTP_HEADERS_SENT`.
-        outcome.answer406 = ctx.route === undefined && status === 404 &&
+        outcome.answer406 =
+          ctx.route === undefined &&
+          status === 404 &&
           !ctx.response.headersSent;
 
         if (outcome.answer406) rollBackDiscardedResponse(ctx, headersBefore);
@@ -682,10 +690,7 @@ export default class FedifyMiddleware<TContextData = ContextData>
       // rendered with `download()` or `stream()` would otherwise still go out,
       // or leak its readable.
       discardPendingBody(ctx);
-      ctx.response
-        .status(406)
-        .type("text/plain")
-        .send("Not acceptable");
+      ctx.response.status(406).type("text/plain").send("Not acceptable");
       return;
     }
 
@@ -739,8 +744,7 @@ export function fedifyMiddleware<TContextData>(
   }
 
   // Named so container errors and tracing show something readable.
-  return class ConfiguredFedifyMiddleware
-    extends FedifyMiddleware<TContextData> {
+  return class ConfiguredFedifyMiddleware extends FedifyMiddleware<TContextData> {
     constructor() {
       super(federation, ...args);
     }

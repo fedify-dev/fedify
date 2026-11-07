@@ -11,13 +11,7 @@ const ruleName = RULE_IDS.actorUploadMediaPropertyRequired;
 const config = { rule, ruleName };
 
 // Standard required dispatcher rule tests
-runTests(
-  ruleName,
-  createRequiredDispatcherRuleTests("uploadMedia", config),
-);
+runTests(ruleName, createRequiredDispatcherRuleTests("uploadMedia", config));
 
 // Edge case tests
-runTests(
-  ruleName,
-  createRequiredEdgeCaseTests("uploadMedia", config),
-);
+runTests(ruleName, createRequiredEdgeCaseTests("uploadMedia", config));

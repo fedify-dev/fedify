@@ -86,9 +86,7 @@ function createMockFederation(): {
     setInboxListeners: track("setInboxListeners"),
     setCollectionDispatcher: track("setCollectionDispatcher"),
     setOrderedCollectionDispatcher: track("setOrderedCollectionDispatcher"),
-    setOutboxPermanentFailureHandler: track(
-      "setOutboxPermanentFailureHandler",
-    ),
+    setOutboxPermanentFailureHandler: track("setOutboxPermanentFailureHandler"),
     startQueue: track("startQueue"),
     processQueuedTask: track("processQueuedTask"),
     createContext: track("createContext"),
@@ -293,11 +291,8 @@ test("JSON API returns traces", async () => {
   const request = new Request("https://example.com/__debug__/api/traces");
   const response = await dbg.fetch(request, { contextData: undefined });
   strictEqual(response.status, 200);
-  strictEqual(
-    response.headers.get("content-type"),
-    "application/json",
-  );
-  const body = await response.json() as TraceSummary[];
+  strictEqual(response.headers.get("content-type"), "application/json");
+  const body = (await response.json()) as TraceSummary[];
   strictEqual(body.length, 1);
   strictEqual(body[0].traceId, "abcdef1234567890abcdef1234567890");
   strictEqual(body[0].activityCount, 3);
@@ -589,11 +584,8 @@ test("simplified overload JSON API returns traces", async () => {
     const request = new Request("https://example.com/__debug__/api/traces");
     const response = await dbg.fetch(request, { contextData: undefined });
     strictEqual(response.status, 200);
-    strictEqual(
-      response.headers.get("content-type"),
-      "application/json",
-    );
-    const body = await response.json() as TraceSummary[];
+    strictEqual(response.headers.get("content-type"), "application/json");
+    const body = (await response.json()) as TraceSummary[];
     // Should return empty array since no spans have been exported
     strictEqual(body.length, 0);
   } finally {
@@ -1627,9 +1619,7 @@ test("poll script reloads when a trace's activity count grows without its types 
   // activity types, the total count, and the type union are all
   // unchanged—only activityCount goes up, which the "Activities" column
   // displays.
-  const after: TraceSummary[] = [
-    { ...before[0], activityCount: 2 },
-  ];
+  const after: TraceSummary[] = [{ ...before[0], activityCount: 2 }];
   const { reloadedAtTick } = await runPollScript(script, [before, after]);
   strictEqual(reloadedAtTick, 1);
 });
@@ -1849,9 +1839,9 @@ test("trace detail page escapes a malicious search query in the filter form", as
 
   const malicious = '"><script>alert(1)</script>';
   const request = new Request(
-    `https://example.com/__debug__/traces/${traceId}?q=${
-      encodeURIComponent(malicious)
-    }`,
+    `https://example.com/__debug__/traces/${traceId}?q=${encodeURIComponent(
+      malicious,
+    )}`,
   );
   const response = await dbg.fetch(request, { contextData: undefined });
   const html = await response.text();

@@ -7,5 +7,7 @@ import type { InitCommandData } from "../types.ts";
  * @param data - The directory
  * @returns A promise that resolves when the directory is created
  */
-export const makeDirIfHyd = ({ dir }: InitCommandData): //
+export const makeDirIfHyd = ({
+  dir,
+}: InitCommandData): //
 Promise<string | undefined> => mkdir(dir, { recursive: true });

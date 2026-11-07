@@ -62,9 +62,10 @@ export async function spawnSyntheticServer(
   options: SyntheticServerOptions = {},
 ): Promise<SyntheticServer> {
   // Resolved before binding so a malformed --advertise-host fails fast.
-  const advertised = options.advertiseHost == null
-    ? null
-    : resolveAdvertiseHost(options.advertiseHost);
+  const advertised =
+    options.advertiseHost == null
+      ? null
+      : resolveAdvertiseHost(options.advertiseHost);
   const routes = new Map<string, string>();
   const server = serve({
     port: 0,
@@ -90,22 +91,22 @@ export async function spawnSyntheticServer(
     // Actor and key IDs must use an address the target can dereference; the
     // bound (loopback) URL works for a same-machine target, otherwise the
     // advertised host (with the bound port) is used.
-    const base = advertised == null
-      ? bound
-      : new URL(`http://${advertised.urlHost}:${bound.port}/`);
-    const contextLoader = options.contextLoader ??
-      await getContextLoader({ allowPrivateAddress: true });
+    const base =
+      advertised == null
+        ? bound
+        : new URL(`http://${advertised.urlHost}:${bound.port}/`);
+    const contextLoader =
+      options.contextLoader ??
+      (await getContextLoader({ allowPrivateAddress: true }));
     for (const member of members) {
       const id = new URL(`/actors/${member.index}`, base);
       const actor: SyntheticActor = {
         ...member,
         id,
-        rsaKeyId: member.keys.rsa == null
-          ? undefined
-          : new URL("#main-key", id),
-        ed25519KeyId: member.keys.ed25519 == null
-          ? undefined
-          : new URL("#ed25519-key", id),
+        rsaKeyId:
+          member.keys.rsa == null ? undefined : new URL("#main-key", id),
+        ed25519KeyId:
+          member.keys.ed25519 == null ? undefined : new URL("#ed25519-key", id),
       };
       const document = await actorDocument(actor, { contextLoader });
       routes.set(`/actors/${member.index}`, JSON.stringify(document));
@@ -173,9 +174,9 @@ export function resolveAdvertiseHost(host: string): ResolvedAdvertiseHost {
     const colons = (trimmed.match(/:/g) ?? []).length;
     if (colons === 1) {
       throw new AdvertiseHostError(
-        `Invalid --advertise-host ${
-          JSON.stringify(host)
-        }: omit the port; the ` +
+        `Invalid --advertise-host ${JSON.stringify(
+          host,
+        )}: omit the port; the ` +
           "synthetic server's chosen port is appended automatically.",
       );
     }

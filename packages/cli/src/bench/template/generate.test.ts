@@ -66,10 +66,7 @@ test("resolveGenerate - zero or missing size yields empty string", () => {
 });
 
 test("resolveGenerate - unknown generator throws", () => {
-  assert.throws(
-    () => resolveGenerate({ generate: "markov" }),
-    RangeError,
-  );
+  assert.throws(() => resolveGenerate({ generate: "markov" }), RangeError);
 });
 
 test("resolveGenerate - rejects an oversized payload", () => {

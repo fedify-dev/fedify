@@ -38,10 +38,10 @@ import { RouterError } from "./router.ts";
 
 const did = await exportDidKey(ed25519PublicKey.publicKey);
 const keyId = new URL(`${did}#${did.slice("did:key:".length)}`);
-const otherKeyPair = await crypto.subtle.generateKey("Ed25519", true, [
+const otherKeyPair = (await crypto.subtle.generateKey("Ed25519", true, [
   "sign",
   "verify",
-]) as CryptoKeyPair;
+])) as CryptoKeyPair;
 const otherDid = await exportDidKey(otherKeyPair.publicKey);
 const otherKeyId = new URL(`${otherDid}#${otherDid.slice("did:key:".length)}`);
 
@@ -109,9 +109,7 @@ async function portableActor(
   });
 }
 
-function createTestFederation(
-  options: Partial<FederationOptions<void>> = {},
-) {
+function createTestFederation(options: Partial<FederationOptions<void>> = {}) {
   const federation = createFederation<void>({
     kv: new MemoryKvStore(),
     documentLoaderFactory: () => mockDocumentLoader,
@@ -120,81 +118,77 @@ function createTestFederation(
   });
   const contexts: RequestContext<void>[] = [];
   const setters = federation
-    .setActorDispatcher(
-      "/users/{identifier}",
-      async (ctx, identifier) => {
-        contexts.push(ctx);
-        const userDid = users[identifier];
-        if (userDid == null) return null;
-        // The DID in the request path is not evidence that this server hosts
-        // the actor for it, so compare it with the stored one:
-        if (
-          ctx.portableRequest != null &&
-          ctx.portableRequest.authority !== userDid
-        ) {
-          return null;
+    .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+      contexts.push(ctx);
+      const userDid = users[identifier];
+      if (userDid == null) return null;
+      // The DID in the request path is not evidence that this server hosts
+      // the actor for it, so compare it with the stored one:
+      if (
+        ctx.portableRequest != null &&
+        ctx.portableRequest.authority !== userDid
+      ) {
+        return null;
+      }
+      switch (identifier) {
+        case "https":
+          return new Person({ id: ctx.getActorUri(identifier) });
+        case "compatible": {
+          // Identified by its compatible identifier on the first gateway:
+          const actor = await portableActor(ctx, identifier, userDid);
+          return await sign(
+            actor.clone({ id: toCompatibleEf61Id(actor.id!, ORIGIN) }),
+          );
         }
-        switch (identifier) {
-          case "https":
-            return new Person({ id: ctx.getActorUri(identifier) });
-          case "compatible": {
-            // Identified by its compatible identifier on the first gateway:
-            const actor = await portableActor(ctx, identifier, userDid);
-            return await sign(
-              actor.clone({ id: toCompatibleEf61Id(actor.id!, ORIGIN) }),
-            );
-          }
-          case "tombstone":
-            return new Tombstone({
+        case "tombstone":
+          return new Tombstone({
+            id: ctx.getPortableActorUri(identifier, userDid),
+          });
+        case "signed-tombstone":
+          return await sign(
+            new Tombstone({
               id: ctx.getPortableActorUri(identifier, userDid),
-            });
-          case "signed-tombstone":
-            return await sign(
-              new Tombstone({
-                id: ctx.getPortableActorUri(identifier, userDid),
-                formerType: Person,
-                deleted: Temporal.Instant.from("2026-01-01T00:00:00Z"),
-              }),
-            );
-          case "wrong-key-tombstone":
-            return await sign(
-              new Tombstone({
-                id: ctx.getPortableActorUri(identifier, userDid),
-              }),
-              otherKeyPair.privateKey,
-              otherKeyId,
-            );
-          case "unsigned":
-            return await portableActor(ctx, identifier, userDid);
-          case "wrong-key":
-            return await sign(
-              await portableActor(ctx, identifier, userDid),
-              otherKeyPair.privateKey,
-              otherKeyId,
-            );
-          case "tampered":
-            return (await sign(await portableActor(ctx, identifier, userDid)))
-              .clone({ name: "Tampered" });
-          case "mutated-id": {
-            // An actor that keeps its signed JSON-LD, but whose id is changed
-            // afterwards, must not be served as the actor in the changed id:
-            const signed = await sign(
-              await portableActor(ctx, "alice", userDid),
-            );
-            const actor = await Person.fromJsonLd(
-              await signed.toJsonLd({ contextLoader: mockDocumentLoader }),
-              {
-                contextLoader: mockDocumentLoader,
-                documentLoader: mockDocumentLoader,
-              },
-            );
-            actor.id!.pathname = "/users/mutated-id";
-            return actor;
-          }
+              formerType: Person,
+              deleted: Temporal.Instant.from("2026-01-01T00:00:00Z"),
+            }),
+          );
+        case "wrong-key-tombstone":
+          return await sign(
+            new Tombstone({
+              id: ctx.getPortableActorUri(identifier, userDid),
+            }),
+            otherKeyPair.privateKey,
+            otherKeyId,
+          );
+        case "unsigned":
+          return await portableActor(ctx, identifier, userDid);
+        case "wrong-key":
+          return await sign(
+            await portableActor(ctx, identifier, userDid),
+            otherKeyPair.privateKey,
+            otherKeyId,
+          );
+        case "tampered":
+          return (
+            await sign(await portableActor(ctx, identifier, userDid))
+          ).clone({ name: "Tampered" });
+        case "mutated-id": {
+          // An actor that keeps its signed JSON-LD, but whose id is changed
+          // afterwards, must not be served as the actor in the changed id:
+          const signed = await sign(await portableActor(ctx, "alice", userDid));
+          const actor = await Person.fromJsonLd(
+            await signed.toJsonLd({ contextLoader: mockDocumentLoader }),
+            {
+              contextLoader: mockDocumentLoader,
+              documentLoader: mockDocumentLoader,
+            },
+          );
+          actor.id!.pathname = "/users/mutated-id";
+          return actor;
         }
-        return await sign(await portableActor(ctx, identifier, userDid));
-      },
-    )
+      }
+      return await sign(await portableActor(ctx, identifier, userDid));
+    })
     .setKeyPairsDispatcher(() => [
       { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
     ])
@@ -220,10 +214,7 @@ test("Context.getPortableActorUri()", async (t) => {
     assertEquals(uri.protocol, "ap+ef61:");
     assertEquals(formatIri(uri), `ap+ef61://${did}/users/alice`);
     // The URL class cannot represent the canonical form:
-    assertEquals(
-      uri.href,
-      `ap+ef61://${encodeURIComponent(did)}/users/alice`,
-    );
+    assertEquals(uri.href, `ap+ef61://${encodeURIComponent(did)}/users/alice`);
     assertEquals(ctx.getActorUri("alice"), new URL(`${ORIGIN}/users/alice`));
   });
 
@@ -247,9 +238,9 @@ test("Context.getPortableActorUri()", async (t) => {
 
   await t.step("is serialized in the canonical form", async () => {
     const person = new Person({ id: ctx.getPortableActorUri("alice", did) });
-    const json = await person.toJsonLd({
+    const json = (await person.toJsonLd({
       contextLoader: mockDocumentLoader,
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assertEquals(json.id, `ap+ef61://${did}/users/alice`);
   });
 
@@ -264,16 +255,14 @@ test("Context.getPortableActorUri()", async (t) => {
   });
 
   await t.step("requires a bare DID authority", () => {
-    for (
-      const authority of [
-        `${did}/extra`,
-        `${did}?query`,
-        `${did}#fragment`,
-        "did:key:",
-        "https://example.com",
-        "",
-      ]
-    ) {
+    for (const authority of [
+      `${did}/extra`,
+      `${did}?query`,
+      `${did}#fragment`,
+      "did:key:",
+      "https://example.com",
+      "",
+    ]) {
       assertThrows(
         () => ctx.getPortableActorUri("alice", authority),
         TypeError,
@@ -303,10 +292,7 @@ test("Context.getPortableActorUri()", async (t) => {
   await t.step("requires an actor dispatcher", () => {
     const empty = createFederation<void>({ kv: new MemoryKvStore() });
     const emptyCtx = empty.createContext(new URL(`${ORIGIN}/`), undefined);
-    assertThrows(
-      () => emptyCtx.getPortableActorUri("alice", did),
-      RouterError,
-    );
+    assertThrows(() => emptyCtx.getPortableActorUri("alice", did), RouterError);
   });
 });
 
@@ -325,15 +311,13 @@ test("Context portable ID helpers require base58-btc did:key DIDs", async (t) =>
   const base64url = `did:key:u${did.slice("did:key:z".length)}`;
   for (const [name, helper] of Object.entries(helpers)) {
     await t.step(name, () => {
-      for (
-        const authority of [
-          base64url,
-          base64url.replace("did:key:", "DID:KEY:"),
-          `did:key:%75${did.slice("did:key:z".length)}`,
-          "did:key:z",
-          "did:key:z0OIl",
-        ]
-      ) {
+      for (const authority of [
+        base64url,
+        base64url.replace("did:key:", "DID:KEY:"),
+        `did:key:%75${did.slice("did:key:z".length)}`,
+        "did:key:z",
+        "did:key:z0OIl",
+      ]) {
         assertThrows(() => helper(authority), TypeError, undefined, authority);
       }
       assertEquals(
@@ -389,7 +373,7 @@ test("Federation.fetch() serves portable actors through the actor dispatcher", a
       response.headers.get("Content-Type"),
       PORTABLE_OBJECT_CONTENT_TYPE,
     );
-    const json = await response.json() as Record<string, unknown>;
+    const json = (await response.json()) as Record<string, unknown>;
     assertEquals(json.id, `ap+ef61://${did}/users/alice`);
     assertEquals(json.inbox, `ap+ef61://${did}/users/alice/inbox`);
     const verified = await verifyPortableObjectProof(json, {
@@ -410,7 +394,7 @@ test("Federation.fetch() serves portable actors through the actor dispatcher", a
       { contextData: undefined },
     );
     assertEquals(response.status, 200);
-    const json = await response.json() as Record<string, unknown>;
+    const json = (await response.json()) as Record<string, unknown>;
     assertEquals(json.id, gatewayUrl("/users/compatible"));
   });
 
@@ -495,21 +479,19 @@ test("Federation.fetch() serves portable actors through the actor dispatcher", a
   );
 
   await t.step("responds with 404 for actors it does not serve", async () => {
-    for (
-      const request of [
-        // The dispatcher returns null:
-        gatewayRequest("/users/missing"),
-        // The dispatcher returns an actor with an HTTPS ID:
-        gatewayRequest("/users/https"),
-        // The dispatcher returns an unsigned tombstone:
-        gatewayRequest("/users/tombstone"),
-        gatewayRequest("/users/tombstone", { method: "HEAD" }),
-        // This server does not host the actor for the other DID:
-        gatewayRequest("/users/alice", { authority: otherDid }),
-        // The serialized actor has another ID:
-        gatewayRequest("/users/mutated-id"),
-      ]
-    ) {
+    for (const request of [
+      // The dispatcher returns null:
+      gatewayRequest("/users/missing"),
+      // The dispatcher returns an actor with an HTTPS ID:
+      gatewayRequest("/users/https"),
+      // The dispatcher returns an unsigned tombstone:
+      gatewayRequest("/users/tombstone"),
+      gatewayRequest("/users/tombstone", { method: "HEAD" }),
+      // This server does not host the actor for the other DID:
+      gatewayRequest("/users/alice", { authority: otherDid }),
+      // The serialized actor has another ID:
+      gatewayRequest("/users/mutated-id"),
+    ]) {
       let notFound = false;
       const response = await federation.fetch(request, {
         contextData: undefined,
@@ -524,14 +506,12 @@ test("Federation.fetch() serves portable actors through the actor dispatcher", a
   });
 
   await t.step("refuses actors that violate the proof policy", async () => {
-    for (
-      const identifier of [
-        "unsigned",
-        "wrong-key",
-        "tampered",
-        "wrong-key-tombstone",
-      ]
-    ) {
+    for (const identifier of [
+      "unsigned",
+      "wrong-key",
+      "tampered",
+      "wrong-key-tombstone",
+    ]) {
       const response = await federation.fetch(
         gatewayRequest(`/users/${identifier}`),
         { contextData: undefined },
@@ -552,7 +532,7 @@ test("Federation.fetch() serves portable actors through the actor dispatcher", a
       PORTABLE_OBJECT_CONTENT_TYPE,
     );
     assertEquals(response.headers.get("Vary"), "Accept");
-    const json = await response.json() as Record<string, unknown>;
+    const json = (await response.json()) as Record<string, unknown>;
     assertEquals(json.type, "Tombstone");
     assertEquals(json.id, `ap+ef61://${did}/users/signed-tombstone`);
     assertEquals(json.deleted, "2026-01-01T00:00:00Z");
@@ -732,12 +712,10 @@ function federationLoader(
 }
 
 test("Gateway keys of portable actors dereference to the actor dispatcher", async (t) => {
-  for (
-    const [label, options] of [
-      ["default origin", {}],
-      ["canonical origin", { origin: ORIGIN }],
-    ] as const
-  ) {
+  for (const [label, options] of [
+    ["default origin", {}],
+    ["canonical origin", { origin: ORIGIN }],
+  ] as const) {
     await t.step(label, async () => {
       const { federation } = createTestFederation(options);
       // A request to another host name, e.g., behind a reverse proxy:
@@ -752,10 +730,8 @@ test("Gateway keys of portable actors dereference to the actor dispatcher", asyn
         assertEquals(
           keyPair.keyId.href,
           `${
-            toCompatibleEf61Id(
-              ctx.getPortableActorUri(identifier, did),
-              ORIGIN,
-            ).href
+            toCompatibleEf61Id(ctx.getPortableActorUri(identifier, did), ORIGIN)
+              .href
           }#main-key`,
         );
         const request = await signRequest(

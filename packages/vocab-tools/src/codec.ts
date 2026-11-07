@@ -137,13 +137,7 @@ export async function* generateEncoder(
         yield "retainedSignedValueRef(v, signedValues.scope) ?? (";
         yield "v instanceof URL ? formatIri(v) : ";
       }
-      const encoders = getEncoders(
-        property.range,
-        types,
-        "v",
-        "options",
-        true,
-      );
+      const encoders = getEncoders(property.range, types, "v", "options", true);
       for (const code of encoders) yield code;
       if (!areAllScalarTypes(property.range, types)) yield ")";
       yield `
@@ -188,10 +182,10 @@ export async function* generateEncoder(
     }
     yield `
       ${
-      type.typeless
-        ? ""
-        : `result["type"] = ${JSON.stringify(type.compactName ?? type.uri)};`
-    }
+        type.typeless
+          ? ""
+          : `result["type"] = ${JSON.stringify(type.compactName ?? type.uri)};`
+      }
       if (this.id != null) result["id"] = formatIri(this.id);
       result["@context"] = ${JSON.stringify(type.defaultContext)};
       return signedValues.owner
@@ -290,7 +284,7 @@ export async function* generateEncoder(
       ${JSON.stringify(type.defaultContext)};
   `;
   const hasExtraContexts = Object.values(types).some((t) =>
-    t.properties.some((p) => p.extraContext != null)
+    t.properties.some((p) => p.extraContext != null),
   );
   if (hasExtraContexts) {
     yield `
@@ -567,9 +561,10 @@ export async function* generateDecoder(
     const variable = await getFieldName(property.uri, "");
     yield await generateField(property, types, "const ");
     const arrayVariable = `${variable}__array`;
-    const propertyValues = property.uri === "https://w3id.org/fep/ef61/gateways"
-      ? "getPortableActorGateways(values) as typeof values[string]"
-      : `values[${JSON.stringify(property.uri)}]`;
+    const propertyValues =
+      property.uri === "https://w3id.org/fep/ef61/gateways"
+        ? "getPortableActorGateways(values) as typeof values[string]"
+        : `values[${JSON.stringify(property.uri)}]`;
     yield `
     let ${arrayVariable} = ${propertyValues};
     `;
@@ -582,13 +577,10 @@ export async function* generateDecoder(
         `;
       }
     }
-    let itemsExpression =
-      `${arrayVariable}.length === 1 && "@list" in ${arrayVariable}[0]
+    let itemsExpression = `${arrayVariable}.length === 1 && "@list" in ${arrayVariable}[0]
         ? ${arrayVariable}[0]["@list"]
         : ${arrayVariable}`;
-    if (
-      isNonFunctionalProperty(property) && property.container === "graph"
-    ) {
+    if (isNonFunctionalProperty(property) && property.container === "graph") {
       itemsExpression = `(${itemsExpression}).flatMap((item: unknown) =>
           item != null && typeof item === "object" && "@graph" in item &&
             Array.isArray((item as { "@graph": unknown })["@graph"])
@@ -625,8 +617,8 @@ export async function* generateDecoder(
     yield `
       const decoded =
     `;
-    const lenient = property.range.length == 1 &&
-      skipsUnparsable(property.range[0]);
+    const lenient =
+      property.range.length == 1 && skipsUnparsable(property.range[0]);
     if (property.range.length == 1) {
       if (lenient) {
         yield getDataCheck(property.range[0], types, "v");

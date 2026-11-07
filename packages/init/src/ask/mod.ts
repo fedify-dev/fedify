@@ -15,15 +15,15 @@ import fillWebFramework from "./wf.ts";
  */
 const askOptions: (
   options: InitCommand & { testMode: boolean },
-) => Promise<InitCommandOptions> = //
-  (options) =>
-    pipe(
-      options,
-      fillDir,
-      fillWebFramework,
-      fillPackageManager,
-      fillMessageQueue,
-      fillKvStore,
-    );
+) => Promise<InitCommandOptions> = (options) =>
+  //
+  pipe(
+    options,
+    fillDir,
+    fillWebFramework,
+    fillPackageManager,
+    fillMessageQueue,
+    fillKvStore,
+  );
 
 export default askOptions;

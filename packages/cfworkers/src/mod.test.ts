@@ -105,7 +105,7 @@ class MockKvNamespace implements WorkersKvNamespaceLike {
     const matches = [...this.entries].flatMap(([name, entry]) =>
       name.startsWith(options?.prefix ?? "")
         ? [{ name, metadata: entry.metadata as Metadata }]
-        : []
+        : [],
     );
     const start = options?.cursor == null ? 0 : Number(options.cursor);
     const keys = matches.slice(start, start + this.#pageSize);
@@ -211,8 +211,9 @@ describe("WorkersKvStore", () => {
       ttl: mockDuration(3600) as unknown as Temporal.Duration, // 1 hour
     });
 
-    expect(namespace.entries.get('["long-ttl"]')?.options?.expirationTtl)
-      .toBe(3600);
+    expect(namespace.entries.get('["long-ttl"]')?.options?.expirationTtl).toBe(
+      3600,
+    );
   });
 
   it("set() - clamps sub-minute TTL to 60 seconds", async () => {

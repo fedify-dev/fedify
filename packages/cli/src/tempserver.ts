@@ -47,30 +47,32 @@ export async function spawnTemporaryServer(
   const server = serve({
     // Note that `protocol: "https"` does not work on Deno, so we need to
     // manually rewrite the request URL to use https: on Deno:
-    fetch: "Deno" in globalThis
-      ? (request) => {
-        const url = new URL(request.url);
-        url.protocol = "https:";
-        const newRequest = new Request(url, {
-          method: request.method,
-          headers: request.headers,
-          body: request.method === "GET" || request.method === "HEAD"
-            ? null
-            : request.body,
-          referrer: request.referrer,
-          referrerPolicy: request.referrerPolicy,
-          mode: request.mode,
-          credentials: request.credentials,
-          cache: request.cache,
-          redirect: request.redirect,
-          integrity: request.integrity,
-          keepalive: request.keepalive,
-          signal: request.signal,
-        });
+    fetch:
+      "Deno" in globalThis
+        ? (request) => {
+            const url = new URL(request.url);
+            url.protocol = "https:";
+            const newRequest = new Request(url, {
+              method: request.method,
+              headers: request.headers,
+              body:
+                request.method === "GET" || request.method === "HEAD"
+                  ? null
+                  : request.body,
+              referrer: request.referrer,
+              referrerPolicy: request.referrerPolicy,
+              mode: request.mode,
+              credentials: request.credentials,
+              cache: request.cache,
+              redirect: request.redirect,
+              integrity: request.integrity,
+              keepalive: request.keepalive,
+              signal: request.signal,
+            });
 
-        return fetch(newRequest);
-      }
-      : fetch,
+            return fetch(newRequest);
+          }
+        : fetch,
     port: serverPort,
     hostname: "::",
     silent: true,

@@ -68,8 +68,10 @@ export interface FedifyTypes {}
  * there was never an HTTP context to read.  The nullable default forces that
  * case to be handled at compile time.
  */
-export type ContextData = FedifyTypes extends
-  { contextData: infer TContextData } ? TContextData
+export type ContextData = FedifyTypes extends {
+  contextData: infer TContextData;
+}
+  ? TContextData
   : HttpContext | null;
 
 /**
@@ -128,8 +130,10 @@ export interface FedifyLoggingConfig {
  *   moment the app sits behind a proxy or a tunnel), and
  * - `kv` is **optional** (it falls back to an in-memory store in development).
  */
-export interface FedifyConfigBase
-  extends Omit<FederationOptions<ContextData>, "kv" | "origin"> {
+export interface FedifyConfigBase extends Omit<
+  FederationOptions<ContextData>,
+  "kv" | "origin"
+> {
   /**
    * The canonical public origin of this server, for example
    * `https://social.example.com`.
@@ -227,25 +231,26 @@ export interface FedifyConfigBase
  * {@link ContextData}, so an augmentation such as `User | null` is compared as
  * a whole.
  */
-export type ContextDataFactoryOption = [HttpContext] extends [ContextData] ? {
-    /**
-     * Produces the {@link ContextData} for each incoming HTTP request.
-     *
-     * Defaults to `(ctx) => ctx`, i.e. the `HttpContext` itself, which matches
-     * the default of {@link ContextData}.
-     */
-    contextDataFactory?: ContextDataFactory<ContextData>;
-  }
+export type ContextDataFactoryOption = [HttpContext] extends [ContextData]
+  ? {
+      /**
+       * Produces the {@link ContextData} for each incoming HTTP request.
+       *
+       * Defaults to `(ctx) => ctx`, i.e. the `HttpContext` itself, which matches
+       * the default of {@link ContextData}.
+       */
+      contextDataFactory?: ContextDataFactory<ContextData>;
+    }
   : {
-    /**
-     * Produces the {@link ContextData} for each incoming HTTP request.
-     *
-     * Required here because the application augmented {@link FedifyTypes}:
-     * the built-in default hands dispatchers the `HttpContext`, which is no
-     * longer the declared context data type.
-     */
-    contextDataFactory: ContextDataFactory<ContextData>;
-  };
+      /**
+       * Produces the {@link ContextData} for each incoming HTTP request.
+       *
+       * Required here because the application augmented {@link FedifyTypes}:
+       * the built-in default hands dispatchers the `HttpContext`, which is no
+       * longer the declared context data type.
+       */
+      contextDataFactory: ContextDataFactory<ContextData>;
+    };
 
 /**
  * The shape of the object passed to {@link defineConfig} in `config/fedify.ts`.

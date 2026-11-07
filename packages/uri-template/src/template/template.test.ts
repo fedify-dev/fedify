@@ -155,9 +155,9 @@ test("Template — actual control-character literals throw InvalidLiteralError",
     throws(
       () => new Template(String.fromCodePoint(codePoint)),
       InvalidLiteralError,
-      `code point 0x${
-        codePoint.toString(16).padStart(2, "0")
-      } should be rejected`,
+      `code point 0x${codePoint
+        .toString(16)
+        .padStart(2, "0")} should be rejected`,
     );
   }
 });

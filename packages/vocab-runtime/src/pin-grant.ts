@@ -58,7 +58,7 @@ export function issuePinGrant(
     hostname,
     addresses: Object.freeze(
       addresses.map(({ address, family }) =>
-        Object.freeze({ address, family })
+        Object.freeze({ address, family }),
       ),
     ),
   });
@@ -75,9 +75,8 @@ export function issuePinGrant(
  * @throws {TypeError} If the grant cannot be used for the URL.
  */
 export function redeemPinGrant(grant: PinGrant, url: URL): PinGrantRecord {
-  const state = typeof grant === "object" && grant !== null
-    ? grants.get(grant)
-    : undefined;
+  const state =
+    typeof grant === "object" && grant !== null ? grants.get(grant) : undefined;
   if (state == null) throw new TypeError("Invalid pin grant.");
   if (state.revoked) throw new TypeError("The pin grant has been revoked.");
   if (url.origin !== state.record.origin) {

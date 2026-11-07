@@ -89,17 +89,17 @@ export async function lookupWebFingerInternal(
   }
   let url = new URL(`${protocol}//${server}/.well-known/webfinger`);
   url.searchParams.set("resource", resource.href);
-  const openHop = deps.openHop ??
+  const openHop =
+    deps.openHop ??
     ((hopUrl: string) =>
       options.allowPrivateAddress === true
         ? openDirectFetch(hopUrl)
         : openPublicFetch(hopUrl, { signal: options.signal }));
   let redirected = 0;
   while (true) {
-    logger.debug(
-      "Fetching WebFinger resource descriptor from {url}...",
-      { url: url.href },
-    );
+    logger.debug("Fetching WebFinger resource descriptor from {url}...", {
+      url: url.href,
+    });
     const remoteHost = url.host;
     const session = await openSession(url, openHop, options.signal);
     if (session == null) {
@@ -184,18 +184,17 @@ async function openSession(
           error: e,
         });
       } else {
-        logger.error(
-          "Invalid URL for WebFinger resource descriptor: {error}",
-          { error: e },
-        );
+        logger.error("Invalid URL for WebFinger resource descriptor: {error}", {
+          error: e,
+        });
       }
       return null;
     }
     if (signal?.aborted) {
-      logger.debug(
-        "Failed to fetch WebFinger resource descriptor: {error}",
-        { url: url.href, error: e },
-      );
+      logger.debug("Failed to fetch WebFinger resource descriptor: {error}", {
+        url: url.href,
+        error: e,
+      });
       return null;
     }
     throw e;
@@ -216,18 +215,19 @@ async function fetchHop(
     response = await session.fetch(url, {
       headers: {
         Accept: "application/jrd+json",
-        "User-Agent": typeof options.userAgent === "string"
-          ? options.userAgent
-          : getUserAgent(options.userAgent),
+        "User-Agent":
+          typeof options.userAgent === "string"
+            ? options.userAgent
+            : getUserAgent(options.userAgent),
       },
       redirect: "manual",
       signal: options.signal,
     });
   } catch (error) {
-    logger.debug(
-      "Failed to fetch WebFinger resource descriptor: {error}",
-      { url: url.href, error },
-    );
+    logger.debug("Failed to fetch WebFinger resource descriptor: {error}", {
+      url: url.href,
+      error,
+    });
     return {
       outcome: {
         resource: null,
@@ -237,7 +237,8 @@ async function fetchHop(
     };
   }
   if (
-    response.status >= 300 && response.status < 400 &&
+    response.status >= 300 &&
+    response.status < 400 &&
     response.headers.has("Location")
   ) {
     cancelBody(response, url);
@@ -259,9 +260,10 @@ async function fetchHop(
     return {
       outcome: {
         resource: null,
-        result: response.status === 404 || response.status === 410
-          ? "not_found"
-          : "error",
+        result:
+          response.status === 404 || response.status === 410
+            ? "not_found"
+            : "error",
         statusCode: response.status,
         remoteHost: url.host,
       },
@@ -273,7 +275,9 @@ async function fetchHop(
     );
     // A JSON primitive, null, or array is not a resource descriptor.
     if (
-      typeof parsed !== "object" || parsed === null || Array.isArray(parsed)
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed)
     ) {
       return {
         outcome: {
@@ -330,9 +334,9 @@ async function fetchHop(
  */
 function cancelBody(response: Response, url: URL): void {
   response.body?.cancel().catch((error) => {
-    logger.debug(
-      "Failed to cancel the response body from {url}: {error}",
-      { url: url.href, error },
-    );
+    logger.debug("Failed to cancel the response body from {url}: {error}", {
+      url: url.href,
+      error,
+    });
   });
 }

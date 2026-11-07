@@ -36,8 +36,9 @@ export default class StateNode<TEntry extends RouteEntry> extends Node<TEntry> {
   findLiteral = (text: string): StateNode<TEntry> | undefined => {
     if (text === "") return this;
 
-    const edge: LiteralEdge<TEntry> | undefined = this.literalEdges
-      .find(({ text: edgeText }) => text.startsWith(edgeText));
+    const edge: LiteralEdge<TEntry> | undefined = this.literalEdges.find(
+      ({ text: edgeText }) => text.startsWith(edgeText),
+    );
     if (edge == null) return undefined;
     return edge.node.findLiteral(text.slice(edge.text.length));
   };
@@ -64,9 +65,7 @@ export default class StateNode<TEntry extends RouteEntry> extends Node<TEntry> {
   }
 
   #findCommonLiteralEdge = (text: string): LiteralEdge<TEntry> | undefined =>
-    this.literalEdges.find(
-      (edge) => commonPrefixLength(edge.text, text) > 0,
-    );
+    this.literalEdges.find((edge) => commonPrefixLength(edge.text, text) > 0);
 }
 
 const splitLiteralEdge = <TEntry extends RouteEntry>(

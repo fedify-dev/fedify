@@ -14,15 +14,13 @@ import { needsDenoDotenv } from "./utils.ts";
  * KV store, message queue, and package manager
  * @returns The complete federation configuration file content as a string
  */
-export const loadFederation = async (
-  {
-    imports,
-    projectName,
-    kv,
-    mq,
-    packageManager,
-  }: InitCommandData & { imports: string },
-) =>
+export const loadFederation = async ({
+  imports,
+  projectName,
+  kv,
+  mq,
+  packageManager,
+}: InitCommandData & { imports: string }) =>
   pipe(
     await readTemplate(getFederationTemplate(packageManager)),
     replace(/\/\* imports \*\//, imports),
@@ -49,9 +47,10 @@ const getFederationTemplate = (packageManager: PackageManager): string =>
  *   logging template when present.
  * @returns The complete logging configuration file content as a string
  */
-export const loadLogging = async (
-  { projectName, initializer }: InitCommandData,
-) =>
+export const loadLogging = async ({
+  projectName,
+  initializer,
+}: InitCommandData) =>
   pipe(
     await readTemplate(initializer.loggingTemplate ?? "defaults/logging.ts"),
     replace(/\/\* project name \*\//, JSON.stringify(projectName)),
@@ -68,9 +67,7 @@ export const loadLogging = async (
  * @param param0 - {@link InitCommandData} containing `packageManager`
  * @returns The complete smoke-test script content as a string
  */
-export const loadTest = async (
-  { packageManager }: InitCommandData,
-) =>
+export const loadTest = async ({ packageManager }: InitCommandData) =>
   pipe(
     await readTemplate("defaults/smoke.test.ts"),
     replace(
@@ -100,14 +97,18 @@ export const getImports = ({ kv, mq, packageManager, env }: InitCommandData) =>
   pipe(
     toMerged(kv.imports, mq.imports),
     entries,
-    map(([module, { "default": defaultImport = "", ...imports }]) => //
-    [module, defaultImport, getAlias(imports)]),
-    map(([module, defaultImport, namedImports]) =>
-      `import ${
-        [defaultImport, namedImports.length > 0 ? `{ ${namedImports} }` : ""]
+    map(([module, { "default": defaultImport = "", ...imports }]) =>
+      //
+      [module, defaultImport, getAlias(imports)],
+    ),
+    map(
+      ([module, defaultImport, namedImports]) =>
+        `import ${[
+          defaultImport,
+          namedImports.length > 0 ? `{ ${namedImports} }` : "",
+        ]
           .filter((x) => x.length > 0)
-          .join(", ")
-      } from ${JSON.stringify(module)};`
+          .join(", ")} from ${JSON.stringify(module)};`,
     ),
     when(
       () => needsDenoDotenv({ packageManager, env }),
@@ -126,7 +127,7 @@ export const getImports = ({ kv, mq, packageManager, env }: InitCommandData) =>
  */
 export const getAlias = (imports: Record<string, string>) =>
   Object.entries(imports)
-    .map(([name, alias]) => name === alias ? name : `${name} as ${alias}`)
+    .map(([name, alias]) => (name === alias ? name : `${name} as ${alias}`))
     .sort()
     .join(", ");
 

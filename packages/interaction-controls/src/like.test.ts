@@ -168,9 +168,7 @@ test("likeInteraction checks later collections after earlier failures", async ()
   const brokenFollowers = new URL(
     "https://example.net/users/bob/followers-unavailable",
   );
-  const matchingFollowers = new URL(
-    "https://example.net/users/bob/followers",
-  );
+  const matchingFollowers = new URL("https://example.net/users/bob/followers");
   const target = new Note({
     id: targetId,
     attribution: author,

@@ -3,10 +3,7 @@
   "$id": "https://json-schema.fedify.dev/bench/scenario-v1.json",
   "title": "Fedify benchmark scenario suite",
   "type": "object",
-  "required": [
-    "version",
-    "scenarios"
-  ],
+  "required": ["version", "scenarios"],
   "additionalProperties": false,
   "properties": {
     "$schema": {
@@ -79,17 +76,10 @@
       ]
     },
     "signingMode": {
-      "enum": [
-        "jit",
-        "pipeline",
-        "presign"
-      ]
+      "enum": ["jit", "pipeline", "presign"]
     },
     "arrival": {
-      "enum": [
-        "constant",
-        "poisson"
-      ]
+      "enum": ["constant", "poisson"]
     },
     "scalarOrListString": {
       "oneOf": [
@@ -125,10 +115,7 @@
         }
       },
       "not": {
-        "required": [
-          "rate",
-          "concurrency"
-        ]
+        "required": ["rate", "concurrency"]
       }
     },
     "defaults": {
@@ -159,9 +146,7 @@
     "actorGroup": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "signatureStandards"
-      ],
+      "required": ["signatureStandards"],
       "properties": {
         "name": {
           "type": "string"
@@ -178,10 +163,7 @@
             "$ref": "#/$defs/signatureStandard"
           },
           "contains": {
-            "enum": [
-              "draft-cavage-http-signatures-12",
-              "rfc9421"
-            ]
+            "enum": ["draft-cavage-http-signatures-12", "rfc9421"]
           },
           "minContains": 1,
           "maxContains": 1,
@@ -192,14 +174,10 @@
     "generateDirective": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "generate"
-      ],
+      "required": ["generate"],
       "properties": {
         "generate": {
-          "enum": [
-            "lorem"
-          ]
+          "enum": ["lorem"]
         },
         "size": {
           "$ref": "#/$defs/size"
@@ -250,9 +228,7 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "seed"
-          ],
+          "required": ["seed"],
           "properties": {
             "seed": {
               "$ref": "#/$defs/scalarOrListString"
@@ -272,10 +248,7 @@
       ]
     },
     "expectSeverity": {
-      "enum": [
-        "warn",
-        "fail"
-      ]
+      "enum": ["warn", "fail"]
     },
     "expectValue": {
       "oneOf": [
@@ -286,9 +259,7 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "assert"
-          ],
+          "required": ["assert"],
           "properties": {
             "assert": {
               "type": "string"
@@ -303,10 +274,7 @@
     "mixEntry": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "scenario",
-        "weight"
-      ],
+      "required": ["scenario", "weight"],
       "properties": {
         "scenario": {
           "type": "string"
@@ -320,10 +288,7 @@
     "scenario": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name",
-        "type"
-      ],
+      "required": ["name", "type"],
       "properties": {
         "name": {
           "type": "string"
@@ -420,9 +385,7 @@
             }
           },
           "then": {
-            "required": [
-              "recipient"
-            ],
+            "required": ["recipient"],
             "properties": {
               "expect": {
                 "propertyNames": {
@@ -455,9 +418,7 @@
             }
           },
           "then": {
-            "required": [
-              "recipient"
-            ],
+            "required": ["recipient"],
             "properties": {
               "expect": {
                 "propertyNames": {
@@ -487,9 +448,7 @@
             }
           },
           "then": {
-            "required": [
-              "recipient"
-            ],
+            "required": ["recipient"],
             "properties": {
               "expect": {
                 "propertyNames": {
@@ -522,9 +481,7 @@
             }
           },
           "then": {
-            "required": [
-              "source"
-            ],
+            "required": ["source"],
             "properties": {
               "expect": {
                 "propertyNames": {
@@ -554,9 +511,7 @@
             }
           },
           "then": {
-            "required": [
-              "recipient"
-            ],
+            "required": ["recipient"],
             "properties": {
               "expect": {
                 "propertyNames": {
@@ -586,9 +541,7 @@
             }
           },
           "then": {
-            "required": [
-              "sender"
-            ],
+            "required": ["sender"],
             "properties": {
               "expect": {
                 "propertyNames": {
@@ -616,9 +569,7 @@
             }
           },
           "then": {
-            "required": [
-              "fault"
-            ],
+            "required": ["fault"],
             "properties": {
               "expect": {
                 "propertyNames": {
@@ -648,9 +599,7 @@
             }
           },
           "then": {
-            "required": [
-              "mix"
-            ],
+            "required": ["mix"],
             "properties": {
               "expect": {
                 "propertyNames": {

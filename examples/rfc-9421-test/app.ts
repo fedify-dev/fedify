@@ -46,8 +46,8 @@ export default function createApp(fedi: Fedi, config: AppConfig) {
         c.req.header("signature-input") != null
           ? "rfc9421"
           : c.req.header("signature") != null
-          ? "draft-cavage"
-          : null,
+            ? "draft-cavage"
+            : null,
       );
     }
     await next();
@@ -77,7 +77,8 @@ export default function createApp(fedi: Fedi, config: AppConfig) {
         id: k,
         handle: v.handle,
       })),
-    ));
+    ),
+  );
 
   // SSE: push state changes to the browser
   app.get("/events", (c) => {
@@ -87,7 +88,9 @@ export default function createApp(fedi: Fedi, config: AppConfig) {
         const send = (event: string) => {
           try {
             ctrl.enqueue(encoder.encode(`data: ${event}\n\n`));
-          } catch { /* client disconnected */ }
+          } catch {
+            /* client disconnected */
+          }
         };
         const unsubscribe = onStateChange(send);
         c.req.raw.signal.addEventListener("abort", () => unsubscribe());
@@ -152,7 +155,8 @@ function sendNote(fedi: Fedi) {
     if ("error" in result) return result.error;
     const { actor, ctx } = result;
 
-    const content = (await getParam(c, "content")) ??
+    const content =
+      (await getParam(c, "content")) ??
       "Hello from Fedify RFC 9421 field test!";
     const actorUri = ctx.getActorUri(ACTOR_ID);
     const noteId = new URL(
@@ -239,10 +243,13 @@ async function resolveActor(fedi: Fedi, c: HonoContext) {
   }
   if (!(obj instanceof Person)) {
     return {
-      error: c.json({
-        ok: false,
-        error: `not a Person: ${obj.constructor.name}`,
-      }, 400),
+      error: c.json(
+        {
+          ok: false,
+          error: `not a Person: ${obj.constructor.name}`,
+        },
+        400,
+      ),
     };
   }
   return { actor: obj, ctx };

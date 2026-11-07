@@ -44,20 +44,24 @@ export type AuthoritativeObjectRejection =
  */
 export type AuthoritativeObjectResolution<T extends ASObject> =
   | {
-    readonly ok: true;
-    readonly object: T;
-    /** The only owner the object's own document names. */
-    readonly owner: URL;
-  }
+      readonly ok: true;
+      readonly object: T;
+      /** The only owner the object's own document names. */
+      readonly owner: URL;
+    }
   | {
-    readonly ok: false;
-    readonly failure:
-      | UnverifiableFailure
-      | Extract<
-        InteractionRequestVerificationFailure,
-        { readonly type: "credentials-in-url" | "invalid-interacting-object" }
-      >;
-  };
+      readonly ok: false;
+      readonly failure:
+        | UnverifiableFailure
+        | Extract<
+            InteractionRequestVerificationFailure,
+            {
+              readonly type:
+                | "credentials-in-url"
+                | "invalid-interacting-object";
+            }
+          >;
+    };
 
 /**
  * Options for {@link resolveAuthoritativeObject}.
@@ -136,7 +140,8 @@ export async function resolveAuthoritativeObject<T extends ASObject>(
           if (root == null) return reject("id");
           const rootId = resolveNodeId(root, candidate.baseUrl);
           if (
-            rootId == null || !sameId(rootId, id) ||
+            rootId == null ||
+            !sameId(rootId, id) ||
             !sameId(candidate.object.id, id)
           ) {
             return reject("id");
@@ -163,8 +168,8 @@ export async function resolveAuthoritativeObject<T extends ASObject>(
     }
     return { ok: false, failure: classifyNull(id, failures, rejections) };
   } catch (error) {
-    const parseFailure = failures.find((failure) =>
-      failure.operation === "parse" && failure.error === error
+    const parseFailure = failures.find(
+      (failure) => failure.operation === "parse" && failure.error === error,
     );
     if (
       parseFailure != null &&
@@ -200,9 +205,10 @@ export async function resolveAuthoritativeObject<T extends ASObject>(
       ...failures.flatMap((failure) =>
         failure.error === undefined
           ? []
-          : collectCauses(failure.error).filter((cause) =>
-            failure.operation === "fetch" || tracker.records.has(cause)
-          )
+          : collectCauses(failure.error).filter(
+              (cause) =>
+                failure.operation === "fetch" || tracker.records.has(cause),
+            ),
       ),
       ...tracker.records.keys(),
     ];
@@ -216,9 +222,12 @@ export async function resolveAuthoritativeObject<T extends ASObject>(
         transient: true,
       };
     }
-    const decoding = failures.find((failure) =>
-      failure.operation === "parse" &&
-      !collectCauses(failure.error).some((cause) => tracker.records.has(cause))
+    const decoding = failures.find(
+      (failure) =>
+        failure.operation === "parse" &&
+        !collectCauses(failure.error).some((cause) =>
+          tracker.records.has(cause),
+        ),
     );
     if (decoding != null) {
       return {

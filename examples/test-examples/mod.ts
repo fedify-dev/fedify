@@ -406,12 +406,14 @@ const SKIPPED_EXAMPLES: SkippedExample[] = [
 ];
 
 export function getRegisteredExampleNames(): Set<string> {
-  return new Set([
-    ...SERVER_EXAMPLES,
-    ...SCRIPT_EXAMPLES,
-    ...MULTI_HANDLE_EXAMPLES,
-    ...SKIPPED_EXAMPLES,
-  ].map((e) => e.name));
+  return new Set(
+    [
+      ...SERVER_EXAMPLES,
+      ...SCRIPT_EXAMPLES,
+      ...MULTI_HANDLE_EXAMPLES,
+      ...SKIPPED_EXAMPLES,
+    ].map((e) => e.name),
+  );
 }
 
 /**
@@ -676,9 +678,7 @@ async function testServerExample(
 
   try {
     console.log(
-      c.dim(
-        `  waiting for server at ${readyUrl} (timeout: ${timeoutMs} ms)…`,
-      ),
+      c.dim(`  waiting for server at ${readyUrl} (timeout: ${timeoutMs} ms)…`),
     );
     serverLogger.debug("Polling {url}", { url: readyUrl });
 
@@ -716,9 +716,10 @@ async function testServerExample(
     console.log(c.dim(`  running    : fedify lookup ${handle} -d`));
     serverLogger.info("Running fedify lookup {handle}", { handle });
 
-    const lookup = await $`${process.execPath} ${
-      join(REPO_ROOT, "packages/cli/dist/mod.js")
-    } lookup ${handle} -d`
+    const lookup = await $`${process.execPath} ${join(
+      REPO_ROOT,
+      "packages/cli/dist/mod.js",
+    )} lookup ${handle} -d`
       .cwd(REPO_ROOT)
       .stdout("piped")
       .stderr("piped")
@@ -866,16 +867,16 @@ async function main(): Promise<void> {
     ...SERVER_EXAMPLES,
     ...SCRIPT_EXAMPLES,
     ...MULTI_HANDLE_EXAMPLES,
-  ]
-    .filter((example) => shouldRun(example.name));
+  ].filter((example) => shouldRun(example.name));
   for (const name of filterNames) {
     if (!getRegisteredExampleNames().has(name)) {
       throw new TypeError(`Unknown example: ${name}`);
     }
   }
   if (
-    selected.some((example) =>
-      ("startCmd" in example ? example.startCmd : example.cmd)[0] === "deno"
+    selected.some(
+      (example) =>
+        ("startCmd" in example ? example.startCmd : example.cmd)[0] === "deno",
     )
   ) {
     await $`mise run deno:cache`.cwd(REPO_ROOT);
@@ -963,10 +964,10 @@ async function main(): Promise<void> {
     for (const name of unregistered) {
       console.log(c.yellow(`    • ${name}`));
     }
-    logger.warn(
-      "{count} unregistered example(s): {names}",
-      { count: unregistered.length, names: unregistered.join(", ") },
-    );
+    logger.warn("{count} unregistered example(s): {names}", {
+      count: unregistered.length,
+      names: unregistered.join(", "),
+    });
   }
 
   logger.info("Test run complete", {

@@ -41,32 +41,29 @@ test("non-federation request is delegated on notFound", async () => {
   assert.equal(response.kind, "not-found");
 });
 
-test(
-  "returns 406 when client does not accept ActivityPub and framework is 404",
-  async () => {
-    const response = await fetchWithFedify(
-      async (_request, options) => {
-        return await options.onNotAcceptable!(
-          new Request("https://example.com/users/alice", {
-            headers: { Accept: "text/html" },
-          }),
-        );
-      },
-      new Request("https://example.com/users/alice", {
-        headers: { Accept: "text/html" },
-      }),
-      undefined,
-    );
+test("returns 406 when client does not accept ActivityPub and framework is 404", async () => {
+  const response = await fetchWithFedify(
+    async (_request, options) => {
+      return await options.onNotAcceptable!(
+        new Request("https://example.com/users/alice", {
+          headers: { Accept: "text/html" },
+        }),
+      );
+    },
+    new Request("https://example.com/users/alice", {
+      headers: { Accept: "text/html" },
+    }),
+    undefined,
+  );
 
-    assert.equal(response.kind, "not-acceptable");
+  assert.equal(response.kind, "not-acceptable");
 
-    const negotiated = resolveDeferredNotAcceptable(true, 404);
-    assert.ok(negotiated);
-    assert.equal(negotiated.status, 406);
-    assert.equal(negotiated.headers.get("Vary"), "Accept");
-    assert.equal(await negotiated.text(), "Not acceptable");
-  },
-);
+  const negotiated = resolveDeferredNotAcceptable(true, 404);
+  assert.ok(negotiated);
+  assert.equal(negotiated.status, 406);
+  assert.equal(negotiated.headers.get("Vary"), "Accept");
+  assert.equal(await negotiated.text(), "Not acceptable");
+});
 
 test("framework response is preserved for shared HTML route", async () => {
   const response = await fetchWithFedify(
@@ -112,10 +109,7 @@ test("contextFactoryResolver validates contextDataFactory export", () => {
   assert.equal(evalResolver({ default: factory }), factory);
 
   // 3. default export is not a function
-  assert.throws(
-    () => evalResolver({ default: "not-a-function" }),
-    TypeError,
-  );
+  assert.throws(() => evalResolver({ default: "not-a-function" }), TypeError);
 
   // 4. named export contextDataFactory is a function
   assert.equal(

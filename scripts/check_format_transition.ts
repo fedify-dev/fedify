@@ -29,7 +29,8 @@ export async function checkFormatTransition(
       const decoder = new TextDecoder();
       failures.push(
         `${command} ${args.join(" ")} (exit ${result.code})\n` +
-          decoder.decode(result.stdout) + decoder.decode(result.stderr),
+          decoder.decode(result.stdout) +
+          decoder.decode(result.stderr),
       );
     } catch (error) {
       failures.push(`${command} ${args.join(" ")}\n${String(error)}`);
@@ -38,15 +39,15 @@ export async function checkFormatTransition(
   };
 
   // Choose once for the complete tree, never separately for individual files.
-  const treeOkay = await check("pnpm", [
-    "exec",
-    "oxfmt",
-    "-c",
-    ".oxfmtrc.json",
-    "--check",
-    ...paths,
-  ]) ||
-    await check("deno", ["fmt", "--check", ...paths]);
+  const treeOkay =
+    (await check("pnpm", [
+      "exec",
+      "oxfmt",
+      "-c",
+      ".oxfmtrc.json",
+      "--check",
+      ...paths,
+    ])) || (await check("deno", ["fmt", "--check", ...paths]));
   if (treeOkay) {
     // Oxfmt discovery skips this Git-ignored output. Its existing Deno format
     // remains mandatory until the generator and its checks migrate together.
@@ -59,7 +60,7 @@ export async function checkFormatTransition(
 
 if (isMain(import.meta.url)) {
   const paths = process.argv.slice(2);
-  if (!await checkFormatTransition(paths.length === 0 ? ["."] : paths)) {
+  if (!(await checkFormatTransition(paths.length === 0 ? ["."] : paths))) {
     process.exitCode = 1;
   }
 }

@@ -54,9 +54,10 @@ export function fedifyHook<TContextData>(
   };
 }
 
-function integrateFetchOptions(
-  { event, resolve }: Parameters<Handle>[0],
-): Omit<FederationFetchOptions<void>, "contextData"> {
+function integrateFetchOptions({
+  event,
+  resolve,
+}: Parameters<Handle>[0]): Omit<FederationFetchOptions<void>, "contextData"> {
   return {
     async onNotFound(): Promise<Response> {
       return await resolve(event);

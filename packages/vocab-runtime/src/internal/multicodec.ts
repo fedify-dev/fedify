@@ -5,9 +5,7 @@ export interface MulticodecPrefix {
   prefixLength: number;
 }
 
-export function getMulticodecPrefix(
-  data: Uint8Array,
-): MulticodecPrefix {
+export function getMulticodecPrefix(data: Uint8Array): MulticodecPrefix {
   if (data.length < 1) throw new TypeError(INVALID_MULTICODEC_PREFIX);
   let code = 0;
   let shift = 0;

@@ -21,14 +21,10 @@ export class MastodonRelay extends BaseRelay {
     _activity: RelayableActivity,
     excludeBaseUris: URL[],
   ): Promise<void> {
-    await ctx.forwardActivity(
-      { identifier: RELAY_SERVER_ACTOR },
-      "followers",
-      {
-        skipIfUnsigned: true,
-        excludeBaseUris,
-        preferSharedInbox: true,
-      },
-    );
+    await ctx.forwardActivity({ identifier: RELAY_SERVER_ACTOR }, "followers", {
+      skipIfUnsigned: true,
+      excludeBaseUris,
+      preferSharedInbox: true,
+    });
   }
 }

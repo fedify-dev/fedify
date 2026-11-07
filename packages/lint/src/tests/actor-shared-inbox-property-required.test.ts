@@ -11,13 +11,7 @@ const ruleName = RULE_IDS.actorSharedInboxPropertyRequired;
 const config = { rule, ruleName };
 
 // Standard required listener rule tests
-runTests(
-  ruleName,
-  createRequiredDispatcherRuleTests("sharedInbox", config),
-);
+runTests(ruleName, createRequiredDispatcherRuleTests("sharedInbox", config));
 
 // Edge case tests
-runTests(
-  ruleName,
-  createRequiredEdgeCaseTests("sharedInbox", config),
-);
+runTests(ruleName, createRequiredEdgeCaseTests("sharedInbox", config));

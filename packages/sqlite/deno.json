@@ -10,17 +10,9 @@
   "imports": {
     "#sqlite": "./src/sqlite.node.ts"
   },
-  "exclude": [
-    "dist",
-    "node_modules",
-    "src/sqlite.bun.ts"
-  ],
+  "exclude": ["dist", "node_modules", "src/sqlite.bun.ts"],
   "publish": {
-    "exclude": [
-      "**/*.test.ts",
-      "!dist/",
-      "tsdown.config.ts"
-    ]
+    "exclude": ["**/*.test.ts", "!dist/", "tsdown.config.ts"]
   },
   "tasks": {
     "check": "deno fmt --check && deno check",

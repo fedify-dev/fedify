@@ -70,9 +70,9 @@ import { getPortableDid, isPortableId } from "./portable-key-id.ts";
  * dropped from the metric attribute to avoid attacker-controlled
  * cardinality.
  */
-const OIP_KNOWN_CRYPTOSUITES = new Set<string>(
-  ["eddsa-jcs-2022"] satisfies readonly ObjectIntegrityProofMetricCryptosuite[],
-);
+const OIP_KNOWN_CRYPTOSUITES = new Set<string>([
+  "eddsa-jcs-2022",
+] satisfies readonly ObjectIntegrityProofMetricCryptosuite[]);
 
 const logger = getLogger(["fedify", "sig", "proof"]);
 const SECURITY_NAMESPACE = "https://w3id.org/security#";
@@ -107,16 +107,21 @@ export function hasProofLike(jsonLd: unknown): boolean {
   const isReference = (value: unknown): boolean => {
     if (typeof value === "string") return true;
     if (Array.isArray(value)) return value.some(isReference);
-    return typeof value === "object" && value != null &&
+    return (
+      typeof value === "object" &&
+      value != null &&
       (("id" in value && typeof value.id === "string") ||
         ("@id" in value && typeof value["@id"] === "string") ||
-        ("@value" in value && typeof value["@value"] === "string"));
+        ("@value" in value && typeof value["@value"] === "string"))
+    );
   };
 
   const hasType = (value: unknown): boolean => {
     if (typeof value === "string") {
-      return value === "DataIntegrityProof" ||
-        value === "https://w3id.org/security#DataIntegrityProof";
+      return (
+        value === "DataIntegrityProof" ||
+        value === "https://w3id.org/security#DataIntegrityProof"
+      );
     }
     if (Array.isArray(value)) return value.some(hasType);
     return false;
@@ -125,22 +130,30 @@ export function hasProofLike(jsonLd: unknown): boolean {
   const isProofLike = (value: unknown): boolean => {
     if (typeof value !== "object" || value == null) return false;
     const proofRecord = value as Record<string, unknown>;
-    return hasType(proofRecord.type ?? proofRecord["@type"]) &&
-      isReference(getField(
-        proofRecord,
-        "verificationMethod",
-        "https://w3id.org/security#verificationMethod",
-      )) &&
-      isReference(getField(
-        proofRecord,
-        "proofPurpose",
-        "https://w3id.org/security#proofPurpose",
-      )) &&
-      isReference(getField(
-        proofRecord,
-        "proofValue",
-        "https://w3id.org/security#proofValue",
-      ));
+    return (
+      hasType(proofRecord.type ?? proofRecord["@type"]) &&
+      isReference(
+        getField(
+          proofRecord,
+          "verificationMethod",
+          "https://w3id.org/security#verificationMethod",
+        ),
+      ) &&
+      isReference(
+        getField(
+          proofRecord,
+          "proofPurpose",
+          "https://w3id.org/security#proofPurpose",
+        ),
+      ) &&
+      isReference(
+        getField(
+          proofRecord,
+          "proofValue",
+          "https://w3id.org/security#proofValue",
+        ),
+      )
+    );
   };
 
   return Array.isArray(proof) ? proof.some(isProofLike) : isProofLike(proof);
@@ -312,13 +325,13 @@ async function createProofInternal(
   });
   const securedDocument = capture
     ? await captureSecuredDocument(
-      proof,
-      compactMsg,
-      msgCanon,
-      proofCanon,
-      new TextDecoder().decode(encodeMultibase("base58btc", sig)),
-      contextLoader,
-    )
+        proof,
+        compactMsg,
+        msgCanon,
+        proofCanon,
+        new TextDecoder().decode(encodeMultibase("base58btc", sig)),
+        contextLoader,
+      )
     : null;
   return { proof, securedDocument };
 }
@@ -510,8 +523,7 @@ export interface VerifyProofOptions extends VerificationObservationOptions {
  * Options for {@link verifyPortableObjectProof}.
  * @since 2.4.0
  */
-export interface VerifyPortableObjectProofOptions extends VerifyProofOptions {
-}
+export interface VerifyPortableObjectProofOptions extends VerifyProofOptions {}
 
 /**
  * The reason why {@link verifyPortableObjectProof} could not verify a portable
@@ -520,62 +532,62 @@ export interface VerifyPortableObjectProofOptions extends VerifyProofOptions {
  */
 export type VerifyPortableObjectProofFailureReason =
   | {
-    /**
-     * The document has neither a portable `ap:` or `ap+ef61:` ID nor an
-     * FEP-ef61 compatible identifier.
-     */
-    readonly type: "notPortableObject";
-  }
+      /**
+       * The document has neither a portable `ap:` or `ap+ef61:` ID nor an
+       * FEP-ef61 compatible identifier.
+       */
+      readonly type: "notPortableObject";
+    }
   | {
-    /**
-     * The document is a portable collection without an Object Integrity
-     * Proof.  Its trust policy is outside this verifier.
-     */
-    readonly type: "unsecuredCollection";
-  }
+      /**
+       * The document is a portable collection without an Object Integrity
+       * Proof.  Its trust policy is outside this verifier.
+       */
+      readonly type: "unsecuredCollection";
+    }
   | {
-    /** The portable document is a core type outside FEP-ef61 proof policy. */
-    readonly type: "unsupportedObjectType";
-    /** The FEP-2277 core type of the document. */
-    readonly objectType: "verificationMethod" | "publicKey" | "link";
-  }
+      /** The portable document is a core type outside FEP-ef61 proof policy. */
+      readonly type: "unsupportedObjectType";
+      /** The FEP-2277 core type of the document. */
+      readonly objectType: "verificationMethod" | "publicKey" | "link";
+    }
   | {
-    /** A portable actor, activity, or object has no proof. */
-    readonly type: "missingProof";
-  }
+      /** A portable actor, activity, or object has no proof. */
+      readonly type: "missingProof";
+    }
   | {
-    /**
-     * A portable actor's `gateways` is missing or empty, or has an item that
-     * is not an HTTP(S) URI with an empty path, query, and fragment.
-     * The document is rejected before its proofs are verified, so this
-     * reason does not mean that the proofs are valid.
-     */
-    readonly type: "invalidGateways";
-  }
+      /**
+       * A portable actor's `gateways` is missing or empty, or has an item that
+       * is not an HTTP(S) URI with an empty path, query, and fragment.
+       * The document is rejected before its proofs are verified, so this
+       * reason does not mean that the proofs are valid.
+       */
+      readonly type: "invalidGateways";
+    }
   | {
-    /** The proof is malformed, unsupported, or cryptographically invalid. */
-    readonly type: "invalidProof";
-    /** The zero-based index of the invalid proof. */
-    readonly proofIndex: number;
-  }
+      /** The proof is malformed, unsupported, or cryptographically invalid. */
+      readonly type: "invalidProof";
+      /** The zero-based index of the invalid proof. */
+      readonly proofIndex: number;
+    }
   | {
-    /** The proof's verification method is not a valid DID URL. */
-    readonly type: "unsupportedVerificationMethod";
-    /** The zero-based index of the proof. */
-    readonly proofIndex: number;
-    /** The unsupported verification method. */
-    readonly verificationMethod: URL;
-  }
+      /** The proof's verification method is not a valid DID URL. */
+      readonly type: "unsupportedVerificationMethod";
+      /** The zero-based index of the proof. */
+      readonly proofIndex: number;
+      /** The unsupported verification method. */
+      readonly verificationMethod: URL;
+    }
   | {
-    /** The verification method DID does not match the portable ID authority. */
-    readonly type: "verificationMethodMismatch";
-    /** The zero-based index of the proof. */
-    readonly proofIndex: number;
-    /** The portable object ID. */
-    readonly objectId: URL;
-    /** The mismatching verification method. */
-    readonly verificationMethod: URL;
-  };
+      /** The verification method DID does not match the portable ID authority. */
+      readonly type: "verificationMethodMismatch";
+      /** The zero-based index of the proof. */
+      readonly proofIndex: number;
+      /** The portable object ID. */
+      readonly objectId: URL;
+      /** The mismatching verification method. */
+      readonly verificationMethod: URL;
+    };
 
 /**
  * The detailed result of {@link verifyPortableObjectProof}.
@@ -583,17 +595,17 @@ export type VerifyPortableObjectProofFailureReason =
  */
 export type VerifyPortableObjectProofResult =
   | {
-    /** Whether every Object Integrity Proof was verified. */
-    readonly verified: true;
-    /** The public keys used by the verified proofs, in proof order. */
-    readonly keys: readonly Multikey[];
-  }
+      /** Whether every Object Integrity Proof was verified. */
+      readonly verified: true;
+      /** The public keys used by the verified proofs, in proof order. */
+      readonly keys: readonly Multikey[];
+    }
   | {
-    /** Whether every Object Integrity Proof was verified. */
-    readonly verified: false;
-    /** Why portable proof verification did not succeed. */
-    readonly reason: VerifyPortableObjectProofFailureReason;
-  };
+      /** Whether every Object Integrity Proof was verified. */
+      readonly verified: false;
+      /** Why portable proof verification did not succeed. */
+      readonly reason: VerifyPortableObjectProofFailureReason;
+    };
 
 /**
  * Verifies the given proof for the object.
@@ -631,24 +643,26 @@ export async function verifyMapLocalProof(
   options: VerifyProofOptions = {},
 ): Promise<Multikey | null> {
   if (
-    !isJsonLdNode(jsonLd) || !globalThis.Object.hasOwn(jsonLd, "proof") ||
+    !isJsonLdNode(jsonLd) ||
+    !globalThis.Object.hasOwn(jsonLd, "proof") ||
     !isJsonLdNode(jsonLd.proof)
   ) {
     return null;
   }
   const rawProof = jsonLd.proof;
-  const previousChecks = options[verificationObservation]?.attempt?.checks
-    .length;
+  const previousChecks =
+    options[verificationObservation]?.attempt?.checks.length;
   const malformed = () =>
     observeCheck<Multikey>(
       options,
       {
         mechanism: "objectIntegrity",
-        proofId: typeof rawProof.id === "string"
-          ? rawProof.id
-          : typeof rawProof["@id"] === "string"
-          ? rawProof["@id"]
-          : null,
+        proofId:
+          typeof rawProof.id === "string"
+            ? rawProof.id
+            : typeof rawProof["@id"] === "string"
+              ? rawProof["@id"]
+              : null,
         proofIndex: previousChecks ?? null,
       },
       getDeclaredProofKeyId(rawProof),
@@ -677,7 +691,8 @@ export async function verifyMapLocalProof(
       previousChecks != null &&
       options[verificationObservation]?.attempt?.checks.length ===
         previousChecks
-    ) return await malformed();
+    )
+      return await malformed();
     return null;
   }
 }
@@ -690,8 +705,8 @@ function getDeclaredProofKeyId(
   ],
 ): string | null {
   if (!isJsonLdNode(value)) return null;
-  const method = Array.from(propertyNames, (name) => value[name]).find((v) =>
-    v != null
+  const method = Array.from(propertyNames, (name) => value[name]).find(
+    (v) => v != null,
   );
   const candidate = Array.isArray(method) ? method[0] : method;
   if (typeof candidate === "string") return candidate;
@@ -739,7 +754,8 @@ async function verifyProofWithMessageDigestCache(
       },
       rawProofCandidate?.declaredKeyId ??
         getDeclaredProofKeyId(rawProofCandidate?.value) ??
-        proof.verificationMethodId?.href ?? null,
+        proof.verificationMethodId?.href ??
+        null,
       (observation) =>
         verifyProofWithMessageDigestCache(
           jsonLd,
@@ -761,7 +777,7 @@ async function verifyProofWithMessageDigestCache(
       let threw = false;
       const cryptosuite: ObjectIntegrityProofMetricCryptosuite | undefined =
         proof.cryptosuite != null &&
-          OIP_KNOWN_CRYPTOSUITES.has(proof.cryptosuite)
+        OIP_KNOWN_CRYPTOSUITES.has(proof.cryptosuite)
           ? proof.cryptosuite
           : undefined;
       if (span.isRecording()) {
@@ -813,21 +829,23 @@ async function verifyProofWithMessageDigestCache(
         const classified: SignatureVerificationResult = threw
           ? "error"
           : verified
-          ? "verified"
-          : "rejected";
-        getFederationMetrics(options.meterProvider)
-          .recordSignatureVerificationDuration(
-            getDurationMs(start),
-            "object_integrity",
-            classified,
-            {
-              cryptosuite,
-              verificationFailureReason: verified || threw
+            ? "verified"
+            : "rejected";
+        getFederationMetrics(
+          options.meterProvider,
+        ).recordSignatureVerificationDuration(
+          getDurationMs(start),
+          "object_integrity",
+          classified,
+          {
+            cryptosuite,
+            verificationFailureReason:
+              verified || threw
                 ? undefined
-                : options[verificationObservation]?.check?.reason?.type ??
-                  "invalidSignature",
-            },
-          );
+                : (options[verificationObservation]?.check?.reason?.type ??
+                  "invalidSignature"),
+          },
+        );
         span.end();
       }
     },
@@ -864,7 +882,8 @@ function expandContextPropertyIri(
   if (prefix === "_" || suffix.startsWith("//")) return key;
   const mapping = jsonld.getContextValue(activeContext, prefix);
   if (
-    typeof mapping === "object" && mapping != null &&
+    typeof mapping === "object" &&
+    mapping != null &&
     mapping._prefix === true &&
     typeof mapping["@id"] === "string"
   ) {
@@ -887,8 +906,9 @@ async function getJsonLdPropertyNames(
   if (context == null && contextState?.initial == null) return names;
   try {
     const options = { documentLoader };
-    let activeContext = contextState?.initial ??
-      await jsonld.processContext(null, null, options);
+    let activeContext =
+      contextState?.initial ??
+      (await jsonld.processContext(null, null, options));
     if (contextState?.scoped != null) {
       activeContext = await jsonld.processContext(
         activeContext,
@@ -947,12 +967,14 @@ async function getProofPropertyNames(
   jsonLd: Record<string, unknown>,
   documentLoader: DocumentLoader = preloadedOnlyDocumentLoader,
 ): Promise<Set<string>> {
-  return await getJsonLdPropertyNames(
-    jsonLd,
-    SECURITY_PROOF,
-    ["proof", SECURITY_PROOF],
-    documentLoader,
-  ) ?? new Set(["proof", SECURITY_PROOF]);
+  return (
+    (await getJsonLdPropertyNames(
+      jsonLd,
+      SECURITY_PROOF,
+      ["proof", SECURITY_PROOF],
+      documentLoader,
+    )) ?? new Set(["proof", SECURITY_PROOF])
+  );
 }
 
 async function createProofMessageDigests(
@@ -969,9 +991,10 @@ async function createProofMessageDigests(
     // strip every top-level property that the active JSON-LD context maps to
     // the security proof predicate so its bytes are not folded into the JCS
     // message digest.
-    for (
-      const property of await getProofPropertyNames(msg, proofContextLoader)
-    ) {
+    for (const property of await getProofPropertyNames(
+      msg,
+      proofContextLoader,
+    )) {
       delete msg[property];
     }
   }
@@ -1026,18 +1049,18 @@ function contextStartsWith(
   if (documentContext == null) return false;
   const documentValues = contextValues(documentContext);
   const proofValues = contextValues(proofContext);
-  return proofValues.length <= documentValues.length &&
+  return (
+    proofValues.length <= documentValues.length &&
     proofValues.every((value, index) =>
-      equalJsonValues(value, documentValues[index])
-    );
+      equalJsonValues(value, documentValues[index]),
+    )
+  );
 }
 
 function appendProofValues(values: unknown[], value: unknown): void {
   if (Array.isArray(value)) {
     for (const item of value) appendProofValues(values, item);
-  } else if (
-    isJsonLdNode(value) && Array.isArray(value["@graph"])
-  ) {
+  } else if (isJsonLdNode(value) && Array.isArray(value["@graph"])) {
     for (const item of value["@graph"]) appendProofValues(values, item);
   } else {
     values.push(value);
@@ -1056,24 +1079,25 @@ async function getRawProofValues(
   return values;
 }
 
-function sameBytes(
-  left: Uint8Array | null,
-  right: Uint8Array | null,
-): boolean {
+function sameBytes(left: Uint8Array | null, right: Uint8Array | null): boolean {
   if (left == null || right == null) return left === right;
-  return left.length === right.length &&
-    left.every((value, index) => value === right[index]);
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
 }
 
 function sameProof(
   left: DataIntegrityProof,
   right: DataIntegrityProof,
 ): boolean {
-  return left.cryptosuite === right.cryptosuite &&
+  return (
+    left.cryptosuite === right.cryptosuite &&
     left.verificationMethodId?.href === right.verificationMethodId?.href &&
     left.proofPurpose === right.proofPurpose &&
     sameBytes(left.proofValue, right.proofValue) &&
-    left.created?.toString() === right.created?.toString();
+    left.created?.toString() === right.created?.toString()
+  );
 }
 
 interface RawProofCandidate {
@@ -1121,8 +1145,8 @@ async function getAliasedDeclaredProofKeyId(
     false,
     contextState,
   );
-  const methodName = Array.from(names ?? []).find((name) =>
-    value[name] != null
+  const methodName = Array.from(names ?? []).find(
+    (name) => value[name] != null,
   );
   const method = methodName == null ? undefined : value[methodName];
   const candidate = Array.isArray(method) ? method[0] : method;
@@ -1137,9 +1161,10 @@ async function getAliasedDeclaredProofKeyId(
     false,
     {
       initial: contextState.active,
-      scoped: contextState.active == null || methodName == null
-        ? undefined
-        : jsonld.getContextValue(contextState.active, methodName, "@context"),
+      scoped:
+        contextState.active == null || methodName == null
+          ? undefined
+          : jsonld.getContextValue(contextState.active, methodName, "@context"),
     },
   );
   for (const name of idNames ?? []) {
@@ -1173,20 +1198,21 @@ async function parseRawProofCandidates(
   const candidates: RawProofCandidate[] = [];
   for (const value of values) {
     let parsed: DataIntegrityProof | null = null;
-    const contexts = options[verificationObservation] != null &&
-        options[verificationObservation]?.captureRawKeyIds !== false
-      ? recordProofContexts(documentLoader)
-      : undefined;
+    const contexts =
+      options[verificationObservation] != null &&
+      options[verificationObservation]?.captureRawKeyIds !== false
+        ? recordProofContexts(documentLoader)
+        : undefined;
     if (isJsonLdNode(value)) {
-      const proofJsonLd = value["@context"] == null &&
-          jsonLd["@context"] != null
-        ? { "@context": jsonLd["@context"], ...value }
-        : value;
+      const proofJsonLd =
+        value["@context"] == null && jsonLd["@context"] != null
+          ? { "@context": jsonLd["@context"], ...value }
+          : value;
       try {
-        parsed = await DataIntegrityProof.fromJsonLd(
-          proofJsonLd,
-          { ...options, contextLoader: contexts?.loader ?? documentLoader },
-        );
+        parsed = await DataIntegrityProof.fromJsonLd(proofJsonLd, {
+          ...options,
+          contextLoader: contexts?.loader ?? documentLoader,
+        });
       } catch {
         // Malformed sibling proofs cannot match a typed proof.
       }
@@ -1195,13 +1221,14 @@ async function parseRawProofCandidates(
       value,
       proof: parsed,
       reference: getRawProofReference(value) ?? parsed?.id?.href,
-      declaredKeyId: contexts == null
-        ? undefined
-        : await getAliasedDeclaredProofKeyId(
-          value,
-          jsonLd["@context"],
-          contexts.replay,
-        ),
+      declaredKeyId:
+        contexts == null
+          ? undefined
+          : await getAliasedDeclaredProofKeyId(
+              value,
+              jsonLd["@context"],
+              contexts.replay,
+            ),
     });
   }
   return candidates;
@@ -1221,10 +1248,7 @@ async function findRawProofCandidate(
   );
   const matches: RawProofCandidate[] = [];
   for (const candidate of candidates) {
-    if (
-      candidate.proof != null &&
-      sameProof(candidate.proof, proof)
-    ) {
+    if (candidate.proof != null && sameProof(candidate.proof, proof)) {
       matches.push(candidate);
     }
   }
@@ -1240,15 +1264,16 @@ async function findRawProofCandidate(
         candidate.value,
         jsonLd["@context"],
         documentLoader,
-      )
+      ),
     ),
   );
   const firstConfiguration = configurations[0];
   return firstConfiguration != null &&
-      configurations.every((configuration) =>
+    configurations.every(
+      (configuration) =>
         configuration != null &&
-        equalJsonValues(configuration.value, firstConfiguration.value)
-      )
+        equalJsonValues(configuration.value, firstConfiguration.value),
+    )
     ? first
     : null;
 }
@@ -1265,10 +1290,7 @@ function takeRawProofCandidate(
   for (let index = 0; index < pool.candidates.length; index++) {
     if (pool.used.has(index)) continue;
     const candidate = pool.candidates[index];
-    if (
-      candidate.proof != null &&
-      sameProof(candidate.proof, proof)
-    ) {
+    if (candidate.proof != null && sameProof(candidate.proof, proof)) {
       pool.used.add(index);
       return candidate;
     }
@@ -1298,19 +1320,24 @@ const STANDARD_EXPANDED_PROOF_PROPERTIES = new Set([
 
 function hasAdditionalProofOptions(value: unknown): boolean {
   const node = Array.isArray(value) && value.length === 1 ? value[0] : value;
-  return isJsonLdNode(node) &&
-    globalThis.Object.keys(node).some((property) =>
-      !STANDARD_COMPACT_PROOF_PROPERTIES.has(property) &&
-      !STANDARD_EXPANDED_PROOF_PROPERTIES.has(property)
-    );
+  return (
+    isJsonLdNode(node) &&
+    globalThis.Object.keys(node).some(
+      (property) =>
+        !STANDARD_COMPACT_PROOF_PROPERTIES.has(property) &&
+        !STANDARD_EXPANDED_PROOF_PROPERTIES.has(property),
+    )
+  );
 }
 
 function isExpandedJsonLdNode(value: Record<string, unknown>): boolean {
-  const properties = globalThis.Object.keys(value).filter((key) =>
-    !key.startsWith("@")
+  const properties = globalThis.Object.keys(value).filter(
+    (key) => !key.startsWith("@"),
   );
-  return properties.length > 0 &&
-    properties.every((property) => URL.canParse(property));
+  return (
+    properties.length > 0 &&
+    properties.every((property) => URL.canParse(property))
+  );
 }
 
 async function normalizeProofConfiguration(
@@ -1318,9 +1345,8 @@ async function normalizeProofConfiguration(
   documentContext: unknown,
   documentLoader: DocumentLoader,
 ): Promise<ProofConfiguration | null> {
-  let node = Array.isArray(rawProof) && rawProof.length === 1
-    ? rawProof[0]
-    : rawProof;
+  let node =
+    Array.isArray(rawProof) && rawProof.length === 1 ? rawProof[0] : rawProof;
   if (!isJsonLdNode(node)) return null;
   if (isExpandedJsonLdNode(node)) {
     if (documentContext == null) return null;
@@ -1342,13 +1368,14 @@ async function normalizeProofConfiguration(
   const context = receivedContext ?? documentContext;
   if (context != null) node["@context"] = structuredClone(context);
 
-  const proofValueProperties = await getJsonLdPropertyNames(
-    node,
-    SECURITY_PROOF_VALUE,
-    ["proofValue", SECURITY_PROOF_VALUE],
-    documentLoader,
-    context,
-  ) ?? new Set(["proofValue", SECURITY_PROOF_VALUE]);
+  const proofValueProperties =
+    (await getJsonLdPropertyNames(
+      node,
+      SECURITY_PROOF_VALUE,
+      ["proofValue", SECURITY_PROOF_VALUE],
+      documentLoader,
+      context,
+    )) ?? new Set(["proofValue", SECURITY_PROOF_VALUE]);
   for (const property of proofValueProperties) delete node[property];
   return { value: node, context };
 }
@@ -1447,8 +1474,8 @@ async function getProofOption(
   );
   if (names == null) {
     if (
-      globalThis.Object.keys(proofConfig).some((property) =>
-        !KNOWN_PROOF_CONFIGURATION_PROPERTIES.has(property)
+      globalThis.Object.keys(proofConfig).some(
+        (property) => !KNOWN_PROOF_CONFIGURATION_PROPERTIES.has(property),
       )
     ) {
       return null;
@@ -1456,7 +1483,7 @@ async function getProofOption(
     names = new Set(defaults);
   }
   const present = globalThis.Object.keys(proofConfig).filter((property) =>
-    names.has(property)
+    names.has(property),
   );
   if (present.length > 1) return null;
   return present.length < 1
@@ -1466,18 +1493,16 @@ async function getProofOption(
 
 function parseStringSet(value: unknown): Set<string> | null {
   if (typeof value === "string") return new Set([value]);
-  if (
-    !Array.isArray(value) ||
-    value.some((item) => typeof item !== "string")
-  ) {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
     return null;
   }
   return new Set(value);
 }
 
 function equalStringSets(left: Set<string>, right: Set<string>): boolean {
-  return left.size === right.size &&
-    [...left].every((value) => right.has(value));
+  return (
+    left.size === right.size && [...left].every((value) => right.has(value))
+  );
 }
 
 /**
@@ -1526,7 +1551,8 @@ async function hasValidProofOptions(
   if (options.domain != null) {
     const expectedDomains = parseStringSet(options.domain);
     if (
-      expectedDomains == null || proofDomains == null ||
+      expectedDomains == null ||
+      proofDomains == null ||
       !equalStringSets(proofDomains, expectedDomains)
     ) {
       return null;
@@ -1541,9 +1567,9 @@ async function hasValidProofOptions(
   );
   if (
     challenge == null ||
-    challenge.present && typeof challenge.value !== "string" ||
-    options.challenge != null &&
-      (!challenge.present || challenge.value !== options.challenge)
+    (challenge.present && typeof challenge.value !== "string") ||
+    (options.challenge != null &&
+      (!challenge.present || challenge.value !== options.challenge))
   ) {
     return null;
   }
@@ -1554,10 +1580,7 @@ async function hasValidProofOptions(
     ["nonce", SECURITY_NONCE],
     documentLoader,
   );
-  if (
-    nonce == null ||
-    nonce.present && typeof nonce.value !== "string"
-  ) {
+  if (nonce == null || (nonce.present && typeof nonce.value !== "string")) {
     return null;
   }
 
@@ -1569,10 +1592,10 @@ async function hasValidProofOptions(
   );
   if (
     previousProof == null ||
-    previousProof.present &&
+    (previousProof.present &&
       typeof previousProof.value !== "string" &&
       (!Array.isArray(previousProof.value) ||
-        previousProof.value.some((item) => typeof item !== "string"))
+        previousProof.value.some((item) => typeof item !== "string")))
   ) {
     return null;
   }
@@ -1595,9 +1618,10 @@ async function verifyProofInternal(
     proof.proofPurpose !== "assertionMethod" ||
     proof.proofValue == null ||
     proof.created == null
-  ) return null;
-  const proofContextLoader = messageDigestCache.proofContextLoader ??
-    preloadedOnlyDocumentLoader;
+  )
+    return null;
+  const proofContextLoader =
+    messageDigestCache.proofContextLoader ?? preloadedOnlyDocumentLoader;
   const proofConfiguration = await createProofConfiguration(
     jsonLd,
     proof,
@@ -1728,7 +1752,7 @@ async function verifyProofInternal(
     );
   };
   const messageDigestKey = serialize(proofConfiguration.context ?? null);
-  const messageDigestValues = messageDigestCache.values ??= new Map();
+  const messageDigestValues = (messageDigestCache.values ??= new Map());
   let messageDigestsPromise = messageDigestValues.get(messageDigestKey);
   if (messageDigestsPromise == null) {
     messageDigestsPromise = createProofMessageDigests(
@@ -1743,7 +1767,7 @@ async function verifyProofInternal(
   if (await verifyCandidate(messageDigests.onWire)) return publicKey;
   if (messageDigestCache.proofPropertyMode !== "literal") {
     const normalizedDigest = await messageDigests.normalized();
-    if (normalizedDigest != null && await verifyCandidate(normalizedDigest)) {
+    if (normalizedDigest != null && (await verifyCandidate(normalizedDigest))) {
       return publicKey;
     }
   }
@@ -1819,7 +1843,8 @@ function hasValidPortableProofShape(proofValue: unknown): boolean {
   if ("@graph" in proofNode) {
     const graph = proofNode["@graph"];
     if (
-      !Array.isArray(graph) || graph.length !== 1 ||
+      !Array.isArray(graph) ||
+      graph.length !== 1 ||
       !isJsonLdNode(graph[0])
     ) {
       return false;
@@ -1827,15 +1852,19 @@ function hasValidPortableProofShape(proofValue: unknown): boolean {
     proofNode = graph[0];
   }
   const types = proofNode["@type"];
-  return Array.isArray(types) &&
+  return (
+    Array.isArray(types) &&
     types.length === 1 &&
     types[0] === DATA_INTEGRITY_PROOF &&
     FUNCTIONAL_PROOF_PROPERTIES.every((property) => {
       const values = proofNode[property];
-      return Array.isArray(values) &&
+      return (
+        Array.isArray(values) &&
         values.length === 1 &&
-        !(isJsonLdNode(values[0]) && "@list" in values[0]);
-    });
+        !(isJsonLdNode(values[0]) && "@list" in values[0])
+      );
+    })
+  );
 }
 
 /**
@@ -1860,9 +1889,8 @@ function hasValidPortableActorGateways(
   if (!Array.isArray(items) || items.length < 1) return false;
   return items.every((item) => {
     if (!isJsonLdNode(item)) return false;
-    const gateway = typeof item["@id"] === "string"
-      ? item["@id"]
-      : item["@value"];
+    const gateway =
+      typeof item["@id"] === "string" ? item["@id"] : item["@value"];
     if (typeof gateway !== "string") return false;
     try {
       parseGatewayUrl(gateway);
@@ -1946,15 +1974,18 @@ interface PreparedPortableObjectProof {
 type PreparePortableObjectProofResult =
   | PreparedPortableObjectProof
   | {
-    readonly prepared: false;
-    readonly result: Extract<VerifyPortableObjectProofResult, {
-      verified: false;
-    }>;
-    /** The expanded root node, if the document got as far as expansion. */
-    readonly root?: Record<string, unknown>;
-    /** The FEP-2277 core type of the root node, if it was classified. */
-    readonly objectType?: Fep2277CoreType;
-  };
+      readonly prepared: false;
+      readonly result: Extract<
+        VerifyPortableObjectProofResult,
+        {
+          verified: false;
+        }
+      >;
+      /** The expanded root node, if the document got as far as expansion. */
+      readonly root?: Record<string, unknown>;
+      /** The FEP-2277 core type of the root node, if it was classified. */
+      readonly objectType?: Fep2277CoreType;
+    };
 
 /**
  * Gets the DID of a portable object ID, which is either an `ap:` or
@@ -2043,21 +2074,23 @@ async function preparePortableObjectProof(
 
   const proofValues = root[SECURITY_PROOF];
   if (
-    proofValues == null || Array.isArray(proofValues) && proofValues.length < 1
+    proofValues == null ||
+    (Array.isArray(proofValues) && proofValues.length < 1)
   ) {
     return {
       prepared: false,
       root,
       objectType,
-      result: objectType === "collection"
-        ? {
-          verified: false,
-          reason: { type: "unsecuredCollection" },
-        }
-        : {
-          verified: false,
-          reason: { type: "missingProof" },
-        },
+      result:
+        objectType === "collection"
+          ? {
+              verified: false,
+              reason: { type: "unsecuredCollection" },
+            }
+          : {
+              verified: false,
+              reason: { type: "missingProof" },
+            },
     };
   }
   if (!Array.isArray(proofValues)) {
@@ -2086,10 +2119,7 @@ async function preparePortableObjectProof(
     }
     let proof: DataIntegrityProof;
     try {
-      proof = await DataIntegrityProof.fromJsonLd(
-        proofValue,
-        options,
-      );
+      proof = await DataIntegrityProof.fromJsonLd(proofValue, options);
     } catch {
       return {
         prepared: false,
@@ -2197,10 +2227,10 @@ async function preparePortableObjectProof(
 type PortableObjectProofPolicyResult =
   | Extract<VerifyPortableObjectProofResult, { verified: false }>
   | {
-    readonly verified: true;
-    readonly keys: readonly Multikey[];
-    readonly objectId: string;
-  };
+      readonly verified: true;
+      readonly keys: readonly Multikey[];
+      readonly objectId: string;
+    };
 
 /**
  * Policy data for a map whose proof still needs cryptographic verification.
@@ -2224,12 +2254,12 @@ export async function preparePortableObjectProofPolicy(
 ): Promise<
   | PreparedPortableObjectProofPolicy
   | {
-    readonly prepared: false;
-    readonly result: Extract<
-      VerifyPortableObjectProofResult,
-      { verified: false }
-    >;
-  }
+      readonly prepared: false;
+      readonly result: Extract<
+        VerifyPortableObjectProofResult,
+        { verified: false }
+      >;
+    }
 > {
   const policyOptions = {
     ...options,
@@ -2238,19 +2268,24 @@ export async function preparePortableObjectProofPolicy(
   const prepared = await preparePortableObjectProof(jsonLd, policyOptions);
   if (!prepared.prepared) return { prepared: false, result: prepared.result };
   const policyProof = prepared.proofs[0];
-  const literalProof = isJsonLdNode(jsonLd) && isJsonLdNode(jsonLd.proof)
-    ? (await parseRawProofCandidates(
-      jsonLd,
-      [jsonLd.proof],
-      policyOptions,
-      prepared.proofContextLoader,
-    ))[0]?.proof
-    : null;
+  const literalProof =
+    isJsonLdNode(jsonLd) && isJsonLdNode(jsonLd.proof)
+      ? (
+          await parseRawProofCandidates(
+            jsonLd,
+            [jsonLd.proof],
+            policyOptions,
+            prepared.proofContextLoader,
+          )
+        )[0]?.proof
+      : null;
   const verificationMethod = policyProof?.verificationMethodId;
   if (
     prepared.proofs.length !== 1 ||
-    policyProof == null || literalProof == null ||
-    !sameProof(policyProof, literalProof) || verificationMethod == null
+    policyProof == null ||
+    literalProof == null ||
+    !sameProof(policyProof, literalProof) ||
+    verificationMethod == null
   ) {
     return {
       prepared: false,
@@ -2535,17 +2570,17 @@ export interface ProofSigner {
  */
 export type VerifyObjectDetailedResult<T> =
   | {
-    readonly status: "verified";
-    readonly object: T;
-    /** The signers of the verified proofs; empty if there were none. */
-    readonly signers: readonly ProofSigner[];
-  }
+      readonly status: "verified";
+      readonly object: T;
+      /** The signers of the verified proofs; empty if there were none. */
+      readonly signers: readonly ProofSigner[];
+    }
   | { readonly status: "invalid" }
   | {
-    /** A proof's key could not be obtained for a retryable reason. */
-    readonly status: "unavailable";
-    readonly error: unknown;
-  };
+      /** A proof's key could not be obtained for a retryable reason. */
+      readonly status: "unavailable";
+      readonly error: unknown;
+    };
 
 /**
  * Same as {@link verifyObject}, but also tells who signed the verified proofs,
@@ -2582,17 +2617,19 @@ export async function verifyObjectDetailed<T extends Object>(
         return { status: "unavailable", error: check.error };
       }
       if (
-        check.status === "rejected" && check.reason.type === "keyFetchError" &&
+        check.status === "rejected" &&
+        check.reason.type === "keyFetchError" &&
         isRetryableKeyFetchError(check.reason.result)
       ) {
         return {
           status: "unavailable",
-          error: "error" in check.reason.result
-            ? check.reason.result.error
-            : new Error(
-              `Fetching key ${check.reason.keyId.href} failed with ` +
-                `${check.reason.result.status}.`,
-            ),
+          error:
+            "error" in check.reason.result
+              ? check.reason.result.error
+              : new Error(
+                  `Fetching key ${check.reason.keyId.href} failed with ` +
+                    `${check.reason.result.status}.`,
+                ),
         };
       }
     }
@@ -2601,11 +2638,14 @@ export async function verifyObjectDetailed<T extends Object>(
   if (options[verificationObservation]?.attempt == null) {
     const observedOptions = {
       ...options,
-      [verificationObservation]: options[verificationObservation] ??
-        { attempts: [], captureRawKeyIds: false },
+      [verificationObservation]: options[verificationObservation] ?? {
+        attempts: [],
+        captureRawKeyIds: false,
+      },
     };
-    const tracer = (options.tracerProvider ?? trace.getTracerProvider())
-      .getTracer(metadata.name, metadata.version);
+    const tracer = (
+      options.tracerProvider ?? trace.getTracerProvider()
+    ).getTracer(metadata.name, metadata.version);
     return await tracer.startActiveSpan(
       "object_integrity_proofs.verify_object",
       async (span) => {
@@ -2650,8 +2690,7 @@ export async function verifyObjectDetailed<T extends Object>(
 
 function isRetryableKeyFetchError(result: FetchKeyErrorResult): boolean {
   if ("error" in result) return isTransientFetchError(result.error);
-  return result.status >= 500 || result.status === 408 ||
-    result.status === 429;
+  return result.status >= 500 || result.status === 408 || result.status === 429;
 }
 
 async function verifyObjectCore<T extends Object>(
@@ -2677,18 +2716,15 @@ async function verifyObjectCore<T extends Object>(
     for (const uri of object.actorIds) attributions.add(uri.href);
   }
   const rawProofValues = isJsonLdNode(jsonLd)
-    ? await getRawProofValues(
-      jsonLd,
-      proofContextLoader,
-    )
+    ? await getRawProofValues(jsonLd, proofContextLoader)
     : [];
   const rawProofCandidates = isJsonLdNode(jsonLd)
     ? await parseRawProofCandidates(
-      jsonLd,
-      rawProofValues,
-      options,
-      proofContextLoader,
-    )
+        jsonLd,
+        rawProofValues,
+        options,
+        proofContextLoader,
+      )
     : [];
   const rawProofCandidatePool: RawProofCandidatePool = {
     candidates: rawProofCandidates,
@@ -2709,10 +2745,7 @@ async function verifyObjectCore<T extends Object>(
     acceptedPortableProofs++;
     return { verified: true };
   };
-  const proofDocumentLoader: DocumentLoader = async (
-    url,
-    loaderOptions,
-  ) => {
+  const proofDocumentLoader: DocumentLoader = async (url, loaderOptions) => {
     const remoteDocument = await baseDocumentLoader(url, loaderOptions);
     if (isPortableId(url)) loadedPortableProofs++;
     const reference = normalizeDocumentUrl(url);
@@ -2725,20 +2758,18 @@ async function verifyObjectCore<T extends Object>(
     if (candidateIndex >= 0) {
       hydratedCandidates.add(candidateIndex);
       let parsed: DataIntegrityProof | null = null;
-      const contexts = options[verificationObservation] != null &&
-          options[verificationObservation]?.captureRawKeyIds !== false
-        ? recordProofContexts(proofContextLoader)
-        : undefined;
+      const contexts =
+        options[verificationObservation] != null &&
+        options[verificationObservation]?.captureRawKeyIds !== false
+          ? recordProofContexts(proofContextLoader)
+          : undefined;
       try {
-        parsed = await DataIntegrityProof.fromJsonLd(
-          remoteDocument.document,
-          {
-            documentLoader: baseDocumentLoader,
-            contextLoader: contexts?.loader ?? proofContextLoader,
-            tracerProvider: options.tracerProvider,
-            baseUrl: parseIri(remoteDocument.documentUrl),
-          },
-        );
+        parsed = await DataIntegrityProof.fromJsonLd(remoteDocument.document, {
+          documentLoader: baseDocumentLoader,
+          contextLoader: contexts?.loader ?? proofContextLoader,
+          tracerProvider: options.tracerProvider,
+          baseUrl: parseIri(remoteDocument.documentUrl),
+        });
       } catch {
         // The vocabulary parser will report the same malformed remote proof.
       }
@@ -2746,31 +2777,30 @@ async function verifyObjectCore<T extends Object>(
         value: structuredClone(remoteDocument.document),
         proof: parsed,
         reference,
-        declaredKeyId: contexts == null
-          ? undefined
-          : await getAliasedDeclaredProofKeyId(
-            remoteDocument.document,
-            undefined,
-            contexts.replay,
-          ),
+        declaredKeyId:
+          contexts == null
+            ? undefined
+            : await getAliasedDeclaredProofKeyId(
+                remoteDocument.document,
+                undefined,
+                contexts.replay,
+              ),
       };
     }
     return remoteDocument;
   };
-  for await (
-    const proof of object.getProofs({
-      ...options,
-      documentLoader: proofDocumentLoader,
-      // Keep loading portable proof references through the document loader
-      // under their own IRIs, so that proofDocumentLoader can match them with
-      // their raw proof candidates:
-      gateways: [],
-      verifyPortableObject: acceptPortableProofDocument,
-      // The proofs are cached in the returned object, so they must not keep
-      // the verifier that accepts everything as their default:
-      inheritPortableObjectVerifier: false,
-    })
-  ) {
+  for await (const proof of object.getProofs({
+    ...options,
+    documentLoader: proofDocumentLoader,
+    // Keep loading portable proof references through the document loader
+    // under their own IRIs, so that proofDocumentLoader can match them with
+    // their raw proof candidates:
+    gateways: [],
+    verifyPortableObject: acceptPortableProofDocument,
+    // The proofs are cached in the returned object, so they must not keep
+    // the verifier that accepts everything as their default:
+    inheritPortableObjectVerifier: false,
+  })) {
     const rawProofCandidate = takeRawProofCandidate(
       rawProofCandidatePool,
       proof,
@@ -2788,10 +2818,9 @@ async function verifyObjectCore<T extends Object>(
     if (key === null) return null;
     if (proof.verificationMethodId == null) return null;
     if (key.controllerId == null) {
-      logger.debug(
-        "Key {keyId} does not have a controller.",
-        { keyId: key.id?.href },
-      );
+      logger.debug("Key {keyId} does not have a controller.", {
+        keyId: key.id?.href,
+      });
       continue;
     }
     deleteAuthenticatedAttribution(
@@ -2805,9 +2834,11 @@ async function verifyObjectCore<T extends Object>(
     );
     if (
       signer != null &&
-      !signers.some((s) =>
-        s.kind === signer.kind && s.id.href === signer.id.href &&
-        s.keyId.href === proof.verificationMethodId!.href
+      !signers.some(
+        (s) =>
+          s.kind === signer.kind &&
+          s.id.href === signer.id.href &&
+          s.keyId.href === proof.verificationMethodId!.href,
       )
     ) {
       signers.push({ ...signer, keyId: proof.verificationMethodId });
@@ -2819,12 +2850,13 @@ async function verifyObjectCore<T extends Object>(
   }
   if (attributions.size > 0) {
     if (observation?.attempt != null) {
-      observation.attempt.reason = observation.attempt.checks.length === 0
-        ? { type: "noSignature" }
-        : {
-          type: "uncoveredAttribution",
-          attributionIds: [...attributions].map((id) => new URL(id)),
-        };
+      observation.attempt.reason =
+        observation.attempt.checks.length === 0
+          ? { type: "noSignature" }
+          : {
+              type: "uncoveredAttribution",
+              attributionIds: [...attributions].map((id) => new URL(id)),
+            };
     }
 
     logger.debug(
@@ -2858,14 +2890,17 @@ function getAuthenticatedController(
   verificationMethodId: URL,
 ): { readonly kind: "actor" | "portableAuthority"; readonly id: URL } | null {
   if (
-    !hasCryptographicOrigin(controllerId.href) && !isPortableId(controllerId)
+    !hasCryptographicOrigin(controllerId.href) &&
+    !isPortableId(controllerId)
   ) {
     return { kind: "actor", id: controllerId };
   }
   const did = getPortableDid(controllerId);
   if (
-    did == null || !hasCryptographicOrigin(verificationMethodId.href) ||
-    getPortableDid(verificationMethodId) !== did || !URL.canParse(did)
+    did == null ||
+    !hasCryptographicOrigin(verificationMethodId.href) ||
+    getPortableDid(verificationMethodId) !== did ||
+    !URL.canParse(did)
   ) {
     return null;
   }
@@ -2880,7 +2915,8 @@ function deleteAuthenticatedAttribution(
   // A compatible identifier stands for a portable object, so a controller
   // at one is as cryptographic as an `ap:` URI:
   if (
-    !hasCryptographicOrigin(controllerId.href) && !isPortableId(controllerId)
+    !hasCryptographicOrigin(controllerId.href) &&
+    !isPortableId(controllerId)
   ) {
     attributions.delete(controllerId.href);
     return;
@@ -2890,7 +2926,8 @@ function deleteAuthenticatedAttribution(
   // DID; the web origin of a compatible identifier authenticates nothing:
   const did = getPortableDid(controllerId);
   if (
-    did == null || !hasCryptographicOrigin(verificationMethodId.href) ||
+    did == null ||
+    !hasCryptographicOrigin(verificationMethodId.href) ||
     getPortableDid(verificationMethodId) !== did
   ) {
     return;

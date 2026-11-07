@@ -68,11 +68,11 @@ function fetchPinned(
   return attempt(() =>
     withSignals
       ? pinner.fetch(
-        grant,
-        new Request(url, { signal: new AbortController().signal }),
-        new AbortController().signal,
-      )
-      : pinner.fetch(grant, new Request(url))
+          grant,
+          new Request(url, { signal: new AbortController().signal }),
+          new AbortController().signal,
+        )
+      : pinner.fetch(grant, new Request(url)),
   );
 }
 
@@ -94,26 +94,24 @@ async function proxy(
     fetch(`http://127.0.0.1:${httpPort}/control`, {
       redirect: "manual",
       signal: AbortSignal.timeout(10_000),
-    })
+    }),
   );
   return { version: process.version, http, https, control };
 }
 
 async function tls(pinner: ConnectionPinner, port: number): Promise<unknown> {
   const results: ({ readonly case: string } & Result)[] = [];
-  for (
-    const [name, hostname, withSignals] of [
-      ["pinned", "pinned-host.invalid", false],
-      ["unlisted", "unlisted-host.invalid", false],
-      ["unlisted-again", "unlisted-host.invalid", false],
-      ["alternate", "alternate-host.invalid", false],
-      ["signals", "pinned-host.invalid", true],
-    ] as const
-  ) {
+  for (const [name, hostname, withSignals] of [
+    ["pinned", "pinned-host.invalid", false],
+    ["unlisted", "unlisted-host.invalid", false],
+    ["unlisted-again", "unlisted-host.invalid", false],
+    ["alternate", "alternate-host.invalid", false],
+    ["signals", "pinned-host.invalid", true],
+  ] as const) {
     const url = new URL(`https://${hostname}:${port}/${name}`);
     results.push({
       case: name,
-      ...await fetchPinned(pinner, url, withSignals),
+      ...(await fetchPinned(pinner, url, withSignals)),
     });
   }
   return { version: process.version, results };

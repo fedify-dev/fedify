@@ -2,9 +2,7 @@
 // https://github.com/fedify-dev/fedify/issues/74
 // cSpell: disable
 
-import activitystreams from "./contexts/activitystreams.json" with {
-  type: "json",
-};
+import activitystreams from "./contexts/activitystreams.json" with { type: "json" };
 import cidV1Context from "./contexts/cid-v1.json" with { type: "json" };
 import didV1 from "./contexts/did-v1.json" with { type: "json" };
 import fep22cd from "./contexts/fep-22cd.json" with { type: "json" };
@@ -18,15 +16,9 @@ import joinLemmyContext from "./contexts/join-lemmy.json" with { type: "json" };
 import joinmastodon from "./contexts/joinmastodon.json" with { type: "json" };
 import miscellany from "./contexts/miscellany.json" with { type: "json" };
 import schemaorg from "./contexts/schemaorg.json" with { type: "json" };
-import securityDataIntegrityV1 from "./contexts/security-data-integrity-v1.json" with {
-  type: "json",
-};
-import securityDataIntegrityV2 from "./contexts/security-data-integrity-v2.json" with {
-  type: "json",
-};
-import securityMultikeyV1 from "./contexts/security-multikey-v1.json" with {
-  type: "json",
-};
+import securityDataIntegrityV1 from "./contexts/security-data-integrity-v1.json" with { type: "json" };
+import securityDataIntegrityV2 from "./contexts/security-data-integrity-v2.json" with { type: "json" };
+import securityMultikeyV1 from "./contexts/security-multikey-v1.json" with { type: "json" };
 import securityV1 from "./contexts/security-v1.json" with { type: "json" };
 import webfinger from "./contexts/webfinger.json" with { type: "json" };
 const preloadedContexts: Record<string, unknown> = {

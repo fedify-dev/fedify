@@ -8,9 +8,9 @@ import { isIP } from "node:net";
 // Deno's ambient types.  It is only accessed after checking that it exists.
 declare const Deno: {
   readonly permissions: {
-    query(
-      descriptor: { readonly name: "net" },
-    ): Promise<{ readonly state: string }>;
+    query(descriptor: {
+      readonly name: "net";
+    }): Promise<{ readonly state: string }>;
   };
 };
 
@@ -61,7 +61,8 @@ function prepareUrlInput(iri: string): string {
     prepared = prepared.slice(1);
   }
   while (
-    prepared.length > 0 && prepared.charCodeAt(prepared.length - 1) <= 0x20
+    prepared.length > 0 &&
+    prepared.charCodeAt(prepared.length - 1) <= 0x20
   ) {
     prepared = prepared.slice(0, -1);
   }
@@ -88,12 +89,14 @@ function assertCompatiblePathCanBeParsed(raw: string, parsed: URL): void {
     COMPATIBLE_ID_DID_PATTERN.test(
       parsed.pathname.slice(COMPATIBLE_ID_PATH_PREFIX.length),
     );
-  const rawCompatiblePath = rawPath.startsWith(COMPATIBLE_ID_PATH_PREFIX) &&
+  const rawCompatiblePath =
+    rawPath.startsWith(COMPATIBLE_ID_PATH_PREFIX) &&
     COMPATIBLE_ID_DID_PATTERN.test(
       rawPath.slice(COMPATIBLE_ID_PATH_PREFIX.length),
     );
   if (
-    (compatiblePath || rawCompatiblePath) && DOT_SEGMENT_PATTERN.test(rawPath)
+    (compatiblePath || rawCompatiblePath) &&
+    DOT_SEGMENT_PATTERN.test(rawPath)
   ) {
     throw new TypeError(
       "FEP-ef61 compatible identifier paths with dot segments cannot be represented as URLs.",
@@ -247,10 +250,7 @@ export function canonicalizePortableUri(input: string): string {
  *
  * @since 2.4.0
  */
-export function arePortableUrisEqual(
-  left: string,
-  right: string,
-): boolean {
+export function arePortableUrisEqual(left: string, right: string): boolean {
   if (typeof left !== "string" || typeof right !== "string") return false;
   if (left === right) return true;
   if (!PORTABLE_IRI_PATTERN.test(left) || !PORTABLE_IRI_PATTERN.test(right)) {
@@ -338,11 +338,10 @@ function getComparableIriOrigin(iri: URL): string {
   iri = normalizePortableUrl(iri) ?? iri;
   if (iri.origin !== "null") return iri.origin;
   if (iri.host !== "") {
-    const host = iri.protocol === "ap+ef61:"
-      ? encodeURIComponent(
-        getDidUrlOrigin(decodePortableAuthority(iri.host)),
-      )
-      : iri.host;
+    const host =
+      iri.protocol === "ap+ef61:"
+        ? encodeURIComponent(getDidUrlOrigin(decodePortableAuthority(iri.host)))
+        : iri.host;
     return `${iri.protocol}//${host}`;
   }
   return iri.href;
@@ -396,10 +395,12 @@ function normalizeBaseIri(base?: string | URL): string | URL | undefined {
   if (URL.canParse(base)) {
     assertCompatiblePathCanBeParsed(base, new URL(base));
   }
-  return parsePortableIri(base) ??
+  return (
+    parsePortableIri(base) ??
     (base.startsWith("at://") && !URL.canParse(".", base)
       ? parseAtUri(base)
-      : base);
+      : base)
+  );
 }
 
 function decodePortableAuthority(authority: string): string {
@@ -413,9 +414,8 @@ function decodePortableAuthority(authority: string): string {
     }
     return decoded;
   }
-  const decoded = authority.replace(
-    /%(25|3A)/gi,
-    (match) => match.toLowerCase() === "%3a" ? ":" : "%",
+  const decoded = authority.replace(/%(25|3A)/gi, (match) =>
+    match.toLowerCase() === "%3a" ? ":" : "%",
   );
   if (INVALID_PERCENT_ENCODING_PATTERN.test(decoded)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
@@ -424,9 +424,8 @@ function decodePortableAuthority(authority: string): string {
 }
 
 function normalizePercentEncoding(value: string): string {
-  return value.replace(
-    PERCENT_ENCODING_PATTERN,
-    (match) => match.toUpperCase(),
+  return value.replace(PERCENT_ENCODING_PATTERN, (match) =>
+    match.toUpperCase(),
   );
 }
 
@@ -444,26 +443,21 @@ function normalizePortableComponent(value: string): string {
   if (INVALID_PERCENT_ENCODING_PATTERN.test(value)) {
     throw new TypeError("Invalid portable ActivityPub IRI component.");
   }
-  return value.replace(
-    /%[0-9A-Fa-f]{2}|[^%]+/g,
-    (match) => {
-      if (match.startsWith("%")) {
-        const upper = match.toUpperCase();
-        const decoded = String.fromCharCode(
-          Number.parseInt(upper.slice(1), 16),
-        );
-        return /[A-Za-z0-9._~-]/.test(decoded) ? decoded : upper;
+  return value.replace(/%[0-9A-Fa-f]{2}|[^%]+/g, (match) => {
+    if (match.startsWith("%")) {
+      const upper = match.toUpperCase();
+      const decoded = String.fromCharCode(Number.parseInt(upper.slice(1), 16));
+      return /[A-Za-z0-9._~-]/.test(decoded) ? decoded : upper;
+    }
+    try {
+      return encodeURI(match);
+    } catch (error) {
+      if (error instanceof URIError) {
+        throw new TypeError("Invalid portable ActivityPub IRI component.");
       }
-      try {
-        return encodeURI(match);
-      } catch (error) {
-        if (error instanceof URIError) {
-          throw new TypeError("Invalid portable ActivityPub IRI component.");
-        }
-        throw error;
-      }
-    },
-  );
+      throw error;
+    }
+  });
 }
 
 function parseAtUri(uri: string): URL {
@@ -487,8 +481,10 @@ function parseAtUri(uri: string): URL {
  * @since 2.4.0
  */
 export function isGatewayUrl(url: URL): boolean {
-  return (url.protocol === "http:" || url.protocol === "https:") &&
-    url.href === `${url.origin}/`;
+  return (
+    (url.protocol === "http:" || url.protocol === "https:") &&
+    url.href === `${url.origin}/`
+  );
 }
 
 /**
@@ -572,9 +568,10 @@ function convertCompatibleEf61Id(
   input: string | URL,
 ): { url: URL; iri: string } | null {
   let url: URL;
-  const rawPrefix = typeof input === "string"
-    ? input.match(RAW_COMPATIBLE_ID_PREFIX_PATTERN)
-    : null;
+  const rawPrefix =
+    typeof input === "string"
+      ? input.match(RAW_COMPATIBLE_ID_PREFIX_PATTERN)
+      : null;
   if (input instanceof URL) url = input;
   else if (typeof input === "string" && URL.canParse(input)) {
     url = new URL(input);
@@ -612,13 +609,15 @@ function convertCompatibleEf61Id(
   }
   // Slice href instead of concatenating pathname, search, and hash, because
   // the latter two drop empty query and fragment delimiters.
-  const iri = "ap+ef61://" +
+  const iri =
+    "ap+ef61://" +
     url.href.slice(url.origin.length + COMPATIBLE_ID_PATH_PREFIX.length);
   try {
     const parsed = parsePortableIri(iri);
     if (parsed == null) throw new TypeError("Not a portable IRI.");
     if (
-      typeof input === "string" && rawPrefix != null &&
+      typeof input === "string" &&
+      rawPrefix != null &&
       canonicalizePortableUri("ap://" + input.slice(rawPrefix[0].length)) !==
         canonicalizePortableUri(iri)
     ) {
@@ -629,9 +628,10 @@ function convertCompatibleEf61Id(
     canonicalizePortableUri(iri);
     // canonicalizePortableUri() ignores the query, so validate it here too.
     // Compatible identifiers must not have location hints:
-    const query = url.search === ""
-      ? []
-      : normalizePortableComponent(url.search.slice(1)).split("&");
+    const query =
+      url.search === ""
+        ? []
+        : normalizePortableComponent(url.search.slice(1)).split("&");
     if (query.some(isLocationHint)) {
       throw new TypeError("Location hints are not allowed.");
     }
@@ -706,12 +706,17 @@ export function toCompatibleEf61Id(
   }
   // Normalize the query before looking for location hints so that characters
   // which the URL parser strips (e.g., tabs) cannot form a hint name later:
-  const query = match[4] == null
-    ? ""
-    : stripLocationHints(normalizePortableComponent(match[4].slice(1)));
+  const query =
+    match[4] == null
+      ? ""
+      : stripLocationHints(normalizePortableComponent(match[4].slice(1)));
   const fragment = match[5] == null ? "" : normalizePortableComponent(match[5]);
   const result = new URL(
-    gatewayUrl.origin + COMPATIBLE_ID_PATH_PREFIX + did + path + query +
+    gatewayUrl.origin +
+      COMPATIBLE_ID_PATH_PREFIX +
+      did +
+      path +
+      query +
       fragment,
   );
   // Guard against URL parser normalization that would silently change the
@@ -731,11 +736,12 @@ export function toCompatibleEf61Id(
 }
 
 function parseCompatibleEf61Gateway(gateway: string | URL): URL {
-  const url = gateway instanceof URL
-    ? gateway
-    : typeof gateway === "string" && URL.canParse(gateway)
-    ? new URL(gateway)
-    : null;
+  const url =
+    gateway instanceof URL
+      ? gateway
+      : typeof gateway === "string" && URL.canParse(gateway)
+        ? new URL(gateway)
+        : null;
   if (url == null || !isGatewayUrl(url)) {
     throw new TypeError(
       "FEP-ef61 gateways for compatible identifiers must be HTTP(S) origins " +
@@ -752,7 +758,8 @@ function getRawPortableIri(portableId: string | URL): string {
     }
     // parseIri() would fold a port into the DID and drop credentials:
     if (
-      portableId.username !== "" || portableId.password !== "" ||
+      portableId.username !== "" ||
+      portableId.password !== "" ||
       portableId.port !== ""
     ) {
       throw new TypeError("Invalid portable ActivityPub IRI authority.");
@@ -870,7 +877,8 @@ export function withGatewayHints(
     if (url == null) {
       throw new TypeError(
         "FEP-ef61 gateways must be HTTP(S) origins with no credentials, " +
-          "path, query, or fragment: " + String(gateway),
+          "path, query, or fragment: " +
+          String(gateway),
       );
     }
     if (seen.has(url.href)) continue;
@@ -953,9 +961,8 @@ function splitPortableIri(portableId: string | URL): PortableIriParts {
     raw,
     parsed,
     path: normalizePortableComponent(match[3]),
-    query: match[4] == null
-      ? null
-      : normalizePortableComponent(match[4].slice(1)),
+    query:
+      match[4] == null ? null : normalizePortableComponent(match[4].slice(1)),
     fragment: match[5] == null ? "" : normalizePortableComponent(match[5]),
   };
 }
@@ -965,11 +972,9 @@ function parseGatewayHints(query: string): URL[] {
   const seen = new Set<string>();
   // Keep the delimiter, as URLSearchParams would otherwise strip a leading
   // question mark that is part of the first parameter's name:
-  for (
-    const hint of new URLSearchParams(`?${query}`).getAll(
-      GATEWAY_HINT_PARAMETER,
-    )
-  ) {
+  for (const hint of new URLSearchParams(`?${query}`).getAll(
+    GATEWAY_HINT_PARAMETER,
+  )) {
     const url = parseGatewayOrigin(hint);
     if (url == null || seen.has(url.href)) continue;
     seen.add(url.href);
@@ -982,11 +987,12 @@ function replaceGatewayHints(
   parts: PortableIriParts,
   hints: readonly URL[],
 ): URL {
-  const pairs = parts.query == null
-    ? []
-    : parts.query.split("&").filter((pair) =>
-      pair !== "" && !isLocationHint(pair)
-    );
+  const pairs =
+    parts.query == null
+      ? []
+      : parts.query
+          .split("&")
+          .filter((pair) => pair !== "" && !isLocationHint(pair));
   for (const hint of hints) {
     pairs.push(`${GATEWAY_HINT_PARAMETER}=${encodeURIComponent(hint.origin)}`);
   }
@@ -1000,9 +1006,9 @@ function replaceGatewayHints(
     result == null ||
     canonicalizePortableUri(result.href) !==
       canonicalizePortableUri(parts.raw) ||
-    parseGatewayHints(result.search.slice(1)).map((url) => url.href).join(
-        " ",
-      ) !== hints.map((url) => url.href).join(" ")
+    parseGatewayHints(result.search.slice(1))
+      .map((url) => url.href)
+      .join(" ") !== hints.map((url) => url.href).join(" ")
   ) {
     throw new TypeError(
       "The portable ActivityPub IRI cannot be represented as a URL without " +
@@ -1176,8 +1182,8 @@ export function validateLookupAddresses(
 
 function validatePublicIpAddress(address: string, family: number): void {
   if (
-    family === 4 && isValidPublicIPv4Address(address) ||
-    family === 6 && isValidPublicIPv6Address(address)
+    (family === 4 && isValidPublicIPv4Address(address)) ||
+    (family === 6 && isValidPublicIPv6Address(address))
   ) {
     return;
   }
@@ -1189,7 +1195,7 @@ export function isValidPublicIPv4Address(address: string): boolean {
   if (parts == null) return false;
   const value = ipv4PartsToNumber(parts);
   return !nonPublicIPv4Prefixes.some(({ base, prefix }) =>
-    matchesIPv4Prefix(value, base, prefix)
+    matchesIPv4Prefix(value, base, prefix),
   );
 }
 
@@ -1198,12 +1204,15 @@ export function isValidPublicIPv6Address(address: string): boolean {
   if (words == null) return false;
   if (
     nonPublicIPv6Prefixes.some(({ words: prefixWords, prefix }) =>
-      matchesIPv6Prefix(words, prefixWords, prefix)
+      matchesIPv6Prefix(words, prefixWords, prefix),
     )
-  ) return false;
-  for (
-    const { extractIPv4, prefix, words: prefixWords } of ipv6WithIPv4Prefixes
-  ) {
+  )
+    return false;
+  for (const {
+    extractIPv4,
+    prefix,
+    words: prefixWords,
+  } of ipv6WithIPv4Prefixes) {
     if (!matchesIPv6Prefix(words, prefixWords, prefix)) continue;
     const ipv4Address = extractIPv4(words);
     if (ipv4Address != null && !isValidPublicIPv4Address(ipv4Address)) {
@@ -1221,8 +1230,11 @@ export function expandIPv6Address(address: string): string {
     if (ipv4Parts == null) return address;
     const high = (ipv4Parts[0] << 8) + ipv4Parts[1];
     const low = (ipv4Parts[2] << 8) + ipv4Parts[3];
-    address = address.substring(0, ipv4Delimiter + 1) +
-      high.toString(16) + ":" + low.toString(16);
+    address =
+      address.substring(0, ipv4Delimiter + 1) +
+      high.toString(16) +
+      ":" +
+      low.toString(16);
   }
   if (address === "::") return "0000:0000:0000:0000:0000:0000:0000:0000";
   if (address.startsWith("::")) address = "0000" + address;
@@ -1307,7 +1319,10 @@ function ipv6Prefix(cidr: string, rfc: string): IPv6Prefix {
   const prefix = parseInt(prefixText, 10);
   const words = parseIPv6Address(address);
   if (
-    words == null || !Number.isInteger(prefix) || prefix < 0 || prefix > 128
+    words == null ||
+    !Number.isInteger(prefix) ||
+    prefix < 0 ||
+    prefix > 128
   ) {
     throw new Error(`Invalid IPv6 prefix: ${cidr}`);
   }
@@ -1324,7 +1339,8 @@ function parseIPv4Address(address: string): number[] | null {
   if (
     parts.length !== 4 ||
     parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)
-  ) return null;
+  )
+    return null;
   return parts;
 }
 
@@ -1339,22 +1355,19 @@ function parseIPv6Address(address: string): number[] | null {
   // they make future parser changes fail closed.
   if (
     words.some((word) => !Number.isInteger(word) || word < 0 || word > 0xffff)
-  ) return null;
+  )
+    return null;
   return words;
 }
 
 function ipv4PartsToNumber(parts: number[]): number {
-  return parts[0] * 2 ** 24 + parts[1] * 2 ** 16 + parts[2] * 2 ** 8 +
-    parts[3];
+  return parts[0] * 2 ** 24 + parts[1] * 2 ** 16 + parts[2] * 2 ** 8 + parts[3];
 }
 
 function ipv4FromWords(highWord: number, lowWord: number): string {
-  return [
-    highWord >> 8,
-    highWord & 0xff,
-    lowWord >> 8,
-    lowWord & 0xff,
-  ].join(".");
+  return [highWord >> 8, highWord & 0xff, lowWord >> 8, lowWord & 0xff].join(
+    ".",
+  );
 }
 
 function matchesIPv4Prefix(

@@ -31,22 +31,23 @@ const honoDescription: WebFrameworkDescription = {
         replace(/\/\* hono \*\//, pm === "deno" ? "@hono/hono" : "hono"),
         replace(/\/\* logger \*\//, projectName),
       ),
-      "src/index.ts": await readTemplate(
-        `hono/index/${pmToRt(pm)}.ts`,
-      ),
+      "src/index.ts": await readTemplate(`hono/index/${pmToRt(pm)}.ts`),
     },
-    compilerOptions: pm === "deno" ? undefined : {
-      "lib": ["ESNext", "DOM"],
-      "target": "ESNext",
-      "module": "NodeNext",
-      "moduleResolution": "NodeNext",
-      "allowImportingTsExtensions": true,
-      "verbatimModuleSyntax": true,
-      "noEmit": true,
-      "strict": true,
-      "jsx": "react-jsx",
-      "jsxImportSource": "hono/jsx",
-    },
+    compilerOptions:
+      pm === "deno"
+        ? undefined
+        : {
+            "lib": ["ESNext", "DOM"],
+            "target": "ESNext",
+            "module": "NodeNext",
+            "moduleResolution": "NodeNext",
+            "allowImportingTsExtensions": true,
+            "verbatimModuleSyntax": true,
+            "noEmit": true,
+            "strict": true,
+            "jsx": "react-jsx",
+            "jsxImportSource": "hono/jsx",
+          },
     tasks: TASKS[pmToRt(pm)],
     instruction: getInstruction(pm, 8000),
   }),
@@ -57,25 +58,25 @@ export default honoDescription;
 const getDependencies = (pm: string): Record<string, string> =>
   pm === "deno"
     ? {
-      ...defaultDenoDependencies,
-      "@hono/hono": deps["@hono/hono"],
-      "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
-      "@fedify/hono": PACKAGE_VERSION,
-    }
+        ...defaultDenoDependencies,
+        "@hono/hono": deps["@hono/hono"],
+        "@hongminhee/x-forwarded-fetch": deps["@hongminhee/x-forwarded-fetch"],
+        "@fedify/hono": PACKAGE_VERSION,
+      }
     : pm === "bun"
-    ? {
-      hono: deps["npm:hono"],
-      "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
-      "@fedify/hono": PACKAGE_VERSION,
-    }
-    : {
-      "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
-      hono: deps["npm:hono"],
-      "@hono/node-server": deps["npm:@hono/node-server"],
-      tsx: deps["npm:tsx"],
-      "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
-      "@fedify/hono": PACKAGE_VERSION,
-    };
+      ? {
+          hono: deps["npm:hono"],
+          "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
+          "@fedify/hono": PACKAGE_VERSION,
+        }
+      : {
+          "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+          hono: deps["npm:hono"],
+          "@hono/node-server": deps["npm:@hono/node-server"],
+          tsx: deps["npm:tsx"],
+          "x-forwarded-fetch": deps["npm:x-forwarded-fetch"],
+          "@fedify/hono": PACKAGE_VERSION,
+        };
 
 const TASKS = {
   deno: {

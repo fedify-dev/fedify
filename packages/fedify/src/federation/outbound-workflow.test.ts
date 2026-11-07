@@ -25,7 +25,8 @@ const { Deno: deno } = globalThis as typeof globalThis & {
 test({
   name: "outbound recorder archives real HTTP exchanges across a queued retry",
   // The package Deno suite is offline; focused --allow-all and Node/Bun run it.
-  ignore: deno != null &&
+  ignore:
+    deno != null &&
     (await deno.permissions.query({ name: "net" })).state !== "granted",
   async fn() {
     let accepting = false;
@@ -106,7 +107,8 @@ test({
       },
     });
     try {
-      await federation.createContext(new URL("https://example.com"), undefined)
+      await federation
+        .createContext(new URL("https://example.com"), undefined)
         .sendActivity(
           { keyId: rsaPublicKey2.id!, privateKey: rsaPrivateKey2 },
           new Person({ id: new URL(inbox.origin + "/actor"), inbox }),
@@ -124,8 +126,8 @@ test({
       ok(attempts[0].outcome.response.type === "final");
       strictEqual(attempts[0].outcome.response.metadata.status, 503);
       strictEqual(queued.length, 1);
-      const retry = workers[0].actions.find((action) =>
-        action.type === "scheduled" && action.action === "retry"
+      const retry = workers[0].actions.find(
+        (action) => action.type === "scheduled" && action.action === "retry",
       );
       ok(retry?.type === "scheduled");
       strictEqual(retry.queue.queueAttempt, 1);
@@ -143,10 +145,9 @@ test({
         strictEqual(report.senderPayload.type, "available");
         strictEqual(
           report.httpExchangeCount,
-          exchanges.filter((exchange) =>
-            exchange.attemptId === report.attemptId
-          )
-            .length,
+          exchanges.filter(
+            (exchange) => exchange.attemptId === report.attemptId,
+          ).length,
         );
       }
       strictEqual(received.length, exchanges.length);
@@ -165,11 +166,14 @@ test({
           received[index].status === 503 ? "retry later" : "accepted",
         );
       }
-      deepStrictEqual(workers.map((worker) => worker.attemptsStarted), [1, 1]);
+      deepStrictEqual(
+        workers.map((worker) => worker.attemptsStarted),
+        [1, 1],
+      );
       deepStrictEqual(receiverErrors, []);
     } finally {
       const closed = new Promise<void>((resolve, reject) =>
-        server.close((error) => error ? reject(error) : resolve())
+        server.close((error) => (error ? reject(error) : resolve())),
       );
       server.closeAllConnections();
       await closed;

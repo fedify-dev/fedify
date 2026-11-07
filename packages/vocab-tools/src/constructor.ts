@@ -22,9 +22,10 @@ function generateParameterType(
       );
     } else {
       code.push(
-        `${property.singularName}?: ${
-          getTypeNames(range, types)
-        } | URL | null;`,
+        `${property.singularName}?: ${getTypeNames(
+          range,
+          types,
+        )} | URL | null;`,
       );
     }
   }
@@ -53,12 +54,12 @@ async function* generateParametersType(
   if (type.extends == null) {
     yield `id?: URL | null;\n`;
   } else {
-    for await (
-      const code of generateParametersType(type.extends, types, false, [
-        ...excludeProperties,
-        ...type.properties.map((p) => p.singularName),
-      ])
-    ) {
+    for await (const code of generateParametersType(
+      type.extends,
+      types,
+      false,
+      [...excludeProperties, ...type.properties.map((p) => p.singularName)],
+    )) {
       yield code;
     }
   }
@@ -74,7 +75,8 @@ function generateValidatedArrayCopy(
   typeNames: string,
   typeGuards: string,
 ): string {
-  return `
+  return (
+    `
     let copied!: (${typeNames})[];
     let valid = false;
     if (Array.isArray(values.${name})) {
@@ -100,7 +102,8 @@ function generateValidatedArrayCopy(
       }
     }
     if (valid) {
-  `.trimEnd() + "\n";
+  `.trimEnd() + "\n"
+  );
 }
 
 export async function* generateConstructor(
@@ -164,8 +167,7 @@ export async function* generateConstructor(
       let typeNames = getTypeNames(property.range, types);
       const scalar = areAllScalarTypes(property.range, types);
       if (!scalar) {
-        typeGuards =
-          `${typeGuards} || values.${property.singularName} instanceof URL`;
+        typeGuards = `${typeGuards} || values.${property.singularName} instanceof URL`;
         typeNames = `${typeNames} | URL`;
       }
       yield `
@@ -323,8 +325,7 @@ export async function* generateCloner(
       let typeNames = getTypeNames(property.range, types);
       const scalar = areAllScalarTypes(property.range, types);
       if (!scalar) {
-        typeGuards =
-          `${typeGuards} || values.${property.singularName} instanceof URL`;
+        typeGuards = `${typeGuards} || values.${property.singularName} instanceof URL`;
         typeNames = `${typeNames} | URL`;
       }
       yield `
@@ -397,10 +398,12 @@ export async function* generateCloner(
       `;
     }
   }
-  yield `
+  yield (
+    `
     return clone;
   }
-  `.trimEnd() + "\n";
+  `.trimEnd() + "\n"
+  );
 }
 
 export async function* generateDeepCloner(

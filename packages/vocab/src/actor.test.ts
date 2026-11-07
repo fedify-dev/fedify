@@ -35,14 +35,14 @@ function actorClassAndInstance(): fc.Arbitrary<
   | [typeof Person, Person]
   | [typeof Service, Service]
 > {
-  return actorClass().map((cls) =>
-    [cls, new cls({})] as (
-      | [typeof Application, Application]
-      | [typeof Group, Group]
-      | [typeof Organization, Organization]
-      | [typeof Person, Person]
-      | [typeof Service, Service]
-    )
+  return actorClass().map(
+    (cls) =>
+      [cls, new cls({})] as
+        | [typeof Application, Application]
+        | [typeof Group, Group]
+        | [typeof Organization, Organization]
+        | [typeof Person, Person]
+        | [typeof Service, Service],
   );
 }
 
@@ -72,23 +72,16 @@ test("isActor()", () => {
 
 test("getActorTypeName()", () => {
   fc.assert(
-    fc.property(
-      actorClassAndInstance(),
-      ([cls, instance]) =>
-        deepStrictEqual(getActorTypeName(instance), cls.name),
+    fc.property(actorClassAndInstance(), ([cls, instance]) =>
+      deepStrictEqual(getActorTypeName(instance), cls.name),
     ),
   );
 });
 
 test("getActorClassByTypeName()", () => {
   fc.assert(
-    fc.property(
-      actorClassAndInstance(),
-      ([cls, instance]) =>
-        strictEqual(
-          getActorClassByTypeName(getActorTypeName(instance)),
-          cls,
-        ),
+    fc.property(actorClassAndInstance(), ([cls, instance]) =>
+      strictEqual(getActorClassByTypeName(getActorTypeName(instance)), cls),
     ),
   );
 });
@@ -100,13 +93,10 @@ test({
     fetchMock.spyGlobal();
 
     // Node validates addresses before fetch; public IP literals avoid DNS.
-    fetchMock.get(
-      "begin:https://1.1.1.1/.well-known/webfinger?",
-      {
-        body: { subject: "acct:johndoe@1.1.1.1" },
-        headers: { "Content-Type": "application/jrd+json" },
-      },
-    );
+    fetchMock.get("begin:https://1.1.1.1/.well-known/webfinger?", {
+      body: { subject: "acct:johndoe@1.1.1.1" },
+      headers: { "Content-Type": "application/jrd+json" },
+    });
 
     const actorId = new URL("https://1.1.1.1/@john");
     const actor = new Person({
@@ -120,10 +110,7 @@ test({
         await getActorHandle(actor, { trimLeadingAt: true }),
         "johndoe@1.1.1.1",
       );
-      deepStrictEqual(
-        await getActorHandle(actorId),
-        "@johndoe@1.1.1.1",
-      );
+      deepStrictEqual(await getActorHandle(actorId), "@johndoe@1.1.1.1");
       deepStrictEqual(
         await getActorHandle(actorId, { trimLeadingAt: true }),
         "johndoe@1.1.1.1",
@@ -131,19 +118,13 @@ test({
     });
 
     fetchMock.removeRoutes();
-    fetchMock.get(
-      "begin:https://1.1.1.1/.well-known/webfinger?",
-      {
-        body: {
-          subject: "https://1.1.1.1/@john",
-          aliases: [
-            "acct:john@8.8.8.8",
-            "acct:johndoe@1.1.1.1",
-          ],
-        },
-        headers: { "Content-Type": "application/jrd+json" },
+    fetchMock.get("begin:https://1.1.1.1/.well-known/webfinger?", {
+      body: {
+        subject: "https://1.1.1.1/@john",
+        aliases: ["acct:john@8.8.8.8", "acct:johndoe@1.1.1.1"],
       },
-    );
+      headers: { "Content-Type": "application/jrd+json" },
+    });
 
     await t.step("WebFinger aliases", async () => {
       deepStrictEqual(await getActorHandle(actor), "@johndoe@1.1.1.1");
@@ -151,38 +132,29 @@ test({
         await getActorHandle(actor, { trimLeadingAt: true }),
         "johndoe@1.1.1.1",
       );
-      deepStrictEqual(
-        await getActorHandle(actorId),
-        "@johndoe@1.1.1.1",
-      );
+      deepStrictEqual(await getActorHandle(actorId), "@johndoe@1.1.1.1");
       deepStrictEqual(
         await getActorHandle(actorId, { trimLeadingAt: true }),
         "johndoe@1.1.1.1",
       );
     });
 
-    fetchMock.get(
-      "begin:https://8.8.8.8/.well-known/webfinger?",
-      {
-        body: {
-          subject: "acct:john@8.8.8.8",
-          aliases: [
-            "https://1.1.1.1/@john",
-          ],
-        },
-        headers: { "Content-Type": "application/jrd+json" },
+    fetchMock.get("begin:https://8.8.8.8/.well-known/webfinger?", {
+      body: {
+        subject: "acct:john@8.8.8.8",
+        aliases: ["https://1.1.1.1/@john"],
       },
-    );
+      headers: { "Content-Type": "application/jrd+json" },
+    });
 
     await t.step("cross-origin WebFinger resources", async () => {
       deepStrictEqual(await getActorHandle(actor), "@john@8.8.8.8");
     });
 
     fetchMock.removeRoutes();
-    fetchMock.get(
-      "begin:https://1.1.1.1/.well-known/webfinger?",
-      { status: 404 },
-    );
+    fetchMock.get("begin:https://1.1.1.1/.well-known/webfinger?", {
+      status: 404,
+    });
 
     await t.step("no WebFinger", async () => {
       deepStrictEqual(await getActorHandle(actor), "@john@1.1.1.1");
@@ -193,119 +165,121 @@ test({
   },
 });
 
-test("getActorHandle() records activitypub.actor.discovery counter", {
-  permissions: { env: true, read: true },
-}, async (t) => {
-  fetchMock.spyGlobal();
-  try {
-    const actorId = new URL("https://1.1.1.1/@john");
-    const actor = new Person({
-      id: actorId,
-      preferredUsername: "john",
-    });
+test(
+  "getActorHandle() records activitypub.actor.discovery counter",
+  {
+    permissions: { env: true, read: true },
+  },
+  async (t) => {
+    fetchMock.spyGlobal();
+    try {
+      const actorId = new URL("https://1.1.1.1/@john");
+      const actor = new Person({
+        id: actorId,
+        preferredUsername: "john",
+      });
 
-    await t.step("records result=resolved on a successful lookup", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.get(
-        "begin:https://1.1.1.1/.well-known/webfinger?",
-        {
-          body: { subject: "acct:johndoe@1.1.1.1" },
-          headers: { "Content-Type": "application/jrd+json" },
+      await t.step(
+        "records result=resolved on a successful lookup",
+        async () => {
+          fetchMock.removeRoutes();
+          fetchMock.get("begin:https://1.1.1.1/.well-known/webfinger?", {
+            body: { subject: "acct:johndoe@1.1.1.1" },
+            headers: { "Content-Type": "application/jrd+json" },
+          });
+          const [meterProvider, recorder] = createTestMeterProvider();
+          const handle = await getActorHandle(actor, { meterProvider });
+          deepStrictEqual(handle, "@johndoe@1.1.1.1");
+
+          const counters = recorder.getMeasurements(
+            "activitypub.actor.discovery",
+          );
+          deepStrictEqual(counters.length, 1);
+          deepStrictEqual(counters[0].type, "counter");
+          deepStrictEqual(counters[0].value, 1);
+          deepStrictEqual(
+            counters[0].attributes["activitypub.actor.discovery.result"],
+            "resolved",
+          );
+          deepStrictEqual(
+            counters[0].attributes["activitypub.remote.host"],
+            "1.1.1.1",
+          );
+
+          const durations = recorder.getMeasurements(
+            "activitypub.actor.discovery.duration",
+          );
+          deepStrictEqual(durations.length, 1);
+          deepStrictEqual(durations[0].type, "histogram");
+          deepStrictEqual(
+            durations[0].attributes["activitypub.actor.discovery.result"],
+            "resolved",
+          );
+          ok(typeof durations[0].value === "number" && durations[0].value >= 0);
         },
       );
-      const [meterProvider, recorder] = createTestMeterProvider();
-      const handle = await getActorHandle(actor, { meterProvider });
-      deepStrictEqual(handle, "@johndoe@1.1.1.1");
 
-      const counters = recorder.getMeasurements(
-        "activitypub.actor.discovery",
-      );
-      deepStrictEqual(counters.length, 1);
-      deepStrictEqual(counters[0].type, "counter");
-      deepStrictEqual(counters[0].value, 1);
-      deepStrictEqual(
-        counters[0].attributes["activitypub.actor.discovery.result"],
-        "resolved",
-      );
-      deepStrictEqual(
-        counters[0].attributes["activitypub.remote.host"],
-        "1.1.1.1",
+      await t.step(
+        "records result=resolved when WebFinger is missing but preferredUsername fallback succeeds",
+        async () => {
+          fetchMock.removeRoutes();
+          fetchMock.get("begin:https://1.1.1.1/.well-known/webfinger?", {
+            status: 404,
+          });
+          const [meterProvider, recorder] = createTestMeterProvider();
+          const handle = await getActorHandle(actor, { meterProvider });
+          deepStrictEqual(handle, "@john@1.1.1.1");
+          const counter = recorder.getMeasurement(
+            "activitypub.actor.discovery",
+          );
+          ok(counter != null);
+          deepStrictEqual(
+            counter.attributes["activitypub.actor.discovery.result"],
+            "resolved",
+          );
+        },
       );
 
-      const durations = recorder.getMeasurements(
-        "activitypub.actor.discovery.duration",
+      await t.step(
+        "records result=not_found when neither WebFinger nor preferredUsername yields a handle",
+        async () => {
+          fetchMock.removeRoutes();
+          fetchMock.get("begin:https://1.1.1.1/.well-known/webfinger?", {
+            status: 404,
+          });
+          const [meterProvider, recorder] = createTestMeterProvider();
+          await rejects(
+            () => getActorHandle(actorId, { meterProvider }),
+            TypeError,
+          );
+          const counter = recorder.getMeasurement(
+            "activitypub.actor.discovery",
+          );
+          ok(counter != null);
+          deepStrictEqual(
+            counter.attributes["activitypub.actor.discovery.result"],
+            "not_found",
+          );
+          deepStrictEqual(
+            counter.attributes["activitypub.remote.host"],
+            "1.1.1.1",
+          );
+          const duration = recorder.getMeasurement(
+            "activitypub.actor.discovery.duration",
+          );
+          ok(duration != null);
+          deepStrictEqual(
+            duration.attributes["activitypub.actor.discovery.result"],
+            "not_found",
+          );
+        },
       );
-      deepStrictEqual(durations.length, 1);
-      deepStrictEqual(durations[0].type, "histogram");
-      deepStrictEqual(
-        durations[0].attributes["activitypub.actor.discovery.result"],
-        "resolved",
-      );
-      ok(typeof durations[0].value === "number" && durations[0].value >= 0);
-    });
 
-    await t.step(
-      "records result=resolved when WebFinger is missing but preferredUsername fallback succeeds",
-      async () => {
+      await t.step("records non-default ports for actor IDs", async () => {
         fetchMock.removeRoutes();
-        fetchMock.get(
-          "begin:https://1.1.1.1/.well-known/webfinger?",
-          { status: 404 },
-        );
-        const [meterProvider, recorder] = createTestMeterProvider();
-        const handle = await getActorHandle(actor, { meterProvider });
-        deepStrictEqual(handle, "@john@1.1.1.1");
-        const counter = recorder.getMeasurement("activitypub.actor.discovery");
-        ok(counter != null);
-        deepStrictEqual(
-          counter.attributes["activitypub.actor.discovery.result"],
-          "resolved",
-        );
-      },
-    );
-
-    await t.step(
-      "records result=not_found when neither WebFinger nor preferredUsername yields a handle",
-      async () => {
-        fetchMock.removeRoutes();
-        fetchMock.get(
-          "begin:https://1.1.1.1/.well-known/webfinger?",
-          { status: 404 },
-        );
-        const [meterProvider, recorder] = createTestMeterProvider();
-        await rejects(
-          () => getActorHandle(actorId, { meterProvider }),
-          TypeError,
-        );
-        const counter = recorder.getMeasurement("activitypub.actor.discovery");
-        ok(counter != null);
-        deepStrictEqual(
-          counter.attributes["activitypub.actor.discovery.result"],
-          "not_found",
-        );
-        deepStrictEqual(
-          counter.attributes["activitypub.remote.host"],
-          "1.1.1.1",
-        );
-        const duration = recorder.getMeasurement(
-          "activitypub.actor.discovery.duration",
-        );
-        ok(duration != null);
-        deepStrictEqual(
-          duration.attributes["activitypub.actor.discovery.result"],
-          "not_found",
-        );
-      },
-    );
-
-    await t.step(
-      "records non-default ports for actor IDs",
-      async () => {
-        fetchMock.removeRoutes();
-        fetchMock.get(
-          "begin:https://1.1.1.1:8443/.well-known/webfinger?",
-          { status: 404 },
-        );
+        fetchMock.get("begin:https://1.1.1.1:8443/.well-known/webfinger?", {
+          status: 404,
+        });
         const [meterProvider, recorder] = createTestMeterProvider();
         await rejects(
           () =>
@@ -320,99 +294,90 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
           counter.attributes["activitypub.remote.host"],
           "1.1.1.1:8443",
         );
-      },
-    );
+      });
 
-    await t.step(
-      "records result=error when a malformed WebFinger alias throws TypeError",
-      async () => {
-        // The "[" byte makes `new URL("https://[/")` throw `TypeError`
-        // when getActorHandleInternal attempts to parse the alias host.
-        // This TypeError is a malformed-remote-data failure, not the
-        // "actor lacks information" sentinel, so the metric must record
-        // `error` rather than `not_found`.
-        fetchMock.removeRoutes();
-        fetchMock.get(
-          "begin:https://1.1.1.1/.well-known/webfinger?",
-          {
+      await t.step(
+        "records result=error when a malformed WebFinger alias throws TypeError",
+        async () => {
+          // The "[" byte makes `new URL("https://[/")` throw `TypeError`
+          // when getActorHandleInternal attempts to parse the alias host.
+          // This TypeError is a malformed-remote-data failure, not the
+          // "actor lacks information" sentinel, so the metric must record
+          // `error` rather than `not_found`.
+          fetchMock.removeRoutes();
+          fetchMock.get("begin:https://1.1.1.1/.well-known/webfinger?", {
             body: {
               subject: "https://1.1.1.1/@john",
               aliases: ["acct:john@["],
             },
             headers: { "Content-Type": "application/jrd+json" },
-          },
-        );
-        const [meterProvider, recorder] = createTestMeterProvider();
-        await rejects(
-          () => getActorHandle(actorId, { meterProvider }),
-          TypeError,
-        );
-        const counter = recorder.getMeasurement(
-          "activitypub.actor.discovery",
-        );
-        ok(counter != null);
-        deepStrictEqual(
-          counter.attributes["activitypub.actor.discovery.result"],
-          "error",
-        );
-      },
-    );
+          });
+          const [meterProvider, recorder] = createTestMeterProvider();
+          await rejects(
+            () => getActorHandle(actorId, { meterProvider }),
+            TypeError,
+          );
+          const counter = recorder.getMeasurement(
+            "activitypub.actor.discovery",
+          );
+          ok(counter != null);
+          deepStrictEqual(
+            counter.attributes["activitypub.actor.discovery.result"],
+            "error",
+          );
+        },
+      );
 
-    await t.step(
-      "propagates meterProvider into the nested webfinger.lookup",
-      async () => {
-        fetchMock.removeRoutes();
-        fetchMock.get(
-          "begin:https://1.1.1.1/.well-known/webfinger?",
-          {
+      await t.step(
+        "propagates meterProvider into the nested webfinger.lookup",
+        async () => {
+          fetchMock.removeRoutes();
+          fetchMock.get("begin:https://1.1.1.1/.well-known/webfinger?", {
             body: { subject: "acct:johndoe@1.1.1.1" },
             headers: { "Content-Type": "application/jrd+json" },
-          },
-        );
-        const [meterProvider, recorder] = createTestMeterProvider();
-        await getActorHandle(actor, { meterProvider });
-        const webFingerCounter = recorder.getMeasurement("webfinger.lookup");
-        ok(webFingerCounter != null);
-        deepStrictEqual(
-          webFingerCounter.attributes["webfinger.lookup.result"],
-          "found",
-        );
-      },
-    );
+          });
+          const [meterProvider, recorder] = createTestMeterProvider();
+          await getActorHandle(actor, { meterProvider });
+          const webFingerCounter = recorder.getMeasurement("webfinger.lookup");
+          ok(webFingerCounter != null);
+          deepStrictEqual(
+            webFingerCounter.attributes["webfinger.lookup.result"],
+            "found",
+          );
+        },
+      );
 
-    await t.step(
-      "omits measurements when no meterProvider is provided",
-      async () => {
-        fetchMock.removeRoutes();
-        fetchMock.get(
-          "begin:https://1.1.1.1/.well-known/webfinger?",
-          {
+      await t.step(
+        "omits measurements when no meterProvider is provided",
+        async () => {
+          fetchMock.removeRoutes();
+          fetchMock.get("begin:https://1.1.1.1/.well-known/webfinger?", {
             body: { subject: "acct:johndoe@1.1.1.1" },
             headers: { "Content-Type": "application/jrd+json" },
-          },
-        );
-        const [_unused, recorder] = createTestMeterProvider();
-        await getActorHandle(actor);
-        deepStrictEqual(
-          recorder.getMeasurements("activitypub.actor.discovery").length,
-          0,
-        );
-        deepStrictEqual(
-          recorder.getMeasurements("activitypub.actor.discovery.duration")
-            .length,
-          0,
-        );
-        deepStrictEqual(
-          recorder.getMeasurements("webfinger.lookup").length,
-          0,
-        );
-      },
-    );
-  } finally {
-    fetchMock.removeRoutes();
-    fetchMock.hardReset();
-  }
-});
+          });
+          const [_unused, recorder] = createTestMeterProvider();
+          await getActorHandle(actor);
+          deepStrictEqual(
+            recorder.getMeasurements("activitypub.actor.discovery").length,
+            0,
+          );
+          deepStrictEqual(
+            recorder.getMeasurements("activitypub.actor.discovery.duration")
+              .length,
+            0,
+          );
+          deepStrictEqual(
+            recorder.getMeasurements("webfinger.lookup").length,
+            0,
+          );
+        },
+      );
+    } finally {
+      fetchMock.removeRoutes();
+      fetchMock.hardReset();
+    }
+  },
+);
 
 test("normalizeActorHandle()", () => {
   deepStrictEqual(normalizeActorHandle("@foo@BAR.COM"), "@foo@bar.com");
@@ -425,10 +390,7 @@ test("normalizeActorHandle()", () => {
     normalizeActorHandle("@quux@XN--MAANA-PTA.COM"),
     "@quux@mañana.com",
   );
-  deepStrictEqual(
-    normalizeActorHandle("@quux@MAÑANA.COM"),
-    "@quux@mañana.com",
-  );
+  deepStrictEqual(normalizeActorHandle("@quux@MAÑANA.COM"), "@quux@mañana.com");
 
   deepStrictEqual(
     normalizeActorHandle("@foo@BAR.COM", { trimLeadingAt: true }),

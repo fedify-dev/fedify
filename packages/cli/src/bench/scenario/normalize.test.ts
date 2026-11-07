@@ -15,9 +15,11 @@ function suite(overrides: Partial<Suite> = {}): Suite {
 }
 
 test("normalizeSuite - applies defaults and parses units", () => {
-  const resolved = normalizeSuite(suite({
-    defaults: { duration: "30s", warmup: "5s", load: { rate: "200/s" } },
-  }));
+  const resolved = normalizeSuite(
+    suite({
+      defaults: { duration: "30s", warmup: "5s", load: { rate: "200/s" } },
+    }),
+  );
   const s = resolved.scenarios[0];
   assert.strictEqual(s.durationMs, 30_000);
   assert.strictEqual(s.warmupMs, 5000);
@@ -40,9 +42,11 @@ test("normalizeSuite - falls back to open-loop defaults", () => {
 });
 
 test("normalizeSuite - resolves closed-loop load", () => {
-  const s = normalizeSuite(suite({
-    defaults: { load: { concurrency: 50, maxInFlight: 100 } },
-  })).scenarios[0];
+  const s = normalizeSuite(
+    suite({
+      defaults: { load: { concurrency: 50, maxInFlight: 100 } },
+    }),
+  ).scenarios[0];
   assert.deepEqual(s.load, {
     kind: "closed",
     concurrency: 50,
@@ -51,28 +55,38 @@ test("normalizeSuite - resolves closed-loop load", () => {
 });
 
 test("normalizeSuite - scenario load overrides defaults", () => {
-  const s = normalizeSuite(suite({
-    defaults: { load: { rate: "10/s" } },
-    scenarios: [{
-      name: "x",
-      type: "inbox",
-      recipient: "acct:a@x",
-      load: { concurrency: 5 },
-    }],
-  })).scenarios[0];
+  const s = normalizeSuite(
+    suite({
+      defaults: { load: { rate: "10/s" } },
+      scenarios: [
+        {
+          name: "x",
+          type: "inbox",
+          recipient: "acct:a@x",
+          load: { concurrency: 5 },
+        },
+      ],
+    }),
+  ).scenarios[0];
   assert.strictEqual(s.load.kind, "closed");
 });
 
 test("normalizeSuite - load inherits arrival/maxInFlight from defaults", () => {
-  const s = normalizeSuite(suite({
-    defaults: { load: { rate: "10/s", arrival: "poisson", maxInFlight: 200 } },
-    scenarios: [{
-      name: "x",
-      type: "inbox",
-      recipient: "acct:a@x",
-      load: { rate: "100/s" },
-    }],
-  })).scenarios[0];
+  const s = normalizeSuite(
+    suite({
+      defaults: {
+        load: { rate: "10/s", arrival: "poisson", maxInFlight: 200 },
+      },
+      scenarios: [
+        {
+          name: "x",
+          type: "inbox",
+          recipient: "acct:a@x",
+          load: { rate: "100/s" },
+        },
+      ],
+    }),
+  ).scenarios[0];
   assert.deepEqual(s.load, {
     kind: "open",
     ratePerSec: 100,
@@ -84,9 +98,11 @@ test("normalizeSuite - load inherits arrival/maxInFlight from defaults", () => {
 test("normalizeSuite - partial load override keeps the default model", () => {
   // `maxInFlight` only, with no rate/concurrency anywhere: falls back to the
   // built-in open-loop default rate while applying the override.
-  const s = normalizeSuite(suite({
-    defaults: { load: { maxInFlight: 100 } },
-  })).scenarios[0];
+  const s = normalizeSuite(
+    suite({
+      defaults: { load: { maxInFlight: 100 } },
+    }),
+  ).scenarios[0];
   assert.deepEqual(s.load, {
     kind: "open",
     ratePerSec: 50,
@@ -96,25 +112,33 @@ test("normalizeSuite - partial load override keeps the default model", () => {
 });
 
 test("normalizeSuite - parses fanout queueDrainTimeout to ms", () => {
-  const s = normalizeSuite(suite({
-    scenarios: [{
-      name: "fan",
-      type: "fanout",
-      sender: "alice",
-      queueDrainTimeout: "2m",
-    }],
-  })).scenarios[0];
+  const s = normalizeSuite(
+    suite({
+      scenarios: [
+        {
+          name: "fan",
+          type: "fanout",
+          sender: "alice",
+          queueDrainTimeout: "2m",
+        },
+      ],
+    }),
+  ).scenarios[0];
   assert.strictEqual(s.queueDrainTimeoutMs, 120_000);
 });
 
 test("normalizeSuite - coerces scalar recipient to a list", () => {
-  const s = normalizeSuite(suite({
-    scenarios: [{
-      name: "wf",
-      type: "webfinger",
-      recipient: ["acct:a@x", "acct:b@x"],
-    }],
-  })).scenarios[0];
+  const s = normalizeSuite(
+    suite({
+      scenarios: [
+        {
+          name: "wf",
+          type: "webfinger",
+          recipient: ["acct:a@x", "acct:b@x"],
+        },
+      ],
+    }),
+  ).scenarios[0];
   assert.deepEqual(s.recipients, ["acct:a@x", "acct:b@x"]);
 });
 
@@ -142,17 +166,15 @@ test("normalizeSuite - rejects an invalid target URL", () => {
 test("normalizeSuite - rejects a non-http(s) or host-less target", () => {
   // `localhost:3000` (a missing-scheme typo) parses as the `localhost:` scheme
   // with no host; reject it rather than misbehave later.
-  for (
-    const bad of [
-      "localhost:3000",
-      "ftp://localhost:3000",
-      "file:///tmp/x",
-      "ws://localhost:3000",
-      // `fetch` rejects URLs carrying credentials, so reject them up front.
-      "http://user@localhost:3000",
-      "http://user:pass@localhost:3000",
-    ]
-  ) {
+  for (const bad of [
+    "localhost:3000",
+    "ftp://localhost:3000",
+    "file:///tmp/x",
+    "ws://localhost:3000",
+    // `fetch` rejects URLs carrying credentials, so reject them up front.
+    "http://user@localhost:3000",
+    "http://user:pass@localhost:3000",
+  ]) {
     assert.throws(
       () => normalizeSuite(suite({ target: bad })),
       SuiteNormalizeError,
@@ -181,9 +203,11 @@ test("normalizeSuite - accepts http and https targets", () => {
 test("normalizeSuite - pipeline signing rejects a time-windowed target", () => {
   assert.throws(
     () =>
-      normalizeSuite(suite({
-        defaults: { signing: "pipeline", signatureTimeWindow: true },
-      })),
+      normalizeSuite(
+        suite({
+          defaults: { signing: "pipeline", signatureTimeWindow: true },
+        }),
+      ),
     SuiteNormalizeError,
   );
 });
@@ -191,25 +215,31 @@ test("normalizeSuite - pipeline signing rejects a time-windowed target", () => {
 test("normalizeSuite - presign rejects a closed-loop load", () => {
   assert.throws(
     () =>
-      normalizeSuite(suite({
-        defaults: { signing: "presign", load: { concurrency: 10 } },
-      })),
+      normalizeSuite(
+        suite({
+          defaults: { signing: "presign", load: { concurrency: 10 } },
+        }),
+      ),
     SuiteNormalizeError,
   );
 });
 
 test("normalizeSuite - presign allows an open-loop load", () => {
-  const s = normalizeSuite(suite({
-    defaults: { signing: "presign", load: { rate: "100/s" } },
-  })).scenarios[0];
+  const s = normalizeSuite(
+    suite({
+      defaults: { signing: "presign", load: { rate: "100/s" } },
+    }),
+  ).scenarios[0];
   assert.strictEqual(s.signing, "presign");
   assert.strictEqual(s.load.kind, "open");
 });
 
 test("normalizeSuite - jit signing allows a time-windowed target", () => {
-  const s = normalizeSuite(suite({
-    defaults: { signing: "jit", signatureTimeWindow: true },
-  })).scenarios[0];
+  const s = normalizeSuite(
+    suite({
+      defaults: { signing: "jit", signatureTimeWindow: true },
+    }),
+  ).scenarios[0];
   assert.strictEqual(s.signing, "jit");
   assert.strictEqual(s.signatureTimeWindow, true);
 });
@@ -217,25 +247,31 @@ test("normalizeSuite - jit signing allows a time-windowed target", () => {
 test("normalizeSuite - rejects warmup not shorter than duration", () => {
   assert.throws(
     () =>
-      normalizeSuite(suite({
-        defaults: { duration: "10s", warmup: "10s" },
-      })),
+      normalizeSuite(
+        suite({
+          defaults: { duration: "10s", warmup: "10s" },
+        }),
+      ),
     (error: unknown) =>
       error instanceof SuiteNormalizeError && /warmup/.test(error.message),
   );
   assert.throws(
     () =>
-      normalizeSuite(suite({
-        defaults: { duration: "10s", warmup: "30s" },
-      })),
+      normalizeSuite(
+        suite({
+          defaults: { duration: "10s", warmup: "30s" },
+        }),
+      ),
     SuiteNormalizeError,
   );
 });
 
 test("normalizeSuite - allows warmup shorter than duration", () => {
-  const s = normalizeSuite(suite({
-    defaults: { duration: "10s", warmup: "9s" },
-  })).scenarios[0];
+  const s = normalizeSuite(
+    suite({
+      defaults: { duration: "10s", warmup: "9s" },
+    }),
+  ).scenarios[0];
   assert.strictEqual(s.durationMs, 10_000);
   assert.strictEqual(s.warmupMs, 9000);
 });
@@ -246,14 +282,18 @@ test("normalizeSuite - allows multiple runs", () => {
 });
 
 test("normalizeSuite - scenario runs override defaults", () => {
-  const s = normalizeSuite(suite({
-    defaults: { runs: 5 },
-    scenarios: [{
-      name: "wf",
-      type: "webfinger",
-      recipient: "acct:a@x",
-      runs: 2,
-    }],
-  })).scenarios[0];
+  const s = normalizeSuite(
+    suite({
+      defaults: { runs: 5 },
+      scenarios: [
+        {
+          name: "wf",
+          type: "webfinger",
+          recipient: "acct:a@x",
+          runs: 2,
+        },
+      ],
+    }),
+  ).scenarios[0];
   assert.strictEqual(s.runs, 2);
 });

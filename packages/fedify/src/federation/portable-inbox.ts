@@ -110,14 +110,14 @@ export interface PortableInboxRecipient {
 export type PortableInboxResolution =
   | { readonly status: "accepted"; readonly recipient: PortableInboxRecipient }
   | {
-    readonly status: "rejected";
-    readonly reason:
-      | "notFound"
-      | "notPortable"
-      | "authorityMismatch"
-      | "inboxMismatch"
-      | "notGateway";
-  };
+      readonly status: "rejected";
+      readonly reason:
+        | "notFound"
+        | "notPortable"
+        | "authorityMismatch"
+        | "inboxMismatch"
+        | "notGateway";
+    };
 
 /**
  * Decides whether this server accepts a delivery to a portable inbox on behalf
@@ -133,7 +133,11 @@ export type PortableInboxResolution =
  */
 export function resolvePortableInboxRecipient(
   actor: Actor | null,
-  { authority, canonicalInboxId, localOrigin }: {
+  {
+    authority,
+    canonicalInboxId,
+    localOrigin,
+  }: {
     authority: string;
     canonicalInboxId: string;
     localOrigin: string;
@@ -217,13 +221,14 @@ const DRAFT_DELIVERY_COMPONENTS = ["(request-target)", "host", "digest"];
  * @returns `true` if the signature covers them.
  */
 export function coversDelivery(signature: RequestSignature): boolean {
-  const required = signature.label == null
-    ? DRAFT_DELIVERY_COMPONENTS
-    : RFC9421_DELIVERY_COMPONENTS;
+  const required =
+    signature.label == null
+      ? DRAFT_DELIVERY_COMPONENTS
+      : RFC9421_DELIVERY_COMPONENTS;
   return required.every((name) =>
-    signature.components.some((c) =>
-      c.value === name && Object.keys(c.params).length < 1
-    )
+    signature.components.some(
+      (c) => c.value === name && Object.keys(c.params).length < 1,
+    ),
   );
 }
 
@@ -304,16 +309,9 @@ export async function forwardPortableInboxActivity<TContextData>(
   observation?: OutboundBroadcastObservation<TContextData>,
 ): Promise<URL[]> {
   const logger = getLogger(["fedify", "federation", "inbox"]);
-  const {
-    recipient,
-    activityId,
-    excludedOrigins,
-    kv,
-    kvPrefix,
-    outboxQueue,
-  } = parameters;
-  const options = parameters.options ??
-    resolvePortableInboxForwardingOptions();
+  const { recipient, activityId, excludedOrigins, kv, kvPrefix, outboxQueue } =
+    parameters;
+  const options = parameters.options ?? resolvePortableInboxForwardingOptions();
   const { maxTargets, ttl } = options;
   if (kv.cas == null) {
     if (observation != null) {
@@ -331,8 +329,8 @@ export async function forwardPortableInboxActivity<TContextData>(
   observation?.setPhase("destination-planning");
   // A compatible activity ID is canonicalized too, so that its equivalent
   // representations share the same forwarding claims:
-  const canonicalActivityId = getCanonicalPortableId(activityId) ??
-    activityId.href;
+  const canonicalActivityId =
+    getCanonicalPortableId(activityId) ?? activityId.href;
   const claimKey = (gateway: string): KvKey => [
     ...kvPrefix,
     recipient.canonicalInboxId,
@@ -434,8 +432,12 @@ export async function forwardPortableInboxActivity<TContextData>(
  *          identified.
  */
 async function identifySendingGateway(
-  { recipient, activityId, kv, signatures }:
-    ForwardPortableInboxActivityParameters,
+  {
+    recipient,
+    activityId,
+    kv,
+    signatures,
+  }: ForwardPortableInboxActivityParameters,
   targets: readonly string[],
   claimKey: (gateway: string) => KvKey,
   deadline: number,
@@ -455,8 +457,9 @@ async function identifySendingGateway(
   let signature: PortableInboxSignature | undefined;
   for (const candidate of signatures) {
     if (
-      candidate.coversDelivery && isGatewayKeyOfRecipient(candidate.keyId) &&
-      await kv.get(claimKey(candidate.keyId.origin)) === undefined
+      candidate.coversDelivery &&
+      isGatewayKeyOfRecipient(candidate.keyId) &&
+      (await kv.get(claimKey(candidate.keyId.origin))) === undefined
     ) {
       signature = candidate;
       break;
@@ -470,41 +473,46 @@ async function identifySendingGateway(
     keyId: keyId.href,
   };
   // A verification that fails after the deadline must not be left unhandled:
-  const verification = Promise.resolve().then(() => signature.verify()).then(
-    (key) => {
-      if (key == null) {
+  const verification = Promise.resolve()
+    .then(() => signature.verify())
+    .then(
+      (key) => {
+        if (key == null) {
+          logger.debug(
+            "The HTTP Signature of the delivery of activity {activityId} to " +
+              "the portable inbox {inbox} is not verified with the key " +
+              "{keyId}; forwarding it without identifying the sending gateway.",
+            logProperties,
+          );
+        }
+        return key;
+      },
+      (error) => {
         logger.debug(
-          "The HTTP Signature of the delivery of activity {activityId} to " +
-            "the portable inbox {inbox} is not verified with the key " +
-            "{keyId}; forwarding it without identifying the sending gateway.",
-          logProperties,
+          "Failed to verify the HTTP Signature of the delivery of activity " +
+            "{activityId} to the portable inbox {inbox} with the key {keyId}; " +
+            "forwarding it without identifying the sending gateway:\n{error}",
+          { ...logProperties, error },
         );
-      }
-      return key;
-    },
-    (error) => {
-      logger.debug(
-        "Failed to verify the HTTP Signature of the delivery of activity " +
-          "{activityId} to the portable inbox {inbox} with the key {keyId}; " +
-          "forwarding it without identifying the sending gateway:\n{error}",
-        { ...logProperties, error },
-      );
-      return null;
-    },
-  );
+        return null;
+      },
+    );
   let timer: ReturnType<typeof setTimeout> | undefined;
   const key = await Promise.race([
     verification,
     new Promise<null>((resolve) => {
-      timer = setTimeout(() => {
-        logger.debug(
-          "Verifying the HTTP Signature of the delivery of activity " +
-            "{activityId} to the portable inbox {inbox} did not finish in " +
-            "time; forwarding it without identifying the sending gateway.",
-          logProperties,
-        );
-        resolve(null);
-      }, Math.max(0, deadline - Date.now()));
+      timer = setTimeout(
+        () => {
+          logger.debug(
+            "Verifying the HTTP Signature of the delivery of activity " +
+              "{activityId} to the portable inbox {inbox} did not finish in " +
+              "time; forwarding it without identifying the sending gateway.",
+            logProperties,
+          );
+          resolve(null);
+        },
+        Math.max(0, deadline - Date.now()),
+      );
     }),
   ]);
   clearTimeout(timer);
@@ -512,8 +520,10 @@ async function identifySendingGateway(
   // Only a key that the recipient's DID-signed actor document vouches for as
   // a gateway key has a portable actor as its owner:
   if (
-    key.id == null || key.id.href !== keyId.href ||
-    !isGatewayKeyOfRecipient(key.id) || key.ownerId == null ||
+    key.id == null ||
+    key.id.href !== keyId.href ||
+    !isGatewayKeyOfRecipient(key.id) ||
+    key.ownerId == null ||
     !isPortableId(key.ownerId) ||
     getCanonicalPortableId(key.ownerId) !== actorId
   ) {
@@ -561,15 +571,16 @@ function getForwardingTargets(
  * the targets have already been claimed, the activity is forwarded unsigned
  * rather than not at all if the key cannot be resolved or used.
  */
-async function resolveForwardingKey(
-  { getKeys, activityId }: ForwardPortableInboxActivityParameters,
-): Promise<SenderKeyPair | null> {
+async function resolveForwardingKey({
+  getKeys,
+  activityId,
+}: ForwardPortableInboxActivityParameters): Promise<SenderKeyPair | null> {
   if (getKeys == null) return null;
   const logger = getLogger(["fedify", "federation", "inbox"]);
   let key: SenderKeyPair | undefined;
   try {
-    key = (await getKeys()).find((k) =>
-      k.privateKey.algorithm.name === "RSASSA-PKCS1-v1_5"
+    key = (await getKeys()).find(
+      (k) => k.privateKey.algorithm.name === "RSASSA-PKCS1-v1_5",
     );
   } catch (error) {
     logger.error(
@@ -713,52 +724,54 @@ async function enqueueForwarding<TContextData>(
   const traceContext: Record<string, string> = {};
   propagation.inject(context.active(), traceContext);
   let preparedCount = 0;
-  await Promise.all(inboxes.map(async (inbox) => {
-    const delivery = observation?.delivery(inbox.href);
-    let message: OutboxMessage;
-    try {
-      message = {
-        type: "outbox",
-        ...serializeProvenance(parameters.provenance),
-        id: crypto.randomUUID(),
-        baseUrl,
-        keys,
-        activity,
-        activityId: activityId.href,
-        activityType,
-        inbox: inbox.href,
-        ...observation?.continuation(inbox.href),
-        sharedInbox: false,
-        started,
-        attempt: 0,
-        headers: {},
-        traceContext,
-      };
-    } catch (error) {
-      if (delivery != null) await delivery.failed(error);
-      throw error;
-    }
-    if (observation != null && ++preparedCount === inboxes.length) {
-      // Earlier destinations may already be enqueuing; do not wait for their
-      // acceptance before reporting the last local message construction.
-      await observation.prepared("delivery");
-    }
-    try {
-      await (observation == null
-        ? outboxQueue.enqueue(message)
-        : observation.enqueue(
-          [{ inbox: inbox.href, queueMessageId: message.id }],
-          "outbox",
-          () => outboxQueue.enqueue(message),
-        ));
-    } catch (error) {
-      logger.error(
-        "Failed to enqueue activity {activityId} to forward to {inbox}; it " +
-          "will not be forwarded to the inbox again:\n{error}",
-        { activityId: activityId.href, inbox: inbox.href, error },
-      );
-      return;
-    }
-    recordOutboxEnqueue(meterProvider, outboxQueue, message);
-  }));
+  await Promise.all(
+    inboxes.map(async (inbox) => {
+      const delivery = observation?.delivery(inbox.href);
+      let message: OutboxMessage;
+      try {
+        message = {
+          type: "outbox",
+          ...serializeProvenance(parameters.provenance),
+          id: crypto.randomUUID(),
+          baseUrl,
+          keys,
+          activity,
+          activityId: activityId.href,
+          activityType,
+          inbox: inbox.href,
+          ...observation?.continuation(inbox.href),
+          sharedInbox: false,
+          started,
+          attempt: 0,
+          headers: {},
+          traceContext,
+        };
+      } catch (error) {
+        if (delivery != null) await delivery.failed(error);
+        throw error;
+      }
+      if (observation != null && ++preparedCount === inboxes.length) {
+        // Earlier destinations may already be enqueuing; do not wait for their
+        // acceptance before reporting the last local message construction.
+        await observation.prepared("delivery");
+      }
+      try {
+        await (observation == null
+          ? outboxQueue.enqueue(message)
+          : observation.enqueue(
+              [{ inbox: inbox.href, queueMessageId: message.id }],
+              "outbox",
+              () => outboxQueue.enqueue(message),
+            ));
+      } catch (error) {
+        logger.error(
+          "Failed to enqueue activity {activityId} to forward to {inbox}; it " +
+            "will not be forwarded to the inbox again:\n{error}",
+          { activityId: activityId.href, inbox: inbox.href, error },
+        );
+        return;
+      }
+      recordOutboxEnqueue(meterProvider, outboxQueue, message);
+    }),
+  );
 }

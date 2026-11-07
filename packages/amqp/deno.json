@@ -9,41 +9,24 @@
   "imports": {
     "@alinea/suite": "jsr:@alinea/suite@^0.6.3"
   },
-  "exclude": [
-    ".github",
-    "dist",
-    "node_modules",
-    "npm",
-    "pnpm-lock.yaml"
-  ],
+  "exclude": [".github", "dist", "node_modules", "npm", "pnpm-lock.yaml"],
   "publish": {
-    "exclude": [
-      "**/*.test.ts",
-      "tsdown.config.ts"
-    ]
+    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
   },
   "tasks": {
     "build": "pnpm build",
     "check": "deno fmt --check && deno check *.ts",
     "test": "deno test --allow-net --allow-env",
     "test:node": {
-      "dependencies": [
-        "build"
-      ],
+      "dependencies": ["build"],
       "command": "node --experimental-transform-types --test"
     },
     "test:bun": {
-      "dependencies": [
-        "build"
-      ],
+      "dependencies": ["build"],
       "command": "bun test --timeout 15000"
     },
     "test-all": {
-      "dependencies": [
-        "test",
-        "test:node",
-        "test:bun"
-      ]
+      "dependencies": ["test", "test:node", "test:bun"]
     }
   }
 }

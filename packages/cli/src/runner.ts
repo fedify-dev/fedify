@@ -49,12 +49,12 @@ function getSystemConfigPaths(): string[] {
  */
 function getUserConfigPath(): string {
   if (process.platform === "win32") {
-    const appData = process.env.APPDATA ||
-      join(homedir(), "AppData", "Roaming");
+    const appData =
+      process.env.APPDATA || join(homedir(), "AppData", "Roaming");
     return join(appData, "fedify", "config.toml");
   }
-  const xdgConfigHome = process.env.XDG_CONFIG_HOME ||
-    join(homedir(), ".config");
+  const xdgConfigHome =
+    process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
   return join(xdgConfigHome, "fedify", "config.toml");
 }
 
@@ -66,15 +66,15 @@ type CommandRunner = (
 ) => unknown | Promise<unknown>;
 
 type CommandInvocation<TCommand extends CliCommand = CliCommand> =
-  TCommand extends CliCommand ? CliCommandValue<TCommand> & {
-      [selectedCommand]: TCommand;
-      [selectedRun]: CommandRunner;
-    }
+  TCommand extends CliCommand
+    ? CliCommandValue<TCommand> & {
+        [selectedCommand]: TCommand;
+        [selectedRun]: CommandRunner;
+      }
     : never;
 
 type RunnableCommandValue<TCommand extends CliCommand = CliCommand> =
-  & CommandInvocation<TCommand>
-  & GlobalOptions;
+  CommandInvocation<TCommand> & GlobalOptions;
 
 type PublicCommandValue = Record<string, unknown> & GlobalOptions;
 
@@ -94,11 +94,7 @@ function staticCommandParser<
     throw new TypeError("Static command path must not be empty.");
   }
 
-  let parser = staticCommand.parser as Parser<
-    "sync",
-    TValue,
-    unknown
-  >;
+  let parser = staticCommand.parser as Parser<"sync", TValue, unknown>;
   for (let i = staticCommand.path.length - 1; i >= 0; i--) {
     const name = staticCommand.path[i];
     if (name == null) {
@@ -132,31 +128,20 @@ function staticCommandsParser<TCommand extends CliCommand>(
 
 const runnableCommand = merge(
   or(
-    group(
-      "Generating code",
-      staticCommandsParser(generatingCommands),
-    ),
-    group(
-      "ActivityPub tools",
-      staticCommandsParser(activityPubCommands),
-    ),
-    group(
-      "Network tools",
-      staticCommandsParser(networkCommands),
-    ),
+    group("Generating code", staticCommandsParser(generatingCommands)),
+    group("ActivityPub tools", staticCommandsParser(activityPubCommands)),
+    group("Network tools", staticCommandsParser(networkCommands)),
   ),
   globalOptions,
 ) as Parser<"sync", RunnableCommandValue, unknown>;
 
 export const command = map(
   runnableCommand,
-  (
-    {
-      [selectedCommand]: _selectedCommand,
-      [selectedRun]: _selectedRun,
-      ...value
-    },
-  ) => value as PublicCommandValue,
+  ({
+    [selectedCommand]: _selectedCommand,
+    [selectedRun]: _selectedRun,
+    ...value
+  }) => value as PublicCommandValue,
 );
 
 type ConfigOptions = {
@@ -185,7 +170,8 @@ function getRunOptions(args: string[]): RunOptions {
         group: "Meta commands",
       },
     },
-    colors: process.stdout.isTTY &&
+    colors:
+      process.stdout.isTTY &&
       (process.env.NO_COLOR == null || process.env.NO_COLOR === ""),
     maxWidth: process.stdout.columns,
     showDefault: true,
@@ -214,9 +200,9 @@ export function loadConfig(
       custom = parseToml(readFileSync(parsed.configPath, "utf-8"));
     } catch (error) {
       printError(
-        message`Could not load config file at ${parsed.configPath}: ${
-          describeError(error)
-        }`,
+        message`Could not load config file at ${parsed.configPath}: ${describeError(
+          error,
+        )}`,
       );
       process.exit(1);
     }
@@ -257,9 +243,6 @@ export function toCliProgram<TCommand extends CliCommand>(
 }
 
 export async function parseCliProgram(args: string[]): Promise<CliProgram> {
-  const parsed = await run(
-    runnableCommand,
-    getRunOptions(args),
-  );
+  const parsed = await run(runnableCommand, getRunOptions(args));
   return toCliProgram(parsed);
 }

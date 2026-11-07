@@ -12,19 +12,23 @@ export type MultipleOption =
   | "kvStore"
   | "messageQueue";
 
-export type DefineOption<T extends TestInitCommand, K extends MultipleOption> =
-  & Omit<T, K>
-  & {
-    [Key in MultipleOption]: Key extends K ? TestInitCommand[Key] & string[]
-      : T[Key];
-  };
+export type DefineOption<
+  T extends TestInitCommand,
+  K extends MultipleOption,
+> = Omit<T, K> & {
+  [Key in MultipleOption]: Key extends K
+    ? TestInitCommand[Key] & string[]
+    : T[Key];
+};
 
 type NoRunMode = "noHydRun" | "noDryRun";
 type RunMode = "hydRun" | "dryRun";
 
-export type DefineAllOptions<T extends TestInitCommand> =
-  & Omit<T, MultipleOption | NoRunMode>
-  & { [K in MultipleOption]: (TestInitCommand[K][number] & string)[] }
-  & { [R in RunMode]: boolean };
+export type DefineAllOptions<T extends TestInitCommand> = Omit<
+  T,
+  MultipleOption | NoRunMode
+> & { [K in MultipleOption]: (TestInitCommand[K][number] & string)[] } & {
+  [R in RunMode]: boolean;
+};
 
 export type DbToCheckType = (typeof DB_TO_CHECK)[number];

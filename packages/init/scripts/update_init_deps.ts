@@ -45,13 +45,13 @@ function majorOf(version: string): number {
 async function fetchLatestNpm(
   packageName: string,
 ): Promise<string | undefined> {
-  const url = `https://registry.npmjs.org/${
-    encodeURIComponent(packageName).replace("%40", "@")
-  }/latest`;
+  const url = `https://registry.npmjs.org/${encodeURIComponent(
+    packageName,
+  ).replace("%40", "@")}/latest`;
   try {
     const resp = await fetch(url);
     if (!resp.ok) return undefined;
-    const data = await resp.json() as { version: string };
+    const data = (await resp.json()) as { version: string };
     return data.version;
   } catch {
     return undefined;
@@ -69,7 +69,7 @@ async function fetchLatestJsr(
   try {
     const resp = await fetch(url);
     if (!resp.ok) return undefined;
-    const data = await resp.json() as { latestVersion: string };
+    const data = (await resp.json()) as { latestVersion: string };
     return data.latestVersion;
   } catch {
     return undefined;
@@ -123,7 +123,7 @@ async function writeJson(
 
 async function updateDepsJson(): Promise<void> {
   const path = join(jsonDir, "deps.json");
-  const deps = await readJson(path) as Record<string, string>;
+  const deps = (await readJson(path)) as Record<string, string>;
   let changed = 0;
 
   for (const [key, currentRange] of Object.entries(deps)) {
@@ -154,7 +154,7 @@ interface StoreEntry {
 
 async function updateStoreJson(fileName: string): Promise<void> {
   const path = join(jsonDir, fileName);
-  const stores = await readJson(path) as Record<string, StoreEntry>;
+  const stores = (await readJson(path)) as Record<string, StoreEntry>;
   let changed = 0;
 
   for (const [storeName, entry] of Object.entries(stores)) {
@@ -165,9 +165,9 @@ async function updateStoreJson(fileName: string): Promise<void> {
         const latest = await getLatestVersion(key, currentRange);
         if (latest && latest !== currentRange) {
           console.log(
-            `  ${storeName}.${field}[${
-              npmName(key)
-            }]: ${currentRange} → ${latest}`,
+            `  ${storeName}.${field}[${npmName(
+              key,
+            )}]: ${currentRange} → ${latest}`,
           );
           deps[key] = latest;
           changed++;

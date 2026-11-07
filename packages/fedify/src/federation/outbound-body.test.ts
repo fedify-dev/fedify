@@ -10,18 +10,21 @@ test("response body pump pulls once on demand and releases at EOF", async () => 
   const pulling = new Promise<void>((resolve) => {
     pulled = resolve;
   });
-  const body = new ReadableStream<Uint8Array>({
-    start(value) {
-      controller = value;
+  const body = new ReadableStream<Uint8Array>(
+    {
+      start(value) {
+        controller = value;
+      },
+      pull() {
+        pulls++;
+        pulled();
+      },
+      cancel() {
+        cancels++;
+      },
     },
-    pull() {
-      pulls++;
-      pulled();
-    },
-    cancel() {
-      cancels++;
-    },
-  }, { highWaterMark: 0 });
+    { highWaterMark: 0 },
+  );
   const pump = new ResponseBodyPump(body, 1000);
   try {
     strictEqual(pulls, 0);
@@ -59,16 +62,19 @@ test("response body pump deadline bounds stalled reads and cancellation cleanup"
       const cleanup = new Promise<void>((_resolve, reject) => {
         rejectCancel = reject;
       });
-      const body = new ReadableStream<Uint8Array>({
-        pull() {
-          pulls++;
+      const body = new ReadableStream<Uint8Array>(
+        {
+          pull() {
+            pulls++;
+          },
+          cancel() {
+            cancels++;
+            cancelled();
+            return cleanup;
+          },
         },
-        cancel() {
-          cancels++;
-          cancelled();
-          return cleanup;
-        },
-      }, { highWaterMark: 0 });
+        { highWaterMark: 0 },
+      );
       const pump = new ResponseBodyPump(body, 25);
       try {
         if (mode === "no-pull") await cancelling;
@@ -95,20 +101,23 @@ test("response body pump deadline bounds stalled reads and cancellation cleanup"
 test("response body pump deadline also stops continuously ready empty chunks", async () => {
   let pulls = 0;
   let cancels = 0;
-  const body = new ReadableStream<Uint8Array>({
-    pull(controller) {
-      pulls++;
-      controller.enqueue(new Uint8Array());
+  const body = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        pulls++;
+        controller.enqueue(new Uint8Array());
+      },
+      cancel() {
+        cancels++;
+      },
     },
-    cancel() {
-      cancels++;
-    },
-  }, { highWaterMark: 0 });
+    { highWaterMark: 0 },
+  );
   const pump = new ResponseBodyPump(body, 25);
   try {
-    while (
-      await pump.read() != null
-    ) { /* Keep pulling a non-terminating source. */ }
+    while ((await pump.read()) != null) {
+      /* Keep pulling a non-terminating source. */
+    }
     ok(pulls > 0);
     strictEqual(cancels, 1);
     strictEqual(body.locked, false);
@@ -122,11 +131,14 @@ test("response body pump deadline also stops continuously ready empty chunks", a
 
 test("response body pump preserves read failure and releases ownership", async () => {
   const failure = new Error("broken body");
-  const body = new ReadableStream<Uint8Array>({
-    pull(controller) {
-      controller.error(failure);
+  const body = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        controller.error(failure);
+      },
     },
-  }, { highWaterMark: 0 });
+    { highWaterMark: 0 },
+  );
   const pump = new ResponseBodyPump(body, 1000);
   try {
     await rejects(pump.read(), (error: unknown) => error === failure);

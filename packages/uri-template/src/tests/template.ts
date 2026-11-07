@@ -32,46 +32,40 @@ export function createTemplatePairTest(
   return (
     suites: readonly PairTestSuite[],
     context: ExpandContext = testVars,
-  ): (t: TestContext) => Promise<void> =>
-  async (t: TestContext): Promise<void> => {
-    for (const { name, cases } of suites) {
-      await t.step(name, async (t) => {
-        for (const [template, expected] of cases) {
-          await t.step(
-            `${template} => ${expected}`,
-            () => equal(new Template(template).expand(context), expected),
-          );
-        }
-      });
-    }
-  };
+  ): ((t: TestContext) => Promise<void>) =>
+    async (t: TestContext): Promise<void> => {
+      for (const { name, cases } of suites) {
+        await t.step(name, async (t) => {
+          for (const [template, expected] of cases) {
+            await t.step(`${template} => ${expected}`, () =>
+              equal(new Template(template).expand(context), expected),
+            );
+          }
+        });
+      }
+    };
 }
 
 export function createTemplateMatchTest(
   Template: TemplateConstructor,
-): (
-  suites: readonly PairTestSuite[],
-) => (t: TestContext) => Promise<void> {
+): (suites: readonly PairTestSuite[]) => (t: TestContext) => Promise<void> {
   return (
     suites: readonly PairTestSuite[],
-  ): (t: TestContext) => Promise<void> =>
-  async (t: TestContext): Promise<void> => {
-    for (const { name, cases } of suites) {
-      await t.step(name, async (t) => {
-        for (const [template, expanded] of cases) {
-          await t.step(
-            `${expanded} => ${template}`,
-            () => {
+  ): ((t: TestContext) => Promise<void>) =>
+    async (t: TestContext): Promise<void> => {
+      for (const { name, cases } of suites) {
+        await t.step(name, async (t) => {
+          for (const [template, expanded] of cases) {
+            await t.step(`${expanded} => ${template}`, () => {
               const instance = new Template(template);
               const matched = instance.match(expanded);
               ok(matched != null, `match returned null for ${expanded}`);
               equal(instance.expand(matched), expanded);
-            },
-          );
-        }
-      });
-    }
-  };
+            });
+          }
+        });
+      }
+    };
 }
 
 export interface MatchTestSuite {
@@ -89,24 +83,22 @@ interface MatchTestCase {
 
 export function createMatchOnlyTest(
   Template: TemplateConstructor,
-): (
-  suites: readonly MatchTestSuite[],
-) => (t: TestContext) => Promise<void> {
+): (suites: readonly MatchTestSuite[]) => (t: TestContext) => Promise<void> {
   return (
     suites: readonly MatchTestSuite[],
-  ): (t: TestContext) => Promise<void> =>
-  async (t: TestContext): Promise<void> => {
-    for (const { name, cases } of suites) {
-      await t.step(name, async (t) => {
-        for (const c of cases) {
-          await t.step(c.name, () => {
-            const got = new Template(c.template).match(c.uri);
-            deepEqual(got, c.expected);
-          });
-        }
-      });
-    }
-  };
+  ): ((t: TestContext) => Promise<void>) =>
+    async (t: TestContext): Promise<void> => {
+      for (const { name, cases } of suites) {
+        await t.step(name, async (t) => {
+          for (const c of cases) {
+            await t.step(c.name, () => {
+              const got = new Template(c.template).match(c.uri);
+              deepEqual(got, c.expected);
+            });
+          }
+        });
+      }
+    };
 }
 
 export interface FixedTemplateTestSuite {
@@ -125,48 +117,44 @@ export const createFixedTemplateTest: (
   Template: TemplateConstructor,
 ) => (
   suites: readonly FixedTemplateTestSuite[],
-) => (t: TestContext) => Promise<void> = (
-  Template: TemplateConstructor,
-) => {
+) => (t: TestContext) => Promise<void> = (Template: TemplateConstructor) => {
   return (
     suites: readonly FixedTemplateTestSuite[],
-  ): (t: TestContext) => Promise<void> =>
-  async (t: TestContext): Promise<void> => {
-    for (const { template, name, cases } of suites) {
-      await t.step(name, async (t) => {
-        const instance = new Template(template);
-        for (const { name, context, expected } of cases) {
-          await t.step(name, () => equal(instance.expand(context), expected));
-        }
-      });
-    }
-  };
+  ): ((t: TestContext) => Promise<void>) =>
+    async (t: TestContext): Promise<void> => {
+      for (const { template, name, cases } of suites) {
+        await t.step(name, async (t) => {
+          const instance = new Template(template);
+          for (const { name, context, expected } of cases) {
+            await t.step(name, () => equal(instance.expand(context), expected));
+          }
+        });
+      }
+    };
 };
 
 export const createFixedTemplateMatchTest: (
   Template: TemplateConstructor,
 ) => (
   suites: readonly FixedTemplateTestSuite[],
-) => (t: TestContext) => Promise<void> = (
-  Template: TemplateConstructor,
-) => {
+) => (t: TestContext) => Promise<void> = (Template: TemplateConstructor) => {
   return (
     suites: readonly FixedTemplateTestSuite[],
-  ): (t: TestContext) => Promise<void> =>
-  async (t: TestContext): Promise<void> => {
-    for (const { template, name, cases } of suites) {
-      await t.step(name, async (t) => {
-        const instance = new Template(template);
-        for (const { name, expected } of cases) {
-          await t.step(name, () => {
-            const matched = instance.match(expected);
-            ok(matched != null, `match returned null for ${expected}`);
-            equal(instance.expand(matched), expected);
-          });
-        }
-      });
-    }
-  };
+  ): ((t: TestContext) => Promise<void>) =>
+    async (t: TestContext): Promise<void> => {
+      for (const { template, name, cases } of suites) {
+        await t.step(name, async (t) => {
+          const instance = new Template(template);
+          for (const { name, expected } of cases) {
+            await t.step(name, () => {
+              const matched = instance.match(expected);
+              ok(matched != null, `match returned null for ${expected}`);
+              equal(instance.expand(matched), expected);
+            });
+          }
+        });
+      }
+    };
 };
 
 type ErrorName = keyof typeof ERROR_CLASSES;
@@ -210,24 +198,21 @@ export interface WrongTestSuite {
 
 export function createWrongTemplateTest(
   Template: TemplateConstructor,
-): (
-  suites: readonly WrongTestSuite[],
-) => (t: TestContext) => Promise<void> {
+): (suites: readonly WrongTestSuite[]) => (t: TestContext) => Promise<void> {
   return (
     suites: readonly WrongTestSuite[],
-  ): (t: TestContext) => Promise<void> =>
-  async (t: TestContext): Promise<void> => {
-    for (const { name, cases } of suites) {
-      await t.step(name, async (t) => {
-        for (const { name, template, expected } of cases) {
-          await t.step(
-            `${template} — ${name}`,
-            () => throws(() => new Template(template), ERROR_CLASSES[expected]),
-          );
-        }
-      });
-    }
-  };
+  ): ((t: TestContext) => Promise<void>) =>
+    async (t: TestContext): Promise<void> => {
+      for (const { name, cases } of suites) {
+        await t.step(name, async (t) => {
+          for (const { name, template, expected } of cases) {
+            await t.step(`${template} — ${name}`, () =>
+              throws(() => new Template(template), ERROR_CLASSES[expected]),
+            );
+          }
+        });
+      }
+    };
 }
 
 /**
@@ -301,52 +286,50 @@ export function createTemplateHardTest(
   return (
     suites: readonly HardTestSuite[],
     context: ExpandContext = testVars,
-  ): (t: TestContext) => Promise<void> =>
-  async (t: TestContext): Promise<void> => {
-    for (const { name, cases } of suites) {
-      await t.step(name, async (t) => {
-        for (const c of cases) {
-          await t.step(c.name, () => {
-            if (c.success) {
-              equal(new Template(c.template).expand(context), c.expected);
-            } else {
-              throws(
-                () => new Template(c.template).expand(context),
-                ERROR_CLASSES[c.expected],
-              );
-            }
-          });
-        }
-      });
-    }
-  };
+  ): ((t: TestContext) => Promise<void>) =>
+    async (t: TestContext): Promise<void> => {
+      for (const { name, cases } of suites) {
+        await t.step(name, async (t) => {
+          for (const c of cases) {
+            await t.step(c.name, () => {
+              if (c.success) {
+                equal(new Template(c.template).expand(context), c.expected);
+              } else {
+                throws(
+                  () => new Template(c.template).expand(context),
+                  ERROR_CLASSES[c.expected],
+                );
+              }
+            });
+          }
+        });
+      }
+    };
 }
 
 export function createTemplateMatchHardTest(
   Template: TemplateConstructor,
-): (
-  cases: readonly HardTestCase[],
-) => (t: TestContext) => Promise<void> {
+): (cases: readonly HardTestCase[]) => (t: TestContext) => Promise<void> {
   return (
     cases: readonly HardTestCase[],
-  ): (t: TestContext) => Promise<void> =>
-  async (t: TestContext): Promise<void> => {
-    for (const c of cases) {
-      if (!c.success) continue;
-      await t.step(c.name, () => {
-        const instance = new Template(c.template);
-        const matched = instance.match(c.expected);
-        ok(matched != null, `match returned null for ${c.expected}`);
-        equal(instance.expand(matched), c.expected);
-      });
-    }
-  };
+  ): ((t: TestContext) => Promise<void>) =>
+    async (t: TestContext): Promise<void> => {
+      for (const c of cases) {
+        if (!c.success) continue;
+        await t.step(c.name, () => {
+          const instance = new Template(c.template);
+          const matched = instance.match(c.expected);
+          ok(matched != null, `match returned null for ${c.expected}`);
+          equal(instance.expand(matched), c.expected);
+        });
+      }
+    };
 }
 
 export function createMatchBench(
   Template: TemplateConstructor,
 ): (templateText: string) => (uris: readonly string[]) => void {
-  return (templateText: string): (uris: readonly string[]) => void => {
+  return (templateText: string): ((uris: readonly string[]) => void) => {
     const template = new Template(templateText);
     return (uris: readonly string[]): void => {
       for (const uri of uris) template.match(uri);
@@ -369,9 +352,10 @@ export function createMatchBenchTestCases(): readonly string[] {
     b.push(a);
   }
   for (let i = 0; i < 676; i++) {
-    a += "/" +
+    a +=
+      "/" +
       String.fromCharCode(0x61 + div(i, 26)) +
-      String.fromCharCode(0x61 + i % 26);
+      String.fromCharCode(0x61 + (i % 26));
     b.push(a);
   }
   return b;

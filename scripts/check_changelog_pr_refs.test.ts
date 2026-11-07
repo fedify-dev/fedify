@@ -25,13 +25,16 @@ function fragment(
   links: Record<string, string> | null,
   references: string,
 ): string {
-  const frontmatter = links == null ? "" : [
-    "---",
-    "links:",
-    ...Object.entries(links).map(([key, url]) => `  '${key}': ${url}`),
-    "---",
-    "",
-  ].join("\n");
+  const frontmatter =
+    links == null
+      ? ""
+      : [
+          "---",
+          "links:",
+          ...Object.entries(links).map(([key, url]) => `  '${key}': ${url}`),
+          "---",
+          "",
+        ].join("\n");
   return `${frontmatter} -  Fixed a bug where foo would bar.  ${references}\n`;
 }
 
@@ -198,10 +201,7 @@ describe("checkFragment()", () => {
   });
 
   it("reports references to advisories without the pull request", () => {
-    const content = fragment(
-      { "#456": pull(456) },
-      "[[GHSA-4qhx-hhwf-8685]]",
-    );
+    const content = fragment({ "#456": pull(456) }, "[[GHSA-4qhx-hhwf-8685]]");
     const violations = checkFragment(PATH, content, 456);
     strictEqual(violations.length, 1);
     match(
@@ -225,7 +225,8 @@ describe("findIntroducedEntries()", () => {
 
   it("introduces only entries that did not exist before", () => {
     const before = " -  Added foo.  [[#1]]\n\n -  Added bar.  [[#2]]\n";
-    const after = " -  Added bar.  [[#2]]\n\n -  Added baz.  [[#456]]\n\n" +
+    const after =
+      " -  Added bar.  [[#2]]\n\n -  Added baz.  [[#456]]\n\n" +
       " -  Added foo.  [[#1]]\n";
     deepStrictEqual(findIntroducedEntries(after, [before]), new Set([1]));
   });
@@ -270,12 +271,15 @@ describe("findIntroducedEntries()", () => {
   });
 
   it("treats entries in previous changelogs as existing", () => {
-    const changelog = "Version 1.0.1\n-------------\n\n" +
+    const changelog =
+      "Version 1.0.1\n-------------\n\n" +
       " -  Fixed a bug.  [[#5], [#7]]\n\n -  Fixed foo.  [[#8]]\n";
     deepStrictEqual(
-      findIntroducedEntries(" -  Fixed a bug.\n    [[#5], [#7]]\n", [], [
-        changelog,
-      ]),
+      findIntroducedEntries(
+        " -  Fixed a bug.\n    [[#5], [#7]]\n",
+        [],
+        [changelog],
+      ),
       new Set(),
     );
     // Only the same first paragraph counts, since changelog entries often
@@ -324,15 +328,14 @@ describe("findIntroducedEntries()", () => {
   });
 
   it("treats changelog entries citing only advisories as existing", () => {
-    const changelog = "Version 1.0.1\n-------------\n\n" +
+    const changelog =
+      "Version 1.0.1\n-------------\n\n" +
       " -  Fixed foo.  \\[[GHSA-r48c-xx2h-fv4g]]\n";
     deepStrictEqual(
       findIntroducedEntries(
         " -  Fixed foo.\n    \\[[GHSA-r48c-xx2h-fv4g]]\n",
         [],
-        [
-          changelog,
-        ],
+        [changelog],
       ),
       new Set(),
     );
@@ -343,7 +346,9 @@ describe("findIntroducedEntries()", () => {
     deepStrictEqual(
       findIntroducedEntries(
         " -  Fixed an SSRF vulnerability.\n    [[GHSA-r48c-xx2h-fv4g]]\n",
-        [" -  Fixed a server-side request forgery.\n    [[GHSA-r48c-xx2h-fv4g]]\n"],
+        [
+          " -  Fixed a server-side request forgery.\n    [[GHSA-r48c-xx2h-fv4g]]\n",
+        ],
       ),
       new Set(),
     );
@@ -351,9 +356,11 @@ describe("findIntroducedEntries()", () => {
 
   it("does not treat changelog entries without references as existing", () => {
     deepStrictEqual(
-      findIntroducedEntries(" -  Updated dependencies.\n", [], [
-        "Version 1.0.0\n-------------\n\n -  Updated dependencies.\n",
-      ]),
+      findIntroducedEntries(
+        " -  Updated dependencies.\n",
+        [],
+        ["Version 1.0.0\n-------------\n\n -  Updated dependencies.\n"],
+      ),
       "all",
     );
   });
@@ -395,34 +402,38 @@ describe("checkChangelogPrRefs()", () => {
 
   async function git(root: string, ...args: string[]): Promise<string> {
     try {
-      const { stdout } = await execFileAsync("git", [
-        "-c",
-        "user.name=Test",
-        "-c",
-        "user.email=test@example.com",
-        "-c",
-        "commit.gpgSign=false",
-        "-c",
-        "tag.gpgSign=false",
-        "-c",
-        "core.hooksPath=/dev/null",
-        // Keep line endings as written, since a test edits a merged file:
-        "-c",
-        "core.autocrlf=false",
-        // Keep objects loose, since a test removes one of them:
-        "-c",
-        "gc.auto=0",
-        ...args,
-      ], {
-        cwd: root,
-        encoding: "utf8",
-        // A commit hook's Git environment must not escape into the fixture.
-        env: Object.fromEntries(
-          Object.entries(process.env).filter(([key]) =>
-            !key.startsWith("GIT_")
+      const { stdout } = await execFileAsync(
+        "git",
+        [
+          "-c",
+          "user.name=Test",
+          "-c",
+          "user.email=test@example.com",
+          "-c",
+          "commit.gpgSign=false",
+          "-c",
+          "tag.gpgSign=false",
+          "-c",
+          "core.hooksPath=/dev/null",
+          // Keep line endings as written, since a test edits a merged file:
+          "-c",
+          "core.autocrlf=false",
+          // Keep objects loose, since a test removes one of them:
+          "-c",
+          "gc.auto=0",
+          ...args,
+        ],
+        {
+          cwd: root,
+          encoding: "utf8",
+          // A commit hook's Git environment must not escape into the fixture.
+          env: Object.fromEntries(
+            Object.entries(process.env).filter(
+              ([key]) => !key.startsWith("GIT_"),
+            ),
           ),
-        ),
-      });
+        },
+      );
       return stdout.trim();
     } catch (error) {
       throw new Error((error as { stderr?: string }).stderr ?? String(error));
@@ -584,28 +595,21 @@ describe("checkChangelogPrRefs()", () => {
   it("excludes historical fragments renamed", async () => {
     const result = await withRepository(async (root) => {
       await mkdir(join(root, "changes.d", "fedify"));
-      await git(
-        root,
-        "mv",
-        historicalPath,
-        "changes.d/fedify/historical.md",
-      );
+      await git(root, "mv", historicalPath, "changes.d/fedify/historical.md");
       await commit(root, {});
     });
     deepStrictEqual(result, { fragments: [], violations: [] });
   });
 
   it("excludes historical entries edited after their first line", async () => {
-    for (
-      const edited of [
-        historical.replace("long ago", "a while ago"),
-        `${historical}\n     -  Also fixed baz.\n`,
-        historical.replace(
-          "which was fixed\n    long",
-          "which was\n    fixed long",
-        ),
-      ]
-    ) {
+    for (const edited of [
+      historical.replace("long ago", "a while ago"),
+      `${historical}\n     -  Also fixed baz.\n`,
+      historical.replace(
+        "which was fixed\n    long",
+        "which was\n    fixed long",
+      ),
+    ]) {
       const result = await withRepository(async (root) => {
         await commit(root, { [historicalPath]: edited });
       });
@@ -622,11 +626,14 @@ describe("checkChangelogPrRefs()", () => {
     deepStrictEqual(result, { fragments: [], violations: [] });
 
     const path = "changes.d/cli/one-line.md";
-    const oneLine = `---\nlinks:\n  '#7': ${pull(7)}\n---\n` +
-      " -  Fixed a bug.  [[#7]]\n";
-    const typo = await withRepository(async (root) => {
-      await commit(root, { [path]: oneLine.replace("a bug", "a typo") });
-    }, { [path]: oneLine });
+    const oneLine =
+      `---\nlinks:\n  '#7': ${pull(7)}\n---\n` + " -  Fixed a bug.  [[#7]]\n";
+    const typo = await withRepository(
+      async (root) => {
+        await commit(root, { [path]: oneLine.replace("a bug", "a typo") });
+      },
+      { [path]: oneLine },
+    );
     deepStrictEqual(typo, { fragments: [], violations: [] });
   });
 
@@ -645,11 +652,14 @@ describe("checkChangelogPrRefs()", () => {
     match(result.violations[1].message, /entry \(\[#9\]\)/);
 
     const path = "changes.d/fedify/method.md";
-    const similar = await withRepository(async (root) => {
-      await commit(root, {
-        [path]: " -  Added `Context.bar()` method.  [[#123]]\n",
-      });
-    }, { [path]: " -  Added `Federation.foo()` method.  [[#7]]\n" });
+    const similar = await withRepository(
+      async (root) => {
+        await commit(root, {
+          [path]: " -  Added `Context.bar()` method.  [[#123]]\n",
+        });
+      },
+      { [path]: " -  Added `Federation.foo()` method.  [[#7]]\n" },
+    );
     deepStrictEqual(similar.fragments, [path]);
     strictEqual(similar.violations.length, 2);
     match(similar.violations[1].message, /entry \(\[#123\]\)/);
@@ -659,11 +669,14 @@ describe("checkChangelogPrRefs()", () => {
     const path = "changes.d/fedify/apis.md";
     const entry = (references: string, api: string) =>
       ` -  Added new APIs.  ${references}\n\n     -  \`${api}()\`\n`;
-    const result = await withRepository(async (root) => {
-      await commit(root, {
-        [path]: `${entry("[[#123]]", "bar")}\n${entry("[[#7]]", "foo")}`,
-      });
-    }, { [path]: entry("[[#7]]", "foo") });
+    const result = await withRepository(
+      async (root) => {
+        await commit(root, {
+          [path]: `${entry("[[#123]]", "bar")}\n${entry("[[#7]]", "foo")}`,
+        });
+      },
+      { [path]: entry("[[#7]]", "foo") },
+    );
     deepStrictEqual(result.fragments, [path]);
     strictEqual(result.violations.length, 2);
     match(result.violations[1].message, /entry 1 \(\[#123\]\)/);
@@ -671,16 +684,20 @@ describe("checkChangelogPrRefs()", () => {
 
   it("excludes historical entries moved within a fragment", async () => {
     const path = "changes.d/cli/two.md";
-    const result = await withRepository(async (root) => {
-      await commit(root, {
-        [path]: " -  Added bar.  [[#2]]\n\n -  Added foo.  [[#1]]\n",
-      });
-    }, { [path]: " -  Added foo.  [[#1]]\n\n -  Added bar.  [[#2]]\n" });
+    const result = await withRepository(
+      async (root) => {
+        await commit(root, {
+          [path]: " -  Added bar.  [[#2]]\n\n -  Added foo.  [[#1]]\n",
+        });
+      },
+      { [path]: " -  Added foo.  [[#1]]\n\n -  Added bar.  [[#2]]\n" },
+    );
     deepStrictEqual(result, { fragments: [], violations: [] });
   });
 
   it("checks new entries sharing the first line of a historical entry", async () => {
-    const twin = " -  Fixed a bug where foo would bar, which was fixed\n" +
+    const twin =
+      " -  Fixed a bug where foo would bar, which was fixed\n" +
       "    just now.  [[#123]]\n";
     const appended = await withRepository(async (root) => {
       await commit(root, { [historicalPath]: `${historical}\n${twin}` });
@@ -811,8 +828,7 @@ describe("checkChangelogPrRefs()", () => {
       withRepository(async (root) => {
         await git(root, "switch", "--quiet", "-c", "maintenance", "main");
         await commit(root, {
-          "changes.d/cli/fix-foo.md":
-            `${links} -  Fixed a bug.  [[#5], [#7]]\n`,
+          "changes.d/cli/fix-foo.md": `${links} -  Fixed a bug.  [[#5], [#7]]\n`,
         });
         // `sacho release` consumes the fragment into a released section:
         await commit(root, {
@@ -844,7 +860,8 @@ describe("checkChangelogPrRefs()", () => {
       const result = await withRepository(async (root) => {
         await commit(root, {
           "changes.d/cli/baz.md": " -  Added baz.  [[#123]]\n",
-          "CHANGES.md": `Version 1.1.0\n-------------\n\n${heading}\n\n` +
+          "CHANGES.md":
+            `Version 1.1.0\n-------------\n\n${heading}\n\n` +
             " -  Added baz.  [[#123]]\n",
         });
       });
@@ -854,16 +871,20 @@ describe("checkChangelogPrRefs()", () => {
   });
 
   it("reports errors without a stack trace", () => {
-    const { status, stderr: message } = spawnSync(process.execPath, [
-      "--experimental-strip-types",
-      // The root package.json does not declare the module type:
-      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
-      join(import.meta.dirname!, "check_changelog_pr_refs.ts"),
-      "--pr",
-      "1",
-      "--base",
-      "no-such-revision",
-    ], { encoding: "utf8", stdio: ["ignore", "ignore", "pipe"] });
+    const { status, stderr: message } = spawnSync(
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        // The root package.json does not declare the module type:
+        "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+        join(import.meta.dirname!, "check_changelog_pr_refs.ts"),
+        "--pr",
+        "1",
+        "--base",
+        "no-such-revision",
+      ],
+      { encoding: "utf8", stdio: ["ignore", "ignore", "pipe"] },
+    );
     strictEqual(status, 2);
     match(message, /^error: git merge-base no-such-revision HEAD failed/);
     strictEqual(/^\s+at /m.test(message), false, message);

@@ -105,20 +105,19 @@ test("evaluateExpect - does not alias delivery throughput to request throughput"
 });
 
 test("evaluateExpect - tolerant equality matches float-normalized ratios", () => {
-  const { passed } = evaluateExpect(
-    { successRate: "== 99.4%" },
-    metrics(),
-  );
+  const { passed } = evaluateExpect({ successRate: "== 99.4%" }, metrics());
   assert.strictEqual(passed, true);
 });
 
 test("evaluateExpect - count equality is exact (no tolerance)", () => {
-  const errors = [{
-    kind: "http",
-    status: 500,
-    reason: "x",
-    count: 1_000_000_001,
-  }];
+  const errors = [
+    {
+      kind: "http",
+      status: 500,
+      reason: "x",
+      count: 1_000_000_001,
+    },
+  ];
   const exact = evaluateExpect(
     { "errors.5xx": "== 1000000000" },
     metrics({ errors }),
@@ -129,10 +128,7 @@ test("evaluateExpect - count equality is exact (no tolerance)", () => {
 test("evaluateExpect - incompatible assertion unit fails", () => {
   // A percentage threshold against a millisecond metric is nonsense; even
   // though 91 > 0.01 would hold numerically, the unit mismatch fails it.
-  const { results } = evaluateExpect(
-    { "latency.p95": "> 1%" },
-    metrics(),
-  );
+  const { results } = evaluateExpect({ "latency.p95": "> 1%" }, metrics());
   assert.strictEqual(results[0].pass, false);
 });
 
@@ -143,7 +139,7 @@ test("validateExpectBlock - accepts a well-formed block", () => {
       "latency.p95": "< 100ms",
       "errors.5xx": "== 0",
       "queueDrain.p95": { assert: "< 2s", severity: "warn" },
-    })
+    }),
   );
 });
 
@@ -151,8 +147,7 @@ test("validateExpectBlock - throws on a malformed assertion", () => {
   assert.throws(
     () => validateExpectBlock({ successRate: "totally not valid" }),
     (error: unknown) =>
-      error instanceof AssertionParseError &&
-      /successRate/.test(error.message),
+      error instanceof AssertionParseError && /successRate/.test(error.message),
   );
 });
 

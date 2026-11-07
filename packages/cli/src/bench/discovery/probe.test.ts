@@ -20,33 +20,29 @@ const STATS = {
 };
 
 test("probeBenchmarkMode - detects benchmark mode and Fedify version", async () => {
-  const probe = await probeBenchmarkMode(
-    new URL("http://localhost:3000"),
-    () => Promise.resolve(jsonResponse(STATS)),
+  const probe = await probeBenchmarkMode(new URL("http://localhost:3000"), () =>
+    Promise.resolve(jsonResponse(STATS)),
   );
   assert.deepEqual(probe, { benchmarkMode: true, fedifyVersion: "2.3.0" });
 });
 
 test("probeBenchmarkMode - a 404 means no benchmark mode", async () => {
-  const probe = await probeBenchmarkMode(
-    new URL("http://localhost:3000"),
-    () => Promise.resolve(jsonResponse({ error: "not found" }, 404)),
+  const probe = await probeBenchmarkMode(new URL("http://localhost:3000"), () =>
+    Promise.resolve(jsonResponse({ error: "not found" }, 404)),
   );
   assert.deepEqual(probe, { benchmarkMode: false, fedifyVersion: null });
 });
 
 test("probeBenchmarkMode - a non-benchmark body means no benchmark mode", async () => {
-  const probe = await probeBenchmarkMode(
-    new URL("http://localhost:3000"),
-    () => Promise.resolve(jsonResponse({ hello: "world" })),
+  const probe = await probeBenchmarkMode(new URL("http://localhost:3000"), () =>
+    Promise.resolve(jsonResponse({ hello: "world" })),
   );
   assert.strictEqual(probe.benchmarkMode, false);
 });
 
 test("probeBenchmarkMode - a network error means no benchmark mode", async () => {
-  const probe = await probeBenchmarkMode(
-    new URL("http://localhost:3000"),
-    () => Promise.reject(new Error("ECONNREFUSED")),
+  const probe = await probeBenchmarkMode(new URL("http://localhost:3000"), () =>
+    Promise.reject(new Error("ECONNREFUSED")),
   );
   assert.deepEqual(probe, { benchmarkMode: false, fedifyVersion: null });
 });

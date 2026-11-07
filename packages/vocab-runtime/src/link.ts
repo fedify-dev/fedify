@@ -19,19 +19,18 @@ function validateURI(uri: string): void {
 
 function* parseLinkFromString(input: string): Generator<HttpHeaderLinkEntry> {
   // Remove Unicode characters of BOM (Byte Order Mark) and no-break space.
-  const inputFmt: string = input.replaceAll("\u00A0", "").replaceAll(
-    "\uFEFF",
-    "",
-  );
+  const inputFmt: string = input
+    .replaceAll("\u00A0", "")
+    .replaceAll("\uFEFF", "");
   for (let cursor: number = 0; cursor < inputFmt.length; cursor += 1) {
     while (regexpLinkWhitespace.test(inputFmt.charAt(cursor))) {
       cursor += 1;
     }
     if (inputFmt.charAt(cursor) !== "<") {
       throw new SyntaxError(
-        `Unexpected character \`${
-          inputFmt.charAt(cursor)
-        }\` at position ${cursor}; Expect character \`<\`!`,
+        `Unexpected character \`${inputFmt.charAt(
+          cursor,
+        )}\` at position ${cursor}; Expect character \`<\`!`,
       );
     }
     cursor += 1;
@@ -52,18 +51,15 @@ function* parseLinkFromString(input: string): Generator<HttpHeaderLinkEntry> {
     while (regexpLinkWhitespace.test(inputFmt.charAt(cursor))) {
       cursor += 1;
     }
-    if (
-      cursor === inputFmt.length ||
-      inputFmt.charAt(cursor) === ","
-    ) {
+    if (cursor === inputFmt.length || inputFmt.charAt(cursor) === ",") {
       yield [uri, parameters];
       continue;
     }
     if (inputFmt.charAt(cursor) !== ";") {
       throw new SyntaxError(
-        `Unexpected character \`${
-          inputFmt.charAt(cursor)
-        }\` at position ${cursor}; Expect character \`;\`!`,
+        `Unexpected character \`${inputFmt.charAt(
+          cursor,
+        )}\` at position ${cursor}; Expect character \`;\`!`,
       );
     }
     cursor += 1;
@@ -71,24 +67,22 @@ function* parseLinkFromString(input: string): Generator<HttpHeaderLinkEntry> {
       while (regexpLinkWhitespace.test(inputFmt.charAt(cursor))) {
         cursor += 1;
       }
-      const parameterKey: string | undefined = inputFmt.slice(cursor).match(
-        /^[\w-]+\*?/,
-      )?.[0].toLowerCase();
+      const parameterKey: string | undefined = inputFmt
+        .slice(cursor)
+        .match(/^[\w-]+\*?/)?.[0]
+        .toLowerCase();
       if (typeof parameterKey === "undefined") {
         throw new SyntaxError(
-          `Unexpected character \`${
-            inputFmt.charAt(cursor)
-          }\` at position ${cursor}; Expect a valid parameter key!`,
+          `Unexpected character \`${inputFmt.charAt(
+            cursor,
+          )}\` at position ${cursor}; Expect a valid parameter key!`,
         );
       }
       cursor += parameterKey.length;
       while (regexpLinkWhitespace.test(inputFmt.charAt(cursor))) {
         cursor += 1;
       }
-      if (
-        cursor === inputFmt.length ||
-        inputFmt.charAt(cursor) === ","
-      ) {
+      if (cursor === inputFmt.length || inputFmt.charAt(cursor) === ",") {
         parameters[parameterKey] = "";
         break;
       }
@@ -99,9 +93,9 @@ function* parseLinkFromString(input: string): Generator<HttpHeaderLinkEntry> {
       }
       if (inputFmt.charAt(cursor) !== "=") {
         throw new SyntaxError(
-          `Unexpected character \`${
-            inputFmt.charAt(cursor)
-          }\` at position ${cursor}; Expect character \`=\`!`,
+          `Unexpected character \`${inputFmt.charAt(
+            cursor,
+          )}\` at position ${cursor}; Expect character \`=\`!`,
         );
       }
       cursor += 1;
@@ -123,9 +117,9 @@ function* parseLinkFromString(input: string): Generator<HttpHeaderLinkEntry> {
           cursor += 1;
         }
       } else {
-        const cursorDiffParameterValue: number = inputFmt.slice(cursor).search(
-          /[\s;,]/,
-        );
+        const cursorDiffParameterValue: number = inputFmt
+          .slice(cursor)
+          .search(/[\s;,]/);
         if (cursorDiffParameterValue === -1) {
           parameterValue += inputFmt.slice(cursor);
           cursor += parameterValue.length;
@@ -140,10 +134,7 @@ function* parseLinkFromString(input: string): Generator<HttpHeaderLinkEntry> {
       while (regexpLinkWhitespace.test(inputFmt.charAt(cursor))) {
         cursor += 1;
       }
-      if (
-        cursor === inputFmt.length ||
-        inputFmt.charAt(cursor) === ","
-      ) {
+      if (cursor === inputFmt.length || inputFmt.charAt(cursor) === ",") {
         break;
       }
       if (inputFmt.charAt(cursor) === ";") {
@@ -151,9 +142,9 @@ function* parseLinkFromString(input: string): Generator<HttpHeaderLinkEntry> {
         continue;
       }
       throw new SyntaxError(
-        `Unexpected character \`${
-          inputFmt.charAt(cursor)
-        }\` at position ${cursor}; Expect character \`,\`, character \`;\`, or end of the string!`,
+        `Unexpected character \`${inputFmt.charAt(
+          cursor,
+        )}\` at position ${cursor}; Expect character \`,\`, character \`;\`, or end of the string!`,
       );
     }
     yield [uri, parameters];
@@ -175,8 +166,13 @@ export class HttpHeaderLink {
    * @param {...(string | Headers | HttpHeaderLink | HttpHeaderLinkEntry[] | Response)} inputs Input.
    */
   constructor(
-    ...inputs:
-      (string | Headers | HttpHeaderLink | HttpHeaderLinkEntry[] | Response)[]
+    ...inputs: (
+      | string
+      | Headers
+      | HttpHeaderLink
+      | HttpHeaderLinkEntry[]
+      | Response
+    )[]
   ) {
     if (inputs.length > 0) {
       this.add(...inputs);
@@ -189,8 +185,13 @@ export class HttpHeaderLink {
    * @returns {this}
    */
   add(
-    ...inputs:
-      (string | Headers | HttpHeaderLink | HttpHeaderLinkEntry[] | Response)[]
+    ...inputs: (
+      | string
+      | Headers
+      | HttpHeaderLink
+      | HttpHeaderLinkEntry[]
+      | Response
+    )[]
   ): this {
     for (const input of inputs) {
       if (input instanceof HttpHeaderLink) {
@@ -200,16 +201,11 @@ export class HttpHeaderLink {
           ...input.map(
             ([uri, parameters]: HttpHeaderLinkEntry): HttpHeaderLinkEntry => {
               validateURI(uri);
-              for (
-                const [key, value] of Object.entries(parameters) as [
-                  string,
-                  string,
-                ][]
-              ) {
-                if (
-                  key !== key.toLowerCase() ||
-                  !(/^[\w-]+\*?$/.test(key))
-                ) {
+              for (const [key, value] of Object.entries(parameters) as [
+                string,
+                string,
+              ][]) {
+                if (key !== key.toLowerCase() || !/^[\w-]+\*?$/.test(key)) {
                   throw new SyntaxError(
                     `\`${key}\` is not a valid parameter key!`,
                   );
@@ -228,16 +224,11 @@ export class HttpHeaderLink {
           ),
         );
       } else {
-        for (
-          const entry of parseLinkFromString(
-            ((
-                input instanceof Headers ||
-                input instanceof Response
-              )
-              ? ((input instanceof Headers) ? input : input.headers).get("Link")
-              : input) ?? "",
-          )
-        ) {
+        for (const entry of parseLinkFromString(
+          (input instanceof Headers || input instanceof Response
+            ? (input instanceof Headers ? input : input.headers).get("Link")
+            : input) ?? "",
+        )) {
           this.#entries.push(entry);
         }
       }
@@ -268,7 +259,7 @@ export class HttpHeaderLink {
     }
     return structuredClone(
       this.#entries.filter((entry: HttpHeaderLinkEntry): boolean => {
-        return (entry[1][key] === value);
+        return entry[1][key] === value;
       }),
     );
   }
@@ -286,7 +277,7 @@ export class HttpHeaderLink {
     }
     return structuredClone(
       this.#entries.filter((entity: HttpHeaderLinkEntry): boolean => {
-        return (entity[1].rel?.toLowerCase() === value);
+        return entity[1].rel?.toLowerCase() === value;
       }),
     );
   }
@@ -298,7 +289,7 @@ export class HttpHeaderLink {
    * @returns {boolean} Determine result.
    */
   hasParameter(key: string, value: string): boolean {
-    return (this.getByParameter(key, value).length > 0);
+    return this.getByParameter(key, value).length > 0;
   }
 
   /**
@@ -306,20 +297,20 @@ export class HttpHeaderLink {
    * @returns {string} Stringified entries.
    */
   toString(): string {
-    return this.#entries.map(
-      ([uri, parameters]: HttpHeaderLinkEntry): string => {
+    return this.#entries
+      .map(([uri, parameters]: HttpHeaderLinkEntry): string => {
         return [
           `<${encodeURI(uri)}>`,
           ...Object.entries(parameters).map(
             ([key, value]: [string, string]): string => {
-              return ((value.length > 0)
+              return value.length > 0
                 ? `${key}="${value.replaceAll('"', '\\"')}"`
-                : key);
+                : key;
             },
           ),
         ].join("; ");
-      },
-    ).join(", ");
+      })
+      .join(", ");
   }
 
   /**
@@ -328,8 +319,13 @@ export class HttpHeaderLink {
    * @returns {HttpHeaderLink}
    */
   static parse(
-    ...inputs:
-      (string | Headers | HttpHeaderLink | HttpHeaderLinkEntry[] | Response)[]
+    ...inputs: (
+      | string
+      | Headers
+      | HttpHeaderLink
+      | HttpHeaderLinkEntry[]
+      | Response
+    )[]
   ): HttpHeaderLink {
     return new this(...inputs);
   }
@@ -340,8 +336,13 @@ export class HttpHeaderLink {
    * @returns {string}
    */
   static stringify(
-    ...inputs:
-      (string | Headers | HttpHeaderLink | HttpHeaderLinkEntry[] | Response)[]
+    ...inputs: (
+      | string
+      | Headers
+      | HttpHeaderLink
+      | HttpHeaderLinkEntry[]
+      | Response
+    )[]
   ): string {
     return new this(...inputs).toString();
   }

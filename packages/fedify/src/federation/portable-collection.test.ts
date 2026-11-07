@@ -33,10 +33,10 @@ import { RouterError } from "./router.ts";
 
 const did = await exportDidKey(ed25519PublicKey.publicKey);
 const keyId = new URL(`${did}#${did.slice("did:key:".length)}`);
-const otherKeyPair = await crypto.subtle.generateKey("Ed25519", true, [
+const otherKeyPair = (await crypto.subtle.generateKey("Ed25519", true, [
   "sign",
   "verify",
-]) as CryptoKeyPair;
+])) as CryptoKeyPair;
 const otherDid = await exportDidKey(otherKeyPair.publicKey);
 const otherKeyId = new URL(`${otherDid}#${otherDid.slice("did:key:".length)}`);
 
@@ -133,8 +133,9 @@ function createTestFederation(options: TestFederationOptions = {}) {
     }
     return note;
   };
-  federation
-    .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+  federation.setActorDispatcher(
+    "/users/{identifier}",
+    async (ctx, identifier) => {
       calls.push(`actor ${identifier}`);
       const userDid = users[identifier];
       if (userDid == null) return null;
@@ -171,11 +172,12 @@ function createTestFederation(options: TestFederationOptions = {}) {
           id: ctx.getPortableActorUri(identifier, userDid),
           preferredUsername: identifier,
           inbox: ctx.getPortableInboxUri(identifier, userDid),
-          outbox: identifier === "no-outbox"
-            ? null
-            : identifier === "mismatch"
-            ? ctx.getPortableOutboxUri("alice", userDid)
-            : ctx.getPortableOutboxUri(identifier, userDid),
+          outbox:
+            identifier === "no-outbox"
+              ? null
+              : identifier === "mismatch"
+                ? ctx.getPortableOutboxUri("alice", userDid)
+                : ctx.getPortableOutboxUri(identifier, userDid),
           followers: ctx.getPortableFollowersUri(identifier, userDid),
           featured: ctx.getPortableFeaturedUri(identifier, userDid),
           gateways: [new URL(ORIGIN)],
@@ -183,7 +185,8 @@ function createTestFederation(options: TestFederationOptions = {}) {
         userDid === did ? ed25519PrivateKey : otherKeyPair.privateKey,
         userDid === did ? keyId : otherKeyId,
       );
-    });
+    },
+  );
   const createCache = new Map<string, Create>();
   const getCreate = async (
     ctx: Context<void>,
@@ -207,21 +210,15 @@ function createTestFederation(options: TestFederationOptions = {}) {
     }
     return create;
   };
-  federation.setObjectDispatcher(
-    Note,
-    "/notes/{id}",
-    (ctx, values) =>
-      ctx.portableRequest == null
-        ? null
-        : getNote(ctx, values.id, ctx.portableRequest.authority),
+  federation.setObjectDispatcher(Note, "/notes/{id}", (ctx, values) =>
+    ctx.portableRequest == null
+      ? null
+      : getNote(ctx, values.id, ctx.portableRequest.authority),
   );
-  federation.setObjectDispatcher(
-    Create,
-    "/creates/{id}",
-    (ctx, values) =>
-      ctx.portableRequest == null
-        ? null
-        : getCreate(ctx, values.id, ctx.portableRequest.authority),
+  federation.setObjectDispatcher(Create, "/creates/{id}", (ctx, values) =>
+    ctx.portableRequest == null
+      ? null
+      : getCreate(ctx, values.id, ctx.portableRequest.authority),
   );
   const outbox = federation
     .setOutboxDispatcher(
@@ -274,15 +271,13 @@ function createTestFederation(options: TestFederationOptions = {}) {
       ],
     }),
   );
-  federation.setFeaturedDispatcher(
-    "/users/{identifier}/featured",
-    () => ({ items: [] }),
-  );
+  federation.setFeaturedDispatcher("/users/{identifier}/featured", () => ({
+    items: [],
+  }));
   if (options.inboxDispatcher ?? true) {
-    federation.setInboxDispatcher(
-      "/users/{identifier}/inbox",
-      () => ({ items: [] }),
-    );
+    federation.setInboxDispatcher("/users/{identifier}/inbox", () => ({
+      items: [],
+    }));
   }
   federation.setInboxListeners("/users/{identifier}/inbox");
   federation
@@ -304,7 +299,7 @@ function createTestFederation(options: TestFederationOptions = {}) {
     )
     .setFirstCursor(() => "0")
     .mapPortableOwner((_ctx, values) =>
-      values.identifier === "nobody" ? null : values.identifier
+      values.identifier === "nobody" ? null : values.identifier,
     );
   federation.setCollectionDispatcher(
     "drafts",
@@ -420,7 +415,7 @@ test("Federation.fetch() serves portable outboxes", async (t) => {
     assertEquals(
       items.map((item) => item.id),
       [0, 1].map((i) =>
-        portableId(`/creates/${getNoteValues("alice", "1", i).id}`)
+        portableId(`/creates/${getNoteValues("alice", "1", i).id}`),
       ),
     );
     // The signed items are embedded as they were signed:
@@ -584,7 +579,8 @@ test("Federation.fetch() filters portable followers collections", async () => {
     federation,
     gatewayUrl(
       "/users/alice/followers?base-url=" +
-        encodeURIComponent("https://a.example/path") + "&cursor=0",
+        encodeURIComponent("https://a.example/path") +
+        "&cursor=0",
     ),
   );
   assertEquals(pageResponse.status, 200);
@@ -597,10 +593,7 @@ test("Federation.fetch() filters portable followers collections", async () => {
     gatewayUrl("/users/alice/followers?base-url=invalid&cursor=0"),
   );
   assertEquals(invalidResponse.status, 200);
-  assertEquals(
-    invalidPage?.id,
-    portableId("/users/alice/followers?cursor=0"),
-  );
+  assertEquals(invalidPage?.id, portableId("/users/alice/followers?cursor=0"));
   assertEquals(invalidPage?.partOf, portableId("/users/alice/followers"));
 });
 
@@ -765,10 +758,7 @@ test("Context builds portable collection IDs", async (t) => {
 
   await t.step("unregistered collections", () => {
     assertThrows(() => ctx.getPortableLikedUri("alice", did), RouterError);
-    assertThrows(
-      () => ctx.getPortableFollowingUri("alice", did),
-      RouterError,
-    );
+    assertThrows(() => ctx.getPortableFollowingUri("alice", did), RouterError);
     assertThrows(
       () => ctx.getPortableFeaturedTagsUri("alice", did),
       RouterError,
@@ -811,10 +801,7 @@ test("Context builds portable collection IDs", async (t) => {
       new Request(`${ORIGIN}/`),
       undefined,
     );
-    assertThrows(
-      () => requestContext.getPortableOutboxUri("alice"),
-      TypeError,
-    );
+    assertThrows(() => requestContext.getPortableOutboxUri("alice"), TypeError);
   });
 });
 
@@ -848,7 +835,7 @@ test("Actor dispatchers warn about mismatching portable collections", async () =
     }
   });
   const mismatches = records.filter((record) =>
-    String(record.rawMessage).includes("does not match the portable ID")
+    String(record.rawMessage).includes("does not match the portable ID"),
   );
   assertEquals(
     mismatches.map((record) => record.properties.property),
@@ -866,23 +853,25 @@ function ctxOutbox(identifier: string): string {
 
 test("Fedify traverses portable collections that Fedify serves", async () => {
   const federation = createTestFederation();
-  const loader = (origin: string): DocumentLoader => async (url) => {
-    if (!/^https?:/.test(url)) throw new Error(`Not found: ${url}`);
-    const target = new URL(url);
-    const request = new URL(target.pathname + target.search, ORIGIN);
-    const response = await federation.fetch(
-      new Request(request, { headers: { Accept: ACCEPT } }),
-      { contextData: undefined },
-    );
-    if (!response.ok) {
-      throw new FetchError(url, `HTTP ${response.status}`, response);
-    }
-    return {
-      contextUrl: null,
-      documentUrl: new URL(target.pathname + target.search, origin).href,
-      document: await response.json(),
+  const loader =
+    (origin: string): DocumentLoader =>
+    async (url) => {
+      if (!/^https?:/.test(url)) throw new Error(`Not found: ${url}`);
+      const target = new URL(url);
+      const request = new URL(target.pathname + target.search, ORIGIN);
+      const response = await federation.fetch(
+        new Request(request, { headers: { Accept: ACCEPT } }),
+        { contextData: undefined },
+      );
+      if (!response.ok) {
+        throw new FetchError(url, `HTTP ${response.status}`, response);
+      }
+      return {
+        contextUrl: null,
+        documentUrl: new URL(target.pathname + target.search, origin).href,
+        document: await response.json(),
+      };
     };
-  };
   const options = {
     documentLoader: loader(ORIGIN),
     contextLoader: mockDocumentLoader,
@@ -897,11 +886,11 @@ test("Fedify traverses portable collections that Fedify serves", async () => {
   assert(outbox instanceof OrderedCollection);
   const items = await Array.fromAsync(traverseCollection(outbox, options));
   assertEquals(
-    items.map((item) => item instanceof Create ? formatIri(item.id!) : null),
+    items.map((item) => (item instanceof Create ? formatIri(item.id!) : null)),
     PAGES.flatMap((cursor) =>
       [0, 1].map((i) =>
-        portableId(`/creates/${getNoteValues("alice", cursor, i).id}`)
-      )
+        portableId(`/creates/${getNoteValues("alice", cursor, i).id}`),
+      ),
     ),
   );
 
@@ -1086,10 +1075,10 @@ test("verifyServedPortableObjects() verifies embedded maps as they are served", 
   const note = await sign(
     new Note({ id: parseIri(portableId("/notes/signed")), content: "Hi" }),
   );
-  const signed = await note.toJsonLd({
+  const signed = (await note.toJsonLd({
     format: "compact",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const collection = (member: unknown) => ({
     "@context": AS,
     id: portableId("/collection"),
@@ -1113,9 +1102,11 @@ test("verifyServedPortableObjects() verifies embedded maps as they are served", 
     ],
   };
   assertEquals(
-    (await verifyServedPortableObjects(collection(swapped), {
-      contextLoader: mockDocumentLoader,
-    })).verified,
+    (
+      await verifyServedPortableObjects(collection(swapped), {
+        contextLoader: mockDocumentLoader,
+      })
+    ).verified,
     false,
   );
   // A keyword alias could hide a portable ID from the check:
@@ -1163,12 +1154,10 @@ test("verifyServedPortableObjects() finds portable objects hidden by contexts", 
     },
   );
   // An alias of @id reusing the ID of an exempt map or the root:
-  for (
-    const decoy of [
-      { id: portableId("/notes/decoy"), totalItems: 0 },
-      null,
-    ]
-  ) {
+  for (const decoy of [
+    { id: portableId("/notes/decoy"), totalItems: 0 },
+    null,
+  ]) {
     const id = decoy == null ? portableId("/collection") : decoy.id;
     const document = collection({
       "@context": { uri: "id" },
@@ -1177,10 +1166,12 @@ test("verifyServedPortableObjects() finds portable objects hidden by contexts", 
       content: "Unsigned",
     });
     if (decoy != null) document.orderedItems.push(decoy as never);
-    assertEquals(
-      await verifyServedPortableObjects(document),
-      { verified: false, path: "", id, reason: "hiddenPortableObject" },
-    );
+    assertEquals(await verifyServedPortableObjects(document), {
+      verified: false,
+      path: "",
+      id,
+      reason: "hiddenPortableObject",
+    });
   }
   // A redefined proof property:
   assertEquals(
@@ -1227,7 +1218,8 @@ test("verifyServedPortableObjects() leaves non-portable remote objects alone", a
         id: "https://mastodon.example/users/bob/statuses/1",
         type: "Note",
         // Free text that mentions portable IDs does not matter:
-        content: `<p>AP: see ${gatewayUrl("/users/alice")}, ` +
+        content:
+          `<p>AP: see ${gatewayUrl("/users/alice")}, ` +
           `ap://${did}/users/alice, and did:plc:abcdefghijklmnop</p>`,
         url: gatewayUrl("/users/alice"),
       }),

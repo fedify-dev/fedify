@@ -394,10 +394,7 @@ test(
         }),
         true,
       );
-      assert.strictEqual(
-        await store.cas(key, "old-token", undefined),
-        false,
-      );
+      assert.strictEqual(await store.cas(key, "old-token", undefined), false);
       assert.strictEqual(await store.get(key), "new-token");
     } finally {
       await store.drop();
@@ -430,10 +427,7 @@ test(
         await store.cas(["cas", "qualified"], undefined, "replacement"),
         true,
       );
-      assert.strictEqual(
-        await store.get(["cas", "qualified"]),
-        "replacement",
-      );
+      assert.strictEqual(await store.get(["cas", "qualified"]), "replacement");
     } finally {
       await store.drop();
       await sql`DROP SCHEMA IF EXISTS ${sql(schemaName)};`;
@@ -451,9 +445,8 @@ test(
     const { sql, store } = getStore();
     try {
       const results = await Promise.all(
-        Array.from(
-          { length: 8 },
-          (_, index) => store.cas(["cas", "race"], undefined, index),
+        Array.from({ length: 8 }, (_, index) =>
+          store.cas(["cas", "race"], undefined, index),
         ),
       );
       assert.strictEqual(results.filter(Boolean).length, 1);

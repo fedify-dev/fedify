@@ -39,9 +39,13 @@ test(
 );
 
 test("Astro init pins the Astro 7 scaffolder and dependencies", async () => {
-  for (
-    const packageManager of ["npm", "pnpm", "yarn", "deno", "bun"] as const
-  ) {
+  for (const packageManager of [
+    "npm",
+    "pnpm",
+    "yarn",
+    "deno",
+    "bun",
+  ] as const) {
     const result = await astroDescription.init({
       command: "init",
       dir: packageDir,
@@ -86,10 +90,7 @@ test("Astro init pins the Astro 7 scaffolder and dependencies", async () => {
         result.dependencies?.["@deno/astro-adapter"],
         `npm:@deno/astro-adapter@${deps["npm:@deno/astro-adapter"]}`,
       );
-      strictEqual(
-        tasks.dev,
-        `deno run -A npm:astro@${deps["npm:astro"]} dev`,
-      );
+      strictEqual(tasks.dev, `deno run -A npm:astro@${deps["npm:astro"]} dev`);
       strictEqual(
         tasks.build,
         `deno run -A npm:astro@${deps["npm:astro"]} build`,
@@ -102,45 +103,36 @@ test("Astro init pins the Astro 7 scaffolder and dependencies", async () => {
   }
 });
 
-test(
-  "Astro init uses the Node adapter for Bun projects",
-  async () => {
-    const packageJson = JSON.parse(
-      await readFile(resolve(packageDir, "package.json"), "utf8"),
-    );
-    const result = await astroDescription.init({
-      command: "init",
-      dir: packageDir,
-      dryRun: true,
-      allowNonEmpty: false,
-      skipInstall: false,
-      kvStore: "in-memory",
-      messageQueue: "in-process",
-      packageManager: "bun",
-      projectName: "fedify-test",
-      testMode: true,
-      webFramework: "astro",
-    });
+test("Astro init uses the Node adapter for Bun projects", async () => {
+  const packageJson = JSON.parse(
+    await readFile(resolve(packageDir, "package.json"), "utf8"),
+  );
+  const result = await astroDescription.init({
+    command: "init",
+    dir: packageDir,
+    dryRun: true,
+    allowNonEmpty: false,
+    skipInstall: false,
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    packageManager: "bun",
+    projectName: "fedify-test",
+    testMode: true,
+    webFramework: "astro",
+  });
 
-    ok(result.dependencies != null);
-    ok(result.tasks != null);
-    ok(result.files != null);
-    const dependencies = result.dependencies as Record<string, string>;
-    const tasks = result.tasks as Record<string, string>;
-    const files = result.files as Record<string, string>;
+  ok(result.dependencies != null);
+  ok(result.tasks != null);
+  ok(result.files != null);
+  const dependencies = result.dependencies as Record<string, string>;
+  const tasks = result.tasks as Record<string, string>;
+  const files = result.files as Record<string, string>;
 
-    strictEqual(dependencies["@astrojs/node"], deps["npm:@astrojs/node"]);
-    strictEqual(dependencies["@fedify/astro"], packageJson.version);
-    strictEqual(tasks.dev, "bunx --bun astro dev");
-    strictEqual(tasks.build, "bunx --bun astro build");
-    strictEqual(tasks.preview, "bun ./dist/server/entry.mjs");
-    match(
-      files["astro.config.ts"],
-      /import node from "@astrojs\/node";/,
-    );
-    match(
-      files["astro.config.ts"],
-      /adapter: node\(\{ mode: "standalone" \}\),/,
-    );
-  },
-);
+  strictEqual(dependencies["@astrojs/node"], deps["npm:@astrojs/node"]);
+  strictEqual(dependencies["@fedify/astro"], packageJson.version);
+  strictEqual(tasks.dev, "bunx --bun astro dev");
+  strictEqual(tasks.build, "bunx --bun astro build");
+  strictEqual(tasks.preview, "bun ./dist/server/entry.mjs");
+  match(files["astro.config.ts"], /import node from "@astrojs\/node";/);
+  match(files["astro.config.ts"], /adapter: node\(\{ mode: "standalone" \}\),/);
+});

@@ -17,9 +17,7 @@ export default define.page(function Home(ctx) {
           alt="the Fedify logo"
         />
         <h1 class="text-4xl font-bold">Welcome to Fresh & Fedify</h1>
-        <p class="my-4">
-          Hello, Fediverse!
-        </p>
+        <p class="my-4">Hello, Fediverse!</p>
       </div>
     </div>
   );

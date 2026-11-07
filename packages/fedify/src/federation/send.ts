@@ -114,9 +114,11 @@ export interface ExtractedInbox {
  *                   See also {@link ExtractInboxesParameters}.
  * @returns The inboxes as a map of inbox URL to actor URIs.
  */
-export function extractInboxes(
-  { recipients, preferSharedInbox, excludeBaseUris }: ExtractInboxesParameters,
-): Record<string, ExtractedInbox> {
+export function extractInboxes({
+  recipients,
+  preferSharedInbox,
+  excludeBaseUris,
+}: ExtractInboxesParameters): Record<string, ExtractedInbox> {
   const inboxes: Record<string, ExtractedInbox> = {};
   // The keys of portable inboxes by their canonical forms, so that different
   // spellings of the same portable inbox are merged:
@@ -130,7 +132,8 @@ export function extractInboxes(
     let inbox: URL | null;
     let sharedInbox = false;
     if (
-      preferSharedInbox && recipient.endpoints?.sharedInbox != null &&
+      preferSharedInbox &&
+      recipient.endpoints?.sharedInbox != null &&
       (recipient.inboxId == null || !isPortableUri(recipient.inboxId))
     ) {
       inbox = recipient.endpoints.sharedInbox;
@@ -159,7 +162,7 @@ export function extractInboxes(
       }
       const [key = gatewayInboxes[0], ...otherKeys] = existingKeys;
       portableKeys.set(target.portableInbox, key);
-      const entry = inboxes[key] ??= { actorIds: new Set(), sharedInbox };
+      const entry = (inboxes[key] ??= { actorIds: new Set(), sharedInbox });
       for (const k of otherKeys) {
         for (const actorId of inboxes[k].actorIds) entry.actorIds.add(actorId);
         delete inboxes[k];
@@ -476,12 +479,12 @@ async function readLimitedResponseBody(
 type SendActivityOutcome =
   | { readonly ok: true }
   | {
-    readonly ok: false;
-    readonly status: number;
-    readonly statusText: string;
-    readonly error: string;
-    readonly responseHeaders: Headers;
-  };
+      readonly ok: false;
+      readonly status: number;
+      readonly statusText: string;
+      readonly error: string;
+      readonly responseHeaders: Headers;
+    };
 
 async function sendActivityInternal(
   {
@@ -504,7 +507,8 @@ async function sendActivityInternal(
   const federationMetrics = getFederationMetrics(meterProvider);
   const started = performance.now();
   let deliverySuccess = false;
-  const openUnvalidatedHop: DoubleKnockOpenHop = deps.openHop ??
+  const openUnvalidatedHop: DoubleKnockOpenHop =
+    deps.openHop ??
     (allowPrivateAddress ? openDirectFetch : (url) => openPublicFetch(url));
   async function openHop(url: string): Promise<PublicFetchSession> {
     let session: PublicFetchSession;
@@ -632,34 +636,38 @@ async function sendActivityInternal(
     };
     let outcome: SendActivityOutcome;
     try {
-      outcome = rsaKey == null
-        ? await fetchWithValidatedRedirects(
-          request,
-          openDeliveryHop,
-          consume,
-          attempt,
-        )
-        : await doubleKnockScoped(
-          request,
-          rsaKey,
-          { tracerProvider, specDeterminer },
-          openDeliveryHop,
-          consume,
-          attempt == null ? undefined : {
-            fetch: (request, submit) => attempt.fetch(request, submit),
-            response: (response, disposition) =>
-              attempt.response(response, disposition),
-            error: (phase, error) =>
-              attempt.failure({ kind: "local", phase, error }),
-          },
-        );
+      outcome =
+        rsaKey == null
+          ? await fetchWithValidatedRedirects(
+              request,
+              openDeliveryHop,
+              consume,
+              attempt,
+            )
+          : await doubleKnockScoped(
+              request,
+              rsaKey,
+              { tracerProvider, specDeterminer },
+              openDeliveryHop,
+              consume,
+              attempt == null
+                ? undefined
+                : {
+                    fetch: (request, submit) => attempt.fetch(request, submit),
+                    response: (response, disposition) =>
+                      attempt.response(response, disposition),
+                    error: (phase, error) =>
+                      attempt.failure({ kind: "local", phase, error }),
+                  },
+            );
     } catch (error) {
       attempt?.unknown(error);
       // A refused redirect remains a policy error rather than a transport
       // failure, just as a refused initial inbox does.
-      const failure = error instanceof FetchError || error instanceof UrlError
-        ? error
-        : createFetchError(inbox.href, error);
+      const failure =
+        error instanceof FetchError || error instanceof UrlError
+          ? error
+          : createFetchError(inbox.href, error);
       logger.error(
         "Failed to send activity {activityId} to {inbox}:\n{error}",
         { activityId, inbox: inbox.href, error: failure },
@@ -794,7 +802,7 @@ export async function fetchWithValidatedRedirects<T>(
 ): Promise<T> {
   const logger = getLogger(["fedify", "federation", "outbox"]);
   let body: string | undefined = await request.clone().text();
-  for (let redirects = 0;; redirects++) {
+  for (let redirects = 0; ; redirects++) {
     const session = await openHop(request.url);
     let response: Response;
     try {
@@ -802,14 +810,16 @@ export async function fetchWithValidatedRedirects<T>(
       response = await (attempt == null
         ? session.fetch(request, { redirect: "manual" })
         : attempt.fetch(request, () =>
-          session.fetch(request, { redirect: "manual" })));
+            session.fetch(request, { redirect: "manual" }),
+          ));
     } catch (error) {
       await closeAfterError(session, logger);
       throw error;
     }
     const location = response.headers.get("Location");
     if (
-      ![301, 302, 303, 307, 308].includes(response.status) || location == null
+      ![301, 302, 303, 307, 308].includes(response.status) ||
+      location == null
     ) {
       attempt?.response(response, "final");
       try {
@@ -840,21 +850,20 @@ export async function fetchWithValidatedRedirects<T>(
     }
     let method = request.method;
     if (
-      (response.status === 301 || response.status === 302) &&
-        method === "POST" ||
-      response.status === 303 && method !== "GET" && method !== "HEAD"
+      ((response.status === 301 || response.status === 302) &&
+        method === "POST") ||
+      (response.status === 303 && method !== "GET" && method !== "HEAD")
     ) {
       method = "GET";
       body = undefined;
-      for (
-        const name of [
-          "Content-Encoding",
-          "Content-Language",
-          "Content-Length",
-          "Content-Location",
-          "Content-Type",
-        ]
-      ) headers.delete(name);
+      for (const name of [
+        "Content-Encoding",
+        "Content-Language",
+        "Content-Length",
+        "Content-Location",
+        "Content-Type",
+      ])
+        headers.delete(name);
     }
     request = new Request(url, { method, headers, body, redirect: "manual" });
   }
@@ -867,10 +876,10 @@ async function closeAfterError(
   try {
     await session.close();
   } catch (error) {
-    logger.debug(
-      "Failed to close the session for {url}: {error}",
-      { url: session.url.href, error },
-    );
+    logger.debug("Failed to close the session for {url}: {error}", {
+      url: session.url.href,
+      error,
+    });
   }
 }
 

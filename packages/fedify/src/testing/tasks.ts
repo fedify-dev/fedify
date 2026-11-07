@@ -62,7 +62,8 @@ export interface Envelope {
 
 export const envelopeSchema = makeSchema(
   (data): data is Envelope =>
-    typeof data === "object" && data != null &&
+    typeof data === "object" &&
+    data != null &&
     (data as Envelope).note instanceof Note &&
     typeof (data as Envelope).title === "string",
 );

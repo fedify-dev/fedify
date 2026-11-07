@@ -51,9 +51,9 @@ test("runLoad - coordinated-omission: a stall inflates later latencies", async (
   const delayed = result.samples.filter((s) => s.scheduledAtMs > 0);
   assert.ok(
     delayed.some((s) => s.latencyMs > 25),
-    `expected an inflated latency; got ${
-      delayed.map((s) => Math.round(s.latencyMs)).join(", ")
-    }`,
+    `expected an inflated latency; got ${delayed
+      .map((s) => Math.round(s.latencyMs))
+      .join(", ")}`,
   );
 });
 

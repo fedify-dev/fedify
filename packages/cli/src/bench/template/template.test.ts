@@ -24,10 +24,7 @@ test("renderTemplates - interpolates inside surrounding text", () => {
 });
 
 test("renderTemplates - interpolates multiple expressions", () => {
-  assert.strictEqual(
-    renderTemplates("${{ name }}-${{ count }}", ctx),
-    "bob-3",
-  );
+  assert.strictEqual(renderTemplates("${{ name }}-${{ count }}", ctx), "bob-3");
 });
 
 test("renderTemplates - calls a helper, whole and embedded", () => {
@@ -102,10 +99,7 @@ test("renderTemplates - throws on an unclosed expression", () => {
 });
 
 test("renderTemplates - throws on an unbalanced quote in arguments", () => {
-  assert.throws(
-    () => renderTemplates("${{ upper('hi) }}", ctx),
-    TemplateError,
-  );
+  assert.throws(() => renderTemplates("${{ upper('hi) }}", ctx), TemplateError);
 });
 
 test("defaultHelpers - uuid returns a UUID string", () => {

@@ -51,8 +51,11 @@ function hasMalformedExpandedDateTimeLiteral(value: unknown): boolean {
   if (Array.isArray(value)) {
     return value.some(hasMalformedExpandedDateTimeLiteral);
   }
-  return isPlainObject(value) && "@value" in value &&
-    isMalformedDateTimeLiteral(value["@value"]);
+  return (
+    isPlainObject(value) &&
+    "@value" in value &&
+    isMalformedDateTimeLiteral(value["@value"])
+  );
 }
 
 function hasMalformedExpandedQuestionClosedLiteral(value: unknown): boolean {
@@ -77,8 +80,11 @@ function hasMalformedExpandedDurationLiteral(value: unknown): boolean {
   if (Array.isArray(value)) {
     return value.some(hasMalformedExpandedDurationLiteral);
   }
-  return isPlainObject(value) && "@value" in value &&
-    isMalformedDurationLiteral(value["@value"]);
+  return (
+    isPlainObject(value) &&
+    "@value" in value &&
+    isMalformedDurationLiteral(value["@value"])
+  );
 }
 
 function hasMalformedKnownTemporalLiteralInternal(
@@ -87,7 +93,7 @@ function hasMalformedKnownTemporalLiteralInternal(
 ): boolean {
   if (Array.isArray(value)) {
     return value.some((item) =>
-      hasMalformedKnownTemporalLiteralInternal(item, visited)
+      hasMalformedKnownTemporalLiteralInternal(item, visited),
     );
   }
   if (!isPlainObject(value)) return false;

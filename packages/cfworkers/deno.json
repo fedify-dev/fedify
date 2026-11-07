@@ -8,15 +8,9 @@
   "exports": {
     ".": "./src/mod.ts"
   },
-  "exclude": [
-    "dist",
-    "node_modules",
-    "test"
-  ],
+  "exclude": ["dist", "node_modules", "test"],
   "test": {
-    "exclude": [
-      "src/**/*.test.ts"
-    ]
+    "exclude": ["src/**/*.test.ts"]
   },
   "publish": {
     "exclude": [

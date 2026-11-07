@@ -7,14 +7,9 @@
     "@inquirer/prompts": "npm:@inquirer/prompts@^7.8.4",
     "inquirer-toggle": "npm:inquirer-toggle@^1.0.1"
   },
-  "exclude": [
-    "dist/",
-    "node_modules/"
-  ],
+  "exclude": ["dist/", "node_modules/"],
   "publish": {
-    "exclude": [
-      "**/*.test.ts"
-    ]
+    "exclude": ["**/*.test.ts"]
   },
   "tasks": {
     "check": "deno fmt --check && deno check src/**/*.ts",
@@ -22,13 +17,9 @@
     "update-init-deps": "node --experimental-strip-types scripts/update_init_deps.ts"
   },
   "fmt": {
-    "exclude": [
-      "src/templates/**"
-    ]
+    "exclude": ["src/templates/**"]
   },
   "test": {
-    "exclude": [
-      "src/test/**"
-    ]
+    "exclude": ["src/test/**"]
   }
 }

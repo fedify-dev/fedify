@@ -10,9 +10,5 @@
     "build": "deno run -A --node-modules-dir=manual npm:astro@7 build --config astro.config.deno.ts",
     "preview": "deno run -A --node-modules-dir=manual npm:astro@7 preview --config astro.config.deno.ts"
   },
-  "exclude": [
-    ".astro",
-    "dist",
-    "node_modules"
-  ]
+  "exclude": [".astro", "dist", "node_modules"]
 }

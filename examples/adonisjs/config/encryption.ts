@@ -21,6 +21,7 @@ const encryptionConfig = defineConfig({
 export default encryptionConfig;
 
 declare module "@adonisjs/core/types" {
-  export interface EncryptorsList
-    extends InferEncryptors<typeof encryptionConfig> {}
+  export interface EncryptorsList extends InferEncryptors<
+    typeof encryptionConfig
+  > {}
 }

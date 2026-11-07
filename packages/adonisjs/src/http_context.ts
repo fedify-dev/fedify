@@ -31,7 +31,8 @@ const INSTALLED: unique symbol = Symbol.for(
 
 const registry = globalThis as { [INSTALLED]?: WeakSet<object> };
 
-const installedGetters: WeakSet<object> = registry[INSTALLED] ??= new WeakSet();
+const installedGetters: WeakSet<object> = (registry[INSTALLED] ??=
+  new WeakSet());
 
 /**
  * The shape of a context that carries the {@link FACTORY} slot.
@@ -79,13 +80,17 @@ export function ensureFederationGetter(
   );
   if (existing !== undefined) return isOwnGetter(existing.get);
 
-  target.getter("federation", function (this: HttpContext) {
-    const create = (this as HttpContext & FactoryCarrier)[FACTORY];
-    if (create === undefined) {
-      throw new E_FEDIFY_CONTEXT_UNAVAILABLE(this.request.url());
-    }
-    return create() as HttpContext["federation"];
-  }, true);
+  target.getter(
+    "federation",
+    function (this: HttpContext) {
+      const create = (this as HttpContext & FactoryCarrier)[FACTORY];
+      if (create === undefined) {
+        throw new E_FEDIFY_CONTEXT_UNAVAILABLE(this.request.url());
+      }
+      return create() as HttpContext["federation"];
+    },
+    true,
+  );
 
   // Record the wrapper Macroable actually installed.
   const installed = Object.getOwnPropertyDescriptor(

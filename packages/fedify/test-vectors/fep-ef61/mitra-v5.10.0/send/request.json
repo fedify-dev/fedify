@@ -6,18 +6,9 @@
       "content-digest",
       "sha-256=:NGEDJ4axbB7yS73hitYgyz9PM1NF6ouUEbniRUZNW1I=:"
     ],
-    [
-      "content-type",
-      "application/activity+json"
-    ],
-    [
-      "date",
-      "Wed, 30 Sep 2026 14:54:41 GMT"
-    ],
-    [
-      "host",
-      "127.0.0.1:18497"
-    ],
+    ["content-type", "application/activity+json"],
+    ["date", "Wed, 30 Sep 2026 14:54:41 GMT"],
+    ["host", "127.0.0.1:18497"],
     [
       "signature",
       "sig1=:qay1Qd3ThdK3t0I8P68f91NAnwCZZsyIfxSIfI4MHU6Vm/3yBqzCeY5V2GHRPDS6tZd4SzUlfiHEhTATD+eNoPHuzZwLjazgkV0Rb7wx9sfem8/D1TUkX6DugXKnNOIxK/73q+RHHU459ZwH+YPpZ9ggtkIXl2FY+2hd0R4dHtR4qpQiWP8HdWZNNU2uTYdH7g3f/qT+LoBRzAIcVA1/3TomT3b7shS740ZFndvPlvOZFyWjkGS7twNUPL/525ywe6y3I7YmWKccaNMM+ZIDUwwhgT0RF4SVYmbyxI7Nc5VZguu5DP8RqB4BFzNeTOqPJcv9xQUP/JiqqeBTG1kCvGjVAUfxt5JYDUDw1EROSZ6pSdKiL8gcGcg3TsS6jAAfqAvhxDEMh8DDsz4eHQrgJWIp44RdYHCM+eWdldzbS9wrVIFtiOWcaEFvf51HbWjR4UnGIjXldwOURKS0S7Phya5qwz+3x96Hfg58+DgK9xbINStvy4XjmYsFN3lTkLMikoB/FJ5LLEBa0VX/QBcsBzQs8QxFYnwDoYw0hz4Cpe3Qe4kEVkQNSxlkl1sbxt9S3S9KLdMeHNarzjyZldUxaCSQ/dFKVRibutk+BMKoM9JOMnR7MKq6rVvE8/99Ot8WEYHItpU/S74t/LCWLDy5NY/PlhMGssVASlHs3vA553s=:"

@@ -26,7 +26,9 @@ export type ResolveTargetAddresses = (
  * @returns The risk tier.
  */
 export function classifyTarget(target: URL): TargetTier {
-  let host = target.hostname.replace(/^\[/, "").replace(/\]$/, "")
+  let host = target.hostname
+    .replace(/^\[/, "")
+    .replace(/\]$/, "")
     .toLowerCase();
   if (host.endsWith(".")) host = host.slice(0, -1); // strip the root dot
   // Hostname forms (not IP literals).
@@ -82,7 +84,9 @@ export async function defaultResolveTargetAddresses(
 }
 
 function normalizedHost(target: URL): string {
-  let host = target.hostname.replace(/^\[/, "").replace(/\]$/, "")
+  let host = target.hostname
+    .replace(/^\[/, "")
+    .replace(/\]$/, "")
     .toLowerCase();
   if (host.endsWith(".")) host = host.slice(0, -1);
   return host;
@@ -104,8 +108,10 @@ function isIpv4(host: string): boolean {
 function classifyIpv4(host: string): TargetTier {
   if (host === "0.0.0.0" || /^127\./.test(host)) return "loopback";
   if (
-    /^10\./.test(host) || /^192\.168\./.test(host) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(host) || /^169\.254\./.test(host)
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    /^169\.254\./.test(host)
   ) {
     return "private";
   }

@@ -101,9 +101,8 @@ export function warnUnusableAuthority(
   // By code point, so an emoji straddling the boundary cannot leave a lone
   // surrogate in the key or the log line.
   const points = Array.from(host);
-  const shown = points.length > 128
-    ? `${points.slice(0, 128).join("")}…`
-    : host;
+  const shown =
+    points.length > 128 ? `${points.slice(0, 128).join("")}…` : host;
   logger.warn(
     'Unusable request authority "%s"; the URL Fedify sees falls back to ' +
       '"%s", so signatures covering the authority will not verify. Behind a ' +

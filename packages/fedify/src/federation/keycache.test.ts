@@ -15,27 +15,21 @@ test("KvKeyCache.set()", async () => {
     new URL("https://example.com/key"),
     new CryptographicKey({ id: new URL("https://example.com/key") }),
   );
-  assertEquals(
-    await kv.get(["pk", "3", "https://example.com/key"]),
-    {
-      "@context": "https://w3id.org/security/v1",
-      id: "https://example.com/key",
-      type: "CryptographicKey",
-    },
-  );
+  assertEquals(await kv.get(["pk", "3", "https://example.com/key"]), {
+    "@context": "https://w3id.org/security/v1",
+    id: "https://example.com/key",
+    type: "CryptographicKey",
+  });
 
   await cache.set(
     new URL("https://example.com/key2"),
     new Multikey({ id: new URL("https://example.com/key2") }),
   );
-  assertEquals(
-    await kv.get(["pk", "3", "https://example.com/key2"]),
-    {
-      "@context": "https://w3id.org/security/multikey/v1",
-      id: "https://example.com/key2",
-      type: "Multikey",
-    },
-  );
+  assertEquals(await kv.get(["pk", "3", "https://example.com/key2"]), {
+    "@context": "https://w3id.org/security/multikey/v1",
+    id: "https://example.com/key2",
+    type: "Multikey",
+  });
 
   await cache.set(new URL("https://example.com/null"), null);
   assert(cache.nullKeys.has("https://example.com/null"));
@@ -187,13 +181,10 @@ test("KvKeyCache cached keys expire after keyTtl", async () => {
   });
   const keyId = new URL("https://example.com/key");
 
-  await cache.set(
-    keyId,
-    new CryptographicKey({ id: keyId }),
-  );
+  await cache.set(keyId, new CryptographicKey({ id: keyId }));
   // The value is written immediately, and stays readable for as long as the
   // TTL has not elapsed, however long the test itself takes to run.
-  assert(await kv.get(["pk", "3", keyId.href]) != null);
+  assert((await kv.get(["pk", "3", keyId.href])) != null);
   assertInstanceOf(await cache.get(keyId), CryptographicKey);
 
   // ...but disappears from the underlying KvStore once keyTtl elapses.
@@ -237,10 +228,7 @@ test("KvKeyCache.get() ignores entries from an earlier generation", async () => 
     owner: "https://example.com/impersonated",
     type: "CryptographicKey",
   });
-  assertEquals(
-    await cache.get(new URL("https://example.com/key2")),
-    undefined,
-  );
+  assertEquals(await cache.get(new URL("https://example.com/key2")), undefined);
 });
 
 test("KvKeyCache.compatibleKeyScope() keeps each purpose apart", async () => {
@@ -373,7 +361,10 @@ test("KvKeyCache.compatibleKeyScope() keeps the owners of keys", async () => {
   await kv.set(entryKey, JSON.parse(JSON.stringify(await kv.get(entryKey))));
   assertEquals((await scope.getEntry(keyId))?.owner, owner);
   // A malformed owner costs the key only its owner:
-  await kv.set(entryKey, { ...await kv.get(entryKey) ?? {}, owner: "bogus" });
+  await kv.set(entryKey, {
+    ...((await kv.get(entryKey)) ?? {}),
+    owner: "bogus",
+  });
   const malformed = await scope.getEntry(keyId);
   assertInstanceOf(malformed?.key, CryptographicKey);
   assertEquals(malformed?.owner, undefined);

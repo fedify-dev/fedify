@@ -9,13 +9,21 @@ import type { Channel, ChannelModel, ConsumeMessage } from "amqplib";
 import { Buffer } from "node:buffer";
 
 function isQueueNotFoundError(error: unknown): boolean {
-  return typeof error === "object" && error != null &&
-    "code" in error && error.code === 404;
+  return (
+    typeof error === "object" &&
+    error != null &&
+    "code" in error &&
+    error.code === 404
+  );
 }
 
 function isPreconditionFailedError(error: unknown): boolean {
-  return typeof error === "object" && error != null &&
-    "code" in error && error.code === 406;
+  return (
+    typeof error === "object" &&
+    error != null &&
+    "code" in error &&
+    error.code === 406
+  );
 }
 
 const depthProbeConcurrency = 8;
@@ -155,10 +163,7 @@ export class AmqpMessageQueue implements MessageQueue {
    * @param connection A connection to the AMQP server.
    * @param options Options for the message queue.
    */
-  constructor(
-    connection: ChannelModel,
-    options: AmqpMessageQueueOptions = {},
-  ) {
+  constructor(connection: ChannelModel, options: AmqpMessageQueueOptions = {}) {
     this.#connection = connection;
     this.#queue = options.queue ?? "fedify_queue";
     this.#delayedQueuePrefix = options.delayedQueuePrefix ?? "fedify_delayed_";
@@ -291,14 +296,10 @@ export class AmqpMessageQueue implements MessageQueue {
       });
       this.#trackDelayedQueue(queue);
     }
-    channel.sendToQueue(
-      queue,
-      Buffer.from(JSON.stringify(message), "utf-8"),
-      {
-        persistent: this.#durable,
-        contentType: "application/json",
-      },
-    );
+    channel.sendToQueue(queue, Buffer.from(JSON.stringify(message), "utf-8"), {
+      persistent: this.#durable,
+      contentType: "application/json",
+    });
   }
 
   /**
@@ -456,9 +457,7 @@ export class AmqpMessageQueue implements MessageQueue {
           // The channel can already be closed by a failed passive queue check.
         }
       };
-      const checkQueue = async (
-        queue: string,
-      ): Promise<number | undefined> => {
+      const checkQueue = async (queue: string): Promise<number | undefined> => {
         channel ??= await this.#createDepthChannel();
         try {
           return (await channel.checkQueue(queue)).messageCount;
@@ -488,9 +487,9 @@ export class AmqpMessageQueue implements MessageQueue {
 
   async #pruneMissingDelayedQueues(): Promise<void> {
     const delayedQueues = [...this.#delayedQueues];
-    for (
-      const [queue, messageCount] of await this.#checkQueueDepths(delayedQueues)
-    ) {
+    for (const [queue, messageCount] of await this.#checkQueueDepths(
+      delayedQueues,
+    )) {
       if (messageCount == null) this.#delayedQueues.delete(queue);
     }
   }
@@ -510,9 +509,9 @@ export class AmqpMessageQueue implements MessageQueue {
 
     let delayed = 0;
     const delayedQueues = [...this.#delayedQueues];
-    for (
-      const [queue, messageCount] of await this.#checkQueueDepths(delayedQueues)
-    ) {
+    for (const [queue, messageCount] of await this.#checkQueueDepths(
+      delayedQueues,
+    )) {
       if (messageCount == null) {
         this.#delayedQueues.delete(queue);
       } else {
@@ -575,11 +574,9 @@ export class AmqpMessageQueue implements MessageQueue {
     if (this.#ordering != null) {
       for (let i = 0; i < this.#ordering.partitions; i++) {
         const queueName = this.#getOrderingQueueName(i);
-        const orderingReply = await channel.consume(
-          queueName,
-          messageHandler,
-          { noAck: false },
-        );
+        const orderingReply = await channel.consume(queueName, messageHandler, {
+          noAck: false,
+        });
         consumerTags.push(orderingReply.consumerTag);
       }
     }

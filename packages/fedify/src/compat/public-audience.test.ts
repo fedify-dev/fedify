@@ -19,7 +19,7 @@ test("normalizePublicAudience() rewrites every addressing field and both CURIE f
     bcc: ["Public"],
     audience: ["as:Public", "Public"],
   };
-  const output = await normalizePublicAudience(input) as Record<
+  const output = (await normalizePublicAudience(input)) as Record<
     string,
     unknown
   >;
@@ -42,7 +42,7 @@ test("normalizePublicAudience() normalises activities serialized by @fedify/voca
     tos: [PUBLIC_COLLECTION],
     ccs: [new URL("https://example.com/followers")],
   });
-  const compact = await activity.toJsonLd({ format: "compact" }) as Record<
+  const compact = (await activity.toJsonLd({ format: "compact" })) as Record<
     string,
     unknown
   >;
@@ -50,10 +50,10 @@ test("normalizePublicAudience() normalises activities serialized by @fedify/voca
   // The default compact @context Fedify emits includes an inline object
   // of namespace prefixes, so the rewrite takes the URDNA2015 equivalence
   // path rather than the fast path; supply an explicit loader.
-  const normalized = await normalizePublicAudience(
+  const normalized = (await normalizePublicAudience(
     compact,
     getDocumentLoader(),
-  ) as Record<string, unknown>;
+  )) as Record<string, unknown>;
   assertEquals(normalized.to, PUBLIC_URI);
   const nestedObject = normalized.object as Record<string, unknown>;
   assertEquals(nestedObject.to, PUBLIC_URI);
@@ -65,16 +65,16 @@ test("normalizePublicAudience() normalises a public relay Follow object", async 
     actor: new URL("https://example.com/alice"),
     object: PUBLIC_COLLECTION,
   });
-  const compact = await activity.toJsonLd({ format: "compact" }) as Record<
+  const compact = (await activity.toJsonLd({ format: "compact" })) as Record<
     string,
     unknown
   >;
   assertEquals(compact.object, "as:Public");
 
-  const normalized = await normalizePublicAudience(
+  const normalized = (await normalizePublicAudience(
     compact,
     getDocumentLoader(),
-  ) as Record<string, unknown>;
+  )) as Record<string, unknown>;
   assertEquals(normalized.object, PUBLIC_URI);
 });
 
@@ -97,7 +97,7 @@ test("normalizePublicAudience() leaves non-addressing fields untouched", async (
     name: "as:Public",
     to: "as:Public",
   };
-  const output = await normalizePublicAudience(input) as Record<
+  const output = (await normalizePublicAudience(input)) as Record<
     string,
     unknown
   >;
@@ -113,19 +113,25 @@ test("normalizePublicAudience() rewrites without canonicalization for known-safe
       "contextLoader should not be called for a known-safe @context",
     );
   };
-  const singleString = await normalizePublicAudience({
-    "@context": AS_CONTEXT,
-    type: "Note",
-    id: "https://example.com/notes/fast1",
-    to: "as:Public",
-  }, rejecting) as Record<string, unknown>;
+  const singleString = (await normalizePublicAudience(
+    {
+      "@context": AS_CONTEXT,
+      type: "Note",
+      id: "https://example.com/notes/fast1",
+      to: "as:Public",
+    },
+    rejecting,
+  )) as Record<string, unknown>;
   assertEquals(singleString.to, PUBLIC_URI);
-  const arrayOfStrings = await normalizePublicAudience({
-    "@context": [AS_CONTEXT, "https://w3id.org/security/data-integrity/v1"],
-    type: "Note",
-    id: "https://example.com/notes/fast2",
-    to: "as:Public",
-  }, rejecting) as Record<string, unknown>;
+  const arrayOfStrings = (await normalizePublicAudience(
+    {
+      "@context": [AS_CONTEXT, "https://w3id.org/security/data-integrity/v1"],
+      type: "Note",
+      id: "https://example.com/notes/fast2",
+      to: "as:Public",
+    },
+    rejecting,
+  )) as Record<string, unknown>;
   assertEquals(arrayOfStrings.to, PUBLIC_URI);
 });
 
@@ -148,12 +154,15 @@ test("normalizePublicAudience() falls back to canonicalization for unknown-URL c
       document: preloadedContexts[AS_CONTEXT],
     });
   };
-  const output = await normalizePublicAudience({
-    "@context": [AS_CONTEXT, "https://custom.example/ctx"],
-    type: "Note",
-    id: "https://example.com/notes/unknown",
-    to: "as:Public",
-  }, loader) as Record<string, unknown>;
+  const output = (await normalizePublicAudience(
+    {
+      "@context": [AS_CONTEXT, "https://custom.example/ctx"],
+      type: "Note",
+      id: "https://example.com/notes/unknown",
+      to: "as:Public",
+    },
+    loader,
+  )) as Record<string, unknown>;
   assertEquals(output.to, PUBLIC_URI);
   // canonicalization on both sides of the equivalence check exercises the
   // loader at least once.
@@ -166,15 +175,12 @@ test("normalizePublicAudience() leaves @context subtrees untouched", async () =>
   // definitions because addressing fields do not live there, and the
   // rewrite would change term semantics rather than addressing semantics.
   const input = {
-    "@context": [
-      AS_CONTEXT,
-      { "customTerm": "as:Public" },
-    ],
+    "@context": [AS_CONTEXT, { "customTerm": "as:Public" }],
     type: "Note",
     id: "https://example.com/notes/context",
     to: PUBLIC_URI,
   };
-  const output = await normalizePublicAudience(input) as Record<
+  const output = (await normalizePublicAudience(input)) as Record<
     string,
     unknown
   >;
@@ -188,7 +194,7 @@ test("normalizePublicAudience() does not traverse prototype-polluted keys", asyn
   polluted["@context"] = AS_CONTEXT;
   polluted.type = "Note";
   polluted.id = "https://example.com/notes/proto";
-  const output = await normalizePublicAudience(polluted) as Record<
+  const output = (await normalizePublicAudience(polluted)) as Record<
     string,
     unknown
   >;
@@ -263,7 +269,7 @@ test("normalizePublicAudience() bails out on nested @context that redefines as:"
       to: "as:Public",
     },
   };
-  const output = await normalizePublicAudience(input) as Record<
+  const output = (await normalizePublicAudience(input)) as Record<
     string,
     unknown
   >;
@@ -287,7 +293,7 @@ test("normalizePublicAudience() bails out when the rewrite changes semantics", a
     id: "https://example.com/notes/5",
     to: "as:Public",
   };
-  const output = await normalizePublicAudience(input) as Record<
+  const output = (await normalizePublicAudience(input)) as Record<
     string,
     unknown
   >;

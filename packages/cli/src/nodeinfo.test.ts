@@ -296,19 +296,17 @@ test("rgbTo256Color - check RGB cube", () => {
   );
 
   const results = colors.map((color) =>
-    rgbTo256Color(color.r, color.g, color.b)
+    rgbTo256Color(color.r, color.g, color.b),
   );
   assert.deepEqual(results, expected_color_idx);
 });
 
 test("rgbTo256Color - check grayscale", () => {
-  const grayscale = Array.from({ length: 24 }).map(
-    (_, idx) => ({
-      r: 8 + idx * 10,
-      g: 8 + idx * 10,
-      b: 8 + idx * 10,
-    }),
-  );
+  const grayscale = Array.from({ length: 24 }).map((_, idx) => ({
+    r: 8 + idx * 10,
+    g: 8 + idx * 10,
+    b: 8 + idx * 10,
+  }));
 
   const expected_gray_idx = Array.from(
     { length: grayscale.length },
@@ -316,7 +314,7 @@ test("rgbTo256Color - check grayscale", () => {
   );
 
   const results = grayscale.map((GRAY) =>
-    rgbTo256Color(GRAY.r, GRAY.g, GRAY.b)
+    rgbTo256Color(GRAY.r, GRAY.g, GRAY.b),
   );
   assert.deepEqual(results, expected_gray_idx);
 });
@@ -404,11 +402,12 @@ async function withMockFetch(
   const originalFetch = globalThis.fetch;
   const calls: FetchCall[] = [];
   globalThis.fetch = ((input, init) => {
-    let url = typeof input === "string"
-      ? input
-      : input instanceof URL
-      ? input.href
-      : input.url;
+    let url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
     for (let redirects = 0; redirects < 20; redirects++) {
       calls.push({ url, redirect: init?.redirect });
       const route = routes[url];
@@ -416,7 +415,8 @@ async function withMockFetch(
       const response = route();
       const location = response.headers.get("Location");
       if (
-        init?.redirect !== "manual" && location != null &&
+        init?.redirect !== "manual" &&
+        location != null &&
         [301, 302, 303, 307, 308].includes(response.status)
       ) {
         url = new URL(location, url).href;
@@ -433,16 +433,16 @@ async function withMockFetch(
   }
 }
 
-function nodeInfoRoutes(
-  html: string,
-): Record<string, () => Response> {
+function nodeInfoRoutes(html: string): Record<string, () => Response> {
   return {
     "https://8.8.8.8/.well-known/nodeinfo": () =>
       Response.json({
-        links: [{
-          rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
-          href: "https://8.8.8.8/nodeinfo/2.1",
-        }],
+        links: [
+          {
+            rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
+            href: "https://8.8.8.8/nodeinfo/2.1",
+          },
+        ],
       }),
     "https://8.8.8.8/nodeinfo/2.1": () =>
       Response.json({
@@ -510,16 +510,14 @@ test("getFaviconUrl rejects a public page redirect to loopback", async () => {
 });
 
 test("nodeinfo rejects private and non-HTTP icon URLs", async () => {
-  for (
-    const href of [
-      "http://127.0.0.1:9000/secret",
-      "http://[::1]/secret",
-      "http://[::ffff:7f00:1]/secret",
-      "http://2130706433/secret",
-      "file:///etc/passwd",
-      "data:text/plain,secret",
-    ]
-  ) {
+  for (const href of [
+    "http://127.0.0.1:9000/secret",
+    "http://[::1]/secret",
+    "http://[::ffff:7f00:1]/secret",
+    "http://2130706433/secret",
+    "file:///etc/passwd",
+    "data:text/plain,secret",
+  ]) {
     await withMockFetch(
       nodeInfoRoutes('<link rel="icon" href="' + href + '">'),
       async (calls) => {
@@ -550,20 +548,26 @@ test("nodeinfo rejects an icon redirect to loopback", async () => {
   routes["http://127.0.0.1:9000/secret"] = () => new Response("private");
   await withMockFetch(routes, async (calls) => {
     await runNodeInfoWithFavicon();
-    assert.deepEqual(calls.map((call) => call.url), [
-      "https://8.8.8.8/.well-known/nodeinfo",
-      "https://8.8.8.8/nodeinfo/2.1",
-      "https://8.8.8.8/",
-      "https://8.8.8.8/icon.png",
-      "https://8.8.8.8/favicon.ico",
-    ]);
+    assert.deepEqual(
+      calls.map((call) => call.url),
+      [
+        "https://8.8.8.8/.well-known/nodeinfo",
+        "https://8.8.8.8/nodeinfo/2.1",
+        "https://8.8.8.8/",
+        "https://8.8.8.8/icon.png",
+        "https://8.8.8.8/favicon.ico",
+      ],
+    );
     assert.ok(calls.every((call) => call.redirect === "manual"));
   });
 });
 
 test("nodeinfo renders a public favicon", async () => {
-  const png = await new Jimp({ width: 4, height: 4, color: 0x000000ff })
-    .getBuffer("image/png");
+  const png = await new Jimp({
+    width: 4,
+    height: 4,
+    color: 0x000000ff,
+  }).getBuffer("image/png");
   const routes = nodeInfoRoutes('<link rel="icon" href="/icon.png">');
   routes["https://8.8.8.8/icon.png"] = () =>
     new Response(Uint8Array.from(png).buffer, {
@@ -573,14 +577,17 @@ test("nodeinfo renders a public favicon", async () => {
   const output = await captureOutput(() =>
     withMockFetch(routes, async (calls) => {
       await runNodeInfoWithFavicon();
-      assert.deepEqual(calls.map((call) => call.url), [
-        "https://8.8.8.8/.well-known/nodeinfo",
-        "https://8.8.8.8/nodeinfo/2.1",
-        "https://8.8.8.8/",
-        "https://8.8.8.8/icon.png",
-      ]);
+      assert.deepEqual(
+        calls.map((call) => call.url),
+        [
+          "https://8.8.8.8/.well-known/nodeinfo",
+          "https://8.8.8.8/nodeinfo/2.1",
+          "https://8.8.8.8/",
+          "https://8.8.8.8/icon.png",
+        ],
+      );
       assert.ok(calls.every((call) => call.redirect === "manual"));
-    })
+    }),
   );
   assert.match(output, /█/);
 });
@@ -594,7 +601,7 @@ test("nodeinfo renders an SVG favicon", async () => {
       { headers: { "Content-Type": "image/svg+xml" } },
     );
   const output = await captureOutput(() =>
-    withMockFetch(routes, runNodeInfoWithFavicon)
+    withMockFetch(routes, runNodeInfoWithFavicon),
   );
   assert.match(output, /█/);
 });
@@ -608,7 +615,7 @@ test("nodeinfo renders an SVG favicon served as octet-stream", async () => {
       { headers: { "Content-Type": "application/octet-stream" } },
     );
   const output = await captureOutput(() =>
-    withMockFetch(routes, runNodeInfoWithFavicon)
+    withMockFetch(routes, runNodeInfoWithFavicon),
   );
   assert.match(output, /█/);
 });
@@ -622,7 +629,7 @@ test("nodeinfo renders an SVG favicon with a content type parameter", async () =
       { headers: { "Content-Type": "Image/SVG+XML; charset=utf-8" } },
     );
   const output = await captureOutput(() =>
-    withMockFetch(routes, runNodeInfoWithFavicon)
+    withMockFetch(routes, runNodeInfoWithFavicon),
   );
   assert.match(output, /█/);
 });
@@ -632,15 +639,18 @@ test("nodeinfo falls back when an SVG favicon cannot be rendered", async () => {
   routes["https://8.8.8.8/icon.svg"] = () =>
     new Response("<svg", { headers: { "Content-Type": "image/svg+xml" } });
   const output = await captureOutput(() =>
-    withMockFetch(routes, runNodeInfoWithFavicon)
+    withMockFetch(routes, runNodeInfoWithFavicon),
   );
   assert.match(output, /test v1\.0\.0/);
   assert.doesNotMatch(output, /[█▓▒░]/);
 });
 
 test("nodeinfo retries /favicon.ico when the chosen favicon fails", async () => {
-  const png = await new Jimp({ width: 4, height: 4, color: 0x000000ff })
-    .getBuffer("image/png");
+  const png = await new Jimp({
+    width: 4,
+    height: 4,
+    color: 0x000000ff,
+  }).getBuffer("image/png");
   const routes = nodeInfoRoutes('<link rel="icon" href="/icon.svg">');
   routes["https://8.8.8.8/icon.svg"] = () =>
     new Response(null, { status: 404 });
@@ -649,7 +659,7 @@ test("nodeinfo retries /favicon.ico when the chosen favicon fails", async () => 
       headers: { "Content-Type": "image/png" },
     });
   const output = await captureOutput(() =>
-    withMockFetch(routes, runNodeInfoWithFavicon)
+    withMockFetch(routes, runNodeInfoWithFavicon),
   );
   assert.match(output, /█/);
 });
@@ -737,6 +747,9 @@ test("getFaviconUrl permits five redirects but not six", async () => {
       /Too many favicon redirects/,
     );
     assert.equal(calls.length, 6);
-    assert.equal(calls.some((call) => call.url.endsWith("/hop6")), false);
+    assert.equal(
+      calls.some((call) => call.url.endsWith("/hop6")),
+      false,
+    );
   });
 });

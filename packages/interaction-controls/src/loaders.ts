@@ -64,9 +64,10 @@ export function trackLoaders(
   const wrappedDocumentLoader = wrap(documentLoader);
   return {
     documentLoader: wrappedDocumentLoader,
-    contextLoader: contextLoader === documentLoader
-      ? wrappedDocumentLoader
-      : wrap(contextLoader),
+    contextLoader:
+      contextLoader === documentLoader
+        ? wrappedDocumentLoader
+        : wrap(contextLoader),
     records,
     release: () => {
       released = true;
@@ -109,14 +110,15 @@ export function classifyFailure(
   tracker: LoaderTracker,
 ): UnverifiableFailure {
   const loaderErrors = collectCauses(error).filter((e) =>
-    tracker.records.has(e)
+    tracker.records.has(e),
   );
   // Loaders may throw anything, even null, so look up indices, not values:
   const transientIndex = loaderErrors.findIndex(isTransientFetchError);
   const selected = loaderErrors[transientIndex < 0 ? 0 : transientIndex];
-  const url = loaderErrors.length < 1
-    ? null
-    : getFailedUrl(selected, tracker.records.get(selected)!);
+  const url =
+    loaderErrors.length < 1
+      ? null
+      : getFailedUrl(selected, tracker.records.get(selected)!);
   // A document referring to a URL that cannot even be parsed is malformed:
   if (url == null) {
     return {

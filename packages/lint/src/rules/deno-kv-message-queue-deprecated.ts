@@ -19,7 +19,8 @@ export const eslint: Rule.RuleModule = {
   meta: {
     type: "suggestion",
     docs: {
-      description: "Warn when the deprecated `DenoKvMessageQueue` class from " +
+      description:
+        "Warn when the deprecated `DenoKvMessageQueue` class from " +
         "`@fedify/denokv` is used",
     },
     schema: [],

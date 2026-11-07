@@ -87,7 +87,8 @@ export function assertPortableActorActivity(activity: Activity): void {
     );
   }
   if (
-    activity.id == null || !isPortableId(activity.id) ||
+    activity.id == null ||
+    !isPortableId(activity.id) ||
     getPortableDid(activity.id) !== did
   ) {
     throw new TypeError(
@@ -102,8 +103,9 @@ export function assertPortableActorActivity(activity: Activity): void {
   // FEP-ef61 requires publishers to build compatible identifiers with
   // the actor's first gateway, which the actor and the activity then share:
   if (!isCompatibleEf61Iri(activity.id)) return;
-  const mismatched = portableActors.find((actorId) =>
-    isCompatibleEf61Iri(actorId) && actorId.origin !== activity.id?.origin
+  const mismatched = portableActors.find(
+    (actorId) =>
+      isCompatibleEf61Iri(actorId) && actorId.origin !== activity.id?.origin,
   );
   if (mismatched == null) return;
   getLogger(["fedify", "federation", "outbox"]).warn(
@@ -162,19 +164,20 @@ export async function signOutgoingActivity(
     hasProof = true;
     break;
   }
-  const keys = candidates.filter((c) =>
-    c.privateKey.algorithm.name === "Ed25519" &&
-    // Gateway keys and keys at ap: URIs only sign HTTP requests; a proof
-    // made with a gateway key would claim that the gateway authored
-    // the activity, and a portable activity's proof is made by its DID:
-    !isPortableKeyId(c.verificationMethod)
+  const keys = candidates.filter(
+    (c) =>
+      c.privateKey.algorithm.name === "Ed25519" &&
+      // Gateway keys and keys at ap: URIs only sign HTTP requests; a proof
+      // made with a gateway key would claim that the gateway authored
+      // the activity, and a portable activity's proof is made by its DID:
+      !isPortableKeyId(c.verificationMethod),
   );
   if (!hasProof && activity.id != null && isPortableId(activity.id)) {
     // The single-key shortcut below does not apply: FEP-ef61 accepts only
     // a proof made by the activity's own DID.
     return await sign(selectPortableActivityKey(activity, activity.id, keys));
   }
-  if (keys.length < 1 || hasProof && !options.appendToExistingProofs) {
+  if (keys.length < 1 || (hasProof && !options.appendToExistingProofs)) {
     return { activity, hasProof, proofCreated: false };
   }
   // A single key produces a single proof whatever the document contains, so
@@ -229,9 +232,10 @@ function selectPortableActivityKey(
         `or @gateway location hints.`,
     );
   }
-  const eligible = keys.filter((c) =>
-    c.verificationMethod.protocol === "did:" &&
-    getPortableDid(c.verificationMethod) === activityDid
+  const eligible = keys.filter(
+    (c) =>
+      c.verificationMethod.protocol === "did:" &&
+      getPortableDid(c.verificationMethod) === activityDid,
   );
   if (eligible.length !== 1) {
     throw new TypeError(

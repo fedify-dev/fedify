@@ -20,9 +20,10 @@ export class LanguageString extends String {
    */
   constructor(value: string, language: Intl.Locale | string) {
     super(value);
-    this.locale = typeof language === "string"
-      ? new Intl.Locale(normalizeLanguageTag(language))
-      : language;
+    this.locale =
+      typeof language === "string"
+        ? new Intl.Locale(normalizeLanguageTag(language))
+        : language;
   }
 }
 

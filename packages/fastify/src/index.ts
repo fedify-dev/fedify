@@ -28,8 +28,9 @@ export type ContextDataFactory<TContextData> = (
 /**
  * Plugin options for Fedify integration.
  */
-export interface FedifyPluginOptions<TContextData>
-  extends FastifyPluginOptions {
+export interface FedifyPluginOptions<
+  TContextData,
+> extends FastifyPluginOptions {
   federation: Federation<TContextData>;
   contextDataFactory?: ContextDataFactory<TContextData>;
   errorHandlers?: Partial<ErrorHandlers>;
@@ -69,8 +70,11 @@ const fedifyPluginCore: FastifyPluginAsync<FedifyPluginOptions<unknown>> = (
   fastify: FastifyInstance,
   options: FedifyPluginOptions<unknown>,
 ) => {
-  const { federation, contextDataFactory = () => undefined, errorHandlers } =
-    options;
+  const {
+    federation,
+    contextDataFactory = () => undefined,
+    errorHandlers,
+  } = options;
   fastify.addHook("onRequest", async (request, reply) => {
     const { request: webRequest, body } = toWebRequest(request);
     const contextData = await contextDataFactory(request);
@@ -112,9 +116,10 @@ const createDefaultNotAcceptableResponse = () =>
 /**
  * Convert Fastify request to Web API Request.
  */
-function toWebRequest(
-  fastifyReq: FastifyRequest,
-): { request: Request; body?: RequestBody } {
+function toWebRequest(fastifyReq: FastifyRequest): {
+  request: Request;
+  body?: RequestBody;
+} {
   const protocol = fastifyReq.protocol;
   const host = fastifyReq.headers.host ?? fastifyReq.hostname;
   const url = `${protocol}://${host}${fastifyReq.url}`;
@@ -133,9 +138,10 @@ function toWebRequest(
   if (fastifyReq.method === "GET" || fastifyReq.method === "HEAD") {
     body = undefined;
   } else if (fastifyReq.body !== undefined) {
-    body = typeof fastifyReq.body === "string"
-      ? fastifyReq.body
-      : JSON.stringify(fastifyReq.body);
+    body =
+      typeof fastifyReq.body === "string"
+        ? fastifyReq.body
+        : JSON.stringify(fastifyReq.body);
   } else {
     rawBody = createRequestBody(fastifyReq.raw);
     body = rawBody.stream;
@@ -191,13 +197,11 @@ function createRequestBody(message: Readable): RequestBody {
           // Reading the exact buffered size, unlike read() without an argument,
           // never makes the stream emit "end", after which unshift() would
           // throw:
-          const chunk: Uint8Array | string | null = size > 0
-            ? message.read(size)
-            : null;
+          const chunk: Uint8Array | string | null =
+            size > 0 ? message.read(size) : null;
           if (chunk != null) {
-            const bytes = typeof chunk === "string"
-              ? Buffer.from(chunk)
-              : chunk;
+            const bytes =
+              typeof chunk === "string" ? Buffer.from(chunk) : chunk;
             consumed.push(bytes);
             controller.enqueue(bytes);
             return;
@@ -240,9 +244,11 @@ function createRequestBody(message: Readable): RequestBody {
  * `readableEnded` elsewhere.
  */
 function isEnded(message: Readable): boolean {
-  const state = (message as Readable & {
-    _readableState?: { ended?: boolean };
-  })._readableState;
+  const state = (
+    message as Readable & {
+      _readableState?: { ended?: boolean };
+    }
+  )._readableState;
   return state?.ended ?? message.readableEnded;
 }
 

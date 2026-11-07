@@ -15,8 +15,7 @@ import {
 } from "./schema.ts";
 
 test(
-  "isNonFunctionalProperty: " +
-    "returns true for non-functional property",
+  "isNonFunctionalProperty: " + "returns true for non-functional property",
   () => {
     const property: PropertySchema = {
       singularName: "name",
@@ -172,28 +171,25 @@ test("Type guard combinations: non-functional property with container", () => {
   }
 });
 
-test(
-  "Type guard combinations: non-functional property with graph container",
-  () => {
-    const property: PropertySchema = {
-      singularName: "member",
-      pluralName: "members",
-      uri: "https://example.com/member",
-      description: "Graph of members",
-      range: ["https://example.com/Member"] as [TypeUri],
-      functional: false,
-      container: "graph",
-    };
+test("Type guard combinations: non-functional property with graph container", () => {
+  const property: PropertySchema = {
+    singularName: "member",
+    pluralName: "members",
+    uri: "https://example.com/member",
+    description: "Graph of members",
+    range: ["https://example.com/Member"] as [TypeUri],
+    functional: false,
+    container: "graph",
+  };
 
-    ok(isNonFunctionalProperty(property));
-    ok(!hasSingularAccessor(property));
+  ok(isNonFunctionalProperty(property));
+  ok(!hasSingularAccessor(property));
 
-    // Type narrowing test
-    if (isNonFunctionalProperty(property)) {
-      deepStrictEqual(property.container, "graph");
-    }
-  },
-);
+  // Type narrowing test
+  if (isNonFunctionalProperty(property)) {
+    deepStrictEqual(property.container, "graph");
+  }
+});
 
 test("Type guard combinations: untyped property", () => {
   const property: PropertySchema = {
@@ -288,21 +284,21 @@ test("loadSchemaFiles validates redundant properties on both property kinds", as
           policy,
         );
       }
-      for (
-        const invalid of [
-          { redundantPropertiesWrite: "merge" },
-          { redundantPropertiesWrite: 42 },
-          { redundantProperties: "alias" },
-          { redundantProperties: [{}] },
-          { redundantProperties: [{ uri: 42 }] },
-          {
-            redundantProperties: [{
+      for (const invalid of [
+        { redundantPropertiesWrite: "merge" },
+        { redundantPropertiesWrite: 42 },
+        { redundantProperties: "alias" },
+        { redundantProperties: [{}] },
+        { redundantProperties: [{ uri: 42 }] },
+        {
+          redundantProperties: [
+            {
               uri: "https://example.com/alias",
               compactName: 42,
-            }],
-          },
-        ]
-      ) {
+            },
+          ],
+        },
+      ]) {
         await writeFile(
           join(dir, "fixture.yaml"),
           stringify({
@@ -340,12 +336,14 @@ test("loadSchemaFiles validates context container terms", async () => {
         "@container": container,
       });
       const types = await loadSchemaFiles(dir);
-      deepStrictEqual(types[uri].defaultContext, [{
-        term: {
-          "@id": "toot:attributionDomains",
-          "@container": container,
+      deepStrictEqual(types[uri].defaultContext, [
+        {
+          term: {
+            "@id": "toot:attributionDomains",
+            "@container": container,
+          },
         },
-      }]);
+      ]);
     }
 
     await writeTerm({
@@ -354,34 +352,34 @@ test("loadSchemaFiles validates context container terms", async () => {
       "@container": "@set",
     });
     const withType = await loadSchemaFiles(dir);
-    deepStrictEqual(withType[uri].defaultContext, [{
-      term: {
-        "@id": "toot:attributionDomains",
-        "@type": "@id",
-        "@container": "@set",
+    deepStrictEqual(withType[uri].defaultContext, [
+      {
+        term: {
+          "@id": "toot:attributionDomains",
+          "@type": "@id",
+          "@container": "@set",
+        },
       },
-    }]);
+    ]);
 
     // The pre-existing object term shape must keep validating:
     await writeTerm({ "@type": "@id" });
     await loadSchemaFiles(dir);
 
-    for (
-      const invalid of [
-        { "@id": "toot:attributionDomains", "@container": "@id" },
-        {
-          "@id": "toot:attributionDomains",
-          "@container": "https://example.com/bogus",
-        },
-        { "@id": "toot:attributionDomains", "@container": "@bogus" },
-        {
-          "@id": "toot:attributionDomains",
-          "@container": "@set",
-          "@unknown": "@set",
-        },
-        { "@container": "@set" },
-      ]
-    ) {
+    for (const invalid of [
+      { "@id": "toot:attributionDomains", "@container": "@id" },
+      {
+        "@id": "toot:attributionDomains",
+        "@container": "https://example.com/bogus",
+      },
+      { "@id": "toot:attributionDomains", "@container": "@bogus" },
+      {
+        "@id": "toot:attributionDomains",
+        "@container": "@set",
+        "@unknown": "@set",
+      },
+      { "@container": "@set" },
+    ]) {
       await writeTerm(invalid);
       await rejects(loadSchemaFiles(dir), AggregateError);
     }

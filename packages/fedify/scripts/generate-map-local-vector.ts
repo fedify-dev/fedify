@@ -93,9 +93,7 @@ async function secure(
   const canonicalDocument = serialize(unsecuredDocument);
   const canonicalProofConfiguration = serialize(proofConfiguration);
   const documentHashBytes = await sha256(canonicalDocument);
-  const proofConfigurationHashBytes = await sha256(
-    canonicalProofConfiguration,
-  );
+  const proofConfigurationHashBytes = await sha256(canonicalProofConfiguration);
   const combined = new Uint8Array(64);
   combined.set(proofConfigurationHashBytes, 0);
   combined.set(documentHashBytes, 32);
@@ -249,10 +247,7 @@ const output = new URL(
 await Deno.mkdir(new URL("./", output), { recursive: true });
 await Deno.writeTextFile(output, JSON.stringify(vector, null, 2) + "\n");
 
-const contextConflictOuterContext = [
-  ...context,
-  { "@language": "en" },
-];
+const contextConflictOuterContext = [...context, { "@language": "en" }];
 const contextConflictInnerUnsecuredDocument = {
   "@context": context,
   id: `ap+ef61://${innerDid}/objects/context-conflict`,

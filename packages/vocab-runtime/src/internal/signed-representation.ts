@@ -258,8 +258,8 @@ export function isMarkerSafeContext(context: unknown): boolean {
     const containers = Array.isArray(container)
       ? container
       : container == null
-      ? []
-      : [container];
+        ? []
+        : [container];
     for (const entry of containers) {
       if (entry === "@id" || entry === "@type") return false;
     }
@@ -292,8 +292,9 @@ export function isMarkerSafeContext(context: unknown): boolean {
  * random suffix happens to start with it.
  */
 function sharesMarkerNamespace(prefix: string): boolean {
-  return MARKER_NAMESPACE.startsWith(prefix) ||
-    prefix.startsWith(MARKER_NAMESPACE);
+  return (
+    MARKER_NAMESPACE.startsWith(prefix) || prefix.startsWith(MARKER_NAMESPACE)
+  );
 }
 
 /**
@@ -341,15 +342,13 @@ export interface SignedValueScopeEntry {
  * part of the public API contract.  This is not considered public API for
  * Semantic Versioning decisions.
  */
-export function enterSignedValueScope(
-  options: {
-    format?: "compact" | "expand";
-    context?:
-      | string
-      | Record<string, string>
-      | (string | Record<string, string>)[];
-  },
-): SignedValueScopeEntry {
+export function enterSignedValueScope(options: {
+  format?: "compact" | "expand";
+  context?:
+    | string
+    | Record<string, string>
+    | (string | Record<string, string>)[];
+}): SignedValueScopeEntry {
   const existing = (options as Record<symbol, unknown>)[SIGNED_VALUE_SCOPE];
   if (existing != null) {
     return { scope: existing as SignedValueScope, owner: false };
@@ -357,7 +356,8 @@ export function enterSignedValueScope(
   const scope: SignedValueScope = {
     // A document that the caller asked to have expanded has no compact
     // representation to preserve, so retention does not apply to it.
-    enabled: options.format !== "expand" &&
+    enabled:
+      options.format !== "expand" &&
       (options.context == null || isMarkerSafeContext(options.context)),
     markers: new Map(),
     documents: new Map(),
@@ -404,10 +404,7 @@ export function retainedSignedValueRef(
   return { "@id": marker };
 }
 
-function markerOf(
-  value: unknown,
-  scope: SignedValueScope,
-): string | undefined {
+function markerOf(value: unknown, scope: SignedValueScope): string | undefined {
   return typeof value === "string" && scope.documents.has(value)
     ? value
     : undefined;
@@ -494,9 +491,8 @@ export function resolveSignedValues(
     const mapped: Record<string, unknown> = Object.create(null);
     for (const key of keys) {
       // `@context` holds term definitions, never a node reference.
-      const next = key === "@context"
-        ? value[key]
-        : restore(value[key], depth + 1);
+      const next =
+        key === "@context" ? value[key] : restore(value[key], depth + 1);
       if (next !== value[key]) changed = true;
       mapped[key] = next;
     }

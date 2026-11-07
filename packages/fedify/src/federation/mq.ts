@@ -250,18 +250,16 @@ export class InProcessMessageQueue implements MessageQueue {
   }
 
   enqueue(message: any, options?: MessageQueueEnqueueOptions): Promise<void> {
-    const delay = options?.delay == null
-      ? 0
-      : Math.max(options.delay.total("millisecond"), 0);
+    const delay =
+      options?.delay == null
+        ? 0
+        : Math.max(options.delay.total("millisecond"), 0);
     if (delay > 0) {
       this.#delayedMessages++;
-      setTimeout(
-        () => {
-          this.#delayedMessages--;
-          this.#enqueueReady(message, options);
-        },
-        delay,
-      );
+      setTimeout(() => {
+        this.#delayedMessages--;
+        this.#enqueueReady(message, options);
+      }, delay);
       return Promise.resolve();
     }
     this.#enqueueReady(message, options);
@@ -285,20 +283,18 @@ export class InProcessMessageQueue implements MessageQueue {
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     if (messages.length === 0) return Promise.resolve();
-    const delay = options?.delay == null
-      ? 0
-      : Math.max(options.delay.total("millisecond"), 0);
+    const delay =
+      options?.delay == null
+        ? 0
+        : Math.max(options.delay.total("millisecond"), 0);
     if (delay > 0) {
       const delayedCount = messages.length;
       const deferredMessages = [...messages];
       this.#delayedMessages += delayedCount;
-      setTimeout(
-        () => {
-          this.#delayedMessages -= delayedCount;
-          this.#enqueueManyReady(deferredMessages, options);
-        },
-        delay,
-      );
+      setTimeout(() => {
+        this.#delayedMessages -= delayedCount;
+        this.#enqueueManyReady(deferredMessages, options);
+      }, delay);
       return Promise.resolve();
     }
     this.#enqueueManyReady(messages, options);
@@ -324,8 +320,9 @@ export class InProcessMessageQueue implements MessageQueue {
     while (signal == null || !signal.aborted) {
       // Find a message that can be processed (either no ordering key, or
       // its ordering key is not currently being processed)
-      const idx = this.#messages.findIndex((m) =>
-        m.orderingKey == null || !this.#processingKeys.has(m.orderingKey)
+      const idx = this.#messages.findIndex(
+        (m) =>
+          m.orderingKey == null || !this.#processingKeys.has(m.orderingKey),
       );
       if (idx >= 0) {
         const queued = this.#messages.splice(idx, 1)[0];
@@ -367,10 +364,14 @@ export class InProcessMessageQueue implements MessageQueue {
     let timer: ReturnType<typeof setTimeout> | null = null;
     return Promise.any([
       new Promise<void>((resolve) => {
-        signal?.addEventListener("abort", () => {
-          if (timer != null) clearTimeout(timer);
-          resolve();
-        }, { once: true });
+        signal?.addEventListener(
+          "abort",
+          () => {
+            if (timer != null) clearTimeout(timer);
+            resolve();
+          },
+          { once: true },
+        );
         const monitorId = crypto.randomUUID();
         this.#monitors[monitorId] = () => {
           delete this.#monitors[monitorId];
@@ -378,7 +379,7 @@ export class InProcessMessageQueue implements MessageQueue {
           resolve();
         };
       }),
-      new Promise<void>((resolve) => timer = setTimeout(resolve, ms)),
+      new Promise<void>((resolve) => (timer = setTimeout(resolve, ms))),
     ]);
   }
 }
@@ -475,9 +476,8 @@ export class ParallelMessageQueue implements MessageQueue {
     this.nativeRetrial = queue.nativeRetrial;
     this.nativeDeduplication = queue.nativeDeduplication;
     this.maxMessageSize = queue.maxMessageSize;
-    this.atomicEnqueueMany = queue.enqueueMany == null
-      ? false
-      : queue.atomicEnqueueMany;
+    this.atomicEnqueueMany =
+      queue.enqueueMany == null ? false : queue.atomicEnqueueMany;
     if (queue.getDepth != null) {
       this.getDepth = () => queue.getDepth!();
     }

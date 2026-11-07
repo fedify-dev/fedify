@@ -43,7 +43,7 @@ export async function probeBenchmarkMode(
       redirect: "manual",
     });
     if (!response.ok) return notAdvertised();
-    const json = await response.json() as {
+    const json = (await response.json()) as {
       version?: unknown;
       source?: unknown;
       scopeMetrics?: unknown;

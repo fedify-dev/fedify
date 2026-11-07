@@ -91,9 +91,10 @@ export async function sendRequest(
   // host the safety gate never classified, so treat any redirect as a failed
   // send.  Requests are normally built with `redirect: "manual"` already; this
   // re-wraps any that are not, as a safety net.
-  const noFollow = request.redirect === "manual"
-    ? request
-    : new Request(request, { redirect: "manual" });
+  const noFollow =
+    request.redirect === "manual"
+      ? request
+      : new Request(request, { redirect: "manual" });
   try {
     const response = await fetchImpl(noFollow);
     // Drain the body so the connection can be reused.
@@ -142,8 +143,12 @@ export function estimateTotal(scenario: ResolvedScenario): number | undefined {
 
 /** Returns whether a URL is fetchable by benchmark runners without surprises. */
 export function isBareHttpUrl(url: URL): boolean {
-  return (url.protocol === "http:" || url.protocol === "https:") &&
-    url.hostname !== "" && url.username === "" && url.password === "";
+  return (
+    (url.protocol === "http:" || url.protocol === "https:") &&
+    url.hostname !== "" &&
+    url.username === "" &&
+    url.password === ""
+  );
 }
 
 /** Rejects URLs that are not bare http(s) URLs with a host and no credentials. */

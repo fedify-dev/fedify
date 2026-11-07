@@ -33,17 +33,15 @@ interface Recorded {
  */
 function createLogger(): { logger: Logger; records: Recorded[] } {
   const records: Recorded[] = [];
-  const record = (level: string) =>
-  (
-    fieldsOrMessage: Record<string, unknown> | string,
-    message?: string,
-  ) => {
-    records.push(
-      typeof fieldsOrMessage === "string"
-        ? { level, message: fieldsOrMessage, fields: {} }
-        : { level, message: message ?? "", fields: fieldsOrMessage },
-    );
-  };
+  const record =
+    (level: string) =>
+    (fieldsOrMessage: Record<string, unknown> | string, message?: string) => {
+      records.push(
+        typeof fieldsOrMessage === "string"
+          ? { level, message: fieldsOrMessage, fields: {} }
+          : { level, message: message ?? "", fields: fieldsOrMessage },
+      );
+    };
 
   const logger = {
     trace: record("trace"),
@@ -71,7 +69,7 @@ describe("configureFedifyLogging", () => {
     // The first record is LogTape's own meta logger announcing itself, which
     // the default categories deliberately route here too.
     const delivery = records.find(({ message }) =>
-      message.includes("Delivery failed.")
+      message.includes("Delivery failed."),
     );
     ok(delivery);
     // LogTape's `warning` maps onto Pino's `warn`.
@@ -94,7 +92,7 @@ describe("configureFedifyLogging", () => {
     );
 
     const delivery = records.find(({ message }) =>
-      message.includes("Delivery to")
+      message.includes("Delivery to"),
     );
     ok(delivery);
     deepStrictEqual(delivery.fields, {
@@ -133,7 +131,7 @@ describe("configureFedifyLogging", () => {
     });
 
     const delivery = records.find(({ message }) =>
-      message.includes("Delivery failed")
+      message.includes("Delivery failed"),
     );
     ok(delivery);
     match(delivery.message, /Delivery failed: 'REQ-1'$/);

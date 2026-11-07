@@ -44,26 +44,24 @@ test("response body capture validates explicit limits before replacing registrat
   ok(Object.isFrozen(original.responseBodyCapture));
   config.maxBytes = 1;
   strictEqual(original.responseBodyCapture?.maxBytes, 32);
-  for (
-    const [value, error] of [
-      [null, TypeError],
-      [{ ...limits }, TypeError],
-      [{ onBody() {}, timeoutMs: 1 }, TypeError],
-      [{ onBody() {}, maxBytes: 1 }, TypeError],
-      [{ ...limits, onBody() {}, maxBytes: "1" }, TypeError],
-      [{ ...limits, onBody() {}, maxBytes: 0 }, RangeError],
-      [{ ...limits, onBody() {}, maxBytes: 1.5 }, RangeError],
-      [
-        { ...limits, onBody() {}, maxBytes: Number.MAX_SAFE_INTEGER + 1 },
-        RangeError,
-      ],
-      [{ ...limits, onBody() {}, timeoutMs: Infinity }, RangeError],
-      [{ ...limits, onBody() {}, timeoutMs: NaN }, RangeError],
-      [{ ...limits, onBody() {}, timeoutMs: 0 }, RangeError],
-      [{ ...limits, onBody() {}, timeoutMs: 2147483647.1 }, RangeError],
-      [{ ...limits, onBody() {}, responses: "failures" }, TypeError],
-    ] as const
-  ) {
+  for (const [value, error] of [
+    [null, TypeError],
+    [{ ...limits }, TypeError],
+    [{ onBody() {}, timeoutMs: 1 }, TypeError],
+    [{ onBody() {}, maxBytes: 1 }, TypeError],
+    [{ ...limits, onBody() {}, maxBytes: "1" }, TypeError],
+    [{ ...limits, onBody() {}, maxBytes: 0 }, RangeError],
+    [{ ...limits, onBody() {}, maxBytes: 1.5 }, RangeError],
+    [
+      { ...limits, onBody() {}, maxBytes: Number.MAX_SAFE_INTEGER + 1 },
+      RangeError,
+    ],
+    [{ ...limits, onBody() {}, timeoutMs: Infinity }, RangeError],
+    [{ ...limits, onBody() {}, timeoutMs: NaN }, RangeError],
+    [{ ...limits, onBody() {}, timeoutMs: 0 }, RangeError],
+    [{ ...limits, onBody() {}, timeoutMs: 2147483647.1 }, RangeError],
+    [{ ...limits, onBody() {}, responses: "failures" }, TypeError],
+  ] as const) {
     throws(
       () =>
         builder.setOutboundObservers({ responseBodyCapture: value as never }),
@@ -75,47 +73,49 @@ test("response body capture validates explicit limits before replacing registrat
 });
 
 test("response body capture distinguishes selection EOF and exact byte limits", async (t) => {
-  for (
-    const mode of [
-      "filtered",
-      "no-body",
-      "empty",
-      "short",
-      "exact",
-      "over",
-    ] as const
-  ) {
+  for (const mode of [
+    "filtered",
+    "no-body",
+    "empty",
+    "short",
+    "exact",
+    "over",
+  ] as const) {
     await t.step(mode, async () => {
       const response = new Response(
         mode === "no-body"
           ? null
           : mode === "empty"
-          ? ""
-          : mode === "over"
-          ? "abcd"
-          : "abc",
+            ? ""
+            : mode === "over"
+              ? "abcd"
+              : "abc",
       );
       let calls = 0;
       let exposed: number[] = [];
       let signal: AbortSignal | undefined;
-      const result = await captureResponseBody(response, {
-        maxBytes: mode === "exact" || mode === "over" ? 3 : 32,
-        timeoutMs: 1000,
-        ...(mode === "filtered"
-          ? { responses: "non-success-http-responses" as const }
-          : {}),
-      }, async (body, current) => {
-        calls++;
-        signal = current;
-        exposed = await drain(body);
-      });
+      const result = await captureResponseBody(
+        response,
+        {
+          maxBytes: mode === "exact" || mode === "over" ? 3 : 32,
+          timeoutMs: 1000,
+          ...(mode === "filtered"
+            ? { responses: "non-success-http-responses" as const }
+            : {}),
+        },
+        async (body, current) => {
+          calls++;
+          signal = current;
+          exposed = await drain(body);
+        },
+      );
       strictEqual(
         result.type,
         mode === "filtered" || mode === "no-body"
           ? mode
           : mode === "exact" || mode === "over"
-          ? "limit-reached"
-          : "complete",
+            ? "limit-reached"
+            : "complete",
       );
       strictEqual(
         result.bytesExposed,
@@ -133,16 +133,14 @@ test("response body capture distinguishes selection EOF and exact byte limits", 
 });
 
 test("response body capture revokes locked readers and bounds callback cleanup", async (t) => {
-  for (
-    const mode of [
-      "returned",
-      "cancelled",
-      "throws",
-      "hangs",
-      "pending-read",
-      "body-error",
-    ] as const
-  ) {
+  for (const mode of [
+    "returned",
+    "cancelled",
+    "throws",
+    "hangs",
+    "pending-read",
+    "body-error",
+  ] as const) {
     await t.step(mode, async () => {
       const failure = new Error(mode);
       let signal!: AbortSignal;
@@ -152,35 +150,43 @@ test("response body capture revokes locked readers and bounds callback cleanup",
       const late = new Promise<void>((_resolve, reject) => {
         rejectLate = reject;
       });
-      const body = new ReadableStream<Uint8Array>({
-        pull(controller) {
-          if (mode === "body-error") controller.error(failure);
+      const body = new ReadableStream<Uint8Array>(
+        {
+          pull(controller) {
+            if (mode === "body-error") controller.error(failure);
+          },
+          cancel() {
+            return new Promise<void>(() => {});
+          },
         },
-        cancel() {
-          return new Promise<void>(() => {});
+        { highWaterMark: 0 },
+      );
+      const result = await captureResponseBody(
+        new Response(body),
+        {
+          ...limits,
+          timeoutMs: 25,
         },
-      }, { highWaterMark: 0 });
-      const result = await captureResponseBody(new Response(body), {
-        ...limits,
-        timeoutMs: 25,
-      }, async (stream, current) => {
-        signal = current;
-        retained = stream.getReader();
-        if (mode === "throws") throw failure;
-        if (mode === "cancelled") await retained.cancel(failure);
-        if (mode === "hangs") await late;
-        if (mode === "pending-read") {
-          pending = retained.read().catch((error) => error);
-        }
-        if (mode === "body-error") await retained.read();
-      });
-      const expected = mode === "returned" || mode === "pending-read"
-        ? "callback-returned"
-        : mode === "cancelled"
-        ? "consumer-stopped"
-        : mode === "hangs"
-        ? "deadline"
-        : "failed";
+        async (stream, current) => {
+          signal = current;
+          retained = stream.getReader();
+          if (mode === "throws") throw failure;
+          if (mode === "cancelled") await retained.cancel(failure);
+          if (mode === "hangs") await late;
+          if (mode === "pending-read") {
+            pending = retained.read().catch((error) => error);
+          }
+          if (mode === "body-error") await retained.read();
+        },
+      );
+      const expected =
+        mode === "returned" || mode === "pending-read"
+          ? "callback-returned"
+          : mode === "cancelled"
+            ? "consumer-stopped"
+            : mode === "hangs"
+              ? "deadline"
+              : "failed";
       strictEqual(result.type, expected);
       strictEqual(result.bytesExposed, 0);
       ok(signal.aborted);
@@ -193,7 +199,7 @@ test("response body capture revokes locked readers and bounds callback cleanup",
         strictEqual(result.reason, failure);
       }
       if (mode !== "cancelled") await rejects(retained.read());
-      if (pending) ok(await pending instanceof Error);
+      if (pending) ok((await pending) instanceof Error);
       retained.releaseLock();
       if (mode === "hangs") {
         rejectLate(failure);
@@ -215,12 +221,16 @@ test("response body capture shares one reader with bounded diagnostics", async (
       return getReader();
     },
   });
-  const summary = await captureResponseBody(response, {
-    ...limits,
-    maxBytes: 4,
-  }, async (body) => {
-    await drain(body);
-  });
+  const summary = await captureResponseBody(
+    response,
+    {
+      ...limits,
+      maxBytes: 4,
+    },
+    async (body) => {
+      await drain(body);
+    },
+  );
   strictEqual(summary.type, "limit-reached");
   strictEqual(summary.bytesExposed, 4);
   strictEqual(acquisitions, 1);
@@ -246,18 +256,25 @@ test("response body capture isolates unavailable readers and diagnostic deadline
   });
   await t.step("diagnostics retain their own deadline", async () => {
     let cancels = 0;
-    const body = new ReadableStream<Uint8Array>({
-      pull() {},
-      cancel() {
-        cancels++;
-        return new Promise<void>(() => {});
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull() {},
+        cancel() {
+          cancels++;
+          return new Promise<void>(() => {});
+        },
       },
-    }, { highWaterMark: 0 });
+      { highWaterMark: 0 },
+    );
     const response = new Response(body, { status: 503 });
-    const result = await captureResponseBody(response, {
-      ...limits,
-      timeoutMs: 10000,
-    }, () => {});
+    const result = await captureResponseBody(
+      response,
+      {
+        ...limits,
+        timeoutMs: 10000,
+      },
+      () => {},
+    );
     deepStrictEqual(result, { type: "callback-returned", bytesExposed: 0 });
     strictEqual(takeCapturedDiagnostic(response), "… (timed out)");
     strictEqual(cancels, 1);
@@ -273,36 +290,43 @@ test("response body capture bounds oversized and nonterminating sources", async 
       const source = new Uint8Array(
         mode === "oversized" ? 1024 * 1024 : mode === "infinite" ? 1 : 0,
       ).fill(255);
-      const original = new ReadableStream<Uint8Array>({
-        pull(controller) {
-          pulls++;
-          controller.enqueue(source);
+      const original = new ReadableStream<Uint8Array>(
+        {
+          pull(controller) {
+            pulls++;
+            controller.enqueue(source);
+          },
+          cancel() {
+            cancels++;
+          },
         },
-        cancel() {
-          cancels++;
-        },
-      }, { highWaterMark: 0 });
+        { highWaterMark: 0 },
+      );
       let exposed = 0;
-      const result = await captureResponseBody(new Response(original), {
-        maxBytes: 17,
-        timeoutMs: 50,
-      }, async (body) => {
-        const reader = body.getReader();
-        try {
-          while (true) {
-            const chunk = await reader.read();
-            if (chunk.done) break;
-            exposed += chunk.value.length;
-            ok(chunk.value.buffer.byteLength <= 17);
-            strictEqual(chunk.value[0], 255);
-            chunk.value.fill(0);
+      const result = await captureResponseBody(
+        new Response(original),
+        {
+          maxBytes: 17,
+          timeoutMs: 50,
+        },
+        async (body) => {
+          const reader = body.getReader();
+          try {
+            while (true) {
+              const chunk = await reader.read();
+              if (chunk.done) break;
+              exposed += chunk.value.length;
+              ok(chunk.value.buffer.byteLength <= 17);
+              strictEqual(chunk.value[0], 255);
+              chunk.value.fill(0);
+            }
+          } catch {
+            /* Cap/deadline revokes the reader. */
+          } finally {
+            reader.releaseLock();
           }
-        } catch {
-          /* Cap/deadline revokes the reader. */
-        } finally {
-          reader.releaseLock();
-        }
-      });
+        },
+      );
       strictEqual(
         result.type,
         mode === "empty-infinite" ? "deadline" : "limit-reached",
@@ -324,31 +348,38 @@ test("response body capture applies backpressure and revokes a paused consumer",
   let cancels = 0;
   let retained!: ReadableStreamDefaultReader<Uint8Array>;
   let exposed = 0;
-  const source = new ReadableStream<Uint8Array>({
-    pull(controller) {
-      pulls++;
-      controller.enqueue(new Uint8Array([1]));
+  const source = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        pulls++;
+        controller.enqueue(new Uint8Array([1]));
+      },
+      cancel() {
+        cancels++;
+        return new Promise<void>(() => {});
+      },
     },
-    cancel() {
-      cancels++;
-      return new Promise<void>(() => {});
+    { highWaterMark: 0 },
+  );
+  const result = await captureResponseBody(
+    new Response(source),
+    {
+      maxBytes: 32,
+      timeoutMs: 50,
     },
-  }, { highWaterMark: 0 });
-  const result = await captureResponseBody(new Response(source), {
-    maxBytes: 32,
-    timeoutMs: 50,
-  }, async (body, signal) => {
-    retained = body.getReader();
-    const first = await retained.read();
-    ok(!first.done);
-    exposed += first.value.length;
-    await new Promise<void>((resolve) => {
-      if (signal.aborted) resolve();
-      else signal.addEventListener("abort", () => resolve(), { once: true });
-    });
-    strictEqual(pulls, 1);
-    await rejects(retained.read());
-  });
+    async (body, signal) => {
+      retained = body.getReader();
+      const first = await retained.read();
+      ok(!first.done);
+      exposed += first.value.length;
+      await new Promise<void>((resolve) => {
+        if (signal.aborted) resolve();
+        else signal.addEventListener("abort", () => resolve(), { once: true });
+      });
+      strictEqual(pulls, 1);
+      await rejects(retained.read());
+    },
+  );
   deepStrictEqual(result, { type: "deadline", bytesExposed: 1 });
   strictEqual(exposed, 1);
   strictEqual(pulls, 1);
@@ -365,30 +396,39 @@ test("response body capture rejects late source data and observes late pull fail
     rejectPull = reject;
   });
   let cancels = 0;
-  const source = new ReadableStream<Uint8Array>({
-    start(value) {
-      controller = value;
+  const source = new ReadableStream<Uint8Array>(
+    {
+      start(value) {
+        controller = value;
+      },
+      pull() {
+        return pulling;
+      },
+      cancel() {
+        cancels++;
+        return new Promise<void>(() => {});
+      },
     },
-    pull() {
-      return pulling;
-    },
-    cancel() {
-      cancels++;
-      return new Promise<void>(() => {});
-    },
-  }, { highWaterMark: 0 });
+    { highWaterMark: 0 },
+  );
   let retained!: ReadableStreamDefaultReader<Uint8Array>;
   let exposed = 0;
-  const result = await captureResponseBody(new Response(source), {
-    maxBytes: 32,
-    timeoutMs: 25,
-  }, async (body) => {
-    retained = body.getReader();
-    try {
-      const chunk = await retained.read();
-      if (!chunk.done) exposed += chunk.value.length;
-    } catch { /* Revoked at deadline. */ }
-  });
+  const result = await captureResponseBody(
+    new Response(source),
+    {
+      maxBytes: 32,
+      timeoutMs: 25,
+    },
+    async (body) => {
+      retained = body.getReader();
+      try {
+        const chunk = await retained.read();
+        if (!chunk.done) exposed += chunk.value.length;
+      } catch {
+        /* Revoked at deadline. */
+      }
+    },
+  );
   deepStrictEqual(result, { type: "deadline", bytesExposed: 0 });
   strictEqual(exposed, 0);
   strictEqual(cancels, 1);

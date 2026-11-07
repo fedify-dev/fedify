@@ -51,7 +51,7 @@ function withTimeout(
     );
   });
   return Promise.race([resolved, timeoutPromise]).finally(() =>
-    clearTimeout(timer!)
+    clearTimeout(timer!),
   );
 }
 
@@ -69,12 +69,12 @@ function getMysqlLockName(tableName: string, orderingKey: string): string {
   let h2 = 5381;
   for (let i = 0; i < raw.length; i++) {
     const c = raw.charCodeAt(i);
-    h1 = (((h1 << 5) - h1) + c) | 0;
-    h2 = (((h2 << 5) + h2) + c) | 0;
+    h1 = ((h1 << 5) - h1 + c) | 0;
+    h2 = ((h2 << 5) + h2 + c) | 0;
   }
-  return `fdy:${(h1 >>> 0).toString(16).padStart(8, "0")}${
-    (h2 >>> 0).toString(16).padStart(8, "0")
-  }`;
+  return `fdy:${(h1 >>> 0).toString(16).padStart(8, "0")}${(h2 >>> 0)
+    .toString(16)
+    .padStart(8, "0")}`;
 }
 
 /**
@@ -217,9 +217,10 @@ export class MysqlMessageQueue implements MessageQueue {
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     await this.initialize();
-    const delayMs = options?.delay == null
-      ? 0
-      : Math.max(Math.round(options.delay.total("millisecond")), 0);
+    const delayMs =
+      options?.delay == null
+        ? 0
+        : Math.max(Math.round(options.delay.total("millisecond")), 0);
     const orderingKey = options?.orderingKey ?? null;
     if (options?.delay) {
       logger.debug("Enqueuing a message with a delay of {delayMs}ms...", {
@@ -255,9 +256,10 @@ export class MysqlMessageQueue implements MessageQueue {
   ): Promise<void> {
     if (messages.length === 0) return;
     await this.initialize();
-    const delayMs = options?.delay == null
-      ? 0
-      : Math.max(Math.round(options.delay.total("millisecond")), 0);
+    const delayMs =
+      options?.delay == null
+        ? 0
+        : Math.max(Math.round(options.delay.total("millisecond")), 0);
     const orderingKey = options?.orderingKey ?? null;
     if (options?.delay) {
       logger.debug(
@@ -270,9 +272,9 @@ export class MysqlMessageQueue implements MessageQueue {
         orderingKey,
       });
     }
-    const placeholders = messages.map(() =>
-      "(UUID(), ?, DATE_ADD(NOW(6), INTERVAL ? MICROSECOND), ?)"
-    ).join(", ");
+    const placeholders = messages
+      .map(() => "(UUID(), ?, DATE_ADD(NOW(6), INTERVAL ? MICROSECOND), ?)")
+      .join(", ");
     // Each row gets a monotonically increasing interval so that messages
     // sharing the same orderingKey are assigned distinct deliver_after values
     // within a single INSERT statement.  Without this tie-breaker, all rows
@@ -473,10 +475,9 @@ export class MysqlMessageQueue implements MessageQueue {
         return undefined;
       }
       const { id, message } = rows[0];
-      await conn.query(
-        `DELETE FROM \`${this.#tableName}\` WHERE \`id\` = ?`,
-        [id],
-      );
+      await conn.query(`DELETE FROM \`${this.#tableName}\` WHERE \`id\` = ?`, [
+        id,
+      ]);
       await conn.commit();
       return message;
     } catch (e) {
@@ -532,10 +533,9 @@ export class MysqlMessageQueue implements MessageQueue {
         return undefined;
       }
       const { id, message } = rows[0];
-      await conn.query(
-        `DELETE FROM \`${this.#tableName}\` WHERE \`id\` = ?`,
-        [id],
-      );
+      await conn.query(`DELETE FROM \`${this.#tableName}\` WHERE \`id\` = ?`, [
+        id,
+      ]);
       await conn.commit();
       return message;
     } catch (e) {
@@ -645,9 +645,7 @@ export class MysqlMessageQueue implements MessageQueue {
         // Ignore initialization errors—we are dropping the table anyway.
       }
     }
-    await this.#pool.query(
-      `DROP TABLE IF EXISTS \`${this.#tableName}\``,
-    );
+    await this.#pool.query(`DROP TABLE IF EXISTS \`${this.#tableName}\``);
     this.#initialized = false;
     this.#initPromise = undefined;
   }

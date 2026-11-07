@@ -47,19 +47,25 @@ function personLoader(name: string, fetched: string[] = []): DocumentLoader {
 
 for (const hydrateOriginal of [false, true]) {
   test(`deepClone() isolates embedded quote hydration (${hydrateOriginal})`, async () => {
-    const original = await QuoteRequest.fromJsonLd({
-      "@context": ["https://www.w3.org/ns/activitystreams", {
-        QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest",
-      }],
-      id: "https://a.example/requests/1",
-      type: "QuoteRequest",
-      instrument: {
-        id: "https://a.example/notes/1",
-        type: "Note",
-        attributedTo: "https://a.example/alice",
-        content: "Quoted",
+    const original = await QuoteRequest.fromJsonLd(
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          {
+            QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest",
+          },
+        ],
+        id: "https://a.example/requests/1",
+        type: "QuoteRequest",
+        instrument: {
+          id: "https://a.example/notes/1",
+          type: "Note",
+          attributedTo: "https://a.example/alice",
+          content: "Quoted",
+        },
       },
-    }, { ...options, documentLoader: personLoader("Alice") });
+      { ...options, documentLoader: personLoader("Alice") },
+    );
     const copy = original.deepClone();
     const sourceNote = await original.getInstrument();
     const copyNote = await copy.getInstrument();
@@ -68,9 +74,9 @@ for (const hydrateOriginal of [false, true]) {
     const hydrated = hydrateOriginal ? sourceNote : copyNote;
     strictEqual((await hydrated.getAttribution())?.name, "Alice");
     for (const Wrapper of [Accept, Reject]) {
-      const json = await new Wrapper({
+      const json = (await new Wrapper({
         object: hydrateOriginal ? copy : original,
-      }).toJsonLd(options) as {
+      }).toJsonLd(options)) as {
         object: { instrument: { attributedTo: unknown } };
       };
       strictEqual(
@@ -104,7 +110,7 @@ test("deepClone() copies replacements and preserves graph aliases", async () => 
   ok(snapshot instanceof Create);
   notStrictEqual(snapshot, source);
   notStrictEqual(snapshot, backReference);
-  ok(await snapshot.getObject() instanceof Note);
+  ok((await snapshot.getObject()) instanceof Note);
   await backReference.toJsonLd(options);
 });
 
@@ -159,24 +165,33 @@ test("deepClone() retains node defaults and overrides only the root", async () =
   const fetched: string[] = [];
   const [rootTracer, rootSpans] = createTestTracerProvider();
   const [childTracer, childSpans] = createTestTracerProvider();
-  const child = new Note({
-    attribution: new URL("https://example.com/child-actor"),
-  }, {
-    ...options,
-    documentLoader: personLoader("Child", fetched),
-    tracerProvider: childTracer,
-  });
-  const source = new Create({
-    actor: new URL("https://example.com/root-actor"),
-    object: child,
-  }, {
-    ...options,
-    documentLoader: personLoader("Root", fetched),
-    tracerProvider: rootTracer,
-  });
-  const copy = source.deepClone({}, {
-    documentLoader: personLoader("Override"),
-  });
+  const child = new Note(
+    {
+      attribution: new URL("https://example.com/child-actor"),
+    },
+    {
+      ...options,
+      documentLoader: personLoader("Child", fetched),
+      tracerProvider: childTracer,
+    },
+  );
+  const source = new Create(
+    {
+      actor: new URL("https://example.com/root-actor"),
+      object: child,
+    },
+    {
+      ...options,
+      documentLoader: personLoader("Root", fetched),
+      tracerProvider: rootTracer,
+    },
+  );
+  const copy = source.deepClone(
+    {},
+    {
+      documentLoader: personLoader("Override"),
+    },
+  );
   strictEqual((await copy.getActor())?.name, "Override");
   const copiedChild = await copy.getObject();
   ok(copiedChild instanceof Note);
@@ -192,32 +207,35 @@ test("deepClone() retains node defaults and overrides only the root", async () =
 
 test("deepClone() preserves origin checks and isolates hydrated trust", async () => {
   let fetches = 0;
-  const original = await Create.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    id: "https://a.example/create",
-    type: "Create",
-    object: {
-      id: "https://b.example/note",
-      type: "Note",
-      content: "Embedded",
+  const original = await Create.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://a.example/create",
+      type: "Create",
+      object: {
+        id: "https://b.example/note",
+        type: "Note",
+        content: "Embedded",
+      },
     },
-  }, {
-    ...options,
-    // oxlint-disable-next-line eslint/require-await
-    documentLoader: async (url) => {
-      fetches++;
-      return {
-        contextUrl: null,
-        documentUrl: url,
-        document: {
-          "@context": "https://www.w3.org/ns/activitystreams",
-          id: url,
-          type: "Note",
-          content: "Fetched",
-        },
-      };
+    {
+      ...options,
+      // oxlint-disable-next-line eslint/require-await
+      documentLoader: async (url) => {
+        fetches++;
+        return {
+          contextUrl: null,
+          documentUrl: url,
+          document: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: url,
+            type: "Note",
+            content: "Fetched",
+          },
+        };
+      },
     },
-  });
+  );
   const copy = original.deepClone();
   strictEqual((await copy.getObject())?.content, "Fetched");
   strictEqual(fetches, 1);
@@ -230,43 +248,47 @@ test("deepClone() preserves origin checks and isolates hydrated trust", async ()
 });
 
 test("deepClone() keeps base URLs and discards cached JSON-LD", async () => {
-  const source = await Note.fromJsonLd({
-    "@context": ["https://www.w3.org/ns/activitystreams", {
-      extension: "https://example.com/extension",
-    }],
-    type: "Note",
-    id: "./note",
-    attributedTo: "./alice",
-    extension: "received only",
-  }, {
-    ...options,
-    baseUrl: new URL("https://example.com/posts/"),
-    documentLoader: personLoader("Alice"),
-  });
+  const source = await Note.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        {
+          extension: "https://example.com/extension",
+        },
+      ],
+      type: "Note",
+      id: "./note",
+      attributedTo: "./alice",
+      extension: "received only",
+    },
+    {
+      ...options,
+      baseUrl: new URL("https://example.com/posts/"),
+      documentLoader: personLoader("Alice"),
+    },
+  );
   const copy = source.deepClone({ content: "Copy" });
   strictEqual(copy.id!.href, "https://example.com/posts/note");
   strictEqual(
     (await copy.getAttribution())?.id?.href,
     "https://example.com/posts/alice",
   );
-  const json = await copy.toJsonLd(options) as Record<string, unknown>;
+  const json = (await copy.toJsonLd(options)) as Record<string, unknown>;
   strictEqual(json.content, "Copy");
   strictEqual(json.extension, undefined);
   strictEqual(
-    (await source.toJsonLd() as Record<string, unknown>).extension,
+    ((await source.toJsonLd()) as Record<string, unknown>).extension,
     "received only",
   );
 });
 
 test("deepClone() validates replacements through clone() only", () => {
   const source = new Note({ content: "Source" });
-  for (
-    const values of [
-      { id: 42 },
-      { name: "one", names: ["two"] },
-      { names: [42] },
-    ]
-  ) {
+  for (const values of [
+    { id: 42 },
+    { name: "one", names: ["two"] },
+    { names: [42] },
+  ]) {
     throws(() => source.deepClone(values as never), TypeError);
   }
   function values(counter: { reads: number }) {
@@ -287,7 +309,8 @@ test("deepClone() validates replacements through clone() only", () => {
 test("deepClone() preserves user subclasses and handles deep graphs", async () => {
   class CustomNote extends Note {}
   const child = new CustomNote({ content: "Child" });
-  const copiedChild = await new Create({ object: child }).deepClone()
+  const copiedChild = await new Create({ object: child })
+    .deepClone()
     .getObject();
   ok(copiedChild instanceof CustomNote);
   notStrictEqual(copiedChild, child);
@@ -323,7 +346,7 @@ test("deepClone() rejects broken subclass clone results", () => {
   class ReusesCopy extends Note {
     static copy: Note | undefined;
     override clone(): Note {
-      return ReusesCopy.copy ??= super.clone();
+      return (ReusesCopy.copy ??= super.clone());
     }
   }
   const first = new ReusesCopy({ content: "First" });

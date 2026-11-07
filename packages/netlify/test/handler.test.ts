@@ -126,19 +126,17 @@ describe("createNetlifyQueueHandler", () => {
     await assert.rejects(handler(event()), failure);
   });
 
-  for (
-    const malformed of [
-      null,
-      {},
-      { message: null },
-      { message: {} },
-      { message: { ...message, type: "unknown" } },
-      { message, orderingKey: 42 },
-      { message, orderingKey: "" },
-      { message, orderingKey: "actor:alice" },
-      { message, orderingSequence: 1 },
-    ]
-  ) {
+  for (const malformed of [
+    null,
+    {},
+    { message: null },
+    { message: {} },
+    { message: { ...message, type: "unknown" } },
+    { message, orderingKey: 42 },
+    { message, orderingKey: "" },
+    { message, orderingKey: "actor:alice" },
+    { message, orderingSequence: 1 },
+  ]) {
     it(`does not retry malformed data: ${JSON.stringify(malformed)}`, async () => {
       const handler = createNetlifyQueueEventHandler({
         queue: new NetlifyMessageQueue({ client }),
@@ -178,15 +176,19 @@ describe("createNetlifyQueueHandler", () => {
     });
 
     await assert.rejects(
-      handler(event({
-        ...sent[0],
-        message: { ...message, type: "unknown" },
-      })),
+      handler(
+        event({
+          ...sent[0],
+          message: { ...message, type: "unknown" },
+        }),
+      ),
       ErrorDoNotRetry,
     );
-    await handler(event(sent[1], () => {
-      throw new Error("The second sequence should not need to wait.");
-    }));
+    await handler(
+      event(sent[1], () => {
+        throw new Error("The second sequence should not need to wait.");
+      }),
+    );
 
     assert.deepEqual(processed, [2]);
   });
@@ -227,10 +229,12 @@ describe("createNetlifyQueueHandler", () => {
     const wait = new Promise<void>((resolve) => {
       releaseWait = resolve;
     });
-    const second = handler(event(sent[1], async () => {
-      waiting = true;
-      await wait;
-    }));
+    const second = handler(
+      event(sent[1], async () => {
+        waiting = true;
+        await wait;
+      }),
+    );
     while (!waiting) await new Promise((resolve) => setTimeout(resolve, 0));
 
     await handler(event(sent[0]));
@@ -287,10 +291,12 @@ describe("createNetlifyQueueHandler", () => {
     while (active.size === 0) {
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
-    const second = handler(event(sent[1], async () => {
-      secondWaiting = true;
-      await waitGate;
-    }));
+    const second = handler(
+      event(sent[1], async () => {
+        secondWaiting = true;
+        await waitGate;
+      }),
+    );
     while (!secondWaiting) {
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
@@ -390,10 +396,12 @@ describe("createNetlifyQueueHandler", () => {
     releaseWait();
     await second;
 
-    assert.deepEqual(sleeps, [{
-      reasonId: "fedify-ordering-wait-0",
-      sleepMs: 7_000,
-    }]);
+    assert.deepEqual(sleeps, [
+      {
+        reasonId: "fedify-ordering-wait-0",
+        sleepMs: 7_000,
+      },
+    ]);
   });
 
   it("advances ordering after the last configured processing attempt", async () => {
@@ -430,9 +438,11 @@ describe("createNetlifyQueueHandler", () => {
     Object.assign(first, { attempt: 2 });
 
     await assert.rejects(handler(first), failure);
-    await handler(event(sent[1], () => {
-      throw new Error("The second sequence should not need to wait.");
-    }));
+    await handler(
+      event(sent[1], () => {
+        throw new Error("The second sequence should not need to wait.");
+      }),
+    );
 
     assert.deepEqual(processed, [1, 2]);
   });
@@ -466,9 +476,11 @@ describe("createNetlifyQueueHandler", () => {
           return Promise.resolve();
         }),
     });
-    await handler(event(sent[1], () => {
-      throw new Error("The recovered sequence should not need to wait.");
-    }));
+    await handler(
+      event(sent[1], () => {
+        throw new Error("The recovered sequence should not need to wait.");
+      }),
+    );
 
     assert.equal(processed, true);
   });
@@ -517,10 +529,12 @@ describe("createNetlifyQueueHandler", () => {
         }),
     });
 
-    const processing = handler(event(sent, async () => {
-      waiting = true;
-      await wait;
-    }));
+    const processing = handler(
+      event(sent, async () => {
+        waiting = true;
+        await wait;
+      }),
+    );
     while (!waiting) await new Promise((resolve) => setTimeout(resolve, 0));
     assert.equal(processed, false);
 
@@ -540,11 +554,13 @@ describe("createNetlifyQueueHandler", () => {
     });
 
     await assert.rejects(
-      handler(event({
-        message,
-        orderingKey: "actor:alice",
-        orderingSequence: 1,
-      })),
+      handler(
+        event({
+          message,
+          orderingKey: "actor:alice",
+          orderingSequence: 1,
+        }),
+      ),
       /orderingKey.*cas\(\)/,
     );
   });

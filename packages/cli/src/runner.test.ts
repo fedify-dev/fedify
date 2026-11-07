@@ -3,11 +3,7 @@ import test from "node:test";
 import { parseCliProgram, runCli, toCliProgram } from "./runner.ts";
 
 test("parseCliProgram keeps the selected static command", async () => {
-  const program = await parseCliProgram([
-    "tunnel",
-    "3000",
-    "--ignore-config",
-  ]);
+  const program = await parseCliProgram(["tunnel", "3000", "--ignore-config"]);
 
   assert.deepStrictEqual(program.command.path, ["tunnel"]);
   assert.strictEqual(program.value.command, "tunnel");
@@ -24,18 +20,16 @@ test("runCli does not expose the selected static command marker", async () => {
 
 test("toCliProgram runs commands with stripped values", async () => {
   let receivedValue: Record<string, unknown> | undefined;
-  const program = toCliProgram(
-    {
-      command: "fake",
-      port: 3000,
-      ignoreConfig: true,
-      debug: false,
-      __fedifyCliSelectedCommand: { path: ["fake"] },
-      __fedifyCliRunCommand: (value: Record<string, unknown>) => {
-        receivedValue = value;
-      },
-    } as unknown as Parameters<typeof toCliProgram>[0],
-  );
+  const program = toCliProgram({
+    command: "fake",
+    port: 3000,
+    ignoreConfig: true,
+    debug: false,
+    __fedifyCliSelectedCommand: { path: ["fake"] },
+    __fedifyCliRunCommand: (value: Record<string, unknown>) => {
+      receivedValue = value;
+    },
+  } as unknown as Parameters<typeof toCliProgram>[0]);
   await program.run();
 
   assert.ok(receivedValue != null);

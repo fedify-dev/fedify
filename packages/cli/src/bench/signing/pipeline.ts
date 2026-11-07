@@ -154,7 +154,8 @@ function createBuffered(
       // `pipeline`, which keeps the buffer full for the whole run.
       if (produced + inFlight >= maxProduced) break;
       if (
-        waiters.length === 0 && ready.length + inFlight >= options.bufferSize
+        waiters.length === 0 &&
+        ready.length + inFlight >= options.bufferSize
       ) {
         await Promise.race([delay(), closeSignal]);
         continue;

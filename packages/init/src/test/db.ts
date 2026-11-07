@@ -33,15 +33,16 @@ function isPortOpen(port: number, timeout = 3000): Promise<boolean> {
   });
 }
 
-const getRequiredDbs = <T extends TestInitCommand>(
-  { kvStore, messageQueue }: DefineAllOptions<T>,
-): DbToCheckType[] =>
+const getRequiredDbs = <T extends TestInitCommand>({
+  kvStore,
+  messageQueue,
+}: DefineAllOptions<T>): DbToCheckType[] =>
   pipe(
     kvStore,
     concat(messageQueue),
     uniq,
     filter((db): db is DbToCheckType =>
-      DB_TO_CHECK.includes(db as DbToCheckType)
+      DB_TO_CHECK.includes(db as DbToCheckType),
     ),
     toArray,
   );

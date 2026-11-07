@@ -26,9 +26,11 @@ export interface LoginPageProps {
 /**
  * Login page for the debug dashboard.
  */
-export const LoginPage: FC<LoginPageProps> = (
-  { pathPrefix, showUsername, error },
-) => {
+export const LoginPage: FC<LoginPageProps> = ({
+  pathPrefix,
+  showUsername,
+  error,
+}) => {
   return (
     <Layout title="Login" pathPrefix={pathPrefix}>
       <h2>Login Required</h2>

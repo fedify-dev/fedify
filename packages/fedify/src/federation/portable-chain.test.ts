@@ -189,10 +189,8 @@ test("Context.verifyPortableObject", async (t) => {
         false,
       );
       assertEquals(
-        (await ctx.verifyPortableObject!(
-          { ...signed, content: "Forged" },
-          {},
-        )).verified,
+        (await ctx.verifyPortableObject!({ ...signed, content: "Forged" }, {}))
+          .verified,
         false,
       );
     },
@@ -208,8 +206,9 @@ test("accessors given a Context verify references of compatible-ID objects", asy
 
   await t.step("a signed object at the reference", async () => {
     const loader = createLoader({ [compatible("/notes/1")]: signed });
-    const ctx = createFederation(loader)
-      .createContext(new URL("https://example.com/"));
+    const ctx = createFederation(loader).createContext(
+      new URL("https://example.com/"),
+    );
     const object = await (await create()).getObject(ctx);
     assertInstanceOf(object, Note);
     assertEquals(object.content, "A portable note");
@@ -218,8 +217,9 @@ test("accessors given a Context verify references of compatible-ID objects", asy
 
   await t.step("an unsigned object at the reference", async () => {
     const loader = createLoader({ [compatible("/notes/1")]: note("/notes/1") });
-    const ctx = createFederation(loader)
-      .createContext(new URL("https://example.com/"));
+    const ctx = createFederation(loader).createContext(
+      new URL("https://example.com/"),
+    );
     assertEquals(await (await create()).getObject(ctx), null);
   });
 
@@ -227,8 +227,9 @@ test("accessors given a Context verify references of compatible-ID objects", asy
     const loader = createLoader({
       [compatible("/notes/1")]: { ...signed, content: "Forged" },
     });
-    const ctx = createFederation(loader)
-      .createContext(new URL("https://example.com/"));
+    const ctx = createFederation(loader).createContext(
+      new URL("https://example.com/"),
+    );
     assertEquals(await (await create()).getObject(ctx), null);
   });
 
@@ -236,8 +237,9 @@ test("accessors given a Context verify references of compatible-ID objects", asy
     // Since a Context carries a verifier, compatible identifiers from
     // ordinary objects are verified as well:
     const loader = createLoader({ [compatible("/notes/1")]: note("/notes/1") });
-    const ctx = createFederation(loader)
-      .createContext(new URL("https://example.com/"));
+    const ctx = createFederation(loader).createContext(
+      new URL("https://example.com/"),
+    );
     const create = await Create.fromJsonLd(
       activity(compatible("/notes/1"), "https://example.com/activities/1"),
       { contextLoader: mockDocumentLoader },
@@ -275,12 +277,10 @@ test("inbox listeners dereference references of compatible-ID activities without
   const signedCreate = await sign(activity(compatible("/notes/1")));
 
   for (const queued of [false, true]) {
-    for (
-      const [label, served] of [["signed", signedNote], [
-        "unsigned",
-        note("/notes/1"),
-      ]] as const
-    ) {
+    for (const [label, served] of [
+      ["signed", signedNote],
+      ["unsigned", note("/notes/1")],
+    ] as const) {
       await t.step(
         `${label} object${queued ? " through a queue" : ""}`,
         async () => {
@@ -386,8 +386,9 @@ test("Context.lookupObject() applies the gateway policy to unsecured collections
       [compatible("/actor/outbox")]: outbox,
       [compatible("/notes/1")]: note("/notes/1"),
     });
-    const ctx = createFederation(loader)
-      .createContext(new URL("https://example.com/"));
+    const ctx = createFederation(loader).createContext(
+      new URL("https://example.com/"),
+    );
     const collection = await ctx.lookupObject(compatible("/actor/outbox"));
     assertInstanceOf(collection, OrderedCollection);
     // Its unsigned item is rejected, even without options:
@@ -414,8 +415,9 @@ test("Context.lookupObject() applies the gateway policy to unsecured collections
         id: compatible("/actor/outbox", evil),
       },
     });
-    const ctx = createFederation(loader)
-      .createContext(new URL("https://example.com/"));
+    const ctx = createFederation(loader).createContext(
+      new URL("https://example.com/"),
+    );
     assertEquals(
       await ctx.lookupObject(compatible("/actor/outbox", evil)),
       null,
@@ -428,8 +430,9 @@ test("Context.lookupObject() applies the gateway policy to unsecured collections
       [compatible("/actor/outbox")]: outbox,
       [compatible("/notes/1")]: await sign(note("/notes/1")),
     });
-    const ctx = createFederation(loader)
-      .createContext(new URL("https://example.com/"));
+    const ctx = createFederation(loader).createContext(
+      new URL("https://example.com/"),
+    );
     const collection = await ctx.lookupObject(compatible("/actor/outbox"));
     assertInstanceOf(collection, OrderedCollection);
     const items = await Array.fromAsync(collection.getItems());
@@ -457,8 +460,9 @@ test("traverseCollection() with a Context verifies pages and items of portable c
     [compatible("/notes/1")]: await sign(note("/notes/1")),
     [compatible("/notes/2")]: note("/notes/2", "Unsigned"),
   });
-  const ctx = createFederation(loader)
-    .createContext(new URL("https://example.com/"));
+  const ctx = createFederation(loader).createContext(
+    new URL("https://example.com/"),
+  );
   // The actor is parsed without a default verifier:
   const person = await Person.fromJsonLd(actor(), {
     contextLoader: mockDocumentLoader,
@@ -476,9 +480,11 @@ test("traverseCollection() with a Context verifies pages and items of portable c
   );
 
   // ...unless the calls keep it to themselves:
-  const outbox2 = await (await Person.fromJsonLd(actor(), {
-    contextLoader: mockDocumentLoader,
-  })).getOutbox({ ...ctx, inheritPortableObjectVerifier: false });
+  const outbox2 = await (
+    await Person.fromJsonLd(actor(), {
+      contextLoader: mockDocumentLoader,
+    })
+  ).getOutbox({ ...ctx, inheritPortableObjectVerifier: false });
   assertInstanceOf(outbox2, OrderedCollection);
   const items2 = await Array.fromAsync(
     traverseCollection(outbox2, {
@@ -522,10 +528,12 @@ test("onOutboxError receives activities that verify portable objects by default"
     type: "outbox",
     id: crypto.randomUUID(),
     baseUrl: "https://example.com",
-    keys: [{
-      keyId: rsaPublicKey2.id!.href,
-      privateKey: await exportJwk(rsaPrivateKey2),
-    }],
+    keys: [
+      {
+        keyId: rsaPublicKey2.id!.href,
+        privateKey: await exportJwk(rsaPrivateKey2),
+      },
+    ],
     activity: await sign(activity(compatible("/notes/1"))),
     activityId: compatible("/activities/1"),
     activityType: "https://www.w3.org/ns/activitystreams#Create",

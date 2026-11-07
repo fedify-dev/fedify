@@ -31,9 +31,7 @@
   ],
   "expected": {
     "proofVerified": true,
-    "parsedGateways": [
-      "https://tootik.example/"
-    ],
+    "parsedGateways": ["https://tootik.example/"],
     "portableObjectProof": {
       "verified": true
     }

@@ -64,11 +64,7 @@
   },
   "overrides": [
     {
-      "files": [
-        "**/*.astro",
-        "**/*.vue",
-        "**/*.svelte"
-      ],
+      "files": ["**/*.astro", "**/*.vue", "**/*.svelte"],
       "options": {
         "embeddedLanguageFormatting": "auto"
       }

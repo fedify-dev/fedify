@@ -58,10 +58,12 @@ import {
 export function actorsHaveSameOrigin(activity: Activity): boolean {
   if (activity.id == null) return true;
   const origin = getAuthenticationOrigin(activity.id);
-  return origin != null &&
-    activity.actorIds.every((actor) =>
-      getAuthenticationOrigin(actor) === origin
-    );
+  return (
+    origin != null &&
+    activity.actorIds.every(
+      (actor) => getAuthenticationOrigin(actor) === origin,
+    )
+  );
 }
 
 /**
@@ -137,7 +139,7 @@ export async function getInboxIdempotencyKey<TContextData>(
         keyString = `${origin}\n${activity.id.href}`;
     }
   }
-  return keyString == null ? null : [...prefix, keyString] satisfies KvKey;
+  return keyString == null ? null : ([...prefix, keyString] satisfies KvKey);
 }
 
 /**
@@ -154,9 +156,9 @@ export async function isInboxActivityProcessed(
   prefix: KvKey,
 ): Promise<boolean> {
   if (cacheKey == null) return false;
-  if (await kv.get(cacheKey) === true) return true;
+  if ((await kv.get(cacheKey)) === true) return true;
   if (activity.id == null) return false;
-  return await kv.get([...prefix, origin, activity.id.href]) === true;
+  return (await kv.get([...prefix, origin, activity.id.href])) === true;
 }
 
 /**
@@ -205,8 +207,11 @@ export function estimateQueuedMessageSize(message: unknown): number {
     }
   };
   count(message);
-  return encoder.encode(JSON.stringify(message)).byteLength +
-    stringExpansion + values * PER_VALUE_SERIALIZATION_OVERHEAD;
+  return (
+    encoder.encode(JSON.stringify(message)).byteLength +
+    stringExpansion +
+    values * PER_VALUE_SERIALIZATION_OVERHEAD
+  );
 }
 
 /**
@@ -224,9 +229,9 @@ export function checkActorlessActivity(
 ):
   | { readonly status: "ok"; readonly principals: readonly InboxPrincipal[] }
   | {
-    readonly status: "noAuthenticatedPrincipal" | "activityOriginMismatch";
-    readonly principals: readonly InboxPrincipal[];
-  } {
+      readonly status: "noAuthenticatedPrincipal" | "activityOriginMismatch";
+      readonly principals: readonly InboxPrincipal[];
+    } {
   const principals = getEffectivePrincipals(authentication);
   if (principals.length < 1) {
     return { status: "noAuthenticatedPrincipal", principals };
@@ -235,8 +240,8 @@ export function checkActorlessActivity(
   const origin = getAuthenticationOrigin(activity.id);
   if (
     origin == null ||
-    !principals.some((principal) =>
-      getAuthenticationOrigin(principal.id) === origin
+    !principals.some(
+      (principal) => getAuthenticationOrigin(principal.id) === origin,
     )
   ) {
     return { status: "activityOriginMismatch", principals };
@@ -344,32 +349,30 @@ export type RouteActivityResult =
   | "error"
   | "success";
 
-export async function routeActivity<TContextData>(
-  {
-    context: ctx,
-    json,
-    originalJson,
-    normalizedActivity,
-    ldSignatureVerified,
-    authentication,
-    verifiedView,
-    replayable,
-    actorless,
-    activity,
-    recipient,
-    inboxListeners,
-    inboxContextFactory,
-    listenerInboxContextFactory,
-    inboxErrorHandler,
-    kv,
-    kvPrefixes,
-    queue,
-    span,
-    meterProvider,
-    tracerProvider,
-    idempotencyStrategy,
-  }: RouteActivityParameters<TContextData>,
-): Promise<RouteActivityResult> {
+export async function routeActivity<TContextData>({
+  context: ctx,
+  json,
+  originalJson,
+  normalizedActivity,
+  ldSignatureVerified,
+  authentication,
+  verifiedView,
+  replayable,
+  actorless,
+  activity,
+  recipient,
+  inboxListeners,
+  inboxContextFactory,
+  listenerInboxContextFactory,
+  inboxErrorHandler,
+  kv,
+  kvPrefixes,
+  queue,
+  span,
+  meterProvider,
+  tracerProvider,
+  idempotencyStrategy,
+}: RouteActivityParameters<TContextData>): Promise<RouteActivityResult> {
   const logger = getLogger(["fedify", "federation", "inbox"]);
 
   if (activity.actorId == null && !actorless) {
@@ -413,11 +416,7 @@ export async function routeActivity<TContextData>(
       code: SpanStatusCode.UNSET,
       message: `Activity ${activity.id?.href} has already been processed.`,
     });
-    recordInboxActivity(
-      meterProvider,
-      "rejected",
-      getTypeId(activity).href,
-    );
+    recordInboxActivity(meterProvider, "rejected", getTypeId(activity).href);
     return "alreadyProcessed";
   }
   if (activity.actorId != null) {
@@ -487,8 +486,7 @@ export async function routeActivity<TContextData>(
       );
       span.setStatus({
         code: SpanStatusCode.ERROR,
-        message:
-          `Failed to enqueue the incoming activity ${activity.id?.href}.`,
+        message: `Failed to enqueue the incoming activity ${activity.id?.href}.`,
       });
       throw error;
     }
@@ -497,10 +495,11 @@ export async function routeActivity<TContextData>(
       0,
     );
     recordInboxActivity(meterProvider, "queued", getTypeId(activity).href);
-    logger.info(
-      "Activity {activityId} is enqueued.",
-      { activityId: activity.id?.href, activity: json, recipient },
-    );
+    logger.info("Activity {activityId} is enqueued.", {
+      activityId: activity.id?.href,
+      activity: json,
+      recipient,
+    });
     return "enqueued";
   }
   tracerProvider = tracerProvider ?? trace.getTracerProvider();
@@ -511,10 +510,10 @@ export async function routeActivity<TContextData>(
     async (span) => {
       const dispatched = inboxListeners?.dispatchWithClass(activity);
       if (dispatched == null) {
-        logger.error(
-          "Unsupported activity type:\n{activity}",
-          { activity: json, recipient },
-        );
+        logger.error("Unsupported activity type:\n{activity}", {
+          activity: json,
+          recipient,
+        });
         span.setStatus({
           code: SpanStatusCode.UNSET,
           message: `Unsupported activity type: ${getTypeId(activity).href}`,
@@ -533,14 +532,14 @@ export async function routeActivity<TContextData>(
         const activityType = getTypeId(activity).href;
         const started = performance.now();
         try {
-          const contextFactory = listenerInboxContextFactory ??
-            inboxContextFactory;
+          const contextFactory =
+            listenerInboxContextFactory ?? inboxContextFactory;
           await listener(
             contextFactory(
               recipient,
               contextFactory === inboxContextFactory
                 ? json
-                : originalJson ?? json,
+                : (originalJson ?? json),
               activity.id?.href,
               activityType,
               contextMetadata,
@@ -585,20 +584,17 @@ export async function routeActivity<TContextData>(
         span.end();
         return "error";
       }
-      recordInboxActivity(
-        meterProvider,
-        "processed",
-        getTypeId(activity).href,
-      );
+      recordInboxActivity(meterProvider, "processed", getTypeId(activity).href);
       if (cacheKey != null) {
         await kv.set(cacheKey, true, {
           ttl: Temporal.Duration.from({ days: 1 }),
         });
       }
-      logger.info(
-        "Activity {activityId} has been processed.",
-        { activityId: activity.id?.href, activity: json, recipient },
-      );
+      logger.info("Activity {activityId} has been processed.", {
+        activityId: activity.id?.href,
+        activity: json,
+        recipient,
+      });
       span.end();
       return "success";
     },

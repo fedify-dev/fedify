@@ -98,10 +98,10 @@ test("retainSignedRepresentation() rejects a value that is not plain JSON", () =
   );
   throws(
     () =>
-      retainSignedRepresentation(
-        {},
-        [1, 2] as unknown as Record<string, unknown>,
-      ),
+      retainSignedRepresentation({}, [1, 2] as unknown as Record<
+        string,
+        unknown
+      >),
     TypeError,
   );
 });
@@ -109,15 +109,19 @@ test("retainSignedRepresentation() rejects a value that is not plain JSON", () =
 test("isMarkerSafeContext() accepts contexts Fedify can vet offline", () => {
   ok(isMarkerSafeContext(null));
   ok(isMarkerSafeContext("https://www.w3.org/ns/activitystreams"));
-  ok(isMarkerSafeContext([
-    "https://www.w3.org/ns/activitystreams",
-    "https://w3id.org/security/data-integrity/v1",
-    "https://w3id.org/fep/ef61",
-  ]));
-  ok(isMarkerSafeContext([
-    "https://www.w3.org/ns/activitystreams",
-    { ex: "https://example.com/ns#" },
-  ]));
+  ok(
+    isMarkerSafeContext([
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+      "https://w3id.org/fep/ef61",
+    ]),
+  );
+  ok(
+    isMarkerSafeContext([
+      "https://www.w3.org/ns/activitystreams",
+      { ex: "https://example.com/ns#" },
+    ]),
+  );
 });
 
 test("isMarkerSafeContext() rejects contexts that could hide a placeholder", () => {
@@ -173,12 +177,14 @@ test("isMarkerSafeContext() rejects contexts that could hide a placeholder", () 
   ok(!isMarkerSafeContext({ "@base": "urn:" }));
   ok(!isMarkerSafeContext({ everything: "" }));
   // A scoped context is only as safe as its own definitions.
-  ok(isMarkerSafeContext({
-    Note: {
-      "@id": "https://www.w3.org/ns/activitystreams#Note",
-      "@context": { ex: "https://example.com/ns#" },
-    },
-  }));
+  ok(
+    isMarkerSafeContext({
+      Note: {
+        "@id": "https://www.w3.org/ns/activitystreams#Note",
+        "@context": { ex: "https://example.com/ns#" },
+      },
+    }),
+  );
   ok(
     !isMarkerSafeContext({
       Note: {
@@ -251,12 +257,15 @@ test("resolveSignedValues() restores every supported reference shape", () => {
   retainedSignedValueRef(subject, scope);
   retainedSignedValueRef(subject, scope);
 
-  const resolved = resolveSignedValues({
-    "@context": ["https://www.w3.org/ns/activitystreams"],
-    object: marker,
-    attachment: [{ "@id": marker }],
-    tag: { id: marker },
-  }, scope) as Record<string, unknown>;
+  const resolved = resolveSignedValues(
+    {
+      "@context": ["https://www.w3.org/ns/activitystreams"],
+      object: marker,
+      attachment: [{ "@id": marker }],
+      tag: { id: marker },
+    },
+    scope,
+  ) as Record<string, unknown>;
 
   deepStrictEqual(resolved.object, securedDocument);
   deepStrictEqual((resolved.attachment as unknown[])[0], securedDocument);

@@ -13,8 +13,8 @@ function fixture(
   const diagnostics: string[] = [];
   const run: typeof commandOutput = (command, args) => {
     calls.push({ command, args });
-    const generatedCheck = command === "deno" &&
-      args.join("\0") === generated.join("\0");
+    const generatedCheck =
+      command === "deno" && args.join("\0") === generated.join("\0");
     // Model each formatter checking the complete selection. Their syntax and
     // configuration are exercised separately against the real Oxfmt binary.
     const formatter = command === "pnpm" ? "oxfmt" : "deno";
@@ -64,7 +64,10 @@ it("accepts a whole Deno-only selection without splitting paths", async () => {
   deepStrictEqual(f.diagnostics, []);
 });
 
-for (const tree of [["oxfmt", "deno"], ["invalid", "invalid"]] as const) {
+for (const tree of [
+  ["oxfmt", "deno"],
+  ["invalid", "invalid"],
+] as const) {
   it(`rejects a tree containing ${tree.join(" and ")}`, async () => {
     const f = fixture(tree);
     equal(await checkFormatTransition(undefined, f), false);

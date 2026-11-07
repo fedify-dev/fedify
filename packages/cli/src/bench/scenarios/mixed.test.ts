@@ -51,10 +51,12 @@ test("mixedRunner - runs weighted child scenarios together", async () => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/webfinger") {
         webfingerCalls++;
-        return Promise.resolve(json({
-          subject: url.searchParams.get("resource"),
-          links: [],
-        }));
+        return Promise.resolve(
+          json({
+            subject: url.searchParams.get("resource"),
+            links: [],
+          }),
+        );
       }
       return Promise.resolve(new Response("not found", { status: 404 }));
     },
@@ -286,11 +288,13 @@ test("mixedRunner - rejects unknown children", async () => {
   const scenarios = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "mixed",
-      type: "mixed",
-      mix: [{ scenario: "missing", weight: 1 }],
-    }],
+    scenarios: [
+      {
+        name: "mixed",
+        type: "mixed",
+        mix: [{ scenario: "missing", weight: 1 }],
+      },
+    ],
   }).scenarios;
 
   await assert.rejects(
@@ -312,11 +316,13 @@ test("mixedRunner.validate - rejects unknown children with suite context", () =>
   const scenarios = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "mixed",
-      type: "mixed",
-      mix: [{ scenario: "missing", weight: 1 }],
-    }],
+    scenarios: [
+      {
+        name: "mixed",
+        type: "mixed",
+        mix: [{ scenario: "missing", weight: 1 }],
+      },
+    ],
   }).scenarios;
 
   assert.throws(
@@ -385,15 +391,17 @@ test("mixedRunner.validate - rejects too-small closed load", () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "mixed",
-      type: "mixed",
-      load: { concurrency: 1 },
-      mix: [
-        { scenario: "one", weight: 1 },
-        { scenario: "two", weight: 1 },
-      ],
-    }],
+    scenarios: [
+      {
+        name: "mixed",
+        type: "mixed",
+        load: { concurrency: 1 },
+        mix: [
+          { scenario: "one", weight: 1 },
+          { scenario: "two", weight: 1 },
+        ],
+      },
+    ],
   }).scenarios[0];
 
   assert.throws(() => mixedRunner.validate?.(scenario), /concurrency/);
@@ -403,12 +411,14 @@ test("mixedRunner.validate - rejects server metric expectations", () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "mixed",
-      type: "mixed",
-      mix: [{ scenario: "fanout", weight: 1 }],
-      expect: { "queueDrain.p95": "< 1s" },
-    }],
+    scenarios: [
+      {
+        name: "mixed",
+        type: "mixed",
+        mix: [{ scenario: "fanout", weight: 1 }],
+        expect: { "queueDrain.p95": "< 1s" },
+      },
+    ],
   }).scenarios[0];
 
   assert.throws(

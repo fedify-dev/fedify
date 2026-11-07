@@ -67,7 +67,8 @@ export const quoteInteraction: InteractionControl<
     const quoteReference = options.quoteReference ?? "strict";
     if (
       quoteReference === "strict" &&
-      quote.quoteId != null && quote.quoteUrl != null &&
+      quote.quoteId != null &&
+      quote.quoteUrl != null &&
       !idsEqual(quote.quoteUrl, quote.quoteId)
     ) {
       return {
@@ -77,9 +78,11 @@ export const quoteInteraction: InteractionControl<
       };
     }
     const quoteTargetId = getQuoteTargetId(quote);
-    const targetMatched = quoteReference === "any"
-      ? idsEqual(quote.quoteId, targetId) || idsEqual(quote.quoteUrl, targetId)
-      : idsEqual(quoteTargetId, targetId);
+    const targetMatched =
+      quoteReference === "any"
+        ? idsEqual(quote.quoteId, targetId) ||
+          idsEqual(quote.quoteUrl, targetId)
+        : idsEqual(quoteTargetId, targetId);
     if (!targetMatched) {
       return {
         type: "objectMismatch",
@@ -89,13 +92,15 @@ export const quoteInteraction: InteractionControl<
     }
     const attributionIds = quote.attributionIds;
     if (
-      attributionIds.length < 1 && options.missingAttribution === "requester"
+      attributionIds.length < 1 &&
+      options.missingAttribution === "requester"
     ) {
       return null;
     }
-    const attributionMatched = options.attribution === "any"
-      ? attributionIds.some((id) => idsEqual(id, requester))
-      : idsEqual(quote.attributionId, requester);
+    const attributionMatched =
+      options.attribution === "any"
+        ? attributionIds.some((id) => idsEqual(id, requester))
+        : idsEqual(quote.attributionId, requester);
     if (!attributionMatched) {
       return {
         type: "requesterMismatch",

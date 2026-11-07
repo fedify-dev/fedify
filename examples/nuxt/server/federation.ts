@@ -20,14 +20,17 @@ import { broadcastEvent } from "./sse.ts";
 import { keyPairsStore, postStore, relationStore } from "./store.ts";
 
 function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) =>
-    ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    })[c]!);
+  return value.replace(
+    /[&<>"']/g,
+    (c) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[c]!,
+  );
 }
 
 const federation = createFederation<void>({
@@ -38,29 +41,26 @@ const federation = createFederation<void>({
 const IDENTIFIER = "demo";
 
 federation
-  .setActorDispatcher(
-    "/users/{identifier}",
-    async (context, identifier) => {
-      if (identifier != IDENTIFIER) {
-        return null;
-      }
-      const keyPairs = await context.getActorKeyPairs(identifier);
-      return new Person({
-        id: context.getActorUri(identifier),
-        name: "Fedify Demo",
-        summary: "This is a Fedify Demo account.",
-        preferredUsername: identifier,
-        icon: new Image({ url: new URL("/demo-profile.png", context.url) }),
-        url: new URL("/", context.url),
-        inbox: context.getInboxUri(identifier),
-        followers: context.getFollowersUri(identifier),
-        endpoints: new Endpoints({ sharedInbox: context.getInboxUri() }),
-        publicKey: keyPairs[0].cryptographicKey,
-        assertionMethods: keyPairs.map((keyPair) => keyPair.multikey),
-      });
-    },
-  )
-  .mapHandle((_, username) => username === IDENTIFIER ? IDENTIFIER : null)
+  .setActorDispatcher("/users/{identifier}", async (context, identifier) => {
+    if (identifier != IDENTIFIER) {
+      return null;
+    }
+    const keyPairs = await context.getActorKeyPairs(identifier);
+    return new Person({
+      id: context.getActorUri(identifier),
+      name: "Fedify Demo",
+      summary: "This is a Fedify Demo account.",
+      preferredUsername: identifier,
+      icon: new Image({ url: new URL("/demo-profile.png", context.url) }),
+      url: new URL("/", context.url),
+      inbox: context.getInboxUri(identifier),
+      followers: context.getFollowersUri(identifier),
+      endpoints: new Endpoints({ sharedInbox: context.getInboxUri() }),
+      publicKey: keyPairs[0].cryptographicKey,
+      assertionMethods: keyPairs.map((keyPair) => keyPair.multikey),
+    });
+  })
+  .mapHandle((_, username) => (username === IDENTIFIER ? IDENTIFIER : null))
   .setKeyPairsDispatcher(async (_, identifier) => {
     if (identifier != IDENTIFIER) {
       return [];
@@ -141,20 +141,19 @@ federation.setObjectDispatcher(
   },
 );
 
-federation
-  .setFollowersDispatcher(
-    "/users/{identifier}/followers",
-    (_ctx, identifier) => {
-      if (identifier !== IDENTIFIER) return null;
-      const followers = Array.from(relationStore.values());
-      const items: Recipient[] = followers.map((f) => ({
-        id: f.id,
-        inboxId: f.inboxId,
-        endpoints: f.endpoints,
-      }));
-      return { items };
-    },
-  );
+federation.setFollowersDispatcher(
+  "/users/{identifier}/followers",
+  (_ctx, identifier) => {
+    if (identifier !== IDENTIFIER) return null;
+    const followers = Array.from(relationStore.values());
+    const items: Recipient[] = followers.map((f) => ({
+      id: f.id,
+      inboxId: f.inboxId,
+      endpoints: f.endpoints,
+    }));
+    return { items };
+  },
+);
 
 federation.setNodeInfoDispatcher("/nodeinfo/2.1", (ctx) => {
   return {

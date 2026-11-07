@@ -56,22 +56,28 @@ export async function readBoundedText(
     const encoding = message.headers.get("Content-Encoding");
     if (
       (encoding == null || encoding.toLowerCase() === "identity") &&
-      length != null && /^\d+$/.test(length) && Number(length) > maxBytes
-    ) tooLarge();
+      length != null &&
+      /^\d+$/.test(length) &&
+      Number(length) > maxBytes
+    )
+      tooLarge();
     if (reader == null) return "";
     let size = 0;
-    const bounded = new ReadableStream<BufferSource>({
-      async pull(controller) {
-        const { done, value } = await reader.read();
-        if (done) {
-          controller.close();
-          return;
-        }
-        size += value.byteLength;
-        if (size > maxBytes) tooLarge();
-        controller.enqueue(value);
+    const bounded = new ReadableStream<BufferSource>(
+      {
+        async pull(controller) {
+          const { done, value } = await reader.read();
+          if (done) {
+            controller.close();
+            return;
+          }
+          size += value.byteLength;
+          if (size > maxBytes) tooLarge();
+          controller.enqueue(value);
+        },
       },
-    }, { highWaterMark: 0 });
+      { highWaterMark: 0 },
+    );
     const textReader = bounded.pipeThrough(new TextDecoderStream()).getReader();
     try {
       const chunks: string[] = [];
@@ -124,8 +130,11 @@ export async function readBoundedBytes(
     const encoding = message.headers.get("Content-Encoding");
     if (
       (encoding == null || encoding.toLowerCase() === "identity") &&
-      length != null && /^\d+$/.test(length) && Number(length) > maxBytes
-    ) tooLarge();
+      length != null &&
+      /^\d+$/.test(length) &&
+      Number(length) > maxBytes
+    )
+      tooLarge();
     if (reader == null) return new Uint8Array(0);
     const chunks: Uint8Array[] = [];
     let size = 0;

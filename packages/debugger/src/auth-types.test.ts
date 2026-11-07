@@ -51,10 +51,11 @@ test("debugger preserves released auth consumer types", () => {
     usernamePassword: "username and password",
     request: "request",
   };
-  const auth: Extract<
-    FederationDebuggerAuth,
-    { type: "usernamePassword" }
-  > = { type: "usernamePassword", username: "alice", password: "secret" };
+  const auth: Extract<FederationDebuggerAuth, { type: "usernamePassword" }> = {
+    type: "usernamePassword",
+    username: "alice",
+    password: "secret",
+  };
   strictEqual(describeAuth(auth), labels[auth.type]);
 
   const callbackAuth: Extract<

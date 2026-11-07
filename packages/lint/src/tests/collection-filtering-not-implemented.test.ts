@@ -8,17 +8,15 @@ const ruleName = RULE_IDS.collectionFilteringNotImplemented;
 const filterless = ["ctx", "identifier", "cursor"] as const;
 
 // Helper to create test code for setFollowersDispatcher
-const createFollowersDispatcherCode = (
-  {
-    params = ["ctx", "identifier", "cursor", "filter"],
-    async = true,
-    arrow = true,
-  }: {
-    params?: readonly string[];
-    async?: boolean;
-    arrow?: boolean;
-  } = {},
-): string => {
+const createFollowersDispatcherCode = ({
+  params = ["ctx", "identifier", "cursor", "filter"],
+  async = true,
+  arrow = true,
+}: {
+  params?: readonly string[];
+  async?: boolean;
+  arrow?: boolean;
+} = {}): string => {
   const paramsString = params.join(", ");
   const asyncKeyword = async ? "async" : "";
   const [funcKeyword, arrowSymbol] = arrow ? ["", "=>"] : ["function", ""];
@@ -162,12 +160,15 @@ const paramsString = filterless.join(", ");
 test(
   `${ruleName}: ✅ Good - other collection dispatchers without filter are NOT checked`,
   lintTest({
-    code: otherDispatchers.map((name) =>
-      `federation.${properties[name].setter}(
+    code: otherDispatchers
+      .map(
+        (name) =>
+          `federation.${properties[name].setter}(
         "/users/{identifier}/${name}",
         async (${paramsString}) => { items: [] },
-      );`
-    ).join("\n"),
+      );`,
+      )
+      .join("\n"),
     rule,
     ruleName,
   }),

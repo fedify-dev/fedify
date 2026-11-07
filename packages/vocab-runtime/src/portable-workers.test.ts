@@ -40,10 +40,10 @@ test("vocab-runtime compatible IDs on Workers", () => {
 });
 
 test("vocab-runtime did:key on Workers", async () => {
-  const keys = await crypto.subtle.generateKey("Ed25519", true, [
+  const keys = (await crypto.subtle.generateKey("Ed25519", true, [
     "sign",
     "verify",
-  ]) as CryptoKeyPair;
+  ])) as CryptoKeyPair;
   const did = await exportDidKey(keys.publicKey);
   const imported = await importDidKey(did);
   deepStrictEqual(
@@ -66,12 +66,11 @@ test("vocab-runtime hashlink on Workers", async () => {
 });
 
 test("vocab-runtime gateway candidates on Workers", () => {
-  const hinted = parseIri(
-    `${portableId}?@gateway=https%3A%2F%2Fhint.example`,
-  );
+  const hinted = parseIri(`${portableId}?@gateway=https%3A%2F%2Fhint.example`);
   deepStrictEqual(
-    getPortableGatewayCandidates(hinted, ["https://first.example"])
-      .map((url) => url.href),
+    getPortableGatewayCandidates(hinted, ["https://first.example"]).map(
+      (url) => url.href,
+    ),
     ["https://first.example/"],
   );
   deepStrictEqual(

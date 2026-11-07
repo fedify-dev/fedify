@@ -33,10 +33,12 @@ export default class Trie<TEntry extends RouteEntry> {
   };
 
   *candidates(path: Path): Generator<TEntry, void, unknown> {
-    yield* Array.from(uniqueMergedEntries(
-      this.#state.candidates(path),
-      this.#fallback.candidates(path),
-    )).sort(compareRouteEntries);
+    yield* Array.from(
+      uniqueMergedEntries(
+        this.#state.candidates(path),
+        this.#fallback.candidates(path),
+      ),
+    ).sort(compareRouteEntries);
   }
 }
 

@@ -114,34 +114,33 @@ function expandUriTemplate(
   template: string,
   values: Record<string, string>,
 ): string {
-  return template.replace(/{([+#./;?&]?)([A-Za-z_][A-Za-z0-9_]*)}/g, (
-    match,
-    operator,
-    key,
-  ) => {
-    const value = values[key];
-    if (value == null) return match;
-    switch (operator) {
-      case "":
-        return encodeURIComponent(value);
-      case "+":
-        return encodeURI(value);
-      case "#":
-        return `#${encodeURI(value)}`;
-      case ".":
-        return `.${encodeURIComponent(value)}`;
-      case "/":
-        return `/${encodeURIComponent(value)}`;
-      case ";":
-        return `;${key}=${encodeURIComponent(value)}`;
-      case "?":
-        return `?${key}=${encodeURIComponent(value)}`;
-      case "&":
-        return `&${key}=${encodeURIComponent(value)}`;
-      default:
-        return match;
-    }
-  });
+  return template.replace(
+    /{([+#./;?&]?)([A-Za-z_][A-Za-z0-9_]*)}/g,
+    (match, operator, key) => {
+      const value = values[key];
+      if (value == null) return match;
+      switch (operator) {
+        case "":
+          return encodeURIComponent(value);
+        case "+":
+          return encodeURI(value);
+        case "#":
+          return `#${encodeURI(value)}`;
+        case ".":
+          return `.${encodeURIComponent(value)}`;
+        case "/":
+          return `/${encodeURIComponent(value)}`;
+        case ";":
+          return `;${key}=${encodeURIComponent(value)}`;
+        case "?":
+          return `?${key}=${encodeURIComponent(value)}`;
+        case "&":
+          return `&${key}=${encodeURIComponent(value)}`;
+        default:
+          return match;
+      }
+    },
+  );
 }
 
 /**
@@ -173,8 +172,10 @@ function buildPortableUri(authority: string, path: string): URL {
  * base58-btc, as `@fedify/fedify` requires of portable IDs.
  */
 function isBase58BtcDidKey(did: string): boolean {
-  return !did.startsWith("did:key:") ||
-    /^z[1-9A-HJ-NP-Za-km-z]+$/.test(did.slice("did:key:".length));
+  return (
+    !did.startsWith("did:key:") ||
+    /^z[1-9A-HJ-NP-Za-km-z]+$/.test(did.slice("did:key:".length))
+  );
 }
 
 /**
@@ -190,8 +191,10 @@ function parseMockPortableId(
   const portable = uri.protocol === "ap:" || uri.protocol === "ap+ef61:";
   if (
     !portable &&
-    !((uri.protocol === "http:" || uri.protocol === "https:") &&
-      /^\/\.well-known\/apgateway\/did(?::|%3A)/i.test(uri.pathname))
+    !(
+      (uri.protocol === "http:" || uri.protocol === "https:") &&
+      /^\/\.well-known\/apgateway\/did(?::|%3A)/i.test(uri.pathname)
+    )
   ) {
     return undefined;
   }
@@ -246,8 +249,9 @@ function validateOutboxListenerPath(
     path.matchAll(/{([+#./;?&]?)([A-Za-z_][A-Za-z0-9_]*)}/g),
   );
   if (
-    operatorMatches.some((match) =>
-      ["?", "&", "#"].includes(match[1]) && match[2] === "identifier"
+    operatorMatches.some(
+      (match) =>
+        ["?", "&", "#"].includes(match[1]) && match[2] === "identifier",
     )
   ) {
     throw new TypeError(
@@ -321,8 +325,10 @@ interface TestContext<TContextData>
  * Extends the standard Federation interface with additional testing utilities.
  * @since 1.9.1
  */
-interface TestFederation<TContextData>
-  extends Omit<Federation<TContextData>, "createContext"> {
+interface TestFederation<TContextData> extends Omit<
+  Federation<TContextData>,
+  "createContext"
+> {
   // Test-specific properties
   sentActivities: SentActivity[];
   queueStarted: boolean;
@@ -446,7 +452,8 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     } = {},
   ) {
     this.contextData = options.contextData;
-    this.documentLoader = options.documentLoader ??
+    this.documentLoader =
+      options.documentLoader ??
       (options.allowPrivateAddress
         ? getDocumentLoader({ allowPrivateAddress: true })
         : undefined);
@@ -474,9 +481,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
 
   // Note: Parameter type is `any` instead of WebFingerLinksDispatcher to avoid
   // JSR type analyzer hang (issue #468). See comment on webFingerDispatcher field.
-  setWebFingerLinksDispatcher(
-    dispatcher: any,
-  ): void {
+  setWebFingerLinksDispatcher(dispatcher: any): void {
     this.webFingerDispatcher = dispatcher;
   }
 
@@ -738,12 +743,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     // oxlint-disable-next-line typescript/no-this-alias
     const mockFederation = this;
 
-    const request = baseUrlOrRequest instanceof Request
-      ? baseUrlOrRequest
-      : null;
-    const url = request == null
-      ? baseUrlOrRequest as URL
-      : new URL(request.url);
+    const request =
+      baseUrlOrRequest instanceof Request ? baseUrlOrRequest : null;
+    const url =
+      request == null ? (baseUrlOrRequest as URL) : new URL(request.url);
 
     return new MockContext({
       url,
@@ -751,7 +754,8 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       data: contextData,
       federation: mockFederation as any,
       meterProvider: this.options.meterProvider,
-      tracerProvider: this.options.tracerProvider ??
+      tracerProvider:
+        this.options.tracerProvider ??
         (this.documentLoader == null ? undefined : trace.getTracerProvider()),
       documentLoader: this.documentLoader,
       contextLoader: this.contextLoader,
@@ -859,12 +863,16 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       );
     }
 
-    const receivedActivity = listeners.length > 0 && this.documentLoader != null
-      ? activity.clone({}, {
-        documentLoader: this.documentLoader,
-        contextLoader: this.contextLoader,
-      })
-      : activity;
+    const receivedActivity =
+      listeners.length > 0 && this.documentLoader != null
+        ? activity.clone(
+            {},
+            {
+              documentLoader: this.documentLoader,
+              contextLoader: this.contextLoader,
+            },
+          )
+        : activity;
     if (receivedActivity !== activity) {
       // _cachedJsonLd is an internal cross-package contract documented in
       // @fedify/vocab-tools.  clone() drops this cache, so preserve it to keep
@@ -883,7 +891,8 @@ class MockFederation<TContextData> implements Federation<TContextData> {
         federation: this as any,
         documentLoader: this.documentLoader,
         contextLoader: this.contextLoader,
-        tracerProvider: this.options.tracerProvider ??
+        tracerProvider:
+          this.options.tracerProvider ??
           (this.documentLoader == null ? undefined : trace.getTracerProvider()),
         meterProvider: this.options.meterProvider,
         verifyPortableObject: this.options.verifyPortableObject,
@@ -976,12 +985,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
           if (options?.skipIfUnsigned && !hasProof && !hasLds) {
             return;
           }
-          await baseContext.sendActivity(
-            forwarder,
-            recipients,
-            activity,
-            { ...options, rawActivity },
-          );
+          await baseContext.sendActivity(forwarder, recipients, activity, {
+            ...options,
+            rawActivity,
+          });
           deliveryState.delivered = true;
         },
       });
@@ -990,11 +997,11 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     if (actor == null) {
       throw new Error(`Actor ${JSON.stringify(identifier)} not found.`);
     }
-    const authorizePredicate = this.outboxAuthorizePredicate ??
-      this.outboxDispatcherAuthorizePredicate;
+    const authorizePredicate =
+      this.outboxAuthorizePredicate ?? this.outboxDispatcherAuthorizePredicate;
     if (
       authorizePredicate != null &&
-      !await authorizePredicate(baseContext, identifier)
+      !(await authorizePredicate(baseContext, identifier))
     ) {
       throw new Error("Unauthorized.");
     }
@@ -1006,8 +1013,8 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       throw error;
     }
     if (
-      !activity.actorIds.every((actorId) =>
-        actorId.href === expectedActorId.href
+      !activity.actorIds.every(
+        (actorId) => actorId.href === expectedActorId.href,
       )
     ) {
       const error = new Error(
@@ -1046,12 +1053,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     TObject extends Object,
     // oxlint-disable-next-line eslint/no-unused-vars
     TParams extends Record<string, string>,
-  >(
-    _name: string | symbol,
-    _itemType: any,
-    _path: any,
-    _dispatcher: any,
-  ): any {
+  >(_name: string | symbol, _itemType: any, _path: any, _dispatcher: any): any {
     // Mock implementation - just return a mock callback setters object
     const setters = {
       setCounter: () => setters,
@@ -1070,12 +1072,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     TObject extends Object,
     // oxlint-disable-next-line eslint/no-unused-vars
     TParams extends Record<string, string>,
-  >(
-    _name: string | symbol,
-    _itemType: any,
-    _path: any,
-    _dispatcher: any,
-  ): any {
+  >(_name: string | symbol, _itemType: any, _path: any, _dispatcher: any): any {
     // Mock implementation - just return a mock callback setters object
     const setters = {
       setCounter: () => setters,
@@ -1226,22 +1223,20 @@ class MockContext<TContextData> implements Context<TContextData> {
     dispatchId?: string;
   }> = [];
 
-  constructor(
-    options: {
-      url?: URL;
-      request?: Request | null;
-      data: TContextData;
-      federation: Federation<TContextData>;
-      documentLoader?: DocumentLoader;
-      contextLoader?: DocumentLoader;
-      verifyPortableObject?: PortableObjectVerifier;
-      portableRequest?: PortableRequest;
-      hasDocumentLoader?: boolean;
-      hasContextLoader?: boolean;
-      meterProvider?: any;
-      tracerProvider?: any;
-    },
-  ) {
+  constructor(options: {
+    url?: URL;
+    request?: Request | null;
+    data: TContextData;
+    federation: Federation<TContextData>;
+    documentLoader?: DocumentLoader;
+    contextLoader?: DocumentLoader;
+    verifyPortableObject?: PortableObjectVerifier;
+    portableRequest?: PortableRequest;
+    hasDocumentLoader?: boolean;
+    hasContextLoader?: boolean;
+    meterProvider?: any;
+    tracerProvider?: any;
+  }) {
     const url = options.url ?? new URL("https://example.com");
     this.origin = url.origin;
     this.canonicalOrigin = url.origin;
@@ -1251,18 +1246,20 @@ class MockContext<TContextData> implements Context<TContextData> {
     this.request = options.request ?? new Request(url);
     this.portableRequest = options.portableRequest;
     this.verifyPortableObject = options.verifyPortableObject;
-    this.hasDocumentLoader = options.hasDocumentLoader ??
-      options.documentLoader != null;
-    this.hasContextLoader = options.hasContextLoader ??
-      options.contextLoader != null;
+    this.hasDocumentLoader =
+      options.hasDocumentLoader ?? options.documentLoader != null;
+    this.hasContextLoader =
+      options.hasContextLoader ?? options.contextLoader != null;
     this.data = options.data;
     this.federation = options.federation;
-    // oxlint-disable-next-line eslint/require-await
-    this.documentLoader = options.documentLoader ?? (async (url: string) => ({
-      contextUrl: null,
-      document: {},
-      documentUrl: url,
-    }));
+    this.documentLoader =
+      options.documentLoader ??
+      // oxlint-disable-next-line eslint/require-await
+      (async (url: string) => ({
+        contextUrl: null,
+        document: {},
+        documentUrl: url,
+      }));
     this.contextLoader = options.contextLoader ?? this.documentLoader;
     this.meterProvider = options.meterProvider ?? noopMeterProvider;
     this.tracerProvider = options.tracerProvider ?? noopTracerProvider;
@@ -1270,7 +1267,8 @@ class MockContext<TContextData> implements Context<TContextData> {
 
   async getActor(handle: string): Promise<any> {
     if (
-      this.federation instanceof MockFederation && this.federation.actorPath
+      this.federation instanceof MockFederation &&
+      this.federation.actorPath
     ) {
       const dispatcher = this.federation.actorDispatchers.get(
         this.federation.actorPath,
@@ -1315,7 +1313,8 @@ class MockContext<TContextData> implements Context<TContextData> {
           // Same as RequestContext.getObject(), a tombstone that is not
           // an instance of the requested class is suppressed by default:
           if (
-            object instanceof Tombstone && !(object instanceof cls) &&
+            object instanceof Tombstone &&
+            !(object instanceof cls) &&
             options?.tombstone !== "passthrough"
           ) {
             return null;
@@ -1350,9 +1349,9 @@ class MockContext<TContextData> implements Context<TContextData> {
     const def = this.federation.taskDefinitions.get(task.name);
     if (def == null || def.handle !== task) {
       throw new TypeError(
-        `Task ${
-          JSON.stringify(task.name)
-        } is not defined on this federation; ` +
+        `Task ${JSON.stringify(
+          task.name,
+        )} is not defined on this federation; ` +
           "pass a handle returned by its defineTask().",
       );
     }
@@ -1413,7 +1412,8 @@ class MockContext<TContextData> implements Context<TContextData> {
 
   getNodeInfoUri(): URL {
     if (
-      this.federation instanceof MockFederation && this.federation.nodeInfoPath
+      this.federation instanceof MockFederation &&
+      this.federation.nodeInfoPath
     ) {
       return new URL(this.federation.nodeInfoPath, this.origin);
     }
@@ -1422,7 +1422,8 @@ class MockContext<TContextData> implements Context<TContextData> {
 
   getActorUri(identifier: string): URL {
     if (
-      this.federation instanceof MockFederation && this.federation.actorPath
+      this.federation instanceof MockFederation &&
+      this.federation.actorPath
     ) {
       const path = expandUriTemplate(this.federation.actorPath, {
         identifier,
@@ -1509,7 +1510,8 @@ class MockContext<TContextData> implements Context<TContextData> {
 
   getOutboxUri(identifier: string): URL {
     if (
-      this.federation instanceof MockFederation && this.federation.outboxPath
+      this.federation instanceof MockFederation &&
+      this.federation.outboxPath
     ) {
       const path = expandUriTemplate(this.federation.outboxPath, {
         identifier,
@@ -1535,7 +1537,8 @@ class MockContext<TContextData> implements Context<TContextData> {
   getInboxUri(identifier?: any): URL {
     if (identifier) {
       if (
-        this.federation instanceof MockFederation && this.federation.inboxPath
+        this.federation instanceof MockFederation &&
+        this.federation.inboxPath
       ) {
         const path = expandUriTemplate(this.federation.inboxPath, {
           identifier,
@@ -1555,7 +1558,8 @@ class MockContext<TContextData> implements Context<TContextData> {
 
   getFollowingUri(identifier: string): URL {
     if (
-      this.federation instanceof MockFederation && this.federation.followingPath
+      this.federation instanceof MockFederation &&
+      this.federation.followingPath
     ) {
       const path = expandUriTemplate(this.federation.followingPath, {
         identifier,
@@ -1567,7 +1571,8 @@ class MockContext<TContextData> implements Context<TContextData> {
 
   getFollowersUri(identifier: string): URL {
     if (
-      this.federation instanceof MockFederation && this.federation.followersPath
+      this.federation instanceof MockFederation &&
+      this.federation.followersPath
     ) {
       const path = expandUriTemplate(this.federation.followersPath, {
         identifier,
@@ -1579,7 +1584,8 @@ class MockContext<TContextData> implements Context<TContextData> {
 
   getLikedUri(identifier: string): URL {
     if (
-      this.federation instanceof MockFederation && this.federation.likedPath
+      this.federation instanceof MockFederation &&
+      this.federation.likedPath
     ) {
       const path = expandUriTemplate(this.federation.likedPath, {
         identifier,
@@ -1591,7 +1597,8 @@ class MockContext<TContextData> implements Context<TContextData> {
 
   getFeaturedUri(identifier: string): URL {
     if (
-      this.federation instanceof MockFederation && this.federation.featuredPath
+      this.federation instanceof MockFederation &&
+      this.federation.featuredPath
     ) {
       const path = expandUriTemplate(this.federation.featuredPath, {
         identifier,
@@ -1636,7 +1643,7 @@ class MockContext<TContextData> implements Context<TContextData> {
     const result = parseMockPath(portable.path);
     return result == null
       ? null
-      : { ...result, authority: portable.authority } as ParseUriResult;
+      : ({ ...result, authority: portable.authority } as ParseUriResult);
   }
 
   async getActorKeyPairs(identifier: string): Promise<ActorKeyPair[]> {
@@ -1701,12 +1708,13 @@ class MockContext<TContextData> implements Context<TContextData> {
     return globalLookupObject(uri, {
       ...options,
       documentLoader: options.documentLoader ?? this.documentLoader,
-      contextLoader: options.contextLoader ??
+      contextLoader:
+        options.contextLoader ??
         (this.hasContextLoader
           ? this.contextLoader
-          : options.documentLoader ?? this.contextLoader),
-      verifyPortableObject: options.verifyPortableObject ??
-        this.verifyPortableObject,
+          : (options.documentLoader ?? this.contextLoader)),
+      verifyPortableObject:
+        options.verifyPortableObject ?? this.verifyPortableObject,
     });
   }
 
@@ -1725,10 +1733,7 @@ class MockContext<TContextData> implements Context<TContextData> {
     };
   }
 
-  lookupNodeInfo(
-    _url: any,
-    _options?: any,
-  ): Promise<any> {
+  lookupNodeInfo(_url: any, _options?: any): Promise<any> {
     return Promise.resolve(undefined);
   }
 

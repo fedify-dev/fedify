@@ -60,42 +60,46 @@ test("getPortableGatewayCandidates() uses explicit gateways", () => {
     "ap://did:key:z6Mkabc/actor?@gateway=https%3A%2F%2Fhint.example",
   );
   deepStrictEqual(
-    hrefs(getPortableGatewayCandidates(url, [
-      "https://b.example",
-      new URL("https://a.example/"),
-      "https://b.example/",
-      "http://c.example:8080",
-    ])),
+    hrefs(
+      getPortableGatewayCandidates(url, [
+        "https://b.example",
+        new URL("https://a.example/"),
+        "https://b.example/",
+        "http://c.example:8080",
+      ]),
+    ),
     ["https://b.example/", "https://a.example/", "http://c.example:8080/"],
   );
   deepStrictEqual(getPortableGatewayCandidates(url, []), []);
-  for (
-    const gateway of [
-      "https://a.example/path",
-      "https://a.example/?",
-      "https://a.example/#",
-      "https://user:pass@a.example",
-      "ftp://a.example",
-      "a.example",
-    ]
-  ) {
+  for (const gateway of [
+    "https://a.example/path",
+    "https://a.example/?",
+    "https://a.example/#",
+    "https://user:pass@a.example",
+    "ftp://a.example",
+    "a.example",
+  ]) {
     throws(() => getPortableGatewayCandidates(url, [gateway]), TypeError);
   }
 });
 
 test("getPortableGatewayCandidates() reads @gateway hints", () => {
   deepStrictEqual(
-    hrefs(getPortableGatewayCandidates(parseIri(
-      "ap://did:key:z6Mkabc/actor?page=1" +
-        "&@gateway=https%3A%2F%2Fa.example" +
-        "&gateways=https%3A%2F%2Flegacy.example" +
-        "&@gateway=not%20a%20URL" +
-        "&@gateway=https%3A%2F%2Fb.example%2Fpath" +
-        "&@gateway=https%3A%2F%2Fquery.example%2F%3F" +
-        "&@gateway=https%3A%2F%2Ffragment.example%2F%23" +
-        "&%40gateway=https%3A%2F%2Fb.example" +
-        "&@gateway=https%3A%2F%2Fa.example%2F",
-    ))),
+    hrefs(
+      getPortableGatewayCandidates(
+        parseIri(
+          "ap://did:key:z6Mkabc/actor?page=1" +
+            "&@gateway=https%3A%2F%2Fa.example" +
+            "&gateways=https%3A%2F%2Flegacy.example" +
+            "&@gateway=not%20a%20URL" +
+            "&@gateway=https%3A%2F%2Fb.example%2Fpath" +
+            "&@gateway=https%3A%2F%2Fquery.example%2F%3F" +
+            "&@gateway=https%3A%2F%2Ffragment.example%2F%23" +
+            "&%40gateway=https%3A%2F%2Fb.example" +
+            "&@gateway=https%3A%2F%2Fa.example%2F",
+        ),
+      ),
+    ),
     ["https://a.example/", "https://b.example/"],
   );
   deepStrictEqual(
@@ -107,22 +111,23 @@ test("getPortableGatewayCandidates() reads @gateway hints", () => {
     (_, i) => `@gateway=https%3A%2F%2Fg${i}.example`,
   );
   deepStrictEqual(
-    hrefs(getPortableGatewayCandidates(
-      parseIri(`ap://did:key:z6Mkabc/actor?${hints.join("&")}`),
-    )),
+    hrefs(
+      getPortableGatewayCandidates(
+        parseIri(`ap://did:key:z6Mkabc/actor?${hints.join("&")}`),
+      ),
+    ),
     [0, 1, 2, 3, 4].map((i) => `https://g${i}.example/`),
   );
 });
 
 test("getPortableGatewayCandidates() reads hints from withGatewayHints()", () => {
-  const gateways = Array.from(
-    { length: 7 },
-    (_, i) => `https://g${i}.example`,
-  );
+  const gateways = Array.from({ length: 7 }, (_, i) => `https://g${i}.example`);
   deepStrictEqual(
-    hrefs(getPortableGatewayCandidates(
-      withGatewayHints("ap://did:key:z6Mkabc/actor?page=1", gateways),
-    )),
+    hrefs(
+      getPortableGatewayCandidates(
+        withGatewayHints("ap://did:key:z6Mkabc/actor?page=1", gateways),
+      ),
+    ),
     [0, 1, 2, 3, 4].map((i) => `https://g${i}.example/`),
   );
 });
@@ -143,14 +148,14 @@ test("getReferrerGateways() takes gateways from the owner", () => {
 
   // From the actor itself, and from an object obtained from it; duplicate and
   // invalid gateways are dropped:
-  deepStrictEqual(
-    hrefs(getReferrerGateways(actor, outbox.id) ?? []),
-    ["https://a.example/", "https://c.example/"],
-  );
-  deepStrictEqual(
-    hrefs(getReferrerGateways(outbox, page) ?? []),
-    ["https://a.example/", "https://c.example/"],
-  );
+  deepStrictEqual(hrefs(getReferrerGateways(actor, outbox.id) ?? []), [
+    "https://a.example/",
+    "https://c.example/",
+  ]);
+  deepStrictEqual(hrefs(getReferrerGateways(outbox, page) ?? []), [
+    "https://a.example/",
+    "https://c.example/",
+  ]);
 
   // Location hints take precedence:
   deepStrictEqual(
@@ -174,10 +179,9 @@ test("getReferrerGateways() takes gateways from the owner", () => {
     ),
     gateways: [new URL("https://a.example")],
   };
-  deepStrictEqual(
-    hrefs(getReferrerGateways(compatible, outbox.id) ?? []),
-    ["https://a.example/"],
-  );
+  deepStrictEqual(hrefs(getReferrerGateways(compatible, outbox.id) ?? []), [
+    "https://a.example/",
+  ]);
 
   // Objects that no portable actor leads to have no gateways to offer:
   deepStrictEqual(getReferrerGateways({}, page), undefined);
@@ -230,9 +234,10 @@ test("context loaders unwrap mixed released wrappers", async () => {
   for (const snapshotFirst of [false, true]) {
     let loader = base;
     for (let i = 0; i < 10000; i++) {
-      const wrapper = (i % 2 === 0) === snapshotFirst
-        ? createSnapshotContextLoader(loader, true)
-        : createScopedContextLoader(loader, true);
+      const wrapper =
+        (i % 2 === 0) === snapshotFirst
+          ? createSnapshotContextLoader(loader, true)
+          : createScopedContextLoader(loader, true);
       wrapper.release();
       loader = wrapper.loader;
     }
@@ -262,9 +267,10 @@ test("mixed context wrappers preserve active suppression and snapshots", async (
       : createScopedContextLoader(base, true);
     let loader = active.loader;
     for (let i = 0; i < 4; i++) {
-      const wrapper = i % 2 === 0
-        ? createScopedContextLoader(loader, true)
-        : createSnapshotContextLoader(loader, true);
+      const wrapper =
+        i % 2 === 0
+          ? createScopedContextLoader(loader, true)
+          : createSnapshotContextLoader(loader, true);
       wrapper.release();
       loader = wrapper.loader;
     }

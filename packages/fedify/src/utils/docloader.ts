@@ -34,8 +34,7 @@ const DEFAULT_MAX_REDIRECTION = 20;
  * @see {@link getAuthenticatedDocumentLoader}
  * @since 1.3.0
  */
-export interface GetAuthenticatedDocumentLoaderOptions
-  extends DocumentLoaderFactoryOptions {
+export interface GetAuthenticatedDocumentLoaderOptions extends DocumentLoaderFactoryOptions {
   /**
    * An optional spec determiner for HTTP Message Signatures.
    * It determines the spec to use for signing requests.
@@ -145,10 +144,7 @@ export function createAuthenticatedDocumentLoader(
         );
       }
       if (visited.has(nextUrl)) {
-        throw new FetchError(
-          currentUrl,
-          `Redirect loop detected: ${nextUrl}`,
-        );
+        throw new FetchError(currentUrl, `Redirect loop detected: ${nextUrl}`);
       }
       redirected++;
     }

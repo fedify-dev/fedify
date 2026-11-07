@@ -50,15 +50,15 @@ export interface CircuitBreakerActivityDrop {
  */
 export type CircuitBreakerFailurePolicy =
   | {
-    failure(timestamps: readonly Temporal.Instant[]): boolean;
-    readonly failureThreshold?: never;
-    readonly failureWindow?: never;
-  }
+      failure(timestamps: readonly Temporal.Instant[]): boolean;
+      readonly failureThreshold?: never;
+      readonly failureWindow?: never;
+    }
   | {
-    readonly failure?: never;
-    readonly failureThreshold?: number;
-    readonly failureWindow?: Temporal.Duration | Temporal.DurationLike;
-  };
+      readonly failure?: never;
+      readonly failureThreshold?: number;
+      readonly failureWindow?: Temporal.Duration | Temporal.DurationLike;
+    };
 
 /**
  * Options for Fedify's outbound activity circuit breaker.
@@ -164,10 +164,10 @@ const LEGACY_SWEEP_CAS_ATTEMPTS = 3;
 
 type LegacySweepMarker =
   | {
-    readonly state: "sweeping";
-    readonly started: string;
-    readonly retryUntil: string;
-  }
+      readonly state: "sweeping";
+      readonly started: string;
+      readonly retryUntil: string;
+    }
   | { readonly state: "done"; readonly retryUntil: string }
   | { readonly state: "final" };
 
@@ -197,16 +197,16 @@ export interface CircuitBreakerCreateOptions {
  */
 export type CircuitBreakerBeforeSendDecision =
   | {
-    readonly type: "send";
-    readonly probe: boolean;
-    readonly stateChange?: CircuitBreakerStateChange;
-  }
+      readonly type: "send";
+      readonly probe: boolean;
+      readonly stateChange?: CircuitBreakerStateChange;
+    }
   | {
-    readonly type: "hold";
-    readonly state: "open" | "half-open";
-    readonly delay: Temporal.Duration;
-    readonly heldSince: Temporal.Instant;
-  }
+      readonly type: "hold";
+      readonly state: "open" | "half-open";
+      readonly delay: Temporal.Duration;
+      readonly heldSince: Temporal.Instant;
+    }
   | { readonly type: "drop"; readonly heldSince: Temporal.Instant };
 
 /**
@@ -250,9 +250,7 @@ export class CircuitBreaker {
     delay: Temporal.Duration,
   ): Temporal.Duration {
     const now = this.#now();
-    return now.until(
-      this.#capHeldRetryAt(now, heldSince, now.add(delay)),
-    );
+    return now.until(this.#capHeldRetryAt(now, heldSince, now.add(delay)));
   }
 
   async beforeSend(
@@ -265,10 +263,9 @@ export class CircuitBreaker {
     if (
       heldSince != null &&
       Temporal.Instant.compare(
-          heldSince.add(this.#options.heldActivityTtl),
-          now,
-        ) <=
-        0
+        heldSince.add(this.#options.heldActivityTtl),
+        now,
+      ) <= 0
     ) {
       return { type: "drop", heldSince };
     }
@@ -280,21 +277,19 @@ export class CircuitBreaker {
         return { type: "send", probe: false };
       }
       if (oldState.state === "half-open") {
-        const halfOpened = oldState.halfOpened == null
-          ? undefined
-          : Temporal.Instant.from(oldState.halfOpened);
+        const halfOpened =
+          oldState.halfOpened == null
+            ? undefined
+            : Temporal.Instant.from(oldState.halfOpened);
         if (halfOpened != null) {
           const staleAt = halfOpened.add(this.#options.recoveryDelay);
           if (Temporal.Instant.compare(now, staleAt) < 0) {
             const releaseAt = now.add(this.#options.releaseInterval);
-            const retryAt = Temporal.Instant.compare(releaseAt, staleAt) < 0
-              ? releaseAt
-              : staleAt;
-            const cappedRetryAt = this.#capHeldRetryAt(
-              now,
-              heldSince,
-              retryAt,
-            );
+            const retryAt =
+              Temporal.Instant.compare(releaseAt, staleAt) < 0
+                ? releaseAt
+                : staleAt;
+            const cappedRetryAt = this.#capHeldRetryAt(now, heldSince, retryAt);
             return {
               type: "hold",
               state: "half-open",
@@ -315,9 +310,8 @@ export class CircuitBreaker {
         continue;
       }
 
-      const opened = oldState.opened == null
-        ? now
-        : Temporal.Instant.from(oldState.opened);
+      const opened =
+        oldState.opened == null ? now : Temporal.Instant.from(oldState.opened);
       const probeAt = opened.add(this.#options.recoveryDelay);
       if (Temporal.Instant.compare(now, probeAt) < 0) {
         const retryAt = this.#capHeldRetryAt(now, heldSince, probeAt);
@@ -396,15 +390,10 @@ export class CircuitBreaker {
       const { state: oldState, raw: oldValue } = await this.#get(remoteHost);
       if (oldState?.state === "open") return undefined;
       const oldFailures = oldState?.failures.map(Temporal.Instant.from) ?? [];
-      const failures = this.#options.pruneFailures(
-        [...oldFailures, now],
-        now,
-      );
+      const failures = this.#options.pruneFailures([...oldFailures, now], now);
       let newState: CircuitBreakerKvState;
       let transition: [CircuitBreakerState, CircuitBreakerState] | undefined;
-      if (
-        oldState?.state === "half-open" || this.#options.failure(failures)
-      ) {
+      if (oldState?.state === "half-open" || this.#options.failure(failures)) {
         newState = {
           state: "open",
           failures: failures.map((t) => t.toString()),
@@ -531,7 +520,8 @@ export class CircuitBreaker {
     const renewed = {
       state: "sweeping",
       started: this.#now().toString(),
-      retryUntil: getLegacySweepRetryUntil(marker) ??
+      retryUntil:
+        getLegacySweepRetryUntil(marker) ??
         this.#now().add(LEGACY_SWEEP_RETRY_WINDOW).toString(),
     } satisfies LegacySweepMarker;
     if (
@@ -548,10 +538,7 @@ export class CircuitBreaker {
     const retryUntil = getLegacySweepRetryUntil(marker);
     if (
       retryUntil != null &&
-      Temporal.Instant.compare(
-          this.#now(),
-          Temporal.Instant.from(retryUntil),
-        ) <
+      Temporal.Instant.compare(this.#now(), Temporal.Instant.from(retryUntil)) <
         0
     ) {
       return { state: "done", retryUntil };
@@ -604,8 +591,8 @@ export class CircuitBreaker {
       }
       const retryUntil = isLegacySweepRetryDue(marker, now)
         ? marker.retryUntil
-        : getLegacySweepRetryUntil(marker) ??
-          now.add(LEGACY_SWEEP_RETRY_WINDOW).toString();
+        : (getLegacySweepRetryUntil(marker) ??
+          now.add(LEGACY_SWEEP_RETRY_WINDOW).toString());
       const sweeping = {
         state: "sweeping",
         started: now.toString(),
@@ -666,9 +653,8 @@ export class CircuitBreaker {
     newState: CircuitBreakerKvState | undefined,
   ): Promise<boolean> {
     const key = this.#key(remoteHost);
-    const storedState = newState == null ? undefined : markCircuitBreakerState(
-      newState,
-    );
+    const storedState =
+      newState == null ? undefined : markCircuitBreakerState(newState);
     if (this.#kv.cas == null) {
       if (storedState == null) {
         await this.#kv.delete(key);
@@ -740,9 +726,8 @@ export function normalizeCircuitBreakerOptions(
   const releaseInterval = toInstantDuration(
     options.releaseInterval ?? { seconds: 1 },
   );
-  const configuredStateTtl = options.stateTtl == null
-    ? undefined
-    : toInstantDuration(options.stateTtl);
+  const configuredStateTtl =
+    options.stateTtl == null ? undefined : toInstantDuration(options.stateTtl);
   assertPositiveDuration(recoveryDelay, "recoveryDelay");
   assertPositiveDuration(heldActivityTtl, "heldActivityTtl");
   assertPositiveDuration(releaseInterval, "releaseInterval");
@@ -770,8 +755,8 @@ export function normalizeCircuitBreakerOptions(
     pruneFailures = (timestamps, now) => {
       const earliest = now.subtract(failureWindow);
       return timestamps
-        .filter((timestamp) =>
-          Temporal.Instant.compare(timestamp, earliest) >= 0
+        .filter(
+          (timestamp) => Temporal.Instant.compare(timestamp, earliest) >= 0,
         )
         .slice(-failureThreshold);
     };
@@ -781,7 +766,8 @@ export function normalizeCircuitBreakerOptions(
       const last = timestamps[timestamps.length - 1];
       return Temporal.Duration.compare(first.until(last), failureWindow) <= 0;
     };
-    stateTtl = configuredStateTtl ??
+    stateTtl =
+      configuredStateTtl ??
       maxDuration(
         recoveryDelay.add(failureWindow),
         recoveryDelay.add(heldActivityTtl),
@@ -831,7 +817,8 @@ function getLegacySweepDoneUntil(
   }
   if (value.state === "final") return "final";
   if (
-    value.state === "done" && "retryUntil" in value &&
+    value.state === "done" &&
+    "retryUntil" in value &&
     typeof value.retryUntil === "string"
   ) {
     try {
@@ -851,17 +838,20 @@ function isLegacySweepRetryDue(
   now: Temporal.Instant,
 ): value is Extract<LegacySweepMarker, { state: "done" }> {
   if (
-    typeof value !== "object" || value == null ||
-    !("state" in value) || value.state !== "done" ||
-    !("retryUntil" in value) || typeof value.retryUntil !== "string"
+    typeof value !== "object" ||
+    value == null ||
+    !("state" in value) ||
+    value.state !== "done" ||
+    !("retryUntil" in value) ||
+    typeof value.retryUntil !== "string"
   ) {
     return false;
   }
   try {
-    return Temporal.Instant.compare(
-      now,
-      Temporal.Instant.from(value.retryUntil),
-    ) >= 0;
+    return (
+      Temporal.Instant.compare(now, Temporal.Instant.from(value.retryUntil)) >=
+      0
+    );
   } catch {
     return false;
   }
@@ -876,17 +866,22 @@ function isLegacySweepInProgress(
   now: Temporal.Instant,
 ): boolean {
   if (
-    typeof value !== "object" || value == null ||
-    !("state" in value) || value.state !== "sweeping" ||
-    !("started" in value) || typeof value.started !== "string"
+    typeof value !== "object" ||
+    value == null ||
+    !("state" in value) ||
+    value.state !== "sweeping" ||
+    !("started" in value) ||
+    typeof value.started !== "string"
   ) {
     return false;
   }
   try {
-    return Temporal.Instant.compare(
-      now,
-      Temporal.Instant.from(value.started).add(LEGACY_SWEEP_LOCK_TTL),
-    ) < 0;
+    return (
+      Temporal.Instant.compare(
+        now,
+        Temporal.Instant.from(value.started).add(LEGACY_SWEEP_LOCK_TTL),
+      ) < 0
+    );
   } catch {
     return false;
   }
@@ -894,8 +889,10 @@ function isLegacySweepInProgress(
 
 function getLegacySweepRetryUntil(value: unknown): string | undefined {
   if (
-    typeof value !== "object" || value == null ||
-    !("retryUntil" in value) || typeof value.retryUntil !== "string"
+    typeof value !== "object" ||
+    value == null ||
+    !("retryUntil" in value) ||
+    typeof value.retryUntil !== "string"
   ) {
     return undefined;
   }
@@ -908,9 +905,12 @@ function getLegacySweepRetryUntil(value: unknown): string | undefined {
 }
 
 function isCurrentCircuitBreakerState(value: unknown): boolean {
-  return typeof value === "object" && value != null &&
+  return (
+    typeof value === "object" &&
+    value != null &&
     "__fedifyCircuitBreakerStateVersion" in value &&
-    value.__fedifyCircuitBreakerStateVersion === CIRCUIT_BREAKER_STATE_VERSION;
+    value.__fedifyCircuitBreakerStateVersion === CIRCUIT_BREAKER_STATE_VERSION
+  );
 }
 
 function markCircuitBreakerState(
@@ -1026,7 +1026,7 @@ function parseStoredCircuitBreakerKvState(
     ...(record.opened == null ? {} : { opened: record.opened }),
     ...(record.halfOpened == null ? {} : { halfOpened: record.halfOpened }),
     ...(record.__fedifyCircuitBreakerStateVersion ===
-        CIRCUIT_BREAKER_STATE_VERSION
+    CIRCUIT_BREAKER_STATE_VERSION
       ? { __fedifyCircuitBreakerStateVersion: CIRCUIT_BREAKER_STATE_VERSION }
       : {}),
   };

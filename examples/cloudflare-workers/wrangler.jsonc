@@ -5,25 +5,25 @@
   "compatibility_date": "2025-05-31",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
-    "enabled": true
+    "enabled": true,
   },
   "kv_namespaces": [
     {
       "binding": "FEDIFY_KV",
-      "id": "4623e47dd1eb4d5bb7df86d7f07a4d72"
-    }
+      "id": "4623e47dd1eb4d5bb7df86d7f07a4d72",
+    },
   ],
   "queues": {
     "consumers": [
       {
-        "queue": "fedify-queue"
-      }
+        "queue": "fedify-queue",
+      },
     ],
     "producers": [
       {
         "binding": "FEDIFY_QUEUE",
-        "queue": "fedify-queue"
-      }
-    ]
-  }
+        "queue": "fedify-queue",
+      },
+    ],
+  },
 }

@@ -11,9 +11,8 @@ const makeEntry = (path: string, index = 0): RouteEntry => {
   return {
     index,
     tokens,
-    initialLiteralPrefix: tokens[0] != null && isLiteral(tokens[0])
-      ? tokens[0].text
-      : "",
+    initialLiteralPrefix:
+      tokens[0] != null && isLiteral(tokens[0]) ? tokens[0].text : "",
     literalLength: literalLengthOf(tokens),
     variableCount: variableCountOf(tokens),
   };
@@ -21,7 +20,7 @@ const makeEntry = (path: string, index = 0): RouteEntry => {
 
 const literalLengthOf = (tokens: readonly Token[]): number =>
   tokens.reduce(
-    (sum, token) => isLiteral(token) ? sum + token.text.length : sum,
+    (sum, token) => (isLiteral(token) ? sum + token.text.length : sum),
     0,
   );
 
@@ -34,10 +33,8 @@ const variableCountOf = (tokens: readonly Token[]): number => {
   return names.size;
 };
 
-const candidatesOf = (
-  trie: StateTrie<RouteEntry>,
-  path: Path,
-): RouteEntry[] => Array.from(trie.candidates(path));
+const candidatesOf = (trie: StateTrie<RouteEntry>, path: Path): RouteEntry[] =>
+  Array.from(trie.candidates(path));
 
 test("StateTrie visits ambiguous states once per query", () => {
   const trie = new StateTrie<RouteEntry>();
@@ -64,35 +61,29 @@ test("StateTrie visits ambiguous states once per query", () => {
   deepEqual(new Set(collect()), new Set([many, fallback]));
 });
 
-test(
-  "StateTrie.candidates() yields entries with matching literal segments",
-  () => {
-    const trie = new StateTrie<RouteEntry>();
-    const users = makeEntry("/users/{id}", 0);
-    const posts = makeEntry("/posts/{id}", 1);
-    trie.insert(users);
-    trie.insert(posts);
+test("StateTrie.candidates() yields entries with matching literal segments", () => {
+  const trie = new StateTrie<RouteEntry>();
+  const users = makeEntry("/users/{id}", 0);
+  const posts = makeEntry("/posts/{id}", 1);
+  trie.insert(users);
+  trie.insert(posts);
 
-    deepEqual(candidatesOf(trie, "/users/42"), [users]);
-    deepEqual(candidatesOf(trie, "/posts/42"), [posts]);
-    deepEqual(candidatesOf(trie, "/unknown/42"), []);
-  },
-);
+  deepEqual(candidatesOf(trie, "/users/42"), [users]);
+  deepEqual(candidatesOf(trie, "/posts/42"), [posts]);
+  deepEqual(candidatesOf(trie, "/unknown/42"), []);
+});
 
-test(
-  "StateTrie shares dynamic prefixes across entries that diverge by suffix",
-  () => {
-    const trie = new StateTrie<RouteEntry>();
-    const inbox = makeEntry("/ap/{id}/inbox", 0);
-    const outbox = makeEntry("/ap/{id}/outbox", 1);
-    trie.insert(inbox);
-    trie.insert(outbox);
+test("StateTrie shares dynamic prefixes across entries that diverge by suffix", () => {
+  const trie = new StateTrie<RouteEntry>();
+  const inbox = makeEntry("/ap/{id}/inbox", 0);
+  const outbox = makeEntry("/ap/{id}/outbox", 1);
+  trie.insert(inbox);
+  trie.insert(outbox);
 
-    deepEqual(candidatesOf(trie, "/ap/alice/inbox"), [inbox]);
-    deepEqual(candidatesOf(trie, "/ap/alice/outbox"), [outbox]);
-    deepEqual(candidatesOf(trie, "/ap/alice/unknown"), []);
-  },
-);
+  deepEqual(candidatesOf(trie, "/ap/alice/inbox"), [inbox]);
+  deepEqual(candidatesOf(trie, "/ap/alice/outbox"), [outbox]);
+  deepEqual(candidatesOf(trie, "/ap/alice/unknown"), []);
+});
 
 test("StateTrie supports path-expansion {/var} templates", () => {
   const trie = new StateTrie<RouteEntry>();
@@ -111,18 +102,15 @@ test("StateTrie.remove() removes an inserted entry from candidates", () => {
   deepEqual(candidatesOf(trie, "/users/42"), []);
 });
 
-test(
-  "StateTrie.remove() is a no-op for an entry that was never inserted",
-  () => {
-    const trie = new StateTrie<RouteEntry>();
-    const inserted = makeEntry("/users/{id}", 0);
-    const stranger = makeEntry("/posts/{id}", 1);
-    trie.insert(inserted);
-    trie.remove(stranger);
+test("StateTrie.remove() is a no-op for an entry that was never inserted", () => {
+  const trie = new StateTrie<RouteEntry>();
+  const inserted = makeEntry("/users/{id}", 0);
+  const stranger = makeEntry("/posts/{id}", 1);
+  trie.insert(inserted);
+  trie.remove(stranger);
 
-    deepEqual(candidatesOf(trie, "/users/42"), [inserted]);
-  },
-);
+  deepEqual(candidatesOf(trie, "/users/42"), [inserted]);
+});
 
 test(
   "StateTrie.remove() is a no-op " +
@@ -143,31 +131,26 @@ test("StateTrie.candidates() is empty for an empty trie", () => {
   deepEqual(candidatesOf(trie, "/users/42"), []);
 });
 
-test(
-  "StateTrie shares /ap/{identifier} dynamic prefix across sibling endpoints",
-  () => {
-    const trie = new StateTrie<RouteEntry>();
-    const actor = makeEntry("/ap/{identifier}", 0);
-    const inbox = makeEntry("/ap/{identifier}/inbox", 1);
-    const outbox = makeEntry("/ap/{identifier}/outbox", 2);
-    const followers = makeEntry("/ap/{identifier}/followers", 3);
-    const following = makeEntry("/ap/{identifier}/following", 4);
-    const featured = makeEntry("/ap/{identifier}/featured", 5);
-    for (
-      const entry of [actor, inbox, outbox, followers, following, featured]
-    ) {
-      trie.insert(entry);
-    }
+test("StateTrie shares /ap/{identifier} dynamic prefix across sibling endpoints", () => {
+  const trie = new StateTrie<RouteEntry>();
+  const actor = makeEntry("/ap/{identifier}", 0);
+  const inbox = makeEntry("/ap/{identifier}/inbox", 1);
+  const outbox = makeEntry("/ap/{identifier}/outbox", 2);
+  const followers = makeEntry("/ap/{identifier}/followers", 3);
+  const following = makeEntry("/ap/{identifier}/following", 4);
+  const featured = makeEntry("/ap/{identifier}/featured", 5);
+  for (const entry of [actor, inbox, outbox, followers, following, featured]) {
+    trie.insert(entry);
+  }
 
-    deepEqual(candidatesOf(trie, "/ap/alice"), [actor]);
-    deepEqual(candidatesOf(trie, "/ap/alice/inbox"), [inbox]);
-    deepEqual(candidatesOf(trie, "/ap/alice/outbox"), [outbox]);
-    deepEqual(candidatesOf(trie, "/ap/alice/followers"), [followers]);
-    deepEqual(candidatesOf(trie, "/ap/alice/following"), [following]);
-    deepEqual(candidatesOf(trie, "/ap/alice/featured"), [featured]);
-    deepEqual(candidatesOf(trie, "/ap/alice/unknown"), []);
-  },
-);
+  deepEqual(candidatesOf(trie, "/ap/alice"), [actor]);
+  deepEqual(candidatesOf(trie, "/ap/alice/inbox"), [inbox]);
+  deepEqual(candidatesOf(trie, "/ap/alice/outbox"), [outbox]);
+  deepEqual(candidatesOf(trie, "/ap/alice/followers"), [followers]);
+  deepEqual(candidatesOf(trie, "/ap/alice/following"), [following]);
+  deepEqual(candidatesOf(trie, "/ap/alice/featured"), [featured]);
+  deepEqual(candidatesOf(trie, "/ap/alice/unknown"), []);
+});
 
 test(
   "StateTrie shares root-adjacent {identifier} prefix " +
@@ -186,13 +169,9 @@ test(
     deepEqual(candidatesOf(trie, "/alice/inbox"), [inbox]);
     deepEqual(candidatesOf(trie, "/alice/outbox"), [outbox]);
     deepEqual(candidatesOf(trie, "/alice/followers"), [followers]);
-    deepEqual(
-      candidatesOf(trie, "/example/users/alice/inbox"),
-      [tenantInbox],
-    );
-    deepEqual(
-      candidatesOf(trie, "/example/users/alice/outbox"),
-      [tenantOutbox],
-    );
+    deepEqual(candidatesOf(trie, "/example/users/alice/inbox"), [tenantInbox]);
+    deepEqual(candidatesOf(trie, "/example/users/alice/outbox"), [
+      tenantOutbox,
+    ]);
   },
 );

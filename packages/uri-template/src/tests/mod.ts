@@ -15,42 +15,18 @@ import {
   assertRouterVariablesCases,
   assertWrongTestSuite,
 } from "./assert.ts";
-import _fixedTestSuites from "./json/references/fixed.json" with {
-  type: "json",
-};
-import _pairTestSuites from "./json/references/pairs.json" with {
-  type: "json",
-};
-import _routerBuildCases from "./json/router/build-cases.json" with {
-  type: "json",
-};
-import _routerBuildTestSuites from "./json/router/build-suites.json" with {
-  type: "json",
-};
-import _routerCloneTestSuites from "./json/router/clone-suites.json" with {
-  type: "json",
-};
-import _routerCompileErrorCases from "./json/router/compile-error-cases.json" with {
-  type: "json",
-};
-import _routerHitPaths from "./json/router/hit-paths.json" with {
-  type: "json",
-};
-import _routerMissPaths from "./json/router/miss-paths.json" with {
-  type: "json",
-};
-import _routerRouteDefinitions from "./json/router/route-definitions.json" with {
-  type: "json",
-};
-import _routerRouteTestSuites from "./json/router/route-suites.json" with {
-  type: "json",
-};
-import _routerVariablesCases from "./json/router/variables-cases.json" with {
-  type: "json",
-};
-import _hardTestSuites from "./json/template/hard.json" with {
-  type: "json",
-};
+import _fixedTestSuites from "./json/references/fixed.json" with { type: "json" };
+import _pairTestSuites from "./json/references/pairs.json" with { type: "json" };
+import _routerBuildCases from "./json/router/build-cases.json" with { type: "json" };
+import _routerBuildTestSuites from "./json/router/build-suites.json" with { type: "json" };
+import _routerCloneTestSuites from "./json/router/clone-suites.json" with { type: "json" };
+import _routerCompileErrorCases from "./json/router/compile-error-cases.json" with { type: "json" };
+import _routerHitPaths from "./json/router/hit-paths.json" with { type: "json" };
+import _routerMissPaths from "./json/router/miss-paths.json" with { type: "json" };
+import _routerRouteDefinitions from "./json/router/route-definitions.json" with { type: "json" };
+import _routerRouteTestSuites from "./json/router/route-suites.json" with { type: "json" };
+import _routerVariablesCases from "./json/router/variables-cases.json" with { type: "json" };
+import _hardTestSuites from "./json/template/hard.json" with { type: "json" };
 import _matchTestSuites from "./json/template/match.json" with { type: "json" };
 import _wrongTestSuites from "./json/template/wrong.json" with { type: "json" };
 import type {
@@ -96,10 +72,7 @@ export const matchTestSuites: readonly MatchTestSuite[] = validate(
   _matchTestSuites,
 );
 export const routerRouteDefinitions: readonly RouterRouteDefinition[] =
-  validate(
-    assertRouterRouteDefinitions,
-    _routerRouteDefinitions,
-  );
+  validate(assertRouterRouteDefinitions, _routerRouteDefinitions);
 export const routerHitPaths: readonly Path[] = validate(
   assertRouterPaths,
   _routerHitPaths,

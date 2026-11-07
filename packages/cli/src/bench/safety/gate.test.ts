@@ -14,7 +14,7 @@ test("assertTargetAllowed - loopback/private are always allowed", () => {
       benchmarkMode: false,
       allowUnsafe: false,
       dryRun: false,
-    })
+    }),
   );
   assert.doesNotThrow(() =>
     assertTargetAllowed({
@@ -22,7 +22,7 @@ test("assertTargetAllowed - loopback/private are always allowed", () => {
       benchmarkMode: false,
       allowUnsafe: false,
       dryRun: false,
-    })
+    }),
   );
 });
 
@@ -33,7 +33,7 @@ test("assertTargetAllowed - public with benchmark mode is allowed", () => {
       benchmarkMode: true,
       allowUnsafe: false,
       dryRun: false,
-    })
+    }),
   );
 });
 
@@ -57,7 +57,7 @@ test("assertTargetAllowed - the unsafe flag overrides the refusal", () => {
       benchmarkMode: false,
       allowUnsafe: true,
       dryRun: false,
-    })
+    }),
   );
 });
 
@@ -69,12 +69,14 @@ test("assertUnsafeOverrideAllowed - unsafe flag needs an explicit CLI target", (
         benchmarkMode: false,
         allowUnsafe: true,
         explicitCliTarget: false,
-        scenarios: [{
-          name: "wf",
-          explicitDuration: true,
-          explicitLoad: true,
-          explicitRuns: true,
-        }],
+        scenarios: [
+          {
+            name: "wf",
+            explicitDuration: true,
+            explicitLoad: true,
+            explicitRuns: true,
+          },
+        ],
       }),
     (error: unknown) =>
       error instanceof UnsafeTargetError && /--target/.test(error.message),
@@ -89,12 +91,14 @@ test("assertUnsafeOverrideAllowed - unsafe public defaults need explicit load", 
         benchmarkMode: false,
         allowUnsafe: true,
         explicitCliTarget: true,
-        scenarios: [{
-          name: "wf",
-          explicitDuration: true,
-          explicitLoad: false,
-          explicitRuns: true,
-        }],
+        scenarios: [
+          {
+            name: "wf",
+            explicitDuration: true,
+            explicitLoad: false,
+            explicitRuns: true,
+          },
+        ],
       }),
     (error: unknown) =>
       error instanceof UnsafeTargetError && /load/.test(error.message),
@@ -109,12 +113,14 @@ test("assertUnsafeOverrideAllowed - unsafe public defaults need explicit duratio
         benchmarkMode: false,
         allowUnsafe: true,
         explicitCliTarget: true,
-        scenarios: [{
-          name: "wf",
-          explicitDuration: false,
-          explicitLoad: true,
-          explicitRuns: true,
-        }],
+        scenarios: [
+          {
+            name: "wf",
+            explicitDuration: false,
+            explicitLoad: true,
+            explicitRuns: true,
+          },
+        ],
       }),
     (error: unknown) =>
       error instanceof UnsafeTargetError && /duration/.test(error.message),
@@ -129,12 +135,14 @@ test("assertUnsafeOverrideAllowed - unsafe public defaults need explicit runs", 
         benchmarkMode: false,
         allowUnsafe: true,
         explicitCliTarget: true,
-        scenarios: [{
-          name: "wf",
-          explicitDuration: true,
-          explicitLoad: true,
-          explicitRuns: false,
-        }],
+        scenarios: [
+          {
+            name: "wf",
+            explicitDuration: true,
+            explicitLoad: true,
+            explicitRuns: false,
+          },
+        ],
       }),
     (error: unknown) =>
       error instanceof UnsafeTargetError && /runs/.test(error.message),
@@ -149,7 +157,7 @@ test("assertUnsafeOverrideAllowed - safe targets do not need unsafe metadata", (
       allowUnsafe: false,
       explicitCliTarget: false,
       scenarios: [],
-    })
+    }),
   );
 });
 
@@ -160,7 +168,7 @@ test("assertTargetAllowed - dry-run bypasses the gate", () => {
       benchmarkMode: false,
       allowUnsafe: false,
       dryRun: true,
-    })
+    }),
   );
 });
 
@@ -183,7 +191,7 @@ test("assertInboxDestinationAllowed - loopback inbox is allowed", () => {
     assertInboxDestinationAllowed(
       new URL("http://127.0.0.1:3000/inbox"),
       destContext(),
-    )
+    ),
   );
 });
 
@@ -206,7 +214,7 @@ test("assertInboxDestinationAllowed - the unsafe flag allows a public inbox", ()
     assertInboxDestinationAllowed(
       new URL("https://prod.example/inbox"),
       destContext({ allowUnsafe: true, advertised: true }),
-    )
+    ),
   );
 });
 
@@ -220,7 +228,7 @@ test("assertInboxDestinationAllowed - an inbox on the target origin inherits its
         targetBenchmarkMode: true,
         advertised: true,
       }),
-    )
+    ),
   );
 });
 
@@ -236,7 +244,7 @@ test("assertInboxDestinationAllowed - same-origin inbox uses the resolved target
         targetTier: "private",
         advertised: true,
       }),
-    )
+    ),
   );
 });
 
@@ -248,7 +256,7 @@ test("assertInboxDestinationAllowed - off-origin inbox uses destination tier", (
         destinationTier: "private",
         advertised: true,
       }),
-    )
+    ),
   );
 });
 
@@ -295,6 +303,6 @@ test("assertInboxDestinationAllowed - a non-loopback inbox needs an advertised h
         targetTier: "private",
         advertised: true,
       }),
-    )
+    ),
   );
 });

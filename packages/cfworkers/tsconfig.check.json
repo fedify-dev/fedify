@@ -3,9 +3,5 @@
 {
   "extends": "../../tsconfig.workers.json",
   "include": ["src/**/*.ts"],
-  "exclude": [
-    "dist",
-    "dist-tests",
-    "node_modules"
-  ]
+  "exclude": ["dist", "dist-tests", "node_modules"]
 }

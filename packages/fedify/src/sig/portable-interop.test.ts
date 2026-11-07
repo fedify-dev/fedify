@@ -1,9 +1,7 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import { Application, DataIntegrityProof, lookupObject } from "@fedify/vocab";
 import { assert, assertEquals } from "@std/assert";
-import actor from "../../test-vectors/fep-ef61/tootik-v0.25.4/actor.json" with {
-  type: "json",
-};
+import actor from "../../test-vectors/fep-ef61/tootik-v0.25.4/actor.json" with { type: "json" };
 import { verifyPortableObjectProof, verifyProof } from "./proof.ts";
 import { getKeyOwner } from "./owner.ts";
 import { verifyPortableObject } from "./portable-collection.ts";
@@ -71,13 +69,16 @@ test("tootik v0.25.4 actor can be looked up and own a gateway key", async () => 
 
 test("tootik v0.25.4 actor authenticates its gateway for collections", async () => {
   // The collection is synthetic; its owner is the unchanged captured actor.
-  const result = await verifyPortableObject({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    id: actor.outbox,
-    type: "OrderedCollection",
-    attributedTo: actor.id,
-    orderedItems: [],
-  }, { ...loadedOptions, documentUrl: new URL(actor.outbox) });
+  const result = await verifyPortableObject(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: actor.outbox,
+      type: "OrderedCollection",
+      attributedTo: actor.id,
+      orderedItems: [],
+    },
+    { ...loadedOptions, documentUrl: new URL(actor.outbox) },
+  );
   assert(result.verified);
   assertEquals(result.method, "gateway");
   if (result.method === "gateway") {
@@ -86,10 +87,13 @@ test("tootik v0.25.4 actor authenticates its gateway for collections", async () 
 });
 
 test("tootik v0.25.4 actor rejects tampered gateways", async () => {
-  const result = await verifyPortableObjectProof({
-    ...actor,
-    gateways: ["https://attacker.example"],
-  }, options);
+  const result = await verifyPortableObjectProof(
+    {
+      ...actor,
+      gateways: ["https://attacker.example"],
+    },
+    options,
+  );
   assertEquals(result, {
     verified: false,
     reason: { type: "invalidProof", proofIndex: 0 },

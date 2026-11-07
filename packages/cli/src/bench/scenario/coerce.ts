@@ -15,9 +15,7 @@
  * @param value A single value, a list of values, or nothing.
  * @returns A new array of values.
  */
-export function asList<T>(
-  value: T | readonly T[] | null | undefined,
-): T[] {
+export function asList<T>(value: T | readonly T[] | null | undefined): T[] {
   if (value == null) return [];
   return Array.isArray(value) ? [...value] : [value as T];
 }

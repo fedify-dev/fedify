@@ -31,25 +31,25 @@ type FilledOption<T extends TestInitCommand, K extends MultipleOption> =
     ? DefineOption<T, J | K>
     : DefineOption<T, K>;
 
-const fillOption = <
-  K extends MultipleOption,
-  AllValues = TestInitCommand[K] extends readonly (infer U)[] ? (U & string)[]
-    : never,
->(
-  key: K,
-  allValues: AllValues,
-) =>
-<T extends TestInitCommand>(
-  options: T,
-): FilledOption<T, K> =>
-  ({
-    ...options,
-    [key]: isEmpty(options[key])
-      ? allValues
-      : (options[key].filter((i) =>
-        (allValues as readonly unknown[]).includes(i)
-      ) as T[K]),
-  }) as FilledOption<T, K>;
+const fillOption =
+  <
+    K extends MultipleOption,
+    AllValues = TestInitCommand[K] extends readonly (infer U)[]
+      ? (U & string)[]
+      : never,
+  >(
+    key: K,
+    allValues: AllValues,
+  ) =>
+  <T extends TestInitCommand>(options: T): FilledOption<T, K> =>
+    ({
+      ...options,
+      [key]: isEmpty(options[key])
+        ? allValues
+        : (options[key].filter((i) =>
+            (allValues as readonly unknown[]).includes(i),
+          ) as T[K]),
+    }) as FilledOption<T, K>;
 
 const fillWebFramework = fillOption("webFramework", WEB_FRAMEWORK);
 const fillPackageManager = fillOption("packageManager", PACKAGE_MANAGER);
@@ -61,10 +61,12 @@ const fillRunMode = <T extends TestInitCommand>(
 ): DefineAllOptions<T> =>
   pipe(
     options,
-    (options) => ("noHydRun" in options
-      ? ({ ...omit(["noHydRun"], options), hydRun: !options.noHydRun })
-      : ({ ...options, hydRun: true })),
-    (options) => ("noDryRun" in options
-      ? ({ ...omit(["noDryRun"], options), dryRun: !options.noDryRun })
-      : ({ ...options, dryRun: true })),
+    (options) =>
+      "noHydRun" in options
+        ? { ...omit(["noHydRun"], options), hydRun: !options.noHydRun }
+        : { ...options, hydRun: true },
+    (options) =>
+      "noDryRun" in options
+        ? { ...omit(["noDryRun"], options), dryRun: !options.noDryRun }
+        : { ...options, dryRun: true },
   ) as DefineAllOptions<T>;

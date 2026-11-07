@@ -28,10 +28,7 @@ export const followersStore = new Map<
   { id: URL; inboxId: URL | null }
 >();
 
-export const followingStore = new Map<
-  string,
-  { id: URL; handle: string }
->();
+export const followingStore = new Map<string, { id: URL; handle: string }>();
 
 /** Simple event bus for SSE push to the frontend. */
 type ChangeListener = (event: string) => void;
@@ -107,10 +104,10 @@ export default function createFedify(
   fedi
     .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .on(Follow, async (ctx, follow) => {
-      logger.info(
-        "Received Follow: actor={actor}, object={object}",
-        { actor: follow.actorId?.href, object: follow.objectId?.href },
-      );
+      logger.info("Received Follow: actor={actor}, object={object}", {
+        actor: follow.actorId?.href,
+        object: follow.objectId?.href,
+      });
       logActivity("Follow", follow);
 
       if (!follow.id || !follow.actorId || !follow.objectId) return;
@@ -143,10 +140,9 @@ export default function createFedify(
       });
     })
     .on(Undo, async (ctx, undo) => {
-      logger.info(
-        "Received Undo: actor={actor}",
-        { actor: undo.actorId?.href },
-      );
+      logger.info("Received Undo: actor={actor}", {
+        actor: undo.actorId?.href,
+      });
       logActivity("Undo", undo);
       const activity = await undo.getObject(ctx);
       if (activity instanceof Follow && undo.actorId) {
@@ -156,10 +152,10 @@ export default function createFedify(
       }
     })
     .on(Create, async (ctx, create) => {
-      logger.info(
-        "Received Create: actor={actor}, object={object}",
-        { actor: create.actorId?.href, object: create.objectId?.href },
-      );
+      logger.info("Received Create: actor={actor}, object={object}", {
+        actor: create.actorId?.href,
+        object: create.objectId?.href,
+      });
       logActivity("Create", create);
       const object = await create.getObject(ctx);
       if (object instanceof Note) {
@@ -169,25 +165,24 @@ export default function createFedify(
       }
     })
     .on(Accept, (_ctx, accept) => {
-      logger.info(
-        "Received Accept: actor={actor}, object={object}",
-        { actor: accept.actorId?.href, object: accept.objectId?.href },
-      );
+      logger.info("Received Accept: actor={actor}, object={object}", {
+        actor: accept.actorId?.href,
+        object: accept.objectId?.href,
+      });
       logActivity("Accept", accept);
     })
     .onError((_ctx, error) => {
       logger.error("Inbox error: {error}", { error });
     });
 
-  fedi
-    .setFollowersDispatcher("/users/{identifier}/followers", (_ctx, _id) => {
-      const items = Array.from(followersStore.values()).map((f) => ({
-        id: f.id,
-        inboxId: f.inboxId,
-        endpoints: null,
-      }));
-      return { items };
-    });
+  fedi.setFollowersDispatcher("/users/{identifier}/followers", (_ctx, _id) => {
+    const items = Array.from(followersStore.values()).map((f) => ({
+      id: f.id,
+      inboxId: f.inboxId,
+      endpoints: null,
+    }));
+    return { items };
+  });
 
   return fedi;
 }

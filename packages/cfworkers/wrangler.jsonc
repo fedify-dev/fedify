@@ -6,21 +6,21 @@
   "kv_namespaces": [
     {
       "binding": "KV1",
-      "id": "00000000000000000000000000000000"
-    }
+      "id": "00000000000000000000000000000000",
+    },
   ],
   "queues": {
     "producers": [
       {
         "binding": "Q1",
-        "queue": "test-queue"
-      }
+        "queue": "test-queue",
+      },
     ],
     "consumers": [
       {
         "queue": "test-queue",
-        "max_batch_timeout": 1
-      }
-    ]
-  }
+        "max_batch_timeout": 1,
+      },
+    ],
+  },
 }

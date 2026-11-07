@@ -185,22 +185,10 @@ test("new Object()", () => {
   deepStrictEqual(obj.contents[0], new LanguageString("Hello", "en"));
   deepStrictEqual(obj.contents[1], new LanguageString("你好", "zh"));
 
-  throws(
-    () => new Object({ id: 123 as unknown as URL }),
-    TypeError,
-  );
-  throws(
-    () => new Object({ name: "singular", names: ["plural"] }),
-    TypeError,
-  );
-  throws(
-    () => new Object({ name: 123 as unknown as string }),
-    TypeError,
-  );
-  throws(
-    () => new Object({ names: "foo" as unknown as string[] }),
-    TypeError,
-  );
+  throws(() => new Object({ id: 123 as unknown as URL }), TypeError);
+  throws(() => new Object({ name: "singular", names: ["plural"] }), TypeError);
+  throws(() => new Object({ name: 123 as unknown as string }), TypeError);
+  throws(() => new Object({ names: "foo" as unknown as string[] }), TypeError);
   throws(
     () => new Object({ names: ["foo", 123 as unknown as string] }),
     TypeError,
@@ -228,21 +216,15 @@ test(
   },
 );
 
-test(
-  "Object.clone() accepts foreign Temporal.Instant (issue #767)",
-  () => {
-    const foreignInstant = globalThis.Object.create(
-      globalThis.Object.prototype,
-      {
-        [Symbol.toStringTag]: { value: "Temporal.Instant" },
-        epochNanoseconds: { value: 0n },
-        toString: { value: () => "1970-01-01T00:00:00Z" },
-      },
-    ) as Temporal.Instant;
-    const obj = new Object({}).clone({ published: foreignInstant });
-    ok(obj.published === foreignInstant);
-  },
-);
+test("Object.clone() accepts foreign Temporal.Instant (issue #767)", () => {
+  const foreignInstant = globalThis.Object.create(globalThis.Object.prototype, {
+    [Symbol.toStringTag]: { value: "Temporal.Instant" },
+    epochNanoseconds: { value: 0n },
+    toString: { value: () => "1970-01-01T00:00:00Z" },
+  }) as Temporal.Instant;
+  const obj = new Object({}).clone({ published: foreignInstant });
+  ok(obj.published === foreignInstant);
+});
 
 test("Object.clone()", () => {
   const obj = new Object({
@@ -269,22 +251,10 @@ test("Object.clone()", () => {
     new LanguageString("你好", "zh"),
   ]);
 
-  throws(
-    () => obj.clone({ id: 123 as unknown as URL }),
-    TypeError,
-  );
-  throws(
-    () => obj.clone({ name: "singular", names: ["plural"] }),
-    TypeError,
-  );
-  throws(
-    () => obj.clone({ name: 123 as unknown as string }),
-    TypeError,
-  );
-  throws(
-    () => obj.clone({ names: "foo" as unknown as string[] }),
-    TypeError,
-  );
+  throws(() => obj.clone({ id: 123 as unknown as URL }), TypeError);
+  throws(() => obj.clone({ name: "singular", names: ["plural"] }), TypeError);
+  throws(() => obj.clone({ name: 123 as unknown as string }), TypeError);
+  throws(() => obj.clone({ names: "foo" as unknown as string[] }), TypeError);
   throws(
     () => obj.clone({ names: ["foo", 123 as unknown as string] }),
     TypeError,
@@ -292,20 +262,23 @@ test("Object.clone()", () => {
 });
 
 test("Object.fromJsonLd()", async () => {
-  const obj = await Object.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    "type": "Object",
-    "name": "Test",
-    "contentMap": {
-      "en": "Hello",
-      "zh": "你好",
+  const obj = await Object.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Object",
+      "name": "Test",
+      "contentMap": {
+        "en": "Hello",
+        "zh": "你好",
+      },
+      "source": {
+        "content": "Hello",
+        "mediaType": "text/plain",
+      },
+      "published": "2025-01-01 12:34:56",
     },
-    "source": {
-      "content": "Hello",
-      "mediaType": "text/plain",
-    },
-    "published": "2025-01-01 12:34:56",
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
   assertInstanceOf(obj, Object);
   deepStrictEqual(obj.name, "Test");
   deepStrictEqual(obj.contents, [
@@ -330,10 +303,10 @@ test("Object.fromJsonLd()", async () => {
       "content": "Content",
     },
   };
-  const create = await Object.fromJsonLd(
-    createJsonLd,
-    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
-  );
+  const create = await Object.fromJsonLd(createJsonLd, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
   assertInstanceOf(create, Create);
   deepStrictEqual(create.name, "Test");
   deepStrictEqual(create.contents, [
@@ -348,14 +321,8 @@ test("Object.fromJsonLd()", async () => {
   const empty = await Object.fromJsonLd({});
   assertInstanceOf(empty, Object);
 
-  await rejects(
-    () => Object.fromJsonLd(null),
-    TypeError,
-  );
-  await rejects(
-    () => Object.fromJsonLd(undefined),
-    TypeError,
-  );
+  await rejects(() => Object.fromJsonLd(null), TypeError);
+  await rejects(() => Object.fromJsonLd(undefined), TypeError);
 });
 
 test("Object.toJsonLd()", async () => {
@@ -370,12 +337,8 @@ test("Object.toJsonLd()", async () => {
     await obj.toJsonLd({ format: "expand", contextLoader: mockDocumentLoader }),
     [
       {
-        "@type": [
-          "https://www.w3.org/ns/activitystreams#Object",
-        ],
-        "https://www.w3.org/ns/activitystreams#name": [
-          { "@value": "Test" },
-        ],
+        "@type": ["https://www.w3.org/ns/activitystreams#Object"],
+        "https://www.w3.org/ns/activitystreams#name": [{ "@value": "Test" }],
         "https://www.w3.org/ns/activitystreams#content": [
           { "@value": "Hello", "@language": "en" },
           { "@value": "你好", "@language": "zh" },
@@ -417,26 +380,28 @@ test("Note.fromJsonLd() ignores malformed language tags", async () => {
   });
 
   deepStrictEqual(note.contents, [new LanguageString("Hi", "en")]);
-  const jsonLd = await note.toJsonLd() as Record<string, unknown>;
+  const jsonLd = (await note.toJsonLd()) as Record<string, unknown>;
   deepStrictEqual(jsonLd.contentMap, { en: "Hi" });
 });
 
 test("Note.fromJsonLd() ignores malformed language tags in nested objects", async () => {
   const note = await Note.fromJsonLd({
     "@type": ["https://www.w3.org/ns/activitystreams#Note"],
-    "https://www.w3.org/ns/activitystreams#attachment": [{
-      "@type": ["http://schema.org#PropertyValue"],
-      "https://www.w3.org/ns/activitystreams#name": [
-        { "@value": "Malformed", "@language": "invalid_tag" },
-        { "@value": "Valid", "@language": "en" },
-      ],
-    }],
+    "https://www.w3.org/ns/activitystreams#attachment": [
+      {
+        "@type": ["http://schema.org#PropertyValue"],
+        "https://www.w3.org/ns/activitystreams#name": [
+          { "@value": "Malformed", "@language": "invalid_tag" },
+          { "@value": "Valid", "@language": "en" },
+        ],
+      },
+    ],
   });
 
   deepStrictEqual(await Array.fromAsync(note.getAttachments()), [
     new PropertyValue({ name: new LanguageString("Valid", "en") }),
   ]);
-  const jsonLd = await note.toJsonLd() as Record<string, unknown>;
+  const jsonLd = (await note.toJsonLd()) as Record<string, unknown>;
   const attachment = jsonLd.attachment as Record<string, unknown>;
   deepStrictEqual(attachment.nameMap, { en: "Valid" });
 });
@@ -459,13 +424,15 @@ test("Note.fromJsonLd() normalizes extlang language tags", async () => {
     new LanguageString("<p>早晨</p>", "yue"),
   ]);
   deepStrictEqual(
-    note.contents.map((c) => typeof c === "string" ? null : c.locale.baseName),
+    note.contents.map((c) =>
+      typeof c === "string" ? null : c.locale.baseName,
+    ),
     [null, "yue", "yue"],
   );
 
   // The unmodified object is serialized from the cached original document:
   deepStrictEqual(await note.toJsonLd(), json);
-  const compact = await note.toJsonLd({ format: "compact" }) as Record<
+  const compact = (await note.toJsonLd({ format: "compact" })) as Record<
     string,
     unknown
   >;
@@ -625,22 +592,22 @@ test("Activity.fromJsonLd()", async () => {
 
 test("fromJsonLd() handles portable ActivityPub IRIs", async () => {
   const did = "did:key:z6Mkabc";
-  const portableActor =
-    `ap://${did}/actor?gateways=https%3A%2F%2Fserver.example`;
-  const portableObject =
-    `ap://${did}/objects/1?gateways=https%3A%2F%2Fserver.example`;
-  const uppercasePortableObject =
-    `AP://${did}/objects/1?gateways=https%3A%2F%2Fserver.example`;
+  const portableActor = `ap://${did}/actor?gateways=https%3A%2F%2Fserver.example`;
+  const portableObject = `ap://${did}/objects/1?gateways=https%3A%2F%2Fserver.example`;
+  const uppercasePortableObject = `AP://${did}/objects/1?gateways=https%3A%2F%2Fserver.example`;
   const portablePage = `ap://${did}/actor/outbox?page=2`;
 
-  const note = await Note.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    type: "Note",
-    id: uppercasePortableObject,
-    attributedTo: `ap+ef61://${
-      encodeURIComponent(did)
-    }/actor?gateways=https%3A%2F%2Fserver.example`,
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  const note = await Note.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      id: uppercasePortableObject,
+      attributedTo: `ap+ef61://${encodeURIComponent(
+        did,
+      )}/actor?gateways=https%3A%2F%2Fserver.example`,
+    },
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
   deepStrictEqual(
     note.id,
     new URL(
@@ -653,9 +620,9 @@ test("fromJsonLd() handles portable ActivityPub IRIs", async () => {
       "ap+ef61://did%3Akey%3Az6Mkabc/actor?gateways=https%3A%2F%2Fserver.example",
     ),
   );
-  const noteJson = await note.toJsonLd({
+  const noteJson = (await note.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   deepStrictEqual(noteJson.type, "Note");
   deepStrictEqual(
     noteJson.id,
@@ -666,21 +633,24 @@ test("fromJsonLd() handles portable ActivityPub IRIs", async () => {
     "ap+ef61://did:key:z6Mkabc/actor?gateways=https%3A%2F%2Fserver.example",
   );
 
-  const activity = await Activity.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    type: "Create",
-    actor: portableActor,
-    object: portableObject,
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  const activity = await Activity.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      actor: portableActor,
+      object: portableObject,
+    },
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
   deepStrictEqual(
     activity.actorId,
     new URL(
       "ap+ef61://did%3Akey%3Az6Mkabc/actor?gateways=https%3A%2F%2Fserver.example",
     ),
   );
-  const activityJson = await activity.toJsonLd({
+  const activityJson = (await activity.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   deepStrictEqual(activityJson.type, "Create");
   deepStrictEqual(
     activityJson.actor,
@@ -691,12 +661,15 @@ test("fromJsonLd() handles portable ActivityPub IRIs", async () => {
     "ap+ef61://did:key:z6Mkabc/objects/1?gateways=https%3A%2F%2Fserver.example",
   );
 
-  const person = await Person.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    type: "Person",
-    inbox: `ap+ef61://${did}/actor/inbox`,
-    outbox: `ap+ef61://${did}/actor/outbox`,
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  const person = await Person.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Person",
+      inbox: `ap+ef61://${did}/actor/inbox`,
+      outbox: `ap+ef61://${did}/actor/outbox`,
+    },
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
   deepStrictEqual(
     person.inboxId,
     new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor/inbox"),
@@ -705,22 +678,22 @@ test("fromJsonLd() handles portable ActivityPub IRIs", async () => {
     person.outboxId,
     new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor/outbox"),
   );
-  const personJson = await person.toJsonLd({
+  const personJson = (await person.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   deepStrictEqual(personJson.type, "Person");
   deepStrictEqual(personJson.inbox, "ap+ef61://did:key:z6Mkabc/actor/inbox");
-  deepStrictEqual(
-    personJson.outbox,
-    "ap+ef61://did:key:z6Mkabc/actor/outbox",
-  );
+  deepStrictEqual(personJson.outbox, "ap+ef61://did:key:z6Mkabc/actor/outbox");
 
-  const page = await OrderedCollectionPage.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    type: "OrderedCollectionPage",
-    next: portablePage,
-    prev: `ap+ef61://${encodeURIComponent(did)}/actor/outbox?page=1`,
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  const page = await OrderedCollectionPage.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "OrderedCollectionPage",
+      next: portablePage,
+      prev: `ap+ef61://${encodeURIComponent(did)}/actor/outbox?page=1`,
+    },
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
   deepStrictEqual(
     page.nextId,
     new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor/outbox?page=2"),
@@ -729,9 +702,9 @@ test("fromJsonLd() handles portable ActivityPub IRIs", async () => {
     page.prevId,
     new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor/outbox?page=1"),
   );
-  const pageJson = await page.toJsonLd({
+  const pageJson = (await page.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   deepStrictEqual(pageJson.type, "OrderedCollectionPage");
   deepStrictEqual(
     pageJson.next,
@@ -745,24 +718,25 @@ test("fromJsonLd() handles portable ActivityPub IRIs", async () => {
 
 test("fromJsonLd() refuses portable IDs changed by URL parsing", async () => {
   const base = "ap://did:key:z6Mkabc";
-  for (
-    const id of [
-      `${base}/a/../b`,
-      `${base}/a/%2e%2E/b`,
-      "https://gw.example/.well-known/apgateway/did:key:z6Mkabc/a/../b",
-      "https:/gw.example/.well-known/apgateway/did:key:z6Mkabc/a/../b",
-    ]
-  ) {
+  for (const id of [
+    `${base}/a/../b`,
+    `${base}/a/%2e%2E/b`,
+    "https://gw.example/.well-known/apgateway/did:key:z6Mkabc/a/../b",
+    "https:/gw.example/.well-known/apgateway/did:key:z6Mkabc/a/../b",
+  ]) {
     await rejects(
       () =>
-        Note.fromJsonLd({
-          "@context": "https://www.w3.org/ns/activitystreams",
-          type: "Note",
-          id,
-        }, {
-          documentLoader: mockDocumentLoader,
-          contextLoader: mockDocumentLoader,
-        }),
+        Note.fromJsonLd(
+          {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Note",
+            id,
+          },
+          {
+            documentLoader: mockDocumentLoader,
+            contextLoader: mockDocumentLoader,
+          },
+        ),
       TypeError,
     );
   }
@@ -787,11 +761,14 @@ test("FEP-ef61: actor gateways round-trip as an ordered URI list", async () => {
     });
     deepStrictEqual(actor.gateways, gateways);
 
-    const jsonLd = await actor.toJsonLd({
+    const jsonLd = (await actor.toJsonLd({
       format: "compact",
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     deepStrictEqual(jsonLd.type, ActorClass.name);
-    deepStrictEqual(jsonLd.gateways, gateways.map((gateway) => gateway.origin));
+    deepStrictEqual(
+      jsonLd.gateways,
+      gateways.map((gateway) => gateway.origin),
+    );
 
     const restored = await ActorClass.fromJsonLd(jsonLd);
     deepStrictEqual(restored.gateways, gateways);
@@ -817,11 +794,11 @@ test("FEP-ef61: actor gateways serialize as origins", async () => {
       id: parseIri("ap://did:key:z6Mkabc/actor"),
       gateways,
     });
-    const compact = await actor.toJsonLd() as Record<string, unknown>;
+    const compact = (await actor.toJsonLd()) as Record<string, unknown>;
     deepStrictEqual(compact.gateways, origins);
-    const expanded = await actor.toJsonLd({
+    const expanded = (await actor.toJsonLd({
       format: "expand",
-    }) as Record<string, unknown>[];
+    })) as Record<string, unknown>[];
     deepStrictEqual(expanded[0]["https://w3id.org/fep/ef61/gateways"], [
       { "@list": origins.map((origin) => ({ "@id": origin })) },
     ]);
@@ -852,7 +829,10 @@ test("FEP-ef61: portable actors parse unmapped gateway lists", async () => {
         outbox: `${id}/outbox`,
         gateways,
       });
-      deepStrictEqual(actor.gateways, gateways.map((g) => new URL(g)));
+      deepStrictEqual(
+        actor.gateways,
+        gateways.map((g) => new URL(g)),
+      );
     }
   }
 });
@@ -868,19 +848,17 @@ test("FEP-ef61: unmapped gateways retain their context meaning", async () => {
       outbox: `${id}/outbox`,
       gateways: ["https://unmapped.example"],
     };
-    for (
-      const context of [
-        { gateways: "https://example.com/unrelated" },
-        { gateways: null },
-        { "@vocab": "https://example.com/" },
-        {
-          [ActorClass.name]: {
-            "@id": `https://www.w3.org/ns/activitystreams#${ActorClass.name}`,
-            "@context": { gateways: "https://example.com/scoped" },
-          },
+    for (const context of [
+      { gateways: "https://example.com/unrelated" },
+      { gateways: null },
+      { "@vocab": "https://example.com/" },
+      {
+        [ActorClass.name]: {
+          "@id": `https://www.w3.org/ns/activitystreams#${ActorClass.name}`,
+          "@context": { gateways: "https://example.com/scoped" },
         },
-      ]
-    ) {
+      },
+    ]) {
       const actor = await ActorClass.fromJsonLd({
         "@context": ["https://www.w3.org/ns/activitystreams", context],
         ...document,
@@ -910,7 +888,7 @@ test("FEP-ef61: actor gateways preserve single, empty, and invalid cases", async
     gateways: [new URL("https://server.example/")],
   });
   deepStrictEqual(
-    (await singleGateway.toJsonLd() as Record<string, unknown>).gateways,
+    ((await singleGateway.toJsonLd()) as Record<string, unknown>).gateways,
     ["https://server.example"],
   );
 
@@ -918,7 +896,9 @@ test("FEP-ef61: actor gateways preserve single, empty, and invalid cases", async
     id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
     gateways: [],
   });
-  ok(!("gateways" in (await noGateways.toJsonLd() as Record<string, unknown>)));
+  ok(
+    !("gateways" in ((await noGateways.toJsonLd()) as Record<string, unknown>)),
+  );
 
   await rejects(
     () =>
@@ -965,18 +945,16 @@ test("FEP-ef61: actor gateways must be HTTP(S) base URIs", async () => {
   });
   deepStrictEqual(actor.gateways, validGateways);
 
-  for (
-    const gateway of [
-      "ftp://server.example/",
-      "https://user:pass@server.example/",
-      "https://user@server.example/",
-      "https://server.example/path",
-      "https://server.example/?x=1",
-      "https://server.example/?",
-      "https://server.example/#fragment",
-      "https://server.example/#",
-    ]
-  ) {
+  for (const gateway of [
+    "ftp://server.example/",
+    "https://user:pass@server.example/",
+    "https://user@server.example/",
+    "https://server.example/path",
+    "https://server.example/?x=1",
+    "https://server.example/?",
+    "https://server.example/#fragment",
+    "https://server.example/#",
+  ]) {
     throws(
       () =>
         new Person({
@@ -1015,7 +993,7 @@ test("FEP-ef61: digestMultibase round-trips on links and media objects", async (
   });
   deepStrictEqual(link.digestMultibase, digestMultibase);
   deepStrictEqual(
-    (await link.toJsonLd() as Record<string, unknown>).digestMultibase,
+    ((await link.toJsonLd()) as Record<string, unknown>).digestMultibase,
     digestMultibase,
   );
 
@@ -1031,7 +1009,7 @@ test("FEP-ef61: digestMultibase round-trips on links and media objects", async (
       digestMultibase,
     });
     deepStrictEqual(media.digestMultibase, digestMultibase);
-    const jsonLd = await media.toJsonLd() as Record<string, unknown>;
+    const jsonLd = (await media.toJsonLd()) as Record<string, unknown>;
     deepStrictEqual(jsonLd.type, cls.name);
     deepStrictEqual(jsonLd.digestMultibase, digestMultibase);
   }
@@ -1055,20 +1033,20 @@ test("FEP-ef61: digestMultibase avoids Data Integrity context conflicts", async 
   ok(
     !(
       "https://w3id.org/security#digestMultibase" in
-        (expanded as Record<string, unknown>[])[0]
+      (expanded as Record<string, unknown>[])[0]
     ),
   );
 
-  const compact = await image.toJsonLd() as Record<string, unknown>;
+  const compact = (await image.toJsonLd()) as Record<string, unknown>;
   deepStrictEqual(compact.digestMultibase, digestMultibase);
+  ok(!(compact["@context"] as unknown[]).includes("https://w3id.org/fep/ef61"));
   ok(
-    !(compact["@context"] as unknown[]).includes("https://w3id.org/fep/ef61"),
-  );
-  ok(
-    (compact["@context"] as unknown[]).some((context) =>
-      context != null && typeof context === "object" &&
-      (context as Record<string, unknown>).digestMultibase ===
-        "https://www.w3.org/ns/credentials/v2#digestMultibase"
+    (compact["@context"] as unknown[]).some(
+      (context) =>
+        context != null &&
+        typeof context === "object" &&
+        (context as Record<string, unknown>).digestMultibase ===
+          "https://www.w3.org/ns/credentials/v2#digestMultibase",
     ),
   );
 });
@@ -1135,34 +1113,37 @@ test("fromJsonLd() caches text that mentions portable ActivityPub IRIs", async (
 });
 
 test("fromJsonLd() preserves extensions with portable ActivityPub IRIs", async () => {
-  const note = await Note.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      { extra: "https://example.com/ns#extra" },
-    ],
-    type: "Note",
-    id: "ap://did:key:z6Mkabc/objects/1",
-    extra: "This extension property should stay cached.",
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  const note = await Note.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        { extra: "https://example.com/ns#extra" },
+      ],
+      type: "Note",
+      id: "ap://did:key:z6Mkabc/objects/1",
+      extra: "This extension property should stay cached.",
+    },
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
 
-  const jsonLd = await note.toJsonLd() as Record<string, unknown>;
+  const jsonLd = (await note.toJsonLd()) as Record<string, unknown>;
   deepStrictEqual(jsonLd.extra, "This extension property should stay cached.");
   deepStrictEqual(jsonLd.id, "ap+ef61://did:key:z6Mkabc/objects/1");
 });
 
 test("fromJsonLd() preserves unmapped terms with portable IRIs", async () => {
-  const note = await Note.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    type: "Note",
-    id: "ap://did:key:z6Mkabc/objects/1",
-    extra: "This unmapped property should stay cached.",
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
-
-  const jsonLd = await note.toJsonLd() as Record<string, unknown>;
-  deepStrictEqual(
-    jsonLd.extra,
-    "This unmapped property should stay cached.",
+  const note = await Note.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      id: "ap://did:key:z6Mkabc/objects/1",
+      extra: "This unmapped property should stay cached.",
+    },
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
   );
+
+  const jsonLd = (await note.toJsonLd()) as Record<string, unknown>;
+  deepStrictEqual(jsonLd.extra, "This unmapped property should stay cached.");
   deepStrictEqual(jsonLd.id, "ap+ef61://did:key:z6Mkabc/objects/1");
 });
 
@@ -1335,20 +1316,27 @@ test("fromJsonLd() preserves expanded subtype cache types", async () => {
 });
 
 test("fromJsonLd() preserves compact array contexts with portable IRIs", async () => {
-  const note = await Note.fromJsonLd([{
-    "@context": "https://www.w3.org/ns/activitystreams",
-    type: "Note",
-    id: "ap://did:key:z6Mkabc/objects/1",
-  }], {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-  });
+  const note = await Note.fromJsonLd(
+    [
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Note",
+        id: "ap://did:key:z6Mkabc/objects/1",
+      },
+    ],
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
 
-  deepStrictEqual(await note.toJsonLd(), [{
-    "@context": "https://www.w3.org/ns/activitystreams",
-    type: "Note",
-    id: "ap+ef61://did:key:z6Mkabc/objects/1",
-  }]);
+  deepStrictEqual(await note.toJsonLd(), [
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      id: "ap+ef61://did:key:z6Mkabc/objects/1",
+    },
+  ]);
 });
 
 test("fromJsonLd() preserves compact single-item arrays with portable IRIs", async () => {
@@ -1497,19 +1485,22 @@ test("fromJsonLd() preserves compact array item extension contexts with portable
 });
 
 test("fromJsonLd() formats portable IRIs in JSON-LD containers", async () => {
-  const note = await Note.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    type: "Note",
-    id: "https://example.com/notes/1",
-    attributedTo: {
-      "@list": ["ap://did:key:z6Mkabc/actor"],
+  const note = await Note.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      id: "https://example.com/notes/1",
+      attributedTo: {
+        "@list": ["ap://did:key:z6Mkabc/actor"],
+      },
+      to: {
+        "@set": ["ap://did:key:z6Mkabc/followers"],
+      },
     },
-    to: {
-      "@set": ["ap://did:key:z6Mkabc/followers"],
-    },
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
 
-  const jsonLd = await note.toJsonLd() as Record<string, unknown>;
+  const jsonLd = (await note.toJsonLd()) as Record<string, unknown>;
   deepStrictEqual(jsonLd.attributedTo, {
     "@list": ["ap+ef61://did:key:z6Mkabc/actor"],
   });
@@ -1517,36 +1508,39 @@ test("fromJsonLd() formats portable IRIs in JSON-LD containers", async () => {
 });
 
 test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async () => {
-  const activity = await Activity.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      {
-        as: {
-          "@id": "https://www.w3.org/ns/activitystreams#",
-          "@prefix": true,
+  const activity = await Activity.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        {
+          as: {
+            "@id": "https://www.w3.org/ns/activitystreams#",
+            "@prefix": true,
+          },
+          extra: "https://example.com/ns#extra",
+          extraRef: {
+            "@id": "https://example.com/ns#extraRef",
+            "@type": "@id",
+          },
+          actorRef: {
+            "@id": "as:actor",
+            "@type": "@id",
+          },
+          targetRef: {
+            "@id": "as:target",
+            "@type": "@id",
+          },
         },
-        extra: "https://example.com/ns#extra",
-        extraRef: {
-          "@id": "https://example.com/ns#extraRef",
-          "@type": "@id",
-        },
-        actorRef: {
-          "@id": "as:actor",
-          "@type": "@id",
-        },
-        targetRef: {
-          "@id": "as:target",
-          "@type": "@id",
-        },
-      },
-    ],
-    type: "Create",
-    actorRef: "ap://did:key:z6Mkabc/actor",
-    object: "https://example.com/objects/1",
-    targetRef: "ap://did:key:z6Mkabc/target",
-    extra: "This extension property should stay cached.",
-    extraRef: "ap://did:key:z6Mkabc/extra",
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+      ],
+      type: "Create",
+      actorRef: "ap://did:key:z6Mkabc/actor",
+      object: "https://example.com/objects/1",
+      targetRef: "ap://did:key:z6Mkabc/target",
+      extra: "This extension property should stay cached.",
+      extraRef: "ap://did:key:z6Mkabc/extra",
+    },
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
 
   deepStrictEqual(
     activity.actorId,
@@ -1556,9 +1550,9 @@ test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async (
     activity.targetId,
     new URL("ap+ef61://did%3Akey%3Az6Mkabc/target"),
   );
-  const jsonLd = await activity.toJsonLd({
+  const jsonLd = (await activity.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   deepStrictEqual(jsonLd.actor, "ap+ef61://did:key:z6Mkabc/actor");
   deepStrictEqual("actorRef" in jsonLd, false);
   deepStrictEqual(jsonLd.target, "ap+ef61://did:key:z6Mkabc/target");
@@ -1568,24 +1562,27 @@ test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async (
 });
 
 test("fromJsonLd() preserves portable IRIs in @id extension terms", async () => {
-  const note = await Note.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      {
-        extraRef: {
-          "@id": "https://example.com/ns#extraRef",
-          "@type": "@id",
+  const note = await Note.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        {
+          extraRef: {
+            "@id": "https://example.com/ns#extraRef",
+            "@type": "@id",
+          },
         },
-      },
-    ],
-    type: "Note",
-    id: "https://example.com/notes/1",
-    extraRef: "ap://did:key:z6Mkabc/extra",
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+      ],
+      type: "Note",
+      id: "https://example.com/notes/1",
+      extraRef: "ap://did:key:z6Mkabc/extra",
+    },
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
 
-  const jsonLd = await note.toJsonLd({
+  const jsonLd = (await note.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   deepStrictEqual(jsonLd.extraRef, "ap+ef61://did:key:z6Mkabc/extra");
 });
 
@@ -1614,23 +1611,26 @@ test("fromJsonLd() ignores malformed portable IRIs in extension cache terms", as
 });
 
 test("fromJsonLd() preserves portable IRIs in @id typed terms", async () => {
-  const note = await Note.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      {
-        "@vocab": "https://example.com/ns#",
-        extraRef: { "@type": "@id" },
-      },
-    ],
-    type: "Note",
-    id: "https://example.com/notes/1",
-    content: "This text mentions ap://did:key:z6Mkabc/text.",
-    extraRef: "ap://did:key:z6Mkabc/extra",
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  const note = await Note.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        {
+          "@vocab": "https://example.com/ns#",
+          extraRef: { "@type": "@id" },
+        },
+      ],
+      type: "Note",
+      id: "https://example.com/notes/1",
+      content: "This text mentions ap://did:key:z6Mkabc/text.",
+      extraRef: "ap://did:key:z6Mkabc/extra",
+    },
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
 
-  const jsonLd = await note.toJsonLd({
+  const jsonLd = (await note.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   deepStrictEqual(
     jsonLd.content,
     "This text mentions ap://did:key:z6Mkabc/text.",
@@ -1662,16 +1662,19 @@ test("fromJsonLd() preserves portable IRIs hidden behind remote contexts", async
     }
     return await mockDocumentLoader(resource, options);
   };
-  const note = await Note.fromJsonLd({
-    "@context": contextUrl,
-    type: "Note",
-    id: "https://example.com/notes/1",
-    content: "This text mentions ap://did:key:z6Mkabc/text.",
-    extra: "This extension property should stay cached.",
-    extraRef: "ap://did:key:z6Mkabc/extra",
-  }, { documentLoader: mockDocumentLoader, contextLoader });
+  const note = await Note.fromJsonLd(
+    {
+      "@context": contextUrl,
+      type: "Note",
+      id: "https://example.com/notes/1",
+      content: "This text mentions ap://did:key:z6Mkabc/text.",
+      extra: "This extension property should stay cached.",
+      extraRef: "ap://did:key:z6Mkabc/extra",
+    },
+    { documentLoader: mockDocumentLoader, contextLoader },
+  );
 
-  const jsonLd = await note.toJsonLd({ contextLoader }) as Record<
+  const jsonLd = (await note.toJsonLd({ contextLoader })) as Record<
     string,
     unknown
   >;
@@ -1720,19 +1723,22 @@ test("fromJsonLd() formats portable IRIs hidden behind nested remote contexts", 
     }
     return await mockDocumentLoader(resource, options);
   };
-  const note = await Note.fromJsonLd({
-    "@context": rootContextUrl,
-    type: "Note",
-    id: "https://example.com/notes/1",
-    extraContainer: {
-      "@context": nestedContextUrl,
-      content: "This text mentions ap://did:key:z6Mkabc/text.",
-      extra: "This nested extension object should stay cached.",
-      extraRef: "ap://did:key:z6Mkabc/extra",
+  const note = await Note.fromJsonLd(
+    {
+      "@context": rootContextUrl,
+      type: "Note",
+      id: "https://example.com/notes/1",
+      extraContainer: {
+        "@context": nestedContextUrl,
+        content: "This text mentions ap://did:key:z6Mkabc/text.",
+        extra: "This nested extension object should stay cached.",
+        extraRef: "ap://did:key:z6Mkabc/extra",
+      },
     },
-  }, { documentLoader: mockDocumentLoader, contextLoader });
+    { documentLoader: mockDocumentLoader, contextLoader },
+  );
 
-  const jsonLd = await note.toJsonLd({ contextLoader }) as Record<
+  const jsonLd = (await note.toJsonLd({ contextLoader })) as Record<
     string,
     unknown
   >;
@@ -1782,21 +1788,24 @@ test("fromJsonLd() formats portable IRIs in sibling remote-context objects", asy
     }
     return await mockDocumentLoader(resource, options);
   };
-  const note = await Note.fromJsonLd({
-    "@context": rootContextUrl,
-    type: "Note",
-    id: "https://example.com/notes/1",
-    firstExtraContainer: {
-      "@context": nestedContextUrl,
-      content: "No portable IRI here.",
+  const note = await Note.fromJsonLd(
+    {
+      "@context": rootContextUrl,
+      type: "Note",
+      id: "https://example.com/notes/1",
+      firstExtraContainer: {
+        "@context": nestedContextUrl,
+        content: "No portable IRI here.",
+      },
+      secondExtraContainer: {
+        "@context": nestedContextUrl,
+        extraRef: "ap://did:key:z6Mkabc/second",
+      },
     },
-    secondExtraContainer: {
-      "@context": nestedContextUrl,
-      extraRef: "ap://did:key:z6Mkabc/second",
-    },
-  }, { documentLoader: mockDocumentLoader, contextLoader });
+    { documentLoader: mockDocumentLoader, contextLoader },
+  );
 
-  const jsonLd = await note.toJsonLd({ contextLoader }) as Record<
+  const jsonLd = (await note.toJsonLd({ contextLoader })) as Record<
     string,
     unknown
   >;
@@ -1844,16 +1853,19 @@ test("fromJsonLd() batches unmapped portable IRI term checks", async () => {
     return await mockDocumentLoader(resource, options);
   };
 
-  const activity = await Activity.fromJsonLd({
-    "@context": contextUrl,
-    type: "Create",
-    actorRef0: "ap://did:key:z6Mkabc/actor0",
-    actorRef1: "ap://did:key:z6Mkabc/actor1",
-    targetRef0: "ap://did:key:z6Mkabc/target0",
-    targetRef1: "ap://did:key:z6Mkabc/target1",
-    objectRef0: "https://example.com/objects/0",
-    objectRef1: "https://example.com/objects/1",
-  }, { documentLoader: mockDocumentLoader, contextLoader });
+  const activity = await Activity.fromJsonLd(
+    {
+      "@context": contextUrl,
+      type: "Create",
+      actorRef0: "ap://did:key:z6Mkabc/actor0",
+      actorRef1: "ap://did:key:z6Mkabc/actor1",
+      targetRef0: "ap://did:key:z6Mkabc/target0",
+      targetRef1: "ap://did:key:z6Mkabc/target1",
+      objectRef0: "https://example.com/objects/0",
+      objectRef1: "https://example.com/objects/1",
+    },
+    { documentLoader: mockDocumentLoader, contextLoader },
+  );
 
   await activity.toJsonLd({ contextLoader });
 
@@ -1887,70 +1899,75 @@ test("fromJsonLd() falls back when portable IRI cache merge fails", async () => 
     return await mockDocumentLoader(resource, options);
   };
 
-  const note = await Note.fromJsonLd({
-    "@context": contextUrl,
-    type: "Note",
-    id: "ap://did:key:z6Mkabc/objects/1",
-    extraRef: "ap://did:key:z6Mkabc/extra",
-  }, { documentLoader: mockDocumentLoader, contextLoader });
+  const note = await Note.fromJsonLd(
+    {
+      "@context": contextUrl,
+      type: "Note",
+      id: "ap://did:key:z6Mkabc/objects/1",
+      extraRef: "ap://did:key:z6Mkabc/extra",
+    },
+    { documentLoader: mockDocumentLoader, contextLoader },
+  );
 
-  const jsonLd = await note.toJsonLd({
+  const jsonLd = (await note.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
 
   deepStrictEqual(jsonLd.type, "Note");
   deepStrictEqual(jsonLd.id, "ap+ef61://did:key:z6Mkabc/objects/1");
 });
 
 test("fromJsonLd() formats portable IRIs in scalar URL values", async () => {
-  const note = await Note.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://gotosocial.org/ns",
-      { quoteUrl: "as:quoteUrl" },
-    ],
-    type: "Note",
-    id: "https://example.com/notes/1",
-    quoteUrl: "ap://did:key:z6Mkabc/objects/1",
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  const note = await Note.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://gotosocial.org/ns",
+        { quoteUrl: "as:quoteUrl" },
+      ],
+      type: "Note",
+      id: "https://example.com/notes/1",
+      quoteUrl: "ap://did:key:z6Mkabc/objects/1",
+    },
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
 
   deepStrictEqual(
     note.quoteUrl,
     new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/1"),
   );
-  const jsonLd = await note.toJsonLd({
+  const jsonLd = (await note.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   deepStrictEqual(jsonLd.quoteUrl, "ap+ef61://did:key:z6Mkabc/objects/1");
 });
 
 test("fromJsonLd() formats portable IRIs in URL value lists", async () => {
-  const note = await Note.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://gotosocial.org/ns",
-      { quoteUrl: "as:quoteUrl" },
-    ],
-    type: "Note",
-    id: "https://example.com/notes/1",
-    quoteUrl: {
-      "@list": [
-        { "@value": "ap://did:key:z6Mkabc/objects/1" },
+  const note = await Note.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://gotosocial.org/ns",
+        { quoteUrl: "as:quoteUrl" },
       ],
+      type: "Note",
+      id: "https://example.com/notes/1",
+      quoteUrl: {
+        "@list": [{ "@value": "ap://did:key:z6Mkabc/objects/1" }],
+      },
     },
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
 
   deepStrictEqual(
     note.quoteUrl,
     new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/1"),
   );
-  const jsonLd = await note.toJsonLd({
+  const jsonLd = (await note.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   deepStrictEqual(jsonLd.quoteUrl, {
-    "@list": [
-      "ap+ef61://did:key:z6Mkabc/objects/1",
-    ],
+    "@list": ["ap+ef61://did:key:z6Mkabc/objects/1"],
   });
 });
 
@@ -2057,26 +2074,27 @@ test({
         null,
       );
       ok(
-        records.some((record) =>
-          record.level === "warning" &&
-          record.rawMessage ===
-            "Failed to fetch document: {status} {url} {headers}"
+        records.some(
+          (record) =>
+            record.level === "warning" &&
+            record.rawMessage ===
+              "Failed to fetch document: {status} {url} {headers}",
         ),
       );
       ok(
-        records.some((record) =>
-          record.level === "warning" &&
-          record.rawMessage === "Failed to fetch {url}: {error}"
+        records.some(
+          (record) =>
+            record.level === "warning" &&
+            record.rawMessage === "Failed to fetch {url}: {error}",
         ),
       );
       deepStrictEqual(
-        records.some((record) =>
-          record.level === "error" &&
-          (
-            record.rawMessage ===
+        records.some(
+          (record) =>
+            record.level === "error" &&
+            (record.rawMessage ===
               "Failed to fetch document: {status} {url} {headers}" ||
-            record.rawMessage === "Failed to fetch {url}: {error}"
-          )
+              record.rawMessage === "Failed to fetch {url}: {error}"),
         ),
         false,
       );
@@ -2086,15 +2104,13 @@ test({
       const unsuppressedFetch = new Announce({
         object: new URL(notFoundUrl),
       });
-      await rejects(
-        () => unsuppressedFetch.getObject(),
-        FetchError,
-      );
+      await rejects(() => unsuppressedFetch.getObject(), FetchError);
       ok(
-        records.some((record) =>
-          record.level === "error" &&
-          record.rawMessage ===
-            "Failed to fetch document: {status} {url} {headers}"
+        records.some(
+          (record) =>
+            record.level === "error" &&
+            record.rawMessage ===
+              "Failed to fetch document: {status} {url} {headers}",
         ),
       );
 
@@ -2118,15 +2134,17 @@ test({
         null,
       );
       ok(
-        records.some((record) =>
-          record.level === "warning" &&
-          record.rawMessage === "Failed to parse {url}: {error}"
+        records.some(
+          (record) =>
+            record.level === "warning" &&
+            record.rawMessage === "Failed to parse {url}: {error}",
         ),
       );
       deepStrictEqual(
-        records.some((record) =>
-          record.level === "error" &&
-          record.rawMessage === "Failed to parse {url}: {error}"
+        records.some(
+          (record) =>
+            record.level === "error" &&
+            record.rawMessage === "Failed to parse {url}: {error}",
         ),
         false,
       );
@@ -2166,11 +2184,14 @@ test("Activity.getObject() fetches canonical portable IRIs", async () => {
       },
     };
   };
-  const activity = await Activity.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    type: "Create",
-    object: "ap://did:key:z6Mkabc/objects/1",
-  }, { documentLoader, contextLoader: mockDocumentLoader });
+  const activity = await Activity.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      object: "ap://did:key:z6Mkabc/objects/1",
+    },
+    { documentLoader, contextLoader: mockDocumentLoader },
+  );
 
   const object = await activity.getObject({
     documentLoader,
@@ -2249,49 +2270,41 @@ function embeddedPropertyDocument(property: "attachment" | "object") {
 }
 
 for (const suppressError of [undefined, false, true]) {
-  test(
-    `Note.getAttachments() cached parse failure (suppressError: ${suppressError})`,
-    async () => {
-      const jsonLd = embeddedPropertyDocument("attachment");
-      const note = await Note.fromJsonLd(jsonLd);
-      if (suppressError) {
-        for (let i = 0; i < 2; i++) {
-          const attachments: (Object | Link | PropertyValue)[] = await Array
-            .fromAsync(
-              note.getAttachments({ suppressError }),
-            );
-          deepStrictEqual(
-            attachments.map((attachment) => attachment.name),
-            ["Cached image", "Decoded image"],
-          );
-        }
-        // Suppression must not remove or replace the cached malformed value.
-        await rejects(() => Array.fromAsync(note.getAttachments()), TypeError);
-      } else {
-        await rejects(
-          () => Array.fromAsync(note.getAttachments({ suppressError })),
-          TypeError,
+  test(`Note.getAttachments() cached parse failure (suppressError: ${suppressError})`, async () => {
+    const jsonLd = embeddedPropertyDocument("attachment");
+    const note = await Note.fromJsonLd(jsonLd);
+    if (suppressError) {
+      for (let i = 0; i < 2; i++) {
+        const attachments: (Object | Link | PropertyValue)[] =
+          await Array.fromAsync(note.getAttachments({ suppressError }));
+        deepStrictEqual(
+          attachments.map((attachment) => attachment.name),
+          ["Cached image", "Decoded image"],
         );
       }
-      deepStrictEqual(await note.toJsonLd(), jsonLd);
-    },
-  );
+      // Suppression must not remove or replace the cached malformed value.
+      await rejects(() => Array.fromAsync(note.getAttachments()), TypeError);
+    } else {
+      await rejects(
+        () => Array.fromAsync(note.getAttachments({ suppressError })),
+        TypeError,
+      );
+    }
+    deepStrictEqual(await note.toJsonLd(), jsonLd);
+  });
 
-  test(
-    `Activity.getObject() cached parse failure (suppressError: ${suppressError})`,
-    async () => {
-      const jsonLd = embeddedPropertyDocument("object");
-      const activity = await Activity.fromJsonLd(jsonLd);
-      if (suppressError) {
-        deepStrictEqual(await activity.getObject({ suppressError }), null);
-        deepStrictEqual(await activity.getObject({ suppressError }), null);
-        await rejects(() => activity.getObject(), TypeError);
-      } else {
-        await rejects(() => activity.getObject({ suppressError }), TypeError);
-      }
-      deepStrictEqual(await activity.toJsonLd(), jsonLd);
-    },
-  );
+  test(`Activity.getObject() cached parse failure (suppressError: ${suppressError})`, async () => {
+    const jsonLd = embeddedPropertyDocument("object");
+    const activity = await Activity.fromJsonLd(jsonLd);
+    if (suppressError) {
+      deepStrictEqual(await activity.getObject({ suppressError }), null);
+      deepStrictEqual(await activity.getObject({ suppressError }), null);
+      await rejects(() => activity.getObject(), TypeError);
+    } else {
+      await rejects(() => activity.getObject({ suppressError }), TypeError);
+    }
+    deepStrictEqual(await activity.toJsonLd(), jsonLd);
+  });
 }
 
 test("Note.getAttachments() suppresses cached context loader failures", async () => {
@@ -2306,9 +2319,10 @@ test("Note.getAttachments() suppresses cached context loader failures", async ()
   const attachments: (Object | Link | PropertyValue)[] = await Array.fromAsync(
     note.getAttachments({ contextLoader, suppressError: true }),
   );
-  deepStrictEqual(attachments.map((attachment) => attachment.name), [
-    "Decoded image",
-  ]);
+  deepStrictEqual(
+    attachments.map((attachment) => attachment.name),
+    ["Decoded image"],
+  );
 });
 
 test("Activity.getObject() suppresses cached context loader failures", async () => {
@@ -2386,23 +2400,23 @@ test({
       Deno.inspect(obj, { colors: false, sorted: true, compact: false }),
       "Deno" in globalThis
         ? "Object {\n" +
-          '  attribution: URL "https://example.com/foo",\n' +
-          "  contents: [\n" +
-          '    <en> "Hello",\n' +
-          '    <zh> "你好"\n' +
-          "  ],\n" +
-          '  id: URL "https://example.com/",\n' +
-          '  name: "Test"\n' +
-          "}"
+            '  attribution: URL "https://example.com/foo",\n' +
+            "  contents: [\n" +
+            '    <en> "Hello",\n' +
+            '    <zh> "你好"\n' +
+            "  ],\n" +
+            '  id: URL "https://example.com/",\n' +
+            '  name: "Test"\n' +
+            "}"
         : "Object {\n" +
-          "  attribution: URL 'https://example.com/foo',\n" +
-          "  contents: [\n" +
-          "    <en> 'Hello',\n" +
-          "    <zh> '你好'\n" +
-          "  ],\n" +
-          "  id: URL 'https://example.com/',\n" +
-          "  name: 'Test'\n" +
-          "}",
+            "  attribution: URL 'https://example.com/foo',\n" +
+            "  contents: [\n" +
+            "    <en> 'Hello',\n" +
+            "    <zh> '你好'\n" +
+            "  ],\n" +
+            "  id: URL 'https://example.com/',\n" +
+            "  name: 'Test'\n" +
+            "}",
     );
   },
 });
@@ -2428,32 +2442,36 @@ test("inspecting an object prints portable IRIs in their canonical form", () => 
 });
 
 test("Person.fromJsonLd()", async () => {
-  const person = await Person.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/security/v1",
-    ],
-    "id": "https://todon.eu/users/hongminhee",
-    "publicKey": {
-      "id": "https://todon.eu/users/hongminhee#main-key",
-      "owner": "https://todon.eu/users/hongminhee",
-      // cSpell: disable
-      "publicKeyPem": "-----BEGIN PUBLIC KEY-----\n" +
-        "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxsRuvCkgJtflBTl4OVsm\n" +
-        "nt/J1mQfZasfJtN33dcZ3d1lJroxmgmMu69zjGEAwkNbMQaWNLqC4eogkJaeJ4RR\n" +
-        "5MHYXkL9nNilVoTkjX5BVit3puzs7XJ7WQnKQgQMI+ezn24GHsZ/v1JIo77lerX5\n" +
-        "k4HNwTNVt+yaZVQWaOMR3+6FwziQR6kd0VuG9/a9dgAnz2cEoORRC1i4W7IZaB1s\n" +
-        "Znh1WbHbevlGd72HSXll5rocPIHn8gq6xpBgpHwRphlRsgn4KHaJ6brXDIJjrnQh\n" +
-        "Ie/YUBOGj/ImSEXhRwlFerKsoAVnZ0Hwbfa46qk44TAt8CyoPMWmpK6pt0ng4pQ2\n" +
-        "uwIDAQAB\n" +
-        "-----END PUBLIC KEY-----\n",
-      // cSpell: enable
+  const person = await Person.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/v1",
+      ],
+      "id": "https://todon.eu/users/hongminhee",
+      "publicKey": {
+        "id": "https://todon.eu/users/hongminhee#main-key",
+        "owner": "https://todon.eu/users/hongminhee",
+        // cSpell: disable
+        "publicKeyPem":
+          "-----BEGIN PUBLIC KEY-----\n" +
+          "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxsRuvCkgJtflBTl4OVsm\n" +
+          "nt/J1mQfZasfJtN33dcZ3d1lJroxmgmMu69zjGEAwkNbMQaWNLqC4eogkJaeJ4RR\n" +
+          "5MHYXkL9nNilVoTkjX5BVit3puzs7XJ7WQnKQgQMI+ezn24GHsZ/v1JIo77lerX5\n" +
+          "k4HNwTNVt+yaZVQWaOMR3+6FwziQR6kd0VuG9/a9dgAnz2cEoORRC1i4W7IZaB1s\n" +
+          "Znh1WbHbevlGd72HSXll5rocPIHn8gq6xpBgpHwRphlRsgn4KHaJ6brXDIJjrnQh\n" +
+          "Ie/YUBOGj/ImSEXhRwlFerKsoAVnZ0Hwbfa46qk44TAt8CyoPMWmpK6pt0ng4pQ2\n" +
+          "uwIDAQAB\n" +
+          "-----END PUBLIC KEY-----\n",
+        // cSpell: enable
+      },
     },
-  }, {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-    baseUrl: new URL("https://todon.eu/"),
-  });
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://todon.eu/"),
+    },
+  );
   deepStrictEqual(
     person.publicKeyId,
     new URL("https://todon.eu/users/hongminhee#main-key"),
@@ -2572,37 +2590,46 @@ test("Tombstone.toJsonLd() serializes formerType", async () => {
     },
   );
 
-  const expanded = await tombstone.toJsonLd({
+  const expanded = (await tombstone.toJsonLd({
     format: "expand",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>[];
-  deepStrictEqual(expanded, [{
-    "@id": "https://example.com/users/alice",
-    "@type": ["https://www.w3.org/ns/activitystreams#Tombstone"],
-    "https://www.w3.org/ns/activitystreams#formerType": [{
-      "@id": "https://www.w3.org/ns/activitystreams#Person",
-    }],
-    "https://www.w3.org/ns/activitystreams#deleted": [{
-      "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
-      "@value": "2024-01-15T00:00:00Z",
-    }],
-  }]);
+  })) as Record<string, unknown>[];
+  deepStrictEqual(expanded, [
+    {
+      "@id": "https://example.com/users/alice",
+      "@type": ["https://www.w3.org/ns/activitystreams#Tombstone"],
+      "https://www.w3.org/ns/activitystreams#formerType": [
+        {
+          "@id": "https://www.w3.org/ns/activitystreams#Person",
+        },
+      ],
+      "https://www.w3.org/ns/activitystreams#deleted": [
+        {
+          "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "@value": "2024-01-15T00:00:00Z",
+        },
+      ],
+    },
+  ]);
 });
 
 test("Tombstone.fromJsonLd() restores formerType", async () => {
-  const tombstone = await Tombstone.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/security/data-integrity/v1",
-      "https://gotosocial.org/ns",
-    ],
-    id: "https://example.com/users/alice",
-    type: "Tombstone",
-    formerType: "as:Person",
-    deleted: "2024-01-15T00:00:00Z",
-  }, {
-    contextLoader: mockDocumentLoader,
-  });
+  const tombstone = await Tombstone.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+        "https://gotosocial.org/ns",
+      ],
+      id: "https://example.com/users/alice",
+      type: "Tombstone",
+      formerType: "as:Person",
+      deleted: "2024-01-15T00:00:00Z",
+    },
+    {
+      contextLoader: mockDocumentLoader,
+    },
+  );
 
   deepStrictEqual(tombstone.formerType, Person);
   deepStrictEqual(tombstone.formerTypes, [Person]);
@@ -2629,13 +2656,17 @@ test("Tombstone.fromJsonLd() ignores unknown formerType values", async () => {
     const tombstone = await Tombstone.fromJsonLd({
       "@id": "https://example.com/users/alice",
       "@type": ["https://www.w3.org/ns/activitystreams#Tombstone"],
-      "https://www.w3.org/ns/activitystreams#formerType": [{
-        "@id": "https://example.com/ns#Widget",
-      }],
-      "https://www.w3.org/ns/activitystreams#deleted": [{
-        "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
-        "@value": "2024-01-15T00:00:00Z",
-      }],
+      "https://www.w3.org/ns/activitystreams#formerType": [
+        {
+          "@id": "https://example.com/ns#Widget",
+        },
+      ],
+      "https://www.w3.org/ns/activitystreams#deleted": [
+        {
+          "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "@value": "2024-01-15T00:00:00Z",
+        },
+      ],
     });
 
     deepStrictEqual(tombstone.formerTypes, []);
@@ -2644,10 +2675,11 @@ test("Tombstone.fromJsonLd() ignores unknown formerType values", async () => {
       Temporal.Instant.from("2024-01-15T00:00:00Z"),
     );
     deepStrictEqual(
-      records.some((record) =>
-        record.rawMessage ===
-          "Ignoring unknown vocabulary entity type reference: {typeId}" &&
-        record.properties.typeId === "https://example.com/ns#Widget"
+      records.some(
+        (record) =>
+          record.rawMessage ===
+            "Ignoring unknown vocabulary entity type reference: {typeId}" &&
+          record.properties.typeId === "https://example.com/ns#Widget",
       ),
       true,
     );
@@ -2660,13 +2692,17 @@ test("Tombstone.fromJsonLd() ignores malformed formerType values", async () => {
   const tombstone = await Tombstone.fromJsonLd({
     "@id": "https://example.com/users/alice",
     "@type": ["https://www.w3.org/ns/activitystreams#Tombstone"],
-    "https://www.w3.org/ns/activitystreams#formerType": [{
-      "@value": "Widget",
-    }],
-    "https://www.w3.org/ns/activitystreams#deleted": [{
-      "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
-      "@value": "2024-01-15T00:00:00Z",
-    }],
+    "https://www.w3.org/ns/activitystreams#formerType": [
+      {
+        "@value": "Widget",
+      },
+    ],
+    "https://www.w3.org/ns/activitystreams#deleted": [
+      {
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+        "@value": "2024-01-15T00:00:00Z",
+      },
+    ],
   });
 
   deepStrictEqual(tombstone.formerTypes, []);
@@ -2682,26 +2718,23 @@ test("Endpoints.toJsonLd() omits type", async () => {
   });
 
   // Compact heuristic path (format == null)
-  const compact = await ep.toJsonLd() as Record<string, unknown>;
+  const compact = (await ep.toJsonLd()) as Record<string, unknown>;
   ok(!("type" in compact), "compact heuristic output should not have 'type'");
   deepStrictEqual(compact["sharedInbox"], "https://example.com/inbox");
   deepStrictEqual(compact["@context"], "https://www.w3.org/ns/activitystreams");
 
   // Expanded format
-  const expanded = await ep.toJsonLd({
+  const expanded = (await ep.toJsonLd({
     format: "expand",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>[];
-  ok(
-    !("@type" in expanded[0]),
-    "expanded output should not have '@type'",
-  );
+  })) as Record<string, unknown>[];
+  ok(!("@type" in expanded[0]), "expanded output should not have '@type'");
 
   // Compact via JSON-LD library
-  const compactLib = await ep.toJsonLd({
+  const compactLib = (await ep.toJsonLd({
     format: "compact",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   ok(
     !("type" in compactLib),
     "compact (library) output should not have 'type'",
@@ -2724,7 +2757,7 @@ test("Endpoints.uploadMedia round-trips", async () => {
     "https://example.com/users/alice/media",
   );
 
-  const compact = await ep.toJsonLd() as Record<string, unknown>;
+  const compact = (await ep.toJsonLd()) as Record<string, unknown>;
   deepStrictEqual(
     compact["uploadMedia"],
     "https://example.com/users/alice/media",
@@ -2755,19 +2788,16 @@ test("Source.toJsonLd() omits type", async () => {
   });
 
   // Compact heuristic path (format == null)
-  const compact = await src.toJsonLd() as Record<string, unknown>;
+  const compact = (await src.toJsonLd()) as Record<string, unknown>;
   ok(!("type" in compact), "compact heuristic output should not have 'type'");
   deepStrictEqual(compact["mediaType"], "text/plain");
 
   // Expanded format
-  const expanded = await src.toJsonLd({
+  const expanded = (await src.toJsonLd({
     format: "expand",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>[];
-  ok(
-    !("@type" in expanded[0]),
-    "expanded output should not have '@type'",
-  );
+  })) as Record<string, unknown>[];
+  ok(!("@type" in expanded[0]), "expanded output should not have '@type'");
 
   // Round-trip: compact heuristic → fromJsonLd → compare
   const restored = await Source.fromJsonLd(compact, {
@@ -2779,28 +2809,34 @@ test("Source.toJsonLd() omits type", async () => {
 
 test("Endpoints.fromJsonLd() accepts input with @type (backward compat)", async () => {
   // Older Fedify instances may still send @type for Endpoints
-  const ep = await Endpoints.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    "type": "as:Endpoints",
-    "sharedInbox": "https://example.com/inbox",
-  }, {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-  });
+  const ep = await Endpoints.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "as:Endpoints",
+      "sharedInbox": "https://example.com/inbox",
+    },
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
   assertInstanceOf(ep, Endpoints);
   deepStrictEqual(ep.sharedInbox?.href, "https://example.com/inbox");
 });
 
 test("Source.fromJsonLd() accepts input with @type (backward compat)", async () => {
-  const src = await Source.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    "type": "as:Source",
-    "content": "Hello",
-    "mediaType": "text/plain",
-  }, {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-  });
+  const src = await Source.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "as:Source",
+      "content": "Hello",
+      "mediaType": "text/plain",
+    },
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
   assertInstanceOf(src, Source);
   deepStrictEqual(src.content, "Hello");
   deepStrictEqual(src.mediaType, "text/plain");
@@ -2818,7 +2854,7 @@ test("Endpoints with all properties set omits type", async () => {
   });
 
   // Compact heuristic path
-  const compact = await ep.toJsonLd() as Record<string, unknown>;
+  const compact = (await ep.toJsonLd()) as Record<string, unknown>;
   ok(!("type" in compact), "compact output should not have 'type'");
   deepStrictEqual(compact["proxyUrl"], "https://example.com/proxy");
   deepStrictEqual(
@@ -2838,9 +2874,7 @@ test("Endpoints with all properties set omits type", async () => {
   deepStrictEqual(compact["uploadMedia"], "https://example.com/upload-media");
 
   // Round-trip all three formats
-  for (
-    const format of [undefined, "compact" as const, "expand" as const]
-  ) {
+  for (const format of [undefined, "compact" as const, "expand" as const]) {
     const jsonLd = await ep.toJsonLd({
       format,
       contextLoader: mockDocumentLoader,
@@ -2860,13 +2894,13 @@ test("Endpoints with all properties set omits type", async () => {
 test("Empty Endpoints omits type", async () => {
   const ep = new Endpoints({});
 
-  const compact = await ep.toJsonLd() as Record<string, unknown>;
+  const compact = (await ep.toJsonLd()) as Record<string, unknown>;
   ok(!("type" in compact), "empty compact output should not have 'type'");
 
-  const expanded = await ep.toJsonLd({
+  const expanded = (await ep.toJsonLd({
     format: "expand",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>[];
+  })) as Record<string, unknown>[];
   ok(
     !("@type" in (expanded[0] ?? {})),
     "empty expanded output should not have '@type'",
@@ -2876,13 +2910,13 @@ test("Empty Endpoints omits type", async () => {
 test("Empty Source omits type", async () => {
   const src = new Source({});
 
-  const compact = await src.toJsonLd() as Record<string, unknown>;
+  const compact = (await src.toJsonLd()) as Record<string, unknown>;
   ok(!("type" in compact), "empty compact output should not have 'type'");
 
-  const expanded = await src.toJsonLd({
+  const expanded = (await src.toJsonLd({
     format: "expand",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>[];
+  })) as Record<string, unknown>[];
   ok(
     !("@type" in (expanded[0] ?? {})),
     "empty expanded output should not have '@type'",
@@ -2898,13 +2932,10 @@ test("Person.toJsonLd() embeds Endpoints without type", async () => {
   });
 
   // Compact heuristic path (the real-world code path)
-  const compact = await person.toJsonLd() as Record<string, unknown>;
+  const compact = (await person.toJsonLd()) as Record<string, unknown>;
   const endpoints = compact["endpoints"] as Record<string, unknown>;
   ok(endpoints != null, "endpoints should be present");
-  ok(
-    !("type" in endpoints),
-    "embedded endpoints should not have 'type'",
-  );
+  ok(!("type" in endpoints), "embedded endpoints should not have 'type'");
   deepStrictEqual(endpoints["sharedInbox"], "https://example.com/inbox");
 
   // Round-trip
@@ -2919,15 +2950,16 @@ test("Person.toJsonLd() embeds Endpoints without type", async () => {
   );
 
   // Expanded format
-  const expanded = await person.toJsonLd({
+  const expanded = (await person.toJsonLd({
     format: "expand",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>[];
-  const expandedEndpoints =
-    (expanded[0]["https://www.w3.org/ns/activitystreams#endpoints"] as Record<
+  })) as Record<string, unknown>[];
+  const expandedEndpoints = (
+    expanded[0]["https://www.w3.org/ns/activitystreams#endpoints"] as Record<
       string,
       unknown
-    >[])?.[0];
+    >[]
+  )?.[0];
   ok(expandedEndpoints != null, "expanded endpoints should be present");
   ok(
     !("@type" in expandedEndpoints),
@@ -2945,17 +2977,14 @@ test("Person.toJsonLd() embeds Endpoints without type", async () => {
   );
 
   // Compact via JSON-LD library
-  const compactLib = await person.toJsonLd({
+  const compactLib = (await person.toJsonLd({
     format: "compact",
     contextLoader: mockDocumentLoader,
     context: "https://www.w3.org/ns/activitystreams",
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const endpointsLib = compactLib["endpoints"] as Record<string, unknown>;
   ok(endpointsLib != null, "compact-lib endpoints should be present");
-  ok(
-    !("type" in endpointsLib),
-    "compact-lib endpoints should not have 'type'",
-  );
+  ok(!("type" in endpointsLib), "compact-lib endpoints should not have 'type'");
 
   // Compact library round-trip
   const restored3 = await Person.fromJsonLd(compactLib, {
@@ -2978,7 +3007,7 @@ test("Object.toJsonLd() embeds Source without type", async () => {
   });
 
   // Compact heuristic path
-  const compact = await obj.toJsonLd() as Record<string, unknown>;
+  const compact = (await obj.toJsonLd()) as Record<string, unknown>;
   const source = compact["source"] as Record<string, unknown>;
   ok(source != null, "source should be present");
   ok(!("type" in source), "embedded source should not have 'type'");
@@ -2995,23 +3024,26 @@ test("Object.toJsonLd() embeds Source without type", async () => {
 
 test("Person.fromJsonLd() with Mastodon-style endpoints (no type)", async () => {
   // Mastodon serializes endpoints without a type field
-  const person = await Person.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/security/v1",
-    ],
-    "id": "https://mastodon.social/users/testuser",
-    "type": "Person",
-    "preferredUsername": "testuser",
-    "inbox": "https://mastodon.social/users/testuser/inbox",
-    "outbox": "https://mastodon.social/users/testuser/outbox",
-    "endpoints": {
-      "sharedInbox": "https://mastodon.social/inbox",
+  const person = await Person.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/v1",
+      ],
+      "id": "https://mastodon.social/users/testuser",
+      "type": "Person",
+      "preferredUsername": "testuser",
+      "inbox": "https://mastodon.social/users/testuser/inbox",
+      "outbox": "https://mastodon.social/users/testuser/outbox",
+      "endpoints": {
+        "sharedInbox": "https://mastodon.social/inbox",
+      },
     },
-  }, {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-  });
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
   assertInstanceOf(person, Person);
   deepStrictEqual(
     person.endpoints?.sharedInbox?.href,
@@ -3021,21 +3053,24 @@ test("Person.fromJsonLd() with Mastodon-style endpoints (no type)", async () => 
 
 test("Person.fromJsonLd() with old Fedify-style endpoints (with type)", async () => {
   // Older Fedify versions serialized endpoints with type: "as:Endpoints"
-  const person = await Person.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/security/v1",
-    ],
-    "id": "https://example.com/users/testuser",
-    "type": "Person",
-    "endpoints": {
-      "type": "as:Endpoints",
-      "sharedInbox": "https://example.com/inbox",
+  const person = await Person.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/v1",
+      ],
+      "id": "https://example.com/users/testuser",
+      "type": "Person",
+      "endpoints": {
+        "type": "as:Endpoints",
+        "sharedInbox": "https://example.com/inbox",
+      },
     },
-  }, {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-  });
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
   assertInstanceOf(person, Person);
   deepStrictEqual(
     person.endpoints?.sharedInbox?.href,
@@ -3052,7 +3087,7 @@ test("Source with LanguageString content omits type", async () => {
     mediaType: "text/plain",
   });
 
-  const compact = await src.toJsonLd() as Record<string, unknown>;
+  const compact = (await src.toJsonLd()) as Record<string, unknown>;
   ok(!("type" in compact), "source with LanguageString should not have 'type'");
 
   // Round-trip
@@ -3214,17 +3249,20 @@ test("Note.quoteAuthorization", async () => {
     new URL("https://example.com/authorizations/1"),
   );
 
-  const loadedFromGoToSocialContext = await Note.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://gotosocial.org/ns",
-    ],
-    type: "Note",
-    quoteAuthorization: "https://example.com/authorizations/2",
-  }, {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-  });
+  const loadedFromGoToSocialContext = await Note.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://gotosocial.org/ns",
+      ],
+      type: "Note",
+      quoteAuthorization: "https://example.com/authorizations/2",
+    },
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
   deepStrictEqual(
     loadedFromGoToSocialContext.quoteAuthorizationId,
     new URL("https://example.com/authorizations/2"),
@@ -3362,25 +3400,29 @@ test("InteractionPolicy.canFeature", async () => {
     expected,
   );
 
-  const loadedFromFepContext = await Person.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://gotosocial.org/ns",
-      "https://w3id.org/fep/7aa9",
-      {
-        featuredCollections: {
-          "@id": "https://w3id.org/fep/7aa9#featuredCollections",
-          "@type": "@id",
+  const loadedFromFepContext = await Person.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://gotosocial.org/ns",
+        "https://w3id.org/fep/7aa9",
+        {
+          featuredCollections: {
+            "@id": "https://w3id.org/fep/7aa9#featuredCollections",
+            "@type": "@id",
+          },
         },
-      },
-    ],
-    type: "Person",
-    id: "https://example.com/users/alice",
-    featuredCollections: "https://example.com/users/alice/featured_collections",
-  }, {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-  });
+      ],
+      type: "Person",
+      id: "https://example.com/users/alice",
+      featuredCollections:
+        "https://example.com/users/alice/featured_collections",
+    },
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
   deepStrictEqual(
     loadedFromFepContext.featuredCollectionsId,
     new URL("https://example.com/users/alice/featured_collections"),
@@ -3501,10 +3543,7 @@ test("FeatureRequest.toJsonLd()", async () => {
     instrument: new URL("https://example.com/users/alice/featured/1"),
   });
   const expected = {
-    "@context": [
-      "https://w3id.org/identity/v1",
-      ...FEATURE_CONTEXT,
-    ],
+    "@context": ["https://w3id.org/identity/v1", ...FEATURE_CONTEXT],
     type: "FeatureRequest",
     id: "https://example.com/users/alice/featured/1/requests/1",
     object: "https://example.com/users/bob",
@@ -3520,10 +3559,7 @@ test("FeatureRequest.toJsonLd()", async () => {
     contextLoader: mockDocumentLoader,
   });
   assertInstanceOf(loaded, FeatureRequest);
-  deepStrictEqual(
-    loaded.objectId,
-    new URL("https://example.com/users/bob"),
-  );
+  deepStrictEqual(loaded.objectId, new URL("https://example.com/users/bob"));
   deepStrictEqual(
     loaded.instrumentId,
     new URL("https://example.com/users/alice/featured/1"),
@@ -3556,20 +3592,23 @@ test("QuoteAuthorization.fromJsonLd()", async () => {
     jsonLd,
   );
 
-  const loadedFromGoToSocialContext = await QuoteAuthorization.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://gotosocial.org/ns",
-    ],
-    type: "QuoteAuthorization",
-    id: "https://example.com/users/alice/stamps/2",
-    attributedTo: "https://example.com/users/alice",
-    interactingObject: "https://example.com/users/bob/statuses/2",
-    interactionTarget: "https://example.com/users/alice/statuses/2",
-  }, {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-  });
+  const loadedFromGoToSocialContext = await QuoteAuthorization.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://gotosocial.org/ns",
+      ],
+      type: "QuoteAuthorization",
+      id: "https://example.com/users/alice/stamps/2",
+      attributedTo: "https://example.com/users/alice",
+      interactingObject: "https://example.com/users/bob/statuses/2",
+      interactionTarget: "https://example.com/users/alice/statuses/2",
+    },
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
   assertInstanceOf(loadedFromGoToSocialContext, QuoteAuthorization);
   deepStrictEqual(
     loadedFromGoToSocialContext.id,
@@ -3612,17 +3651,20 @@ test("QuoteRequest.toJsonLd()", async () => {
     expected,
   );
 
-  const loadedFromGoToSocialContext = await QuoteRequest.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://gotosocial.org/ns",
-    ],
-    type: "QuoteRequest",
-    object: "https://example.com/users/alice/statuses/3",
-  }, {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-  });
+  const loadedFromGoToSocialContext = await QuoteRequest.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://gotosocial.org/ns",
+      ],
+      type: "QuoteRequest",
+      object: "https://example.com/users/alice/statuses/3",
+    },
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
   assertInstanceOf(loadedFromGoToSocialContext, QuoteRequest);
   deepStrictEqual(
     loadedFromGoToSocialContext.objectId,
@@ -3771,14 +3813,12 @@ test("Note.quoteUrl (unparsable IRI-valued terms)", async () => {
       _misskey_quote: { "@id": "misskey:_misskey_quote", "@type": "@id" },
     },
   ];
-  for (
-    const quote of [
-      { type: "Note", content: "An inlined quote without an id" },
-      "_:b0",
-      "",
-      "notes/relative",
-    ]
-  ) {
+  for (const quote of [
+    { type: "Note", content: "An inlined quote without an id" },
+    "_:b0",
+    "",
+    "notes/relative",
+  ]) {
     const loaded = await Note.fromJsonLd({
       "@context": context,
       id: "https://example.com/notes/1",
@@ -3806,7 +3846,8 @@ test("Key.publicKey", async () => {
     kty: "RSA",
     alg: "RS256",
     // cSpell: disable
-    n: "xsRuvCkgJtflBTl4OVsmnt_J1mQfZasfJtN33dcZ3d1lJroxmgmMu69zjGEAwkNbMQaWN" +
+    n:
+      "xsRuvCkgJtflBTl4OVsmnt_J1mQfZasfJtN33dcZ3d1lJroxmgmMu69zjGEAwkNbMQaWN" +
       "LqC4eogkJaeJ4RR5MHYXkL9nNilVoTkjX5BVit3puzs7XJ7WQnKQgQMI-ezn24GHsZ_v1J" +
       "Io77lerX5k4HNwTNVt-yaZVQWaOMR3-6FwziQR6kd0VuG9_a9dgAnz2cEoORRC1i4W7IZa" +
       "B1sZnh1WbHbevlGd72HSXll5rocPIHn8gq6xpBgpHwRphlRsgn4KHaJ6brXDIJjrnQhIe_" +
@@ -3828,7 +3869,8 @@ test("Key.publicKey", async () => {
   const jsonLd = await key.toJsonLd({ contextLoader: mockDocumentLoader });
   deepStrictEqual(jsonLd, {
     "@context": "https://w3id.org/security/v1",
-    publicKeyPem: "-----BEGIN PUBLIC KEY-----\n" +
+    publicKeyPem:
+      "-----BEGIN PUBLIC KEY-----\n" +
       // cSpell: disable
       "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxsRuvCkgJtflBTl4OVsm\n" +
       "nt/J1mQfZasfJtN33dcZ3d1lJroxmgmMu69zjGEAwkNbMQaWNLqC4eogkJaeJ4RR\n" +
@@ -3853,15 +3895,18 @@ test("Key.publicKey", async () => {
 });
 
 test("Place.fromJsonLd()", async () => {
-  const place = await Place.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    type: "Place",
-    name: "Fresno Area",
-    latitude: 36.75,
-    longitude: 119.7667,
-    radius: 15,
-    units: "miles",
-  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  const place = await Place.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Place",
+      name: "Fresno Area",
+      latitude: 36.75,
+      longitude: 119.7667,
+      radius: 15,
+      units: "miles",
+    },
+    { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
+  );
   assertInstanceOf(place, Place);
   deepStrictEqual(place.name, "Fresno Area");
   deepStrictEqual(place.latitude, 36.75);
@@ -3953,19 +3998,22 @@ test("Link.fromJsonLd() normalizes extlang hreflang", async () => {
     hreflang: "zh-YUE",
   });
   deepStrictEqual(link.language?.baseName, "yue");
-  const compact = await link.toJsonLd({ format: "compact" }) as Record<
+  const compact = (await link.toJsonLd({ format: "compact" })) as Record<
     string,
     unknown
   >;
   deepStrictEqual(compact.hreflang, "yue");
 
-  await rejects(() =>
-    Link.fromJsonLd({
-      "@context": "https://www.w3.org/ns/activitystreams",
-      type: "Link",
-      href: "https://example.com/en",
-      hreflang: "en-USA",
-    }), RangeError);
+  await rejects(
+    () =>
+      Link.fromJsonLd({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Link",
+        href: "https://example.com/en",
+        hreflang: "en-USA",
+      }),
+    RangeError,
+  );
 });
 
 test("Person.fromJsonLd() with relative URLs", async () => {
@@ -4065,10 +4113,7 @@ test("Object.fromJsonLd() normalizes Link icon to Image", async () => {
     contextLoader: mockDocumentLoader,
   });
   const icon = await obj.getIcon();
-  deepStrictEqual(
-    icon?.url?.href,
-    "https://example.com/icon.png",
-  );
+  deepStrictEqual(icon?.url?.href, "https://example.com/icon.png");
   deepStrictEqual(icon?.mediaType, "image/png");
   deepStrictEqual(icon?.names, ["Icon"]);
   deepStrictEqual(icon?.width, 64);
@@ -4118,38 +4163,29 @@ test("Object.fromJsonLd() normalizes Link icon with relative URL", async () => {
     contextLoader: mockDocumentLoader,
   });
   const icon = await obj.getIcon();
-  deepStrictEqual(
-    icon?.url?.href,
-    "https://example.com/icons/icon.png",
-  );
+  deepStrictEqual(icon?.url?.href, "https://example.com/icons/icon.png");
 });
 
-test(
-  "Object.fromJsonLd() normalizes Link icon with relative id and baseUrl",
-  async () => {
-    const json = {
-      "@context": "https://www.w3.org/ns/activitystreams",
-      "type": "Note",
-      "id": "/notes/1",
-      "content": "Hello",
-      "icon": {
-        "type": "Link",
-        "href": "/icons/icon.png",
-      },
-    };
-    const obj = await Object.fromJsonLd(json, {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
-      baseUrl: new URL("https://example.com/"),
-    });
-    const icon = await obj.getIcon();
-    deepStrictEqual(obj.id?.href, "https://example.com/notes/1");
-    deepStrictEqual(
-      icon?.url?.href,
-      "https://example.com/icons/icon.png",
-    );
-  },
-);
+test("Object.fromJsonLd() normalizes Link icon with relative id and baseUrl", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "/notes/1",
+    "content": "Hello",
+    "icon": {
+      "type": "Link",
+      "href": "/icons/icon.png",
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/"),
+  });
+  const icon = await obj.getIcon();
+  deepStrictEqual(obj.id?.href, "https://example.com/notes/1");
+  deepStrictEqual(icon?.url?.href, "https://example.com/icons/icon.png");
+});
 
 test("Object.fromJsonLd() decodes Image icon with relative id and baseUrl", async () => {
   const json = {
@@ -4169,10 +4205,7 @@ test("Object.fromJsonLd() decodes Image icon with relative id and baseUrl", asyn
   });
   const icon = await obj.getIcon();
   deepStrictEqual(obj.id?.href, "https://example.com/notes/1");
-  deepStrictEqual(
-    icon?.url?.href,
-    "https://example.com/icons/icon.png",
-  );
+  deepStrictEqual(icon?.url?.href, "https://example.com/icons/icon.png");
 });
 
 test("Object.fromJsonLd() decodes compact icon id with relative id and baseUrl", async () => {
@@ -4189,10 +4222,7 @@ test("Object.fromJsonLd() decodes compact icon id with relative id and baseUrl",
     baseUrl: new URL("https://example.com/"),
   });
   deepStrictEqual(obj.id?.href, "https://example.com/notes/1");
-  deepStrictEqual(
-    obj.iconId?.href,
-    "https://example.com/icons/icon.png",
-  );
+  deepStrictEqual(obj.iconId?.href, "https://example.com/icons/icon.png");
 });
 
 test("Object.fromJsonLd() resolves compact icon id against document base", async () => {
@@ -4209,10 +4239,7 @@ test("Object.fromJsonLd() resolves compact icon id against document base", async
     baseUrl: new URL("https://example.com/outbox/page.json"),
   });
   deepStrictEqual(obj.id?.href, "https://example.com/outbox/notes/1");
-  deepStrictEqual(
-    obj.iconId?.href,
-    "https://example.com/outbox/icon.png",
-  );
+  deepStrictEqual(obj.iconId?.href, "https://example.com/outbox/icon.png");
 });
 
 test("Object.fromJsonLd() skips blank node compact icon id", async () => {
@@ -4246,198 +4273,162 @@ test("Object.fromJsonLd() resolves compact icon id against baseUrl for did id", 
     baseUrl: new URL("https://example.com/notes/1"),
   });
   deepStrictEqual(obj.id?.href, "did:plc:example");
-  deepStrictEqual(
-    obj.iconId?.href,
-    "https://example.com/icons/icon.png",
-  );
+  deepStrictEqual(obj.iconId?.href, "https://example.com/icons/icon.png");
 });
 
-test(
-  "Object.getIcon() resolves relative Link href without id via cached re-parse",
-  async () => {
-    const json = {
+test("Object.getIcon() resolves relative Link href without id via cached re-parse", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "content": "Hello",
+    "icon": {
       "@context": "https://www.w3.org/ns/activitystreams",
-      "type": "Note",
-      "content": "Hello",
-      "icon": {
-        "@context": "https://www.w3.org/ns/activitystreams",
-        "type": "Link",
-        "href": "/icons/star.png",
-        "mediaType": "image/png",
-      },
-    };
-    const obj = await Object.fromJsonLd(json, {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
-      baseUrl: new URL("https://example.com/"),
-    });
-    // getIcon() is called WITHOUT explicit baseUrl — the accessor
-    // should reuse the baseUrl that was set during fromJsonLd().
-    const icon = await obj.getIcon();
-    deepStrictEqual(
-      icon?.url?.href,
-      "https://example.com/icons/star.png",
-    );
-    deepStrictEqual(icon?.mediaType, "image/png");
-  },
-);
+      "type": "Link",
+      "href": "/icons/star.png",
+      "mediaType": "image/png",
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/"),
+  });
+  // getIcon() is called WITHOUT explicit baseUrl — the accessor
+  // should reuse the baseUrl that was set during fromJsonLd().
+  const icon = await obj.getIcon();
+  deepStrictEqual(icon?.url?.href, "https://example.com/icons/star.png");
+  deepStrictEqual(icon?.mediaType, "image/png");
+});
 
-test(
-  "Object.fromJsonLd() resolves Link href against document base, not object id",
-  async () => {
-    const json = {
+test("Object.fromJsonLd() resolves Link href against document base, not object id", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "../notes/1",
+    "content": "Hello",
+    "icon": {
+      "type": "Link",
+      "href": "icon.png",
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/outbox/page.json"),
+  });
+  const icon = await obj.getIcon();
+  deepStrictEqual(obj.id?.href, "https://example.com/outbox/notes/1");
+  deepStrictEqual(icon?.url?.href, "https://example.com/outbox/icon.png");
+});
+
+test("Object.getIcon() resolves cached relative Link href against baseUrl for did id", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "did:plc:example",
+    "content": "Hello",
+    "icon": {
       "@context": "https://www.w3.org/ns/activitystreams",
-      "type": "Note",
-      "id": "../notes/1",
-      "content": "Hello",
-      "icon": {
-        "type": "Link",
-        "href": "icon.png",
-      },
-    };
-    const obj = await Object.fromJsonLd(json, {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
-      baseUrl: new URL("https://example.com/outbox/page.json"),
-    });
-    const icon = await obj.getIcon();
-    deepStrictEqual(obj.id?.href, "https://example.com/outbox/notes/1");
-    deepStrictEqual(
-      icon?.url?.href,
-      "https://example.com/outbox/icon.png",
-    );
-  },
-);
+      "type": "Link",
+      "href": "/icons/star.png",
+      "mediaType": "image/png",
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/notes/1"),
+  });
+  const icon = await obj.getIcon();
+  deepStrictEqual(obj.id?.href, "did:plc:example");
+  deepStrictEqual(icon?.url?.href, "https://example.com/icons/star.png");
+  deepStrictEqual(icon?.mediaType, "image/png");
+});
 
-test(
-  "Object.getIcon() resolves cached relative Link href against baseUrl for did id",
-  async () => {
-    const json = {
+test("Object.getIcon() ignores mutation of caller's baseUrl after fromJsonLd()", async () => {
+  const origBaseUrl = new URL("https://example.com/");
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "content": "Hello",
+    "icon": {
       "@context": "https://www.w3.org/ns/activitystreams",
-      "type": "Note",
-      "id": "did:plc:example",
-      "content": "Hello",
-      "icon": {
-        "@context": "https://www.w3.org/ns/activitystreams",
-        "type": "Link",
-        "href": "/icons/star.png",
-        "mediaType": "image/png",
-      },
-    };
-    const obj = await Object.fromJsonLd(json, {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
-      baseUrl: new URL("https://example.com/notes/1"),
-    });
-    const icon = await obj.getIcon();
-    deepStrictEqual(obj.id?.href, "did:plc:example");
-    deepStrictEqual(
-      icon?.url?.href,
-      "https://example.com/icons/star.png",
-    );
-    deepStrictEqual(icon?.mediaType, "image/png");
-  },
-);
+      "type": "Link",
+      "href": "/icons/star.png",
+      "mediaType": "image/png",
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: origBaseUrl,
+  });
+  // Mutate the caller's URL after construction.
+  origBaseUrl.href = "https://attacker.example/";
+  const icon = await obj.getIcon();
+  deepStrictEqual(icon?.url?.href, "https://example.com/icons/star.png");
+  deepStrictEqual(icon?.mediaType, "image/png");
+});
 
-test(
-  "Object.getIcon() ignores mutation of caller's baseUrl after fromJsonLd()",
-  async () => {
-    const origBaseUrl = new URL("https://example.com/");
-    const json = {
-      "@context": "https://www.w3.org/ns/activitystreams",
-      "type": "Note",
-      "content": "Hello",
-      "icon": {
-        "@context": "https://www.w3.org/ns/activitystreams",
-        "type": "Link",
-        "href": "/icons/star.png",
-        "mediaType": "image/png",
-      },
-    };
-    const obj = await Object.fromJsonLd(json, {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
-      baseUrl: origBaseUrl,
-    });
-    // Mutate the caller's URL after construction.
-    origBaseUrl.href = "https://attacker.example/";
-    const icon = await obj.getIcon();
-    deepStrictEqual(
-      icon?.url?.href,
-      "https://example.com/icons/star.png",
-    );
-    deepStrictEqual(icon?.mediaType, "image/png");
-  },
-);
+test("Object.fromJsonLd() does not resolve blank node @id against baseUrl", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "_:b0",
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/"),
+  });
+  // Blank node identifiers must not be resolved against baseUrl.
+  deepStrictEqual(obj.id, null);
+});
 
-test(
-  "Object.fromJsonLd() does not resolve blank node @id against baseUrl",
-  async () => {
-    const json = {
+test("Object.fromJsonLd() handles blank node @id without baseUrl", () => {
+  const obj = Object.fromJsonLd(
+    {
       "@context": "https://www.w3.org/ns/activitystreams",
       "type": "Note",
       "id": "_:b0",
-    };
-    const obj = await Object.fromJsonLd(json, {
+    },
+    {
       documentLoader: mockDocumentLoader,
       contextLoader: mockDocumentLoader,
-      baseUrl: new URL("https://example.com/"),
-    });
-    // Blank node identifiers must not be resolved against baseUrl.
-    deepStrictEqual(obj.id, null);
-  },
-);
+    },
+  );
+  // Blank node identifier without baseUrl must not throw.
+  return obj.then((o) => deepStrictEqual(o.id, null));
+});
 
-test(
-  "Object.fromJsonLd() handles blank node @id without baseUrl",
-  () => {
-    const obj = Object.fromJsonLd({
+test("Object.getAttachments() resolves relative url via stored _baseUrl", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "content": "Hello",
+    "attachment": {
       "@context": "https://www.w3.org/ns/activitystreams",
-      "type": "Note",
-      "id": "_:b0",
-    }, {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
-    });
-    // Blank node identifier without baseUrl must not throw.
-    return obj.then((o) => deepStrictEqual(o.id, null));
-  },
-);
-
-test(
-  "Object.getAttachments() resolves relative url via stored _baseUrl",
-  async () => {
-    const json = {
-      "@context": "https://www.w3.org/ns/activitystreams",
-      "type": "Note",
-      "content": "Hello",
-      "attachment": {
-        "@context": "https://www.w3.org/ns/activitystreams",
-        "type": "Document",
-        "url": "/files/report.pdf",
-        "mediaType": "application/pdf",
-      },
-    };
-    const obj = await Object.fromJsonLd(json, {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
-      baseUrl: new URL("https://example.com/"),
-    });
-    // getAttachments() without explicit baseUrl should use stored _baseUrl.
-    const attachments = [];
-    for await (const a of obj.getAttachments()) {
-      attachments.push(a);
-    }
-    deepStrictEqual(attachments.length, 1);
-    // oxlint-disable-next-line typescript/no-explicit-any
-    const doc = attachments[0] as any;
-    deepStrictEqual(
-      doc?.url?.href,
-      "https://example.com/files/report.pdf",
-    );
-    deepStrictEqual(doc?.mediaType, "application/pdf");
-  },
-);
+      "type": "Document",
+      "url": "/files/report.pdf",
+      "mediaType": "application/pdf",
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/"),
+  });
+  // getAttachments() without explicit baseUrl should use stored _baseUrl.
+  const attachments = [];
+  for await (const a of obj.getAttachments()) {
+    attachments.push(a);
+  }
+  deepStrictEqual(attachments.length, 1);
+  // oxlint-disable-next-line typescript/no-explicit-any
+  const doc = attachments[0] as any;
+  deepStrictEqual(doc?.url?.href, "https://example.com/files/report.pdf");
+  deepStrictEqual(doc?.mediaType, "application/pdf");
+});
 
 test("Object.fromJsonLd() normalizes multiple Link icons", async () => {
   const json = {
@@ -4492,10 +4483,7 @@ test("Object.getIcon() normalizes fetched Link document to Image", async () => {
     documentLoader: docLoader,
     contextLoader: mockDocumentLoader,
   });
-  deepStrictEqual(
-    icon?.url?.href,
-    "https://example.com/avatars/user.png",
-  );
+  deepStrictEqual(icon?.url?.href, "https://example.com/avatars/user.png");
   deepStrictEqual(icon?.mediaType, "image/png");
   deepStrictEqual(icon?.width, 128);
   deepStrictEqual(icon?.height, 128);
@@ -4555,134 +4543,132 @@ test("FEP-fe34: Trust tracking in object cloning", () => {
 
 for (const property of ["object", "attachment"] as const) {
   for (const fetchOriginal of [false, true]) {
-    test(
-      `clone() isolates ${property} dereferencing (${
-        fetchOriginal ? "original" : "clone"
-      } first)`,
-      async () => {
-        const embedded = {
-          id: "https://b.example/notes/1",
-          type: "Note",
-          content: "embedded",
+    test(`clone() isolates ${property} dereferencing (${
+      fetchOriginal ? "original" : "clone"
+    } first)`, async () => {
+      const embedded = {
+        id: "https://b.example/notes/1",
+        type: "Note",
+        content: "embedded",
+      };
+      const json = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: "https://a.example/activities/1",
+        type: "Create",
+        [property]: embedded,
+      };
+      const original = await Create.fromJsonLd(json, {
+        contextLoader: mockDocumentLoader,
+      });
+      const copy = original.clone();
+      const fetching = fetchOriginal ? original : copy;
+      const untouched = fetchOriginal ? copy : original;
+      let fetches = 0;
+      // oxlint-disable-next-line eslint/require-await
+      const documentLoader = async (url: string) => {
+        fetches++;
+        return {
+          contextUrl: null,
+          documentUrl: url,
+          document: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            ...embedded,
+            content: "fetched",
+          },
         };
-        const json = {
-          "@context": "https://www.w3.org/ns/activitystreams",
-          id: "https://a.example/activities/1",
-          type: "Create",
-          [property]: embedded,
-        };
-        const original = await Create.fromJsonLd(json, {
-          contextLoader: mockDocumentLoader,
-        });
-        const copy = original.clone();
-        const fetching = fetchOriginal ? original : copy;
-        const untouched = fetchOriginal ? copy : original;
-        let fetches = 0;
-        // oxlint-disable-next-line eslint/require-await
-        const documentLoader = async (url: string) => {
-          fetches++;
-          return {
-            contextUrl: null,
-            documentUrl: url,
-            document: {
-              "@context": "https://www.w3.org/ns/activitystreams",
-              ...embedded,
-              content: "fetched",
-            },
-          };
-        };
-        const options = { documentLoader, contextLoader: mockDocumentLoader };
-        const fetched = property === "object"
+      };
+      const options = { documentLoader, contextLoader: mockDocumentLoader };
+      const fetched =
+        property === "object"
           ? await fetching.getObject(options)
           : (await Array.fromAsync(fetching.getAttachments(options)))[0];
-        assertInstanceOf(fetched, Note);
-        deepStrictEqual(fetched.content, "fetched");
+      assertInstanceOf(fetched, Note);
+      deepStrictEqual(fetched.content, "fetched");
 
-        // Inspect the other instance before it fetches anything itself.
-        const trusted = { crossOrigin: "trust" as const };
-        const preserved = property === "object"
+      // Inspect the other instance before it fetches anything itself.
+      const trusted = { crossOrigin: "trust" as const };
+      const preserved =
+        property === "object"
           ? await untouched.getObject(trusted)
           : (await Array.fromAsync(untouched.getAttachments(trusted)))[0];
-        assertInstanceOf(preserved, Note);
-        deepStrictEqual(preserved.content, "embedded");
-        const serialized = await original.toJsonLd() as Record<string, unknown>;
-        deepStrictEqual(
-          serialized[property],
-          fetchOriginal ? { ...embedded, content: "fetched" } : embedded,
-        );
-        const accept = new Accept({ object: untouched });
-        const acceptJson = await accept.toJsonLd() as {
-          object: Record<string, unknown>;
-        };
-        const nested = acceptJson.object;
-        deepStrictEqual(nested[property], embedded);
+      assertInstanceOf(preserved, Note);
+      deepStrictEqual(preserved.content, "embedded");
+      const serialized = (await original.toJsonLd()) as Record<string, unknown>;
+      deepStrictEqual(
+        serialized[property],
+        fetchOriginal ? { ...embedded, content: "fetched" } : embedded,
+      );
+      const accept = new Accept({ object: untouched });
+      const acceptJson = (await accept.toJsonLd()) as {
+        object: Record<string, unknown>;
+      };
+      const nested = acceptJson.object;
+      deepStrictEqual(nested[property], embedded);
 
-        // Successful lookups and their trust metadata belong to each instance.
-        const cached = property === "object"
+      // Successful lookups and their trust metadata belong to each instance.
+      const cached =
+        property === "object"
           ? await fetching.getObject(options)
           : (await Array.fromAsync(fetching.getAttachments(options)))[0];
-        strictEqual(cached, fetched);
-        deepStrictEqual(fetches, 1);
-        const independentlyFetched = property === "object"
+      strictEqual(cached, fetched);
+      deepStrictEqual(fetches, 1);
+      const independentlyFetched =
+        property === "object"
           ? await untouched.getObject(options)
           : (await Array.fromAsync(untouched.getAttachments(options)))[0];
-        assertInstanceOf(independentlyFetched, Note);
-        deepStrictEqual(independentlyFetched.content, "fetched");
-        deepStrictEqual(fetches, 2);
-        const warmedClone = fetching.clone();
-        strictEqual(
-          property === "object"
-            ? await warmedClone.getObject(options)
-            : (await Array.fromAsync(warmedClone.getAttachments(options)))[0],
-          fetched,
-        );
-        deepStrictEqual(fetches, 2);
-      },
-    );
+      assertInstanceOf(independentlyFetched, Note);
+      deepStrictEqual(independentlyFetched.content, "fetched");
+      deepStrictEqual(fetches, 2);
+      const warmedClone = fetching.clone();
+      strictEqual(
+        property === "object"
+          ? await warmedClone.getObject(options)
+          : (await Array.fromAsync(warmedClone.getAttachments(options)))[0],
+        fetched,
+      );
+      deepStrictEqual(fetches, 2);
+    });
   }
 }
 
 for (const clone of [false, true]) {
   for (const frozen of [false, true]) {
-    test(
-      `${clone ? "clone()" : "constructor"} copies ${
-        frozen ? "frozen" : "mutable"
-      } plural arrays`,
-      async () => {
-        const items = [
-          new URL("https://example.com/object"),
-          new URL("https://example.com/object"),
-        ];
-        const before = items.slice();
-        if (frozen) globalThis.Object.freeze(items);
-        const base = new Collection({});
-        const collection = clone
-          ? base.clone({ items })
-          : new Collection({ items });
-        const sibling = clone
-          ? base.clone({ items })
-          : new Collection({ items });
-        const fetched = await Array.fromAsync(collection.getItems({
+    test(`${clone ? "clone()" : "constructor"} copies ${
+      frozen ? "frozen" : "mutable"
+    } plural arrays`, async () => {
+      const items = [
+        new URL("https://example.com/object"),
+        new URL("https://example.com/object"),
+      ];
+      const before = items.slice();
+      if (frozen) globalThis.Object.freeze(items);
+      const base = new Collection({});
+      const collection = clone
+        ? base.clone({ items })
+        : new Collection({ items });
+      const sibling = clone ? base.clone({ items }) : new Collection({ items });
+      const fetched = await Array.fromAsync(
+        collection.getItems({
           documentLoader: mockDocumentLoader,
           contextLoader: mockDocumentLoader,
-        }));
-        deepStrictEqual(fetched.length, 2);
-        deepStrictEqual(fetched.map((item) => item.name), [
-          "Fetched object",
-          "Fetched object",
-        ]);
-        deepStrictEqual(items, before);
-        strictEqual(items[0], before[0]);
-        strictEqual(items[1], before[1]);
-        const siblingJson = await sibling.toJsonLd() as { items: unknown };
-        deepStrictEqual(siblingJson.items, before.map(String));
-        if (!frozen) {
-          items.push(new URL("https://example.com/extra"));
-          deepStrictEqual(collection.itemIds, before);
-          deepStrictEqual(sibling.itemIds, before);
-        }
-      },
-    );
+        }),
+      );
+      deepStrictEqual(fetched.length, 2);
+      deepStrictEqual(
+        fetched.map((item) => item.name),
+        ["Fetched object", "Fetched object"],
+      );
+      deepStrictEqual(items, before);
+      strictEqual(items[0], before[0]);
+      strictEqual(items[1], before[1]);
+      const siblingJson = (await sibling.toJsonLd()) as { items: unknown };
+      deepStrictEqual(siblingJson.items, before.map(String));
+      if (!frozen) {
+        items.push(new URL("https://example.com/extra"));
+        deepStrictEqual(collection.itemIds, before);
+        deepStrictEqual(sibling.itemIds, before);
+      }
+    });
   }
 }
 
@@ -4703,13 +4689,11 @@ test("clone() copies scalar arrays without changing sparse inputs", () => {
   const sparseNames = new Array<string>(2);
   sparseNames[1] = "kept";
   const sparse = new Object({ names: sparseNames });
-  for (
-    const instance of [
-      sparse,
-      sparse.clone(),
-      sparse.clone({ names: sparse.names }),
-    ]
-  ) {
+  for (const instance of [
+    sparse,
+    sparse.clone(),
+    sparse.clone({ names: sparse.names }),
+  ]) {
     deepStrictEqual(instance.names.length, 2);
     deepStrictEqual(0 in instance.names, false);
     deepStrictEqual(instance.names[1], "kept");
@@ -4726,13 +4710,11 @@ test("clone() preserves embedded object identity and trust", async () => {
   const documentLoader = async () => {
     throw new Error("Trusted embedded objects must not be fetched.");
   };
-  for (
-    const instance of [
-      original,
-      original.clone(),
-      original.clone({ objects: [note] }),
-    ]
-  ) {
+  for (const instance of [
+    original,
+    original.clone(),
+    original.clone({ objects: [note] }),
+  ]) {
     strictEqual(await instance.getObject({ documentLoader }), note);
     strictEqual(instance.objectId, note.id);
   }
@@ -4948,67 +4930,64 @@ test("FEP-fe34: Same-authority non-FE34 embedded objects are trusted", async () 
   deepStrictEqual(result.content, "Embedded AT Protocol note");
 });
 
-test(
-  "FEP-fe34: Embedded cross-origin objects from JSON-LD are ignored by default",
-  async () => {
-    // Mock document loader for creating the Create object from JSON-LD
-    // oxlint-disable-next-line eslint/require-await
-    const createDocumentLoader = async (url: string) => {
-      if (url === "https://example.com/create") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            "@type": "Create",
-            "@id": "https://example.com/create",
-            "actor": "https://example.com/actor",
-            "object": {
-              "@type": "Note",
-              // Different origin from parent!
-              "@id": "https://different-origin.com/note",
-              "content": "Embedded note from JSON-LD",
-            },
-          },
-        };
-      }
-      throw new Error("Document not found");
-    };
-
-    // Create object from JSON-LD (embedded objects won't be trusted)
-    const create = await Create.fromJsonLd(
-      await createDocumentLoader("https://example.com/create").then((r) =>
-        r.document
-      ),
-      { documentLoader: createDocumentLoader },
-    );
-
-    // Mock document loader that would return the "legitimate" version
-    // oxlint-disable-next-line eslint/require-await
-    const objectDocumentLoader = async (url: string) => {
-      if (url === "https://different-origin.com/note") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
+test("FEP-fe34: Embedded cross-origin objects from JSON-LD are ignored by default", async () => {
+  // Mock document loader for creating the Create object from JSON-LD
+  // oxlint-disable-next-line eslint/require-await
+  const createDocumentLoader = async (url: string) => {
+    if (url === "https://example.com/create") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Create",
+          "@id": "https://example.com/create",
+          "actor": "https://example.com/actor",
+          "object": {
             "@type": "Note",
+            // Different origin from parent!
             "@id": "https://different-origin.com/note",
-            "content": "Legitimate note from origin",
+            "content": "Embedded note from JSON-LD",
           },
-        };
-      }
-      throw new Error("Document not found");
-    };
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
 
-    // Should fetch from origin instead of trusting embedded object
-    const result = await create.getObject({
-      documentLoader: objectDocumentLoader,
-    });
-    assertInstanceOf(result, Note);
-    deepStrictEqual(result?.content, "Legitimate note from origin");
-  },
-);
+  // Create object from JSON-LD (embedded objects won't be trusted)
+  const create = await Create.fromJsonLd(
+    await createDocumentLoader("https://example.com/create").then(
+      (r) => r.document,
+    ),
+    { documentLoader: createDocumentLoader },
+  );
+
+  // Mock document loader that would return the "legitimate" version
+  // oxlint-disable-next-line eslint/require-await
+  const objectDocumentLoader = async (url: string) => {
+    if (url === "https://different-origin.com/note") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://different-origin.com/note",
+          "content": "Legitimate note from origin",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  // Should fetch from origin instead of trusting embedded object
+  const result = await create.getObject({
+    documentLoader: objectDocumentLoader,
+  });
+  assertInstanceOf(result, Note);
+  deepStrictEqual(result?.content, "Legitimate note from origin");
+});
 
 test("FEP-fe34: Constructor vs JSON-LD parsing trust difference", async () => {
   // 1. Constructor-created objects: embedded objects are trusted
@@ -5061,116 +5040,110 @@ test("FEP-fe34: Constructor vs JSON-LD parsing trust difference", async () => {
   deepStrictEqual(jsonLdResult?.content, "Fetched from origin");
 });
 
-test(
-  "FEP-fe34: Portable DID authorities are cross-origin boundaries",
-  async () => {
-    const create = await Create.fromJsonLd({
-      "@context": "https://www.w3.org/ns/activitystreams",
-      "@type": "Create",
-      "@id": "ap://did:key:z6MkOwner/create",
-      "actor": "ap://did:key:z6MkOwner/actor",
-      "object": {
-        "@type": "Note",
-        "@id": "ap://did:key:z6MkOther/note",
-        "content": "Embedded portable note",
-      },
-    });
+test("FEP-fe34: Portable DID authorities are cross-origin boundaries", async () => {
+  const create = await Create.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "@type": "Create",
+    "@id": "ap://did:key:z6MkOwner/create",
+    "actor": "ap://did:key:z6MkOwner/actor",
+    "object": {
+      "@type": "Note",
+      "@id": "ap://did:key:z6MkOther/note",
+      "content": "Embedded portable note",
+    },
+  });
 
+  // oxlint-disable-next-line eslint/require-await
+  const documentLoader = async (url: string) => {
+    if (url === "ap+ef61://did:key:z6MkOther/note") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "ap://did:key:z6MkOther/note",
+          "content": "Fetched portable note",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  const result = await create.getObject({
+    documentLoader,
+    contextLoader: mockDocumentLoader,
     // oxlint-disable-next-line eslint/require-await
-    const documentLoader = async (url: string) => {
-      if (url === "ap+ef61://did:key:z6MkOther/note") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            "@type": "Note",
-            "@id": "ap://did:key:z6MkOther/note",
-            "content": "Fetched portable note",
-          },
-        };
-      }
-      throw new Error("Document not found");
-    };
+    verifyPortableObject: async () => ({ verified: true }),
+  });
+  assertInstanceOf(result, Note);
+  deepStrictEqual(result.content, "Fetched portable note");
+});
 
-    const result = await create.getObject({
-      documentLoader,
-      contextLoader: mockDocumentLoader,
-      // oxlint-disable-next-line eslint/require-await
-      verifyPortableObject: async () => ({ verified: true }),
-    });
-    assertInstanceOf(result, Note);
-    deepStrictEqual(result.content, "Fetched portable note");
-  },
-);
-
-test(
-  "FEP-fe34: DID verification methods share portable actor cryptographic origin",
-  async () => {
-    const person = await Person.fromJsonLd({
-      "@id": "ap://did:key:z6MkOwner/actor",
-      "@type": ["https://www.w3.org/ns/activitystreams#Person"],
-      "https://w3id.org/security#assertionMethod": [{
+test("FEP-fe34: DID verification methods share portable actor cryptographic origin", async () => {
+  const person = await Person.fromJsonLd({
+    "@id": "ap://did:key:z6MkOwner/actor",
+    "@type": ["https://www.w3.org/ns/activitystreams#Person"],
+    "https://w3id.org/security#assertionMethod": [
+      {
         "@id": "did:key:z6MkOwner#z6MkOwner",
         "@type": ["https://w3id.org/security#Multikey"],
-        "https://w3id.org/security#controller": [{
-          "@id": "did:key:z6MkOwner",
-        }],
-      }],
-    });
+        "https://w3id.org/security#controller": [
+          {
+            "@id": "did:key:z6MkOwner",
+          },
+        ],
+      },
+    ],
+  });
 
-    // oxlint-disable-next-line eslint/require-await
-    const documentLoader = async (url: string) => {
-      throw new Error(`Unexpected fetch: ${url}`);
-    };
+  // oxlint-disable-next-line eslint/require-await
+  const documentLoader = async (url: string) => {
+    throw new Error(`Unexpected fetch: ${url}`);
+  };
 
-    const methods = [];
-    for await (const method of person.getAssertionMethods({ documentLoader })) {
-      methods.push(method);
-    }
+  const methods = [];
+  for await (const method of person.getAssertionMethods({ documentLoader })) {
+    methods.push(method);
+  }
 
-    deepStrictEqual(methods.length, 1);
-    assertInstanceOf(methods[0], Multikey);
-    deepStrictEqual(
-      methods[0].id,
-      new URL("did:key:z6MkOwner#z6MkOwner"),
-    );
-  },
-);
+  deepStrictEqual(methods.length, 1);
+  assertInstanceOf(methods[0], Multikey);
+  deepStrictEqual(methods[0].id, new URL("did:key:z6MkOwner#z6MkOwner"));
+});
 
-test(
-  "FEP-fe34: DID verification methods from another cryptographic origin are untrusted",
-  async () => {
-    const person = await Person.fromJsonLd({
-      "@id": "ap://did:key:z6MkOwner/actor",
-      "@type": ["https://www.w3.org/ns/activitystreams#Person"],
-      "https://w3id.org/security#assertionMethod": [{
+test("FEP-fe34: DID verification methods from another cryptographic origin are untrusted", async () => {
+  const person = await Person.fromJsonLd({
+    "@id": "ap://did:key:z6MkOwner/actor",
+    "@type": ["https://www.w3.org/ns/activitystreams#Person"],
+    "https://w3id.org/security#assertionMethod": [
+      {
         "@id": "did:key:z6MkOther#z6MkOther",
         "@type": ["https://w3id.org/security#Multikey"],
-        "https://w3id.org/security#controller": [{
-          "@id": "did:key:z6MkOther",
-        }],
-      }],
-    });
+        "https://w3id.org/security#controller": [
+          {
+            "@id": "did:key:z6MkOther",
+          },
+        ],
+      },
+    ],
+  });
 
-    let fetches = 0;
-    const methods = [];
-    for await (
-      const method of person.getAssertionMethods({
-        suppressError: true,
-        // oxlint-disable-next-line eslint/require-await
-        documentLoader: async (url) => {
-          fetches++;
-          throw new Error(`Unexpected fetch: ${url}`);
-        },
-      })
-    ) {
-      methods.push(method);
-    }
-    deepStrictEqual(methods, []);
-    deepStrictEqual(fetches, 1);
-  },
-);
+  let fetches = 0;
+  const methods = [];
+  for await (const method of person.getAssertionMethods({
+    suppressError: true,
+    // oxlint-disable-next-line eslint/require-await
+    documentLoader: async (url) => {
+      fetches++;
+      throw new Error(`Unexpected fetch: ${url}`);
+    },
+  })) {
+    methods.push(method);
+  }
+  deepStrictEqual(methods, []);
+  deepStrictEqual(fetches, 1);
+});
 
 test("FEP-fe34: Array properties respect cross-origin policy", async () => {
   // oxlint-disable-next-line eslint/require-await
@@ -5210,11 +5183,9 @@ test("FEP-fe34: Array properties respect cross-origin policy", async () => {
   });
 
   const items = [];
-  for await (
-    const item of collection.getItems({
-      documentLoader: crossOriginDocumentLoader,
-    })
-  ) {
+  for await (const item of collection.getItems({
+    documentLoader: crossOriginDocumentLoader,
+  })) {
     items.push(item);
   }
 
@@ -5262,12 +5233,10 @@ test("FEP-fe34: Array properties with crossOrigin trust option", async () => {
   });
 
   const items = [];
-  for await (
-    const item of collection.getItems({
-      documentLoader: crossOriginDocumentLoader,
-      crossOrigin: "trust",
-    })
-  ) {
+  for await (const item of collection.getItems({
+    documentLoader: crossOriginDocumentLoader,
+    crossOrigin: "trust",
+  })) {
     items.push(item);
   }
 
@@ -5298,15 +5267,13 @@ test("FEP-fe34: id-less arrays honor crossOrigin trust", async () => {
   });
 
   const items = [];
-  for await (
-    const item of collection.getItems({
-      crossOrigin: "trust",
-      // oxlint-disable-next-line eslint/require-await
-      documentLoader: async (url) => {
-        throw new Error(`Unexpected fetch: ${url}`);
-      },
-    })
-  ) {
+  for await (const item of collection.getItems({
+    crossOrigin: "trust",
+    // oxlint-disable-next-line eslint/require-await
+    documentLoader: async (url) => {
+      throw new Error(`Unexpected fetch: ${url}`);
+    },
+  })) {
     items.push(item);
   }
 
@@ -5355,107 +5322,102 @@ test("FEP-fe34: Array properties track trust per item", async () => {
   deepStrictEqual((items[0] as Note).content, "Trusted constructor note 1");
 });
 
-test(
-  "FEP-fe34: Embedded objects in arrays from JSON-LD respect cross-origin policy",
-  async () => {
-    // Mock document loader for creating the Collection object from JSON-LD
-    // oxlint-disable-next-line eslint/require-await
-    const collectionDocumentLoader = async (url: string) => {
-      if (url === "https://example.com/collection") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            "@type": "Collection",
-            "@id": "https://example.com/collection",
-            "items": [
-              {
-                "@type": "Note",
-                "@id": "https://example.com/trusted-note", // Same origin
-                "content": "Trusted embedded note from JSON-LD",
-              },
-              {
-                "@type": "Note",
-                "@id": "https://different-origin.com/untrusted-note", // Different origin!
-                "content": "Untrusted embedded note from JSON-LD",
-              },
-            ],
-          },
-        };
-      }
-      throw new Error("Document not found");
-    };
-
-    // Create collection from JSON-LD (embedded objects won't be trusted)
-    const collection = await Collection.fromJsonLd(
-      await collectionDocumentLoader("https://example.com/collection").then((
-        r,
-      ) => r.document),
-      { documentLoader: collectionDocumentLoader },
-    );
-
-    // Mock document loader for fetching objects
-    // oxlint-disable-next-line eslint/require-await
-    const itemDocumentLoader = async (url: string) => {
-      if (url === "https://example.com/trusted-note") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            "@type": "Note",
-            "@id": "https://example.com/trusted-note",
-            "content": "Trusted note from origin",
-          },
-        };
-      } else if (url === "https://different-origin.com/untrusted-note") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            "@type": "Note",
-            "@id": "https://different-origin.com/untrusted-note",
-            "content": "Legitimate note from actual origin",
-          },
-        };
-      }
-      throw new Error("Document not found");
-    };
-
-    const items = [];
-    for await (
-      const item of collection.getItems({ documentLoader: itemDocumentLoader })
-    ) {
-      items.push(item);
+test("FEP-fe34: Embedded objects in arrays from JSON-LD respect cross-origin policy", async () => {
+  // Mock document loader for creating the Collection object from JSON-LD
+  // oxlint-disable-next-line eslint/require-await
+  const collectionDocumentLoader = async (url: string) => {
+    if (url === "https://example.com/collection") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Collection",
+          "@id": "https://example.com/collection",
+          "items": [
+            {
+              "@type": "Note",
+              "@id": "https://example.com/trusted-note", // Same origin
+              "content": "Trusted embedded note from JSON-LD",
+            },
+            {
+              "@type": "Note",
+              "@id": "https://different-origin.com/untrusted-note", // Different origin!
+              "content": "Untrusted embedded note from JSON-LD",
+            },
+          ],
+        },
+      };
     }
+    throw new Error("Document not found");
+  };
 
-    // Should get both items
-    deepStrictEqual(items.length, 2);
+  // Create collection from JSON-LD (embedded objects won't be trusted)
+  const collection = await Collection.fromJsonLd(
+    await collectionDocumentLoader("https://example.com/collection").then(
+      (r) => r.document,
+    ),
+    { documentLoader: collectionDocumentLoader },
+  );
 
-    // First item (same origin) - should use embedded object since it's same-origin as parent
-    assertInstanceOf(items[0], Note);
-    deepStrictEqual(
-      (items[0] as Note).content,
-      "Trusted embedded note from JSON-LD",
-    );
+  // Mock document loader for fetching objects
+  // oxlint-disable-next-line eslint/require-await
+  const itemDocumentLoader = async (url: string) => {
+    if (url === "https://example.com/trusted-note") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://example.com/trusted-note",
+          "content": "Trusted note from origin",
+        },
+      };
+    } else if (url === "https://different-origin.com/untrusted-note") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://different-origin.com/untrusted-note",
+          "content": "Legitimate note from actual origin",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
 
-    // Second item (cross-origin) - should be fetched from origin, not embedded version
-    assertInstanceOf(items[1], Note);
-    deepStrictEqual(
-      (items[1] as Note).content,
-      "Legitimate note from actual origin",
-    );
-  },
-);
+  const items = [];
+  for await (const item of collection.getItems({
+    documentLoader: itemDocumentLoader,
+  })) {
+    items.push(item);
+  }
+
+  // Should get both items
+  deepStrictEqual(items.length, 2);
+
+  // First item (same origin) - should use embedded object since it's same-origin as parent
+  assertInstanceOf(items[0], Note);
+  deepStrictEqual(
+    (items[0] as Note).content,
+    "Trusted embedded note from JSON-LD",
+  );
+
+  // Second item (cross-origin) - should be fetched from origin, not embedded version
+  assertInstanceOf(items[1], Note);
+  deepStrictEqual(
+    (items[1] as Note).content,
+    "Legitimate note from actual origin",
+  );
+});
 
 test("FEP-0837: Commitment roundtrip preserves satisfies and resourceQuantity", async () => {
   const commitment = new Commitment({
     id: new URL("https://market.example/agreements/abc#primary"),
-    satisfies: new URL(
-      "https://market.example/proposals/abc#primary",
-    ),
+    satisfies: new URL("https://market.example/proposals/abc#primary"),
     resourceQuantity: new Measure({
       unit: "one",
       numericalValue: parseDecimal("1"),
@@ -5473,10 +5435,7 @@ test("FEP-0837: Commitment roundtrip preserves satisfies and resourceQuantity", 
   deepStrictEqual(restored.id?.href, commitment.id?.href);
   deepStrictEqual(restored.satisfies, commitment.satisfies);
   deepStrictEqual(restored.resourceQuantity?.unit, "one");
-  deepStrictEqual(
-    restored.resourceQuantity?.numericalValue,
-    parseDecimal("1"),
-  );
+  deepStrictEqual(restored.resourceQuantity?.numericalValue, parseDecimal("1"));
 });
 
 test("FEP-0837: Agreement roundtrip with both commitments", async () => {
@@ -5489,9 +5448,7 @@ test("FEP-0837: Agreement roundtrip with both commitments", async () => {
       id: new URL(
         "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#primary",
       ),
-      satisfies: new URL(
-        "https://market.example/proposals/ddde9d6f#primary",
-      ),
+      satisfies: new URL("https://market.example/proposals/ddde9d6f#primary"),
       resourceQuantity: new Measure({
         unit: "one",
         numericalValue: parseDecimal("1"),
@@ -5567,12 +5524,10 @@ test("FEP-0837: Agreement parses Accept-result example adapted from spec", async
       },
     ],
     type: "Agreement",
-    id:
-      "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2",
+    id: "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2",
     attributedTo: "https://market.example/users/alice",
     stipulates: {
-      id:
-        "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#primary",
+      id: "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#primary",
       type: "Commitment",
       satisfies:
         "https://market.example/proposals/ddde9d6f-6f3b-4770-a966-3a18ef006930#primary",
@@ -5582,8 +5537,7 @@ test("FEP-0837: Agreement parses Accept-result example adapted from spec", async
       },
     },
     stipulatesReciprocal: {
-      id:
-        "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#reciprocal",
+      id: "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#reciprocal",
       type: "Commitment",
       satisfies:
         "https://market.example/proposals/ddde9d6f-6f3b-4770-a966-3a18ef006930#reciprocal",
@@ -5822,7 +5776,8 @@ const rsaPublicKey = new CryptographicKey({
       kty: "RSA",
       alg: "RS256",
       // cSpell: disable
-      n: "yIB9rotX8G6r6_6toT-x24BUiQ_HaPH1Em9dOt4c94s-OPFoEdH7DY7Iym9A8Ll" +
+      n:
+        "yIB9rotX8G6r6_6toT-x24BUiQ_HaPH1Em9dOt4c94s-OPFoEdH7DY7Iym9A8Ll" +
         "H4JaGF8KD38bLHWe1S4x0jV3gHJKhK7veJfGZCKUENcQecBZ-YWUs5HWvUIX1vVB" +
         "__0luHrg6BQKGOrSOE-WIAxyr0qsWCFfZzQrvSnUD2yvg1arJX2xhms14uxoRd5K" +
         "g9efKSCmmQaNEapicARUmFWrIEpGFa_nUUnqimssAGw1eZFqf3wA4TjhsuARBhGa" +
@@ -5863,6 +5818,7 @@ const sampleValues: Record<string, any> = {
   }),
   "https://w3id.org/security#cryptosuiteString": "eddsa-jcs-2022",
   // deno-fmt-ignore
+  // oxfmt-ignore
   "https://w3id.org/security#multibase": new Uint8Array([
     0x8f, 0x9b, 0x5a, 0xc9, 0x14, 0x17, 0xd0, 0xd1, 0x88, 0xbe, 0xfa, 0x85,
     0x8f, 0x74, 0x44, 0x98, 0x1d, 0xc8, 0x79, 0xda, 0xba, 0x50, 0x98, 0x3c,
@@ -5873,9 +5829,7 @@ const sampleValues: Record<string, any> = {
   ]),
   "fedify:langTag": new Intl.Locale("en-Latn-US"),
   "fedify:url": new URL("https://fedify.dev/"),
-  "fedify:absoluteIri": new URL(
-    "https://creativecommons.org/licenses/by/4.0/",
-  ),
+  "fedify:absoluteIri": new URL("https://creativecommons.org/licenses/by/4.0/"),
   "fedify:gatewayUrl": new URL("https://gateway.example/"),
   "fedify:publicKey": rsaPublicKey.publicKey,
   "fedify:multibaseKey": ed25519PublicKey.publicKey,
@@ -5898,9 +5852,9 @@ for (const typeUri in types) {
   });
 }
 
-const { assertSnapshot } = await import("@std/testing/snapshot").catch(
-  () => ({ assertSnapshot: () => Promise.resolve() }),
-);
+const { assertSnapshot } = await import("@std/testing/snapshot").catch(() => ({
+  assertSnapshot: () => Promise.resolve(),
+}));
 
 for (const typeUri in types) {
   const type = types[typeUri];
@@ -5911,7 +5865,7 @@ for (const typeUri in types) {
     allProperties.map((property) =>
       !property.functional
         ? [property.pluralName, property.range.map((t) => sampleValues[t])]
-        : [property.singularName, sampleValues[property.range[0]]]
+        : [property.singularName, sampleValues[property.range[0]]],
     ),
   );
 
@@ -5948,18 +5902,17 @@ for (const typeUri in types) {
         if (!property.functional) {
           deepStrictEqual(
             await Array.fromAsync(
-              instance[`get${pascalCase(property.pluralName)}`].call(
-                instance,
-                { documentLoader: mockDocumentLoader },
-              ),
+              instance[`get${pascalCase(property.pluralName)}`].call(instance, {
+                documentLoader: mockDocumentLoader,
+              }),
             ),
             property.range.map((t) => sampleValues[t]),
           );
           deepStrictEqual(
             instance[`${property.singularName}Ids`],
-            property.range.map((t) => sampleValues[t].id).filter((i) =>
-              i != null
-            ),
+            property.range
+              .map((t) => sampleValues[t].id)
+              .filter((i) => i != null),
           );
         }
       }
@@ -5987,10 +5940,9 @@ for (const typeUri in types) {
           if (!property.functional) {
             deepStrictEqual(
               await Array.fromAsync(
-                empty[`get${pascalCase(property.pluralName)}`].call(
-                  empty,
-                  { documentLoader: mockDocumentLoader },
-                ),
+                empty[`get${pascalCase(property.pluralName)}`].call(empty, {
+                  documentLoader: mockDocumentLoader,
+                }),
               ),
               [],
             );
@@ -6016,12 +5968,13 @@ for (const typeUri in types) {
     const instance2 = new cls({
       id: new URL("https://example.com/"),
       ...globalThis.Object.fromEntries(
-        allProperties.filter((p) => !areAllScalarTypes(p.range, types)).map(
-          (p) =>
+        allProperties
+          .filter((p) => !areAllScalarTypes(p.range, types))
+          .map((p) =>
             p.functional
               ? [p.singularName, new URL("https://example.com/test")]
               : [p.pluralName, [new URL("https://example.com/test")]],
-        ),
+          ),
       ),
     });
     for (const property of allProperties) {
@@ -6033,10 +5986,9 @@ for (const typeUri in types) {
         );
       }
       if (!property.functional) {
-        deepStrictEqual(
-          instance2[`${property.singularName}Ids`],
-          [new URL("https://example.com/test")],
-        );
+        deepStrictEqual(instance2[`${property.singularName}Ids`], [
+          new URL("https://example.com/test"),
+        ]);
       }
     }
 
@@ -6107,92 +6059,77 @@ for (const typeUri in types) {
     };
 
     if (property.functional || property.singularAccessor) {
-      test(
-        `${type.name}.get${pascalCase(property.singularName)}() [auto]`,
-        async () => {
-          const instance = new cls({
-            [property.singularName]: new URL("https://example.com/test"),
-          });
-          const value =
-            await instance[`get${pascalCase(property.singularName)}`]
-              .call(instance, { documentLoader: docLoader });
-          deepStrictEqual(value, sampleValues[property.range[0]]);
+      test(`${type.name}.get${pascalCase(property.singularName)}() [auto]`, async () => {
+        const instance = new cls({
+          [property.singularName]: new URL("https://example.com/test"),
+        });
+        const value = await instance[
+          `get${pascalCase(property.singularName)}`
+        ].call(instance, { documentLoader: docLoader });
+        deepStrictEqual(value, sampleValues[property.range[0]]);
 
-          if (property.untyped) return;
-          const wrongRef = new cls({
-            [property.singularName]: new URL("https://example.com/wrong-type"),
-          });
-          await rejects(
-            () =>
-              wrongRef[`get${pascalCase(property.singularName)}`].call(
-                wrongRef,
-                {
-                  documentLoader: mockDocumentLoader,
-                },
-              ),
-            TypeError,
-          );
-        },
-      );
+        if (property.untyped) return;
+        const wrongRef = new cls({
+          [property.singularName]: new URL("https://example.com/wrong-type"),
+        });
+        await rejects(
+          () =>
+            wrongRef[`get${pascalCase(property.singularName)}`].call(wrongRef, {
+              documentLoader: mockDocumentLoader,
+            }),
+          TypeError,
+        );
+      });
     }
     if (!property.functional) {
-      test(
-        `${type.name}.get${pascalCase(property.pluralName)}() [auto]`,
-        async () => {
-          const instance = new cls({
-            [property.pluralName]: [new URL("https://example.com/test")],
-          });
-          const value = instance[`get${pascalCase(property.pluralName)}`].call(
-            instance,
-            { documentLoader: docLoader },
-          );
-          deepStrictEqual(await Array.fromAsync(value), [
-            sampleValues[property.range[0]],
-          ]);
+      test(`${type.name}.get${pascalCase(property.pluralName)}() [auto]`, async () => {
+        const instance = new cls({
+          [property.pluralName]: [new URL("https://example.com/test")],
+        });
+        const value = instance[`get${pascalCase(property.pluralName)}`].call(
+          instance,
+          { documentLoader: docLoader },
+        );
+        deepStrictEqual(await Array.fromAsync(value), [
+          sampleValues[property.range[0]],
+        ]);
 
-          if (property.untyped) return;
-          const wrongRef = new cls({
-            [property.pluralName]: [new URL("https://example.com/wrong-type")],
-          });
-          await rejects(
-            () =>
-              Array.fromAsync(
-                wrongRef[`get${pascalCase(property.pluralName)}`].call(
-                  wrongRef,
-                  {
-                    documentLoader: mockDocumentLoader,
-                  },
-                ),
-              ),
-            TypeError,
-          );
-        },
-      );
+        if (property.untyped) return;
+        const wrongRef = new cls({
+          [property.pluralName]: [new URL("https://example.com/wrong-type")],
+        });
+        await rejects(
+          () =>
+            Array.fromAsync(
+              wrongRef[`get${pascalCase(property.pluralName)}`].call(wrongRef, {
+                documentLoader: mockDocumentLoader,
+              }),
+            ),
+          TypeError,
+        );
+      });
     }
   }
 
   test(`${type.name}.fromJsonLd() [auto]`, async () => {
-    const instance = await cls.fromJsonLd(
+    const instance = (await cls.fromJsonLd(
       {
         "@id": "https://example.com/",
         "@type": typeUri,
       },
       { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader },
-    ) as vocab.Object;
+    )) as vocab.Object;
     assertInstanceOf(instance, cls);
     deepStrictEqual(instance.id, new URL("https://example.com/"));
-    deepStrictEqual(
-      await instance.toJsonLd(),
-      {
-        "@id": "https://example.com/",
-        "@type": typeUri,
-      },
-    );
+    deepStrictEqual(await instance.toJsonLd(), {
+      "@id": "https://example.com/",
+      "@type": typeUri,
+    });
     if (type.typeless) {
-      const compactJsonLd = await instance.toJsonLd({
+      const compactJsonLd = (await instance.toJsonLd({
         format: "compact",
         contextLoader: mockDocumentLoader,
-      }) as Record<string, unknown>;
+      })) as Record<string, unknown>;
       ok(
         !("type" in compactJsonLd),
         `${type.name} is typeless; compact output should not have 'type'`,
@@ -6206,18 +6143,22 @@ for (const typeUri in types) {
         {
           "@context": type.defaultContext,
           "id": "https://example.com/",
-          "type": type.compactName ??
+          "type":
+            type.compactName ??
             (type.name === "DataIntegrityProof" ? type.name : type.uri),
         },
       );
     }
 
     if (type.extends != null) {
-      await rejects(() =>
-        cls.fromJsonLd({
-          "@id": "https://example.com/",
-          "@type": "https://example.com/",
-        }), TypeError);
+      await rejects(
+        () =>
+          cls.fromJsonLd({
+            "@id": "https://example.com/",
+            "@type": "https://example.com/",
+          }),
+        TypeError,
+      );
     }
 
     await rejects(() => cls.fromJsonLd(null), TypeError);
@@ -6239,9 +6180,9 @@ for (const typeUri in types) {
       ...new Set(
         allProperties.flatMap((property) =>
           property.extraContext == null ||
-            defaultContexts.some((context) => context === property.extraContext)
+          defaultContexts.some((context) => context === property.extraContext)
             ? []
-            : [property.extraContext]
+            : [property.extraContext],
         ),
       ),
     ];
@@ -6301,12 +6242,13 @@ for (const typeUri in types) {
       id: new URL("https://example.com/"),
       ...initValues,
       ...globalThis.Object.fromEntries(
-        allProperties.filter((p) => !areAllScalarTypes(p.range, types)).map(
-          (p) =>
+        allProperties
+          .filter((p) => !areAllScalarTypes(p.range, types))
+          .map((p) =>
             p.functional
               ? [p.singularName, new URL("https://example.com/test")]
               : [p.pluralName, [new URL("https://example.com/test")]],
-        ),
+          ),
       ),
     });
     const jsonLd3 = await instance2.toJsonLd({
@@ -6346,27 +6288,28 @@ for (const typeUri in types) {
 
       const instance2 = instance.clone(
         globalThis.Object.fromEntries(
-          type.properties.filter((p) => !areAllScalarTypes(p.range, types)).map(
-            (p) =>
+          type.properties
+            .filter((p) => !areAllScalarTypes(p.range, types))
+            .map((p) =>
               p.functional
                 ? [p.singularName, new URL("https://example.com/")]
                 : [p.pluralName, [new URL("https://example.com/")]],
-          ),
+            ),
         ),
       );
       await assertSnapshot(t, Deno.inspect(instance2));
 
       const instance3 = instance.clone(
         globalThis.Object.fromEntries(
-          type.properties.filter((p) => !p.functional).map(
-            (p) => {
+          type.properties
+            .filter((p) => !p.functional)
+            .map((p) => {
               ok(!p.functional);
               return [
                 p.pluralName,
                 [sampleValues[p.range[0]], sampleValues[p.range[0]]],
               ];
-            },
-          ),
+            }),
         ),
       );
       // @ts-ignore: t is TestContext in node:test but Deno.TestContext in Deno
@@ -6386,9 +6329,12 @@ test("Announce.getObject() suppresses redirect, context, and private URL logs", 
     pinner: () => Promise.resolve(null),
     lookup: () => Promise.resolve([{ address: "93.184.215.14", family: 4 }]),
   });
-  const documentLoader = createDocumentLoader({}, {
-    openHop: (url) => publicFetch.openPublicFetch(url),
-  });
+  const documentLoader = createDocumentLoader(
+    {},
+    {
+      openHop: (url) => publicFetch.openPublicFetch(url),
+    },
+  );
   const records: LogRecord[] = [];
   const objectUrl = "https://example.com/suppression-object";
   const contextUrl = "https://example.com/suppression-context";
@@ -6406,11 +6352,13 @@ test("Announce.getObject() suppresses redirect, context, and private URL logs", 
         records.push(record);
       },
     },
-    loggers: [{
-      category: ["fedify"],
-      lowestLevel: "debug",
-      sinks: ["capture"],
-    }],
+    loggers: [
+      {
+        category: ["fedify"],
+        lowestLevel: "debug",
+        sinks: ["capture"],
+      },
+    ],
   });
   try {
     for (const scenario of scenarios) {
@@ -6463,16 +6411,22 @@ test("Announce.getObject() suppresses redirect, context, and private URL logs", 
               [],
               scenario,
             );
-            ok(records.some((r) => r.level === "warning"), scenario);
+            ok(
+              records.some((r) => r.level === "warning"),
+              scenario,
+            );
           } else {
             await rejects(() =>
               announce.getObject({
                 suppressError,
                 documentLoader,
                 contextLoader: documentLoader,
-              })
+              }),
             );
-            ok(records.some((r) => r.level === "error"), scenario);
+            ok(
+              records.some((r) => r.level === "error"),
+              scenario,
+            );
           }
           if (scenario === "private") deepStrictEqual(fetches, 0);
           if (scenario === "private redirect") deepStrictEqual(fetches, 1);
@@ -6567,10 +6521,13 @@ test("attribution chains alternate ordinary and portable suppression", async () 
       },
     });
   };
-  let person = new Person({
-    id: new URL("https://example.com/actors/root"),
-    attribution: new URL("https://example.com/actors/0"),
-  }, { documentLoader, contextLoader });
+  let person = new Person(
+    {
+      id: new URL("https://example.com/actors/root"),
+      attribution: new URL("https://example.com/actors/0"),
+    },
+    { documentLoader, contextLoader },
+  );
   const stackTraceLimit = globalThis.Object.getOwnPropertyDescriptor(
     Error,
     "stackTraceLimit",
@@ -6581,10 +6538,12 @@ test("attribution chains alternate ordinary and portable suppression", async () 
       depths[hop] = [];
       const next = await person.getAttribution({
         suppressError: true,
-        ...(hop % 2 === 0 ? {} : {
-          verifyPortableObject: () =>
-            Promise.resolve({ verified: true as const }),
-        }),
+        ...(hop % 2 === 0
+          ? {}
+          : {
+              verifyPortableObject: () =>
+                Promise.resolve({ verified: true as const }),
+            }),
       });
       assertInstanceOf(next, Person);
       deepStrictEqual(next.id, new URL(`https://example.com/actors/${hop}`));
@@ -6625,11 +6584,13 @@ test("portable accessors suppress document and context failure logs", async () =
         records.push(record);
       },
     },
-    loggers: [{
-      category: ["fedify"],
-      lowestLevel: "debug",
-      sinks: ["capture"],
-    }],
+    loggers: [
+      {
+        category: ["fedify"],
+        lowestLevel: "debug",
+        sinks: ["capture"],
+      },
+    ],
   });
   try {
     for (const failContext of [false, true]) {
@@ -6659,7 +6620,10 @@ test("portable accessors suppress document and context failure logs", async () =
           };
           if (suppressError) {
             deepStrictEqual(await announce.getObject(options), null);
-            deepStrictEqual(records.filter((r) => r.level === "error"), []);
+            deepStrictEqual(
+              records.filter((r) => r.level === "error"),
+              [],
+            );
             ok(records.some((r) => r.level === "warning"));
           } else {
             await rejects(() => announce.getObject(options));
@@ -6684,11 +6648,13 @@ test("portable verifiers suppress document logs only during dereferencing", asyn
   await reset();
   await configure({
     sinks: { capture: (record) => records.push(record) },
-    loggers: [{
-      category: ["fedify"],
-      lowestLevel: "debug",
-      sinks: ["capture"],
-    }],
+    loggers: [
+      {
+        category: ["fedify"],
+        lowestLevel: "debug",
+        sinks: ["capture"],
+      },
+    ],
   });
   try {
     for (const failVerification of [false, true]) {

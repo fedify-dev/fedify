@@ -49,9 +49,9 @@ const COLLECTION = new URL("https://example.com/person2/featured/1");
 const MUTABLE_CONTEXT = "https://remote.example/contexts/mutable";
 const RELAY = new URL("https://example.com/relay");
 const RELAY_KEY = new URL("https://example.com/relay#main-key");
-const { publicKeyPem: RELAY_PEM } = await rsaPublicKey2.toJsonLd({
+const { publicKeyPem: RELAY_PEM } = (await rsaPublicKey2.toJsonLd({
   contextLoader: mockDocumentLoader,
-}) as { publicKeyPem: string };
+})) as { publicKeyPem: string };
 
 /** The document Mastodon sends, which declares no actor. */
 function featureRequestDocument(
@@ -146,15 +146,16 @@ function setup(options: SetupOptions = {}) {
         documentUrl: url,
         document: {
           "@context": {
-            tgt: mutableLoads % 2 === 1
-              ? {
-                "@id": "https://www.w3.org/ns/activitystreams#object",
-                "@type": "@id",
-              }
-              : {
-                "@id": "https://www.w3.org/ns/activitystreams#target",
-                "@type": "@id",
-              },
+            tgt:
+              mutableLoads % 2 === 1
+                ? {
+                    "@id": "https://www.w3.org/ns/activitystreams#object",
+                    "@type": "@id",
+                  }
+                : {
+                    "@id": "https://www.w3.org/ns/activitystreams#target",
+                    "@type": "@id",
+                  },
           },
         },
       } satisfies RemoteDocument;
@@ -170,28 +171,35 @@ function setup(options: SetupOptions = {}) {
     queue: options.queue,
     manuallyStartQueue: true,
   });
-  federation.setActorDispatcher(
-    "/users/{identifier}",
-    (ctx, identifier) =>
-      new Person({
-        id: ctx.getActorUri(identifier),
-        inbox: ctx.getInboxUri(identifier),
-      }),
-  ).setKeyPairsDispatcher(() => [
-    { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
-  ]);
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
-    .on(FeatureRequest, (ctx: InboxContext<void>, activity) => {
-      if (options.failOnce != null && !options.failOnce.failed) {
-        options.failOnce.failed = true;
-        throw new Error("Temporary failure.");
-      }
-      received.push({
-        activity,
-        authentication: ctx.authentication,
-        rawActivity: (ctx as InboxContextImpl<void>).activity,
-      });
-    }, { allowActorless: options.allowActorless ?? true })
+  federation
+    .setActorDispatcher(
+      "/users/{identifier}",
+      (ctx, identifier) =>
+        new Person({
+          id: ctx.getActorUri(identifier),
+          inbox: ctx.getInboxUri(identifier),
+        }),
+    )
+    .setKeyPairsDispatcher(() => [
+      { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
+    ]);
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .on(
+      FeatureRequest,
+      (ctx: InboxContext<void>, activity) => {
+        if (options.failOnce != null && !options.failOnce.failed) {
+          options.failOnce.failed = true;
+          throw new Error("Temporary failure.");
+        }
+        received.push({
+          activity,
+          authentication: ctx.authentication,
+          rawActivity: (ctx as InboxContextImpl<void>).activity,
+        });
+      },
+      { allowActorless: options.allowActorless ?? true },
+    )
     .on(Create, () => {})
     .onRequestFinished((_ctx, report) => {
       reports.push(report);
@@ -230,10 +238,10 @@ async function withProof(
   const signed = await signObject(activity, ed25519PrivateKey, ED25519_KEY, {
     contextLoader: mockDocumentLoader,
   });
-  return await signed.toJsonLd({
+  return (await signed.toJsonLd({
     format: "compact",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
 }
 
 /**
@@ -252,13 +260,17 @@ async function withRawProof(
     "@context": [
       ...contexts,
       "https://w3id.org/security/data-integrity/v1",
-      ...(proofProperty === "proof" ? [] : [{
-        [proofProperty]: {
-          "@id": "https://w3id.org/security#proof",
-          "@type": "@id",
-          "@container": "@graph",
-        },
-      }]),
+      ...(proofProperty === "proof"
+        ? []
+        : [
+            {
+              [proofProperty]: {
+                "@id": "https://w3id.org/security#proof",
+                "@type": "@id",
+                "@container": "@graph",
+              },
+            },
+          ]),
     ],
   };
   const created = "2026-10-01T00:00:00Z";
@@ -282,8 +294,8 @@ async function withRawProof(
       "Ed25519",
       ed25519PrivateKey,
       new Uint8Array([
-        ...await digest(proofConfig),
-        ...await digest(unsecured),
+        ...(await digest(proofConfig)),
+        ...(await digest(unsecured)),
       ]),
     ),
   );
@@ -413,8 +425,9 @@ test("Actorless activities need the same origin as their signer", async () => {
     },
   });
   assertEquals(
-    spanExporter.getSpans("activitypub.inbox")[0]
-      .attributes["activitypub.verification.failure_reason"],
+    spanExporter.getSpans("activitypub.inbox")[0].attributes[
+      "activitypub.verification.failure_reason"
+    ],
     "activity-origin-mismatch",
   );
 });
@@ -450,30 +463,31 @@ test("Actorless activities reject a verified key with no authenticated principal
   });
   assertEquals(reports[0].attempts.at(-1)?.status, "verified");
   assertEquals(
-    spanExporter.getSpans("activitypub.inbox")[0]
-      .attributes["activitypub.verification.failure_reason"],
+    spanExporter.getSpans("activitypub.inbox")[0].attributes[
+      "activitypub.verification.failure_reason"
+    ],
     "no-authenticated-principal",
   );
 });
 
-for (
-  const [label, actor] of [
-    ["an anonymous actor", { type: "Person", name: "Anonymous" }],
-    ["an untyped actor", { name: "Anonymous" }],
-    ["a blank node actor", { id: "_:b0" }],
-  ] as const
-) {
+for (const [label, actor] of [
+  ["an anonymous actor", { type: "Person", name: "Anonymous" }],
+  ["an untyped actor", { name: "Anonymous" }],
+  ["a blank node actor", { id: "_:b0" }],
+] as const) {
   for (const mechanism of ["http", "lds", "proof"] as const) {
     test(`Activities with ${label} are not actorless (${mechanism})`, async () => {
       const queue = new CapturingQueue();
       const { federation, received } = setup({ queue });
       const document = featureRequestDocument({ actor });
       const response = await federation.fetch(
-        mechanism === "http" ? await postSigned(document) : post(
-          mechanism === "lds"
-            ? await withLds(document)
-            : await withRawProof(document),
-        ),
+        mechanism === "http"
+          ? await postSigned(document)
+          : post(
+              mechanism === "lds"
+                ? await withLds(document)
+                : await withRawProof(document),
+            ),
         { contextData: undefined },
       );
       assert(response.status >= 400, `${response.status}`);
@@ -508,8 +522,9 @@ test("Queued actorless activities keep their interpretation and evidence", async
   assertEquals(message.verifiedView?.source, "activity");
   // The worker, and the retry after the listener fails once, replay the
   // interpretation without loading the context again:
-  const loadsBefore = contextLoads.filter((url) => url === MUTABLE_CONTEXT)
-    .length;
+  const loadsBefore = contextLoads.filter(
+    (url) => url === MUTABLE_CONTEXT,
+  ).length;
   await processQueue(federation, queue);
   assertEquals(
     contextLoads.filter((url) => url === MUTABLE_CONTEXT).length,
@@ -590,14 +605,17 @@ test("Activities processed by older queue workers are not processed again", asyn
     contextLoaderFactory: () => mockDocumentLoader,
     authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
   });
-  federation.setActorDispatcher(
-    "/users/{identifier}",
-    (ctx, identifier) => new Person({ id: ctx.getActorUri(identifier) }),
-  ).setKeyPairsDispatcher(() => [
-    { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
-  ]);
+  federation
+    .setActorDispatcher(
+      "/users/{identifier}",
+      (ctx, identifier) => new Person({ id: ctx.getActorUri(identifier) }),
+    )
+    .setKeyPairsDispatcher(() => [
+      { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
+    ]);
   let calls = 0;
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .on(FeatureRequest, () => {
       calls++;
     });
@@ -631,12 +649,12 @@ test("An author's proof is preferred to a relay's Linked Data Signature", async 
   // The author signs the document with an Object Integrity Proof, and a relay
   // on the same origin adds its Linked Data Signature:
   const relayKey = RELAY_KEY;
-  const document = await signJsonLd(
+  const document = (await signJsonLd(
     await withRawProof(featureRequestDocument()),
     rsaPrivateKey2,
     relayKey,
     { contextLoader: mockDocumentLoader },
-  ) as unknown as Record<string, unknown>;
+  )) as unknown as Record<string, unknown>;
   const response = await federation.fetch(post(document), {
     contextData: undefined,
   });
@@ -659,12 +677,12 @@ test("A proof that cannot be verified for now is not superseded", async () => {
     ],
   });
   const relayKey = RELAY_KEY;
-  const document = await signJsonLd(
+  const document = (await signJsonLd(
     await withRawProof(featureRequestDocument()),
     rsaPrivateKey2,
     relayKey,
     { contextLoader: mockDocumentLoader },
-  ) as unknown as Record<string, unknown>;
+  )) as unknown as Record<string, unknown>;
   let status: number | undefined;
   try {
     const response = await federation.fetch(post(document), {
@@ -705,12 +723,12 @@ test("Context.routeActivity() exposes the evidence of verified proofs", async ()
 
 test("An author's aliased proof is preferred to a relay's signature", async () => {
   const { federation, received } = setup();
-  const document = await signJsonLd(
+  const document = (await signJsonLd(
     await withRawProof(featureRequestDocument(), "integrity"),
     rsaPrivateKey2,
     RELAY_KEY,
     { contextLoader: mockDocumentLoader },
-  ) as unknown as Record<string, unknown>;
+  )) as unknown as Record<string, unknown>;
   const response = await federation.fetch(post(document), {
     contextData: undefined,
   });
@@ -751,9 +769,11 @@ for (const queued of [false, true]) {
           documentUrl: url,
           document: {
             "@context": {
-              ...(preloadedContexts[url] as {
-                "@context": Record<string, unknown>;
-              })["@context"],
+              ...(
+                preloadedContexts[url] as {
+                  "@context": Record<string, unknown>;
+                }
+              )["@context"],
               object: {
                 "@id": "https://www.w3.org/ns/activitystreams#target",
                 "@type": "@id",
@@ -778,10 +798,10 @@ for (const queued of [false, true]) {
         documentLoader: async (url, options) =>
           url === activityId
             ? {
-              contextUrl: null,
-              documentUrl: url,
-              document: structuredClone(fetchedDocument),
-            }
+                contextUrl: null,
+                documentUrl: url,
+                document: structuredClone(fetchedDocument),
+              }
             : await mockDocumentLoader(url, options),
       }),
     );
@@ -790,9 +810,11 @@ for (const queued of [false, true]) {
     const [{ activity: dispatched, authentication }] = received;
     const root = authentication.expandedActivity[0];
     assertEquals(
-      (root["https://www.w3.org/ns/activitystreams#object"] as
-        | { "@id": string }[]
-        | undefined)?.[0]?.["@id"],
+      (
+        root["https://www.w3.org/ns/activitystreams#object"] as
+          | { "@id": string }[]
+          | undefined
+      )?.[0]?.["@id"],
       dispatched.objectId?.href,
     );
     assertEquals(dispatched.objectId, TARGET);
@@ -810,17 +832,15 @@ test("Activities whose contexts cannot be kept are processed immediately", async
   // Some other code expanded a document with a loader that tags this context
   // "static", so jsonld.js keeps it in a cache shared across operations, and
   // the inbox never asks its loader for it:
-  await expandDocument(
-    { "@context": cached, "z": "z" },
-    (url, options) =>
-      url === cached
-        ? Promise.resolve({
+  await expandDocument({ "@context": cached, "z": "z" }, (url, options) =>
+    url === cached
+      ? Promise.resolve({
           contextUrl: null,
           documentUrl: url,
           document: { "@context": { z: "https://example.com/z" } },
           tag: "static",
         } as RemoteDocument)
-        : mockDocumentLoader(url, options),
+      : mockDocumentLoader(url, options),
   );
   const document = featureRequestDocument({
     "@context": [

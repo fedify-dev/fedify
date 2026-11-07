@@ -82,11 +82,7 @@ export default async function testKvStore<KV extends KvStore>(
     strictEqual(await store.get(deleteKey), undefined);
     await store.delete(deleteKey);
 
-    const isolatedKeys = [
-      key("a", "b"),
-      key("a,b"),
-      key("a:b"),
-    ] as const;
+    const isolatedKeys = [key("a", "b"), key("a,b"), key("a:b")] as const;
     for (const [index, isolatedKey] of isolatedKeys.entries()) {
       await store.set(isolatedKey, index);
     }
@@ -174,9 +170,8 @@ export default async function testKvStore<KV extends KvStore>(
 
       const concurrentKey = key("cas", "concurrent");
       const results = await Promise.all(
-        Array.from(
-          { length: 8 },
-          (_, index) => cas(concurrentKey, undefined, index),
+        Array.from({ length: 8 }, (_, index) =>
+          cas(concurrentKey, undefined, index),
         ),
       );
       strictEqual(results.filter(Boolean).length, 1);
@@ -195,9 +190,7 @@ async function collect(
   return results;
 }
 
-function normalize(
-  entries: readonly KvStoreListEntry[],
-): string[] {
+function normalize(entries: readonly KvStoreListEntry[]): string[] {
   return entries.map((entry) => JSON.stringify(entry)).sort();
 }
 
@@ -206,6 +199,6 @@ function filterByPrefix(
   prefix: KvKey,
 ): KvStoreListEntry[] {
   return entries.filter((entry) =>
-    prefix.every((segment, index) => entry.key[index] === segment)
+    prefix.every((segment, index) => entry.key[index] === segment),
   );
 }

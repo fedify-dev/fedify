@@ -25,11 +25,7 @@
     "!src/vocab.ts"
   ],
   "publish": {
-    "exclude": [
-      "**/*.test.ts",
-      "tsdown.config.ts",
-      "scripts/"
-    ]
+    "exclude": ["**/*.test.ts", "tsdown.config.ts", "scripts/"]
   },
   "tasks": {
     "check": "deno fmt --check && deno check src/*.ts",

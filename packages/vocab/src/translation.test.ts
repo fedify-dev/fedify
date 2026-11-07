@@ -238,18 +238,20 @@ test("FEP-22cd organization languages, multiple translators and review-only Upda
   ok(object instanceof Article);
   deepStrictEqual(object.id, articleId);
   const byLanguage = (values: readonly (string | LanguageString)[]) =>
-    Object.fromEntries(values.map((value) => [
-      value instanceof LanguageString ? value.locale.baseName : "@none",
-      value.toString(),
-    ]));
+    Object.fromEntries(
+      values.map((value) => [
+        value instanceof LanguageString ? value.locale.baseName : "@none",
+        value.toString(),
+      ]),
+    );
   deepStrictEqual(byLanguage(object.contents), byLanguage(initial.contents));
   deepStrictEqual(object.names, initial.names);
   deepStrictEqual(object.summaries, initial.summaries);
   deepStrictEqual(object.attributionId, initial.attributionId);
-  deepStrictEqual(object.translations.map((t) => t.language?.baseName), [
-    "ko",
-    "ja",
-  ]);
+  deepStrictEqual(
+    object.translations.map((t) => t.language?.baseName),
+    ["ko", "ja"],
+  );
   deepStrictEqual(
     object.translations[0].sourceUpdated?.toString(),
     editedAt.toString(),
@@ -270,12 +272,10 @@ test("FEP-22cd organization languages, multiple translators and review-only Upda
 
 test("FEP-22cd nested fresh and cached objects compact without full-IRI terms", async () => {
   for (const child of [article(), await Article.fromJsonLd(example)]) {
-    for (
-      const wrapper of [
-        new Create({ object: child }),
-        new Collection({ items: [child] }),
-      ]
-    ) {
+    for (const wrapper of [
+      new Create({ object: child }),
+      new Collection({ items: [child] }),
+    ]) {
       for (const format of [undefined, "compact"] as const) {
         const json = record(await wrapper.toJsonLd({ format }));
         const nested = record(json.object ?? json.items);
@@ -295,12 +295,12 @@ test("FEP-22cd nested fresh and cached objects compact without full-IRI terms", 
 test("FEP-22cd all actor types use the existing linked-object getters", async () => {
   for (const Type of [Person, Organization, Group, Application, Service]) {
     const t = new Translation({ translator: new Type({ id: alice }) });
-    ok(await t.getTranslator({ documentLoader: noFetch }) instanceof Type);
+    ok((await t.getTranslator({ documentLoader: noFetch })) instanceof Type);
     const parsed = await Translation.fromJsonLd(await t.toJsonLd());
     ok(
-      await parsed.getTranslator({
+      (await parsed.getTranslator({
         documentLoader: actorLoader(Type.name),
-      }) instanceof Type,
+      })) instanceof Type,
     );
     deepStrictEqual((await Array.fromAsync(parsed.getTranslators())).length, 1);
   }
@@ -313,10 +313,12 @@ test("FEP-22cd metadata ids are not fetched or trusted as actor origins", async 
         "@context": context,
         type: "Translation",
         ...(id == null ? {} : { id }),
-        translator: [{
-          id: "https://victim.example/actor",
-          type: "Application",
-        }],
+        translator: [
+          {
+            id: "https://victim.example/actor",
+            type: "Application",
+          },
+        ],
       });
       const fetched: string[] = [];
       const documentLoader: DocumentLoader = (url) => {
@@ -331,10 +333,13 @@ test("FEP-22cd metadata ids are not fetched or trusted as actor origins", async 
       deepStrictEqual(t.id?.href, id);
     }
   }
-  const parsed = await Article.fromJsonLd({
-    ...example,
-    translations: [{ ...entry, id: "urn:translation:ko" }],
-  }, { documentLoader: noFetch });
+  const parsed = await Article.fromJsonLd(
+    {
+      ...example,
+      translations: [{ ...entry, id: "urn:translation:ko" }],
+    },
+    { documentLoader: noFetch },
+  );
   deepStrictEqual(parsed.translations[0].id?.href, "urn:translation:ko");
   await parsed.toJsonLd({ format: "compact" });
 });
@@ -348,18 +353,19 @@ async function hasCompleteCredit(
   const actors = await Array.fromAsync(
     t.getTranslators({ documentLoader, suppressError: true }),
   );
-  return actors.length > 0 && actors.length >= ids.length &&
-    actors.every((actor) => actor.id != null);
+  return (
+    actors.length > 0 &&
+    actors.length >= ids.length &&
+    actors.every((actor) => actor.id != null)
+  );
 }
 
 test("FEP-22cd unavailable, deleted, mismatched and id-less actors leave status unknown", async () => {
-  for (
-    const failedLoader of [
-      noFetch,
-      actorLoader("Tombstone"),
-      actorLoader("Person", "https://spoof.example/actor"),
-    ]
-  ) {
+  for (const failedLoader of [
+    noFetch,
+    actorLoader("Tombstone"),
+    actorLoader("Person", "https://spoof.example/actor"),
+  ]) {
     const t = new Translation({
       translators: [
         alice,
@@ -398,7 +404,7 @@ test("FEP-22cd unavailable, deleted, mismatched and id-less actors leave status 
     t.getTranslator({
       documentLoader: actorLoader("Person", "https://spoof.example/actor"),
       crossOrigin: "throw",
-    })
+    }),
   );
 });
 
@@ -428,10 +434,13 @@ test("FEP-22cd malformed metadata follows vocabulary parsing behavior", async ()
     TypeError,
   );
   // As with other value types, required FEP fields are not enforced by the parser.
-  const idOnly = await Article.fromJsonLd({
-    ...example,
-    translations: [{ id: "urn:translation:ko" }],
-  }, { documentLoader: noFetch });
+  const idOnly = await Article.fromJsonLd(
+    {
+      ...example,
+      translations: [{ id: "urn:translation:ko" }],
+    },
+    { documentLoader: noFetch },
+  );
   deepStrictEqual(idOnly.translations[0].id?.href, "urn:translation:ko");
   deepStrictEqual(idOnly.translations[0].language, null);
   deepStrictEqual(idOnly.translations[0].translatorIds, []);
@@ -499,20 +508,20 @@ test("FEP-22cd explicit actor trust remains opt-in and clones retain untrusted s
     translator: [{ id: "https://victim.example/actor", type: "Application" }],
   });
   ok(
-    await parsed.getTranslator({
+    (await parsed.getTranslator({
       documentLoader: noFetch,
       crossOrigin: "trust",
-    }) instanceof Application,
+    })) instanceof Application,
   );
   const clone = parsed.clone({ sourceUpdated });
   ok(
-    await clone.getTranslator({
+    (await clone.getTranslator({
       documentLoader: actorLoader("Person"),
-    }) instanceof Person,
+    })) instanceof Person,
   );
   const local = parsed.clone({ translator: new Application({ id: alice }) });
   ok(
-    await local.getTranslator({ documentLoader: noFetch }) instanceof
+    (await local.getTranslator({ documentLoader: noFetch })) instanceof
       Application,
   );
 });

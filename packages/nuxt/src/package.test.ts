@@ -53,10 +53,8 @@ test("package import registers built runtime files", async () => {
   const nuxt = createNuxtFixture();
   const nuxtContext = nuxt as unknown as Nuxt;
 
-  await runWithNuxtContext(
-    nuxtContext,
-    () =>
-      fedifyNuxtModule({ federationModule: "#server/federation" }, nuxtContext),
+  await runWithNuxtContext(nuxtContext, () =>
+    fedifyNuxtModule({ federationModule: "#server/federation" }, nuxtContext),
   );
 
   equal(nuxt.options.serverHandlers.length, 1);

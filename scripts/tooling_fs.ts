@@ -12,6 +12,10 @@ export const fileSystem = {
 
 /** Whether an operation failed because its path disappeared. */
 export function isNotFound(error: unknown): boolean {
-  return error != null && typeof error === "object" && "code" in error &&
-    error.code === "ENOENT";
+  return (
+    error != null &&
+    typeof error === "object" &&
+    "code" in error &&
+    error.code === "ENOENT"
+  );
 }

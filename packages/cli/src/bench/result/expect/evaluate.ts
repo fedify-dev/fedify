@@ -41,9 +41,9 @@ export function validateExpectBlock(expect: ExpectBlock): void {
     } catch (error) {
       if (!(error instanceof AssertionParseError)) throw error;
       throw new AssertionParseError(
-        `Invalid \`expect\` assertion for "${metric}": ${
-          JSON.stringify(assertion)
-        }.`,
+        `Invalid \`expect\` assertion for "${metric}": ${JSON.stringify(
+          assertion,
+        )}.`,
       );
     }
   }
@@ -78,13 +78,14 @@ export function evaluateExpect(
   const results: ExpectResult[] = [];
   for (const [metric, value] of Object.entries(expect)) {
     const assertion = typeof value === "string" ? value : value.assert;
-    const severity = typeof value === "string"
-      ? "fail"
-      : value.severity ?? "fail";
+    const severity =
+      typeof value === "string" ? "fail" : (value.severity ?? "fail");
     const { op, threshold, unit } = parseAssertion(assertion);
     const lookup = lookupMetric(metrics, metric);
     const actual = lookup?.value ?? null;
-    const pass = lookup != null && actual != null &&
+    const pass =
+      lookup != null &&
+      actual != null &&
       unitCompatible(unit, lookup.unit) &&
       compare(actual, op, threshold, lookup.unit !== "count");
     results.push({ metric, op, threshold, unit, actual, severity, pass });
@@ -211,7 +212,8 @@ function sumErrors(
     if (range == null) {
       total += error.count;
     } else if (
-      error.status != null && error.status >= range.min &&
+      error.status != null &&
+      error.status >= range.min &&
       error.status < range.max
     ) {
       total += error.count;

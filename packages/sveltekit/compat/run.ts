@@ -66,12 +66,10 @@ try {
     await writeFile(join(dir, "consumer.cts"), consumer);
     // Install packed artifacts rather than workspace links so declarations
     // resolve SvelteKit from this consumer, not the workspace's pinned 2.x.
-    await run([
-      "pnpm",
-      "install",
-      "--strict-peer-dependencies",
-      "--ignore-scripts",
-    ], dir);
+    await run(
+      ["pnpm", "install", "--strict-peer-dependencies", "--ignore-scripts"],
+      dir,
+    );
     await run(["pnpm", "exec", "tsc", "--project", "tsconfig.json"], dir);
     console.log(`Passed SvelteKit ${testCase.kit} (ESM and CommonJS).`);
   }
@@ -81,27 +79,28 @@ try {
 
 async function packFedifyPackages(dir: string): Promise<Map<string, string>> {
   const tarballs = new Map<string, string>();
-  for (
-    const name of [
-      "sveltekit",
-      "fedify",
-      "uri-template",
-      "vocab",
-      "vocab-runtime",
-      "vocab-tools",
-      "webfinger",
-    ]
-  ) {
+  for (const name of [
+    "sveltekit",
+    "fedify",
+    "uri-template",
+    "vocab",
+    "vocab-runtime",
+    "vocab-tools",
+    "webfinger",
+  ]) {
     const packageDir = join(repoRoot, "packages", name);
     const outputDir = join(dir, "packages", name);
     await mkdir(outputDir, { recursive: true });
-    await run([
-      "pnpm",
-      "pack",
-      "--config.ignore-scripts=true",
-      "--pack-destination",
-      outputDir,
-    ], packageDir);
+    await run(
+      [
+        "pnpm",
+        "pack",
+        "--config.ignore-scripts=true",
+        "--pack-destination",
+        outputDir,
+      ],
+      packageDir,
+    );
     for (const entry of await readdir(outputDir, { withFileTypes: true })) {
       if (entry.isFile() && entry.name.endsWith(".tgz")) {
         tarballs.set(`@fedify/${name}`, `file:${join(outputDir, entry.name)}`);

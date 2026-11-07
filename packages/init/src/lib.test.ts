@@ -20,7 +20,7 @@ test("isDirectoryEmpty allows an unborn Git repository", async () => {
 });
 
 test("isDirectoryEmpty allows a freshly initialized Git repository", async (t) => {
-  if (!await isGitAvailable()) {
+  if (!(await isGitAvailable())) {
     t.skip("git is not installed");
     return;
   }
@@ -60,7 +60,7 @@ test("isDirectoryEmpty rejects a Git repository with another ref", async () => {
 });
 
 test("isDirectoryEmpty rejects a Git repository with a HEAD commit", async (t) => {
-  if (!await isGitAvailable()) {
+  if (!(await isGitAvailable())) {
     t.skip("git is not installed");
     return;
   }
@@ -220,9 +220,7 @@ async function runGit(dir: string, args: string[]): Promise<void> {
   await runSubCommand(["git", "-C", dir, ...args], {});
 }
 
-async function withTempDir(
-  fn: (dir: string) => Promise<void>,
-): Promise<void> {
+async function withTempDir(fn: (dir: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "fedify-init-dir-"));
   try {
     await fn(dir);

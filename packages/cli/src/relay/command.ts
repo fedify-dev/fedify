@@ -27,11 +27,11 @@ export const relayOptions = merge(
         "--protocol",
         choice(["mastodon", "litepub"], { metavar: "TYPE" }),
         {
-          description: message`The relay protocol to use. ${
-            value("mastodon")
-          } for Mastodon-compatible relay, ${
-            value("litepub")
-          } for LitePub-compatible relay.`,
+          description: message`The relay protocol to use. ${value(
+            "mastodon",
+          )} for Mastodon-compatible relay, ${value(
+            "litepub",
+          )} for LitePub-compatible relay.`,
         },
       ),
       {
@@ -43,8 +43,7 @@ export const relayOptions = merge(
     persistent: optional(
       bindConfig(
         option("--persistent", string({ metavar: "PATH" }), {
-          description:
-            message`Path to SQLite database file for persistent storage. If not specified, uses in-memory storage which is lost when the server stops.`,
+          description: message`Path to SQLite database file for persistent storage. If not specified, uses in-memory storage which is lost when the server stops.`,
         }),
         {
           context: configContext,
@@ -53,14 +52,9 @@ export const relayOptions = merge(
       ),
     ),
     port: bindConfig(
-      option(
-        "-P",
-        "--port",
-        integer({ min: 0, max: 65535, metavar: "PORT" }),
-        {
-          description: message`The local port to listen on.`,
-        },
-      ),
+      option("-P", "--port", integer({ min: 0, max: 65535, metavar: "PORT" }), {
+        description: message`The local port to listen on.`,
+      }),
       {
         context: configContext,
         key: (config) => config.relay?.port ?? 8000,
@@ -80,8 +74,7 @@ export const relayOptions = merge(
     acceptFollow: bindConfig(
       multiple(
         option("-a", "--accept-follow", string({ metavar: "URI" }), {
-          description:
-            message`Accept follow requests from the given actor. The argument can be either an actor URI (including an FEP-ef61 portable ID) or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be accepted.`,
+          description: message`Accept follow requests from the given actor. The argument can be either an actor URI (including an FEP-ef61 portable ID) or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be accepted.`,
         }),
       ),
       {
@@ -93,8 +86,7 @@ export const relayOptions = merge(
     rejectFollow: bindConfig(
       multiple(
         option("-r", "--reject-follow", string({ metavar: "URI" }), {
-          description:
-            message`Reject follow requests from the given actor. The argument can be either an actor URI (including an FEP-ef61 portable ID) or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be rejected.`,
+          description: message`Reject follow requests from the given actor. The argument can be either an actor URI (including an FEP-ef61 portable ID) or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be rejected.`,
         }),
       ),
       {
@@ -109,16 +101,11 @@ export const relayOptions = merge(
 
 export const relayMetadata = {
   brief: message`Run an ephemeral ActivityPub relay server.`,
-  description:
-    message`Spins up an ActivityPub relay server that forwards activities between federated instances. The server can use either Mastodon or LitePub compatible relay protocol.
+  description: message`Spins up an ActivityPub relay server that forwards activities between federated instances. The server can use either Mastodon or LitePub compatible relay protocol.
 
-By default, the server is tunneled to the public internet for external access. Use ${
-      optionName("--no-tunnel")
-    } to run locally only.`,
+By default, the server is tunneled to the public internet for external access. Use ${optionName(
+    "--no-tunnel",
+  )} to run locally only.`,
 };
 
-export const relayCommand = command(
-  "relay",
-  relayOptions,
-  relayMetadata,
-);
+export const relayCommand = command("relay", relayOptions, relayMetadata);

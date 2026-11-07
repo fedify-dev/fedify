@@ -50,74 +50,59 @@ function registerBeforeResponseHook() {
   return callback;
 }
 
-test(
-  "plugin rewrites deferred 404 without matched route to 406",
-  () => {
-    const beforeResponse = registerBeforeResponseHook();
-    const response = createMockResponse(404);
-    const payload = { body: "original body" };
-    const event = {
-      context: {
-        [DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY]: true,
-      },
-      node: { res: response },
-    };
+test("plugin rewrites deferred 404 without matched route to 406", () => {
+  const beforeResponse = registerBeforeResponseHook();
+  const response = createMockResponse(404);
+  const payload = { body: "original body" };
+  const event = {
+    context: {
+      [DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY]: true,
+    },
+    node: { res: response },
+  };
 
-    beforeResponse(event as unknown as H3Event, payload);
+  beforeResponse(event as unknown as H3Event, payload);
 
-    equal(response.statusCode, 406);
-    equal(response.getHeader("content-type"), "text/plain");
-    equal(response.getHeader("vary"), "Accept");
-    equal(payload.body, NOT_ACCEPTABLE_BODY);
-    equal(
-      event.context[DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY],
-      true,
-    );
-  },
-);
+  equal(response.statusCode, 406);
+  equal(response.getHeader("content-type"), "text/plain");
+  equal(response.getHeader("vary"), "Accept");
+  equal(payload.body, NOT_ACCEPTABLE_BODY);
+  equal(event.context[DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY], true);
+});
 
-test(
-  "plugin ignores 404 when deferred flag is absent",
-  () => {
-    const beforeResponse = registerBeforeResponseHook();
-    const response = createMockResponse(404);
-    const payload = { body: "regular 404" };
-    const event: H3Event = {
-      context: {},
-      node: { res: response },
-    } as unknown as H3Event;
+test("plugin ignores 404 when deferred flag is absent", () => {
+  const beforeResponse = registerBeforeResponseHook();
+  const response = createMockResponse(404);
+  const payload = { body: "regular 404" };
+  const event: H3Event = {
+    context: {},
+    node: { res: response },
+  } as unknown as H3Event;
 
-    beforeResponse(event, payload);
+  beforeResponse(event, payload);
 
-    equal(response.statusCode, 404);
-    equal(response.getHeader("content-type"), undefined);
-    equal(payload.body, "regular 404");
-  },
-);
+  equal(response.statusCode, 404);
+  equal(response.getHeader("content-type"), undefined);
+  equal(payload.body, "regular 404");
+});
 
-test(
-  "plugin preserves shared-route 404 when Nuxt matched the route",
-  () => {
-    const beforeResponse = registerBeforeResponseHook();
-    const response = createMockResponse(404);
-    const payload = { body: "missing actor page" };
-    const event = {
-      context: {
-        [DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY]: true,
-        matchedRoute: {},
-      },
-      node: { res: response },
-    };
+test("plugin preserves shared-route 404 when Nuxt matched the route", () => {
+  const beforeResponse = registerBeforeResponseHook();
+  const response = createMockResponse(404);
+  const payload = { body: "missing actor page" };
+  const event = {
+    context: {
+      [DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY]: true,
+      matchedRoute: {},
+    },
+    node: { res: response },
+  };
 
-    beforeResponse(event as unknown as H3Event, payload);
+  beforeResponse(event as unknown as H3Event, payload);
 
-    equal(response.statusCode, 404);
-    equal(response.getHeader("content-type"), undefined);
-    equal(response.getHeader("vary"), undefined);
-    equal(payload.body, "missing actor page");
-    equal(
-      event.context[DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY],
-      true,
-    );
-  },
-);
+  equal(response.statusCode, 404);
+  equal(response.getHeader("content-type"), undefined);
+  equal(response.getHeader("vary"), undefined);
+  equal(payload.body, "missing actor page");
+  equal(event.context[DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY], true);
+});

@@ -64,9 +64,14 @@ test("String Good 5", () => {
 });
 
 test("Entries Good 1", () => {
-  const instance = new HttpHeaderLink([["https://one.example.com", {
-    rel: "preconnect",
-  }]]);
+  const instance = new HttpHeaderLink([
+    [
+      "https://one.example.com",
+      {
+        rel: "preconnect",
+      },
+    ],
+  ]);
   deepStrictEqual(instance.hasParameter("rel", "preconnect"), true);
   deepStrictEqual(instance.entries().length, 1);
   deepStrictEqual(

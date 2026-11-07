@@ -78,39 +78,51 @@ test("parseServerMetrics - null when no relevant instruments", () => {
 });
 
 test("parseServerMetrics - tolerates malformed snapshots without throwing", () => {
-  for (
-    const bad of [
-      null,
-      undefined,
-      42,
-      "nope",
-      {},
-      { scopeMetrics: "x" },
-      { scopeMetrics: [{ metrics: "x" }] },
-      {
-        scopeMetrics: [{
-          metrics: [{
-            name: "activitypub.signature.verification.duration",
-            dataPointType: "histogram",
-            dataPoints: [{
-              value: { buckets: { boundaries: null, counts: 5 } },
-            }],
-          }],
-        }],
-      },
-      {
-        scopeMetrics: [{
-          metrics: [{
-            name: "activitypub.signature.verification.duration",
-            dataPointType: "histogram",
-            dataPoints: [{
-              value: { buckets: { boundaries: [1, "x"], counts: [1, 2, 3] } },
-            }],
-          }],
-        }],
-      },
-    ]
-  ) {
+  for (const bad of [
+    null,
+    undefined,
+    42,
+    "nope",
+    {},
+    { scopeMetrics: "x" },
+    { scopeMetrics: [{ metrics: "x" }] },
+    {
+      scopeMetrics: [
+        {
+          metrics: [
+            {
+              name: "activitypub.signature.verification.duration",
+              dataPointType: "histogram",
+              dataPoints: [
+                {
+                  value: { buckets: { boundaries: null, counts: 5 } },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      scopeMetrics: [
+        {
+          metrics: [
+            {
+              name: "activitypub.signature.verification.duration",
+              dataPointType: "histogram",
+              dataPoints: [
+                {
+                  value: {
+                    buckets: { boundaries: [1, "x"], counts: [1, 2, 3] },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ]) {
     assert.strictEqual(parseServerMetrics(bad), null);
   }
 });
@@ -145,33 +157,39 @@ test("parseServerSnapshot - extracts raw histogram and queue depth", () => {
 
 test("parseServerSnapshot - extracts permanent delivery failures", () => {
   const snap = parseServerSnapshot({
-    scopeMetrics: [{
-      metrics: [{
-        name: "activitypub.delivery.permanent_failure",
-        dataPointType: "sum",
-        dataPoints: [{ value: 3 }, { value: 2 }],
-      }],
-    }],
+    scopeMetrics: [
+      {
+        metrics: [
+          {
+            name: "activitypub.delivery.permanent_failure",
+            dataPointType: "sum",
+            dataPoints: [{ value: 3 }, { value: 2 }],
+          },
+        ],
+      },
+    ],
   });
   assert.strictEqual(snap?.deliveryPermanentFailures, 5);
 });
 
 test("parseServerSnapshot - skips malformed sum data points", () => {
   const snap = parseServerSnapshot({
-    scopeMetrics: [{
-      metrics: [
-        {
-          name: "fedify.queue.task.enqueued",
-          dataPointType: "sum",
-          dataPoints: [null, { value: 5 }],
-        },
-        {
-          name: "fedify.queue.task.completed",
-          dataPointType: "sum",
-          dataPoints: [{ value: 3 }],
-        },
-      ],
-    }],
+    scopeMetrics: [
+      {
+        metrics: [
+          {
+            name: "fedify.queue.task.enqueued",
+            dataPointType: "sum",
+            dataPoints: [null, { value: 5 }],
+          },
+          {
+            name: "fedify.queue.task.completed",
+            dataPointType: "sum",
+            dataPoints: [{ value: 3 }],
+          },
+        ],
+      },
+    ],
   });
   assert.deepEqual(snap?.queueTasks, {
     enqueued: 5,
@@ -234,10 +252,13 @@ test("queueTaskRemaining - accounts for baseline backlog", () => {
   assert.strictEqual(queueTaskRemaining(diff), 0);
   assert.strictEqual(queueTaskRemaining(diff, 1), 1);
   assert.strictEqual(
-    queueTaskRemaining({
-      ...diff,
-      queueTasks: { enqueued: 1, completed: 2, failed: 0 },
-    }, 1),
+    queueTaskRemaining(
+      {
+        ...diff,
+        queueTasks: { enqueued: 1, completed: 2, failed: 0 },
+      },
+      1,
+    ),
     0,
   );
 });
@@ -322,34 +343,46 @@ test("fetchServerSnapshot - null on a failed request, empty on success", async (
 
 test("parseServerSnapshot - skips null metric entries and parses the rest", () => {
   const snap = parseServerSnapshot({
-    scopeMetrics: [{
-      metrics: [
-        null,
-        {
-          name: "activitypub.signature.verification.duration",
-          dataPointType: "histogram",
-          dataPoints: [
-            { value: { buckets: { boundaries: [5, 10], counts: [1, 2, 3] } } },
-          ],
-        },
-      ],
-    }],
+    scopeMetrics: [
+      {
+        metrics: [
+          null,
+          {
+            name: "activitypub.signature.verification.duration",
+            dataPointType: "histogram",
+            dataPoints: [
+              {
+                value: { buckets: { boundaries: [5, 10], counts: [1, 2, 3] } },
+              },
+            ],
+          },
+        ],
+      },
+    ],
   });
   assert.deepEqual(snap?.signature?.counts, [1, 2, 3]);
 });
 
 test("parseServerSnapshot - does not sum histogram points with different boundaries", () => {
   const snap = parseServerSnapshot({
-    scopeMetrics: [{
-      metrics: [{
-        name: "activitypub.signature.verification.duration",
-        dataPointType: "histogram",
-        dataPoints: [
-          { value: { buckets: { boundaries: [5, 10], counts: [1, 1, 1] } } },
-          { value: { buckets: { boundaries: [5, 20], counts: [2, 2, 2] } } },
+    scopeMetrics: [
+      {
+        metrics: [
+          {
+            name: "activitypub.signature.verification.duration",
+            dataPointType: "histogram",
+            dataPoints: [
+              {
+                value: { buckets: { boundaries: [5, 10], counts: [1, 1, 1] } },
+              },
+              {
+                value: { buckets: { boundaries: [5, 20], counts: [2, 2, 2] } },
+              },
+            ],
+          },
         ],
-      }],
-    }],
+      },
+    ],
   });
   // The second point's boundaries differ, so it is skipped, not misaligned.
   assert.deepEqual(snap?.signature?.boundaries, [5, 10]);

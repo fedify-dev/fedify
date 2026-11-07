@@ -12,10 +12,7 @@
     "url": "https://chomu.dev"
   },
   "imports": {},
-  "exclude": [
-    "dist",
-    "node_modules"
-  ],
+  "exclude": ["dist", "node_modules"],
   "publish": {
     "exclude": [
       "**/*.bench.ts",

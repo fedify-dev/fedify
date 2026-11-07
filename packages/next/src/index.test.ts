@@ -75,8 +75,8 @@ test("Non-federation request delegation", async () => {
   assert.strictEqual(isFederationRequest(request), false);
   assert.strictEqual(isFederationRequest(request2), false);
 
-  const response1 = await middleware(request) as Response;
-  const response2 = await middleware(request2) as Response;
+  const response1 = (await middleware(request)) as Response;
+  const response2 = (await middleware(request2)) as Response;
 
   assert.strictEqual(await response1.text(), "Default response");
   assert.strictEqual(await response2.text(), "Custom middleware response");
@@ -119,17 +119,15 @@ test("Custom not-found/not acceptable handler", async () => {
 const DIGEST = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
 
 test("Hashlink media route detection", () => {
-  for (
-    const path of [
-      `/.well-known/apgateway/hl:${DIGEST}`,
-      `/.well-known/apgateway/hl%3A${DIGEST}`,
-      `/.well-known/apgateway/hl%3a${DIGEST}`,
-      `/.well-known/apgateway/HL:${DIGEST}`,
-      `/.well-known/apgateway/hl:${DIGEST}?foo=bar`,
-      "/.well-known/apgateway/hl:uEiA/digest/with/slashes",
-      "/.well-known/apgateway/hl:%ZZ",
-    ]
-  ) {
+  for (const path of [
+    `/.well-known/apgateway/hl:${DIGEST}`,
+    `/.well-known/apgateway/hl%3A${DIGEST}`,
+    `/.well-known/apgateway/hl%3a${DIGEST}`,
+    `/.well-known/apgateway/HL:${DIGEST}`,
+    `/.well-known/apgateway/hl:${DIGEST}?foo=bar`,
+    "/.well-known/apgateway/hl:uEiA/digest/with/slashes",
+    "/.well-known/apgateway/hl:%ZZ",
+  ]) {
     for (const accept of ["image/*", "*/*", null]) {
       for (const method of ["GET", "HEAD", "POST"]) {
         const request = new Request(`https://example.com${path}`, {
@@ -141,18 +139,16 @@ test("Hashlink media route detection", () => {
       }
     }
   }
-  for (
-    const path of [
-      "/.well-known/apgateway",
-      "/.well-known/apgateway/",
-      `/.well-known/apgatewayhl:${DIGEST}`,
-      `/.well-known/apgateway-media/hl:${DIGEST}`,
-      `/.WELL-KNOWN/apgateway/hl:${DIGEST}`,
-      `/foo/.well-known/apgateway/hl:${DIGEST}`,
-      `/.well-known/apgateway/did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/hl:${DIGEST}`,
-      `/hl:${DIGEST}`,
-    ]
-  ) {
+  for (const path of [
+    "/.well-known/apgateway",
+    "/.well-known/apgateway/",
+    `/.well-known/apgatewayhl:${DIGEST}`,
+    `/.well-known/apgateway-media/hl:${DIGEST}`,
+    `/.WELL-KNOWN/apgateway/hl:${DIGEST}`,
+    `/foo/.well-known/apgateway/hl:${DIGEST}`,
+    `/.well-known/apgateway/did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/hl:${DIGEST}`,
+    `/hl:${DIGEST}`,
+  ]) {
     const request = new Request(`https://example.com${path}`, {
       headers: { Accept: "text/html" },
     });
@@ -195,21 +191,18 @@ test("Middleware matcher runs on hashlink media requests", async () => {
   // Next.js's server modules expect AsyncLocalStorage to be a global:
   const globals = globalThis as { AsyncLocalStorage?: unknown };
   globals.AsyncLocalStorage ??= AsyncLocalStorage;
-  const { unstable_doesMiddlewareMatch } = await import(
-    "next/experimental/testing/server"
-  );
+  const { unstable_doesMiddlewareMatch } =
+    await import("next/experimental/testing/server");
   const matches = (url: string, headers: Record<string, string> = {}) =>
     unstable_doesMiddlewareMatch({ config: MIDDLEWARE_CONFIG, url, headers });
-  for (
-    const url of [
-      `/.well-known/apgateway/hl:${DIGEST}`,
-      `/.well-known/apgateway/hl%3A${DIGEST}`,
-      `/.well-known/apgateway/hl%3a${DIGEST}`,
-      `/.well-known/apgateway/HL:${DIGEST}`,
-      `/.well-known/apgateway/hl:${DIGEST}?foo=bar`,
-      "/.well-known/apgateway/hl:uEiA/digest/with/slashes",
-    ]
-  ) {
+  for (const url of [
+    `/.well-known/apgateway/hl:${DIGEST}`,
+    `/.well-known/apgateway/hl%3A${DIGEST}`,
+    `/.well-known/apgateway/hl%3a${DIGEST}`,
+    `/.well-known/apgateway/HL:${DIGEST}`,
+    `/.well-known/apgateway/hl:${DIGEST}?foo=bar`,
+    "/.well-known/apgateway/hl:uEiA/digest/with/slashes",
+  ]) {
     assert.strictEqual(matches(url, { accept: "image/*" }), true, url);
     assert.strictEqual(matches(url, { accept: "*/*" }), true, url);
     assert.strictEqual(matches(url), true, url);
@@ -240,7 +233,7 @@ function createHashlinkFederation(
     queue: new InProcessMessageQueue(),
   });
   federation.setHashlinkMediaDispatcher((_ctx, media) =>
-    dispatch(media.digestMultibase)
+    dispatch(media.digestMultibase),
   );
   return federation;
 }
@@ -251,19 +244,19 @@ test("Hashlink media request forwarding", async () => {
     dispatched.push(digestMultibase);
     return digestMultibase === DIGEST
       ? new Response(
-        new ReadableStream({
-          start(controller) {
-            controller.enqueue(new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
-            controller.close();
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
+              controller.close();
+            },
+          }),
+          {
+            headers: {
+              "Content-Type": "image/png",
+              "Cache-Control": "public, max-age=31536000, immutable",
+            },
           },
-        }),
-        {
-          headers: {
-            "Content-Type": "image/png",
-            "Cache-Control": "public, max-age=31536000, immutable",
-          },
-        },
-      )
+        )
       : null;
   });
   const fallback: string[] = [];
@@ -361,7 +354,7 @@ test("Hashlink media request forwarding", async () => {
   assert.strictEqual(upper.status, 299);
   assert.deepStrictEqual(fallback, [
     "/.well-known/apgateway/did:key:" +
-    "z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/notes/1",
+      "z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/notes/1",
     `/.WELL-KNOWN/apgateway/hl:${DIGEST}`,
   ]);
 });

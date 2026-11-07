@@ -115,9 +115,10 @@ export class SqliteKvStore implements KvStore {
     const encodedKey = this.#encodeKey(key);
     const encodedValue = this.#encodeValue(value);
     const now = Temporal.Now.instant().epochMilliseconds;
-    const expiresAt = options?.ttl !== undefined
-      ? now + options.ttl.total({ unit: "milliseconds" })
-      : null;
+    const expiresAt =
+      options?.ttl !== undefined
+        ? now + options.ttl.total({ unit: "milliseconds" })
+        : null;
 
     this.#db
       .prepare(
@@ -164,9 +165,10 @@ export class SqliteKvStore implements KvStore {
 
     const encodedKey = this.#encodeKey(key);
     const now = Temporal.Now.instant().epochMilliseconds;
-    const expiresAt = options?.ttl !== undefined
-      ? now + options.ttl.total({ unit: "milliseconds" })
-      : null;
+    const expiresAt =
+      options?.ttl !== undefined
+        ? now + options.ttl.total({ unit: "milliseconds" })
+        : null;
 
     try {
       this.#db.exec("BEGIN IMMEDIATE");
@@ -178,9 +180,10 @@ export class SqliteKvStore implements KvStore {
           WHERE key = ? AND (expires IS NULL OR expires > ?)
         `)
         .get(encodedKey, now) as { value: string } | undefined;
-      const currentValue = currentResult === undefined
-        ? undefined
-        : this.#decodeValue(currentResult.value);
+      const currentValue =
+        currentResult === undefined
+          ? undefined
+          : this.#decodeValue(currentResult.value);
 
       if (!isEqual(currentValue, expectedValue)) {
         this.#db.exec("ROLLBACK");

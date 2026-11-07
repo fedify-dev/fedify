@@ -125,17 +125,14 @@ federation.setObjectDispatcher(
   },
 );
 
-federation.setFollowersDispatcher(
-  "/users/{identifier}/followers",
-  () => {
-    const followers = Array.from(relationStore.values());
-    const items: Recipient[] = followers.map((f) => ({
-      id: f.id,
-      inboxId: f.inboxId,
-      endpoints: f.endpoints,
-    }));
-    return { items };
-  },
-);
+federation.setFollowersDispatcher("/users/{identifier}/followers", () => {
+  const followers = Array.from(relationStore.values());
+  const items: Recipient[] = followers.map((f) => ({
+    id: f.id,
+    inboxId: f.inboxId,
+    endpoints: f.endpoints,
+  }));
+  return { items };
+});
 
 export default federation;

@@ -97,35 +97,31 @@ test("MysqlMessageQueue", { ignore: dbUrl == null }, () => {
   );
 });
 
-test(
-  "MysqlMessageQueue.getDepth()",
-  { ignore: dbUrl == null },
-  async () => {
-    if (dbUrl == null) return;
-    const pool = mysql.createPool(dbUrl);
-    const tableName = randomTableName("depth");
-    const mq = new MysqlMessageQueue(pool, { tableName });
-    try {
-      assert.deepStrictEqual(await mq.getDepth(), {
-        queued: 0,
-        ready: 0,
-        delayed: 0,
-      });
-      await mq.enqueue("ready");
-      await mq.enqueue("delayed", {
-        delay: Temporal.Duration.from({ hours: 1 }),
-      });
-      assert.deepStrictEqual(await mq.getDepth(), {
-        queued: 2,
-        ready: 1,
-        delayed: 1,
-      });
-    } finally {
-      await mq.drop();
-      await pool.end();
-    }
-  },
-);
+test("MysqlMessageQueue.getDepth()", { ignore: dbUrl == null }, async () => {
+  if (dbUrl == null) return;
+  const pool = mysql.createPool(dbUrl);
+  const tableName = randomTableName("depth");
+  const mq = new MysqlMessageQueue(pool, { tableName });
+  try {
+    assert.deepStrictEqual(await mq.getDepth(), {
+      queued: 0,
+      ready: 0,
+      delayed: 0,
+    });
+    await mq.enqueue("ready");
+    await mq.enqueue("delayed", {
+      delay: Temporal.Duration.from({ hours: 1 }),
+    });
+    assert.deepStrictEqual(await mq.getDepth(), {
+      queued: 2,
+      ready: 1,
+      delayed: 1,
+    });
+  } finally {
+    await mq.drop();
+    await pool.end();
+  }
+});
 
 // ---------------------------------------------------------------------------
 // initialize() and drop()
@@ -433,10 +429,9 @@ test(
       await waitFor(() => received.length >= 1, 10_000);
 
       // The delayed message must not appear during the first 2 seconds
-      await mq.enqueue(
-        "delayed",
-        { delay: Temporal.Duration.from({ seconds: 3 }) },
-      );
+      await mq.enqueue("delayed", {
+        delay: Temporal.Duration.from({ seconds: 3 }),
+      });
       await new Promise((r) => setTimeout(r, 2_000));
       assert.strictEqual(
         received.length,
@@ -486,9 +481,7 @@ test(
       );
 
       // Fire 30 enqueue() calls in parallel
-      await Promise.all(
-        Array.from({ length: 30 }, (_, i) => mq.enqueue(i)),
-      );
+      await Promise.all(Array.from({ length: 30 }, (_, i) => mq.enqueue(i)));
 
       await waitFor(() => received.length >= 30, 30_000);
       assert.deepStrictEqual(

@@ -110,27 +110,17 @@ test("signature verification duration uses explicit low-latency buckets", async 
     const result = await reader.collect();
     const metric = result.resourceMetrics.scopeMetrics
       .flatMap((scope) => scope.metrics)
-      .find((metric) =>
-        metric.descriptor.name ===
-          "activitypub.signature.verification.duration"
+      .find(
+        (metric) =>
+          metric.descriptor.name ===
+          "activitypub.signature.verification.duration",
       );
     assertEquals(metric?.dataPointType, DataPointType.HISTOGRAM);
     const histogram = metric as HistogramMetricData | undefined;
-    assertEquals(histogram?.dataPoints[0].value.buckets.boundaries, [
-      0.1,
-      0.25,
-      0.5,
-      1,
-      2.5,
-      5,
-      10,
-      25,
-      50,
-      100,
-      250,
-      500,
-      1000,
-    ]);
+    assertEquals(
+      histogram?.dataPoints[0].value.buckets.boundaries,
+      [0.1, 0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000],
+    );
   } finally {
     await meterProvider.shutdown();
   }
@@ -192,9 +182,7 @@ test("registerQueueDepthGauge() skips unavailable depth snapshots", async () => 
         role: point.attributes["fedify.queue.role"],
         value: point.value,
       })),
-      [
-        { state: "queued", role: "fanout", value: 7 },
-      ],
+      [{ state: "queued", role: "fanout", value: 7 }],
     );
   } finally {
     await meterProvider.shutdown();
@@ -259,15 +247,13 @@ test("registerQueueDepthGauge() queries queue depths in parallel", async () => {
 
 test("recordInboxActivity() records counter with result and activity type", () => {
   const [meterProvider, recorder] = createTestMeterProvider();
-  for (
-    const result of [
-      "queued",
-      "processed",
-      "retried",
-      "rejected",
-      "abandoned",
-    ] as const
-  ) {
+  for (const result of [
+    "queued",
+    "processed",
+    "retried",
+    "rejected",
+    "abandoned",
+  ] as const) {
     recordInboxActivity(
       meterProvider,
       result,
@@ -314,10 +300,7 @@ test("recordOutboxEnqueue() also records activitypub.outbox.activity{queued} on 
   const queued = recorder.getMeasurements("activitypub.outbox.activity");
   assertEquals(queued.length, 1);
   assertEquals(queued[0].type, "counter");
-  assertEquals(
-    queued[0].attributes["activitypub.processing.result"],
-    "queued",
-  );
+  assertEquals(queued[0].attributes["activitypub.processing.result"], "queued");
   assertEquals(
     queued[0].attributes["activitypub.activity.type"],
     "https://www.w3.org/ns/activitystreams#Create",
@@ -363,11 +346,7 @@ test("recordOutboxActivity() records counter with result and activity type", () 
 
 test("recordCircuitBreakerStateChange() records counter with bounded attributes", () => {
   const [meterProvider, recorder] = createTestMeterProvider();
-  recordCircuitBreakerStateChange(
-    meterProvider,
-    "remote.example",
-    "half_open",
-  );
+  recordCircuitBreakerStateChange(meterProvider, "remote.example", "half_open");
   const measurements = recorder.getMeasurements(
     "activitypub.circuit_breaker.state_change",
   );
@@ -398,14 +377,8 @@ test("recordKeyLookup() records counter and duration with all attributes", () =>
   assertEquals(counters.length, 1);
   assertEquals(counters[0].type, "counter");
   assertEquals(counters[0].value, 1);
-  assertEquals(
-    counters[0].attributes["activitypub.lookup.kind"],
-    "public_key",
-  );
-  assertEquals(
-    counters[0].attributes["activitypub.lookup.result"],
-    "fetched",
-  );
+  assertEquals(counters[0].attributes["activitypub.lookup.kind"], "public_key");
+  assertEquals(counters[0].attributes["activitypub.lookup.result"], "fetched");
   assertEquals(
     counters[0].attributes["activitypub.remote.host"],
     "example.com",
@@ -413,9 +386,7 @@ test("recordKeyLookup() records counter and duration with all attributes", () =>
   assertEquals(counters[0].attributes["activitypub.cache.enabled"], true);
   assertEquals(counters[0].attributes["http.response.status_code"], 200);
 
-  const durations = recorder.getMeasurements(
-    "activitypub.key.lookup.duration",
-  );
+  const durations = recorder.getMeasurements("activitypub.key.lookup.duration");
   assertEquals(durations.length, 1);
   assertEquals(durations[0].type, "histogram");
   assertEquals(durations[0].value, 42);
@@ -423,10 +394,7 @@ test("recordKeyLookup() records counter and duration with all attributes", () =>
     durations[0].attributes["activitypub.lookup.kind"],
     "public_key",
   );
-  assertEquals(
-    durations[0].attributes["activitypub.lookup.result"],
-    "fetched",
-  );
+  assertEquals(durations[0].attributes["activitypub.lookup.result"], "fetched");
   assertEquals(
     durations[0].attributes["activitypub.remote.host"],
     "example.com",
@@ -568,13 +536,11 @@ test("recordWebFingerHandle() records counter and duration with all attributes",
 
 test("recordWebFingerHandle() records each non-resolved result with the matching status code", () => {
   const [meterProvider, recorder] = createTestMeterProvider();
-  for (
-    const [result, statusCode] of [
-      ["invalid", 400],
-      ["not_found", 404],
-      ["tombstoned", 410],
-    ] as const
-  ) {
+  for (const [result, statusCode] of [
+    ["invalid", 400],
+    ["not_found", 404],
+    ["tombstoned", 410],
+  ] as const) {
     recordWebFingerHandle(meterProvider, {
       durationMs: 1,
       result,
@@ -714,11 +680,7 @@ test("recordCollectionTotalItems() records total item histogram", () => {
 
 test("classifyFetchError() classifies FetchError with 404 as not_found", () => {
   const response = new Response("", { status: 404 });
-  const error = new FetchError(
-    "https://example.com/k",
-    "not found",
-    response,
-  );
+  const error = new FetchError("https://example.com/k", "not found", response);
   assertEquals(classifyFetchError(error), {
     result: "not_found",
     statusCode: 404,
@@ -727,11 +689,7 @@ test("classifyFetchError() classifies FetchError with 404 as not_found", () => {
 
 test("classifyFetchError() classifies FetchError with 410 as not_found", () => {
   const response = new Response("", { status: 410 });
-  const error = new FetchError(
-    "https://example.com/k",
-    "gone",
-    response,
-  );
+  const error = new FetchError("https://example.com/k", "gone", response);
   assertEquals(classifyFetchError(error), {
     result: "not_found",
     statusCode: 410,
@@ -777,13 +735,11 @@ test("classifyFetchError() classifies any other thrown value as error", () => {
 test("instrumentDocumentLoader() records fetched on success", async () => {
   const [meterProvider, recorder] = createTestMeterProvider();
   const inner: DocumentLoader = (url) =>
-    Promise.resolve(
-      {
-        contextUrl: null,
-        documentUrl: url,
-        document: { ok: true },
-      } satisfies RemoteDocument,
-    );
+    Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: { ok: true },
+    } satisfies RemoteDocument);
   const wrapped = instrumentDocumentLoader(inner, {
     meterProvider,
     kind: "object",
@@ -811,11 +767,7 @@ test("instrumentDocumentLoader() records not_found on FetchError 404", async () 
   const [meterProvider, recorder] = createTestMeterProvider();
   const inner: DocumentLoader = (url) =>
     Promise.reject(
-      new FetchError(
-        url,
-        "HTTP 404",
-        new Response("", { status: 404 }),
-      ),
+      new FetchError(url, "HTTP 404", new Response("", { status: 404 })),
     );
   const wrapped = instrumentDocumentLoader(inner, {
     meterProvider,
@@ -823,10 +775,7 @@ test("instrumentDocumentLoader() records not_found on FetchError 404", async () 
     cacheEnabled: false,
   });
 
-  await assertRejects(
-    () => wrapped("https://example.com/missing"),
-    FetchError,
-  );
+  await assertRejects(() => wrapped("https://example.com/missing"), FetchError);
 
   const counter = recorder.getMeasurement("activitypub.document.fetch");
   assertEquals(counter?.attributes["activitypub.lookup.kind"], "context");
@@ -845,10 +794,7 @@ test("instrumentDocumentLoader() records network_error on TypeError", async () =
     kind: "object",
   });
 
-  await assertRejects(
-    () => wrapped("https://example.com/o"),
-    TypeError,
-  );
+  await assertRejects(() => wrapped("https://example.com/o"), TypeError);
 
   const counter = recorder.getMeasurement("activitypub.document.fetch");
   assertEquals(
@@ -863,13 +809,11 @@ test("instrumentDocumentLoader() returns inner loader unchanged when meterProvid
   let callCount = 0;
   const inner: DocumentLoader = (url) => {
     callCount++;
-    return Promise.resolve(
-      {
-        contextUrl: null,
-        documentUrl: url,
-        document: { ok: true },
-      } satisfies RemoteDocument,
-    );
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: { ok: true },
+    } satisfies RemoteDocument);
   };
   const wrapped = instrumentDocumentLoader(inner, { kind: "object" });
 
@@ -891,13 +835,11 @@ test("instrumentDocumentLoader() returns inner loader unchanged when meterProvid
 test("instrumentDocumentLoader() omits remote.host when URL is unparseable", async () => {
   const [meterProvider, recorder] = createTestMeterProvider();
   const inner: DocumentLoader = (url) =>
-    Promise.resolve(
-      {
-        contextUrl: null,
-        documentUrl: url,
-        document: {},
-      } satisfies RemoteDocument,
-    );
+    Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: {},
+    } satisfies RemoteDocument);
   const wrapped = instrumentDocumentLoader(inner, {
     meterProvider,
     kind: "other",

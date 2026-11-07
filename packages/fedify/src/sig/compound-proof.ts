@@ -60,94 +60,92 @@ export interface CompoundProofDocument {
 /** Why compound-proof discovery could not produce an atomic result. */
 export type CompoundProofDiscoveryFailureReason =
   | {
-    readonly type: "invalidJsonTree";
-    readonly path: string;
-  }
+      readonly type: "invalidJsonTree";
+      readonly path: string;
+    }
   | {
-    readonly type: "unsupportedProofShape";
-    readonly path: string;
-  }
+      readonly type: "unsupportedProofShape";
+      readonly path: string;
+    }
   | {
-    readonly type: "limitExceeded";
-    readonly limit: "depth" | "maps" | "proofs" | "bytes";
-    readonly maximum: number;
-    readonly actual: number;
-    readonly path: string;
-  };
+      readonly type: "limitExceeded";
+      readonly limit: "depth" | "maps" | "proofs" | "bytes";
+      readonly maximum: number;
+      readonly actual: number;
+      readonly path: string;
+    };
 
 /** The atomic result of bounded compound-proof discovery. */
 export type CompoundProofDiscoveryResult =
   | {
-    readonly status: "ok";
-    /** The frozen copy from which every candidate was obtained. */
-    readonly snapshot: CompoundProofJsonObject;
-    /** Secured maps ordered deepest-first, then by JSON Pointer. */
-    readonly documents: readonly CompoundProofDocument[];
-    readonly statistics: {
-      readonly byteLength: number;
-      readonly mapCount: number;
-      readonly proofCount: number;
-      readonly maxDepth: number;
-    };
-  }
+      readonly status: "ok";
+      /** The frozen copy from which every candidate was obtained. */
+      readonly snapshot: CompoundProofJsonObject;
+      /** Secured maps ordered deepest-first, then by JSON Pointer. */
+      readonly documents: readonly CompoundProofDocument[];
+      readonly statistics: {
+        readonly byteLength: number;
+        readonly mapCount: number;
+        readonly proofCount: number;
+        readonly maxDepth: number;
+      };
+    }
   | {
-    readonly status: "unsupported";
-    readonly reason: CompoundProofDiscoveryFailureReason;
-  };
+      readonly status: "unsupported";
+      readonly reason: CompoundProofDiscoveryFailureReason;
+    };
 
 /** Why a discovered map-local proof did not verify. */
 export type CompoundProofVerificationFailureReason =
   | {
-    /** A nested secured map does not carry its own JSON-LD context. */
-    readonly type: "missingContext";
-  }
+      /** A nested secured map does not carry its own JSON-LD context. */
+      readonly type: "missingContext";
+    }
   | {
-    /**
-     * The direct proof is malformed, unsupported, invalid, or left unverified
-     * because the portable-object policy rejects its map.
-     */
-    readonly type: "invalidProof";
-  };
+      /**
+       * The direct proof is malformed, unsupported, invalid, or left unverified
+       * because the portable-object policy rejects its map.
+       */
+      readonly type: "invalidProof";
+    };
 
 /** The verification result for one discovered secured map. */
-export type CompoundProofDocumentVerification =
-  & {
-    readonly path: string;
-    readonly id?: string;
-    readonly depth: number;
-  }
-  & (
-    | {
+export type CompoundProofDocumentVerification = {
+  readonly path: string;
+  readonly id?: string;
+  readonly depth: number;
+} & (
+  | {
       readonly verified: true;
       readonly key: Multikey;
     }
-    | {
+  | {
       readonly verified: false;
       readonly reason: CompoundProofVerificationFailureReason;
     }
-  );
+);
 
 /** The atomic result of bounded map-local proof verification. */
 export type CompoundProofVerificationResult =
   | {
-    readonly status: "ok";
-    /** Whether at least one direct proof was discovered and all verified. */
-    readonly verified: boolean;
-    /** The frozen copy used for every verification input. */
-    readonly snapshot: CompoundProofJsonObject;
-    /** Per-map results in deepest-first discovery order. */
-    readonly documents: readonly CompoundProofDocumentVerification[];
-    readonly statistics: {
-      readonly byteLength: number;
-      readonly mapCount: number;
-      readonly proofCount: number;
-      readonly maxDepth: number;
-    };
-  }
+      readonly status: "ok";
+      /** Whether at least one direct proof was discovered and all verified. */
+      readonly verified: boolean;
+      /** The frozen copy used for every verification input. */
+      readonly snapshot: CompoundProofJsonObject;
+      /** Per-map results in deepest-first discovery order. */
+      readonly documents: readonly CompoundProofDocumentVerification[];
+      readonly statistics: {
+        readonly byteLength: number;
+        readonly mapCount: number;
+        readonly proofCount: number;
+        readonly maxDepth: number;
+      };
+    }
   | {
-    readonly status: "unsupported";
-    readonly reason: CompoundProofDiscoveryFailureReason;
-  };
+      readonly status: "unsupported";
+      readonly reason: CompoundProofDiscoveryFailureReason;
+    };
 
 /** A portable JSON map found in the immutable compound snapshot. */
 export interface CompoundPortableObject {
@@ -173,47 +171,45 @@ export type CompoundPortableObjectFailureReason =
   | CompoundProofVerificationFailureReason
   | VerifyPortableObjectProofFailureReason
   | {
-    /** The portable map could not be interpreted by the policy layer. */
-    readonly type: "invalidPortableObject";
-  };
+      /** The portable map could not be interpreted by the policy layer. */
+      readonly type: "invalidPortableObject";
+    };
 
 /** The portable proof-policy result for one map. */
-export type CompoundPortableObjectVerification =
-  & {
-    readonly path: string;
-    readonly id: string;
-    readonly depth: number;
-  }
-  & (
-    | {
+export type CompoundPortableObjectVerification = {
+  readonly path: string;
+  readonly id: string;
+  readonly depth: number;
+} & (
+  | {
       readonly verified: true;
       readonly keys: readonly Multikey[];
     }
-    | {
+  | {
       readonly verified: false;
       readonly reason: CompoundPortableObjectFailureReason;
     }
-  );
+);
 
 /** The atomic compound result after portable-object policy is applied. */
 export type CompoundPortableObjectProofResult =
   | {
-    readonly status: "ok";
-    readonly verified: boolean;
-    readonly snapshot: CompoundProofJsonObject;
-    readonly proofs: readonly CompoundProofDocumentVerification[];
-    readonly portableObjects: readonly CompoundPortableObjectVerification[];
-    readonly statistics: {
-      readonly byteLength: number;
-      readonly mapCount: number;
-      readonly proofCount: number;
-      readonly maxDepth: number;
-    };
-  }
+      readonly status: "ok";
+      readonly verified: boolean;
+      readonly snapshot: CompoundProofJsonObject;
+      readonly proofs: readonly CompoundProofDocumentVerification[];
+      readonly portableObjects: readonly CompoundPortableObjectVerification[];
+      readonly statistics: {
+        readonly byteLength: number;
+        readonly mapCount: number;
+        readonly proofCount: number;
+        readonly maxDepth: number;
+      };
+    }
   | {
-    readonly status: "unsupported";
-    readonly reason: CompoundProofDiscoveryFailureReason;
-  };
+      readonly status: "unsupported";
+      readonly reason: CompoundProofDiscoveryFailureReason;
+    };
 
 interface PendingValue {
   readonly value: unknown;
@@ -256,9 +252,9 @@ function hasOnlyDataProperties(value: object): boolean {
     return Reflect.ownKeys(value).every((key) => {
       if (typeof key !== "string") return false;
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      return descriptor != null &&
-        "value" in descriptor &&
-        descriptor.enumerable;
+      return (
+        descriptor != null && "value" in descriptor && descriptor.enumerable
+      );
     });
   } catch {
     return false;
@@ -274,14 +270,17 @@ function hasOnlyJsonArrayProperties(value: unknown[]): boolean {
       if (typeof key !== "string") return false;
       const index = Number(key);
       if (
-        !Number.isInteger(index) || index < 0 || index >= value.length ||
+        !Number.isInteger(index) ||
+        index < 0 ||
+        index >= value.length ||
         String(index) !== key
       ) {
         return false;
       }
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
       if (
-        descriptor == null || !descriptor.enumerable ||
+        descriptor == null ||
+        !descriptor.enumerable ||
         !("value" in descriptor)
       ) {
         return false;
@@ -337,12 +336,7 @@ function addBytes(
 ): CompoundProofDiscoveryResult | undefined {
   statistics.byteLength += bytes;
   if (statistics.byteLength > limits.maxBytes) {
-    return limitExceeded(
-      "bytes",
-      limits.maxBytes,
-      statistics.byteLength,
-      path,
-    );
+    return limitExceeded("bytes", limits.maxBytes, statistics.byteLength, path);
   }
 }
 
@@ -363,13 +357,15 @@ function inspectJsonTree(
     maxDepth: 0,
   };
   const seen = new Set<object>();
-  const pending: PendingValue[] = [{
-    value: root,
-    path: "",
-    depth: 0,
-    insideProof: false,
-    insideContext: false,
-  }];
+  const pending: PendingValue[] = [
+    {
+      value: root,
+      path: "",
+      depth: 0,
+      insideProof: false,
+      insideContext: false,
+    },
+  ];
 
   while (pending.length > 0) {
     const current = pending.pop()!;
@@ -387,12 +383,7 @@ function inspectJsonTree(
       const failure = addBytes(statistics, 4, limits, current.path);
       if (failure != null) return failure;
     } else if (typeof value === "boolean") {
-      const failure = addBytes(
-        statistics,
-        value ? 4 : 5,
-        limits,
-        current.path,
-      );
+      const failure = addBytes(statistics, value ? 4 : 5, limits, current.path);
       if (failure != null) return failure;
     } else if (typeof value === "string") {
       const failure = addBytes(
@@ -463,21 +454,18 @@ function inspectJsonTree(
         );
       }
       const entries = Object.entries(value).sort(([left], [right]) =>
-        comparePaths(left, right)
+        comparePaths(left, right),
       );
       let objectBytes = 2 + Math.max(0, entries.length - 1);
       for (const [key] of entries) {
         objectBytes += encodedLength(JSON.stringify(key)) + 1;
       }
-      const failure = addBytes(
-        statistics,
-        objectBytes,
-        limits,
-        current.path,
-      );
+      const failure = addBytes(statistics, objectBytes, limits, current.path);
       if (failure != null) return failure;
 
-      const hasDirectProof = !current.insideProof && !current.insideContext &&
+      const hasDirectProof =
+        !current.insideProof &&
+        !current.insideContext &&
         Object.hasOwn(value, "proof");
       if (hasDirectProof) {
         statistics.proofCount++;
@@ -506,8 +494,8 @@ function inspectJsonTree(
           value: child,
           path: childPath(current.path, key),
           depth: current.depth + 1,
-          insideProof: current.insideProof ||
-            (hasDirectProof && key === "proof"),
+          insideProof:
+            current.insideProof || (hasDirectProof && key === "proof"),
           insideContext: current.insideContext || key === "@context",
         });
       }
@@ -562,21 +550,24 @@ function collectDocuments(
     const document = current.value;
     if (Object.hasOwn(document, "proof")) {
       const proof = document.proof as CompoundProofJsonObject;
-      const id = typeof document.id === "string"
-        ? document.id
-        : typeof document["@id"] === "string"
-        ? document["@id"]
-        : undefined;
-      documents.push(Object.freeze({
-        path: current.path,
-        id,
-        depth: current.depth,
-        securedDocument: document,
-        proof,
-      }));
+      const id =
+        typeof document.id === "string"
+          ? document.id
+          : typeof document["@id"] === "string"
+            ? document["@id"]
+            : undefined;
+      documents.push(
+        Object.freeze({
+          path: current.path,
+          id,
+          depth: current.depth,
+          securedDocument: document,
+          proof,
+        }),
+      );
     }
     const entries = Object.entries(document).sort(([left], [right]) =>
-      comparePaths(left, right)
+      comparePaths(left, right),
     );
     for (let index = entries.length - 1; index >= 0; index--) {
       const [key, value] = entries[index];
@@ -589,8 +580,9 @@ function collectDocuments(
     }
   }
 
-  documents.sort((left, right) =>
-    right.depth - left.depth || comparePaths(left.path, right.path)
+  documents.sort(
+    (left, right) =>
+      right.depth - left.depth || comparePaths(left.path, right.path),
   );
   return documents;
 }
@@ -624,16 +616,18 @@ function collectPortableObjects(
     const document = current.value;
     const id = [document.id, document["@id"]].find(isPortableIdValue);
     if (typeof id === "string") {
-      objects.push(Object.freeze({
-        path: current.path,
-        id,
-        depth: current.depth,
-        document,
-        ...(current.keyOf == null ? {} : { keyOf: current.keyOf }),
-      }));
+      objects.push(
+        Object.freeze({
+          path: current.path,
+          id,
+          depth: current.depth,
+          document,
+          ...(current.keyOf == null ? {} : { keyOf: current.keyOf }),
+        }),
+      );
     }
     const entries = Object.entries(document).sort(([left], [right]) =>
-      comparePaths(left, right)
+      comparePaths(left, right),
     );
     for (let index = entries.length - 1; index >= 0; index--) {
       const [key, value] = entries[index];
@@ -642,18 +636,17 @@ function collectPortableObjects(
         value,
         path: childPath(current.path, key),
         depth: current.depth + 1,
-        ...(
-          typeof id === "string" &&
-            (key === "publicKey" || key === "assertionMethod")
-            ? { keyOf: { path: current.path, member: key } }
-            : {}
-        ),
+        ...(typeof id === "string" &&
+        (key === "publicKey" || key === "assertionMethod")
+          ? { keyOf: { path: current.path, member: key } }
+          : {}),
       });
     }
   }
 
-  objects.sort((left, right) =>
-    right.depth - left.depth || comparePaths(left.path, right.path)
+  objects.sort(
+    (left, right) =>
+      right.depth - left.depth || comparePaths(left.path, right.path),
   );
   return objects;
 }
@@ -713,13 +706,11 @@ export function inspectCompoundPortableObjectApplicability(
     } else if (isJsonMap(value)) {
       mapCount++;
       if (mapCount > limits.maxMaps) return "indeterminate";
-      if (
-        [value.id, value["@id"]].some(isPortableIdValue)
-      ) {
+      if ([value.id, value["@id"]].some(isPortableIdValue)) {
         return "present";
       }
       if (!addByteLength(2)) return "indeterminate";
-      const children = function* (): Generator<unknown> {
+      const children = (function* (): Generator<unknown> {
         let first = true;
         for (const key in value) {
           if (!Object.hasOwn(value, key)) continue;
@@ -729,7 +720,7 @@ export function inspectCompoundPortableObjectApplicability(
           if (!addByteLength(encodedLength(JSON.stringify(key)) + 1)) return;
           yield value[key];
         }
-      }();
+      })();
       pending.push({ iterator: children, depth: frame.depth + 1 });
     }
     if (byteLength > limits.maxBytes) return "indeterminate";
@@ -797,10 +788,11 @@ function findInJsonMaps<T>(
  * @internal
  */
 export function containsCompoundPortableObject(json: unknown): boolean {
-  return findInJsonMaps(
-    json,
-    (map) => [map.id, map["@id"]].some(isPortableIdValue) ? true : undefined,
-  ) ?? false;
+  return (
+    findInJsonMaps(json, (map) =>
+      [map.id, map["@id"]].some(isPortableIdValue) ? true : undefined,
+    ) ?? false
+  );
 }
 
 /**
@@ -819,13 +811,13 @@ export function containsCompoundPortableObject(json: unknown): boolean {
 export function findUnsupportedCompoundProofShape(
   json: unknown,
 ): string | null {
-  return findInJsonMaps(
-    json,
-    (map, path) =>
+  return (
+    findInJsonMaps(json, (map, path) =>
       Object.hasOwn(map, "proof") && !isJsonMap(map.proof)
         ? childPath(path, "proof")
         : undefined,
-  ) ?? null;
+    ) ?? null
+  );
 }
 
 /**
@@ -845,17 +837,16 @@ export function findUnsupportedCompoundProofShape(
  *          proof-bearing map has its own `@context`.
  * @internal
  */
-export function findEmbeddedProofWithoutContext(
-  json: unknown,
-): string | null {
-  return findInJsonMaps(
-    json,
-    (map, path) =>
-      path !== "" && Object.hasOwn(map, "proof") &&
-        !Object.hasOwn(map, "@context")
+export function findEmbeddedProofWithoutContext(json: unknown): string | null {
+  return (
+    findInJsonMaps(json, (map, path) =>
+      path !== "" &&
+      Object.hasOwn(map, "proof") &&
+      !Object.hasOwn(map, "@context")
         ? path
         : undefined,
-  ) ?? null;
+    ) ?? null
+  );
 }
 
 /**
@@ -921,8 +912,8 @@ export async function verifyCompoundProofDocuments(
   const documents = await verifyDiscoveredProofDocuments(discovered, options);
   return {
     status: "ok",
-    verified: documents.length > 0 &&
-      documents.every((document) => document.verified),
+    verified:
+      documents.length > 0 && documents.every((document) => document.verified),
     snapshot: discovered.snapshot,
     documents,
     statistics: discovered.statistics,
@@ -932,8 +923,10 @@ export async function verifyCompoundProofDocuments(
 async function verifyDiscoveredProofDocuments(
   discovered: Extract<CompoundProofDiscoveryResult, { status: "ok" }>,
   options: VerifyProofOptions,
-  rejectedPolicies: ReadonlyMap<string, CompoundPortableObjectFailureReason> =
-    new Map(),
+  rejectedPolicies: ReadonlyMap<
+    string,
+    CompoundPortableObjectFailureReason
+  > = new Map(),
 ): Promise<readonly CompoundProofDocumentVerification[]> {
   const documents = await Promise.all(
     discovered.documents.map(async (document) => {
@@ -957,19 +950,24 @@ async function verifyDiscoveredProofDocuments(
       if (inherited != null && document.id != null) {
         try {
           subjectId = parseIri(document.id);
-        } catch { /* Diagnostic metadata must not change policy handling. */ }
+        } catch {
+          /* Diagnostic metadata must not change policy handling. */
+        }
       }
       const key = await observeAttempt(
         {
-          [verificationObservation]: inherited == null ? undefined : {
-            ...inherited,
-            attempt: undefined,
-            check: undefined,
-            subject: {
-              id: subjectId,
-              pointer: document.path,
-            },
-          },
+          [verificationObservation]:
+            inherited == null
+              ? undefined
+              : {
+                  ...inherited,
+                  attempt: undefined,
+                  check: undefined,
+                  subject: {
+                    id: subjectId,
+                    pointer: document.path,
+                  },
+                },
         },
         "objectIntegrity",
         async (observation) => {
@@ -980,24 +978,20 @@ async function verifyDiscoveredProofDocuments(
             }
             return null;
           }
-          return await verifyMapLocalProof(
-            document.securedDocument,
-            {
-              ...options,
-              [verificationObservation]: inherited == null
-                ? undefined
-                : observation,
-            },
-          );
+          return await verifyMapLocalProof(document.securedDocument, {
+            ...options,
+            [verificationObservation]:
+              inherited == null ? undefined : observation,
+          });
         },
         (key) => key != null,
       );
       return key == null
         ? Object.freeze({
-          ...metadata,
-          verified: false as const,
-          reason: { type: "invalidProof" as const },
-        })
+            ...metadata,
+            verified: false as const,
+            reason: { type: "invalidProof" as const },
+          })
         : Object.freeze({ ...metadata, verified: true as const, key });
     }),
   );
@@ -1031,9 +1025,9 @@ export async function verifyCompoundPortableObjectProofs(
   type PreparedPolicy =
     | PreparedPortableObjectProofPolicy
     | {
-      readonly prepared: false;
-      readonly reason: CompoundPortableObjectFailureReason;
-    };
+        readonly prepared: false;
+        readonly reason: CompoundPortableObjectFailureReason;
+      };
   const prepareObject = async (
     object: CompoundPortableObject,
   ): Promise<PreparedPolicy> => {
@@ -1055,14 +1049,16 @@ export async function verifyCompoundPortableObjectProofs(
   // Prepare policy once per ordinary portable map before any key work.
   const preparedByPath = new Map(
     await Promise.all(
-      collected.filter((object) => !isKeyCandidate(object)).map(
-        async (object) => [object.path, await prepareObject(object)] as const,
-      ),
+      collected
+        .filter((object) => !isKeyCandidate(object))
+        .map(
+          async (object) => [object.path, await prepareObject(object)] as const,
+        ),
     ),
   );
   const rejectedPolicies = new Map(
     [...preparedByPath].flatMap(([path, prepared]) =>
-      prepared.prepared ? [] : [[path, prepared.reason] as const]
+      prepared.prepared ? [] : [[path, prepared.reason] as const],
     ),
   );
   const proofs = await verifyDiscoveredProofDocuments(
@@ -1076,8 +1072,8 @@ export async function verifyCompoundPortableObjectProofs(
   ): Promise<CompoundPortableObjectVerification> => {
     const metadata = { path: object.path, id: object.id, depth: object.depth };
     try {
-      const prepared = preparedByPath.get(object.path) ??
-        await prepareObject(object);
+      const prepared =
+        preparedByPath.get(object.path) ?? (await prepareObject(object));
       const proof = proofByPath.get(object.path);
       const key = proof?.verified === true ? proof.key : null;
       const policy = prepared.prepared
@@ -1085,16 +1081,16 @@ export async function verifyCompoundPortableObjectProofs(
         : { verified: false as const, reason: prepared.reason };
       return policy.verified
         ? Object.freeze({
-          ...metadata,
-          id: policy.objectId,
-          verified: true as const,
-          keys: policy.keys,
-        })
+            ...metadata,
+            id: policy.objectId,
+            verified: true as const,
+            keys: policy.keys,
+          })
         : Object.freeze({
-          ...metadata,
-          verified: false as const,
-          reason: policy.reason,
-        });
+            ...metadata,
+            verified: false as const,
+            reason: policy.reason,
+          });
     } catch {
       return Object.freeze({
         ...metadata,
@@ -1104,13 +1100,11 @@ export async function verifyCompoundPortableObjectProofs(
     }
   };
   const results = new Map<string, CompoundPortableObjectVerification>();
-  for (
-    const result of await Promise.all(
-      collected.filter((object) => !isKeyCandidate(object)).map(
-        verifyPortableObject,
-      ),
-    )
-  ) {
+  for (const result of await Promise.all(
+    collected
+      .filter((object) => !isKeyCandidate(object))
+      .map(verifyPortableObject),
+  )) {
     results.set(result.path, result);
   }
   let projections = 0;
@@ -1120,14 +1114,15 @@ export async function verifyCompoundPortableObjectProofs(
     const parent = results.get(path);
     const parentObject = objectByPath.get(path);
     if (
-      parent?.verified === true && parentObject != null &&
+      parent?.verified === true &&
+      parentObject != null &&
       projections++ < MAX_KEY_PROJECTIONS &&
-      await isEmbeddedPortableKey(
+      (await isEmbeddedPortableKey(
         parentObject.document,
         member,
         object.document,
         parent.id,
-      )
+      ))
     ) {
       // The key is a part of its parent's document, which the parent's
       // proof covers:
@@ -1143,7 +1138,8 @@ export async function verifyCompoundPortableObjectProofs(
   );
   return {
     status: "ok",
-    verified: portableObjects.length > 0 &&
+    verified:
+      portableObjects.length > 0 &&
       proofs.every((proof) => proof.verified) &&
       portableObjects.every((object) => object.verified),
     snapshot: discovered.snapshot,
@@ -1203,7 +1199,7 @@ async function isEmbeddedPortableKey(
   if (parentPortableId == null) return false;
   if (
     !isSimpleContext(parent["@context"]) ||
-    Object.hasOwn(key, "@context") && !isSimpleContext(key["@context"])
+    (Object.hasOwn(key, "@context") && !isSimpleContext(key["@context"]))
   ) {
     return false;
   }
@@ -1237,24 +1233,24 @@ async function isEmbeddedPortableKey(
   if (expanded.length !== 1 || hasGraphKeyword(expanded)) return false;
   const node = expanded[0];
   if (
-    !isJsonMap(node) || typeof node["@id"] !== "string" ||
+    !isJsonMap(node) ||
+    typeof node["@id"] !== "string" ||
     getCanonicalPortableIdOf(node["@id"]) !== parentPortableId
   ) {
     return false;
   }
-  const properties = Object.keys(node).filter((property) =>
-    property !== "@id" && property !== "@type"
+  const properties = Object.keys(node).filter(
+    (property) => property !== "@id" && property !== "@type",
   );
-  if (
-    properties.length !== 1 || properties[0] !== `${SECURITY}${member}`
-  ) {
+  if (properties.length !== 1 || properties[0] !== `${SECURITY}${member}`) {
     return false;
   }
   const values = node[properties[0]];
   if (!Array.isArray(values) || values.length !== 1) return false;
   const expandedKey = values[0];
   if (
-    !isJsonMap(expandedKey) || expandedKey["@id"] !== literalIds[0] ||
+    !isJsonMap(expandedKey) ||
+    expandedKey["@id"] !== literalIds[0] ||
     Object.keys(expandedKey).some((property) => !KEY_PROPERTIES.has(property))
   ) {
     return false;
@@ -1281,8 +1277,10 @@ async function isEmbeddedPortableKey(
     const owners = expandedKey[property];
     if (owners === undefined) continue;
     if (
-      !Array.isArray(owners) || owners.length !== 1 ||
-      !isJsonMap(owners[0]) || Object.keys(owners[0]).length !== 1 ||
+      !Array.isArray(owners) ||
+      owners.length !== 1 ||
+      !isJsonMap(owners[0]) ||
+      Object.keys(owners[0]).length !== 1 ||
       typeof owners[0]["@id"] !== "string" ||
       getCanonicalPortableIdOf(owners[0]["@id"]) !== parentPortableId
     ) {
@@ -1311,8 +1309,11 @@ function isKeyIdOf(id: string, portableId: string): boolean {
   const canonical = getRawCanonicalPortableId(id);
   if (canonical == null) return false;
   const hash = canonical.indexOf("#");
-  return hash >= 0 && hash < canonical.length - 1 &&
-    canonical.slice(0, hash) === portableId;
+  return (
+    hash >= 0 &&
+    hash < canonical.length - 1 &&
+    canonical.slice(0, hash) === portableId
+  );
 }
 
 /**
@@ -1338,20 +1339,28 @@ function isSimpleContext(context: CompoundProofJsonValue | undefined): boolean {
       "@container": container,
       ...rest
     } = definition;
-    return Object.keys(rest).length < 1 &&
-      typeof id === "string" && !id.startsWith("@") &&
+    return (
+      Object.keys(rest).length < 1 &&
+      typeof id === "string" &&
+      !id.startsWith("@") &&
       (container === undefined || container === "@set") &&
-      (type === undefined || type === "@id" || type === "@vocab" ||
-        typeof type === "string" && !type.startsWith("@"));
+      (type === undefined ||
+        type === "@id" ||
+        type === "@vocab" ||
+        (typeof type === "string" && !type.startsWith("@")))
+    );
   });
 }
 
 function hasGraphKeyword(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(hasGraphKeyword);
   if (!isJsonMap(value)) return false;
-  return Object.entries(value).some(([key, child]) =>
-    key === "@graph" || key === "@included" || key === "@reverse" ||
-    hasGraphKeyword(child)
+  return Object.entries(value).some(
+    ([key, child]) =>
+      key === "@graph" ||
+      key === "@included" ||
+      key === "@reverse" ||
+      hasGraphKeyword(child),
   );
 }
 
@@ -1364,8 +1373,10 @@ function isSingleStringValue(values: unknown, datatype?: string): boolean {
   const value = values[0];
   if (!isJsonMap(value) || typeof value["@value"] !== "string") return false;
   const keys = Object.keys(value);
-  return keys.length === 1 ||
-    datatype != null && keys.length === 2 && value["@type"] === datatype;
+  return (
+    keys.length === 1 ||
+    (datatype != null && keys.length === 2 && value["@type"] === datatype)
+  );
 }
 
 /**
@@ -1387,13 +1398,13 @@ export type ServedPortableObjectFailureReason =
 export type ServedPortableObjectsResult =
   | { readonly verified: true }
   | {
-    readonly verified: false;
-    /** RFC 6901 JSON Pointer to the refused map. */
-    readonly path: string;
-    /** The portable ID of the refused map. */
-    readonly id: string;
-    readonly reason: ServedPortableObjectFailureReason;
-  };
+      readonly verified: false;
+      /** RFC 6901 JSON Pointer to the refused map. */
+      readonly path: string;
+      /** The portable ID of the refused map. */
+      readonly id: string;
+      readonly reason: ServedPortableObjectFailureReason;
+    };
 
 /**
  * FEP-2277 core types that FEP-ef61 does not require to carry proofs.
@@ -1547,7 +1558,7 @@ function isCheckableContext(context: unknown): boolean {
     typeof value === "string"
       ? Object.hasOwn(preloadedContexts, value)
       : !Array.isArray(value) &&
-        isSimpleContext(value as CompoundProofJsonValue)
+        isSimpleContext(value as CompoundProofJsonValue),
   );
 }
 
@@ -1560,7 +1571,7 @@ function hasOnlyPreloadedRemoteContexts(context: unknown): boolean {
   return values.every((value) =>
     typeof value === "string"
       ? Object.hasOwn(preloadedContexts, value)
-      : !Array.isArray(value)
+      : !Array.isArray(value),
   );
 }
 
@@ -1569,14 +1580,14 @@ function hasOnlyPreloadedRemoteContexts(context: unknown): boolean {
  * has a portable `id` or `@id` and other members.
  */
 function hasLiteralPortableObject(json: unknown): boolean {
-  return findInJsonMaps(
-    json,
-    (map) =>
+  return (
+    findInJsonMaps(json, (map) =>
       [map.id, map["@id"]].some(isPortableIdValue) &&
-        Object.keys(map).some((key) => key !== "id" && key !== "@id")
+      Object.keys(map).some((key) => key !== "id" && key !== "@id")
         ? true
         : undefined,
-  ) ?? false;
+    ) ?? false
+  );
 }
 
 function collectServedPortableMaps(
@@ -1637,7 +1648,8 @@ function collectServedPortableMaps(
     const mapContexts = hasContext ? [...contexts, map["@context"]] : contexts;
     const id = [map.id, map["@id"]].find(isPortableIdValue);
     if (
-      depth > 0 && id != null &&
+      depth > 0 &&
+      id != null &&
       Object.keys(map).some((key) => key !== "id" && key !== "@id")
     ) {
       maps.push({ path, id, map, contexts: mapContexts });
@@ -1680,7 +1692,7 @@ async function checkServedPortableMap(
   // where it sits, which is exactly the chain of the enclosing contexts as
   // long as none of them defines keyword aliases or scoped contexts:
   const flattened = contexts.flatMap((context) =>
-    Array.isArray(context) ? context : [context]
+    Array.isArray(context) ? context : [context],
   );
   if (
     flattened.length < 1 ||

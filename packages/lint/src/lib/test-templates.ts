@@ -14,7 +14,8 @@ type PropertyKey = keyof typeof properties;
  * cannot be "mismatched" against one).
  */
 type PropertyKeyWithGetter = {
-  [K in PropertyKey]: (typeof properties)[K] extends { getter: string } ? K
+  [K in PropertyKey]: (typeof properties)[K] extends { getter: string }
+    ? K
     : never;
 }[PropertyKey];
 
@@ -77,8 +78,7 @@ const createDispatcherCode = (
   dispatcherMethod: string,
   isBefore?: boolean | undefined,
 ) => {
-  const dispatcher =
-    `federation.${dispatcherMethod}(async (ctx, identifier) => []);`;
+  const dispatcher = `federation.${dispatcherMethod}(async (ctx, identifier) => []);`;
   const actor = createActorDispatcherCode(content);
   return isBefore ? `${dispatcher}\n${actor}` : `${actor}\n${dispatcher}`;
 };
@@ -123,12 +123,10 @@ const createPropertyAssignment = (
   const idName = options.idName ?? "identifier";
   const requiresIdentifier = prop.requiresIdentifier ?? true;
 
-  const methodCall = getter == null ? `"example-value"` : createMethodCall(
-    getter,
-    requiresIdentifier,
-    ctxName,
-    idName,
-  );
+  const methodCall =
+    getter == null
+      ? `"example-value"`
+      : createMethodCall(getter, requiresIdentifier, ctxName, idName);
 
   if (prop.nested) {
     return `${prop.nested.parent}: \
@@ -152,10 +150,7 @@ const createMethodCallContext = (
   requiresIdentifier: prop.requiresIdentifier ?? true,
 });
 
-const createTestCode = (
-  propertyKey: PropertyKey,
-  includeProperty: boolean,
-) => {
+const createTestCode = (propertyKey: PropertyKey, includeProperty: boolean) => {
   const prop = properties[propertyKey];
 
   return `return new Person({
@@ -185,17 +180,11 @@ function requiredDispatcherRuleTestsFactory(
     isBefore?: boolean,
   ) => string,
   isKeyRequired: false,
-): (
-  propertyKey: PropertyKey,
-  config: TestConfig,
-) => TestSuite;
+): (propertyKey: PropertyKey, config: TestConfig) => TestSuite;
 function requiredDispatcherRuleTestsFactory(
   createDispatcherCode: (content: string, dispatcherMethod: string) => string,
   isKeyRequired: true,
-): (
-  propertyKey: PropertyKey,
-  config: TestConfig,
-) => TestSuite;
+): (propertyKey: PropertyKey, config: TestConfig) => TestSuite;
 function requiredDispatcherRuleTestsFactory(
   createDispatcherCode: (
     content: string,
@@ -203,14 +192,8 @@ function requiredDispatcherRuleTestsFactory(
     isBefore?: boolean,
   ) => string,
   isKeyRequired: boolean,
-): (
-  propertyKey: PropertyKey,
-  config: TestConfig,
-) => TestSuite {
-  return function (
-    propertyKey: PropertyKey,
-    config: TestConfig,
-  ): TestSuite {
+): (propertyKey: PropertyKey, config: TestConfig) => TestSuite {
+  return function (propertyKey: PropertyKey, config: TestConfig): TestSuite {
     const { rule, ruleName } = config;
     const prop = properties[propertyKey];
     const expectedError = actorPropertyRequired(prop);
@@ -241,65 +224,67 @@ function requiredDispatcherRuleTestsFactory(
         }),
         true,
       ],
-      ...(isKeyRequired ? {} : {
-        // ✅ Good - dispatcher configured BEFORE
-        "dispatcher before separate with property": [
-          lintTest({
-            code: createDispatcherCode(
-              createTestCode(propertyKey, true),
-              prop.setter,
+      ...(isKeyRequired
+        ? {}
+        : {
+            // ✅ Good - dispatcher configured BEFORE
+            "dispatcher before separate with property": [
+              lintTest({
+                code: createDispatcherCode(
+                  createTestCode(propertyKey, true),
+                  prop.setter,
+                  true,
+                ),
+                rule,
+                ruleName,
+              }),
               true,
-            ),
-            rule,
-            ruleName,
-          }),
-          true,
-        ],
+            ],
 
-        // ✅ Good - dispatcher configured AFTER
-        "dispatcher after separate with property": [
-          lintTest({
-            code: createDispatcherCode(
-              createTestCode(propertyKey, true),
-              prop.setter,
-              false,
-            ),
-            rule,
-            ruleName,
-          }),
-          true,
-        ],
-
-        // ❌ Bad - dispatcher before, property missing
-        "dispatcher before separate property missing": [
-          lintTest({
-            code: createDispatcherCode(
-              createTestCode(propertyKey, false),
-              prop.setter,
+            // ✅ Good - dispatcher configured AFTER
+            "dispatcher after separate with property": [
+              lintTest({
+                code: createDispatcherCode(
+                  createTestCode(propertyKey, true),
+                  prop.setter,
+                  false,
+                ),
+                rule,
+                ruleName,
+              }),
               true,
-            ),
-            rule,
-            ruleName,
-            expectedError,
-          }),
-          false,
-        ],
+            ],
 
-        // ❌ Bad - dispatcher after, property missing
-        "dispatcher after separate property missing": [
-          lintTest({
-            code: createDispatcherCode(
-              createTestCode(propertyKey, false),
-              prop.setter,
+            // ❌ Bad - dispatcher before, property missing
+            "dispatcher before separate property missing": [
+              lintTest({
+                code: createDispatcherCode(
+                  createTestCode(propertyKey, false),
+                  prop.setter,
+                  true,
+                ),
+                rule,
+                ruleName,
+                expectedError,
+              }),
               false,
-            ),
-            rule,
-            ruleName,
-            expectedError,
+            ],
+
+            // ❌ Bad - dispatcher after, property missing
+            "dispatcher after separate property missing": [
+              lintTest({
+                code: createDispatcherCode(
+                  createTestCode(propertyKey, false),
+                  prop.setter,
+                  false,
+                ),
+                rule,
+                ruleName,
+                expectedError,
+              }),
+              false,
+            ],
           }),
-          false,
-        ],
-      }),
     };
   };
 }
@@ -441,9 +426,8 @@ export function createDirectActorPropertyRequiredRuleTests(
   const prop = properties[propertyKey];
   const expectedError = actorPropertyRequired(prop);
   const propertyName = prop.name;
-  const pluralName = "pluralName" in prop
-    ? prop.pluralName
-    : `${propertyName}s`;
+  const pluralName =
+    "pluralName" in prop ? prop.pluralName : `${propertyName}s`;
 
   return {
     // ✅ Good - non-Federation object
@@ -577,10 +561,14 @@ federation.setActorDispatcher(
 export function createPreferredUsernameRequiredRuleTests(
   config: TestConfig,
 ): TestSuite {
-  return createDirectActorPropertyRequiredRuleTests("preferredUsername", {
-    singular: "identifier",
-    plural: "[identifier]",
-  }, config);
+  return createDirectActorPropertyRequiredRuleTests(
+    "preferredUsername",
+    {
+      singular: "identifier",
+      plural: "[identifier]",
+    },
+    config,
+  );
 }
 
 // =============================================================================
@@ -603,13 +591,14 @@ export function createMismatchRuleTests(
   // Find a wrong getter for testing
   const wrongGetters = Object.values(properties)
     .map(getterOf)
-    .filter((getter): getter is string =>
-      getter != null && getter !== prop.getter
+    .filter(
+      (getter): getter is string => getter != null && getter !== prop.getter,
     );
   const wrongGetter = wrongGetters[0] || "getWrongUri";
-  const wrongSetter = Object.values(properties)
-    .filter((p) => p.setter !== prop.setter)
-    .map((p) => p.setter)[0] || "setWrongDispatcher";
+  const wrongSetter =
+    Object.values(properties)
+      .filter((p) => p.setter !== prop.setter)
+      .map((p) => p.setter)[0] || "setWrongDispatcher";
 
   const createLocalPropertyCode = (getter: string) =>
     createPropertyAssignment(prop, { getter });
@@ -622,30 +611,27 @@ export function createMismatchRuleTests(
   });`;
 
   return {
-    ...createPortableMismatchTests(
-      prop,
-      config,
-      (value) =>
-        createDispatcherCode(
-          `return new Person({ ${ID_PROP} ${prop.name}: ${value} });`,
-          prop.setter,
-        ),
+    ...createPortableMismatchTests(prop, config, (value) =>
+      createDispatcherCode(
+        `return new Person({ ${ID_PROP} ${prop.name}: ${value} });`,
+        prop.setter,
+      ),
     ),
     ...(!("portableGetter" in prop)
       ? {
-        "portable getter is not available for this property": [
-          lintTest({
-            code: createDispatcherCode(
-              createActorCode("getPortableInboxUri"),
-              prop.setter,
-            ),
-            rule,
-            ruleName,
-            expectedError,
-          }),
-          false,
-        ] as TestEntry,
-      }
+          "portable getter is not available for this property": [
+            lintTest({
+              code: createDispatcherCode(
+                createActorCode("getPortableInboxUri"),
+                prop.setter,
+              ),
+              rule,
+              ruleName,
+              expectedError,
+            }),
+            false,
+          ] as TestEntry,
+        }
       : {}),
     // ✅ Good - non-Federation object
     "non-federation object": [
@@ -721,13 +707,8 @@ export function createIdMismatchRuleTests(config: TestConfig): TestSuite {
   );
 
   return {
-    ...createPortableMismatchTests(
-      properties.id,
-      config,
-      (value) =>
-        createActorDispatcherCode(
-          `return new Person({ id: ${value} });`,
-        ),
+    ...createPortableMismatchTests(properties.id, config, (value) =>
+      createActorDispatcherCode(`return new Person({ id: ${value} });`),
     ),
     // ✅ Good - non-Federation object
     "non-federation object": [
@@ -747,9 +728,7 @@ export function createIdMismatchRuleTests(config: TestConfig): TestSuite {
     // ✅ Good - correct getter used
     "correct getter used": [
       lintTest({
-        code: createActorDispatcherCode(
-          `return new Person({ ${ID_PROP} });`,
-        ),
+        code: createActorDispatcherCode(`return new Person({ ${ID_PROP} });`),
         rule,
         ruleName,
       }),
@@ -818,9 +797,10 @@ function createPortableMismatchTests(
   if (prop.portableGetter == null) return {};
 
   const portableCall = `ctx.${prop.portableGetter}(identifier, did)`;
-  const wrongGetter = prop.portableGetter === "getPortableInboxUri"
-    ? "getPortableOutboxUri"
-    : "getPortableInboxUri";
+  const wrongGetter =
+    prop.portableGetter === "getPortableInboxUri"
+      ? "getPortableOutboxUri"
+      : "getPortableInboxUri";
   const wrongCall = `ctx.${wrongGetter}(identifier, did)`;
   const expectedError = actorPropertyMismatch(createMethodCallContext(prop));
   const valid = (value: string): TestEntry => [
@@ -875,9 +855,8 @@ function createPortableMismatchTests(
 /**
  * Creates common edge case tests for required rules
  */
-export const createRequiredEdgeCaseTests = requiredEdgeCaseTestsFactory(
-  createDispatcherCode,
-);
+export const createRequiredEdgeCaseTests =
+  requiredEdgeCaseTestsFactory(createDispatcherCode);
 
 /**
  * Creates edge case tests for key required rules (publicKey, assertionMethod)
@@ -889,10 +868,7 @@ export const createKeyRequiredEdgeCaseTests = requiredEdgeCaseTestsFactory(
 function requiredEdgeCaseTestsFactory(
   createDispatcherCode: (content: string, dispatcherMethod: string) => string,
 ) {
-  return function (
-    propertyKey: PropertyKey,
-    config: TestConfig,
-  ): TestSuite {
+  return function (propertyKey: PropertyKey, config: TestConfig): TestSuite {
     const { rule, ruleName } = config;
     const prop = properties[propertyKey];
     const setter = prop.setter;
@@ -1248,8 +1224,8 @@ export function createMismatchEdgeCaseTests(
   // Find a wrong getter for testing
   const wrongGetters = Object.values(properties)
     .map(getterOf)
-    .filter((getter): getter is string =>
-      getter != null && getter !== prop.getter
+    .filter(
+      (getter): getter is string => getter != null && getter !== prop.getter,
     );
   const wrongGetter = wrongGetters[0] || "getWrongUri";
 

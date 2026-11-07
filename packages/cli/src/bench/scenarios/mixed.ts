@@ -85,14 +85,15 @@ export const mixedRunner: ScenarioRunner = {
             context.assertReadDestinationAllowed?.(url, scenario ?? child),
           assertActorlessDestinationAllowed: (url, scenario) =>
             context.assertActorlessDestinationAllowed?.(url, scenario ?? child),
-        })
+        }),
       ),
     );
     const rejected = results.find((result) => result.status === "rejected");
     if (rejected != null) throw rejected.reason;
     const measurements = results
-      .filter((result): result is PromiseFulfilledResult<ScenarioMeasurement> =>
-        result.status === "fulfilled"
+      .filter(
+        (result): result is PromiseFulfilledResult<ScenarioMeasurement> =>
+          result.status === "fulfilled",
       )
       .map((result) => result.value);
     return mergeMeasurements(measurements);
@@ -100,8 +101,10 @@ export const mixedRunner: ScenarioRunner = {
 };
 
 function isServerExpectation(metric: string): boolean {
-  return metric.startsWith("signatureVerification.") ||
-    metric.startsWith("queueDrain.");
+  return (
+    metric.startsWith("signatureVerification.") ||
+    metric.startsWith("queueDrain.")
+  );
 }
 
 function validateTargetQueueObservation(
@@ -121,13 +124,18 @@ function validateTargetQueueObservation(
 }
 
 function observesTargetQueue(scenario: ResolvedScenario): boolean {
-  return scenario.type === "fanout" ||
-    (scenario.type === "failure" && faultsOf(scenario).some(isRemoteFault));
+  return (
+    scenario.type === "fanout" ||
+    (scenario.type === "failure" && faultsOf(scenario).some(isRemoteFault))
+  );
 }
 
 function producesTargetQueue(scenario: ResolvedScenario): boolean {
-  return scenario.type === "inbox" || scenario.type === "fanout" ||
-    (scenario.type === "failure" && faultsOf(scenario).some(isRemoteFault));
+  return (
+    scenario.type === "inbox" ||
+    scenario.type === "fanout" ||
+    (scenario.type === "failure" && faultsOf(scenario).some(isRemoteFault))
+  );
 }
 
 function faultsOf(scenario: ResolvedScenario): readonly string[] {
@@ -135,8 +143,12 @@ function faultsOf(scenario: ResolvedScenario): readonly string[] {
 }
 
 function isRemoteFault(fault: string): boolean {
-  return fault === "remote-404" || fault === "remote-410" ||
-    fault === "slow-inbox" || fault === "network-error";
+  return (
+    fault === "remote-404" ||
+    fault === "remote-410" ||
+    fault === "slow-inbox" ||
+    fault === "network-error"
+  );
 }
 
 function childScenarios(
@@ -145,15 +157,16 @@ function childScenarios(
 ): ResolvedScenario[] {
   const entries = scenario.raw.mix ?? [];
   const totalWeight = entries.reduce((sum, entry) => sum + entry.weight, 0);
-  const closedLoads = scenario.load.kind === "closed"
-    ? scaledClosedConcurrencies(
-      scenario.load.concurrency,
-      entries.map((entry) => entry.weight),
-    )
-    : undefined;
+  const closedLoads =
+    scenario.load.kind === "closed"
+      ? scaledClosedConcurrencies(
+          scenario.load.concurrency,
+          entries.map((entry) => entry.weight),
+        )
+      : undefined;
   return entries.map((entry, index) => {
-    const children = scenarios.filter((candidate) =>
-      candidate.name === entry.scenario
+    const children = scenarios.filter(
+      (candidate) => candidate.name === entry.scenario,
     );
     const child = children[0];
     if (child == null) {
@@ -221,8 +234,9 @@ function scaledLoad(
   }
   return {
     kind: "closed",
-    concurrency: closedConcurrency ??
-      Math.max(1, Math.round(load.concurrency * weight / totalWeight)),
+    concurrency:
+      closedConcurrency ??
+      Math.max(1, Math.round((load.concurrency * weight) / totalWeight)),
   };
 }
 
@@ -277,7 +291,7 @@ function scaledClosedConcurrencies(
   weights: readonly number[],
 ): number[] {
   const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-  const ideal = weights.map((weight) => concurrency * weight / totalWeight);
+  const ideal = weights.map((weight) => (concurrency * weight) / totalWeight);
   const allocations = weights.map(() => 1);
   for (
     let remaining = concurrency - weights.length;
@@ -336,7 +350,7 @@ export function mergeMeasurements(
   const ok = measurements.reduce((sum, m) => sum + m.requests.ok, 0);
   const histogram = mergeHistograms(measurements);
   const deliveryThroughputs = measurements.flatMap((m) =>
-    m.deliveryThroughputPerSec == null ? [] : [m.deliveryThroughputPerSec]
+    m.deliveryThroughputPerSec == null ? [] : [m.deliveryThroughputPerSec],
   );
   return {
     requests: {
@@ -349,16 +363,19 @@ export function mergeMeasurements(
       (sum, m) => sum + m.throughputPerSec,
       0,
     ),
-    ...(deliveryThroughputs.length < 1 ? {} : {
-      deliveryThroughputPerSec: deliveryThroughputs.reduce(
-        (sum, value) => sum + value,
-        0,
-      ),
-    }),
+    ...(deliveryThroughputs.length < 1
+      ? {}
+      : {
+          deliveryThroughputPerSec: deliveryThroughputs.reduce(
+            (sum, value) => sum + value,
+            0,
+          ),
+        }),
     client: {
-      latencyMs: histogram == null
-        ? mergeLatencyFallback(measurements)
-        : latencyFromHistogram(histogram),
+      latencyMs:
+        histogram == null
+          ? mergeLatencyFallback(measurements)
+          : latencyFromHistogram(histogram),
     },
     server: null,
     errors: mergeErrors(measurements),
@@ -400,10 +417,13 @@ function mergeLatencyFallback(
     p50: Math.max(...measurements.map((m) => m.client.latencyMs.p50)),
     p95: Math.max(...measurements.map((m) => m.client.latencyMs.p95)),
     p99: Math.max(...measurements.map((m) => m.client.latencyMs.p99)),
-    mean: total === 0 ? 0 : measurements.reduce(
-      (sum, m) => sum + m.client.latencyMs.mean * m.requests.total,
-      0,
-    ) / total,
+    mean:
+      total === 0
+        ? 0
+        : measurements.reduce(
+            (sum, m) => sum + m.client.latencyMs.mean * m.requests.total,
+            0,
+          ) / total,
     max: Math.max(...measurements.map((m) => m.client.latencyMs.max)),
   };
 }

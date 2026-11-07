@@ -35,10 +35,10 @@ const context = [
 
 const did = await exportDidKey(ed25519PublicKey.publicKey);
 const keyId = `${did}#${did.slice("did:key:".length)}`;
-const otherKeyPair = await crypto.subtle.generateKey("Ed25519", true, [
+const otherKeyPair = (await crypto.subtle.generateKey("Ed25519", true, [
   "sign",
   "verify",
-]) as CryptoKeyPair;
+])) as CryptoKeyPair;
 const otherDid = await exportDidKey(otherKeyPair.publicKey);
 
 const actorId = `ap://${did}/actor`;
@@ -167,10 +167,7 @@ async function verify(
   return await verifyPortableObject(document, { contextLoader, ...options });
 }
 
-function assertFailure(
-  result: VerifyPortableObjectResult,
-  type: string,
-): void {
+function assertFailure(result: VerifyPortableObjectResult, type: string): void {
   ok(!result.verified, `expected ${type}, got ${JSON.stringify(result)}`);
   strictEqual(result.reason.type, type);
 }
@@ -285,12 +282,14 @@ test("verifyPortableObject() trusts unsecured collections of compatible-ID actor
   // compatible identifiers:
   const compatibleActorId = gatewayUrl(gw1, actorId);
   const compatibleOutboxId = gatewayUrl(gw1, outboxId);
-  const signed = await sign(actor({
-    id: compatibleActorId,
-    inbox: gatewayUrl(gw1, `ap://${did}/actor/inbox`),
-    outbox: compatibleOutboxId,
-    followers: gatewayUrl(gw1, `ap://${did}/actor/followers`),
-  }));
+  const signed = await sign(
+    actor({
+      id: compatibleActorId,
+      inbox: gatewayUrl(gw1, `ap://${did}/actor/inbox`),
+      outbox: compatibleOutboxId,
+      followers: gatewayUrl(gw1, `ap://${did}/actor/followers`),
+    }),
+  );
   const collection = outbox({
     id: compatibleOutboxId,
     attributedTo: compatibleActorId,
@@ -348,11 +347,14 @@ test("verifyPortableObject() requires an unambiguous owner", async () => {
   // No referrer and no attributedTo:
   assertFailure(await verify(outbox(), base), "unknownCollectionOwner");
   // A referrer through a property other than the actor's collections:
-  const note = await Note.fromJsonLd({
-    "@context": context,
-    id: `ap://${did}/notes/1`,
-    type: "Note",
-  }, { contextLoader });
+  const note = await Note.fromJsonLd(
+    {
+      "@context": context,
+      id: `ap://${did}/notes/1`,
+      type: "Note",
+    },
+    { contextLoader },
+  );
   assertFailure(
     await verify(outbox(), { ...base, referrer: linkFrom(note, "replies") }),
     "unknownCollectionOwner",
@@ -623,12 +625,15 @@ test("verifyPortableObject() checks intermediate pages", async () => {
     contextLoader,
   });
   const intermediate = async (partOf: string) =>
-    await CollectionPage.fromJsonLd({
-      "@context": context,
-      id: `ap://${did}/actor/outbox?page=1`,
-      type: "OrderedCollectionPage",
-      partOf,
-    }, { contextLoader });
+    await CollectionPage.fromJsonLd(
+      {
+        "@context": context,
+        id: `ap://${did}/actor/outbox?page=1`,
+        type: "OrderedCollectionPage",
+        partOf,
+      },
+      { contextLoader },
+    );
   const pageId = `ap://${did}/actor/outbox?page=2`;
   const page = {
     "@context": context,
@@ -715,11 +720,14 @@ test("verifyPortableObject() works with property accessors", async () => {
     gateways: [gw1],
     verifyPortableObject,
   };
-  const create = await Collection.fromJsonLd({
-    "@context": context,
-    type: "Collection",
-    items: [actorId],
-  }, { contextLoader });
+  const create = await Collection.fromJsonLd(
+    {
+      "@context": context,
+      type: "Collection",
+      items: [actorId],
+    },
+    { contextLoader },
+  );
   const items = await Array.fromAsync(create.getItems(options));
   strictEqual(items.length, 1);
   ok(items[0] instanceof Person);
@@ -730,7 +738,7 @@ test("verifyPortableObject() works with property accessors", async () => {
     traverseCollection(outboxCollection, options),
   );
   deepStrictEqual(
-    traversed.map((item) => item instanceof Note ? item.content : null),
+    traversed.map((item) => (item instanceof Note ? item.content : null)),
     ["Hello", "Hello"],
   );
 
@@ -764,11 +772,14 @@ test("verifyPortableObject() lets pages inherit owners across signed and embedde
   const fetchPerson = async (
     options: Parameters<Collection["getItems"]>[0],
   ) => {
-    const wrapper = await Collection.fromJsonLd({
-      "@context": context,
-      type: "Collection",
-      items: [actorId],
-    }, { contextLoader });
+    const wrapper = await Collection.fromJsonLd(
+      {
+        "@context": context,
+        type: "Collection",
+        items: [actorId],
+      },
+      { contextLoader },
+    );
     const [person] = await Array.fromAsync(wrapper.getItems(options));
     ok(person instanceof Person);
     return person;
@@ -790,12 +801,14 @@ test("verifyPortableObject() lets pages inherit owners across signed and embedde
   let person = await fetchPerson(options);
   let collection = await person.getOutbox(options);
   ok(collection instanceof OrderedCollection);
-  ok(await collection.getFirst(options) instanceof CollectionPage);
+  ok((await collection.getFirst(options)) instanceof CollectionPage);
 
   // An actor that embeds its outbox:
-  const embeddingActor = await sign(actor({
-    outbox: { id: outboxId, type: "OrderedCollection", first: page1Id },
-  }));
+  const embeddingActor = await sign(
+    actor({
+      outbox: { id: outboxId, type: "OrderedCollection", first: page1Id },
+    }),
+  );
   documentLoader = createLoader({
     [gatewayUrl(gw1, actorId)]: embeddingActor,
     [gatewayUrl(gw2, page1Id)]: page1,
@@ -805,7 +818,7 @@ test("verifyPortableObject() lets pages inherit owners across signed and embedde
   person = await fetchPerson(options);
   collection = await person.getOutbox(options);
   ok(collection instanceof OrderedCollection);
-  ok(await collection.getFirst(options) instanceof CollectionPage);
+  ok((await collection.getFirst(options)) instanceof CollectionPage);
   // The embedding actor was verified, so it was not fetched again:
   deepStrictEqual(documentLoader.fetched, [
     gatewayUrl(gw1, actorId),
@@ -834,19 +847,22 @@ test("verifyPortableObject() reuses a verified actor for pages of signed collect
     contextLoader,
   });
   const pageId = `ap://${did}/actor/outbox?page=1`;
-  const result = await verify({
-    "@context": context,
-    id: pageId,
-    type: "OrderedCollectionPage",
-    partOf: outboxId,
-    orderedItems: [],
-  }, {
-    documentLoader,
-    documentUrl: new URL(gatewayUrl(gw1, pageId)),
-    referrer: linkFrom(collection, "first", {
-      collectionContext: signed.collectionContext,
-    }),
-  });
+  const result = await verify(
+    {
+      "@context": context,
+      id: pageId,
+      type: "OrderedCollectionPage",
+      partOf: outboxId,
+      orderedItems: [],
+    },
+    {
+      documentLoader,
+      documentUrl: new URL(gatewayUrl(gw1, pageId)),
+      referrer: linkFrom(collection, "first", {
+        collectionContext: signed.collectionContext,
+      }),
+    },
+  );
   ok(result.verified);
   strictEqual(result.method, "gateway");
   deepStrictEqual(documentLoader.fetched, []);
@@ -888,16 +904,16 @@ test("verifyPortableObject() applies to compatible identifiers in accessors", as
     content: "Forged",
   };
   const collection = (items: unknown[]) =>
-    Collection.fromJsonLd({
-      "@context": context,
-      id: "https://example.com/collection",
-      type: "Collection",
-      items,
-    }, { contextLoader });
-  const getItems = async (
-    items: unknown[],
-    documentLoader: DocumentLoader,
-  ) =>
+    Collection.fromJsonLd(
+      {
+        "@context": context,
+        id: "https://example.com/collection",
+        type: "Collection",
+        items,
+      },
+      { contextLoader },
+    );
+  const getItems = async (items: unknown[], documentLoader: DocumentLoader) =>
     await Array.fromAsync(
       (await collection(items)).getItems({
         documentLoader,
@@ -912,7 +928,7 @@ test("verifyPortableObject() applies to compatible identifiers in accessors", as
     });
     const items = await getItems([gatewayUrl(gw1, noteId)], documentLoader);
     deepStrictEqual(
-      items.map((item) => item instanceof Note ? item.content : null),
+      items.map((item) => (item instanceof Note ? item.content : null)),
       ["Hello"],
     );
   });
@@ -931,17 +947,20 @@ test("verifyPortableObject() applies to compatible identifiers in accessors", as
       [gatewayUrl("https://example.com", noteId)]: forgedNote,
     });
     deepStrictEqual(
-      await getItems([
-        gatewayUrl(evil, noteId),
-        gatewayUrl(evil, `ap://${did}/notes/2`),
-        "https://evil.example/notes/1",
-        // An embedded object of the parent's origin is not trusted either:
-        {
-          id: gatewayUrl("https://example.com", noteId),
-          type: "Note",
-          content: "Forged",
-        },
-      ], documentLoader),
+      await getItems(
+        [
+          gatewayUrl(evil, noteId),
+          gatewayUrl(evil, `ap://${did}/notes/2`),
+          "https://evil.example/notes/1",
+          // An embedded object of the parent's origin is not trusted either:
+          {
+            id: gatewayUrl("https://example.com", noteId),
+            type: "Note",
+            content: "Forged",
+          },
+        ],
+        documentLoader,
+      ),
       [],
     );
   });

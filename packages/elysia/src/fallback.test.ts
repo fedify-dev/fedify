@@ -5,23 +5,21 @@ import { type AnyElysia, Elysia, NotFoundError } from "elysia";
 import { fedify } from "./index.ts";
 
 for (const aot of [true, false]) {
-  for (
-    const mode of [
-      "unhandled",
-      "async-pass",
-      "html",
-      "async-html",
-      "not-found-html",
-      "not-found-json",
-      "not-found-error",
-      "early-route",
-      "early-error-hook",
-      "late-error-hook",
-      "late-404-hook",
-      "headers",
-      "error",
-    ]
-  ) {
+  for (const mode of [
+    "unhandled",
+    "async-pass",
+    "html",
+    "async-html",
+    "not-found-html",
+    "not-found-json",
+    "not-found-error",
+    "early-route",
+    "early-error-hook",
+    "late-error-hook",
+    "late-404-hook",
+    "headers",
+    "error",
+  ]) {
     test(`Elysia preserves application responses or falls back to 406 (aot=${aot}): ${mode}`, async () => {
       const fed = createFederation<void>({ kv: new MemoryKvStore() });
       fed.setActorDispatcher("/users/{identifier}", () => null);
@@ -96,14 +94,16 @@ for (const aot of [true, false]) {
           headers: { Accept: "image/png" },
         }),
       );
-      const expected = mode.startsWith("not-found") || mode === "early-route" ||
-          mode === "late-404-hook"
-        ? 404
-        : mode.endsWith("html") || mode.endsWith("error-hook")
-        ? 200
-        : mode === "error"
-        ? 500
-        : 406;
+      const expected =
+        mode.startsWith("not-found") ||
+        mode === "early-route" ||
+        mode === "late-404-hook"
+          ? 404
+          : mode.endsWith("html") || mode.endsWith("error-hook")
+            ? 200
+            : mode === "error"
+              ? 500
+              : 406;
       assert.equal(response.status, expected);
       const body = await response.text();
       if (mode.endsWith("error-hook") || mode === "late-404-hook") {
@@ -124,9 +124,10 @@ for (const aot of [true, false]) {
           "text/plain; charset=utf-8",
         );
         assert.ok(
-          response.headers.get("Vary")?.split(",").some((field) =>
-            field.trim().toLowerCase() === "accept"
-          ),
+          response.headers
+            .get("Vary")
+            ?.split(",")
+            .some((field) => field.trim().toLowerCase() === "accept"),
         );
         if (mode === "headers") {
           assert.ok(response.headers.get("Vary")?.includes("Origin"));
@@ -152,9 +153,10 @@ for (const aot of [true, false]) {
         assert.equal(missing.status, control.status);
         assert.equal(await missing.text(), await control.text());
         assert.ok(
-          !missing.headers.get("Vary")?.split(",").some((field) =>
-            field.trim().toLowerCase() === "accept"
-          ),
+          !missing.headers
+            .get("Vary")
+            ?.split(",")
+            .some((field) => field.trim().toLowerCase() === "accept"),
         );
       }
     });
@@ -190,7 +192,8 @@ for (const aot of [true, false]) {
   test(`Elysia preserves explicit request-hook NotFoundErrors (aot=${aot})`, async () => {
     const fed = createFederation<void>({ kv: new MemoryKvStore() });
     fed.setActorDispatcher("/users/{identifier}", () => null);
-    const app = new Elysia({ aot }).use(fedify(fed, () => undefined))
+    const app = new Elysia({ aot })
+      .use(fedify(fed, () => undefined))
       .onRequest(() => {
         throw new NotFoundError("User has been removed");
       });
@@ -210,9 +213,9 @@ for (const aot of [true, false]) {
     fed.setActorDispatcher("/users/{identifier}", () => null);
     const shared = new Elysia({ aot }).use(fedify(fed, () => undefined));
     const apps = ["first", "second"].map((body) =>
-      new Elysia({ aot }).use(shared).onError(() =>
-        new Response(body, { status: 404 })
-      )
+      new Elysia({ aot })
+        .use(shared)
+        .onError(() => new Response(body, { status: 404 })),
     );
     for (const [index, app] of apps.entries()) {
       const response = await app.handle(
@@ -231,11 +234,13 @@ for (const aot of [true, false]) {
     const fed = createFederation<void>({ kv: new MemoryKvStore() });
     fed.setActorDispatcher("/users/{identifier}", () => null);
     let earlierCalls = 0;
-    const app = new Elysia({ aot }).onError(() => {
-      earlierCalls++;
-    }).use(fedify(fed, () => undefined));
-    const hook = app.event.error!.find((hook) =>
-      hook.fn.name === "notAcceptableFallback"
+    const app = new Elysia({ aot })
+      .onError(() => {
+        earlierCalls++;
+      })
+      .use(fedify(fed, () => undefined));
+    const hook = app.event.error!.find(
+      (hook) => hook.fn.name === "notAcceptableFallback",
     )!;
     const fallback = hook.fn;
     // Simulate a plugin replacing the registration with a wrapped copy.

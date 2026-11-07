@@ -38,10 +38,8 @@ test("FederationBuilder", async (t) => {
       };
       assertThrows(
         () =>
-          createFederationBuilder<string>().setActorDispatcher(
-            "/users/{identifier}",
-            actorDispatcher,
-          )
+          createFederationBuilder<string>()
+            .setActorDispatcher("/users/{identifier}", actorDispatcher)
             .mapActorAlias("/actor/{id}", "instance"),
         RouterError,
         "Path for actor alias must have no variables.",
@@ -72,7 +70,8 @@ test("FederationBuilder", async (t) => {
         RouterError,
         "Identifier cannot be empty.",
       );
-      builder.setActorDispatcher("/users/{identifier}", actorDispatcher)
+      builder
+        .setActorDispatcher("/users/{identifier}", actorDispatcher)
         .mapActorAlias("/actor", "instance");
 
       const inboxListener: InboxListener<string, Activity> = (
@@ -90,7 +89,8 @@ test("FederationBuilder", async (t) => {
       ) => {
         // Do nothing
       };
-      builder.setOutboxListeners("/users/{identifier}/outbox")
+      builder
+        .setOutboxListeners("/users/{identifier}/outbox")
         .on(Activity, outboxListener);
 
       const objectDispatcher: ObjectDispatcher<string, Note, string> = (
@@ -231,10 +231,9 @@ test("FederationBuilder", async (t) => {
 
   await t.step("should validate outbox listener paths", () => {
     const builder = createFederationBuilder<void>();
-    builder.setOutboxDispatcher(
-      "/users/{identifier}/outbox",
-      () => ({ items: [] }),
-    );
+    builder.setOutboxDispatcher("/users/{identifier}/outbox", () => ({
+      items: [],
+    }));
 
     assertThrows(
       () => builder.setOutboxListeners("/actors/{identifier}/outbox"),
@@ -256,9 +255,7 @@ test("FederationBuilder", async (t) => {
 
     assertThrows(
       () =>
-        builder.setOutboxListeners(
-          "/users/{identifier}/outbox/{identifier}",
-        ),
+        builder.setOutboxListeners("/users/{identifier}/outbox/{identifier}"),
       RouterError,
     );
 
@@ -298,10 +295,9 @@ test("FederationBuilder", async (t) => {
 
     assertThrows(
       () =>
-        builder2.setOutboxDispatcher(
-          "/actors/{identifier}/outbox",
-          () => ({ items: [] }),
-        ),
+        builder2.setOutboxDispatcher("/actors/{identifier}/outbox", () => ({
+          items: [],
+        })),
       RouterError,
     );
 
@@ -326,10 +322,9 @@ test("FederationBuilder", async (t) => {
     const builder4 = createFederationBuilder<void>();
     assertThrows(
       () =>
-        builder4.setOutboxDispatcher(
-          "/users{?identifier}/outbox",
-          () => ({ items: [] }),
-        ),
+        builder4.setOutboxDispatcher("/users{?identifier}/outbox", () => ({
+          items: [],
+        })),
       DisallowedOperatorError,
     );
 
@@ -609,23 +604,16 @@ test("FederationBuilder", async (t) => {
       const builder = createFederationBuilder<void>();
       builder.setActorDispatcher("/users/{identifier}", () => null);
       builder.setInboxListeners("/users/{identifier}/inbox");
-      builder.setOutboxDispatcher(
-        "/users/{identifier}/outbox",
-        () => ({ items: [] }),
-      );
+      builder.setOutboxDispatcher("/users/{identifier}/outbox", () => ({
+        items: [],
+      }));
       builder.setObjectDispatcher(Note, "/notes/{id}", () => null);
       const impl = (await builder.build({ kv })) as FederationImpl<void>;
 
       // Sanity: non-empty bindings still match.
       assertEquals(impl.router.route("/users/alice")?.name, "actor");
-      assertEquals(
-        impl.router.route("/users/alice/inbox")?.name,
-        "inbox",
-      );
-      assertEquals(
-        impl.router.route("/users/alice/outbox")?.name,
-        "outbox",
-      );
+      assertEquals(impl.router.route("/users/alice/inbox")?.name, "inbox");
+      assertEquals(impl.router.route("/users/alice/outbox")?.name, "outbox");
       assertEquals(
         impl.router.route("/notes/1")?.name,
         `object:${Note.typeId.href}`,
@@ -679,12 +667,9 @@ test("FederationBuilder", async (t) => {
       // the router's default nullable:false constraint.
       const kv = new MemoryKvStore();
       const builder = createFederationBuilder<void>();
-      builder.setCollectionDispatcher(
-        "samples",
-        Note,
-        "/groups/{id}",
-        () => ({ items: [] }),
-      );
+      builder.setCollectionDispatcher("samples", Note, "/groups/{id}", () => ({
+        items: [],
+      }));
       builder.setCollectionDispatcher(
         "optionals",
         Note,
@@ -910,16 +895,14 @@ test("FederationBuilder", async (t) => {
         "/named-symbol/{id}",
         dispatcher,
       );
-      assertThrows(
-        () => {
-          builder.setCollectionDispatcher(
-            namedSymbol2,
-            Note,
-            "/named-symbol/{id}",
-            dispatcher,
-          );
-        },
-      );
+      assertThrows(() => {
+        builder.setCollectionDispatcher(
+          namedSymbol2,
+          Note,
+          "/named-symbol/{id}",
+          dispatcher,
+        );
+      });
       // Test that using string ID stringified from an unnamed symbol works
       builder.setCollectionDispatcher(
         strId,
@@ -935,12 +918,9 @@ test("FederationBuilder", async (t) => {
     async () => {
       const kv = new MemoryKvStore();
       const builder = createFederationBuilder<void>();
-      builder.setCollectionDispatcher(
-        "test",
-        Note,
-        "/c/{id}",
-        () => ({ items: [] }),
-      );
+      builder.setCollectionDispatcher("test", Note, "/c/{id}", () => ({
+        items: [],
+      }));
 
       const impl = (await builder.build({
         kv,
@@ -985,12 +965,10 @@ test("FederationBuilder", async (t) => {
       for (let build = 0; build < 2; build++) {
         const federation = await builder.build({ kv: new MemoryKvStore() });
         const ctx = federation.createContext(new URL("https://example.com/"));
-        for (
-          const [name, path, type] of [
-            [collection, "/users/alice/saved", "collection"],
-            [ordered, "/users/alice/ordered-saved", "orderedCollection"],
-          ] as const
-        ) {
+        for (const [name, path, type] of [
+          [collection, "/users/alice/saved", "collection"],
+          [ordered, "/users/alice/ordered-saved", "orderedCollection"],
+        ] as const) {
           const uri = ctx.getCollectionUri(name, { identifier: "alice" });
           assertEquals(uri.pathname, path);
           const parsed = ctx.parseUri(uri);
@@ -1023,7 +1001,7 @@ test("FederationBuilder", async (t) => {
             Note,
             "/users/{identifier}/duplicate",
             () => ({ items: [] }),
-          )
+          ),
         );
       }
     },

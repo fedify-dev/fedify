@@ -4,9 +4,5 @@ import {
   createRequiredRuleEslint,
 } from "../lib/required.ts";
 
-export const deno = createRequiredRuleDeno(
-  properties.following,
-);
-export const eslint = createRequiredRuleEslint(
-  properties.following,
-);
+export const deno = createRequiredRuleDeno(properties.following);
+export const eslint = createRequiredRuleEslint(properties.following);

@@ -148,17 +148,14 @@ function assertAcceptDelivered(
   follow: Follow,
   deliveries: readonly DeliveredRequest[] = aliceDeliveries,
 ): void {
-  const accepts = deliveries.filter(({ body }) =>
-    body.type === "Accept" && body.object?.id === follow.id?.href
+  const accepts = deliveries.filter(
+    ({ body }) => body.type === "Accept" && body.object?.id === follow.id?.href,
   );
   strictEqual(accepts.length, 1, "Expected exactly one Accept for this Follow");
   strictEqual(accepts[0].method, "POST");
   strictEqual(accepts[0].body.actor, "https://relay.example.com/users/relay");
   strictEqual(accepts[0].body.object.type, "Follow");
-  strictEqual(
-    accepts[0].body.object.actor.id,
-    follow.actorId?.href,
-  );
+  strictEqual(accepts[0].body.object.actor.id, follow.actorId?.href);
 }
 
 const nextFetch = globalThis.fetch;
@@ -223,7 +220,7 @@ describe("LitePubRelay", () => {
     const response = await relay.fetch(request);
 
     strictEqual(response.status, 200);
-    const json = await response.json() as any;
+    const json = (await response.json()) as any;
     strictEqual(json.type, "Application");
     strictEqual(json.preferredUsername, "relay");
     strictEqual(json.name, "ActivityPub Relay");
@@ -267,7 +264,7 @@ describe("LitePubRelay", () => {
     const response = await relay.fetch(request);
 
     strictEqual(response.status, 200);
-    const json = await response.json() as any;
+    const json = (await response.json()) as any;
     ok(json);
     ok(json.type === "Collection" || json.type === "OrderedCollection");
   });
@@ -291,14 +288,14 @@ describe("LitePubRelay", () => {
     const follower1Id = "https://remote1.example.com/users/alice";
     const follower2Id = "https://remote2.example.com/users/bob";
 
-    await kv.set(
-      ["follower", follower1Id],
-      { actor: await follower1.toJsonLd(), state: "accepted" },
-    );
-    await kv.set(
-      ["follower", follower2Id],
-      { actor: await follower2.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", follower1Id], {
+      actor: await follower1.toJsonLd(),
+      state: "accepted",
+    });
+    await kv.set(["follower", follower2Id], {
+      actor: await follower2.toJsonLd(),
+      state: "accepted",
+    });
 
     const relay = createRelay("litepub", {
       kv,
@@ -316,7 +313,7 @@ describe("LitePubRelay", () => {
     const response = await relay.fetch(request);
 
     strictEqual(response.status, 200);
-    const json = await response.json() as any;
+    const json = (await response.json()) as any;
     ok(json);
     ok(json.type === "Collection" || json.type === "OrderedCollection");
     if (json.totalItems !== undefined) {
@@ -339,7 +336,7 @@ describe("LitePubRelay", () => {
     const response = await relay.fetch(request);
 
     strictEqual(response.status, 200);
-    const json = await response.json() as any;
+    const json = (await response.json()) as any;
 
     strictEqual(json.type, "Application");
     strictEqual(json.preferredUsername, "relay");
@@ -421,9 +418,9 @@ describe("LitePubRelay", () => {
     ok(isRelayFollowerData(followerData));
     strictEqual(followerData.state, "pending");
 
-    const reciprocalFollow = deliveredActivities.map(({ body }) => body).find(
-      (activity) => activity.type === "Follow",
-    );
+    const reciprocalFollow = deliveredActivities
+      .map(({ body }) => body)
+      .find((activity) => activity.type === "Follow");
     ok(reciprocalFollow, "Expected a reciprocal Follow activity");
     strictEqual(
       reciprocalFollow.actor,
@@ -433,10 +430,7 @@ describe("LitePubRelay", () => {
       reciprocalFollow.object,
       "https://remote.example.com/users/dave",
     );
-    strictEqual(
-      reciprocalFollow.to,
-      "https://remote.example.com/users/dave",
-    );
+    strictEqual(reciprocalFollow.to, "https://remote.example.com/users/dave");
   });
 
   test("handles Follow activity with subscription rejection", async () => {
@@ -674,10 +668,10 @@ describe("LitePubRelay", () => {
         preferredUsername: "alice",
         inbox: new URL(aliceInbox),
       });
-      await kv.set(
-        ["follower", "https://remote.example.com/users/alice"],
-        { actor: await follower.toJsonLd(), state },
-      );
+      await kv.set(["follower", "https://remote.example.com/users/alice"], {
+        actor: await follower.toJsonLd(),
+        state,
+      });
 
       const followActivity = new Follow({
         id: new URL("https://remote.example.com/activities/follow/1"),
@@ -723,10 +717,10 @@ describe("LitePubRelay", () => {
     });
 
     // Pre-populate with pending follower
-    await kv.set(
-      ["follower", "https://remote.example.com/users/alice"],
-      { actor: await follower.toJsonLd(), state: "pending" },
-    );
+    await kv.set(["follower", "https://remote.example.com/users/alice"], {
+      actor: await follower.toJsonLd(),
+      state: "pending",
+    });
 
     const relay = createRelay("litepub", {
       kv,
@@ -844,10 +838,10 @@ describe("LitePubRelay", () => {
         inbox: new URL(aliceInbox),
       });
 
-      await kv.set(
-        ["follower", followerId],
-        { actor: await follower.toJsonLd(), state },
-      );
+      await kv.set(["follower", followerId], {
+        actor: await follower.toJsonLd(),
+        state,
+      });
 
       const relay = createRelay("litepub", {
         kv,
@@ -904,10 +898,10 @@ describe("LitePubRelay", () => {
       inbox: new URL(aliceInbox),
     });
 
-    await kv.set(
-      ["follower", followerId],
-      { actor: await follower.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", followerId], {
+      actor: await follower.toJsonLd(),
+      state: "accepted",
+    });
 
     const relay = createRelay("litepub", {
       kv,
@@ -962,14 +956,14 @@ describe("LitePubRelay", () => {
       preferredUsername: "carol",
       inbox: new URL(acceptedInbox),
     });
-    await kv.set(
-      ["follower", pendingFollower.id!.href],
-      { actor: await pendingFollower.toJsonLd(), state: "pending" },
-    );
-    await kv.set(
-      ["follower", acceptedFollower.id!.href],
-      { actor: await acceptedFollower.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", pendingFollower.id!.href], {
+      actor: await pendingFollower.toJsonLd(),
+      state: "pending",
+    });
+    await kv.set(["follower", acceptedFollower.id!.href], {
+      actor: await acceptedFollower.toJsonLd(),
+      state: "accepted",
+    });
 
     const relay = createRelay("litepub", {
       kv,
@@ -1195,10 +1189,10 @@ describe("LitePubRelay", () => {
         preferredUsername: `user${i + 1}`,
         inbox: new URL(`${followerId}/inbox`),
       });
-      await kv.set(
-        ["follower", followerId],
-        { actor: await actor.toJsonLd(), state: "accepted" },
-      );
+      await kv.set(["follower", followerId], {
+        actor: await actor.toJsonLd(),
+        state: "accepted",
+      });
     }
 
     // Verify all followers are stored
@@ -1236,10 +1230,10 @@ describe("LitePubRelay", () => {
         preferredUsername: followerId.split("/").pop(),
         inbox: new URL(`${followerId}/inbox`),
       });
-      await kv.set(
-        ["follower", followerId],
-        { actor: await actor.toJsonLd(), state: "accepted" },
-      );
+      await kv.set(["follower", followerId], {
+        actor: await actor.toJsonLd(),
+        state: "accepted",
+      });
     }
 
     // Verify list returns all followers
@@ -1272,10 +1266,10 @@ describe("LitePubRelay", () => {
         preferredUsername: followerId.split("/").pop(),
         inbox: new URL(`${followerId}/inbox`),
       });
-      await kv.set(
-        ["follower", followerId],
-        { actor: await actor.toJsonLd(), state: "accepted" },
-      );
+      await kv.set(["follower", followerId], {
+        actor: await actor.toJsonLd(),
+        state: "accepted",
+      });
     }
 
     // Delete one follower
@@ -1312,15 +1306,15 @@ describe("LitePubRelay", () => {
       inbox: new URL("https://server2.example.com/users/bob/inbox"),
     });
 
-    await kv.set(
-      ["follower", pendingFollowerId],
-      { actor: await pendingFollower.toJsonLd(), state: "pending" },
-    );
+    await kv.set(["follower", pendingFollowerId], {
+      actor: await pendingFollower.toJsonLd(),
+      state: "pending",
+    });
 
-    await kv.set(
-      ["follower", acceptedFollowerId],
-      { actor: await acceptedFollower.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", acceptedFollowerId], {
+      actor: await acceptedFollower.toJsonLd(),
+      state: "accepted",
+    });
 
     // Verify list returns both with correct states
     const followers: { id: string; state: string }[] = [];
@@ -1354,10 +1348,10 @@ describe("LitePubRelay", () => {
       inbox: new URL(aliceInbox),
     });
 
-    await kv.set(
-      ["follower", followerId],
-      { actor: await follower.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", followerId], {
+      actor: await follower.toJsonLd(),
+      state: "accepted",
+    });
 
     // Verify list returns complete actor data
     for await (const { key, value } of kv.list(["follower"])) {

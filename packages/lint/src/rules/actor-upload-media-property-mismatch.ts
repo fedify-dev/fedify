@@ -4,9 +4,5 @@ import {
   createMismatchRuleEslint,
 } from "../lib/mismatch.ts";
 
-export const deno = createMismatchRuleDeno(
-  properties.uploadMedia,
-);
-export const eslint = createMismatchRuleEslint(
-  properties.uploadMedia,
-);
+export const deno = createMismatchRuleDeno(properties.uploadMedia);
+export const eslint = createMismatchRuleEslint(properties.uploadMedia);

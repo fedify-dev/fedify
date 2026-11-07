@@ -6,51 +6,51 @@ import type { Context } from "./context.ts";
  */
 export type OutboundPreparationResult =
   | {
-    /** The producer finished preparing its continuation. */
-    readonly type: "prepared";
-    /** Fanout-ready work still needs worker-side delivery preparation. */
-    readonly preparedFor: "fanout" | "delivery";
-    /** Number of deduplicated destinations, not actors or successful sends. */
-    readonly destinationCount: number;
-  }
+      /** The producer finished preparing its continuation. */
+      readonly type: "prepared";
+      /** Fanout-ready work still needs worker-side delivery preparation. */
+      readonly preparedFor: "fanout" | "delivery";
+      /** Number of deduplicated destinations, not actors or successful sends. */
+      readonly destinationCount: number;
+    }
   | {
-    /** A deliberate no-send decision. */
-    readonly type: "skipped";
-    /** The existing no-send decision made by this producer. */
-    readonly reason:
-      | "no-destinations"
-      | "unsigned"
-      | "forwarding-disabled"
-      | "forwarding-unavailable"
-      | "no-forwarding-targets";
-  }
+      /** A deliberate no-send decision. */
+      readonly type: "skipped";
+      /** The existing no-send decision made by this producer. */
+      readonly reason:
+        | "no-destinations"
+        | "unsigned"
+        | "forwarding-disabled"
+        | "forwarding-unavailable"
+        | "no-forwarding-targets";
+    }
   | {
-    /** Preparation failed before the producer reached readiness. */
-    readonly type: "failed";
-    /** The operation that failed and its original thrown value. */
-    readonly failure: {
-      /** Local processing failure, or unavailable operation provenance. */
-      readonly kind: "local" | "unknown";
-      /** The observed operation, not a diagnosis from the error message. */
-      readonly phase:
-        | "sender-resolution"
-        | "key-resolution"
-        | "recipient-resolution"
-        | "transformation"
-        | "validation"
-        | "signing"
-        | "destination-planning"
-        | "serialization"
-        | "request-preparation"
-        | "unknown";
-      /** Original thrown value, including non-Error values. */
-      readonly error: unknown;
+      /** Preparation failed before the producer reached readiness. */
+      readonly type: "failed";
+      /** The operation that failed and its original thrown value. */
+      readonly failure: {
+        /** Local processing failure, or unavailable operation provenance. */
+        readonly kind: "local" | "unknown";
+        /** The observed operation, not a diagnosis from the error message. */
+        readonly phase:
+          | "sender-resolution"
+          | "key-resolution"
+          | "recipient-resolution"
+          | "transformation"
+          | "validation"
+          | "signing"
+          | "destination-planning"
+          | "serialization"
+          | "request-preparation"
+          | "unknown";
+        /** Original thrown value, including non-Error values. */
+        readonly error: unknown;
+      };
+      /** Whether a complete destination plan was established before failure. */
+      readonly planning: "not-started" | "incomplete" | "complete";
+      /** Confirmed planned obligations so far, not an audience estimate. */
+      readonly plannedDestinationCount: number;
     };
-    /** Whether a complete destination plan was established before failure. */
-    readonly planning: "not-started" | "incomplete" | "complete";
-    /** Confirmed planned obligations so far, not an audience estimate. */
-    readonly plannedDestinationCount: number;
-  };
 
 /**
  * Known Activity ID and type at a broadcast observation boundary.
@@ -74,27 +74,24 @@ export type OutboundActivityReference = {
  * Preparation results do not report queue acceptance or delivery completion.
  * @since 2.5.0
  */
-export type OutboundBroadcastEvent =
-  & OutboundSourceMetadata
-  & {
-    /** Fresh opaque identity shared by producer events, independent of tracing. */
-    readonly broadcastId: string;
-    /** The outgoing operation being observed. */
-    readonly operation: "send" | "forward" | "portable-replication";
-    /** Immutable Activity identity facts captured by the send path. */
-    readonly activity: OutboundActivityReference;
-  }
-  & (
+export type OutboundBroadcastEvent = OutboundSourceMetadata & {
+  /** Fresh opaque identity shared by producer events, independent of tracing. */
+  readonly broadcastId: string;
+  /** The outgoing operation being observed. */
+  readonly operation: "send" | "forward" | "portable-replication";
+  /** Immutable Activity identity facts captured by the send path. */
+  readonly activity: OutboundActivityReference;
+} & (
     | {
-      /** Entry before sender/recipient resolution or signing. */
-      readonly stage: "started";
-    }
+        /** Entry before sender/recipient resolution or signing. */
+        readonly stage: "started";
+      }
     | {
-      /** The current producer's preparation settled. */
-      readonly stage: "preparation-finished";
-      /** Readiness, a deliberate skip, or the original preparation failure. */
-      readonly result: OutboundPreparationResult;
-    }
+        /** The current producer's preparation settled. */
+        readonly stage: "preparation-finished";
+        /** Readiness, a deliberate skip, or the original preparation failure. */
+        readonly result: OutboundPreparationResult;
+      }
   );
 
 /**
@@ -107,58 +104,58 @@ export type OutboundBroadcastEvent =
  * interrupts the producer.
  * @since 2.5.0
  */
-export type OutboundDeliveryEvent =
-  & OutboundSourceMetadata
-  & {
-    /** The originating invocation, or unknown for legacy fanout work. */
-    readonly broadcast:
-      | { readonly type: "known"; readonly id: string }
-      | { readonly type: "unknown" };
-    /** Opaque identity allocated after deduplication or a confirmed claim. */
-    readonly deliveryId: string;
-    /** Planned destination, unchanged by concrete gateway selection. */
-    readonly destinationInbox: string;
-    /** Canonical portable inbox when the selected route represents one. */
-    readonly portableInbox?: string;
-  }
-  & (
+export type OutboundDeliveryEvent = OutboundSourceMetadata & {
+  /** The originating invocation, or unknown for legacy fanout work. */
+  readonly broadcast:
+    | { readonly type: "known"; readonly id: string }
+    | { readonly type: "unknown" };
+  /** Opaque identity allocated after deduplication or a confirmed claim. */
+  readonly deliveryId: string;
+  /** Planned destination, unchanged by concrete gateway selection. */
+  readonly destinationInbox: string;
+  /** Canonical portable inbox when the selected route represents one. */
+  readonly portableInbox?: string;
+} & (
     | {
-      /** This destination was established by the existing plan. */
-      readonly stage: "planned";
-      /** Known actors sharing the destination, not an exhaustive audience. */
-      readonly actorIds: readonly string[];
-      /** Whether the selected destination uses a shared inbox. */
-      readonly sharedInbox: boolean;
-      /** Fallback routes share one obligation; replication targets do not. */
-      readonly mode: "ordinary" | "portable-fallback" | "portable-replication";
-    }
+        /** This destination was established by the existing plan. */
+        readonly stage: "planned";
+        /** Known actors sharing the destination, not an exhaustive audience. */
+        readonly actorIds: readonly string[];
+        /** Whether the selected destination uses a shared inbox. */
+        readonly sharedInbox: boolean;
+        /** Fallback routes share one obligation; replication targets do not. */
+        readonly mode:
+          | "ordinary"
+          | "portable-fallback"
+          | "portable-replication";
+      }
     | {
-      /** Local execution entry or enqueue settlement, not remote success. */
-      readonly stage: "handoff";
-      /** Evidence from the actual producer handoff. */
-      readonly result:
-        | { readonly type: "direct" }
-        | {
-          readonly type: "enqueued";
-          readonly queue: "fanout" | "outbox";
-          readonly queueMessageId: string;
-        }
-        | {
-          readonly type: "enqueue-failed";
-          readonly acceptance: "unknown";
+        /** Local execution entry or enqueue settlement, not remote success. */
+        readonly stage: "handoff";
+        /** Evidence from the actual producer handoff. */
+        readonly result:
+          | { readonly type: "direct" }
+          | {
+              readonly type: "enqueued";
+              readonly queue: "fanout" | "outbox";
+              readonly queueMessageId: string;
+            }
+          | {
+              readonly type: "enqueue-failed";
+              readonly acceptance: "unknown";
+              readonly error: unknown;
+            };
+      }
+    | {
+        /** Destination-local setup failed before entry into concrete sending. */
+        readonly stage: "preparation-failed";
+        /** The original local setup failure, without inventing an attempt. */
+        readonly failure: {
+          readonly kind: "local";
+          readonly phase: "request-preparation";
           readonly error: unknown;
         };
-    }
-    | {
-      /** Destination-local setup failed before entry into concrete sending. */
-      readonly stage: "preparation-failed";
-      /** The original local setup failure, without inventing an attempt. */
-      readonly failure: {
-        readonly kind: "local";
-        readonly phase: "request-preparation";
-        readonly error: unknown;
-      };
-    }
+      }
   );
 
 /**
@@ -167,36 +164,36 @@ export type OutboundDeliveryEvent =
  */
 export type OutboundAttemptFailure =
   | {
-    readonly kind: "http";
-    readonly phase: "response";
-    readonly error?: unknown;
-  }
+      readonly kind: "http";
+      readonly phase: "response";
+      readonly error?: unknown;
+    }
   | {
-    readonly kind: "transport";
-    readonly phase: "validation" | "request";
-    readonly error: unknown;
-  }
+      readonly kind: "transport";
+      readonly phase: "validation" | "request";
+      readonly error: unknown;
+    }
   | {
-    readonly kind: "policy";
-    readonly phase: "validation";
-    readonly error: unknown;
-  }
+      readonly kind: "policy";
+      readonly phase: "validation";
+      readonly error: unknown;
+    }
   | {
-    readonly kind: "local";
-    readonly phase:
-      | "serialization"
-      | "request-preparation"
-      | "cleanup"
-      | "signing"
-      | "spec-lookup"
-      | "post-response";
-    readonly error: unknown;
-  }
+      readonly kind: "local";
+      readonly phase:
+        | "serialization"
+        | "request-preparation"
+        | "cleanup"
+        | "signing"
+        | "spec-lookup"
+        | "post-response";
+      readonly error: unknown;
+    }
   | {
-    readonly kind: "unknown";
-    readonly phase: "unknown";
-    readonly error: unknown;
-  };
+      readonly kind: "unknown";
+      readonly phase: "unknown";
+      readonly error: unknown;
+    };
 
 /** Immutable JSON data in a privacy projection. @since 2.5.0 */
 export type OutboundJsonValue =
@@ -208,13 +205,11 @@ export type OutboundJsonValue =
   | { readonly [key: string]: OutboundJsonValue };
 
 /** Attempt input evidence, never proof of a particular exchange's wire body. @since 2.5.0 */
-export type OutboundSenderPayload =
-  & {
-    /** Concrete sender input, not a producer history or per-exchange wire body. */
-    readonly stage: "sender-payload";
-  }
-  & (
-    | {
+export type OutboundSenderPayload = {
+  /** Concrete sender input, not a producer history or per-exchange wire body. */
+  readonly stage: "sender-payload";
+} & (
+  | {
       /** A safe independent projection was established without extra processing. */
       readonly type: "available";
       /** Always a projection; no signature/proof or exact-wire claim is retained. */
@@ -224,7 +219,7 @@ export type OutboundSenderPayload =
       /** Recursively immutable JSON data; transport/signing input is unchanged. */
       readonly value: OutboundJsonValue;
     }
-    | {
+  | {
       /** No document value is exposed, including when export is disabled. */
       readonly type: "unavailable";
       /** Opt-out, pre-snapshot failure, or unsupported privacy/context semantics. */
@@ -233,16 +228,14 @@ export type OutboundSenderPayload =
         | "not-materialized"
         | "privacy-filter-unavailable";
     }
-  );
+);
 
 /** Result of an enabled response-body capture. Absence means disabled. @since 2.5.0 */
-export type OutboundBodyCaptureSummary =
-  & {
-    /** Bytes handed to the application, not bytes durably stored. */
-    readonly bytesExposed: number;
-  }
-  & (
-    | {
+export type OutboundBodyCaptureSummary = {
+  /** Bytes handed to the application, not bytes durably stored. */
+  readonly bytesExposed: number;
+} & (
+  | {
       /** Selection, verified EOF, byte-cap uncertainty, or local lifetime end. */
       readonly type:
         | "filtered"
@@ -252,13 +245,13 @@ export type OutboundBodyCaptureSummary =
         | "deadline"
         | "callback-returned";
     }
-    | {
+  | {
       /** Application cancellation ended capture. */
       readonly type: "consumer-stopped";
       /** Original consumer reason, including non-Error values. */
       readonly reason: unknown;
     }
-    | {
+  | {
       /** Capture failed without changing received HTTP evidence. */
       readonly type: "failed";
       /** Source reading versus application callback failure. */
@@ -266,22 +259,23 @@ export type OutboundBodyCaptureSummary =
       /** Original capture error; it does not become the attempt's failure. */
       readonly error: unknown;
     }
-  );
+);
 
 /** Bounded, revocable access to one selected response. @since 2.5.0 */
-export type OutboundResponseBodyEvent =
-  & Omit<OutboundHttpExchangeReport, "outcome" | "bodyCapture">
-  & {
-    /** Immutable response metadata, independently of eventual attempt outcome. */
-    readonly response: Extract<
-      OutboundHttpExchangeReport["outcome"],
-      { type: "response" }
-    >["response"];
-    /** Pull-driven bytes; access ends when the callback settles or its limits apply. */
-    readonly body: ReadableStream<Uint8Array>;
-    /** Capture-only lifetime signal; aborting it does not cancel transport. */
-    readonly signal: AbortSignal;
-  };
+export type OutboundResponseBodyEvent = Omit<
+  OutboundHttpExchangeReport,
+  "outcome" | "bodyCapture"
+> & {
+  /** Immutable response metadata, independently of eventual attempt outcome. */
+  readonly response: Extract<
+    OutboundHttpExchangeReport["outcome"],
+    { type: "response" }
+  >["response"];
+  /** Pull-driven bytes; access ends when the callback settles or its limits apply. */
+  readonly body: ReadableStream<Uint8Array>;
+  /** Capture-only lifetime signal; aborting it does not cancel transport. */
+  readonly signal: AbortSignal;
+};
 
 /** Explicit opt-in response-body capture limits and consumer. @since 2.5.0 */
 export interface OutboundResponseBodyCapture<TContextData> {
@@ -346,26 +340,26 @@ export interface OutboundHttpResponseMetadata {
  */
 export type OutboundAttemptResponse =
   | {
-    /** The HTTP flow selected this response before follow-up work. */
-    readonly type: "final";
-    /** Actual submission index of the selected response. */
-    readonly exchangeIndex: number;
-    /** Frozen response facts, retained across later local failures. */
-    readonly metadata: OutboundHttpResponseMetadata;
-  }
-  | {
-    /** No response headers were received, including zero-fetch attempts. */
-    readonly type: "not-observed";
-  }
-  | {
-    /** Continued past the response, or failed before deciding finality. */
-    readonly type: "intermediate-only" | "undetermined";
-    /** Latest received response, without a finality claim. */
-    readonly lastObserved: {
+      /** The HTTP flow selected this response before follow-up work. */
+      readonly type: "final";
+      /** Actual submission index of the selected response. */
       readonly exchangeIndex: number;
+      /** Frozen response facts, retained across later local failures. */
       readonly metadata: OutboundHttpResponseMetadata;
+    }
+  | {
+      /** No response headers were received, including zero-fetch attempts. */
+      readonly type: "not-observed";
+    }
+  | {
+      /** Continued past the response, or failed before deciding finality. */
+      readonly type: "intermediate-only" | "undetermined";
+      /** Latest received response, without a finality claim. */
+      readonly lastObserved: {
+        readonly exchangeIndex: number;
+        readonly metadata: OutboundHttpResponseMetadata;
+      };
     };
-  };
 
 /**
  * The terminal result of one concrete send.
@@ -402,25 +396,25 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
   /** Settled execution result, separate from producer preparation. */
   readonly outcome:
     | {
-      readonly type: "succeeded";
-      /** Final response selected by the sender. */
-      readonly response: Extract<OutboundAttemptResponse, { type: "final" }>;
-    }
+        readonly type: "succeeded";
+        /** Final response selected by the sender. */
+        readonly response: Extract<OutboundAttemptResponse, { type: "final" }>;
+      }
     | {
-      readonly type: "failed";
-      /**
-       * Bounded failure kind and operation phase, captured before broad wrapping.
-       * Unknown provenance stays unknown; exception names do not establish it.
-       * Final non-OK HTTP evidence remains primary alongside local diagnostics.
-       */
-      readonly failure: OutboundAttemptFailure;
-      /** Exact value escaping the sender, possibly different from failure.error. */
-      readonly error: unknown;
-      /** Explicit final or last-observed response evidence, including absence. */
-      readonly response: OutboundAttemptResponse;
-      /** Additional failures, without replacing the primary evidence. */
-      readonly diagnostics?: readonly OutboundAttemptFailure[];
-    };
+        readonly type: "failed";
+        /**
+         * Bounded failure kind and operation phase, captured before broad wrapping.
+         * Unknown provenance stays unknown; exception names do not establish it.
+         * Final non-OK HTTP evidence remains primary alongside local diagnostics.
+         */
+        readonly failure: OutboundAttemptFailure;
+        /** Exact value escaping the sender, possibly different from failure.error. */
+        readonly error: unknown;
+        /** Explicit final or last-observed response evidence, including absence. */
+        readonly response: OutboundAttemptResponse;
+        /** Additional failures, without replacing the primary evidence. */
+        readonly diagnostics?: readonly OutboundAttemptFailure[];
+      };
 };
 
 /**
@@ -433,9 +427,8 @@ export type OutboundAttemptReport = OutboundSourceMetadata & {
  * Exchange callbacks run after selected capture ends and may precede attempt settlement.
  * @since 2.5.0
  */
-export type OutboundHttpExchangeReport =
-  & OutboundSourceMetadata
-  & Pick<
+export type OutboundHttpExchangeReport = OutboundSourceMetadata &
+  Pick<
     OutboundAttemptReport,
     | "attemptId"
     | "broadcast"
@@ -444,8 +437,7 @@ export type OutboundHttpExchangeReport =
     | "portableInbox"
     | "inboxUrl"
     | "queue"
-  >
-  & {
+  > & {
     /** Zero-based submission order within this attempt. */
     readonly exchangeIndex: number;
     /** Enabled capture result; absent when disabled or no response was received. */
@@ -460,12 +452,12 @@ export type OutboundHttpExchangeReport =
     /** A received response, including non-2xx, or the original fetch rejection. */
     readonly outcome:
       | {
-        readonly type: "response";
-        readonly response: OutboundHttpResponseMetadata & {
-          /** Selected snapshot; absent when response header capture is disabled. */
-          readonly headers?: OutboundHeaderSnapshot;
-        };
-      }
+          readonly type: "response";
+          readonly response: OutboundHttpResponseMetadata & {
+            /** Selected snapshot; absent when response header capture is disabled. */
+            readonly headers?: OutboundHeaderSnapshot;
+          };
+        }
       | { readonly type: "failed"; readonly error: unknown };
   };
 
@@ -495,9 +487,12 @@ export type OutboundWorkerPreparationDiagnostic = {
   /** Route whose local setup produced the failure. */
   readonly inboxUrl: string;
   /** Existing worker preparation classification and original thrown value. */
-  readonly failure: Extract<OutboundWorkerReport["result"], {
-    type: "preparation-failed";
-  }>["failure"];
+  readonly failure: Extract<
+    OutboundWorkerReport["result"],
+    {
+      type: "preparation-failed";
+    }
+  >["failure"];
 };
 
 /**
@@ -520,40 +515,39 @@ export type OutboundWorkerChild = {
  */
 export type OutboundWorkerAction =
   | ((OutboundWorkerSchedule | OutboundWorkerChild) & {
-    readonly type: "scheduled";
-  })
+      readonly type: "scheduled";
+    })
   | ((OutboundWorkerSchedule | OutboundWorkerChild) & {
-    readonly type: "action-failed";
-    readonly acceptance: "unknown";
-    readonly error: unknown;
-  })
+      readonly type: "action-failed";
+      readonly acceptance: "unknown";
+      readonly error: unknown;
+    })
   | {
-    readonly type: "handoff";
-    readonly action: "direct";
-    /** Actual concrete sender target; entry does not establish HTTP success. */
-    readonly inboxUrls: readonly string[];
-    /** Planned obligation retained across gateway fallback targets. */
-    readonly delivery?: OutboundWorkerReport["delivery"];
-  }
+      readonly type: "handoff";
+      readonly action: "direct";
+      /** Actual concrete sender target; entry does not establish HTTP success. */
+      readonly inboxUrls: readonly string[];
+      /** Planned obligation retained across gateway fallback targets. */
+      readonly delivery?: OutboundWorkerReport["delivery"];
+    }
   | {
-    readonly type: "abandoned";
-    readonly reason:
-      | "held-ttl-expired"
-      | "permanent-failure"
-      | "retry-policy-declined"
-      | "queue-unavailable";
-    /** Routes locally abandoned; other routes of the delivery may continue. */
-    readonly inboxUrls: readonly string[];
-    /** Local preparation failures that contributed to this abandonment. */
-    readonly preparationFailures?:
-      readonly OutboundWorkerPreparationDiagnostic[];
-  }
+      readonly type: "abandoned";
+      readonly reason:
+        | "held-ttl-expired"
+        | "permanent-failure"
+        | "retry-policy-declined"
+        | "queue-unavailable";
+      /** Routes locally abandoned; other routes of the delivery may continue. */
+      readonly inboxUrls: readonly string[];
+      /** Local preparation failures that contributed to this abandonment. */
+      readonly preparationFailures?: readonly OutboundWorkerPreparationDiagnostic[];
+    }
   | {
-    readonly type: "action-failed";
-    readonly action: "drop";
-    readonly inboxUrls: readonly string[];
-    readonly error: unknown;
-  };
+      readonly type: "action-failed";
+      readonly action: "drop";
+      readonly inboxUrls: readonly string[];
+      readonly error: unknown;
+    };
 
 /**
  * One fanout or outbox worker execution after its local processing settles.
@@ -599,24 +593,24 @@ export type OutboundWorkerReport = OutboundSourceMetadata & {
     | { readonly type: "completed" }
     | { readonly type: "failed"; readonly error: unknown }
     | {
-      readonly type: "preparation-failed";
-      readonly failure: {
-        readonly kind: "local";
-        readonly phase:
-          | "key-import"
-          | "activity-parsing"
-          | "context-preparation"
-          | "validation"
-          | "key-resolution"
-          | "signing"
-          | "serialization"
-          | "key-export"
-          | "request-preparation";
+        readonly type: "preparation-failed";
+        readonly failure: {
+          readonly kind: "local";
+          readonly phase:
+            | "key-import"
+            | "activity-parsing"
+            | "context-preparation"
+            | "validation"
+            | "key-resolution"
+            | "signing"
+            | "serialization"
+            | "key-export"
+            | "request-preparation";
+          readonly error: unknown;
+        };
+        /** Exact error escaping the worker preparation operation. */
         readonly error: unknown;
       };
-      /** Exact error escaping the worker preparation operation. */
-      readonly error: unknown;
-    };
 };
 
 /**

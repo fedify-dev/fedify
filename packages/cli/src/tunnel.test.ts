@@ -68,11 +68,7 @@ test("inbox runner accepts tunnel options without a tunnel service", async () =>
 });
 
 test("relay runner accepts tunnel options without a tunnel service", async () => {
-  const result = await runCli([
-    "relay",
-    "--no-tunnel",
-    "--ignore-config",
-  ]);
+  const result = await runCli(["relay", "--no-tunnel", "--ignore-config"]);
 
   deepEqual(result.command, "relay");
   deepEqual((result as { tunnel?: unknown }).tunnel, false);
@@ -122,7 +118,7 @@ test("tunnel successfully creates and manages tunnel", async () => {
       return Promise.resolve(mockTunnel);
     },
     ora() {
-      return ({
+      return {
         start() {
           spinnerCalled = true;
           return this;
@@ -137,7 +133,7 @@ test("tunnel successfully creates and manages tunnel", async () => {
           spinnerMsg = msg;
           return this;
         },
-      }) as unknown as Ora;
+      } as unknown as Ora;
     },
     exit(): never {
       throw new Error("mock exit");
@@ -150,10 +146,11 @@ test("tunnel successfully creates and manages tunnel", async () => {
     deepEqual(openTunnelCalled, true);
     deepEqual(openTunnelPort, 3001);
     deepEqual(openTunnelService, "pinggy.io");
-    deepEqual(
-      Object.keys(openTunnelServices ?? {}),
-      ["serveo.net", "pinggy.io", "fedify.com.es"],
-    );
+    deepEqual(Object.keys(openTunnelServices ?? {}), [
+      "serveo.net",
+      "pinggy.io",
+      "fedify.com.es",
+    ]);
     deepEqual(openTunnelSucceed, true);
     deepEqual(openTunnelFailed, false);
     deepEqual(spinnerCalled, true);
@@ -192,7 +189,7 @@ test("tunnel fails to create a secure tunnel and handles error", async () => {
       return Promise.reject();
     },
     ora() {
-      return ({
+      return {
         start() {
           spinnerCalled = true;
           return this;
@@ -207,7 +204,7 @@ test("tunnel fails to create a secure tunnel and handles error", async () => {
           spinnerMsg = msg;
           return this;
         },
-      }) as unknown as Ora;
+      } as unknown as Ora;
     },
     exit(): never {
       throw new Error("Process exit called");
@@ -224,16 +221,14 @@ test("tunnel fails to create a secure tunnel and handles error", async () => {
     deepEqual(openTunnelCalled, true);
     deepEqual(openTunnelPort, 3001);
     deepEqual(openTunnelService, undefined);
-    deepEqual(
-      Object.keys(openTunnelServices ?? {}),
-      ["serveo.net", "pinggy.io", "fedify.com.es"],
-    );
+    deepEqual(Object.keys(openTunnelServices ?? {}), [
+      "serveo.net",
+      "pinggy.io",
+      "fedify.com.es",
+    ]);
     deepEqual(openTunnelSucceed, false);
     deepEqual(openTunnelFailed, true);
     deepEqual(spinnerCalled, true);
-    deepEqual(
-      spinnerMsg,
-      "Failed to create a secure tunnel.",
-    );
+    deepEqual(spinnerMsg, "Failed to create a secure tunnel.");
   }
 });

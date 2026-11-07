@@ -12,21 +12,18 @@ import fedifyMetadata from "../packages/fedify/deno.json" with { type: "json" };
 const { fix, skipNext } = run(
   object("Options", {
     fix: option("-f", "--fix", {
-      description:
-        message`Fix package metadata version mismatches automatically.`,
+      description: message`Fix package metadata version mismatches automatically.`,
     }),
     skipNext: option("--skip-next", {
-      description:
-        message`Skip checking the Sacho next version in changes.d/next.txt.`,
+      description: message`Skip checking the Sacho next version in changes.d/next.txt.`,
     }),
   }),
   {
     programName: "check-versions",
     brief: message`Check package and changelog versions for consistency.`,
-    description:
-      message`Checks that all workspace package versions match.  The Sacho next version in changes.d/next.txt is also checked when present unless ${
-        optionNames(["--skip-next"])
-      } is specified.`,
+    description: message`Checks that all workspace package versions match.  The Sacho next version in changes.d/next.txt is also checked when present unless ${optionNames(
+      ["--skip-next"],
+    )} is specified.`,
     help: "option",
   },
 );
@@ -38,7 +35,7 @@ const pnpmWorkspace = await readFile(
 );
 const projectRoot = dirname(import.meta.dirname!);
 const normalizedWorkspaceMembers = workspaceMembers.map((member) =>
-  normalize(resolve(projectRoot, member))
+  normalize(resolve(projectRoot, member)),
 );
 for (const pkg of (parse(pnpmWorkspace) as { packages: string[] }).packages) {
   const normalizedPkg = normalize(resolve(projectRoot, pkg));
@@ -74,10 +71,7 @@ for (const member of workspaceMembers) {
         );
         if (fix) {
           deno.version = version;
-          await writeFile(
-            denoJsonPath,
-            JSON.stringify(deno, null, 2) + "\n",
-          );
+          await writeFile(denoJsonPath, JSON.stringify(deno, null, 2) + "\n");
           fixed++;
           console.error("Fixed version in %o", denoJsonPath);
         }
@@ -106,10 +100,7 @@ for (const member of workspaceMembers) {
       );
       if (fix) {
         pkg.version = version;
-        await writeFile(
-          pkgJsonPath,
-          JSON.stringify(pkg, null, 2) + "\n",
-        );
+        await writeFile(pkgJsonPath, JSON.stringify(pkg, null, 2) + "\n");
         fixed++;
         console.error("Fixed version in %o", pkgJsonPath);
       }

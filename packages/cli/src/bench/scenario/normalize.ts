@@ -35,16 +35,16 @@ const DEFAULT_RUNS = 3;
 /** The resolved load model for a scenario. */
 export type LoadModel =
   | {
-    readonly kind: "open";
-    readonly ratePerSec: number;
-    readonly arrival: ArrivalDistribution;
-    readonly maxInFlight?: number;
-  }
+      readonly kind: "open";
+      readonly ratePerSec: number;
+      readonly arrival: ArrivalDistribution;
+      readonly maxInFlight?: number;
+    }
   | {
-    readonly kind: "closed";
-    readonly concurrency: number;
-    readonly maxInFlight?: number;
-  };
+      readonly kind: "closed";
+      readonly concurrency: number;
+      readonly maxInFlight?: number;
+    };
 
 /** A scenario with all defaults applied and all units parsed. */
 export interface ResolvedScenario {
@@ -118,7 +118,8 @@ export function normalizeSuite(
   if (
     (target.protocol !== "http:" && target.protocol !== "https:") ||
     target.hostname === "" ||
-    target.username !== "" || target.password !== ""
+    target.username !== "" ||
+    target.password !== ""
   ) {
     throw new SuiteNormalizeError(
       `Invalid target URL ${JSON.stringify(targetString)}: a benchmark ` +
@@ -130,7 +131,7 @@ export function normalizeSuite(
     target,
     actors: suite.actors ?? [],
     scenarios: suite.scenarios.map((scenario) =>
-      resolveScenario(scenario, suite)
+      resolveScenario(scenario, suite),
     ),
   };
 }
@@ -139,8 +140,8 @@ function resolveScenario(scenario: Scenario, suite: Suite): ResolvedScenario {
   const defaults = suite.defaults ?? {};
   const load = resolveLoad(defaults.load, scenario.load);
   const signing = scenario.signing ?? defaults.signing ?? DEFAULT_SIGNING;
-  const signatureTimeWindow = scenario.signatureTimeWindow ??
-    defaults.signatureTimeWindow ?? false;
+  const signatureTimeWindow =
+    scenario.signatureTimeWindow ?? defaults.signatureTimeWindow ?? false;
   if (signing !== "jit" && signatureTimeWindow) {
     throw new SuiteNormalizeError(
       `Scenario "${scenario.name}": ${signing} signing pre-signs requests, ` +
@@ -187,9 +188,10 @@ function resolveScenario(scenario: Scenario, suite: Suite): ResolvedScenario {
     source: scenario.source,
     sender: scenario.sender,
     followers: scenario.followers,
-    queueDrainTimeoutMs: scenario.queueDrainTimeout == null
-      ? undefined
-      : parseDuration(scenario.queueDrainTimeout),
+    queueDrainTimeoutMs:
+      scenario.queueDrainTimeout == null
+        ? undefined
+        : parseDuration(scenario.queueDrainTimeout),
     faults: asList(scenario.fault),
     expect: scenario.expect ?? {},
     raw: scenario,
@@ -238,9 +240,6 @@ function resolveLoad(
   };
 }
 
-function resolveDuration(
-  value: string | undefined,
-  fallback: number,
-): number {
+function resolveDuration(value: string | undefined, fallback: number): number {
   return value == null ? fallback : parseDuration(value);
 }

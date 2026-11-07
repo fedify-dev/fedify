@@ -16,7 +16,8 @@ import { addMulticodecPrefix } from "./internal/multicodec.ts";
 import { encodeMultibase } from "./multibase/mod.ts";
 
 // cSpell: disable
-const rsaSpki = "-----BEGIN PUBLIC KEY-----\n" +
+const rsaSpki =
+  "-----BEGIN PUBLIC KEY-----\n" +
   "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxsRuvCkgJtflBTl4OVsm\n" +
   "nt/J1mQfZasfJtN33dcZ3d1lJroxmgmMu69zjGEAwkNbMQaWNLqC4eogkJaeJ4RR\n" +
   "5MHYXkL9nNilVoTkjX5BVit3puzs7XJ7WQnKQgQMI+ezn24GHsZ/v1JIo77lerX5\n" +
@@ -28,7 +29,8 @@ const rsaSpki = "-----BEGIN PUBLIC KEY-----\n" +
 // cSpell: enable
 
 // cSpell: disable
-const rsaPkcs1 = "-----BEGIN RSA PUBLIC KEY-----\n" +
+const rsaPkcs1 =
+  "-----BEGIN RSA PUBLIC KEY-----\n" +
   "MIIBCgKCAQEAxsRuvCkgJtflBTl4OVsmnt/J1mQfZasfJtN33dcZ3d1lJroxmgmM\n" +
   "u69zjGEAwkNbMQaWNLqC4eogkJaeJ4RR5MHYXkL9nNilVoTkjX5BVit3puzs7XJ7\n" +
   "WQnKQgQMI+ezn24GHsZ/v1JIo77lerX5k4HNwTNVt+yaZVQWaOMR3+6FwziQR6kd\n" +
@@ -47,7 +49,8 @@ const rsaJwk: JsonWebKey = {
   key_ops: ["verify"],
   kty: "RSA",
   // cSpell: disable
-  n: "xsRuvCkgJtflBTl4OVsmnt_J1mQfZasfJtN33dcZ3d1lJroxmgmMu69zjGEAwkNbMQaWN" +
+  n:
+    "xsRuvCkgJtflBTl4OVsmnt_J1mQfZasfJtN33dcZ3d1lJroxmgmMu69zjGEAwkNbMQaWN" +
     "LqC4eogkJaeJ4RR5MHYXkL9nNilVoTkjX5BVit3puzs7XJ7WQnKQgQMI-ezn24GHsZ_v1J" +
     "Io77lerX5k4HNwTNVt-yaZVQWaOMR3-6FwziQR6kd0VuG9_a9dgAnz2cEoORRC1i4W7IZa" +
     "B1sZnh1WbHbevlGd72HSXll5rocPIHn8gq6xpBgpHwRphlRsgn4KHaJ6brXDIJjrnQhIe_" +
@@ -65,7 +68,8 @@ const rsaMultibase =
 // cSpell: enable
 
 // cSpell: disable
-const ed25519Pem = "-----BEGIN PUBLIC KEY-----\n" +
+const ed25519Pem =
+  "-----BEGIN PUBLIC KEY-----\n" +
   "MCowBQYDK2VwAyEAvrabdlLgVI5jWl7GpF+fLFJVF4ccI8D7h+v5ulBCYwo=\n" +
   "-----END PUBLIC KEY-----\n";
 // cSpell: enable
@@ -139,9 +143,7 @@ test("importMultibase() rejects malformed multicodec prefixes", async () => {
   await rejects(
     () =>
       importMultibaseKey(
-        decoder.decode(
-          encodeMultibase("base58btc", Uint8Array.from([0x80])),
-        ),
+        decoder.decode(encodeMultibase("base58btc", Uint8Array.from([0x80]))),
       ),
     new TypeError("Invalid multicodec prefix."),
   );
@@ -157,20 +159,24 @@ test("exportMultibaseKey()", async () => {
   deepStrictEqual(ed25519Mb, ed25519Multibase);
 
   // Test vectors from <https://codeberg.org/fediverse/fep/src/branch/main/fep/521a/fep-521a.feature>:
-  const rsaKey2 = await importJwk({
-    alg: "RS256",
-    ext: true,
-    key_ops: ["verify"],
-    // cSpell: disable
-    e: "AQAB",
-    kty: "RSA",
-    n: "sbX82NTV6IylxCh7MfV4hlyvaniCajuP97GyOqSvTmoEdBOflFvZ06kR_9D6ctt45Fk6h" +
-      "skfnag2GG69NALVH2o4RCR6tQiLRpKcMRtDYE_thEmfBvDzm_VVkOIYfxu-Ipuo9J_S5XD" +
-      "NDjczx2v-3oDh5-CIHkU46hvFeCvpUS-L8TJSbgX0kjVk_m4eIb9wh63rtmD6Uz_KBtCo5" +
-      "mmR4TEtcLZKYdqMp3wCjN-TlgHiz_4oVXWbHUefCEe8rFnX1iQnpDHU49_SaXQoud1jCae" +
-      "xFn25n-Aa8f8bc5Vm-5SeRwidHa6ErvEhTvf1dz6GoNPp2iRvm-wJ1gxwWJEYPQ",
-    // cSpell: enable
-  }, "public");
+  const rsaKey2 = await importJwk(
+    {
+      alg: "RS256",
+      ext: true,
+      key_ops: ["verify"],
+      // cSpell: disable
+      e: "AQAB",
+      kty: "RSA",
+      n:
+        "sbX82NTV6IylxCh7MfV4hlyvaniCajuP97GyOqSvTmoEdBOflFvZ06kR_9D6ctt45Fk6h" +
+        "skfnag2GG69NALVH2o4RCR6tQiLRpKcMRtDYE_thEmfBvDzm_VVkOIYfxu-Ipuo9J_S5XD" +
+        "NDjczx2v-3oDh5-CIHkU46hvFeCvpUS-L8TJSbgX0kjVk_m4eIb9wh63rtmD6Uz_KBtCo5" +
+        "mmR4TEtcLZKYdqMp3wCjN-TlgHiz_4oVXWbHUefCEe8rFnX1iQnpDHU49_SaXQoud1jCae" +
+        "xFn25n-Aa8f8bc5Vm-5SeRwidHa6ErvEhTvf1dz6GoNPp2iRvm-wJ1gxwWJEYPQ",
+      // cSpell: enable
+    },
+    "public",
+  );
   const rsaMb2 = await exportMultibaseKey(rsaKey2);
   deepStrictEqual(
     rsaMb2,
@@ -184,16 +190,19 @@ test("exportMultibaseKey()", async () => {
     // cSpell: enable
   );
 
-  const ed25519Key2 = await importJwk({
-    alg: "Ed25519",
-    crv: "Ed25519",
-    ext: true,
-    key_ops: ["verify"],
-    kty: "OKP",
-    // cSpell: disable
-    x: "Lm_M42cB3HkUiODQsXRcweM6TByfzEHGO9ND274JcOY",
-    // cSpell: enable
-  }, "public");
+  const ed25519Key2 = await importJwk(
+    {
+      alg: "Ed25519",
+      crv: "Ed25519",
+      ext: true,
+      key_ops: ["verify"],
+      kty: "OKP",
+      // cSpell: disable
+      x: "Lm_M42cB3HkUiODQsXRcweM6TByfzEHGO9ND274JcOY",
+      // cSpell: enable
+    },
+    "public",
+  );
   const ed25519Mb2 = await exportMultibaseKey(ed25519Key2);
   deepStrictEqual(
     ed25519Mb2,
@@ -214,15 +223,11 @@ test("exportDidKey() and importDidKey()", async () => {
   );
 
   const rsaKey = await importJwk(rsaJwk, "public");
-  await rejects(
-    () => exportDidKey(rsaKey),
-    TypeError,
-  );
-  const { privateKey } = await crypto.subtle.generateKey(
-    "Ed25519",
-    true,
-    ["sign", "verify"],
-  ) as CryptoKeyPair;
+  await rejects(() => exportDidKey(rsaKey), TypeError);
+  const { privateKey } = (await crypto.subtle.generateKey("Ed25519", true, [
+    "sign",
+    "verify",
+  ])) as CryptoKeyPair;
   await rejects(
     () => exportDidKey(privateKey),
     new TypeError("The key must be a public key."),
@@ -246,50 +251,40 @@ test("did:key helpers reject malformed values", async () => {
   const ed25519Key = await importJwk(ed25519Jwk, "public");
   const raw = new Uint8Array(await crypto.subtle.exportKey("raw", ed25519Key));
   const shortEd25519 = new TextDecoder().decode(
-    encodeMultibase(
-      "base58btc",
-      addMulticodecPrefix(0xed, raw.slice(0, 31)),
-    ),
+    encodeMultibase("base58btc", addMulticodecPrefix(0xed, raw.slice(0, 31))),
   );
   const base64UrlEd25519 = new TextDecoder().decode(
-    encodeMultibase(
-      "base64url",
-      addMulticodecPrefix(0xed, raw),
-    ),
+    encodeMultibase("base64url", addMulticodecPrefix(0xed, raw)),
   );
   const malformedMulticodec = new TextDecoder().decode(
     encodeMultibase("base58btc", Uint8Array.from([0x80])),
   );
 
-  for (
-    const value of [
-      "did:web:example.com",
-      "did:key:",
-      `did:key:${ed25519Multibase}/path`,
-      `did:key:${ed25519Multibase}?query`,
-      `did:key:${ed25519Multibase}#${ed25519Multibase}`,
-      "did:key:z0",
-      `did:key:${base64UrlEd25519}`,
-      `did:key:${shortEd25519}`,
-      `did:key:${malformedMulticodec}`,
-    ]
-  ) {
+  for (const value of [
+    "did:web:example.com",
+    "did:key:",
+    `did:key:${ed25519Multibase}/path`,
+    `did:key:${ed25519Multibase}?query`,
+    `did:key:${ed25519Multibase}#${ed25519Multibase}`,
+    "did:key:z0",
+    `did:key:${base64UrlEd25519}`,
+    `did:key:${shortEd25519}`,
+    `did:key:${malformedMulticodec}`,
+  ]) {
     await rejects(() => importDidKey(value), TypeError);
   }
 
-  for (
-    const value of [
-      `did:key:${ed25519Multibase}`,
-      `did:key:${ed25519Multibase}#`,
-      `did:key:${ed25519Multibase}#z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK`,
-      `did:key:${ed25519Multibase}#${base64UrlEd25519}`,
-      "did:key:z0#z0",
-      `did:key:${rsaMultibase}#${rsaMultibase}`,
-      `did:key:${shortEd25519}#${shortEd25519}`,
-      `did:key:${malformedMulticodec}#${malformedMulticodec}`,
-      "https://example.com/key",
-    ]
-  ) {
+  for (const value of [
+    `did:key:${ed25519Multibase}`,
+    `did:key:${ed25519Multibase}#`,
+    `did:key:${ed25519Multibase}#z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK`,
+    `did:key:${ed25519Multibase}#${base64UrlEd25519}`,
+    "did:key:z0#z0",
+    `did:key:${rsaMultibase}#${rsaMultibase}`,
+    `did:key:${shortEd25519}#${shortEd25519}`,
+    `did:key:${malformedMulticodec}#${malformedMulticodec}`,
+    "https://example.com/key",
+  ]) {
     await rejects(() => parseDidKeyVerificationMethod(value), TypeError);
   }
 });

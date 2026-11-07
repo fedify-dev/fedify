@@ -18,8 +18,6 @@ export const preloadedOnlyDocumentLoader: DocumentLoader = (url: string) => {
     });
   }
   return Promise.reject(
-    new Error(
-      "Refusing to fetch a non-preloaded JSON-LD context: " + url,
-    ),
+    new Error("Refusing to fetch a non-preloaded JSON-LD context: " + url),
   );
 };

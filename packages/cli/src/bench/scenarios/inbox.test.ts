@@ -39,7 +39,7 @@ async function spawnBenchmarkTarget(usernames: string[] = ["alice"]) {
       });
     })
     .mapHandle((_ctx, username) =>
-      usernames.includes(username) ? username : null
+      usernames.includes(username) ? username : null,
     )
     .setKeyPairsDispatcher(async (_ctx, identifier) => {
       if (!usernames.includes(identifier)) return [];
@@ -103,24 +103,28 @@ test("inboxRunner - signed deliveries verify against a benchmarkMode target", as
   let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
   try {
     fleet = await spawnSyntheticServer(
-      await buildFleet([{
-        count: 1,
-        signatureStandards: ["draft-cavage-http-signatures-12"],
-      }]),
+      await buildFleet([
+        {
+          count: 1,
+          signatureStandards: ["draft-cavage-http-signatures-12"],
+        },
+      ]),
     );
     const suite: Suite = {
       version: 1,
       target: target.url.href,
-      scenarios: [{
-        name: "inbox-shared",
-        type: "inbox",
-        // An actor URI is used (not an acct: handle) because WebFinger is
-        // https-only and this loopback target is served over http.
-        recipient: new URL("/users/alice", target.url).href,
-        inbox: "shared",
-        load: { concurrency: 2 },
-        duration: "300ms",
-      }],
+      scenarios: [
+        {
+          name: "inbox-shared",
+          type: "inbox",
+          // An actor URI is used (not an acct: handle) because WebFinger is
+          // https-only and this loopback target is served over http.
+          recipient: new URL("/users/alice", target.url).href,
+          inbox: "shared",
+          load: { concurrency: 2 },
+          duration: "300ms",
+        },
+      ],
     };
     const scenario = normalizeSuite(suite).scenarios[0];
     const measurement = await inboxRunner.run({
@@ -137,9 +141,9 @@ test("inboxRunner - signed deliveries verify against a benchmarkMode target", as
     assert.strictEqual(
       measurement.requests.successRate,
       1,
-      `expected all deliveries to succeed; errors: ${
-        JSON.stringify(measurement.errors)
-      }`,
+      `expected all deliveries to succeed; errors: ${JSON.stringify(
+        measurement.errors,
+      )}`,
     );
     // Server-side metrics are read from the cooperative stats endpoint.
     assert.ok(
@@ -165,26 +169,30 @@ test(
     let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
     try {
       fleet = await spawnSyntheticServer(
-        await buildFleet([{
-          count: 1,
-          signatureStandards: ["draft-cavage-http-signatures-12"],
-        }]),
+        await buildFleet([
+          {
+            count: 1,
+            signatureStandards: ["draft-cavage-http-signatures-12"],
+          },
+        ]),
       );
       const suite: Suite = {
         version: 1,
         target: target.url.href,
-        scenarios: [{
-          name: "inbox-warmup",
-          type: "inbox",
-          recipient: new URL("/users/alice", target.url).href,
-          inbox: "shared",
-          // 10/s over 400ms schedules exactly four arrivals: two inside the
-          // warm-up (0 and 100ms) and two measured (200 and 300ms), so the
-          // measured-window baseline snapshot is always taken.
-          load: { rate: 10, arrival: "constant", maxInFlight: 2 },
-          warmup: "120ms",
-          duration: "400ms",
-        }],
+        scenarios: [
+          {
+            name: "inbox-warmup",
+            type: "inbox",
+            recipient: new URL("/users/alice", target.url).href,
+            inbox: "shared",
+            // 10/s over 400ms schedules exactly four arrivals: two inside the
+            // warm-up (0 and 100ms) and two measured (200 and 300ms), so the
+            // measured-window baseline snapshot is always taken.
+            load: { rate: 10, arrival: "constant", maxInFlight: 2 },
+            warmup: "120ms",
+            duration: "400ms",
+          },
+        ],
       };
       const scenario = normalizeSuite(suite).scenarios[0];
       const measurement = await inboxRunner.run({
@@ -203,9 +211,9 @@ test(
       assert.strictEqual(
         measurement.requests.successRate,
         1,
-        `expected all deliveries to succeed; errors: ${
-          JSON.stringify(measurement.errors)
-        }`,
+        `expected all deliveries to succeed; errors: ${JSON.stringify(
+          measurement.errors,
+        )}`,
       );
       assert.strictEqual(target.receivedCount(), 4);
       // The measured window verified signatures, so server metrics survive the
@@ -235,29 +243,33 @@ async function assertAllocatesAcrossRecipients(
   let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
   try {
     fleet = await spawnSyntheticServer(
-      await buildFleet([{
-        count: 2,
-        signatureStandards: ["draft-cavage-http-signatures-12"],
-      }]),
+      await buildFleet([
+        {
+          count: 2,
+          signatureStandards: ["draft-cavage-http-signatures-12"],
+        },
+      ]),
     );
     const suite: Suite = {
       version: 1,
       target: target.url.href,
-      scenarios: [{
-        name: "inbox-multi",
-        type: "inbox",
-        recipient: [
-          new URL("/users/alice", target.url).href,
-          new URL("/users/bob", target.url).href,
-        ],
-        // Personal inboxes so each recipient's deliveries hit a distinct path.
-        inbox: "personal",
-        // 10/s over 400ms schedules exactly four arrivals (0, 100, 200, and
-        // 300ms), which is also the batch size presign signs up front.
-        load: { rate: 10, maxInFlight: 2 },
-        duration: "400ms",
-        signing,
-      }],
+      scenarios: [
+        {
+          name: "inbox-multi",
+          type: "inbox",
+          recipient: [
+            new URL("/users/alice", target.url).href,
+            new URL("/users/bob", target.url).href,
+          ],
+          // Personal inboxes so each recipient's deliveries hit a distinct path.
+          inbox: "personal",
+          // 10/s over 400ms schedules exactly four arrivals (0, 100, 200, and
+          // 300ms), which is also the batch size presign signs up front.
+          load: { rate: 10, maxInFlight: 2 },
+          duration: "400ms",
+          signing,
+        },
+      ],
     };
     const scenario = normalizeSuite(suite).scenarios[0];
     const measurement = await inboxRunner.run({
@@ -274,15 +286,15 @@ async function assertAllocatesAcrossRecipients(
     assert.strictEqual(
       measurement.requests.successRate,
       1,
-      `expected all deliveries to succeed; errors: ${
-        JSON.stringify(measurement.errors)
-      }`,
+      `expected all deliveries to succeed; errors: ${JSON.stringify(
+        measurement.errors,
+      )}`,
     );
     // Each recipient's personal inbox received exactly half of the deliveries.
-    assert.deepStrictEqual(
-      Object.fromEntries(target.inboxHits()),
-      { "/users/alice/inbox": 2, "/users/bob/inbox": 2 },
-    );
+    assert.deepStrictEqual(Object.fromEntries(target.inboxHits()), {
+      "/users/alice/inbox": 2,
+      "/users/bob/inbox": 2,
+    });
   } finally {
     try {
       await fleet?.close();
@@ -309,13 +321,15 @@ test("inboxRunner.validate - rejects activity options it cannot honor", () => {
     return normalizeSuite({
       version: 1,
       target: "http://localhost:3000",
-      scenarios: [{
-        name: "inbox",
-        type: "inbox",
-        recipient: "http://localhost:3000/users/alice",
-        // oxlint-disable-next-line typescript/no-explicit-any
-        activity: activity as any,
-      }],
+      scenarios: [
+        {
+          name: "inbox",
+          type: "inbox",
+          recipient: "http://localhost:3000/users/alice",
+          // oxlint-disable-next-line typescript/no-explicit-any
+          activity: activity as any,
+        },
+      ],
     }).scenarios[0];
   }
   assert.throws(
@@ -324,9 +338,7 @@ test("inboxRunner.validate - rejects activity options it cannot honor", () => {
   );
   assert.throws(
     () =>
-      inboxRunner.validate!(
-        resolve({ type: "Create", embedObject: false }),
-      ),
+      inboxRunner.validate!(resolve({ type: "Create", embedObject: false })),
     /embedObject/,
   );
   assert.throws(
@@ -350,7 +362,9 @@ test("inboxRunner.validate - rejects activity options it cannot honor", () => {
   );
   // The default Create/Note activity is accepted.
   assert.doesNotThrow(() =>
-    inboxRunner.validate!(resolve({ type: "Create", object: { type: "Note" } }))
+    inboxRunner.validate!(
+      resolve({ type: "Create", object: { type: "Note" } }),
+    ),
   );
 });
 
@@ -359,12 +373,14 @@ test("inboxRunner.validate - rejects a malformed or non-http inbox value", () =>
     return normalizeSuite({
       version: 1,
       target: "http://localhost:3000",
-      scenarios: [{
-        name: "inbox",
-        type: "inbox",
-        recipient: "http://localhost:3000/users/alice",
-        inbox,
-      }],
+      scenarios: [
+        {
+          name: "inbox",
+          type: "inbox",
+          recipient: "http://localhost:3000/users/alice",
+          inbox,
+        },
+      ],
     }).scenarios[0];
   }
   // A typo that is not a URL would otherwise crash selectInbox mid-run.

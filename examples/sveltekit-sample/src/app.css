@@ -153,7 +153,9 @@ body {
     background: var(--background);
     color: var(--foreground);
     border-color: rgba(0, 0, 0, 0.2);
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
   }
 
   .form-textarea:focus {

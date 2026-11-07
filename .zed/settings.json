@@ -15,10 +15,7 @@
   "formatter": "language_server",
   "languages": {
     "JSON": {
-      "language_servers": [
-        "deno",
-        "!biome"
-      ]
+      "language_servers": ["deno", "!biome"]
     },
     "JavaScript": {
       "code_actions_on_format": {
@@ -36,9 +33,7 @@
       "formatter": {
         "external": {
           "command": "hongdown",
-          "arguments": [
-            "-"
-          ]
+          "arguments": ["-"]
         }
       },
       "language_servers": [
@@ -74,15 +69,10 @@
       ]
     },
     "YAML": {
-      "language_servers": [
-        "!deno",
-        "!biome"
-      ],
+      "language_servers": ["!deno", "!biome"],
       "enable_language_server": false
     }
   },
   "show_wrap_guides": true,
-  "wrap_guides": [
-    80
-  ]
+  "wrap_guides": [80]
 }

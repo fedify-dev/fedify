@@ -8,7 +8,7 @@ export type ContextDataFactory<TContextData> = (
 export const fedify = <TContextData = unknown>(
   federation: Federation<TContextData>,
   contextDataFactory: ContextDataFactory<TContextData>,
-): (app: AnyElysia) => AnyElysia => {
+): ((app: AnyElysia) => AnyElysia) => {
   const notAcceptableRequests = new WeakSet<Request>();
   return (app: AnyElysia) => {
     observeApplicationParents(app);
@@ -68,9 +68,12 @@ export const fedify = <TContextData = unknown>(
       .onError(async function notAcceptableFallback(context) {
         const { request, code, set } = context;
         if (
-          code !== "NOT_FOUND" || !notAcceptableRequests.has(request) ||
-          context.route || context.error.message !== "NOT_FOUND"
-        ) return;
+          code !== "NOT_FOUND" ||
+          !notAcceptableRequests.has(request) ||
+          context.route ||
+          context.error.message !== "NOT_FOUND"
+        )
+          return;
         notAcceptableRequests.delete(request);
         // Elysia has no next() for error hooks. Let later application hooks
         // handle the request once before supplying our terminal fallback.
@@ -78,8 +81,8 @@ export const fedify = <TContextData = unknown>(
         // request, even when the installation plugin has several parents.
         const activeApp = findApplication(app, context.store);
         const hooks = activeApp.event.error ?? [];
-        const index = hooks.findIndex((hook) =>
-          hook.fn === notAcceptableFallback
+        const index = hooks.findIndex(
+          (hook) => hook.fn === notAcceptableFallback,
         );
         for (const hook of index < 0 ? [] : hooks.slice(index + 1)) {
           const response = await hook.fn(context);
@@ -109,14 +112,15 @@ export const fedify = <TContextData = unknown>(
               "last-modified",
               "transfer-encoding",
             ].includes(name)
-          ) delete set.headers[header];
+          )
+            delete set.headers[header];
         }
         const fields = vary.flatMap((field) =>
-          field.trim() ? [field.trim()] : []
+          field.trim() ? [field.trim()] : [],
         );
         if (
-          !fields.some((field) =>
-            field === "*" || field.toLowerCase() === "accept"
+          !fields.some(
+            (field) => field === "*" || field.toLowerCase() === "accept",
           )
         ) {
           fields.push("Accept");
@@ -145,9 +149,11 @@ function observeApplicationParents(app: AnyElysia): void {
   if (applicationParents.has(app)) return;
   const parents = new Set<WeakRef<AnyElysia>>();
   applicationParents.set(app, parents);
-  let getParent = (app as unknown as {
-    getParent?: () => AnyElysia | null;
-  }).getParent;
+  let getParent = (
+    app as unknown as {
+      getParent?: () => AnyElysia | null;
+    }
+  ).getParent;
   const rememberParent = (): void => {
     const parent = getParent?.call(app);
     if (parent == null || parent === app) return;

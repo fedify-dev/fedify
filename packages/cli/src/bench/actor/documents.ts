@@ -28,18 +28,24 @@ export async function actorDocument(
     preferredUsername: `bench-${actor.index}`,
     name: actor.name ?? `Benchmark actor ${actor.index}`,
     inbox: new URL(`${actor.id.href}/inbox`),
-    publicKey: actor.keys.rsa == null ? undefined : new CryptographicKey({
-      id: actor.rsaKeyId,
-      owner: actor.id,
-      publicKey: actor.keys.rsa.publicKey,
-    }),
-    assertionMethods: actor.keys.ed25519 == null ? [] : [
-      new Multikey({
-        id: actor.ed25519KeyId,
-        controller: actor.id,
-        publicKey: actor.keys.ed25519.publicKey,
-      }),
-    ],
+    publicKey:
+      actor.keys.rsa == null
+        ? undefined
+        : new CryptographicKey({
+            id: actor.rsaKeyId,
+            owner: actor.id,
+            publicKey: actor.keys.rsa.publicKey,
+          }),
+    assertionMethods:
+      actor.keys.ed25519 == null
+        ? []
+        : [
+            new Multikey({
+              id: actor.ed25519KeyId,
+              controller: actor.id,
+              publicKey: actor.keys.ed25519.publicKey,
+            }),
+          ],
   });
   return await application.toJsonLd({ contextLoader: options.contextLoader });
 }

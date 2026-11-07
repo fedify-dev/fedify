@@ -26,31 +26,37 @@ function getParent(node: unknown): Node | null {
 function isDirectlyAuthorized(callNode: CallExpression): boolean {
   const member = getParent(callNode);
   if (
-    member == null || member.type !== "MemberExpression" ||
+    member == null ||
+    member.type !== "MemberExpression" ||
     (member as { computed?: boolean }).computed === true
   ) {
     return false;
   }
   const property = (member as { property?: unknown }).property;
   if (
-    !isNode(property) || property.type !== "Identifier" ||
+    !isNode(property) ||
+    property.type !== "Identifier" ||
     (property as { name?: unknown }).name !== "authorize"
   ) {
     return false;
   }
   const call = getParent(member);
-  return call != null && call.type === "CallExpression" &&
-    (call as { callee?: unknown }).callee === member;
+  return (
+    call != null &&
+    call.type === "CallExpression" &&
+    (call as { callee?: unknown }).callee === member
+  );
 }
 
 function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
-  buildReport: Context extends Deno.lint.RuleContext ? {
-      message: string;
-    }
+  buildReport: Context extends Deno.lint.RuleContext
+    ? {
+        message: string;
+      }
     : {
-      messageId: string;
-      data: { message: string };
-    },
+        messageId: string;
+        data: { message: string };
+      },
 ) {
   return (context: Context) => {
     const federationTracker = trackFederationVariables();
@@ -66,7 +72,8 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
 
       CallExpression(node: CallExpression): void {
         if (
-          hasMemberExpressionCallee(node) && hasIdentifierProperty(node) &&
+          hasMemberExpressionCallee(node) &&
+          hasIdentifierProperty(node) &&
           hasMethodName("authorize")(node)
         ) {
           const object = node.callee.object;
@@ -76,7 +83,8 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
           return;
         }
         if (
-          !hasMemberExpressionCallee(node) || !hasIdentifierProperty(node) ||
+          !hasMemberExpressionCallee(node) ||
+          !hasIdentifierProperty(node) ||
           !hasMethodName("setMediaUploader")(node) ||
           !federationTracker.isFederationObject(node.callee.object)
         ) {

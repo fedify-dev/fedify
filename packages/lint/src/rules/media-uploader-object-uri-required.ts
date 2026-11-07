@@ -27,11 +27,11 @@ const GETTER_NAME = "getObjectUri";
 type FunctionLikeNode =
   | FunctionNode
   | (Node & {
-    type: "FunctionDeclaration";
-    id: Identifier | null;
-    params: unknown[];
-    body: unknown;
-  });
+      type: "FunctionDeclaration";
+      id: Identifier | null;
+      params: unknown[];
+      body: unknown;
+    });
 
 const getMemberPropertyName = (node: Node): string | null => {
   if (node.type !== "MemberExpression") return null;
@@ -79,12 +79,15 @@ const resolveCallbackReference = (
   }
   // Object-member reference, e.g. `setMediaUploader(path, uploaders.image)`.
   if (
-    expr.type === "MemberExpression" && expr.object.type === "Identifier" &&
+    expr.type === "MemberExpression" &&
+    expr.object.type === "Identifier" &&
     !expr.computed
   ) {
     const binding = bindings.get(expr.object.name);
     if (
-      binding == null || !isNode(binding) || binding.type !== "ObjectExpression"
+      binding == null ||
+      !isNode(binding) ||
+      binding.type !== "ObjectExpression"
     ) {
       return null;
     }
@@ -92,11 +95,12 @@ const resolveCallbackReference = (
     if (propertyName == null) return null;
     for (const prop of binding.properties) {
       if (!isNode(prop) || prop.type !== "Property") continue;
-      const keyName = prop.key.type === "Identifier"
-        ? prop.key.name
-        : prop.key.type === "Literal" && typeof prop.key.value === "string"
-        ? prop.key.value
-        : null;
+      const keyName =
+        prop.key.type === "Identifier"
+          ? prop.key.name
+          : prop.key.type === "Literal" && typeof prop.key.value === "string"
+            ? prop.key.value
+            : null;
       if (keyName !== propertyName || !isNode(prop.value)) continue;
       const value = prop.value as unknown;
       if (
@@ -151,7 +155,10 @@ function collectLocalBindings(
   if (n.type === "VariableDeclarator") {
     const id = n.id as Node | undefined;
     if (
-      id != null && isNode(id) && id.type === "Identifier" && n.init != null
+      id != null &&
+      isNode(id) &&
+      id.type === "Identifier" &&
+      n.init != null
     ) {
       if (!bindings.has(id.name)) bindings.set(id.name, n.init);
     }
@@ -211,14 +218,16 @@ function isPromiseResolveCall(expr: AnyNode): boolean {
   if (expr.type !== "CallExpression") return false;
   const callee = toNode(expr.callee);
   if (
-    callee == null || callee.type !== "MemberExpression" ||
+    callee == null ||
+    callee.type !== "MemberExpression" ||
     getMemberPropertyName(callee as unknown as Node) !== "resolve"
   ) {
     return false;
   }
   const object = toNode(callee.object);
-  return object != null && object.type === "Identifier" &&
-    object.name === "Promise";
+  return (
+    object != null && object.type === "Identifier" && object.name === "Promise"
+  );
 }
 
 /**
@@ -237,12 +246,12 @@ function unwrapExpression(value: unknown): AnyNode | null {
       current.type === "TSSatisfiesExpression" ||
       current.type === "TSTypeAssertion" ||
       current.type === "ParenthesizedExpression"
-    ) current = toNode(current.expression);
+    )
+      current = toNode(current.expression);
     else if (isPromiseResolveCall(current)) {
       const args = current.arguments;
-      current = Array.isArray(args) && args.length === 1
-        ? toNode(args[0])
-        : null;
+      current =
+        Array.isArray(args) && args.length === 1 ? toNode(args[0]) : null;
     } else return current;
   }
   return null;
@@ -267,20 +276,25 @@ function isGetObjectUriCall(expr: AnyNode, ctx: DeriveContext): boolean {
   if (ctx.ctxName == null) return false;
   const callee = toNode(expr.callee);
   if (
-    callee == null || callee.type !== "MemberExpression" ||
+    callee == null ||
+    callee.type !== "MemberExpression" ||
     getMemberPropertyName(callee as unknown as Node) !== GETTER_NAME
   ) {
     return false;
   }
   const object = unwrapExpression(callee.object);
-  return object != null && object.type === "Identifier" &&
-    object.name === ctx.ctxName;
+  return (
+    object != null &&
+    object.type === "Identifier" &&
+    object.name === ctx.ctxName
+  );
 }
 
 function isUrlConstructor(expr: AnyNode): boolean {
   const callee = toNode(expr.callee);
-  return callee != null && callee.type === "Identifier" &&
-    callee.name === "URL";
+  return (
+    callee != null && callee.type === "Identifier" && callee.name === "URL"
+  );
 }
 
 /** Finds the first `ObjectExpression` argument of a `NewExpression`. */
@@ -320,13 +334,18 @@ function urlDerivesFromGetObjectUri(
     return false;
   }
   if (expr.type === "ConditionalExpression") {
-    return urlDerivesFromGetObjectUri(expr.consequent, ctx, seen) &&
-      urlDerivesFromGetObjectUri(expr.alternate, ctx, seen);
+    return (
+      urlDerivesFromGetObjectUri(expr.consequent, ctx, seen) &&
+      urlDerivesFromGetObjectUri(expr.alternate, ctx, seen)
+    );
   }
   if (expr.type === "NewExpression" && isUrlConstructor(expr)) {
     const args = expr.arguments;
-    return Array.isArray(args) && args.length > 0 &&
-      urlDerivesFromGetObjectUri(args[0], ctx, seen);
+    return (
+      Array.isArray(args) &&
+      args.length > 0 &&
+      urlDerivesFromGetObjectUri(args[0], ctx, seen)
+    );
   }
   return false;
 }
@@ -369,13 +388,14 @@ function objectIdDerivesFromGetObjectUri(
     }
     if (p.type !== "Property") continue;
     const key = toNode(p.key);
-    const keyName = key == null
-      ? null
-      : key.type === "Identifier" && typeof key.name === "string"
-      ? key.name
-      : key.type === "Literal" && typeof key.value === "string"
-      ? key.value
-      : null;
+    const keyName =
+      key == null
+        ? null
+        : key.type === "Identifier" && typeof key.name === "string"
+          ? key.name
+          : key.type === "Literal" && typeof key.value === "string"
+            ? key.value
+            : null;
     if (keyName !== "id") continue;
     // For shorthand `{ id }`, `p.value` is the identifier `id`, which the
     // binding resolution in urlDerivesFromGetObjectUri follows.
@@ -415,8 +435,10 @@ function returnDerivesFromGetObjectUri(
     return false;
   }
   if (expr.type === "ConditionalExpression") {
-    return returnDerivesFromGetObjectUri(expr.consequent, ctx, seen) &&
-      returnDerivesFromGetObjectUri(expr.alternate, ctx, seen);
+    return (
+      returnDerivesFromGetObjectUri(expr.consequent, ctx, seen) &&
+      returnDerivesFromGetObjectUri(expr.alternate, ctx, seen)
+    );
   }
   if (expr.type === "NewExpression") {
     if (isUrlConstructor(expr)) {
@@ -448,18 +470,19 @@ function callbackDerivesFromGetObjectUri(callback: FunctionLikeNode): boolean {
     bindings,
   };
   return returnedExpressions.every((expr) =>
-    returnDerivesFromGetObjectUri(expr, ctx, new Set())
+    returnDerivesFromGetObjectUri(expr, ctx, new Set()),
   );
 }
 
 function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
-  buildReport: Context extends Deno.lint.RuleContext ? {
-      message: string;
-    }
+  buildReport: Context extends Deno.lint.RuleContext
+    ? {
+        message: string;
+      }
     : {
-      messageId: string;
-      data: { message: string };
-    },
+        messageId: string;
+        data: { message: string };
+      },
 ) {
   return (context: Context) => {
     const federationTracker = trackFederationVariables();
@@ -480,10 +503,10 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
       const callbackArg = node.arguments[1] as unknown;
       const callback =
         isNode(callbackArg) && isFunction(callbackArg as Expression)
-          ? callbackArg as FunctionLikeNode
+          ? (callbackArg as FunctionLikeNode)
           : isNode(callbackArg)
-          ? resolveCallbackReference(callbackArg as Expression, bindings)
-          : null;
+            ? resolveCallbackReference(callbackArg as Expression, bindings)
+            : null;
       if (callback == null) return;
 
       if (callbackDerivesFromGetObjectUri(callback)) return;

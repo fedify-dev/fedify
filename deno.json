@@ -99,11 +99,7 @@
     "yaml": "npm:yaml@^2.9.0",
     "oxfmt": "npm:oxfmt@0.77.0"
   },
-  "unstable": [
-    "fs",
-    "kv",
-    "process"
-  ],
+  "unstable": ["fs", "kv", "process"],
   "exclude": [
     "**/pnpm-lock.yaml",
     ".agents/skills/",
@@ -117,22 +113,14 @@
     "tools/"
   ],
   "fmt": {
-    "exclude": [
-      "**/*.html",
-      "**/*.md",
-      "**/*.svg",
-      ".playwright-mcp/**"
-    ]
+    "exclude": ["**/*.html", "**/*.md", "**/*.svg", ".playwright-mcp/**"]
   },
   "nodeModulesDir": "none",
   "tasks": {
     "cli": "deno task -f @fedify/cli run"
   },
   "test": {
-    "include": [
-      "./packages",
-      "./scripts"
-    ],
+    "include": ["./packages", "./scripts"],
     "exclude": [
       "./packages/adonisjs/**",
       "./packages/elysia/src/fallback.test.ts",

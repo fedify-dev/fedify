@@ -25,7 +25,8 @@ export function notAcceptableHeaders(
     eventHeaders.delete(name);
   }
   const vary = [headers.get("vary"), eventHeaders.get("vary")]
-    .filter((value) => value != null).join(", ");
+    .filter((value) => value != null)
+    .join(", ");
   headers.set(
     "vary",
     vary.split(/,\s*/).some((v) => v === "*" || v.toLowerCase() === "accept")
@@ -56,8 +57,11 @@ export function interceptNotAcceptable(
     cleanup();
   };
   function end(this: ServerResponse, ...args: unknown[]): ServerResponse {
-    const convert = active && this.statusCode === 404 &&
-      !this.headersSent && !this.writableEnded;
+    const convert =
+      active &&
+      this.statusCode === 404 &&
+      !this.headersSent &&
+      !this.writableEnded;
     restore();
     if (!convert) return Reflect.apply(originalEnd, this, args);
     this.statusCode = 406;

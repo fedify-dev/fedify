@@ -74,10 +74,7 @@ export function aggregateSamples(
   };
 }
 
-function bucketError(
-  buckets: Map<string, ErrorBucket>,
-  sample: Sample,
-): void {
+function bucketError(buckets: Map<string, ErrorBucket>, sample: Sample): void {
   const { status, errorKind, reason } = sample.outcome;
   const kind = errorKind ?? (status != null ? "http" : "error");
   const reasonText = reason ?? (status != null ? `status_${status}` : "error");

@@ -173,10 +173,9 @@ test("FEP-6757 license is written only as the canonical IRI", async () => {
     }
   }
   const expanded = await note().toJsonLd({ format: "expand" });
-  deepStrictEqual(
-    record((expanded as unknown[])[0])[DC_LICENSE],
-    [{ "@id": BY }],
-  );
+  deepStrictEqual(record((expanded as unknown[])[0])[DC_LICENSE], [
+    { "@id": BY },
+  ]);
 });
 
 test("FEP-6757 multiple licenses are alternatives in observed order", async () => {
@@ -197,8 +196,9 @@ test("FEP-6757 objects without license metadata serialize as before", async () =
     ok(!JSON.stringify(json["@context"]).includes(FEP));
     ok(!("license" in json));
     const person = record(
-      await new Person({ id: new URL("https://social.example/user/1") })
-        .toJsonLd({ format }),
+      await new Person({
+        id: new URL("https://social.example/user/1"),
+      }).toJsonLd({ format }),
     );
     ok(!JSON.stringify(person["@context"]).includes(FEP));
     ok(!("preferredLicense" in person));
@@ -289,14 +289,20 @@ test("FEP-6757 licenses in activities compact to the license term", async () => 
   deepStrictEqual(question.license, BY);
   ok(!JSON.stringify(question).includes("dc:license"));
   // A cached child may define the license term inline:
-  const inline = await Note.fromJsonLd({
-    "@context": [AS, {
-      license: { "@id": DC_LICENSE, "@type": "@id" },
-    }],
-    id: "https://social.example/note/inline",
-    type: "Note",
-    license: BY,
-  }, { documentLoader: noFetch });
+  const inline = await Note.fromJsonLd(
+    {
+      "@context": [
+        AS,
+        {
+          license: { "@id": DC_LICENSE, "@type": "@id" },
+        },
+      ],
+      id: "https://social.example/note/inline",
+      type: "Note",
+      license: BY,
+    },
+    { documentLoader: noFetch },
+  );
   const collection = record(
     await new Collection({
       id: new URL("https://social.example/collection/1"),
@@ -327,11 +333,9 @@ test("FEP-6757 licenses of nested objects only", async () => {
   ok(!("license" in attachments[0]));
   deepStrictEqual(attachments[1].license, PD_MARK);
   const expanded = await expand(json);
-  const links =
-    expanded["https://www.w3.org/ns/activitystreams#attachment"] as Record<
-      string,
-      unknown
-    >[];
+  const links = expanded[
+    "https://www.w3.org/ns/activitystreams#attachment"
+  ] as Record<string, unknown>[];
   deepStrictEqual(links[1][DC_LICENSE], [{ "@id": PD_MARK }]);
   const person = record(
     await new Person({
@@ -342,12 +346,15 @@ test("FEP-6757 licenses of nested objects only", async () => {
   ok(!("license" in person));
   deepStrictEqual(record(person.icon).license, BY_NC);
   // A collection's license does not apply to its items:
-  const collection = await Collection.fromJsonLd({
-    "@context": [AS, FEP],
-    type: "Collection",
-    license: CC0,
-    items: [{ type: "Note", content: "Unlicensed item" }],
-  }, { documentLoader: noFetch });
+  const collection = await Collection.fromJsonLd(
+    {
+      "@context": [AS, FEP],
+      type: "Collection",
+      license: CC0,
+      items: [{ type: "Note", content: "Unlicensed item" }],
+    },
+    { documentLoader: noFetch },
+  );
   deepStrictEqual(collection.licenses, [new URL(CC0)]);
   const items = await Array.fromAsync(
     collection.getItems({ documentLoader: noFetch }),
@@ -357,19 +364,20 @@ test("FEP-6757 licenses of nested objects only", async () => {
 });
 
 test("FEP-6757 modified clones write the canonical property", async () => {
-  const parsed = await Note.fromJsonLd({
-    "@context": [AS, { schema: "https://schema.org/" }],
-    id: "https://social.example/note/3",
-    type: "Note",
-    "schema:license": BY,
-  }, { documentLoader: noFetch });
+  const parsed = await Note.fromJsonLd(
+    {
+      "@context": [AS, { schema: "https://schema.org/" }],
+      id: "https://social.example/note/3",
+      type: "Note",
+      "schema:license": BY,
+    },
+    { documentLoader: noFetch },
+  );
   deepStrictEqual(parsed.licenses, [new URL(BY)]);
-  for (
-    const clone of [
-      parsed.clone({ content: "Edited" }),
-      parsed.clone({ licenses: [new URL(CC0)] }),
-    ]
-  ) {
+  for (const clone of [
+    parsed.clone({ content: "Edited" }),
+    parsed.clone({ licenses: [new URL(CC0)] }),
+  ]) {
     const json = record(await clone.toJsonLd());
     ok(!("schema:license" in json));
     const expanded = await expand(json);
@@ -383,15 +391,13 @@ test("FEP-6757 modified clones write the canonical property", async () => {
 });
 
 test("FEP-6757 caller-provided contexts", async () => {
-  for (
-    const context of [
-      AS,
-      [AS, FEP],
-      [AS, "http://schema.org/"],
-      [AS, FEP, "http://schema.org/"],
-      [AS, "http://schema.org/", FEP],
-    ]
-  ) {
+  for (const context of [
+    AS,
+    [AS, FEP],
+    [AS, "http://schema.org/"],
+    [AS, FEP, "http://schema.org/"],
+    [AS, "http://schema.org/", FEP],
+  ]) {
     const json = await note().toJsonLd({ format: "compact", context });
     // The context is used as is; no extension context is appended:
     deepStrictEqual(record(json)["@context"], context);
@@ -405,45 +411,56 @@ test("FEP-6757 caller-provided contexts", async () => {
 test("FEP-6757 synonym precedence", async () => {
   const id = "https://social.example/note/4";
   const cases: [Record<string, unknown>, string[]][] = [
-    [{ [DC_LICENSE]: [{ "@id": BY }], [SCHEMA_LICENSE]: [{ "@id": CC0 }] }, [
-      BY,
-    ]],
-    [{ [SCHEMA_LICENSE]: [{ "@id": CC0 }], [CC_LICENSE]: [{ "@id": BY }] }, [
-      CC0,
-    ]],
+    [
+      { [DC_LICENSE]: [{ "@id": BY }], [SCHEMA_LICENSE]: [{ "@id": CC0 }] },
+      [BY],
+    ],
+    [
+      { [SCHEMA_LICENSE]: [{ "@id": CC0 }], [CC_LICENSE]: [{ "@id": BY }] },
+      [CC0],
+    ],
     // http://schema.org/license is not a synonym; see the PeerTube test:
     [{ [HTTP_SCHEMA_LICENSE]: [{ "@id": BY }] }, []],
     [{ [CC_LICENSE]: [{ "@id": CC0 }, { "@value": BY }] }, [CC0, BY]],
     // An explicitly empty canonical set falls through to the synonyms:
     [{ [DC_LICENSE]: [], [SCHEMA_LICENSE]: [{ "@value": BY }] }, [BY]],
     // An invalid canonical set is not replaced by a synonym:
-    [{
-      [DC_LICENSE]: [{ "@id": "CC-BY-4.0" }],
-      [SCHEMA_LICENSE]: [{
-        "@id": BY,
-      }],
-    }, []],
+    [
+      {
+        [DC_LICENSE]: [{ "@id": "CC-BY-4.0" }],
+        [SCHEMA_LICENSE]: [
+          {
+            "@id": BY,
+          },
+        ],
+      },
+      [],
+    ],
     [{}, []],
   ];
   for (const [properties, expected] of cases) {
-    const parsed = await Note.fromJsonLd({
-      "@id": id,
-      "@type": [`${AS}#Note`],
-      ...properties,
-    }, { documentLoader: noFetch });
-    deepStrictEqual(parsed.licenses, expected.map((l) => new URL(l)));
+    const parsed = await Note.fromJsonLd(
+      {
+        "@id": id,
+        "@type": [`${AS}#Note`],
+        ...properties,
+      },
+      { documentLoader: noFetch },
+    );
+    deepStrictEqual(
+      parsed.licenses,
+      expected.map((l) => new URL(l)),
+    );
   }
 });
 
 test("FEP-6757 schema.org context order", async () => {
   // The bundled Schema.org context also defines a license term, which expands
   // to http://schema.org/license instead.  The later context wins:
-  for (
-    const [context, predicate, expected] of [
-      [[AS, FEP, "http://schema.org/"], HTTP_SCHEMA_LICENSE, []],
-      [[AS, "http://schema.org/", FEP], DC_LICENSE, [new URL(BY)]],
-    ] as const
-  ) {
+  for (const [context, predicate, expected] of [
+    [[AS, FEP, "http://schema.org/"], HTTP_SCHEMA_LICENSE, []],
+    [[AS, "http://schema.org/", FEP], DC_LICENSE, [new URL(BY)]],
+  ] as const) {
     const json = {
       "@context": context,
       id: "https://social.example/note/5",
@@ -460,11 +477,14 @@ test("FEP-6757 schema.org context order", async () => {
   // The FEP example's own schema prefix yields a string literal, and
   // a context's default language tags it:
   for (const extra of [{}, { "@language": "und" }]) {
-    const literal = await Note.fromJsonLd({
-      "@context": [AS, { schema: "https://schema.org/", ...extra }],
-      type: "Note",
-      "schema:license": BY,
-    }, { documentLoader: noFetch });
+    const literal = await Note.fromJsonLd(
+      {
+        "@context": [AS, { schema: "https://schema.org/", ...extra }],
+        type: "Note",
+        "schema:license": BY,
+      },
+      { documentLoader: noFetch },
+    );
     deepStrictEqual(literal.licenses, [new URL(BY)]);
   }
 });
@@ -473,11 +493,14 @@ test("FEP-6757 PeerTube licences round-trip unchanged", async () => {
   // PeerTube maps its licence to http://schema.org/license with a value
   // that is not a URI, which must not cost the object its cached input:
   const video = {
-    "@context": [AS, {
-      sc: "http://schema.org/",
-      licence: "sc:license",
-      uuid: "sc:identifier",
-    }],
+    "@context": [
+      AS,
+      {
+        sc: "http://schema.org/",
+        licence: "sc:license",
+        uuid: "sc:identifier",
+      },
+    ],
     type: "Video",
     id: "https://peertube.example/videos/watch/1",
     name: "A video",
@@ -507,61 +530,74 @@ test("FEP-6757 rejects license names and relative identifiers", async () => {
     id: "https://social.example/note/6",
     type: "Note",
   };
-  for (
-    const license of [
-      "CC-BY-4.0",
-      "Creative Commons Attribution 4.0 International",
-      "licenses/by/4.0/",
-      "_:license",
-    ]
-  ) {
-    const parsed = await Note.fromJsonLd({ ...base, license }, {
-      documentLoader: noFetch,
-    });
+  for (const license of [
+    "CC-BY-4.0",
+    "Creative Commons Attribution 4.0 International",
+    "licenses/by/4.0/",
+    "_:license",
+  ]) {
+    const parsed = await Note.fromJsonLd(
+      { ...base, license },
+      {
+        documentLoader: noFetch,
+      },
+    );
     deepStrictEqual(parsed.licenses, []);
     ok(!("license" in record(await parsed.toJsonLd())));
   }
-  const mixed = await Note.fromJsonLd({
-    ...base,
-    license: ["CC-BY-4.0", BY, "urn:example:license"],
-  }, { documentLoader: noFetch });
+  const mixed = await Note.fromJsonLd(
+    {
+      ...base,
+      license: ["CC-BY-4.0", BY, "urn:example:license"],
+    },
+    { documentLoader: noFetch },
+  );
   deepStrictEqual(mixed.licenses, [
     new URL(BY),
     new URL("urn:example:license"),
   ]);
   // The input is no longer cached because a value was dropped:
-  deepStrictEqual(
-    record(await mixed.toJsonLd()).license,
-    [BY, "urn:example:license"],
-  );
+  deepStrictEqual(record(await mixed.toJsonLd()).license, [
+    BY,
+    "urn:example:license",
+  ]);
   // A relative identifier made absolute by JSON-LD @base is accepted:
-  const withBase = await Note.fromJsonLd({
-    ...base,
-    "@context": [AS, FEP, { "@base": "https://licenses.example/" }],
-    license: "by/4.0/",
-  }, { documentLoader: noFetch });
+  const withBase = await Note.fromJsonLd(
+    {
+      ...base,
+      "@context": [AS, FEP, { "@base": "https://licenses.example/" }],
+      license: "by/4.0/",
+    },
+    { documentLoader: noFetch },
+  );
   deepStrictEqual(withBase.licenses, [
     new URL("https://licenses.example/by/4.0/"),
   ]);
-  for (
-    const value of [
-      { "@value": BY, "@type": "http://www.w3.org/2001/XMLSchema#date" },
-      { "@value": "CC-BY-4.0", "@language": "en" },
-    ]
-  ) {
-    const parsed = await Note.fromJsonLd({
-      "@type": [`${AS}#Note`],
-      [DC_LICENSE]: [value],
-    }, { documentLoader: noFetch });
+  for (const value of [
+    { "@value": BY, "@type": "http://www.w3.org/2001/XMLSchema#date" },
+    { "@value": "CC-BY-4.0", "@language": "en" },
+  ]) {
+    const parsed = await Note.fromJsonLd(
+      {
+        "@type": [`${AS}#Note`],
+        [DC_LICENSE]: [value],
+      },
+      { documentLoader: noFetch },
+    );
     deepStrictEqual(parsed.licenses, []);
   }
-  const typed = await Note.fromJsonLd({
-    "@type": [`${AS}#Note`],
-    [DC_LICENSE]: [{
-      "@value": BY,
-      "@type": "http://www.w3.org/2001/XMLSchema#anyURI",
-    }],
-  }, { documentLoader: noFetch });
+  const typed = await Note.fromJsonLd(
+    {
+      "@type": [`${AS}#Note`],
+      [DC_LICENSE]: [
+        {
+          "@value": BY,
+          "@type": "http://www.w3.org/2001/XMLSchema#anyURI",
+        },
+      ],
+    },
+    { documentLoader: noFetch },
+  );
   deepStrictEqual(typed.licenses, [new URL(BY)]);
 });
 

@@ -58,14 +58,16 @@ interface DidKey {
   readonly publicKey: CryptoKey;
 }
 
-async function didKey(
-  pair?: { privateKey: CryptoKey; publicKey: CryptoKey },
-): Promise<DidKey> {
-  const { privateKey, publicKey } = pair ??
-    await crypto.subtle.generateKey("Ed25519", true, [
+async function didKey(pair?: {
+  privateKey: CryptoKey;
+  publicKey: CryptoKey;
+}): Promise<DidKey> {
+  const { privateKey, publicKey } =
+    pair ??
+    ((await crypto.subtle.generateKey("Ed25519", true, [
       "sign",
       "verify",
-    ]) as CryptoKeyPair;
+    ])) as CryptoKeyPair);
   const did = await exportDidKey(publicKey);
   return {
     did,
@@ -200,7 +202,7 @@ test("a portable activity with one Ed25519 key gets one direct proof", async () 
       [rsaKey, sender(owner)],
       recipient,
       portableCreate(owner, child),
-    )
+    ),
   );
   assertEquals(bodies.length, 1);
   assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
@@ -216,7 +218,10 @@ test("a portable activity is signed only by the key matching its DID", async () 
   const other = await didKey();
   const childOwner = await didKey();
   const child = await signedChild(childOwner);
-  for (const keys of [[other, owner], [owner, other]]) {
+  for (const keys of [
+    [other, owner],
+    [owner, other],
+  ]) {
     const federation = createTestFederation();
     const ctx = federation.createContext(new URL("https://example.com/"));
     const { bodies, requests } = await capture(() =>
@@ -225,7 +230,7 @@ test("a portable activity is signed only by the key matching its DID", async () 
         [rsaKey, ...keys.map(sender), sender(childOwner)],
         recipient,
         portableCreate(owner, child),
-      )
+      ),
     );
     assertEquals(bodies.length, 1);
     assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
@@ -282,7 +287,7 @@ test("a portable activity without exactly one DID-matching key is rejected", asy
           ),
         TypeError,
         message,
-      )
+      ),
     );
     assertEquals(bodies.length, 0, name);
   }
@@ -295,21 +300,16 @@ test("a non-portable activity embedding portable objects needs one key", async (
   const keys = [sender(await didKey()), sender(await didKey())];
   const rejected = await capture(() =>
     assertRejects(
-      () =>
-        ctx.sendActivity(
-          [rsaKey, ...keys],
-          recipient,
-          httpCreate(child),
-        ),
+      () => ctx.sendActivity([rsaKey, ...keys], recipient, httpCreate(child)),
       TypeError,
       "exactly one Ed25519 key",
-    )
+    ),
   );
   assertEquals(rejected.bodies.length, 0);
 
   const key = { keyId: ed25519PublicKey.id!, privateKey: ed25519PrivateKey };
   const accepted = await capture(() =>
-    ctx.sendActivity([rsaKey, key], recipient, httpCreate(child))
+    ctx.sendActivity([rsaKey, key], recipient, httpCreate(child)),
   );
   assertEquals(accepted.bodies.length, 1);
   assertEquals(
@@ -339,21 +339,16 @@ test("a non-portable activity embedding compatible-ID objects needs one key", as
   const keys = [sender(await didKey()), sender(await didKey())];
   const rejected = await capture(() =>
     assertRejects(
-      () =>
-        ctx.sendActivity(
-          [rsaKey, ...keys],
-          recipient,
-          httpCreate(child),
-        ),
+      () => ctx.sendActivity([rsaKey, ...keys], recipient, httpCreate(child)),
       TypeError,
       "exactly one Ed25519 key",
-    )
+    ),
   );
   assertEquals(rejected.bodies.length, 0);
 
   const key = { keyId: ed25519PublicKey.id!, privateKey: ed25519PrivateKey };
   const accepted = await capture(() =>
-    ctx.sendActivity([rsaKey, key], recipient, httpCreate(child))
+    ctx.sendActivity([rsaKey, key], recipient, httpCreate(child)),
   );
   assertEquals(accepted.bodies.length, 1);
   // What Fedify sends, a Fedify inbox accepts:
@@ -369,7 +364,7 @@ test("an activity without portable objects is still signed by every key", async 
       [rsaKey, ...keys.map(sender)],
       recipient,
       httpCreate(new Note({ content: "Hello" })),
-    )
+    ),
   );
   assertEquals(bodies.length, 1);
   const proofs = bodies[0].proof as Record<string, unknown>[];
@@ -393,11 +388,7 @@ test("a pre-signed portable activity is not re-signed", async () => {
   // Neither key matches the activity's DID, but no key needs choosing.
   const keys = [sender(await didKey()), sender(await didKey())];
   const { bodies } = await capture(() =>
-    ctx.sendActivity(
-      [rsaKey, ...keys],
-      recipient,
-      activity,
-    )
+    ctx.sendActivity([rsaKey, ...keys], recipient, activity),
   );
   assertEquals(bodies.length, 1);
   assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
@@ -422,12 +413,12 @@ test("a portable activity carrying a proof set is not delivered", async () => {
   const immediate = await capture(() =>
     assertRejects(
       () =>
-        createTestFederation().createContext(
-          new URL("https://example.com/"),
-        ).sendActivity(rsaKey, recipient, activity),
+        createTestFederation()
+          .createContext(new URL("https://example.com/"))
+          .sendActivity(rsaKey, recipient, activity),
       TypeError,
       'JSON Pointer "/proof"',
-    )
+    ),
   );
   assertEquals(immediate.bodies.length, 0);
 
@@ -435,9 +426,9 @@ test("a portable activity carrying a proof set is not delivered", async () => {
   const outbox = createQueue();
   await assertRejects(
     () =>
-      createTestFederation(outbox.queue).createContext(
-        new URL("https://example.com/"),
-      ).sendActivity(rsaKey, recipient, activity, { fanout: "skip" }),
+      createTestFederation(outbox.queue)
+        .createContext(new URL("https://example.com/"))
+        .sendActivity(rsaKey, recipient, activity, { fanout: "skip" }),
     TypeError,
     'JSON Pointer "/proof"',
   );
@@ -447,9 +438,9 @@ test("a portable activity carrying a proof set is not delivered", async () => {
   const fanout = createQueue();
   await assertRejects(
     () =>
-      createTestFederation(fanout.queue).createContext(
-        new URL("https://example.com/"),
-      ).sendActivity(rsaKey, recipient, activity, { fanout: "force" }),
+      createTestFederation(fanout.queue)
+        .createContext(new URL("https://example.com/"))
+        .sendActivity(rsaKey, recipient, activity, { fanout: "force" }),
     TypeError,
     'JSON Pointer "/proof"',
   );
@@ -471,7 +462,7 @@ test("a proof set on an embedded map is not delivered either", async () => {
       () => ctx.sendActivity(rsaKey, recipient, httpCreate(child)),
       TypeError,
       'JSON Pointer "/object/proof"',
-    )
+    ),
   );
   assertEquals(bodies.length, 0);
 });
@@ -520,20 +511,20 @@ test("a received signed object rebuilt inside a portable activity is not deliver
     const immediate = await capture(() =>
       assertRejects(
         () =>
-          createTestFederation().createContext(
-            new URL("https://example.com/"),
-          ).sendActivity(keys, recipient, activity),
+          createTestFederation()
+            .createContext(new URL("https://example.com/"))
+            .sendActivity(keys, recipient, activity),
         TypeError,
         'JSON Pointer "/object"',
-      )
+      ),
     );
     assertEquals(immediate.bodies.length, 0);
     const fanout = createQueue();
     await assertRejects(
       () =>
-        createTestFederation(fanout.queue).createContext(
-          new URL("https://example.com/"),
-        ).sendActivity(keys, recipient, activity, { fanout: "force" }),
+        createTestFederation(fanout.queue)
+          .createContext(new URL("https://example.com/"))
+          .sendActivity(keys, recipient, activity, { fanout: "force" }),
       TypeError,
       'JSON Pointer "/object"',
     );
@@ -542,9 +533,9 @@ test("a received signed object rebuilt inside a portable activity is not deliver
 
   // Referring to the Follow by its ID works:
   const { bodies } = await capture(() =>
-    createTestFederation().createContext(
-      new URL("https://example.com/"),
-    ).sendActivity([rsaKey, sender(owner)], recipient, accept(follow.id!))
+    createTestFederation()
+      .createContext(new URL("https://example.com/"))
+      .sendActivity([rsaKey, sender(owner)], recipient, accept(follow.id!)),
   );
   assertEquals(bodies.length, 1);
   await assertCompoundVerifies(bodies[0]);
@@ -614,7 +605,7 @@ test("the fanout worker selects one key for an unsigned portable activity", asyn
     object: child.id,
   });
   const { bodies } = await capture(async () =>
-    federation.processQueuedTask(undefined, await message(byId))
+    federation.processQueuedTask(undefined, await message(byId)),
   );
   assertEquals(bodies.length, 1);
   assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
@@ -630,7 +621,7 @@ test("the fanout worker selects one key for an unsigned portable activity", asyn
       () => federation.processQueuedTask(undefined, embedded),
       TypeError,
       'JSON Pointer "/object"',
-    )
+    ),
   );
   assertEquals(refused.bodies.length, 0);
 });
@@ -670,7 +661,7 @@ test("actor key pairs follow the compound-proof key selection too", async () => 
         ),
       TypeError,
       "none of its 2 Ed25519 keys",
-    )
+    ),
   );
   assertEquals(rejected.bodies.length, 0);
 
@@ -683,7 +674,7 @@ test("actor key pairs follow the compound-proof key selection too", async () => 
     { ...options, created },
   );
   const kept = await capture(() =>
-    ctx.sendActivity({ identifier: "alice" }, recipient, presigned)
+    ctx.sendActivity({ identifier: "alice" }, recipient, presigned),
   );
   assertEquals(kept.bodies.length, 1);
   assertEquals(proofOf(kept.bodies[0]).verificationMethod, owner.keyId.href);
@@ -696,15 +687,15 @@ test("actor key pairs follow the compound-proof key selection too", async () => 
     { ...options, created },
   );
   const appended = await capture(() =>
-    ctx.sendActivity({ identifier: "alice" }, recipient, ordinary)
+    ctx.sendActivity({ identifier: "alice" }, recipient, ordinary),
   );
   assertEquals(appended.bodies.length, 1);
   const proofs = appended.bodies[0].proof as Record<string, unknown>[];
   assert(Array.isArray(proofs));
-  assertEquals(proofs.map((proof) => proof.verificationMethod), [
-    owner.keyId.href,
-    "https://example.com/users/alice#multikey-2",
-  ]);
+  assertEquals(
+    proofs.map((proof) => proof.verificationMethod),
+    [owner.keyId.href, "https://example.com/users/alice#multikey-2"],
+  );
 });
 
 test("a Fedify inbox accepts a portable activity Fedify produced", async () => {
@@ -720,7 +711,7 @@ test("a Fedify inbox accepts a portable activity Fedify produced", async () => {
       [sender(other), sender(owner)],
       recipient,
       portableCreate(owner, child),
-    )
+    ),
   );
   assertEquals(requests.length, 1);
 
@@ -779,7 +770,7 @@ test("a compatible-ID activity is signed only by the key matching its DID", asyn
       [rsaKey, sender(await didKey()), sender(owner), sender(childOwner)],
       recipient,
       compatibleCreate(owner, child),
-    )
+    ),
   );
   assertEquals(bodies.length, 1);
   assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
@@ -856,7 +847,7 @@ test("a compatible-ID actor's activity needs an ID of the actor's DID", async ()
         () => ctx.sendActivity([rsaKey, sender(owner)], recipient, activity),
         TypeError,
         message,
-      )
+      ),
     );
     assertEquals(bodies.length, 0, name);
   }
@@ -865,18 +856,16 @@ test("a compatible-ID actor's activity needs an ID of the actor's DID", async ()
 test("a compatible-ID activity without exactly one DID-matching key is rejected", async () => {
   const owner = await didKey();
   const cases: [string, SenderKeyPair[], string][] = [
-    [
-      "no key matches",
-      [sender(await didKey())],
-      "none of its 1 Ed25519 keys",
-    ],
+    ["no key matches", [sender(await didKey())], "none of its 1 Ed25519 keys"],
     [
       // A gateway key never signs proofs, even for the actor's own DID:
       "only a gateway key",
-      [{
-        keyId: compatibleId(owner.did, "/actor#main-key"),
-        privateKey: owner.privateKey,
-      }],
+      [
+        {
+          keyId: compatibleId(owner.did, "/actor#main-key"),
+          privateKey: owner.privateKey,
+        },
+      ],
       "none of its 0 Ed25519 keys",
     ],
     [
@@ -901,7 +890,7 @@ test("a compatible-ID activity without exactly one DID-matching key is rejected"
           ),
         TypeError,
         message,
-      )
+      ),
     );
     assertEquals(bodies.length, 0, name);
   }
@@ -930,7 +919,7 @@ test("compatible and ap: IDs of the same DID can be mixed", async () => {
         [rsaKey, sender(await didKey()), sender(owner)],
         recipient,
         activity,
-      )
+      ),
     );
     assertEquals(bodies.length, 1, activity.id?.href);
     assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
@@ -952,7 +941,7 @@ test("a pre-signed compatible-ID activity is not re-signed", async () => {
       [rsaKey, sender(await didKey()), sender(await didKey())],
       recipient,
       activity,
-    )
+    ),
   );
   assertEquals(bodies.length, 1);
   assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
@@ -993,7 +982,7 @@ test("a Fedify inbox accepts an activity Fedify produced for a compatible-ID act
       [sender(await didKey()), sender(owner)],
       recipient,
       compatibleCreate(owner, child),
-    )
+    ),
   );
   assertEquals(requests.length, 1);
 
@@ -1057,12 +1046,12 @@ test("sendActivity warns for compatible IDs off the actor's first gateway", asyn
     actorCalls++;
     return identifier === "alice"
       ? new Person({
-        id: ownerId,
-        gateways: [
-          new URL("https://primary.example"),
-          new URL("https://secondary.example"),
-        ],
-      })
+          id: ownerId,
+          gateways: [
+            new URL("https://primary.example"),
+            new URL("https://secondary.example"),
+          ],
+        })
       : null;
   });
   const ctx = federation.createContext(
@@ -1086,7 +1075,7 @@ test("sendActivity warns for compatible IDs off the actor's first gateway", asyn
   });
   const records = await captureLogs(async () => {
     const { bodies } = await capture(() =>
-      ctx.sendActivity([rsaKey, sender(owner)], recipient, activity)
+      ctx.sendActivity([rsaKey, sender(owner)], recipient, activity),
     );
     assertEquals(bodies.length, 1);
     assertEquals(bodies[0].id, activity.id?.href);
@@ -1095,10 +1084,7 @@ test("sendActivity warns for compatible IDs off the actor's first gateway", asyn
     records.filter((r) => r.properties.kind === "activity").length,
     1,
   );
-  assertEquals(
-    records.filter((r) => r.properties.kind === "object").length,
-    1,
-  );
+  assertEquals(records.filter((r) => r.properties.kind === "object").length, 1);
   assertEquals(actorCalls, 1);
 });
 
@@ -1106,36 +1092,35 @@ test("sendActivity skips first-gateway and portable IDs", async () => {
   const owner = await didKey();
   const ownerId = parseIri(`ap://${owner.did}/users/alice`);
   const federation = createTestFederation();
-  federation.setActorDispatcher(
-    "/users/{identifier}",
-    (_ctx, identifier) =>
-      identifier === "alice"
-        ? new Person({
+  federation.setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+    identifier === "alice"
+      ? new Person({
           id: ownerId,
           gateways: [new URL("https://primary.example")],
         })
-        : null,
+      : null,
   );
   const ctx = federation.createContext(
     new Request("https://example.com/"),
     undefined,
   );
-  for (
-    const id of [
-      compatibleId(owner.did, "/activities/first", "https://primary.example"),
-      parseIri(`ap://${owner.did}/activities/portable`),
-    ]
-  ) {
+  for (const id of [
+    compatibleId(owner.did, "/activities/first", "https://primary.example"),
+    parseIri(`ap://${owner.did}/activities/portable`),
+  ]) {
     const records = await captureLogs(() =>
       capture(() =>
         ctx.sendActivity(
           [rsaKey, sender(owner)],
           recipient,
           new Create({ id, actor: ownerId }),
-        )
-      )
+        ),
+      ),
     );
-    assertEquals(records.filter((r) => r.properties.kind != null), []);
+    assertEquals(
+      records.filter((r) => r.properties.kind != null),
+      [],
+    );
   }
   const plain = federation.createContext(new URL("https://example.com/"));
   const records = await captureLogs(() =>
@@ -1151,10 +1136,13 @@ test("sendActivity skips first-gateway and portable IDs", async () => {
           ),
           actor: ownerId,
         }),
-      )
-    )
+      ),
+    ),
   );
-  assertEquals(records.filter((r) => r.properties.kind != null), []);
+  assertEquals(
+    records.filter((r) => r.properties.kind != null),
+    [],
+  );
 });
 
 test("fanout warns once before enqueueing a compatible activity", async () => {
@@ -1162,11 +1150,14 @@ test("fanout warns once before enqueueing a compatible activity", async () => {
   const ownerId = parseIri(`ap://${owner.did}/users/alice`);
   const { queue, queued } = createQueue();
   const federation = createTestFederation(queue);
-  federation.setActorDispatcher("/users/{identifier}", () =>
-    new Person({
-      id: ownerId,
-      gateways: [new URL("https://primary.example")],
-    }));
+  federation.setActorDispatcher(
+    "/users/{identifier}",
+    () =>
+      new Person({
+        id: ownerId,
+        gateways: [new URL("https://primary.example")],
+      }),
+  );
   const ctx = federation.createContext(
     new Request("https://example.com/"),
     undefined,
@@ -1190,7 +1181,7 @@ test("fanout warns once before enqueueing a compatible activity", async () => {
       for (const message of queued) {
         await federation.processQueuedTask(undefined, message);
       }
-    })
+    }),
   );
   assertEquals(
     records.filter((r) => r.properties.kind === "activity").length,
@@ -1239,12 +1230,8 @@ test("an embedded actor supplies gateways to a plain send context", async () => 
   );
   const records = await captureLogs(() =>
     capture(() =>
-      ctx.sendActivity(
-        [rsaKey, sender(owner)],
-        recipient,
-        activity,
-      )
-    )
+      ctx.sendActivity([rsaKey, sender(owner)], recipient, activity),
+    ),
   );
   assertEquals(
     records.filter((r) => r.properties.kind === "activity").length,
@@ -1258,15 +1245,13 @@ test("sendActivity checks a locally owned embedded object independently", async 
   const aliceId = parseIri(`ap://${alice.did}/users/alice`);
   const bobId = parseIri(`ap://${bob.did}/users/bob`);
   const federation = createTestFederation();
-  federation.setActorDispatcher(
-    "/users/{identifier}",
-    (_ctx, identifier) =>
-      identifier === "alice"
-        ? new Person({
+  federation.setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+    identifier === "alice"
+      ? new Person({
           id: aliceId,
           gateways: [new URL("https://primary.example")],
         })
-        : identifier === "bob"
+      : identifier === "bob"
         ? new Person({ id: bobId, gateways: [new URL("https://bob.example")] })
         : null,
   );
@@ -1294,13 +1279,13 @@ test("sendActivity checks a locally owned embedded object independently", async 
           actor: aliceId,
           object: child,
         }),
-      )
-    )
+      ),
+    ),
   );
   assertEquals(
-    records.filter((r) => r.properties.kind === "object").map((r) =>
-      r.properties.id
-    ),
+    records
+      .filter((r) => r.properties.kind === "object")
+      .map((r) => r.properties.id),
     [child.id?.href],
   );
 });
@@ -1363,12 +1348,15 @@ test("sendActivity still delivers when the diagnostic actor lookup fails", async
         [rsaKey, sender(owner)],
         recipient,
         new Create({ id, actor: ownerId }),
-      )
+      ),
     );
     assertEquals(bodies.length, 1);
     assertEquals(bodies[0].id, id.href);
   });
-  assertEquals(records.filter((r) => r.properties.kind != null), []);
+  assertEquals(
+    records.filter((r) => r.properties.kind != null),
+    [],
+  );
 });
 
 test("warning checks later local actors when the first is missing", async () => {
@@ -1376,30 +1364,31 @@ test("warning checks later local actors when the first is missing", async () => 
   const missing = parseIri(`ap://${owner.did}/users/missing`);
   const alice = parseIri(`ap://${owner.did}/users/alice`);
   const federation = createTestFederation();
-  federation.setActorDispatcher(
-    "/users/{identifier}",
-    (_ctx, identifier) =>
-      identifier === "alice"
-        ? new Person({
+  federation.setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+    identifier === "alice"
+      ? new Person({
           id: alice,
           gateways: [new URL("https://primary.example")],
         })
-        : null,
+      : null,
   );
   const ctx = federation.createContext(
     new Request("https://example.com/"),
     undefined,
   );
   const records = await captureLogs(() =>
-    warnCompatibleIdsInJson({
-      id: compatibleId(
-        owner.did,
-        "/activities/multi",
-        "https://secondary.example",
-      ).href,
-      type: "Create",
-      actor: [missing.href, alice.href],
-    }, ctx)
+    warnCompatibleIdsInJson(
+      {
+        id: compatibleId(
+          owner.did,
+          "/activities/multi",
+          "https://secondary.example",
+        ).href,
+        type: "Create",
+        actor: [missing.href, alice.href],
+      },
+      ctx,
+    ),
   );
   assertEquals(
     records.filter((r) => r.properties.kind === "activity").length,
@@ -1438,13 +1427,16 @@ test("warning ignores an embedded gateway key", async () => {
           },
         ],
       },
-    })
+    }),
   );
   assertEquals(
     records.filter((r) => r.properties.kind === "activity").length,
     1,
   );
-  assertEquals(records.filter((r) => r.properties.kind === "object"), []);
+  assertEquals(
+    records.filter((r) => r.properties.kind === "object"),
+    [],
+  );
 });
 
 test("warning resolves a signed child's local ownership alias", async () => {
@@ -1453,39 +1445,43 @@ test("warning resolves a signed child's local ownership alias", async () => {
   const aliceId = parseIri(`ap://${alice.did}/users/alice`);
   const bobId = parseIri(`ap://${bob.did}/users/bob`);
   const federation = createTestFederation();
-  federation.setActorDispatcher(
-    "/users/{identifier}",
-    (_ctx, identifier) =>
-      identifier === "bob"
-        ? new Person({
+  federation.setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+    identifier === "bob"
+      ? new Person({
           id: bobId,
           gateways: [new URL("https://primary.example")],
         })
-        : null,
+      : null,
   );
   const ctx = federation.createContext(
     new Request("https://example.com/"),
     undefined,
   );
   const records = await captureLogs(() =>
-    warnCompatibleIdsInJson({
-      id: parseIri(`ap://${alice.did}/activities/announce`).href,
-      type: "Announce",
-      actor: aliceId.href,
-      object: {
-        "@context": [
-          "https://www.w3.org/ns/activitystreams",
-          {
-            by: { "@id": "as:attributedTo", "@type": "@id" },
-            identifier: "@id",
-          },
-        ],
-        identifier:
-          compatibleId(bob.did, "/notes/1", "https://secondary.example").href,
-        type: "Note",
-        by: bobId.href,
+    warnCompatibleIdsInJson(
+      {
+        id: parseIri(`ap://${alice.did}/activities/announce`).href,
+        type: "Announce",
+        actor: aliceId.href,
+        object: {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            {
+              by: { "@id": "as:attributedTo", "@type": "@id" },
+              identifier: "@id",
+            },
+          ],
+          identifier: compatibleId(
+            bob.did,
+            "/notes/1",
+            "https://secondary.example",
+          ).href,
+          type: "Note",
+          by: bobId.href,
+        },
       },
-    }, ctx)
+      ctx,
+    ),
   );
   assertEquals(records.filter((r) => r.properties.kind === "object").length, 1);
 });
@@ -1510,7 +1506,7 @@ test("an activity on another gateway than its compatible-ID actor is warned abou
   const owner = await didKey();
   const warnings = (activity: Create) =>
     captureLogs(() => assertPortableActorActivity(activity)).then((records) =>
-      records.map((r) => r.properties.activityId)
+      records.map((r) => r.properties.activityId),
     );
   const other = compatibleId(
     owner.did,
@@ -1562,7 +1558,7 @@ test("an unsigned activity with a malformed compatible ID is rejected", async ()
         ),
       TypeError,
       "malformed FEP-ef61 portable ID",
-    )
+    ),
   );
   assertEquals(bodies.length, 0);
 });

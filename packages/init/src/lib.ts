@@ -72,8 +72,9 @@ const convertPattern = <K extends string, T extends { outputPattern: string }>(
   pipe(
     obj,
     entries as (obj: Record<K, T>) => Generator<[K, T]>,
-    map(([key, value]: [K, T]) =>
-      [key, evolve({ outputPattern: toRegExp })(value)] as const
+    map(
+      ([key, value]: [K, T]) =>
+        [key, evolve({ outputPattern: toRegExp })(value)] as const,
     ),
     fromEntries,
   ) as Record<K, Omit<T, "outputPattern"> & { outputPattern: RegExp }>;
@@ -112,7 +113,8 @@ export async function isPackageManagerAvailable(
       ...packageManagers[pm],
       checkCommand: cmd,
     })
-  ) return true;
+  )
+    return true;
   return false;
 }
 
@@ -124,9 +126,7 @@ export async function isPackageManagerAvailable(
  *   (e.g., `"defaults/federation.ts"`)
  * @returns The template file content as a string
  */
-export const readTemplate = async (
-  templatePath: string,
-): Promise<string> => {
+export const readTemplate = async (templatePath: string): Promise<string> => {
   const segments = (templatePath + ".tpl").split("/");
   if (import.meta.dirname) {
     return readFileSync(
@@ -134,10 +134,7 @@ export const readTemplate = async (
       "utf8",
     );
   }
-  const url = new URL(
-    ["templates", ...segments].join("/"),
-    import.meta.url,
-  );
+  const url = new URL(["templates", ...segments].join("/"), import.meta.url);
   const resp = await fetch(url);
   if (!resp.ok) {
     throw new Error(`Failed to fetch template: ${url}`);
@@ -157,28 +154,29 @@ export const getBuildCommand = (pm: PackageManager) =>
   pm === "deno"
     ? ["deno", "task", "build"]
     : pm === "bun"
-    ? ["bun", "run", "build"]
-    : [pm, "run", "build"];
+      ? ["bun", "run", "build"]
+      : [pm, "run", "build"];
 
-async function isCommandAvailable(
-  { checkCommand, outputPattern }: {
-    checkCommand: [string, ...string[]];
-    outputPattern: RegExp;
-  },
-): Promise<boolean> {
+async function isCommandAvailable({
+  checkCommand,
+  outputPattern,
+}: {
+  checkCommand: [string, ...string[]];
+  outputPattern: RegExp;
+}): Promise<boolean> {
   try {
     const { stdout } = await $`${checkCommand}`.stdout("piped").spawn();
-    logger.debug(
-      "The stdout of the command {command} is: {stdout}",
-      { command: checkCommand, stdout },
-    );
+    logger.debug("The stdout of the command {command} is: {stdout}", {
+      command: checkCommand,
+      stdout,
+    });
     return outputPattern.exec(stdout.trim()) ? true : false;
   } catch (error) {
     if (isNotFoundError(error)) return false;
-    logger.debug(
-      "The command {command} failed with the error: {error}",
-      { command: checkCommand, error },
-    );
+    logger.debug("The command {command} failed with the error: {error}", {
+      command: checkCommand,
+      error,
+    });
     throw error;
   }
 }
@@ -212,19 +210,21 @@ export function verifyRuntimeVersion(detected: string, required: string) {
  * Runs a runtime's version command and classifies the result as `"ok"`,
  * `"unsupported"`, `"missing"`, or `"malformed"` against its `minVersion`.
  */
-export async function checkRuntimeVersion(
-  { checkCommand, outputPattern, minVersion }: {
-    checkCommand: [string, ...string[]];
-    outputPattern: RegExp;
-    minVersion: string;
-  },
-): Promise<RuntimeCheck> {
+export async function checkRuntimeVersion({
+  checkCommand,
+  outputPattern,
+  minVersion,
+}: {
+  checkCommand: [string, ...string[]];
+  outputPattern: RegExp;
+  minVersion: string;
+}): Promise<RuntimeCheck> {
   try {
     const { stdout } = await $`${checkCommand}`.stdout("piped").spawn();
-    logger.debug(
-      "The stdout of the command {command} is: {stdout}",
-      { command: checkCommand, stdout },
-    );
+    logger.debug("The stdout of the command {command} is: {stdout}", {
+      command: checkCommand,
+      stdout,
+    });
     const detected = outputPattern.exec(stdout.trim())?.[1] ?? null;
     if (detected == null) {
       return { status: "malformed", detected: null, required: minVersion };
@@ -237,10 +237,10 @@ export async function checkRuntimeVersion(
     if (isNotFoundError(error)) {
       return { status: "missing", detected: null, required: minVersion };
     }
-    logger.debug(
-      "The command {command} failed with the error: {error}",
-      { command: checkCommand, error },
-    );
+    logger.debug("The command {command} failed with the error: {error}", {
+      command: checkCommand,
+      error,
+    });
     throw error;
   }
 }
@@ -266,18 +266,17 @@ export function resolveRequiredVersion(
  */
 export async function checkAllRuntimes(
   overrides: Partial<Record<Runtime, string>> = {},
-): Promise<
-  Record<Runtime, RuntimeCheck>
-> {
+): Promise<Record<Runtime, RuntimeCheck>> {
   const checked = await Promise.all(
-    RUNTIME.map(async (runtime) =>
-      [
-        runtime,
-        await checkRuntimeVersion({
-          ...runtimes[runtime],
-          minVersion: resolveRequiredVersion(runtime, overrides[runtime]),
-        }),
-      ] as const
+    RUNTIME.map(
+      async (runtime) =>
+        [
+          runtime,
+          await checkRuntimeVersion({
+            ...runtimes[runtime],
+            minVersion: resolveRequiredVersion(runtime, overrides[runtime]),
+          }),
+        ] as const,
     ),
   );
   return Object.fromEntries(checked) as Record<Runtime, RuntimeCheck>;
@@ -306,9 +305,7 @@ export const throwUnlessNotExists = throwIf(negate(isNotExistsError));
  * Returns `true` if the directory does not exist, has no entries, or only
  * contains an unborn Git repository created by `git init`.
  */
-export const isDirectoryEmpty = async (
-  path: string,
-): Promise<boolean> => {
+export const isDirectoryEmpty = async (path: string): Promise<boolean> => {
   try {
     const files = await readdir(path);
     if (files.length === 0) return true;
@@ -329,32 +326,26 @@ const isUnbornGitRepository = async (path: string): Promise<boolean> => {
 
 const hasGitHeadCommit = async (path: string): Promise<boolean> => {
   try {
-    await runSubCommand([
-      "git",
-      "-C",
-      path,
-      "rev-parse",
-      "--verify",
-      "HEAD^{commit}",
-    ], {});
+    await runSubCommand(
+      ["git", "-C", path, "rev-parse", "--verify", "HEAD^{commit}"],
+      {},
+    );
     return true;
   } catch (e) {
     if (isNotFoundError(e) || e instanceof CommandError) return false;
-    logger.debug(
-      "Failed to resolve Git HEAD in {path}: {error}",
-      { path, error: e },
-    );
+    logger.debug("Failed to resolve Git HEAD in {path}: {error}", {
+      path,
+      error: e,
+    });
     return false;
   }
 };
 
-const looksLikeUnbornGitRepository = async (
-  path: string,
-): Promise<boolean> => {
+const looksLikeUnbornGitRepository = async (path: string): Promise<boolean> => {
   const gitDir = joinPath(path, ".git");
-  if (!await isDirectory(gitDir)) return false;
-  if (!await isDirectory(joinPath(gitDir, "objects"))) return false;
-  if (!await isDirectory(joinPath(gitDir, "refs"))) return false;
+  if (!(await isDirectory(gitDir))) return false;
+  if (!(await isDirectory(joinPath(gitDir, "objects")))) return false;
+  if (!(await isDirectory(joinPath(gitDir, "refs")))) return false;
 
   const head = await readGitFile(joinPath(gitDir, "HEAD"));
   if (head == null) return false;
@@ -387,10 +378,11 @@ const hasAnyFile = async (
     entries = await readdir(dir, { withFileTypes: true });
   } catch (e) {
     if (isNotFoundError(e)) return false;
-    logger.debug(
-      "Failed to read {description} in {path}: {error}",
-      { description, path: dir, error: e },
-    );
+    logger.debug("Failed to read {description} in {path}: {error}", {
+      description,
+      path: dir,
+      error: e,
+    });
     return true;
   }
 
@@ -440,26 +432,24 @@ const pathExists = async (path: string): Promise<boolean> => {
     return true;
   } catch (e) {
     if (isNotFoundError(e)) return false;
-    logger.debug(
-      "Failed to stat Git state path {path}: {error}",
-      { path, error: e },
-    );
+    logger.debug("Failed to stat Git state path {path}: {error}", {
+      path,
+      error: e,
+    });
     return true;
   }
 };
 
-const hasAnyPackedRef = async (
-  gitDir: string,
-): Promise<boolean> => {
+const hasAnyPackedRef = async (gitDir: string): Promise<boolean> => {
   let packedRefs: string;
   try {
     packedRefs = await readFile(joinPath(gitDir, "packed-refs"), "utf8");
   } catch (e) {
     if (isNotFoundError(e)) return false;
-    logger.debug(
-      "Failed to read Git packed refs in {path}: {error}",
-      { path: gitDir, error: e },
-    );
+    logger.debug("Failed to read Git packed refs in {path}: {error}", {
+      path: gitDir,
+      error: e,
+    });
     return true;
   }
 
@@ -477,10 +467,10 @@ const readGitFile = async (path: string): Promise<string | null> => {
     return await readFile(path, "utf8");
   } catch (e) {
     if (!isNotFoundError(e)) {
-      logger.debug(
-        "Failed to read Git file {path}: {error}",
-        { path, error: e },
-      );
+      logger.debug("Failed to read Git file {path}: {error}", {
+        path,
+        error: e,
+      });
     }
     return null;
   }
@@ -495,6 +485,6 @@ const isDirectory = async (path: string): Promise<boolean> => {
 };
 
 /** Returns `true` if the current run is in test mode. */
-export const isTest: <
-  T extends { testMode: boolean },
->({ testMode }: T) => boolean = ({ testMode }) => testMode;
+export const isTest: <T extends { testMode: boolean }>({
+  testMode,
+}: T) => boolean = ({ testMode }) => testMode;

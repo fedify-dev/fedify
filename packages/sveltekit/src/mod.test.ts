@@ -75,9 +75,6 @@ describe("fedifyHook", () => {
 
     await hookHandler({ event: mockEvent, resolve: mockResolve });
 
-    strictEqual(
-      capturedContextData,
-      "async-context",
-    );
+    strictEqual(capturedContextData, "async-context");
   });
 });

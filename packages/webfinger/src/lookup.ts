@@ -51,20 +51,7 @@ interface WebFingerInstruments {
 }
 
 const WEBFINGER_HISTOGRAM_BUCKETS: ReadonlyArray<number> = [
-  5,
-  10,
-  25,
-  50,
-  75,
-  100,
-  250,
-  500,
-  750,
-  1000,
-  2500,
-  5000,
-  7500,
-  10000,
+  5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000,
 ];
 
 const webFingerInstruments = new WeakMap<MeterProvider, WebFingerInstruments>();
@@ -275,10 +262,7 @@ export async function lookupWebFingerWithDependencies(
   deps: LookupWebFingerDependencies = {},
 ): Promise<ResourceDescriptor | null | WebFingerLookupOutcome> {
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
-  const tracer = tracerProvider.getTracer(
-    metadata.name,
-    metadata.version,
-  );
+  const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   const scheme = getResourceScheme(resource);
   return await tracer.startActiveSpan(
     "webfinger.lookup",
@@ -303,9 +287,10 @@ export async function lookupWebFingerWithDependencies(
       try {
         outcome = await lookupWebFingerInternal(resource, options, deps);
         span.setStatus({
-          code: outcome.resource === null
-            ? SpanStatusCode.ERROR
-            : SpanStatusCode.OK,
+          code:
+            outcome.resource === null
+              ? SpanStatusCode.ERROR
+              : SpanStatusCode.OK,
         });
         return options.withDiagnostics ? outcome : outcome.resource;
       } catch (error) {

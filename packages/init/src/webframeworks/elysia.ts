@@ -15,53 +15,59 @@ const elysiaDescription: WebFrameworkDescription = {
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 3000,
   init: async ({ projectName, packageManager: pm }) => ({
-    dependencies: pm === "deno"
-      ? {
-        ...defaultDenoDependencies,
-        elysia: `npm:elysia@${deps["npm:elysia"]}`,
-        "@fedify/elysia": PACKAGE_VERSION,
-      }
-      : pm === "bun"
-      ? {
-        elysia: deps["npm:elysia"],
-        "@fedify/elysia": PACKAGE_VERSION,
-      }
-      : {
-        "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
-        elysia: deps["npm:elysia"],
-        "@elysiajs/node": deps["npm:@elysiajs/node"],
-        "@fedify/elysia": PACKAGE_VERSION,
-        ...(pm === "pnpm" && {
-          "@sinclair/typebox": deps["npm:@sinclair/typebox"],
-          "openapi-types": deps["npm:openapi-types"],
-        }),
-      },
+    dependencies:
+      pm === "deno"
+        ? {
+            ...defaultDenoDependencies,
+            elysia: `npm:elysia@${deps["npm:elysia"]}`,
+            "@fedify/elysia": PACKAGE_VERSION,
+          }
+        : pm === "bun"
+          ? {
+              elysia: deps["npm:elysia"],
+              "@fedify/elysia": PACKAGE_VERSION,
+            }
+          : {
+              "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+              elysia: deps["npm:elysia"],
+              "@elysiajs/node": deps["npm:@elysiajs/node"],
+              "@fedify/elysia": PACKAGE_VERSION,
+              ...(pm === "pnpm" && {
+                "@sinclair/typebox": deps["npm:@sinclair/typebox"],
+                "openapi-types": deps["npm:openapi-types"],
+              }),
+            },
     devDependencies: {
-      ...(pm === "bun" ? { "@types/bun": deps["npm:@types/bun"] } : {
-        tsx: deps["npm:tsx"],
-        "@types/node": deps["npm:@types/node@25"],
-        typescript: deps["npm:typescript"],
-      }),
+      ...(pm === "bun"
+        ? { "@types/bun": deps["npm:@types/bun"] }
+        : {
+            tsx: deps["npm:tsx"],
+            "@types/node": deps["npm:@types/node@25"],
+            typescript: deps["npm:typescript"],
+          }),
       ...defaultDevDependencies,
     },
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
     testFile: "scripts/smoke.test.ts",
     files: {
-      "src/index.ts": (await readTemplate(
-        `elysia/index/${pmToRt(pm)}.ts`,
-      )).replace(/\/\* logger \*\//, projectName),
+      "src/index.ts": (
+        await readTemplate(`elysia/index/${pmToRt(pm)}.ts`)
+      ).replace(/\/\* logger \*\//, projectName),
     },
-    compilerOptions: pm === "deno" || pm === "bun" ? undefined : {
-      "lib": ["ESNext", "DOM"],
-      "target": "ESNext",
-      "module": "NodeNext",
-      "moduleResolution": "NodeNext",
-      "allowImportingTsExtensions": true,
-      "verbatimModuleSyntax": true,
-      "noEmit": true,
-      "strict": true,
-    },
+    compilerOptions:
+      pm === "deno" || pm === "bun"
+        ? undefined
+        : {
+            "lib": ["ESNext", "DOM"],
+            "target": "ESNext",
+            "module": "NodeNext",
+            "moduleResolution": "NodeNext",
+            "allowImportingTsExtensions": true,
+            "verbatimModuleSyntax": true,
+            "noEmit": true,
+            "strict": true,
+          },
     tasks: TASKS[pmToRt(pm)],
     instruction: getInstruction(pm, 3000),
   }),
@@ -71,8 +77,7 @@ export default elysiaDescription;
 
 const TASKS = {
   deno: {
-    dev:
-      "deno serve --allow-read --allow-env --allow-net --watch ./src/index.ts",
+    dev: "deno serve --allow-read --allow-env --allow-net --watch ./src/index.ts",
     prod: "deno serve --allow-read --allow-env --allow-net ./src/index.ts",
     test: getTestTask("deno"),
   },

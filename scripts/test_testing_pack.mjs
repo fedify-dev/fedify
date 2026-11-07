@@ -19,8 +19,9 @@ import { gunzipSync } from "node:zlib";
 const repo = fileURLToPath(new URL("../", import.meta.url));
 const root = mkdtempSync(join(tmpdir(), "fedify-testing-pack-"));
 const env = Object.fromEntries(
-  Object.entries(process.env).filter(([key]) =>
-    !/^npm_config_/i.test(key) && key !== "NODE_PATH" && key !== "NODE_ENV"
+  Object.entries(process.env).filter(
+    ([key]) =>
+      !/^npm_config_/i.test(key) && key !== "NODE_PATH" && key !== "NODE_ENV",
   ),
 );
 function run(command, args, cwd = root) {
@@ -35,9 +36,15 @@ function run(command, args, cwd = root) {
 function packedManifest(path) {
   const tar = gunzipSync(readFileSync(path));
   for (let offset = 0; offset < tar.length;) {
-    const name = tar.subarray(offset, offset + 100).toString().split("\0")[0];
+    const name = tar
+      .subarray(offset, offset + 100)
+      .toString()
+      .split("\0")[0];
     const size = parseInt(
-      tar.subarray(offset + 124, offset + 136).toString().replace(/\0/g, ""),
+      tar
+        .subarray(offset + 124, offset + 136)
+        .toString()
+        .replace(/\0/g, ""),
       8,
     );
     if (!name) break;
@@ -53,17 +60,15 @@ try {
   // Build first (the mise task does this). Skip prepack here so packing each
   // package does not repeatedly build the same dependency graph.
   const tarballs = {};
-  for (
-    const name of [
-      "testing",
-      "fedify",
-      "uri-template",
-      "vocab",
-      "vocab-runtime",
-      "vocab-tools",
-      "webfinger",
-    ]
-  ) {
+  for (const name of [
+    "testing",
+    "fedify",
+    "uri-template",
+    "vocab",
+    "vocab-runtime",
+    "vocab-tools",
+    "webfinger",
+  ]) {
     const tarball = join(root, `${name}.tgz`);
     run(
       "pnpm",
@@ -77,10 +82,7 @@ try {
   const deno = JSON.parse(readFileSync(join(repo, "deno.json"), "utf8"));
   strictEqual(
     metadata.dependencies["temporal-polyfill"],
-    deno.imports["temporal-polyfill"].replace(
-      "npm:temporal-polyfill@",
-      "",
-    ),
+    deno.imports["temporal-polyfill"].replace("npm:temporal-polyfill@", ""),
   );
   ok(!("@fedify/fixture" in metadata.dependencies));
   ok("@fedify/fixture" in metadata.devDependencies);
@@ -146,7 +148,8 @@ assert.equal(wrapped[0].multikey.controllerId.href, context.getActorUri("alice")
   writeFileSync(
     join(consumer, "smoke.mjs"),
     'import assert from "node:assert/strict";\n' +
-      'import { createFederation } from "@fedify/testing";\n' + smoke,
+      'import { createFederation } from "@fedify/testing";\n' +
+      smoke,
   );
   writeFileSync(
     join(consumer, "smoke.cjs"),

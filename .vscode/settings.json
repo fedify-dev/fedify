@@ -5,9 +5,7 @@
   "editor.detectIndentation": false,
   "editor.indentSize": 2,
   "editor.insertSpaces": true,
-  "editor.rulers": [
-    80
-  ],
+  "editor.rulers": [80],
   "files.eol": "\n",
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,

@@ -40,8 +40,7 @@ const formatOption = bindConfig(
 // silently disable the gate for every run.
 const allowUnsafeTarget = withDefault(
   flag("--allow-unsafe-target", {
-    description:
-      message`Allow benchmarking a public target that does not advertise \
+    description: message`Allow benchmarking a public target that does not advertise \
 benchmark mode.  Must be given on the command line for each run; it cannot be \
 set in a configuration file.`,
   }),
@@ -50,8 +49,7 @@ set in a configuration file.`,
 
 const outputOption = optional(
   option("-o", "--output", string({ metavar: "OUTPUT_PATH" }), {
-    description:
-      message`Write the report to a file instead of standard output.`,
+    description: message`Write the report to a file instead of standard output.`,
   }),
 );
 
@@ -86,8 +84,7 @@ const runParser = merge(
     output: outputOption,
     dryRun: withDefault(
       flag("--dry-run", {
-        description:
-          message`Resolve discovery and print the benchmark plan without \
+        description: message`Resolve discovery and print the benchmark plan without \
 sending load.`,
       }),
       false,
@@ -114,18 +111,12 @@ const compareParser = command(
       file: option("--file", string({ metavar: "SCENARIO_FILE" }), {
         description: message`Path to the benchmark suite file (YAML or JSON).`,
       }),
-      startCommand: option(
-        "--start-command",
-        string({ metavar: "COMMAND" }),
-        {
-          description:
-            message`Shell command that starts the target application in each \
+      startCommand: option("--start-command", string({ metavar: "COMMAND" }), {
+        description: message`Shell command that starts the target application in each \
 checked-out worktree.`,
-        },
-      ),
+      }),
       readyUrl: option("--ready-url", string({ metavar: "URL" }), {
-        description:
-          message`URL that returns success when the started target is ready.`,
+        description: message`URL that returns success when the started target is ready.`,
       }),
       readyTimeout: withDefault(
         option("--ready-timeout", string({ metavar: "DURATION" }), {
@@ -137,8 +128,7 @@ checked-out worktree.`,
         "--max-regression",
         string({ metavar: "PERCENT" }),
         {
-          description:
-            message`Maximum regression tolerated after the measured noise band.`,
+          description: message`Maximum regression tolerated after the measured noise band.`,
         },
       ),
       target: targetOption,
@@ -152,8 +142,7 @@ checked-out worktree.`,
   ),
   {
     brief: message`Compare base and head benchmark runs.`,
-    description:
-      message`Run the same benchmark suite against two git revisions on the \
+    description: message`Run the same benchmark suite against two git revisions on the \
 same runner, then fail when the head revision regresses beyond the configured \
 tolerance and measured noise band.`,
   },
@@ -172,11 +161,7 @@ executes the \`inbox\`, \`webfinger\`, \`actor\`, \`object\`, \`fanout\`, \
 the suite format.`,
 };
 
-export const benchCommand = command(
-  "bench",
-  benchOptions,
-  benchMetadata,
-);
+export const benchCommand = command("bench", benchOptions, benchMetadata);
 
 export type BenchCommand = InferValue<typeof benchCommand>;
 export type BenchRunCommand = Extract<BenchCommand, { mode: "run" }>;

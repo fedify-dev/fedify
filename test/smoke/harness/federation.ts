@@ -3,8 +3,7 @@ import { generateCryptoKeyPair } from "@fedify/fedify/sig";
 import { Accept, Activity, Create, Follow, Note, Person } from "@fedify/vocab";
 import { store } from "./store.ts";
 
-const ORIGIN = Deno.env.get("HARNESS_ORIGIN") ??
-  "http://fedify-harness:3001";
+const ORIGIN = Deno.env.get("HARNESS_ORIGIN") ?? "http://fedify-harness:3001";
 
 const rsaKeyPair = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
 const kv = new MemoryKvStore();
@@ -70,12 +69,9 @@ federation
       actor: ctx.getActorUri(ctx.recipient),
       object: follow,
     });
-    await ctx.sendActivity(
-      { identifier: ctx.recipient },
-      recipient,
-      accept,
-      { immediate: true },
-    );
+    await ctx.sendActivity({ identifier: ctx.recipient }, recipient, accept, {
+      immediate: true,
+    });
   })
   .on(Create, async (_ctx, create) => {
     const object = await create.getObject();
@@ -83,9 +79,8 @@ federation
       id: create.id?.href ?? crypto.randomUUID(),
       type: "Create",
       receivedAt: new Date().toISOString(),
-      inReplyTo: object instanceof Note
-        ? object.replyTargetId?.href
-        : undefined,
+      inReplyTo:
+        object instanceof Note ? object.replyTargetId?.href : undefined,
       content: object instanceof Note ? object.content?.toString() : undefined,
     });
   })

@@ -31,43 +31,44 @@ import type { InitTestData, MultipleOption } from "./types.ts";
 
 const BANNED_PMS: PackageManager[] = ["bun", "yarn"];
 
-const createTestApp = (testDirPrefix: string, dry: boolean) =>
-async (
-  options: GeneratedType<ReturnType<typeof generateTestCases>>,
-): Promise<string> => {
-  if (!dry && options[1] === "deno") await ensureDenoWorkspaceCache();
-  const testDir = join(testDirPrefix, ...options);
-  const vals = values(testDir.split(sep).slice(-4));
-  const result = await $`${toArray(genInitCommand(testDir, dry, options))}`
-    .cwd(join(import.meta.dirname!, "..", ".."))
-    .env("FEDIFY_TEST_MODE", "true")
-    .stdin("null")
-    .stdout("piped")
-    .stderr("piped")
-    .noThrow()
-    .spawn();
-  await saveOutputs(testDir, result);
-  if (result.code === 0) {
-    if (
-      !dry &&
-      (!(await validateDevToolScripts(testDir, options)) ||
-        !(await validateFrameworkBuild(testDir, options)))
-    ) {
-      printMessage`  Fail: ${vals}`;
-      printMessage`    Check out these files for more details: \
+const createTestApp =
+  (testDirPrefix: string, dry: boolean) =>
+  async (
+    options: GeneratedType<ReturnType<typeof generateTestCases>>,
+  ): Promise<string> => {
+    if (!dry && options[1] === "deno") await ensureDenoWorkspaceCache();
+    const testDir = join(testDirPrefix, ...options);
+    const vals = values(testDir.split(sep).slice(-4));
+    const result = await $`${toArray(genInitCommand(testDir, dry, options))}`
+      .cwd(join(import.meta.dirname!, "..", ".."))
+      .env("FEDIFY_TEST_MODE", "true")
+      .stdin("null")
+      .stdout("piped")
+      .stderr("piped")
+      .noThrow()
+      .spawn();
+    await saveOutputs(testDir, result);
+    if (result.code === 0) {
+      if (
+        !dry &&
+        (!(await validateDevToolScripts(testDir, options)) ||
+          !(await validateFrameworkBuild(testDir, options)))
+      ) {
+        printMessage`  Fail: ${vals}`;
+        printMessage`    Check out these files for more details: \
 ${join(testDir, "out.txt")} and \
 ${join(testDir, "err.txt")}\n`;
-      return "";
+        return "";
+      }
+      printMessage`  Pass: ${vals}`;
+      return testDir;
     }
-    printMessage`  Pass: ${vals}`;
-    return testDir;
-  }
-  printMessage`  Fail: ${vals}`;
-  printMessage`    Check out these files for more details: \
+    printMessage`  Fail: ${vals}`;
+    printMessage`    Check out these files for more details: \
 ${join(testDir, "out.txt")} and \
 ${join(testDir, "err.txt")}\n`;
-  return "";
-};
+    return "";
+  };
 
 export default createTestApp;
 
@@ -75,7 +76,7 @@ export function* genInitCommand(
   testDir: string,
   dry: boolean,
   [webFramework, packageManager, kvStore, messageQueue]: //
-    GeneratedType<ReturnType<typeof generateTestCases>>,
+  GeneratedType<ReturnType<typeof generateTestCases>>,
 ) {
   yield nodeExecutable;
   yield "--experimental-transform-types";
@@ -93,9 +94,14 @@ export function* genInitCommand(
   if (dry) yield "--dry-run";
 }
 
-export const generateTestCases = <T extends Pick<InitTestData, MultipleOption>>(
-  { webFramework, packageManager, kvStore, messageQueue }: T,
-) => {
+export const generateTestCases = <
+  T extends Pick<InitTestData, MultipleOption>,
+>({
+  webFramework,
+  packageManager,
+  kvStore,
+  messageQueue,
+}: T) => {
   const pms = filterPackageManager(packageManager);
   exitIfCasesEmpty([webFramework, pms, kvStore, messageQueue]);
 
@@ -105,13 +111,12 @@ export const generateTestCases = <T extends Pick<InitTestData, MultipleOption>>(
 const filterPackageManager = (pm: PackageManager[]) =>
   pipe(
     pm,
-    filter(
-      (pm) =>
-        BANNED_PMS.includes(pm)
-          ? printErrorMessage`${packageManagers[pm]["label"]} is not \
+    filter((pm) =>
+      BANNED_PMS.includes(pm)
+        ? printErrorMessage`${packageManagers[pm]["label"]} is not \
 supported in test mode yet because ${packageManagers[pm]["label"]} don't \
 support local file dependencies properly.`
-          : true,
+        : true,
     ),
     toArray,
   );
@@ -223,7 +228,7 @@ export function filterOptions(
   options: GeneratedType<ReturnType<typeof generateTestCases>>,
 ): boolean {
   const [wf, pm, kv, mq] = options as //
-  [WebFramework, PackageManager, KvStore, MessageQueue];
+    [WebFramework, PackageManager, KvStore, MessageQueue];
   return [
     webFrameworks[wf].packageManagers,
     kvStores[kv].packageManagers,
@@ -234,8 +239,8 @@ export function filterOptions(
 let denoWorkspaceCache: Promise<unknown> | undefined;
 
 function ensureDenoWorkspaceCache(): Promise<unknown> {
-  return denoWorkspaceCache ??= $`mise run deno:cache`
+  return (denoWorkspaceCache ??= $`mise run deno:cache`
     .cwd(join(import.meta.dirname!, "..", "..", "..", ".."))
     .stdin("null")
-    .spawn();
+    .spawn());
 }

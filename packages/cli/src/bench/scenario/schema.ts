@@ -193,10 +193,7 @@ export const scenarioSchemaV1 = {
       },
     },
     content: {
-      oneOf: [
-        { type: "string" },
-        { $ref: "#/$defs/generateDirective" },
-      ],
+      oneOf: [{ type: "string" }, { $ref: "#/$defs/generateDirective" }],
     },
     objectSpec: {
       type: "object",
@@ -401,48 +398,48 @@ export const scenarioSchemaV2 = {
       allOf: scenarioSchemaV1.$defs.scenario.allOf.map((condition) =>
         condition.if.properties.type.const === "failure"
           ? {
-            if: condition.if,
-            then: {
-              properties: condition.then.properties,
-            },
-          }
+              if: condition.if,
+              then: {
+                properties: condition.then.properties,
+              },
+            }
           : condition.if.properties.type.const === "actor" ||
               condition.if.properties.type.const === "object"
-          ? {
-            if: condition.if,
-            then: {
-              required: condition.then.required,
-              allOf: [
-                {
-                  if: {
-                    required: ["authenticated"],
-                    properties: { authenticated: { const: true } },
-                  },
-                  then: {
-                    properties: {
-                      expect: { propertyNames: { enum: INBOX_METRICS } },
+            ? {
+                if: condition.if,
+                then: {
+                  required: condition.then.required,
+                  allOf: [
+                    {
+                      if: {
+                        required: ["authenticated"],
+                        properties: { authenticated: { const: true } },
+                      },
+                      then: {
+                        properties: {
+                          expect: { propertyNames: { enum: INBOX_METRICS } },
+                        },
+                      },
+                      else: {
+                        properties: {
+                          expect: { propertyNames: { enum: READ_METRICS } },
+                        },
+                      },
                     },
-                  },
-                  else: {
-                    properties: {
-                      expect: { propertyNames: { enum: READ_METRICS } },
-                    },
-                  },
+                  ],
                 },
-              ],
-            },
-          }
-          : condition.if.properties.type.const === "mixed"
-          ? {
-            if: condition.if,
-            then: {
-              required: condition.then.required,
-              properties: {
-                expect: { propertyNames: { enum: MIXED_V2_METRICS } },
-              },
-            },
-          }
-          : condition
+              }
+            : condition.if.properties.type.const === "mixed"
+              ? {
+                  if: condition.if,
+                  then: {
+                    required: condition.then.required,
+                    properties: {
+                      expect: { propertyNames: { enum: MIXED_V2_METRICS } },
+                    },
+                  },
+                }
+              : condition,
       ),
     },
   },

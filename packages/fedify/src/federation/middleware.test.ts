@@ -54,15 +54,9 @@ import {
 } from "node:assert/strict";
 import { AsyncLocalStorage } from "node:async_hooks";
 import dns from "node:dns/promises";
-import createFixture from "../../../fixture/src/fixtures/example.com/create.json" with {
-  type: "json",
-};
-import personFixture from "../../../fixture/src/fixtures/example.com/person.json" with {
-  type: "json",
-};
-import person2Fixture from "../../../fixture/src/fixtures/example.com/person2.json" with {
-  type: "json",
-};
+import createFixture from "../../../fixture/src/fixtures/example.com/create.json" with { type: "json" };
+import personFixture from "../../../fixture/src/fixtures/example.com/person.json" with { type: "json" };
+import person2Fixture from "../../../fixture/src/fixtures/example.com/person2.json" with { type: "json" };
 import {
   type HttpMessageSignaturesSpec,
   signRequest,
@@ -130,23 +124,28 @@ import {
 // Deno's ambient types.  It is only accessed after checking that it exists.
 declare const Deno: {
   readonly permissions: {
-    query(
-      descriptor: { readonly name: "net" },
-    ): Promise<{ readonly state: string }>;
+    query(descriptor: {
+      readonly name: "net";
+    }): Promise<{ readonly state: string }>;
   };
 };
 
 const documentLoader = getDocumentLoader({ allowPrivateAddress: true });
 
-type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends
-  (<T>() => T extends B ? 1 : 2) ? true : false;
+type IsEqual<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+    ? true
+    : false;
 type Assert<T extends true> = T;
 
 let logtapeLock: Promise<void> = Promise.resolve();
 
 async function withLogtapeLock<T>(fn: () => Promise<T>): Promise<T> {
   const run = logtapeLock.then(fn, fn);
-  logtapeLock = run.then(() => undefined, () => undefined);
+  logtapeLock = run.then(
+    () => undefined,
+    () => undefined,
+  );
   return await run;
 }
 
@@ -164,18 +163,24 @@ test("createFederation()", async (t) => {
   const kv = new MemoryKvStore();
 
   await t.step("allowPrivateAddress", () => {
-    assertThrows(() =>
-      createFederation<number>({
-        kv,
-        contextLoaderFactory: () => mockDocumentLoader,
-        allowPrivateAddress: true,
-      }), TypeError);
-    assertThrows(() =>
-      createFederation<number>({
-        kv,
-        authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
-        allowPrivateAddress: true,
-      }), TypeError);
+    assertThrows(
+      () =>
+        createFederation<number>({
+          kv,
+          contextLoaderFactory: () => mockDocumentLoader,
+          allowPrivateAddress: true,
+        }),
+      TypeError,
+    );
+    assertThrows(
+      () =>
+        createFederation<number>({
+          kv,
+          authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+          allowPrivateAddress: true,
+        }),
+      TypeError,
+    );
   });
 
   await t.step("benchmarkMode applies cooperative benchmark defaults", () => {
@@ -296,22 +301,19 @@ test("createFederation()", async (t) => {
             ),
             formatted,
           );
-          assertEquals(
-            records[0].properties.relaxations,
-            [
-              {
-                protection: "private_address_checks",
-                effect: "disabled",
-                effectiveValue: true,
-              },
-              {
-                protection: "http_signature_time_window",
-                effect: "disabled",
-                effectiveValue: false,
-                secureDefaultSeconds: 3600,
-              },
-            ],
-          );
+          assertEquals(records[0].properties.relaxations, [
+            {
+              protection: "private_address_checks",
+              effect: "disabled",
+              effectiveValue: true,
+            },
+            {
+              protection: "http_signature_time_window",
+              effect: "disabled",
+              effectiveValue: false,
+              secureDefaultSeconds: 3600,
+            },
+          ]);
         } finally {
           await reset();
         }
@@ -476,7 +478,7 @@ test("benchmarkMode stats endpoint", async (t) => {
 
     assertEquals(response.status, 200);
     assertEquals(response.headers.get("Content-Type"), "application/json");
-    const body = await response.json() as {
+    const body = (await response.json()) as {
       version: number;
       source: string;
       generatedAt: string;
@@ -495,17 +497,19 @@ test("benchmarkMode stats endpoint", async (t) => {
     assertExists(
       metrics.find((metric) => metric.name === "activitypub.inbox.activity"),
     );
-    const queueDepth = metrics.find((metric) =>
-      metric.name === "fedify.queue.depth"
+    const queueDepth = metrics.find(
+      (metric) => metric.name === "fedify.queue.depth",
     );
     assertExists(queueDepth);
     assertEquals(queueDepth.dataPointType, "gauge");
     assertEquals(
-      queueDepth.dataPoints.map((point) => ({
-        state: point.attributes["fedify.queue.depth.state"],
-        role: point.attributes["fedify.queue.role"],
-        value: point.value,
-      })).sort((a, b) => String(a.state).localeCompare(String(b.state))),
+      queueDepth.dataPoints
+        .map((point) => ({
+          state: point.attributes["fedify.queue.depth.state"],
+          role: point.attributes["fedify.queue.role"],
+          value: point.value,
+        }))
+        .sort((a, b) => String(a.state).localeCompare(String(b.state))),
       [
         { state: "delayed", role: "shared", value: 1 },
         { state: "queued", role: "shared", value: 3 },
@@ -544,11 +548,13 @@ test("createFederation() registers queue depth for regular metrics", async () =>
     assertExists(queueDepth);
     assertEquals(queueDepth.dataPointType, DataPointType.GAUGE);
     assertEquals(
-      queueDepth.dataPoints.map((point) => ({
-        state: point.attributes["fedify.queue.depth.state"],
-        role: point.attributes["fedify.queue.role"],
-        value: point.value,
-      })).sort((a, b) => String(a.state).localeCompare(String(b.state))),
+      queueDepth.dataPoints
+        .map((point) => ({
+          state: point.attributes["fedify.queue.depth.state"],
+          role: point.attributes["fedify.queue.role"],
+          value: point.value,
+        }))
+        .sort((a, b) => String(a.state).localeCompare(String(b.state))),
       [
         { state: "delayed", role: "shared", value: 3 },
         { state: "queued", role: "shared", value: 5 },
@@ -596,9 +602,7 @@ test("createFederation() registers queue depth after global meterProvider is set
         role: point.attributes["fedify.queue.role"],
         value: point.value,
       })),
-      [
-        { state: "queued", role: "shared", value: 8 },
-      ],
+      [{ state: "queued", role: "shared", value: 8 }],
     );
   } finally {
     metrics.disable();
@@ -638,15 +642,12 @@ test("createFederation() distinguishes queue depth series per federation", async
       .find((metric) => metric.descriptor.name === "fedify.queue.depth");
 
     assertExists(queueDepth);
-    const queuedPoints = queueDepth.dataPoints.filter((point) =>
-      point.attributes["fedify.queue.depth.state"] === "queued"
+    const queuedPoints = queueDepth.dataPoints.filter(
+      (point) => point.attributes["fedify.queue.depth.state"] === "queued",
     );
-    assertEquals(
-      queuedPoints.map((point) => point.value).sort(),
-      [1, 2],
-    );
-    const instanceIds = queuedPoints.map((point) =>
-      point.attributes["fedify.federation.instance_id"]
+    assertEquals(queuedPoints.map((point) => point.value).sort(), [1, 2]);
+    const instanceIds = queuedPoints.map(
+      (point) => point.attributes["fedify.federation.instance_id"],
     );
     assertEquals(
       instanceIds.every((id) => typeof id === "string"),
@@ -744,10 +745,7 @@ test("benchmarkMode trigger endpoint", async (t) => {
         throw new TypeError("body is unavailable");
       },
     } as unknown as Request;
-    const response = await handleBenchmarkTrigger(
-      request,
-      {} as Context<void>,
-    );
+    const response = await handleBenchmarkTrigger(request, {} as Context<void>);
     assertEquals(response.status, 400);
     assertEquals(await response.json(), {
       error: "Invalid JSON request body.",
@@ -852,7 +850,7 @@ test("benchmarkMode trigger endpoint", async (t) => {
     );
 
     assertEquals(response.status, 202);
-    const body = await response.json() as {
+    const body = (await response.json()) as {
       version: number;
       activityId: string;
       queueCorrelationId: string;
@@ -883,14 +881,11 @@ test({
     fetchMock.spyGlobal();
 
     fetchMock.get("https://example.com/auth-check", async (cl) => {
-      const v = await verifyRequest(
-        cl.request!,
-        {
-          contextLoader: mockDocumentLoader,
-          documentLoader: mockDocumentLoader,
-          currentTime: Temporal.Now.instant(),
-        },
-      );
+      const v = await verifyRequest(cl.request!, {
+        contextLoader: mockDocumentLoader,
+        documentLoader: mockDocumentLoader,
+        currentTime: Temporal.Now.instant(),
+      });
       return new Response(JSON.stringify(v != null), {
         headers: { "Content-Type": "application/json" },
       });
@@ -976,7 +971,8 @@ test({
         () =>
           createFederation<number>({
             kv: new MemoryKvStore(),
-          }).setActorDispatcher("/users/{identifier}", () => null)
+          })
+            .setActorDispatcher("/users/{identifier}", () => null)
             .mapActorAlias("/actor/{id}" as `/${string}`, "instance"),
         RouterError,
         "Path for actor alias must have no variables.",
@@ -995,59 +991,53 @@ test({
             publicKey: ed25519PublicKey.publicKey!,
           },
         ])
-        .mapHandle((_, username) => username === "HANDLE" ? "handle" : null);
+        .mapHandle((_, username) => (username === "HANDLE" ? "handle" : null));
       ctx = federation.createContext(new URL("https://example.com/"), 123);
       assertEquals(
         ctx.getActorUri("handle"),
         new URL("https://example.com/users/handle"),
       );
-      assertEquals(
-        ctx.getActorUri("bot"),
-        new URL("https://example.com/bot"),
-      );
+      assertEquals(ctx.getActorUri("bot"), new URL("https://example.com/bot"));
       assertEquals(ctx.parseUri(new URL("https://example.com/")), null);
-      assertEquals(
-        ctx.parseUri(new URL("https://example.com/users/handle")),
-        { type: "actor", identifier: "handle" },
-      );
-      assertEquals(
-        ctx.parseUri(new URL("https://example.com/bot")),
-        { type: "actor", identifier: "bot" },
-      );
+      assertEquals(ctx.parseUri(new URL("https://example.com/users/handle")), {
+        type: "actor",
+        identifier: "handle",
+      });
+      assertEquals(ctx.parseUri(new URL("https://example.com/bot")), {
+        type: "actor",
+        identifier: "bot",
+      });
       assertEquals(ctx.parseUri(null), null);
-      assertEquals(
-        await ctx.getActorKeyPairs("handle"),
-        [
-          {
-            keyId: new URL("https://example.com/users/handle#main-key"),
-            privateKey: rsaPrivateKey2,
+      assertEquals(await ctx.getActorKeyPairs("handle"), [
+        {
+          keyId: new URL("https://example.com/users/handle#main-key"),
+          privateKey: rsaPrivateKey2,
+          publicKey: rsaPublicKey2.publicKey!,
+          cryptographicKey: rsaPublicKey2.clone({
+            id: new URL("https://example.com/users/handle#main-key"),
+            owner: new URL("https://example.com/users/handle"),
+          }),
+          multikey: new vocab.Multikey({
+            id: new URL("https://example.com/users/handle#multikey-1"),
+            controller: new URL("https://example.com/users/handle"),
             publicKey: rsaPublicKey2.publicKey!,
-            cryptographicKey: rsaPublicKey2.clone({
-              id: new URL("https://example.com/users/handle#main-key"),
-              owner: new URL("https://example.com/users/handle"),
-            }),
-            multikey: new vocab.Multikey({
-              id: new URL("https://example.com/users/handle#multikey-1"),
-              controller: new URL("https://example.com/users/handle"),
-              publicKey: rsaPublicKey2.publicKey!,
-            }),
-          },
-          {
-            keyId: new URL("https://example.com/users/handle#key-2"),
-            privateKey: ed25519PrivateKey,
+          }),
+        },
+        {
+          keyId: new URL("https://example.com/users/handle#key-2"),
+          privateKey: ed25519PrivateKey,
+          publicKey: ed25519PublicKey.publicKey!,
+          cryptographicKey: ed25519PublicKey.clone({
+            id: new URL("https://example.com/users/handle#key-2"),
+            owner: new URL("https://example.com/users/handle"),
+          }),
+          multikey: new vocab.Multikey({
+            id: new URL("https://example.com/users/handle#multikey-2"),
+            controller: new URL("https://example.com/users/handle"),
             publicKey: ed25519PublicKey.publicKey!,
-            cryptographicKey: ed25519PublicKey.clone({
-              id: new URL("https://example.com/users/handle#key-2"),
-              owner: new URL("https://example.com/users/handle"),
-            }),
-            multikey: new vocab.Multikey({
-              id: new URL("https://example.com/users/handle#multikey-2"),
-              controller: new URL("https://example.com/users/handle"),
-              publicKey: ed25519PublicKey.publicKey!,
-            }),
-          },
-        ],
-      );
+          }),
+        },
+      ]);
       const loader = await ctx.getDocumentLoader({ identifier: "handle" });
       assertEquals(await loader("https://example.com/auth-check"), {
         contextUrl: null,
@@ -1154,20 +1144,19 @@ test({
         ctx.getInboxUri("handle"),
         new URL("https://example.com/users/handle/inbox"),
       );
-      assertEquals(
-        ctx.parseUri(new URL("https://example.com/inbox")),
-        { type: "inbox", identifier: undefined },
-      );
+      assertEquals(ctx.parseUri(new URL("https://example.com/inbox")), {
+        type: "inbox",
+        identifier: undefined,
+      });
       assertEquals(
         ctx.parseUri(new URL("https://example.com/users/handle/inbox")),
         { type: "inbox", identifier: "handle" },
       );
       assertEquals(ctx.parseUri(null), null);
 
-      federation.setOutboxDispatcher(
-        "/users/{identifier}/outbox",
-        () => ({ items: [] }),
-      );
+      federation.setOutboxDispatcher("/users/{identifier}/outbox", () => ({
+        items: [],
+      }));
       ctx = federation.createContext(new URL("https://example.com/"), 123);
       assertEquals(
         ctx.getOutboxUri("handle"),
@@ -1209,10 +1198,9 @@ test({
       );
       assertEquals(ctx.parseUri(null), null);
 
-      federation.setLikedDispatcher(
-        "/users/{identifier}/liked",
-        () => ({ items: [] }),
-      );
+      federation.setLikedDispatcher("/users/{identifier}/liked", () => ({
+        items: [],
+      }));
       ctx = federation.createContext(new URL("https://example.com/"), 123);
       assertEquals(
         ctx.getLikedUri("handle"),
@@ -1224,10 +1212,9 @@ test({
       );
       assertEquals(ctx.parseUri(null), null);
 
-      federation.setFeaturedDispatcher(
-        "/users/{identifier}/featured",
-        () => ({ items: [] }),
-      );
+      federation.setFeaturedDispatcher("/users/{identifier}/featured", () => ({
+        items: [],
+      }));
       ctx = federation.createContext(new URL("https://example.com/"), 123);
       assertEquals(
         ctx.getFeaturedUri("handle"),
@@ -1239,10 +1226,9 @@ test({
       );
       assertEquals(ctx.parseUri(null), null);
 
-      federation.setFeaturedTagsDispatcher(
-        "/users/{identifier}/tags",
-        () => ({ items: [] }),
-      );
+      federation.setFeaturedTagsDispatcher("/users/{identifier}/tags", () => ({
+        items: [],
+      }));
       ctx = federation.createContext(new URL("https://example.com/"), 123);
       assertEquals(
         ctx.getFeaturedTagsUri("handle"),
@@ -1342,14 +1328,14 @@ test({
         ctx.getInboxUri("handle"),
         new URL("https://ap.example.com/users/handle/inbox"),
       );
-      assertEquals(
-        ctx.parseUri(new URL("https://ap.example.com/inbox")),
-        { type: "inbox", identifier: undefined },
-      );
-      assertEquals(
-        ctx.parseUri(new URL("https://example.com:1234/inbox")),
-        { type: "inbox", identifier: undefined },
-      );
+      assertEquals(ctx.parseUri(new URL("https://ap.example.com/inbox")), {
+        type: "inbox",
+        identifier: undefined,
+      });
+      assertEquals(ctx.parseUri(new URL("https://example.com:1234/inbox")), {
+        type: "inbox",
+        identifier: undefined,
+      });
       assertEquals(
         ctx.parseUri(new URL("https://ap.example.com/users/handle/inbox")),
         { type: "inbox", identifier: "handle" },
@@ -1359,10 +1345,9 @@ test({
         { type: "inbox", identifier: "handle" },
       );
 
-      federation.setOutboxDispatcher(
-        "/users/{identifier}/outbox",
-        () => ({ items: [] }),
-      );
+      federation.setOutboxDispatcher("/users/{identifier}/outbox", () => ({
+        items: [],
+      }));
       assertEquals(
         ctx.getOutboxUri("handle"),
         new URL("https://ap.example.com/users/handle/outbox"),
@@ -1414,10 +1399,9 @@ test({
         { type: "followers", identifier: "handle" },
       );
 
-      federation.setLikedDispatcher(
-        "/users/{identifier}/liked",
-        () => ({ items: [] }),
-      );
+      federation.setLikedDispatcher("/users/{identifier}/liked", () => ({
+        items: [],
+      }));
       assertEquals(
         ctx.getLikedUri("handle"),
         new URL("https://ap.example.com/users/handle/liked"),
@@ -1431,10 +1415,9 @@ test({
         { type: "liked", identifier: "handle" },
       );
 
-      federation.setFeaturedDispatcher(
-        "/users/{identifier}/featured",
-        () => ({ items: [] }),
-      );
+      federation.setFeaturedDispatcher("/users/{identifier}/featured", () => ({
+        items: [],
+      }));
       assertEquals(
         ctx.getFeaturedUri("handle"),
         new URL("https://ap.example.com/users/handle/featured"),
@@ -1448,10 +1431,9 @@ test({
         { type: "featured", identifier: "handle" },
       );
 
-      federation.setFeaturedTagsDispatcher(
-        "/users/{identifier}/tags",
-        () => ({ items: [] }),
-      );
+      federation.setFeaturedTagsDispatcher("/users/{identifier}/tags", () => ({
+        items: [],
+      }));
       assertEquals(
         ctx.getFeaturedTagsUri("handle"),
         new URL("https://ap.example.com/users/handle/tags"),
@@ -1517,11 +1499,13 @@ test({
         new Headers(headers).get("User-Agent"),
         "CustomUserAgent/1.2.3",
       );
-      return new Response(JSON.stringify({
-        software: { name: "foo", version: "1.2.3" },
-        protocols: ["activitypub", "diaspora"],
-        usage: { users: {}, localPosts: 123, localComments: 456 },
-      }));
+      return new Response(
+        JSON.stringify({
+          software: { name: "foo", version: "1.2.3" },
+          protocols: ["activitypub", "diaspora"],
+          usage: { users: {}, localPosts: 123, localComments: 456 },
+        }),
+      );
     });
 
     await t.step("Context.lookupNodeInfo()", async () => {
@@ -1535,9 +1519,8 @@ test({
       );
       const lookupExample = () =>
         Promise.resolve([{ address: "93.184.215.14", family: 4 }]);
-      const nodeInfo = await withDnsLookup(
-        lookupExample,
-        () => ctx.lookupNodeInfo("https://example.com/"),
+      const nodeInfo = await withDnsLookup(lookupExample, () =>
+        ctx.lookupNodeInfo("https://example.com/"),
       );
       assertEquals(nodeInfo, {
         software: {
@@ -1548,9 +1531,8 @@ test({
         usage: { users: {}, localPosts: 123, localComments: 456 },
       });
 
-      const rawNodeInfo = await withDnsLookup(
-        lookupExample,
-        () => ctx.lookupNodeInfo("https://example.com/", { parse: "none" }),
+      const rawNodeInfo = await withDnsLookup(lookupExample, () =>
+        ctx.lookupNodeInfo("https://example.com/", { parse: "none" }),
       );
       assertEquals(rawNodeInfo, {
         software: { name: "foo", version: "1.2.3" },
@@ -1574,10 +1556,7 @@ test({
       assertEquals(ctx.host, "example.com");
       assertEquals(ctx.hostname, "example.com");
       assertEquals(ctx.data, 123);
-      await assertRejects(
-        () => ctx.getActor("someone"),
-        Error,
-      );
+      await assertRejects(() => ctx.getActor("someone"), Error);
       await assertRejects(
         () => ctx.getObject(vocab.Note, { handle: "someone", id: "123" }),
         Error,
@@ -1622,27 +1601,22 @@ test({
       assertEquals(signedCtx2.url, new URL("https://example.com/"));
       assertEquals(signedCtx2.data, 456);
       assertEquals(await signedCtx2.getSignedKey(), rsaPublicKey3);
-      const expectedOwner = await lookupObject(
-        "https://example.com/person2",
-        {
-          documentLoader: mockDocumentLoader,
-          contextLoader: mockDocumentLoader,
-        },
-      );
+      const expectedOwner = await lookupObject("https://example.com/person2", {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
       assertEquals(await signedCtx2.getSignedKeyOwner(), expectedOwner);
       // Multiple calls should return the same result:
       assertEquals(await signedCtx2.getSignedKey(), rsaPublicKey3);
       assertEquals(await signedCtx2.getSignedKeyOwner(), expectedOwner);
 
-      federation.setActorDispatcher(
-        "/users/{identifier}",
-        (ctx, identifier) =>
-          identifier === "gone"
-            ? new vocab.Tombstone({
+      federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) =>
+        identifier === "gone"
+          ? new vocab.Tombstone({
               id: ctx.getActorUri(identifier),
               deleted: Temporal.Instant.from("2024-01-15T00:00:00Z"),
             })
-            : new vocab.Person({ preferredUsername: identifier }),
+          : new vocab.Person({ preferredUsername: identifier }),
       );
       const ctx2 = federation.createContext(req, 789);
       assertEquals(ctx2.request, req);
@@ -1738,10 +1712,7 @@ test({
           }
           if (url === "https://example.com/person2") {
             // Actor URL (without fragment): simulate 401 Unauthorized
-            throw new FetchError(
-              new URL(url),
-              "HTTP 401: Unauthorized",
-            );
+            throw new FetchError(new URL(url), "HTTP 401: Unauthorized");
           }
           return mockDocumentLoader(url);
         };
@@ -1787,86 +1758,80 @@ test({
       assertStrictEquals(clone.federation, ctx.federation);
     });
 
-    await t.step(
-      "getSignedKey() uses the key cache",
-      async () => {
-        const kv = new MemoryKvStore();
-        const keyId = rsaPublicKey2.id!;
-        let keyFetches = 0;
+    await t.step("getSignedKey() uses the key cache", async () => {
+      const kv = new MemoryKvStore();
+      const keyId = rsaPublicKey2.id!;
+      let keyFetches = 0;
 
-        const documentLoader = async (url: string) => {
-          if (url === keyId.href) keyFetches++;
-          return await mockDocumentLoader(url);
-        };
+      const documentLoader = async (url: string) => {
+        if (url === keyId.href) keyFetches++;
+        return await mockDocumentLoader(url);
+      };
 
-        const federation = createFederation<number>({
-          kv,
-          documentLoaderFactory: () => documentLoader,
-          contextLoaderFactory: () => mockDocumentLoader,
-          publicKeyTtl: { days: 7 },
-        });
+      const federation = createFederation<number>({
+        kv,
+        documentLoaderFactory: () => documentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
+        publicKeyTtl: { days: 7 },
+      });
 
-        const request1 = await signRequest(
-          new Request("https://example.com/"),
-          rsaPrivateKey2,
-          keyId,
-        );
-        const request2 = await signRequest(
-          new Request("https://example.com/"),
-          rsaPrivateKey2,
-          keyId,
-        );
+      const request1 = await signRequest(
+        new Request("https://example.com/"),
+        rsaPrivateKey2,
+        keyId,
+      );
+      const request2 = await signRequest(
+        new Request("https://example.com/"),
+        rsaPrivateKey2,
+        keyId,
+      );
 
-        const ctx1 = federation.createContext(request1, 1);
-        const ctx2 = federation.createContext(request2, 2);
+      const ctx1 = federation.createContext(request1, 1);
+      const ctx2 = federation.createContext(request2, 2);
 
-        assertEquals(await ctx1.getSignedKey(), rsaPublicKey2);
-        assertEquals(keyFetches, 1);
+      assertEquals(await ctx1.getSignedKey(), rsaPublicKey2);
+      assertEquals(keyFetches, 1);
 
-        assertEquals(await ctx2.getSignedKey(), rsaPublicKey2);
-        assertEquals(keyFetches, 1);
-      },
-    );
+      assertEquals(await ctx2.getSignedKey(), rsaPublicKey2);
+      assertEquals(keyFetches, 1);
+    });
 
-    await t.step(
-      "getSignedKey() caches unavailable keys",
-      async () => {
-        const kv = new MemoryKvStore();
-        const keyId = new URL("https://example.com/keys/missing");
-        let keyFetches = 0;
+    await t.step("getSignedKey() caches unavailable keys", async () => {
+      const kv = new MemoryKvStore();
+      const keyId = new URL("https://example.com/keys/missing");
+      let keyFetches = 0;
 
-        const documentLoader = async (url: string) => {
-          if (url === keyId.href) keyFetches++;
-          return await mockDocumentLoader(url);
-        };
+      const documentLoader = async (url: string) => {
+        if (url === keyId.href) keyFetches++;
+        return await mockDocumentLoader(url);
+      };
 
-        const federation = createFederation<number>({
-          kv,
-          documentLoaderFactory: () => documentLoader,
-          contextLoaderFactory: () => mockDocumentLoader,
-        });
+      const federation = createFederation<number>({
+        kv,
+        documentLoaderFactory: () => documentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
+      });
 
-        const request1 = await signRequest(
-          new Request("https://example.com/"),
-          rsaPrivateKey2,
-          keyId,
-        );
-        const request2 = await signRequest(
-          new Request("https://example.com/"),
-          rsaPrivateKey2,
-          keyId,
-        );
+      const request1 = await signRequest(
+        new Request("https://example.com/"),
+        rsaPrivateKey2,
+        keyId,
+      );
+      const request2 = await signRequest(
+        new Request("https://example.com/"),
+        rsaPrivateKey2,
+        keyId,
+      );
 
-        const ctx1 = federation.createContext(request1, 1);
-        const ctx2 = federation.createContext(request2, 2);
+      const ctx1 = federation.createContext(request1, 1);
+      const ctx2 = federation.createContext(request2, 2);
 
-        assertEquals(await ctx1.getSignedKey(), null);
-        assertEquals(keyFetches, 1);
+      assertEquals(await ctx1.getSignedKey(), null);
+      assertEquals(keyFetches, 1);
 
-        assertEquals(await ctx2.getSignedKey(), null);
-        assertEquals(keyFetches, 1);
-      },
-    );
+      assertEquals(await ctx2.getSignedKey(), null);
+      assertEquals(keyFetches, 1);
+    });
 
     await t.step(
       "getSignedKey() refetches a key that no longer verifies",
@@ -1993,11 +1958,14 @@ test("Federation.fetch() verifies signatures over unencoded path colons", async 
           documentLoaderFactory: () => mockDocumentLoader,
           contextLoaderFactory: () => mockDocumentLoader,
         });
-        federation.setActorDispatcher(
-          "/users/{identifier}",
-          (ctx, id) => new vocab.Person({ id: ctx.getActorUri(id) }),
-        ).setKeyPairsDispatcher(() => []);
-        federation.setInboxListeners("/users/{identifier}/inbox")
+        federation
+          .setActorDispatcher(
+            "/users/{identifier}",
+            (ctx, id) => new vocab.Person({ id: ctx.getActorUri(id) }),
+          )
+          .setKeyPairsDispatcher(() => []);
+        federation
+          .setInboxListeners("/users/{identifier}/inbox")
           .on(vocab.Create, (ctx) => {
             recipients.push(ctx.recipient);
           });
@@ -2011,9 +1979,10 @@ test("Federation.fetch() verifies signatures over unencoded path colons", async 
           rsaPublicKey2.id!,
           { spec },
         );
-        const request = target === "changed after signing"
-          ? new Request(normalized, signed)
-          : signed;
+        const request =
+          target === "changed after signing"
+            ? new Request(normalized, signed)
+            : signed;
         const response = await federation.fetch(request, {
           contextData: undefined,
         });
@@ -2022,7 +1991,8 @@ test("Federation.fetch() verifies signatures over unencoded path colons", async 
         assertEquals(response.status, valid ? 202 : 401);
         assertEquals(recipients, valid ? [identifier] : []);
         assertEquals(
-          federation.createContext(new URL(canonical), undefined)
+          federation
+            .createContext(new URL(canonical), undefined)
             .getInboxUri(identifier).href,
           canonical,
         );
@@ -2041,12 +2011,14 @@ test("RequestContext signature checks", async (t) => {
     rsaPublicKey3.id!,
   );
 
-  function setup(options: {
-    gate?: Promise<void>;
-    load?: DocumentLoader;
-    tracerProvider?: TracerProvider;
-    request?: Request;
-  } = {}) {
+  function setup(
+    options: {
+      gate?: Promise<void>;
+      load?: DocumentLoader;
+      tracerProvider?: TracerProvider;
+      request?: Request;
+    } = {},
+  ) {
     const loads = { key: 0, owner: 0 };
     const loader: DocumentLoader = async (url, loaderOptions) => {
       if (url === keyId) loads.key++;
@@ -2072,23 +2044,28 @@ test("RequestContext signature checks", async (t) => {
       await t.step(`coalesces ${mode}`, async () => {
         exporter.clear();
         let release!: () => void;
-        const gate = new Promise<void>((resolve) => release = resolve);
+        const gate = new Promise<void>((resolve) => (release = resolve));
         const { ctx, loads, loader } = setup({ gate });
         if (mode === "warm owners") {
           release();
           assert(await ctx.getSignedKey());
         }
-        const results = Promise.all(Array.from({ length: 8 }, (_, i) => {
-          // Fresh option objects and explicit defaults must use the same entry.
-          const options = i % 2 === 0 ? {} : {
-            documentLoader: loader,
-            contextLoader: ctx.contextLoader,
-            tracerProvider,
-          };
-          return mode === "keys" || (mode === "mixed" && i % 2 === 0)
-            ? ctx.getSignedKey(options)
-            : ctx.getSignedKeyOwner(options);
-        }));
+        const results = Promise.all(
+          Array.from({ length: 8 }, (_, i) => {
+            // Fresh option objects and explicit defaults must use the same entry.
+            const options =
+              i % 2 === 0
+                ? {}
+                : {
+                    documentLoader: loader,
+                    contextLoader: ctx.contextLoader,
+                    tracerProvider,
+                  };
+            return mode === "keys" || (mode === "mixed" && i % 2 === 0)
+              ? ctx.getSignedKey(options)
+              : ctx.getSignedKeyOwner(options);
+          }),
+        );
         release();
         for (const result of await results) assert(result != null);
         assertEquals(loads, { key: 1, owner: mode === "keys" ? 0 : 1 });
@@ -2160,10 +2137,10 @@ test("RequestContext signature checks", async (t) => {
           load: async (url, options) =>
             url === ownerId
               ? {
-                documentUrl: url,
-                contextUrl: null,
-                document: { ...person2Fixture, publicKey: [] },
-              }
+                  documentUrl: url,
+                  contextUrl: null,
+                  document: { ...person2Fixture, publicKey: [] },
+                }
               : await mockDocumentLoader(url, options),
         });
         assert(await ctx.getSignedKey());
@@ -2220,7 +2197,7 @@ test("RequestContext signature checks", async (t) => {
       async () => {
         exporter.clear();
         let release!: () => void;
-        const gate = new Promise<void>((resolve) => release = resolve);
+        const gate = new Promise<void>((resolve) => (release = resolve));
         const { ctx, loads } = setup({
           load: async () => {
             await gate;
@@ -2433,64 +2410,58 @@ test("RequestContext signature checks", async (t) => {
 });
 
 test("Federation.fetch() [rfc9421] multiple POST signatures", async (t) => {
-  for (
-    const [name, validSecond, maxHttpSignatures] of [
-      ["valid second signature", true, undefined],
-      ["both signatures invalid", false, undefined],
-      ["valid second signature beyond maxHttpSignatures", true, 1],
-    ] as const
-  ) {
-    await t.step(
-      name,
-      async () => {
-        const inbox: string[] = [];
-        const federation = createFederation<void>({
-          kv: new MemoryKvStore(),
-          documentLoaderFactory: () => mockDocumentLoader,
-          contextLoaderFactory: () => mockDocumentLoader,
-          maxHttpSignatures,
+  for (const [name, validSecond, maxHttpSignatures] of [
+    ["valid second signature", true, undefined],
+    ["both signatures invalid", false, undefined],
+    ["valid second signature beyond maxHttpSignatures", true, 1],
+  ] as const) {
+    await t.step(name, async () => {
+      const inbox: string[] = [];
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        documentLoaderFactory: () => mockDocumentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
+        maxHttpSignatures,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        (ctx, identifier) =>
+          new vocab.Person({ id: ctx.getActorUri(identifier) }),
+      );
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(vocab.Create, (_ctx, activity) => {
+          inbox.push(activity.id!.href);
         });
-        federation.setActorDispatcher(
-          "/users/{identifier}",
-          (ctx, identifier) =>
-            new vocab.Person({ id: ctx.getActorUri(identifier) }),
-        );
-        federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
-          .on(vocab.Create, (_ctx, activity) => {
-            inbox.push(activity.id!.href);
-          });
-        const signed = await signRequest(
-          new Request("https://example.com/inbox", {
-            method: "POST",
-            headers: { "Content-Type": "application/activity+json" },
-            body: JSON.stringify(createFixture),
-          }),
-          rsaPrivateKey2,
-          rsaPublicKey2.id!,
-          { spec: "rfc9421" },
-        );
-        const input = signed.headers.get("Signature-Input")!;
-        const signature = signed.headers.get("Signature")!;
-        signed.headers.set(
-          "Signature-Input",
-          `${input}, ${input.replace(/^sig1=/, "sig2=")}`,
-        );
-        signed.headers.set(
-          "Signature",
-          `sig1=:AAAAAA==:, ${
-            validSecond
-              ? signature.replace(/^sig1=/, "sig2=")
-              : "sig2=:AAAAAA==:"
-          }`,
-        );
-        const response = await federation.fetch(signed, {
-          contextData: undefined,
-        });
-        const accepted = validSecond && maxHttpSignatures == null;
-        assertEquals(response.status, accepted ? 202 : 401);
-        assertEquals(inbox, accepted ? [createFixture.id] : []);
-      },
-    );
+      const signed = await signRequest(
+        new Request("https://example.com/inbox", {
+          method: "POST",
+          headers: { "Content-Type": "application/activity+json" },
+          body: JSON.stringify(createFixture),
+        }),
+        rsaPrivateKey2,
+        rsaPublicKey2.id!,
+        { spec: "rfc9421" },
+      );
+      const input = signed.headers.get("Signature-Input")!;
+      const signature = signed.headers.get("Signature")!;
+      signed.headers.set(
+        "Signature-Input",
+        `${input}, ${input.replace(/^sig1=/, "sig2=")}`,
+      );
+      signed.headers.set(
+        "Signature",
+        `sig1=:AAAAAA==:, ${
+          validSecond ? signature.replace(/^sig1=/, "sig2=") : "sig2=:AAAAAA==:"
+        }`,
+      );
+      const response = await federation.fetch(signed, {
+        contextData: undefined,
+      });
+      const accepted = validSecond && maxHttpSignatures == null;
+      assertEquals(response.status, accepted ? 202 : 401);
+      assertEquals(inbox, accepted ? [createFixture.id] : []);
+    });
   }
 });
 
@@ -2504,16 +2475,14 @@ test("FederationOptions.maxHttpSignatures", async (t) => {
   });
 
   await t.step("rejects invalid values", () => {
-    for (
-      const maxHttpSignatures of [
-        0,
-        -1,
-        1.5,
-        NaN,
-        2 ** 53,
-        null as unknown as number,
-      ]
-    ) {
+    for (const maxHttpSignatures of [
+      0,
+      -1,
+      1.5,
+      NaN,
+      2 ** 53,
+      null as unknown as number,
+    ]) {
       assertThrows(
         () => createFederation<void>({ kv, maxHttpSignatures }),
         RangeError,
@@ -2531,12 +2500,10 @@ test("FederationOptions.maxHttpSignatures", async (t) => {
     let request = new Request("https://example.com/", {
       headers: { "Accept": "application/ld+json" },
     });
-    for (
-      const [label, keyId] of [
-        ["sig1", new URL("https://example.com/missing-key")],
-        ["sig2", rsaPublicKey2.id!],
-      ] as const
-    ) {
+    for (const [label, keyId] of [
+      ["sig1", new URL("https://example.com/missing-key")],
+      ["sig2", rsaPublicKey2.id!],
+    ] as const) {
       request = await signRequest(request, rsaPrivateKey2, keyId, {
         spec: "rfc9421",
         rfc9421: { label },
@@ -2591,9 +2558,8 @@ test("Federation.fetch()", async (t) => {
       },
     });
 
-    federation.setActorDispatcher(
-      "/users/{identifier}",
-      (ctx, identifier) => {
+    federation
+      .setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
         dispatches.push(identifier);
         if (identifier === "gone") {
           return new vocab.Tombstone({
@@ -2606,8 +2572,7 @@ test("Federation.fetch()", async (t) => {
           inbox: ctx.getInboxUri(identifier),
           preferredUsername: identifier,
         });
-      },
-    )
+      })
       .mapActorAlias("/bot", "bot")
       .setKeyPairsDispatcher(() => {
         return [
@@ -2619,7 +2584,8 @@ test("Federation.fetch()", async (t) => {
       return { items: [] };
     });
 
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(vocab.Create, (_ctx, activity) => {
         inbox.push(activity.id!.toString());
       });
@@ -2661,7 +2627,7 @@ test("Federation.fetch()", async (t) => {
 
     assertEquals(dispatches, ["bot"]);
     assertEquals(response.status, 200);
-    const body = await response.json() as Record<string, unknown>;
+    const body = (await response.json()) as Record<string, unknown>;
     assertEquals(body.id, "https://example.com/bot");
     assertEquals(body.preferredUsername, "bot");
   });
@@ -2677,12 +2643,12 @@ test("Federation.fetch()", async (t) => {
     );
 
     assertEquals(response.status, 200);
-    const body = await response.json() as Record<string, unknown>;
+    const body = (await response.json()) as Record<string, unknown>;
     assertEquals(body.subject, "acct:bot@example.com");
     assertExists(body.links);
     assert(Array.isArray(body.links));
-    const selfLink = (body.links as Record<string, unknown>[]).find((l) =>
-      l.rel === "self"
+    const selfLink = (body.links as Record<string, unknown>[]).find(
+      (l) => l.rel === "self",
     );
     assertExists(selfLink);
     assertEquals(selfLink.href, "https://example.com/bot");
@@ -2706,17 +2672,12 @@ test("Federation.fetch()", async (t) => {
       rsaPublicKey2.id!,
     );
 
-    const response = await federation.fetch(
-      request,
-      { contextData: undefined },
-    );
+    const response = await federation.fetch(request, {
+      contextData: undefined,
+    });
 
     assertEquals(response.status, 202);
-    assertEquals(
-      inbox.length,
-      1,
-      "Expected one item in the inbox, json",
-    );
+    assertEquals(inbox.length, 1, "Expected one item in the inbox, json");
     assertEquals(inbox[0], createFixture.id);
   });
 
@@ -2754,10 +2715,9 @@ test("Federation.fetch()", async (t) => {
       rsaPublicKey2.id!,
     );
 
-    const response = await federation.fetch(
-      request,
-      { contextData: undefined },
-    );
+    const response = await federation.fetch(request, {
+      contextData: undefined,
+    });
 
     assertEquals(response.status, 202);
     assertEquals(inbox.length, 1, "Expected one inbox activity, ld+json");
@@ -2798,10 +2758,9 @@ test("Federation.fetch()", async (t) => {
       rsaPublicKey2.id!,
     );
 
-    const response = await federation.fetch(
-      request,
-      { contextData: undefined },
-    );
+    const response = await federation.fetch(request, {
+      contextData: undefined,
+    });
 
     assertEquals(response.status, 202);
     assertEquals(inbox.length, 1);
@@ -2955,19 +2914,16 @@ test("Federation.fetch() records HTTP server request metrics", async (t) => {
       documentLoaderFactory: () => mockDocumentLoader,
     });
 
-    federation.setActorDispatcher(
-      "/users/{identifier}",
-      (ctx, identifier) => {
-        if (identifier === "boom") {
-          throw new Error("explosion in actor dispatcher");
-        }
-        return new vocab.Person({
-          id: ctx.getActorUri(identifier),
-          inbox: ctx.getInboxUri(identifier),
-          preferredUsername: identifier,
-        });
-      },
-    );
+    federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
+      if (identifier === "boom") {
+        throw new Error("explosion in actor dispatcher");
+      }
+      return new vocab.Person({
+        id: ctx.getActorUri(identifier),
+        inbox: ctx.getInboxUri(identifier),
+        preferredUsername: identifier,
+      });
+    });
 
     federation.setNodeInfoDispatcher("/nodeinfo/2.1", () => ({
       software: { name: "example", version: "1.0.0" },
@@ -2975,10 +2931,9 @@ test("Federation.fetch() records HTTP server request metrics", async (t) => {
       usage: { users: {}, localPosts: 0, localComments: 0 },
     }));
 
-    federation.setFollowersDispatcher(
-      "/users/{identifier}/followers",
-      () => ({ items: [] }),
-    );
+    federation.setFollowersDispatcher("/users/{identifier}/followers", () => ({
+      items: [],
+    }));
 
     federation.setCollectionDispatcher(
       "custom-collection",
@@ -3157,10 +3112,7 @@ test("Federation.fetch() records HTTP server request metrics", async (t) => {
         requests[0].attributes["activitypub.collection.result"],
         "not_acceptable",
       );
-      assertEquals(
-        requests[0].attributes["http.response.status_code"],
-        406,
-      );
+      assertEquals(requests[0].attributes["http.response.status_code"], 406);
     },
   );
 
@@ -3272,10 +3224,7 @@ test("Federation.fetch() records HTTP server request metrics", async (t) => {
     const counts = recorder.getMeasurements("fedify.http.server.request.count");
     assertEquals(counts.length, 1);
     assertEquals(counts[0].attributes["fedify.endpoint"], "shared_inbox");
-    assertEquals(
-      counts[0].attributes["fedify.route.template"],
-      "/inbox",
-    );
+    assertEquals(counts[0].attributes["fedify.route.template"], "/inbox");
     assertEquals(counts[0].attributes["http.request.method"], "POST");
   });
 
@@ -3301,26 +3250,21 @@ test("Federation.fetch() records HTTP server request metrics", async (t) => {
     },
   );
 
-  await t.step(
-    "preserves QUERY as a known HTTP method",
-    async () => {
-      const { federation, recorder } = createTestContext();
-      const response = await federation.fetch(
-        new Request("https://example.com/users/alice", {
-          method: "QUERY",
-          headers: { "Accept": "application/activity+json" },
-        }),
-        { contextData: undefined },
-      );
-      assert(response.status >= 100);
+  await t.step("preserves QUERY as a known HTTP method", async () => {
+    const { federation, recorder } = createTestContext();
+    const response = await federation.fetch(
+      new Request("https://example.com/users/alice", {
+        method: "QUERY",
+        headers: { "Accept": "application/activity+json" },
+      }),
+      { contextData: undefined },
+    );
+    assert(response.status >= 100);
 
-      const counts = recorder.getMeasurements(
-        "fedify.http.server.request.count",
-      );
-      assertEquals(counts.length, 1);
-      assertEquals(counts[0].attributes["http.request.method"], "QUERY");
-    },
-  );
+    const counts = recorder.getMeasurements("fedify.http.server.request.count");
+    assertEquals(counts.length, 1);
+    assertEquals(counts[0].attributes["http.request.method"], "QUERY");
+  });
 
   await t.step(
     "uses the global meter provider when none is configured",
@@ -3374,10 +3318,9 @@ test("Federation.setInboxListeners()", async (t) => {
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
     });
-    federation.setInboxDispatcher(
-      "/users/{identifier}/inbox",
-      () => ({ items: [] }),
-    );
+    federation.setInboxDispatcher("/users/{identifier}/inbox", () => ({
+      items: [],
+    }));
     assertThrows(
       () => federation.setInboxListeners("/users/{identifier}/inbox2"),
       RouterError,
@@ -3431,7 +3374,8 @@ test("Federation.setInboxListeners()", async (t) => {
       },
     });
     const inbox: [Context<void>, vocab.Create][] = [];
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(vocab.Create, (ctx, create) => {
         inbox.push([ctx, create]);
       });
@@ -3447,14 +3391,15 @@ test("Federation.setInboxListeners()", async (t) => {
     assertEquals(response.status, 404);
 
     federation
-      .setActorDispatcher(
-        "/users/{identifier}",
-        (_, identifier) => identifier === "john" ? new vocab.Person({}) : null,
+      .setActorDispatcher("/users/{identifier}", (_, identifier) =>
+        identifier === "john" ? new vocab.Person({}) : null,
       )
-      .setKeyPairsDispatcher(() => [{
-        privateKey: rsaPrivateKey2,
-        publicKey: rsaPublicKey2.publicKey!,
-      }]);
+      .setKeyPairsDispatcher(() => [
+        {
+          privateKey: rsaPrivateKey2,
+          publicKey: rsaPublicKey2.publicKey!,
+        },
+      ]);
     const options = {
       documentLoader: mockDocumentLoader,
       contextLoader: mockDocumentLoader,
@@ -3465,17 +3410,14 @@ test("Federation.setInboxListeners()", async (t) => {
         actor: new URL("https://example.com/person2"),
       });
     response = await federation.fetch(
-      new Request(
-        "https://example.com/inbox",
-        {
-          method: "POST",
-          body: JSON.stringify(await activity().toJsonLd(options)),
-          headers: {
-            "accept": "application/ld+json",
-            "content-type": "application/ld+json",
-          },
+      new Request("https://example.com/inbox", {
+        method: "POST",
+        body: JSON.stringify(await activity().toJsonLd(options)),
+        headers: {
+          "accept": "application/ld+json",
+          "content-type": "application/ld+json",
         },
-      ),
+      }),
       { contextData: undefined },
     );
     assertEquals(inbox, []);
@@ -3492,17 +3434,14 @@ test("Federation.setInboxListeners()", async (t) => {
     assertEquals(response.status, 404);
 
     response = await federation.fetch(
-      new Request(
-        "https://example.com/users/john/inbox",
-        {
-          method: "POST",
-          body: JSON.stringify(await activity().toJsonLd(options)),
-          headers: {
-            "accept": "application/ld+json",
-            "content-type": "application/ld+json",
-          },
+      new Request("https://example.com/users/john/inbox", {
+        method: "POST",
+        body: JSON.stringify(await activity().toJsonLd(options)),
+        headers: {
+          "accept": "application/ld+json",
+          "content-type": "application/ld+json",
         },
-      ),
+      }),
       { contextData: undefined },
     );
     assertEquals(inbox, []);
@@ -3603,12 +3542,14 @@ test("Federation.setInboxListeners()", async (t) => {
         "accept": "application/ld+json",
       },
       body: JSON.stringify(
-        await (await signObject(
-          activity(),
-          ed25519PrivateKey,
-          ed25519Multikey.id!,
-          options,
-        )).toJsonLd(options),
+        await (
+          await signObject(
+            activity(),
+            ed25519PrivateKey,
+            ed25519Multikey.id!,
+            options,
+          )
+        ).toJsonLd(options),
       ),
     });
     response = await federation.fetch(request, { contextData: undefined });
@@ -3664,10 +3605,8 @@ test("Federation.setInboxListeners()", async (t) => {
       federation.setActorDispatcher("/users/{identifier}", () => {
         return new vocab.Person({});
       });
-      const inboxListeners = federation.setInboxListeners(
-        "/users/{identifier}/inbox",
-        "/inbox",
-      )
+      const inboxListeners = federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(vocab.Create, (_ctx, activity) => {
           verified.push(activity);
         });
@@ -3676,9 +3615,7 @@ test("Federation.setInboxListeners()", async (t) => {
 
     await t.step("receives noSignature reason", async () => {
       const { federation, verified, inboxListeners } =
-        createFederationWithLoader(
-          mockDocumentLoader,
-        );
+        createFederationWithLoader(mockDocumentLoader);
       let receivedReason: unknown = null;
       inboxListeners.onUnverifiedActivity((_ctx, _activity, reason) => {
         receivedReason = reason;
@@ -3713,9 +3650,7 @@ test("Federation.setInboxListeners()", async (t) => {
         return await mockDocumentLoader(url);
       };
       const { federation, verified, inboxListeners } =
-        createFederationWithLoader(
-          goneLoader,
-        );
+        createFederationWithLoader(goneLoader);
       let receivedReason: unknown = null;
       inboxListeners.onUnverifiedActivity((_ctx, _activity, reason) => {
         receivedReason = reason;
@@ -3735,10 +3670,7 @@ test("Federation.setInboxListeners()", async (t) => {
 
       assertEquals(response.status, 202);
       assertEquals(verified, []);
-      assertEquals(
-        (receivedReason as { type: string }).type,
-        "keyFetchError",
-      );
+      assertEquals((receivedReason as { type: string }).type, "keyFetchError");
       assertEquals(
         (receivedReason as { keyId: URL }).keyId.href,
         goneKeyId.href,
@@ -3767,9 +3699,8 @@ test("Federation.setInboxListeners()", async (t) => {
         }
         return await mockDocumentLoader(url);
       };
-      const { federation, inboxListeners } = createFederationWithLoader(
-        goneLoader,
-      );
+      const { federation, inboxListeners } =
+        createFederationWithLoader(goneLoader);
       const reasons: unknown[] = [];
       inboxListeners.onUnverifiedActivity((_ctx, _activity, reason) => {
         reasons.push(reason);
@@ -3794,14 +3725,8 @@ test("Federation.setInboxListeners()", async (t) => {
       assertEquals(first.status, 202);
       assertEquals(second.status, 202);
       assertEquals(keyFetches, 1);
-      assertEquals(
-        (reasons[0] as { type: string }).type,
-        "keyFetchError",
-      );
-      assertEquals(
-        (reasons[1] as { type: string }).type,
-        "keyFetchError",
-      );
+      assertEquals((reasons[0] as { type: string }).type, "keyFetchError");
+      assertEquals((reasons[1] as { type: string }).type, "keyFetchError");
       assertEquals(
         (
           reasons[1] as {
@@ -3827,9 +3752,7 @@ test("Federation.setInboxListeners()", async (t) => {
         return await mockDocumentLoader(url);
       };
       const { federation, verified, inboxListeners } =
-        createFederationWithLoader(
-          missingLoader,
-        );
+        createFederationWithLoader(missingLoader);
       let receivedReason: unknown = null;
       inboxListeners.onUnverifiedActivity((_ctx, _activity, reason) => {
         receivedReason = reason;
@@ -3848,10 +3771,7 @@ test("Federation.setInboxListeners()", async (t) => {
 
       assertEquals(response.status, 401);
       assertEquals(verified, []);
-      assertEquals(
-        (receivedReason as { type: string }).type,
-        "keyFetchError",
-      );
+      assertEquals((receivedReason as { type: string }).type, "keyFetchError");
       assertEquals(
         (
           receivedReason as {
@@ -3862,60 +3782,50 @@ test("Federation.setInboxListeners()", async (t) => {
       );
     });
 
-    await t.step(
-      "falls back to 401 and reports hook errors",
-      async () => {
-        const missingKeyId = new URL(
-          "https://missing.example/actors/alice#main-key",
-        );
-        const missingLoader = async (url: string) => {
-          if (url === missingKeyId.href) {
-            throw new FetchError(
-              missingKeyId,
-              `HTTP 404: ${missingKeyId.href}`,
-              new Response(null, { status: 404 }),
-            );
-          }
-          return await mockDocumentLoader(url);
-        };
-        const { federation, verified, inboxListeners } =
-          createFederationWithLoader(
-            missingLoader,
+    await t.step("falls back to 401 and reports hook errors", async () => {
+      const missingKeyId = new URL(
+        "https://missing.example/actors/alice#main-key",
+      );
+      const missingLoader = async (url: string) => {
+        if (url === missingKeyId.href) {
+          throw new FetchError(
+            missingKeyId,
+            `HTTP 404: ${missingKeyId.href}`,
+            new Response(null, { status: 404 }),
           );
-        let receivedErrorMessage: string | null = null;
-        inboxListeners
-          .onUnverifiedActivity(() => {
-            throw new Error("Intended unverified hook failure");
-          })
-          .onError((_ctx, error) => {
-            receivedErrorMessage = error.message;
-          });
+        }
+        return await mockDocumentLoader(url);
+      };
+      const { federation, verified, inboxListeners } =
+        createFederationWithLoader(missingLoader);
+      let receivedErrorMessage: string | null = null;
+      inboxListeners
+        .onUnverifiedActivity(() => {
+          throw new Error("Intended unverified hook failure");
+        })
+        .onError((_ctx, error) => {
+          receivedErrorMessage = error.message;
+        });
 
-        const response = await federation.fetch(
-          await createInboxRequest(
-            new vocab.Create({
-              id: new URL("https://missing.example/activities/error"),
-              actor: new URL("https://missing.example/actors/alice"),
-            }),
-            { privateKey: rsaPrivateKey3, keyId: missingKeyId },
-          ),
-          { contextData: undefined },
-        );
+      const response = await federation.fetch(
+        await createInboxRequest(
+          new vocab.Create({
+            id: new URL("https://missing.example/activities/error"),
+            actor: new URL("https://missing.example/actors/alice"),
+          }),
+          { privateKey: rsaPrivateKey3, keyId: missingKeyId },
+        ),
+        { contextData: undefined },
+      );
 
-        assertEquals(response.status, 401);
-        assertEquals(verified, []);
-        assertEquals(
-          receivedErrorMessage,
-          "Intended unverified hook failure",
-        );
-      },
-    );
+      assertEquals(response.status, 401);
+      assertEquals(verified, []);
+      assertEquals(receivedErrorMessage, "Intended unverified hook failure");
+    });
 
     await t.step("receives invalidSignature reason", async () => {
       const { federation, verified, inboxListeners } =
-        createFederationWithLoader(
-          mockDocumentLoader,
-        );
+        createFederationWithLoader(mockDocumentLoader);
       let receivedReason: unknown = null;
       inboxListeners.onUnverifiedActivity((_ctx, _activity, reason) => {
         receivedReason = reason;
@@ -3940,17 +3850,12 @@ test("Federation.setInboxListeners()", async (t) => {
         (receivedReason as { type: string }).type,
         "invalidSignature",
       );
-      assertEquals(
-        (receivedReason as { keyId: URL }).keyId.href,
-        keyId.href,
-      );
+      assertEquals((receivedReason as { keyId: URL }).keyId.href, keyId.href);
     });
 
     await t.step("does not run for verified activities", async () => {
       const { federation, verified, inboxListeners } =
-        createFederationWithLoader(
-          mockDocumentLoader,
-        );
+        createFederationWithLoader(mockDocumentLoader);
       let unverifiedCalls = 0;
       inboxListeners.onUnverifiedActivity(() => {
         unverifiedCalls++;
@@ -3993,17 +3898,19 @@ test("Federation.setInboxListeners()", async (t) => {
       },
     });
     federation
-      .setActorDispatcher(
-        "/users/{identifier}",
-        (_, identifier) => identifier === "john" ? new vocab.Person({}) : null,
+      .setActorDispatcher("/users/{identifier}", (_, identifier) =>
+        identifier === "john" ? new vocab.Person({}) : null,
       )
-      .setKeyPairsDispatcher(() => [{
-        privateKey: rsaPrivateKey2,
-        publicKey: rsaPublicKey2.publicKey!,
-      }]);
+      .setKeyPairsDispatcher(() => [
+        {
+          privateKey: rsaPrivateKey2,
+          publicKey: rsaPublicKey2.publicKey!,
+        },
+      ]);
     const error = new Error("test");
     const errors: unknown[] = [];
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(vocab.Create, () => {
         throw error;
       })
@@ -4048,10 +3955,9 @@ test("Federation.setOutboxListeners()", async (t) => {
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
     });
-    federation.setOutboxDispatcher(
-      "/users/{identifier}/outbox",
-      () => ({ items: [] }),
-    );
+    federation.setOutboxDispatcher("/users/{identifier}/outbox", () => ({
+      items: [],
+    }));
     assertThrows(
       () => federation.setOutboxListeners("/users/{identifier}/outbox2"),
       RouterError,
@@ -4069,21 +3975,18 @@ test("Federation.setOutboxListeners()", async (t) => {
     });
     const received: string[] = [];
     federation
-      .setActorDispatcher(
-        "/users/{identifier}",
-        (_ctx, identifier) =>
-          identifier === "john" ? new vocab.Person({}) : null,
+      .setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+        identifier === "john" ? new vocab.Person({}) : null,
       )
-      .setKeyPairsDispatcher(() => [{
-        privateKey: rsaPrivateKey2,
-        publicKey: rsaPublicKey2.publicKey!,
-      }]);
+      .setKeyPairsDispatcher(() => [
+        {
+          privateKey: rsaPrivateKey2,
+          publicKey: rsaPublicKey2.publicKey!,
+        },
+      ]);
 
     federation
-      .setOutboxDispatcher(
-        "/users/{identifier}/outbox",
-        () => ({ items: [] }),
-      )
+      .setOutboxDispatcher("/users/{identifier}/outbox", () => ({ items: [] }))
       .authorize((_ctx, identifier) => identifier === "john");
 
     federation
@@ -4092,8 +3995,10 @@ test("Federation.setOutboxListeners()", async (t) => {
         received.push(`${ctx.identifier}:${activity.id?.href}`);
       })
       .authorize((ctx, identifier) => {
-        return identifier === "john" &&
-          ctx.request.headers.get("authorization") === "Bearer token";
+        return (
+          identifier === "john" &&
+          ctx.request.headers.get("authorization") === "Bearer token"
+        );
       });
 
     let response = await federation.fetch(
@@ -4121,9 +4026,7 @@ test("Federation.setOutboxListeners()", async (t) => {
       { contextData: undefined },
     );
     assertEquals([response.status, await response.text()], [202, ""]);
-    assertEquals(received, [
-      `john:${createFixture.id}`,
-    ]);
+    assertEquals(received, [`john:${createFixture.id}`]);
 
     response = await federation.fetch(
       new Request("https://example.com/users/no-one/outbox", {
@@ -4148,10 +4051,9 @@ test("Federation.setOutboxListeners()", async (t) => {
       "/users/{identifier}",
       () => new vocab.Person({}),
     );
-    federation.setOutboxDispatcher(
-      "/users/{identifier}/outbox",
-      () => ({ items: [] }),
-    );
+    federation.setOutboxDispatcher("/users/{identifier}/outbox", () => ({
+      items: [],
+    }));
 
     const response = await federation.fetch(
       new Request("https://example.com/users/john/outbox", {
@@ -4180,24 +4082,25 @@ test("Federation.setOutboxListeners()", async (t) => {
       });
       const received: string[] = [];
       federation
-        .setActorDispatcher(
-          "/users/{identifier}",
-          (_ctx, identifier) =>
-            identifier === "john" ? new vocab.Person({}) : null,
+        .setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+          identifier === "john" ? new vocab.Person({}) : null,
         )
-        .setKeyPairsDispatcher(() => [{
-          privateKey: rsaPrivateKey2,
-          publicKey: rsaPublicKey2.publicKey!,
-        }]);
+        .setKeyPairsDispatcher(() => [
+          {
+            privateKey: rsaPrivateKey2,
+            publicKey: rsaPublicKey2.publicKey!,
+          },
+        ]);
 
       federation
-        .setOutboxDispatcher(
-          "/users/{identifier}/outbox",
-          () => ({ items: [] }),
-        )
+        .setOutboxDispatcher("/users/{identifier}/outbox", () => ({
+          items: [],
+        }))
         .authorize((ctx, identifier) => {
-          return identifier === "john" &&
-            ctx.request.headers.get("authorization") === "Bearer token";
+          return (
+            identifier === "john" &&
+            ctx.request.headers.get("authorization") === "Bearer token"
+          );
         });
 
       federation
@@ -4259,22 +4162,24 @@ test("Federation.setOutboxListeners()", async (t) => {
           documentLoaderFactory: () => mockDocumentLoader,
         });
         federation
-          .setActorDispatcher(
-            "/users/{identifier}",
-            (_ctx, identifier) =>
-              identifier === "john" ? new vocab.Person({}) : null,
+          .setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+            identifier === "john" ? new vocab.Person({}) : null,
           )
-          .setKeyPairsDispatcher(() => [{
-            privateKey: rsaPrivateKey2,
-            publicKey: rsaPublicKey2.publicKey!,
-          }]);
+          .setKeyPairsDispatcher(() => [
+            {
+              privateKey: rsaPrivateKey2,
+              publicKey: rsaPublicKey2.publicKey!,
+            },
+          ]);
 
         federation
           .setOutboxListeners("/users/{identifier}/outbox")
           .on(vocab.Activity, () => {})
           .authorize((ctx, identifier) => {
-            return identifier === "john" &&
-              ctx.request.headers.get("authorization") === "Bearer token";
+            return (
+              identifier === "john" &&
+              ctx.request.headers.get("authorization") === "Bearer token"
+            );
           });
 
         const response = await federation.fetch(
@@ -4291,10 +4196,11 @@ test("Federation.setOutboxListeners()", async (t) => {
 
         assertEquals(response.status, 202);
         assertEquals(
-          records.some((record) =>
-            record.rawMessage ===
-              "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery." &&
-            record.properties.identifier === "john"
+          records.some(
+            (record) =>
+              record.rawMessage ===
+                "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery." &&
+              record.properties.identifier === "john",
           ),
           true,
         );
@@ -4335,15 +4241,15 @@ test("Federation.setOutboxListeners()", async (t) => {
         });
         federation.allowPrivateAddress = true;
         federation
-          .setActorDispatcher(
-            "/users/{identifier}",
-            (_ctx, identifier) =>
-              identifier === "john" ? new vocab.Person({}) : null,
+          .setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+            identifier === "john" ? new vocab.Person({}) : null,
           )
-          .setKeyPairsDispatcher(() => [{
-            privateKey: rsaPrivateKey2,
-            publicKey: rsaPublicKey2.publicKey!,
-          }]);
+          .setKeyPairsDispatcher(() => [
+            {
+              privateKey: rsaPrivateKey2,
+              publicKey: rsaPublicKey2.publicKey!,
+            },
+          ]);
 
         federation
           .setOutboxListeners("/users/{identifier}/outbox")
@@ -4358,8 +4264,10 @@ test("Federation.setOutboxListeners()", async (t) => {
             );
           })
           .authorize((ctx, identifier) => {
-            return identifier === "john" &&
-              ctx.request.headers.get("authorization") === "Bearer token";
+            return (
+              identifier === "john" &&
+              ctx.request.headers.get("authorization") === "Bearer token"
+            );
           });
 
         const response = await federation.fetch(
@@ -4376,9 +4284,10 @@ test("Federation.setOutboxListeners()", async (t) => {
 
         assertEquals(response.status, 202);
         assertEquals(
-          records.some((record) =>
-            record.rawMessage ===
-              "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery."
+          records.some(
+            (record) =>
+              record.rawMessage ===
+              "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery.",
           ),
           false,
         );
@@ -4415,15 +4324,15 @@ test("Federation.setOutboxListeners()", async (t) => {
             documentLoaderFactory: () => mockDocumentLoader,
           });
           federation
-            .setActorDispatcher(
-              "/users/{identifier}",
-              (_ctx, identifier) =>
-                identifier === "john" ? new vocab.Person({}) : null,
+            .setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+              identifier === "john" ? new vocab.Person({}) : null,
             )
-            .setKeyPairsDispatcher(() => [{
-              privateKey: rsaPrivateKey2,
-              publicKey: rsaPublicKey2.publicKey!,
-            }]);
+            .setKeyPairsDispatcher(() => [
+              {
+                privateKey: rsaPrivateKey2,
+                publicKey: rsaPublicKey2.publicKey!,
+              },
+            ]);
 
           federation
             .setOutboxListeners("/users/{identifier}/outbox")
@@ -4435,8 +4344,10 @@ test("Federation.setOutboxListeners()", async (t) => {
               );
             })
             .authorize((ctx, identifier) => {
-              return identifier === "john" &&
-                ctx.request.headers.get("authorization") === "Bearer token";
+              return (
+                identifier === "john" &&
+                ctx.request.headers.get("authorization") === "Bearer token"
+              );
             });
 
           const response = await federation.fetch(
@@ -4453,10 +4364,11 @@ test("Federation.setOutboxListeners()", async (t) => {
 
           assertEquals(response.status, 202);
           assertEquals(
-            records.some((record) =>
-              record.rawMessage ===
-                "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery." &&
-              record.properties.identifier === "john"
+            records.some(
+              (record) =>
+                record.rawMessage ===
+                  "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery." &&
+                record.properties.identifier === "john",
             ),
             true,
           );
@@ -4513,15 +4425,15 @@ test("Federation.setOutboxListeners()", async (t) => {
           });
           federation.allowPrivateAddress = true;
           federation
-            .setActorDispatcher(
-              "/{identifier}",
-              (_ctx, identifier) =>
-                identifier === "person2" ? new vocab.Person({}) : null,
+            .setActorDispatcher("/{identifier}", (_ctx, identifier) =>
+              identifier === "person2" ? new vocab.Person({}) : null,
             )
-            .setKeyPairsDispatcher(() => [{
-              privateKey: rsaPrivateKey2,
-              publicKey: rsaPublicKey2.publicKey!,
-            }]);
+            .setKeyPairsDispatcher(() => [
+              {
+                privateKey: rsaPrivateKey2,
+                publicKey: rsaPublicKey2.publicKey!,
+              },
+            ]);
 
           federation
             .setOutboxListeners("/users/{identifier}/outbox")
@@ -4536,8 +4448,10 @@ test("Federation.setOutboxListeners()", async (t) => {
               );
             })
             .authorize((ctx, identifier) => {
-              return identifier === "person2" &&
-                ctx.request.headers.get("authorization") === "Bearer token";
+              return (
+                identifier === "person2" &&
+                ctx.request.headers.get("authorization") === "Bearer token"
+              );
             });
 
           const response = await federation.fetch(
@@ -4555,9 +4469,10 @@ test("Federation.setOutboxListeners()", async (t) => {
           assertEquals(response.status, 202);
           assertEquals(ldsVerified, true);
           assertEquals(
-            records.some((record) =>
-              record.rawMessage ===
-                "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery."
+            records.some(
+              (record) =>
+                record.rawMessage ===
+                "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery.",
             ),
             false,
           );
@@ -4595,27 +4510,26 @@ test("Federation.setOutboxListeners()", async (t) => {
             documentLoaderFactory: () => mockDocumentLoader,
           });
           federation
-            .setActorDispatcher(
-              "/users/{identifier}",
-              (_ctx, identifier) =>
-                identifier === "john" ? new vocab.Person({}) : null,
+            .setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+              identifier === "john" ? new vocab.Person({}) : null,
             )
-            .setKeyPairsDispatcher(() => [{
-              privateKey: rsaPrivateKey2,
-              publicKey: rsaPublicKey2.publicKey!,
-            }]);
+            .setKeyPairsDispatcher(() => [
+              {
+                privateKey: rsaPrivateKey2,
+                publicKey: rsaPublicKey2.publicKey!,
+              },
+            ]);
 
           federation
             .setOutboxListeners("/users/{identifier}/outbox")
             .on(vocab.Activity, async (ctx) => {
-              await ctx.forwardActivity(
-                { identifier: ctx.identifier },
-                [],
-              );
+              await ctx.forwardActivity({ identifier: ctx.identifier }, []);
             })
             .authorize((ctx, identifier) => {
-              return identifier === "john" &&
-                ctx.request.headers.get("authorization") === "Bearer token";
+              return (
+                identifier === "john" &&
+                ctx.request.headers.get("authorization") === "Bearer token"
+              );
             });
 
           const response = await federation.fetch(
@@ -4632,10 +4546,11 @@ test("Federation.setOutboxListeners()", async (t) => {
 
           assertEquals(response.status, 202);
           assertEquals(
-            records.some((record) =>
-              record.rawMessage ===
-                "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery." &&
-              record.properties.identifier === "john"
+            records.some(
+              (record) =>
+                record.rawMessage ===
+                  "Outbox listener for {identifier} returned without delivering the posted activity; ctx.sendActivity() or ctx.forwardActivity() may have been skipped or resulted in no delivery." &&
+                record.properties.identifier === "john",
             ),
             true,
           );
@@ -4673,15 +4588,15 @@ test("Federation.setOutboxListeners()", async (t) => {
         queue,
       });
       federation
-        .setActorDispatcher(
-          "/users/{identifier}",
-          (_ctx, identifier) =>
-            identifier === "john" ? new vocab.Person({}) : null,
+        .setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+          identifier === "john" ? new vocab.Person({}) : null,
         )
-        .setKeyPairsDispatcher(() => [{
-          privateKey: rsaPrivateKey2,
-          publicKey: rsaPublicKey2.publicKey!,
-        }]);
+        .setKeyPairsDispatcher(() => [
+          {
+            privateKey: rsaPrivateKey2,
+            publicKey: rsaPublicKey2.publicKey!,
+          },
+        ]);
 
       federation
         .setOutboxListeners("/users/{identifier}/outbox")
@@ -4695,8 +4610,10 @@ test("Federation.setOutboxListeners()", async (t) => {
           );
         })
         .authorize((ctx, identifier) => {
-          return identifier === "john" &&
-            ctx.request.headers.get("authorization") === "Bearer token";
+          return (
+            identifier === "john" &&
+            ctx.request.headers.get("authorization") === "Bearer token"
+          );
         });
 
       const response = await federation.fetch(
@@ -4754,10 +4671,7 @@ function makeUploadForm(
     );
   }
   if (object != null) {
-    form.append(
-      "object",
-      new Blob([object], { type: "application/json" }),
-    );
+    form.append("object", new Blob([object], { type: "application/json" }));
   }
   return form;
 }
@@ -4770,16 +4684,14 @@ test("Federation.setMediaUploader()", async (t) => {
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
     });
-    federation.setMediaUploader(
-      "/users/{identifier}/media",
-      () => Promise.resolve(new URL("https://example.com/")),
+    federation.setMediaUploader("/users/{identifier}/media", () =>
+      Promise.resolve(new URL("https://example.com/")),
     );
     // A media uploader may only be registered once.
     assertThrows(
       () =>
-        federation.setMediaUploader(
-          "/users/{identifier}/media2",
-          () => Promise.resolve(new URL("https://example.com/")),
+        federation.setMediaUploader("/users/{identifier}/media2", () =>
+          Promise.resolve(new URL("https://example.com/")),
         ),
       RouterError,
     );
@@ -4790,9 +4702,8 @@ test("Federation.setMediaUploader()", async (t) => {
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
     });
-    federation.setMediaUploader(
-      "/users/{identifier}/media",
-      () => Promise.resolve(new URL("https://example.com/")),
+    federation.setMediaUploader("/users/{identifier}/media", () =>
+      Promise.resolve(new URL("https://example.com/")),
     );
     const ctx = federation.createContext(
       new URL("https://example.com/"),
@@ -4811,10 +4722,8 @@ test("Federation.setMediaUploader()", async (t) => {
         kv,
         documentLoaderFactory: () => mockDocumentLoader,
       });
-      federation.setActorDispatcher(
-        "/users/{identifier}",
-        (_ctx, identifier) =>
-          identifier === "john" ? new vocab.Person({}) : null,
+      federation.setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+        identifier === "john" ? new vocab.Person({}) : null,
       );
       federation.setObjectDispatcher(
         vocab.Image,
@@ -4828,9 +4737,10 @@ test("Federation.setMediaUploader()", async (t) => {
           "/users/{identifier}/media",
           (ctx, _identifier, file, object) => {
             receivedFileType = file.type;
-            receivedName = typeof object.name === "string"
-              ? object.name
-              : object.name?.toString();
+            receivedName =
+              typeof object.name === "string"
+                ? object.name
+                : object.name?.toString();
             return Promise.resolve(
               new vocab.Image({
                 id: ctx.getObjectUri(vocab.Image, { uuid: "abc" }),
@@ -4857,7 +4767,7 @@ test("Federation.setMediaUploader()", async (t) => {
       );
       assertEquals(receivedFileType, "image/png");
       assertEquals(receivedName, "A cat");
-      const body = await response.json() as { id?: string };
+      const body = (await response.json()) as { id?: string };
       assertEquals(body.id, "https://example.com/objects/abc");
     },
   );
@@ -4879,10 +4789,8 @@ test("Federation.setMediaUploader()", async (t) => {
         (_ctx, values) => new vocab.Video({ name: `Video ${values.uuid}` }),
       );
       federation
-        .setMediaUploader(
-          "/users/{identifier}/media",
-          (ctx) =>
-            Promise.resolve(ctx.getObjectUri(vocab.Video, { uuid: "xyz" })),
+        .setMediaUploader("/users/{identifier}/media", (ctx) =>
+          Promise.resolve(ctx.getObjectUri(vocab.Video, { uuid: "xyz" })),
         )
         .authorize(() => true);
 
@@ -4902,55 +4810,50 @@ test("Federation.setMediaUploader()", async (t) => {
     },
   );
 
-  await t.step(
-    "accepts the object field as a plain text part",
-    async () => {
-      const federation = createFederation<void>({
-        kv,
-        documentLoaderFactory: () => mockDocumentLoader,
-      });
-      federation.setActorDispatcher(
-        "/users/{identifier}",
-        () => new vocab.Person({}),
-      );
-      federation.setMediaUploader(
-        "/users/{identifier}/media",
-        () => Promise.resolve(new URL("https://example.com/pending")),
-      );
-      // Unlike makeUploadForm(), submit `object` as a plain string field (not
-      // a Blob) to exercise the `typeof objectField === "string"` branch.
-      const form = new FormData();
-      form.append(
-        "file",
-        new File([new Uint8Array([1, 2, 3])], "cat.png", { type: "image/png" }),
-      );
-      form.append(
-        "object",
-        JSON.stringify({
-          "@context": "https://www.w3.org/ns/activitystreams",
-          type: "Image",
-          name: "A cat",
-        }),
-      );
-      const response = await federation.fetch(
-        new Request("https://example.com/users/john/media", {
-          method: "POST",
-          body: form,
-        }),
-        { contextData: undefined },
-      );
-      assertEquals(response.status, 202);
-    },
-  );
+  await t.step("accepts the object field as a plain text part", async () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setActorDispatcher(
+      "/users/{identifier}",
+      () => new vocab.Person({}),
+    );
+    federation.setMediaUploader("/users/{identifier}/media", () =>
+      Promise.resolve(new URL("https://example.com/pending")),
+    );
+    // Unlike makeUploadForm(), submit `object` as a plain string field (not
+    // a Blob) to exercise the `typeof objectField === "string"` branch.
+    const form = new FormData();
+    form.append(
+      "file",
+      new File([new Uint8Array([1, 2, 3])], "cat.png", { type: "image/png" }),
+    );
+    form.append(
+      "object",
+      JSON.stringify({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Image",
+        name: "A cat",
+      }),
+    );
+    const response = await federation.fetch(
+      new Request("https://example.com/users/john/media", {
+        method: "POST",
+        body: form,
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 202);
+  });
 
   await t.step("415 when the request is not multipart/form-data", async () => {
     const federation = createFederation<void>({
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
     });
-    federation.setMediaUploader(
-      "/users/{identifier}/media",
-      () => Promise.resolve(new URL("https://example.com/")),
+    federation.setMediaUploader("/users/{identifier}/media", () =>
+      Promise.resolve(new URL("https://example.com/")),
     );
     const response = await federation.fetch(
       new Request("https://example.com/users/john/media", {
@@ -4991,70 +4894,7 @@ test("Federation.setMediaUploader()", async (t) => {
     },
   );
 
-  await t.step(
-    "500 when the callback returns null (defensive)",
-    async () => {
-      const federation = createFederation<void>({
-        kv,
-        documentLoaderFactory: () => mockDocumentLoader,
-      });
-      federation.setActorDispatcher(
-        "/users/{identifier}",
-        () => new vocab.Person({}),
-      );
-      federation.setMediaUploader(
-        "/users/{identifier}/media",
-        // Simulate a JavaScript caller that returns nothing.
-        (() => Promise.resolve(null)) as unknown as Parameters<
-          typeof federation.setMediaUploader
-        >[1],
-      );
-      const response = await federation.fetch(
-        new Request("https://example.com/users/john/media", {
-          method: "POST",
-          body: makeUploadForm(),
-        }),
-        { contextData: undefined },
-      );
-      assertEquals(response.status, 500);
-    },
-  );
-
-  await t.step(
-    "500 when serializing the returned object throws",
-    async () => {
-      const federation = createFederation<void>({
-        kv,
-        documentLoaderFactory: () => mockDocumentLoader,
-      });
-      federation.setActorDispatcher(
-        "/users/{identifier}",
-        () => new vocab.Person({}),
-      );
-      federation.setMediaUploader(
-        "/users/{identifier}/media",
-        () => {
-          const image = new vocab.Image({
-            id: new URL("https://example.com/objects/x"),
-          });
-          // Force toJsonLd() to fail (e.g. a context loader error).
-          (image as unknown as { toJsonLd: () => Promise<unknown> }).toJsonLd =
-            () => Promise.reject(new Error("serialization boom"));
-          return Promise.resolve(image);
-        },
-      );
-      const response = await federation.fetch(
-        new Request("https://example.com/users/john/media", {
-          method: "POST",
-          body: makeUploadForm(),
-        }),
-        { contextData: undefined },
-      );
-      assertEquals(response.status, 500);
-    },
-  );
-
-  await t.step("400 when the file field is missing", async () => {
+  await t.step("500 when the callback returns null (defensive)", async () => {
     const federation = createFederation<void>({
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
@@ -5065,7 +4905,60 @@ test("Federation.setMediaUploader()", async (t) => {
     );
     federation.setMediaUploader(
       "/users/{identifier}/media",
-      () => Promise.resolve(new URL("https://example.com/")),
+      // Simulate a JavaScript caller that returns nothing.
+      (() => Promise.resolve(null)) as unknown as Parameters<
+        typeof federation.setMediaUploader
+      >[1],
+    );
+    const response = await federation.fetch(
+      new Request("https://example.com/users/john/media", {
+        method: "POST",
+        body: makeUploadForm(),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 500);
+  });
+
+  await t.step("500 when serializing the returned object throws", async () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setActorDispatcher(
+      "/users/{identifier}",
+      () => new vocab.Person({}),
+    );
+    federation.setMediaUploader("/users/{identifier}/media", () => {
+      const image = new vocab.Image({
+        id: new URL("https://example.com/objects/x"),
+      });
+      // Force toJsonLd() to fail (e.g. a context loader error).
+      (image as unknown as { toJsonLd: () => Promise<unknown> }).toJsonLd =
+        () => Promise.reject(new Error("serialization boom"));
+      return Promise.resolve(image);
+    });
+    const response = await federation.fetch(
+      new Request("https://example.com/users/john/media", {
+        method: "POST",
+        body: makeUploadForm(),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 500);
+  });
+
+  await t.step("400 when the file field is missing", async () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setActorDispatcher(
+      "/users/{identifier}",
+      () => new vocab.Person({}),
+    );
+    federation.setMediaUploader("/users/{identifier}/media", () =>
+      Promise.resolve(new URL("https://example.com/")),
     );
     const response = await federation.fetch(
       new Request("https://example.com/users/john/media", {
@@ -5086,9 +4979,8 @@ test("Federation.setMediaUploader()", async (t) => {
       "/users/{identifier}",
       () => new vocab.Person({}),
     );
-    federation.setMediaUploader(
-      "/users/{identifier}/media",
-      () => Promise.resolve(new URL("https://example.com/")),
+    federation.setMediaUploader("/users/{identifier}/media", () =>
+      Promise.resolve(new URL("https://example.com/")),
     );
     const response = await federation.fetch(
       new Request("https://example.com/users/john/media", {
@@ -5109,9 +5001,8 @@ test("Federation.setMediaUploader()", async (t) => {
       "/users/{identifier}",
       () => new vocab.Person({}),
     );
-    federation.setMediaUploader(
-      "/users/{identifier}/media",
-      () => Promise.resolve(new URL("https://example.com/")),
+    federation.setMediaUploader("/users/{identifier}/media", () =>
+      Promise.resolve(new URL("https://example.com/")),
     );
     const response = await federation.fetch(
       new Request("https://example.com/users/john/media", {
@@ -5150,39 +5041,35 @@ test("Federation.setMediaUploader()", async (t) => {
     assertEquals(called, false);
   });
 
-  await t.step(
-    "authorize hook can read request headers",
-    async () => {
-      const federation = createFederation<void>({
-        kv,
-        documentLoaderFactory: () => mockDocumentLoader,
+  await t.step("authorize hook can read request headers", async () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setActorDispatcher(
+      "/users/{identifier}",
+      () => new vocab.Person({}),
+    );
+    let seenAuthorization: string | null = null;
+    federation
+      .setMediaUploader("/users/{identifier}/media", () =>
+        Promise.resolve(new URL("https://example.com/pending")),
+      )
+      .authorize((ctx) => {
+        seenAuthorization = ctx.request.headers.get("authorization");
+        return seenAuthorization === "Bearer ok";
       });
-      federation.setActorDispatcher(
-        "/users/{identifier}",
-        () => new vocab.Person({}),
-      );
-      let seenAuthorization: string | null = null;
-      federation
-        .setMediaUploader(
-          "/users/{identifier}/media",
-          () => Promise.resolve(new URL("https://example.com/pending")),
-        )
-        .authorize((ctx) => {
-          seenAuthorization = ctx.request.headers.get("authorization");
-          return seenAuthorization === "Bearer ok";
-        });
-      const response = await federation.fetch(
-        new Request("https://example.com/users/john/media", {
-          method: "POST",
-          headers: { authorization: "Bearer ok" },
-          body: makeUploadForm(),
-        }),
-        { contextData: undefined },
-      );
-      assertEquals(response.status, 202);
-      assertEquals(seenAuthorization, "Bearer ok");
-    },
-  );
+    const response = await federation.fetch(
+      new Request("https://example.com/users/john/media", {
+        method: "POST",
+        headers: { authorization: "Bearer ok" },
+        body: makeUploadForm(),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 202);
+    assertEquals(seenAuthorization, "Bearer ok");
+  });
 
   await t.step(
     "authorize hook can read the request body, and the upload still succeeds",
@@ -5197,9 +5084,8 @@ test("Federation.setMediaUploader()", async (t) => {
       );
       let authorizeBodyLength = -1;
       federation
-        .setMediaUploader(
-          "/users/{identifier}/media",
-          () => Promise.resolve(new URL("https://example.com/pending")),
+        .setMediaUploader("/users/{identifier}/media", () =>
+          Promise.resolve(new URL("https://example.com/pending")),
         )
         // A signature-verifying hook would consume the body; emulate that by
         // reading it here and confirm the handler can still parse the upload.
@@ -5227,10 +5113,8 @@ test("Federation.setMediaUploader()", async (t) => {
         kv,
         documentLoaderFactory: () => mockDocumentLoader,
       });
-      federation.setActorDispatcher(
-        "/users/{identifier}",
-        (_ctx, identifier) =>
-          identifier === "john" ? new vocab.Person({}) : null,
+      federation.setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+        identifier === "john" ? new vocab.Person({}) : null,
       );
       let called = false;
       federation.setMediaUploader("/users/{identifier}/media", () => {
@@ -5256,16 +5140,13 @@ test("Federation.setMediaUploader()", async (t) => {
         kv,
         documentLoaderFactory: () => mockDocumentLoader,
       });
-      federation.setActorDispatcher(
-        "/users/{identifier}",
-        (_ctx, identifier) =>
-          identifier === "john" ? new vocab.Person({}) : null,
+      federation.setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+        identifier === "john" ? new vocab.Person({}) : null,
       );
       let authorizeCalled = false;
       federation
-        .setMediaUploader(
-          "/users/{identifier}/media",
-          () => Promise.resolve(new URL("https://example.com/")),
+        .setMediaUploader("/users/{identifier}/media", () =>
+          Promise.resolve(new URL("https://example.com/")),
         )
         .authorize(() => {
           authorizeCalled = true;
@@ -5297,9 +5178,8 @@ test("Federation.setMediaUploader()", async (t) => {
         () => new vocab.Person({}),
       );
       federation
-        .setMediaUploader(
-          "/users/{identifier}/media",
-          () => Promise.resolve(new URL("https://example.com/")),
+        .setMediaUploader("/users/{identifier}/media", () =>
+          Promise.resolve(new URL("https://example.com/")),
         )
         .authorize(() => true);
       const erroringBody = new ReadableStream<Uint8Array>({
@@ -5354,9 +5234,8 @@ test("Federation.setMediaUploader()", async (t) => {
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
     });
-    federation.setMediaUploader(
-      "/users/{identifier}/media",
-      () => Promise.resolve(new URL("https://example.com/")),
+    federation.setMediaUploader("/users/{identifier}/media", () =>
+      Promise.resolve(new URL("https://example.com/")),
     );
     const response = await federation.fetch(
       new Request("https://example.com/users/john/media", {
@@ -5393,15 +5272,13 @@ test("Federation.setMediaUploader()", async (t) => {
             "/users/{identifier}",
             () => new vocab.Person({}),
           );
-          federation.setMediaUploader(
-            "/users/{identifier}/media",
-            () =>
-              // Not derived from ctx.getObjectUri(): no object dispatcher.
-              Promise.resolve(
-                new vocab.Image({
-                  id: new URL("https://example.com/not-registered"),
-                }),
-              ),
+          federation.setMediaUploader("/users/{identifier}/media", () =>
+            // Not derived from ctx.getObjectUri(): no object dispatcher.
+            Promise.resolve(
+              new vocab.Image({
+                id: new URL("https://example.com/not-registered"),
+              }),
+            ),
           );
           const response = await federation.fetch(
             new Request("https://example.com/users/john/media", {
@@ -5412,10 +5289,12 @@ test("Federation.setMediaUploader()", async (t) => {
           );
           assertEquals(response.status, 201);
           assertEquals(
-            records.some((record) =>
-              record.category.join(".") === "fedify.federation.mediaUploader" &&
-              record.level === "warning" &&
-              record.properties.identifier === "john"
+            records.some(
+              (record) =>
+                record.category.join(".") ===
+                  "fedify.federation.mediaUploader" &&
+                record.level === "warning" &&
+                record.properties.identifier === "john",
             ),
             true,
           );
@@ -5426,60 +5305,57 @@ test("Federation.setMediaUploader()", async (t) => {
     },
   );
 
-  await t.step(
-    "warns when the actor omits endpoints.uploadMedia",
-    async () => {
-      await withLogtapeLock(async () => {
-        const records: LogRecord[] = [];
-        await reset();
-        try {
-          await configure({
-            sinks: {
-              buffer(record: LogRecord): void {
-                records.push(record);
-              },
+  await t.step("warns when the actor omits endpoints.uploadMedia", async () => {
+    await withLogtapeLock(async () => {
+      const records: LogRecord[] = [];
+      await reset();
+      try {
+        await configure({
+          sinks: {
+            buffer(record: LogRecord): void {
+              records.push(record);
             },
-            filters: {},
-            loggers: [{ category: [], sinks: ["buffer"] }],
-          });
-          const federation = createFederation<void>({
-            kv,
-            documentLoaderFactory: () => mockDocumentLoader,
-          });
-          federation.setActorDispatcher(
-            "/users/{identifier}",
-            (ctx, identifier) =>
-              new vocab.Person({
-                id: ctx.getActorUri(identifier),
-                // No endpoints.uploadMedia even though a media uploader is set.
-              }),
-          );
-          federation.setMediaUploader(
-            "/users/{identifier}/media",
-            () => Promise.resolve(new URL("https://example.com/")),
-          );
-          const response = await federation.fetch(
-            new Request("https://example.com/users/john", {
-              headers: { accept: "application/activity+json" },
+          },
+          filters: {},
+          loggers: [{ category: [], sinks: ["buffer"] }],
+        });
+        const federation = createFederation<void>({
+          kv,
+          documentLoaderFactory: () => mockDocumentLoader,
+        });
+        federation.setActorDispatcher(
+          "/users/{identifier}",
+          (ctx, identifier) =>
+            new vocab.Person({
+              id: ctx.getActorUri(identifier),
+              // No endpoints.uploadMedia even though a media uploader is set.
             }),
-            { contextData: undefined },
-          );
-          assertEquals(response.status, 200);
-          assertEquals(
-            records.some((record) =>
+        );
+        federation.setMediaUploader("/users/{identifier}/media", () =>
+          Promise.resolve(new URL("https://example.com/")),
+        );
+        const response = await federation.fetch(
+          new Request("https://example.com/users/john", {
+            headers: { accept: "application/activity+json" },
+          }),
+          { contextData: undefined },
+        );
+        assertEquals(response.status, 200);
+        assertEquals(
+          records.some(
+            (record) =>
               record.rawMessage ===
-                "You configured a media uploader, but the actor does not have " +
-                  "a endpoints.uploadMedia property.  Set the property with " +
-                  "Context.getMediaUploaderUri(identifier)."
-            ),
-            true,
-          );
-        } finally {
-          await reset();
-        }
-      });
-    },
-  );
+              "You configured a media uploader, but the actor does not have " +
+                "a endpoints.uploadMedia property.  Set the property with " +
+                "Context.getMediaUploaderUri(identifier).",
+          ),
+          true,
+        );
+      } finally {
+        await reset();
+      }
+    });
+  });
 
   await t.step(
     "does not warn when the actor advertises endpoints.uploadMedia",
@@ -5511,9 +5387,8 @@ test("Federation.setMediaUploader()", async (t) => {
                 }),
               }),
           );
-          federation.setMediaUploader(
-            "/users/{identifier}/media",
-            () => Promise.resolve(new URL("https://example.com/")),
+          federation.setMediaUploader("/users/{identifier}/media", () =>
+            Promise.resolve(new URL("https://example.com/")),
           );
           const response = await federation.fetch(
             new Request("https://example.com/users/john", {
@@ -5523,9 +5398,10 @@ test("Federation.setMediaUploader()", async (t) => {
           );
           assertEquals(response.status, 200);
           assertEquals(
-            records.some((record) =>
-              typeof record.rawMessage === "string" &&
-              record.rawMessage.includes("endpoints.uploadMedia")
+            records.some(
+              (record) =>
+                typeof record.rawMessage === "string" &&
+                record.rawMessage.includes("endpoints.uploadMedia"),
             ),
             false,
           );
@@ -5536,59 +5412,56 @@ test("Federation.setMediaUploader()", async (t) => {
     },
   );
 
-  await t.step(
-    "warns once when no authorize hook is configured",
-    async () => {
-      await withLogtapeLock(async () => {
-        const records: LogRecord[] = [];
-        await reset();
-        try {
-          await configure({
-            sinks: {
-              buffer(record: LogRecord): void {
-                records.push(record);
-              },
+  await t.step("warns once when no authorize hook is configured", async () => {
+    await withLogtapeLock(async () => {
+      const records: LogRecord[] = [];
+      await reset();
+      try {
+        await configure({
+          sinks: {
+            buffer(record: LogRecord): void {
+              records.push(record);
             },
-            filters: {},
-            loggers: [{ category: [], sinks: ["buffer"] }],
-          });
-          const federation = createFederation<void>({
-            kv,
-            documentLoaderFactory: () => mockDocumentLoader,
-          });
-          federation.setActorDispatcher(
-            "/users/{identifier}",
-            () => new vocab.Person({}),
+          },
+          filters: {},
+          loggers: [{ category: [], sinks: ["buffer"] }],
+        });
+        const federation = createFederation<void>({
+          kv,
+          documentLoaderFactory: () => mockDocumentLoader,
+        });
+        federation.setActorDispatcher(
+          "/users/{identifier}",
+          () => new vocab.Person({}),
+        );
+        // Registered without .authorize().
+        federation.setMediaUploader("/users/{identifier}/media", () =>
+          Promise.resolve(new URL("https://example.com/")),
+        );
+        const send = () =>
+          federation.fetch(
+            new Request("https://example.com/users/john/media", {
+              method: "POST",
+              body: makeUploadForm(),
+            }),
+            { contextData: undefined },
           );
-          // Registered without .authorize().
-          federation.setMediaUploader(
-            "/users/{identifier}/media",
-            () => Promise.resolve(new URL("https://example.com/")),
-          );
-          const send = () =>
-            federation.fetch(
-              new Request("https://example.com/users/john/media", {
-                method: "POST",
-                body: makeUploadForm(),
-              }),
-              { contextData: undefined },
-            );
-          assertEquals((await send()).status, 202);
-          assertEquals((await send()).status, 202);
-          const warnings = records.filter((record) =>
+        assertEquals((await send()).status, 202);
+        assertEquals((await send()).status, 202);
+        const warnings = records.filter(
+          (record) =>
             record.category.join(".") === "fedify.federation.mediaUploader" &&
             record.level === "warning" &&
             typeof record.rawMessage === "string" &&
-            record.rawMessage.includes("without an authorize() hook")
-          );
-          // Fires exactly once, not on every upload.
-          assertEquals(warnings.length, 1);
-        } finally {
-          await reset();
-        }
-      });
-    },
-  );
+            record.rawMessage.includes("without an authorize() hook"),
+        );
+        // Fires exactly once, not on every upload.
+        assertEquals(warnings.length, 1);
+      } finally {
+        await reset();
+      }
+    });
+  });
 });
 
 test("Federation.fetch() preserves original LD-signed payload for InboxContextImpl.activity", async () => {
@@ -5613,23 +5486,20 @@ test("Federation.fetch() preserves original LD-signed payload for InboxContextIm
     documentLoaderFactory: () => mockDocumentLoader,
     contextLoaderFactory: () => sourceContextLoader,
   });
-  federation.setActorDispatcher(
-    "/users/{identifier}",
-    (_ctx, identifier) => identifier === "someone" ? new Person({}) : null,
+  federation.setActorDispatcher("/users/{identifier}", (_ctx, identifier) =>
+    identifier === "someone" ? new Person({}) : null,
   );
   let receivedRaw: unknown = null;
   let receivedTyped: Create | null = null;
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .on(Create, (ctx, activity) => {
       receivedRaw = (ctx as unknown as { activity: unknown }).activity;
       receivedTyped = activity;
     });
   const signed = await signJsonLd(
     {
-      "@context": [
-        remoteContextUrl,
-        "https://www.w3.org/ns/activitystreams",
-      ],
+      "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
       id: "https://example.com/activities/preserve-raw",
       type: "Create",
       actor: "https://example.com/person2",
@@ -5678,10 +5548,9 @@ test("Federation.setInboxDispatcher()", async (t) => {
     federation.setInboxListeners("/users/{identifier}/inbox");
     assertThrows(
       () =>
-        federation.setInboxDispatcher(
-          "/users/{identifier}/inbox2",
-          () => ({ items: [] }),
-        ),
+        federation.setInboxDispatcher("/users/{identifier}/inbox2", () => ({
+          items: [],
+        })),
       RouterError,
     );
   });
@@ -5692,10 +5561,9 @@ test("Federation.setInboxDispatcher()", async (t) => {
       documentLoaderFactory: () => mockDocumentLoader,
     });
     federation.setInboxListeners("/users/{identifier}/inbox");
-    federation.setInboxDispatcher(
-      "/users/{identifier}/inbox",
-      () => ({ items: [] }),
-    );
+    federation.setInboxDispatcher("/users/{identifier}/inbox", () => ({
+      items: [],
+    }));
   });
 
   await t.step("wrong variables in path", () => {
@@ -5752,7 +5620,7 @@ test("FederationImpl.sendActivity()", async (t) => {
       verified.push("proof");
     }
     const key = await verifyRequest(request, options);
-    if (key != null && await doesActorOwnKey(activity, key, options)) {
+    if (key != null && (await doesActorOwnKey(activity, key, options))) {
       verified.push("http");
     }
     if (verified.length > 0) return new Response(null, { status: 202 });
@@ -5803,11 +5671,8 @@ test("FederationImpl.sendActivity()", async (t) => {
       { context },
     );
     assertEquals(verified, ["ld", "http"]);
-    const posted = await request?.json() as Record<string, unknown>;
-    assertEquals(
-      posted?.to,
-      vocab.PUBLIC_COLLECTION.href,
-    );
+    const posted = (await request?.json()) as Record<string, unknown>;
+    assertEquals(posted?.to, vocab.PUBLIC_COLLECTION.href);
 
     verified = null;
     await federation.sendActivity(
@@ -5829,14 +5694,11 @@ test("FederationImpl.sendActivity()", async (t) => {
       { context },
     );
     assertEquals(verified, ["ld", "http"]);
-    const postedWithAttachment = await request?.json() as Record<
+    const postedWithAttachment = (await request?.json()) as Record<
       string,
       unknown
     >;
-    const postedObject = postedWithAttachment.object as Record<
-      string,
-      unknown
-    >;
+    const postedObject = postedWithAttachment.object as Record<string, unknown>;
     assertEquals(Array.isArray(postedObject.attachment), true);
 
     verified = null;
@@ -5859,9 +5721,7 @@ test("FederationImpl.sendActivity()", async (t) => {
 
     verified = null;
     await federation.sendActivity(
-      [
-        { privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! },
-      ],
+      [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
       inboxes,
       activity.clone({
         actor: new URL("https://example.com/person2"),
@@ -5890,10 +5750,10 @@ test("FederationImpl.sendActivity()", async (t) => {
         ],
       }),
     });
-    const preSignedJson = await preSignedActivity.toJsonLd({
+    const preSignedJson = (await preSignedActivity.toJsonLd({
       format: "compact",
       contextLoader: mockDocumentLoader,
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     const preSignedObject = preSignedJson.object as Record<string, unknown>;
     assertEquals(Array.isArray(preSignedObject.attachment), false);
     const created = Temporal.Now.instant();
@@ -5924,9 +5784,7 @@ test("FederationImpl.sendActivity()", async (t) => {
     );
     verified = null;
     await federation.sendActivity(
-      [
-        { privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! },
-      ],
+      [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
       inboxes,
       preSignedActivity.clone({
         proofs: [
@@ -5942,7 +5800,7 @@ test("FederationImpl.sendActivity()", async (t) => {
       { context },
     );
     assertEquals(verified, ["proof"]);
-    const postedPreSigned = await request?.json() as Record<string, unknown>;
+    const postedPreSigned = (await request?.json()) as Record<string, unknown>;
     const postedPreSignedObject = postedPreSigned.object as Record<
       string,
       unknown
@@ -5994,7 +5852,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
       kv,
       queue,
     });
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(vocab.Create, () => {
         throw new Error("Intended error for testing");
       });
@@ -6002,28 +5861,25 @@ test("FederationImpl.processQueuedTask()", async (t) => {
     // outbox message
     await assertRejects(
       () =>
-        federation.processQueuedTask(
-          undefined,
-          {
-            type: "outbox",
-            id: crypto.randomUUID(),
-            baseUrl: "https://example.com",
-            keys: [],
-            activity: {
-              "@context": "https://www.w3.org/ns/activitystreams",
-              type: "Create",
-              actor: "https://example.com/users/alice",
-              object: { type: "Note", content: "test" },
-            },
-            activityType: "https://www.w3.org/ns/activitystreams#Create",
-            inbox: "https://invalid-domain-that-does-not-exist.example/inbox",
-            sharedInbox: false,
-            started: new Date().toISOString(),
-            attempt: 0,
-            headers: {},
-            traceContext: {},
-          } satisfies OutboxMessage,
-        ),
+        federation.processQueuedTask(undefined, {
+          type: "outbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          keys: [],
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            actor: "https://example.com/users/alice",
+            object: { type: "Note", content: "test" },
+          },
+          activityType: "https://www.w3.org/ns/activitystreams#Create",
+          inbox: "https://invalid-domain-that-does-not-exist.example/inbox",
+          sharedInbox: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          headers: {},
+          traceContext: {},
+        } satisfies OutboxMessage),
       Error,
     );
     assertEquals(queuedMessages, []);
@@ -6031,27 +5887,24 @@ test("FederationImpl.processQueuedTask()", async (t) => {
     // inbox message
     await assertRejects(
       () =>
-        federation.processQueuedTask(
-          undefined,
-          {
-            type: "inbox",
-            id: crypto.randomUUID(),
-            baseUrl: "https://example.com",
-            activity: {
-              "@context": "https://www.w3.org/ns/activitystreams",
-              type: "Create",
-              actor: "https://remote.example/users/alice",
-              object: {
-                type: "Note",
-                content: "Hello world",
-              },
+        federation.processQueuedTask(undefined, {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            actor: "https://remote.example/users/alice",
+            object: {
+              type: "Note",
+              content: "Hello world",
             },
-            started: new Date().toISOString(),
-            attempt: 0,
-            identifier: null,
-            traceContext: {},
-          } satisfies InboxMessage,
-        ),
+          },
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage),
       Error,
     );
     assertEquals(queuedMessages, []);
@@ -6075,7 +5928,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
       kv,
       queue,
     });
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(vocab.Create, () => {
         throw new Error("Intended error for testing");
       });
@@ -6148,28 +6002,25 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         queue,
       });
 
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "outbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          keys: [],
-          activity: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Create",
-            actor: "https://example.com/users/alice",
-            object: { type: "Note", content: "test" },
-          },
-          activityType: "https://www.w3.org/ns/activitystreams#Create",
-          inbox: "https://invalid-domain-that-does-not-exist.example/inbox",
-          sharedInbox: false,
-          started: new Date().toISOString(),
-          attempt: 0,
-          headers: {},
-          traceContext: {},
-        } satisfies OutboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "outbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        keys: [],
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          actor: "https://example.com/users/alice",
+          object: { type: "Note", content: "test" },
+        },
+        activityType: "https://www.w3.org/ns/activitystreams#Create",
+        inbox: "https://invalid-domain-that-does-not-exist.example/inbox",
+        sharedInbox: false,
+        started: new Date().toISOString(),
+        attempt: 0,
+        headers: {},
+        traceContext: {},
+      } satisfies OutboxMessage);
 
       const outboxLifecycle = recorder.getMeasurements(
         "activitypub.outbox.activity",
@@ -6209,28 +6060,25 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         outboxRetryPolicy: () => null,
       });
 
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "outbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          keys: [],
-          activity: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Follow",
-            actor: "https://example.com/users/alice",
-            object: "https://remote.example/users/bob",
-          },
-          activityType: "https://www.w3.org/ns/activitystreams#Follow",
-          inbox: "https://invalid-domain-that-does-not-exist.example/inbox",
-          sharedInbox: false,
-          started: new Date().toISOString(),
-          attempt: 0,
-          headers: {},
-          traceContext: {},
-        } satisfies OutboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "outbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        keys: [],
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Follow",
+          actor: "https://example.com/users/alice",
+          object: "https://remote.example/users/bob",
+        },
+        activityType: "https://www.w3.org/ns/activitystreams#Follow",
+        inbox: "https://invalid-domain-that-does-not-exist.example/inbox",
+        sharedInbox: false,
+        started: new Date().toISOString(),
+        attempt: 0,
+        headers: {},
+        traceContext: {},
+      } satisfies OutboxMessage);
 
       const outboxLifecycle = recorder.getMeasurements(
         "activitypub.outbox.activity",
@@ -6266,28 +6114,26 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         meterProvider,
         queue,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(vocab.Create, () => {});
 
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Create",
-            id: "https://remote.example/activities/queued-processed",
-            actor: "https://remote.example/users/alice",
-            object: { type: "Note", content: "Hello world" },
-          },
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://remote.example/activities/queued-processed",
+          actor: "https://remote.example/users/alice",
+          object: { type: "Note", content: "Hello world" },
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
 
       const inboxLifecycle = recorder.getMeasurements(
         "activitypub.inbox.activity",
@@ -6325,30 +6171,28 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         queue,
       });
       let dispatched = false;
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(vocab.Create, () => {
           dispatched = true;
         });
 
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Create",
-            id: "https://victim.example/activities/queued-forged",
-            actor: "https://remote.example/users/alice",
-            object: { type: "Note", content: "Hello world" },
-          },
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://victim.example/activities/queued-forged",
+          actor: "https://remote.example/users/alice",
+          object: { type: "Note", content: "Hello world" },
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
 
       assertFalse(dispatched);
       const inboxLifecycle = recorder.getMeasurements(
@@ -6384,30 +6228,28 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         meterProvider,
         queue,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(vocab.Create, () => {
           throw new Error("Intended error for testing");
         });
 
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Create",
-            id: "https://remote.example/activities/queued-retried",
-            actor: "https://remote.example/users/alice",
-            object: { type: "Note", content: "Hello world" },
-          },
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://remote.example/activities/queued-retried",
+          actor: "https://remote.example/users/alice",
+          object: { type: "Note", content: "Hello world" },
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
 
       const inboxLifecycle = recorder.getMeasurements(
         "activitypub.inbox.activity",
@@ -6443,30 +6285,28 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         queue,
         inboxRetryPolicy: () => null,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(vocab.Create, () => {
           throw new Error("Intended error for testing");
         });
 
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Create",
-            id: "https://remote.example/activities/queued-abandoned",
-            actor: "https://remote.example/users/alice",
-            object: { type: "Note", content: "Hello world" },
-          },
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://remote.example/activities/queued-abandoned",
+          actor: "https://remote.example/users/alice",
+          object: { type: "Note", content: "Hello world" },
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
 
       const inboxLifecycle = recorder.getMeasurements(
         "activitypub.inbox.activity",
@@ -6500,33 +6340,31 @@ test("FederationImpl.processQueuedTask()", async (t) => {
       queue,
     });
     let handled = false;
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(vocab.Create, () => {
         handled = true;
       });
 
-    await federation.processQueuedTask(
-      undefined,
-      {
-        type: "inbox",
-        id: crypto.randomUUID(),
-        baseUrl: "https://example.com",
-        activity: {
-          "@context": "https://www.w3.org/ns/activitystreams",
-          type: "Create",
-          id: "https://remote.example/activities/1",
-          actor: "https://remote.example/users/alice",
-          object: {
-            type: "Note",
-            content: "Hello world",
-          },
+    await federation.processQueuedTask(undefined, {
+      type: "inbox",
+      id: crypto.randomUUID(),
+      baseUrl: "https://example.com",
+      activity: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: "https://remote.example/activities/1",
+        actor: "https://remote.example/users/alice",
+        object: {
+          type: "Note",
+          content: "Hello world",
         },
-        started: new Date().toISOString(),
-        attempt: 0,
-        identifier: null,
-        traceContext: {},
-      } satisfies InboxMessage,
-    );
+      },
+      started: new Date().toISOString(),
+      attempt: 0,
+      identifier: null,
+      traceContext: {},
+    } satisfies InboxMessage);
 
     assert(handled);
     const durations = recorder.getMeasurements(
@@ -6622,7 +6460,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         kv,
         contextLoaderFactory: () => restrictiveContextLoader,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, (ctx, activity) => {
           receivedCount++;
           receivedRaw = (ctx as unknown as { activity: unknown }).activity;
@@ -6654,20 +6493,17 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         sourceContextLoader,
       );
       const messageId = crypto.randomUUID();
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: messageId,
-          baseUrl: "https://example.com",
-          activity: signed,
-          normalizedActivity,
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: messageId,
+        baseUrl: "https://example.com",
+        activity: signed,
+        normalizedActivity,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
       const delivered = received;
       assert(delivered != null);
       const deliveredCreate = delivered as Create;
@@ -6677,20 +6513,17 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         "https://remote.example/activities/1",
       );
       assertEquals(receivedRaw, signed);
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: messageId,
-          baseUrl: "https://example.com",
-          activity: signed,
-          normalizedActivity,
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: messageId,
+        baseUrl: "https://example.com",
+        activity: signed,
+        normalizedActivity,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
       assertEquals(receivedCount, 1);
     },
   );
@@ -6715,7 +6548,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         kv,
         queue,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           receivedCount++;
         })
@@ -6746,8 +6580,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
       const tamperedNormalizedActivity = {
         ...(normalizedActivity as Record<string, unknown>),
         signature: {
-          ...((normalizedActivity as { signature: Record<string, unknown> })
-            .signature),
+          ...(normalizedActivity as { signature: Record<string, unknown> })
+            .signature,
           "@included": [
             {
               id: "https://remote.example/activities/inside-signature",
@@ -6756,21 +6590,18 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           ],
         },
       };
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: signed,
-          normalizedActivity: tamperedNormalizedActivity,
-          ldSignatureVerified: false,
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: signed,
+        normalizedActivity: tamperedNormalizedActivity,
+        ldSignatureVerified: false,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
       assertEquals(receivedCount, 0);
       assertEquals(errorCount, 1);
       assertEquals(queuedMessages, []);
@@ -6796,7 +6627,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         kv,
         contextLoaderFactory: () => restrictiveContextLoader,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, (_ctx, activity) => {
           received = activity;
         });
@@ -6820,19 +6652,16 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         ),
         restrictiveContextLoader,
       );
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: compacted,
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: compacted,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
       assert(received != null);
       assertEquals(
         (received as Create).id?.href,
@@ -6876,7 +6705,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         kv,
         contextLoaderFactory: () => processingContextLoader,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, (ctx, activity) => {
           receivedRaw = (ctx as unknown as { activity: unknown }).activity;
           received = activity;
@@ -6906,20 +6736,17 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         Array.isArray(signedPayload["@context"]) &&
           signedPayload["@context"].includes("https://w3id.org/security/v1"),
       );
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: signed,
-          ldSignatureVerified: false,
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: signed,
+        ldSignatureVerified: false,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
       if (received == null) throw new Error("Inbox activity not delivered.");
       const delivered = received as Create;
       assertEquals(
@@ -6966,7 +6793,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         kv,
         contextLoaderFactory: () => restrictiveContextLoader,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, (ctx, activity) => {
           receivedRaw = (ctx as unknown as { activity: unknown }).activity;
           received = activity;
@@ -6998,21 +6826,18 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         unsignedBody,
         sourceContextLoader,
       );
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: unsignedBody,
-          normalizedActivity,
-          ldSignatureVerified: false,
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: unsignedBody,
+        normalizedActivity,
+        ldSignatureVerified: false,
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
       if (received == null) throw new Error("Inbox activity not delivered.");
       const delivered = received as Create;
       assertEquals(
@@ -7054,7 +6879,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         queue,
         contextLoaderFactory: () => restrictiveContextLoader,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -7153,7 +6979,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${url}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -7183,19 +7010,16 @@ test("FederationImpl.processQueuedTask()", async (t) => {
       );
       await assertRejects(
         () =>
-          federation.processQueuedTask(
-            undefined,
-            {
-              type: "inbox",
-              id: crypto.randomUUID(),
-              baseUrl: "https://example.com",
-              activity: signed,
-              started: new Date().toISOString(),
-              attempt: 0,
-              identifier: null,
-              traceContext: {},
-            } satisfies InboxMessage,
-          ),
+          federation.processQueuedTask(undefined, {
+            type: "inbox",
+            id: crypto.randomUUID(),
+            baseUrl: "https://example.com",
+            activity: signed,
+            started: new Date().toISOString(),
+            attempt: 0,
+            identifier: null,
+            traceContext: {},
+          } satisfies InboxMessage),
         Error,
       );
       assertEquals(errorCount, 1);
@@ -7243,7 +7067,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${url}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -7346,7 +7171,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${resource}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -7376,10 +7202,7 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         baseUrl: "https://example.com",
         activity: {
           ...signed,
-          "@context": [
-            "app-context",
-            "https://www.w3.org/ns/activitystreams",
-          ],
+          "@context": ["app-context", "https://www.w3.org/ns/activitystreams"],
         },
         started: new Date().toISOString(),
         attempt: 0,
@@ -7424,7 +7247,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${resource}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -7454,10 +7278,7 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         baseUrl: "https://example.com",
         activity: {
           ...signed,
-          "@context": [
-            "app:context",
-            "https://www.w3.org/ns/activitystreams",
-          ],
+          "@context": ["app:context", "https://www.w3.org/ns/activitystreams"],
         },
         started: new Date().toISOString(),
         attempt: 0,
@@ -7505,7 +7326,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${resource}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -7515,13 +7337,11 @@ test("FederationImpl.processQueuedTask()", async (t) => {
       const signed = await signJsonLd(
         {
           "@context": "https://www.w3.org/ns/activitystreams",
-          id:
-            "https://remote.example/activities/legacy-malformed-absolute-context",
+          id: "https://remote.example/activities/legacy-malformed-absolute-context",
           type: "Create",
           actor: "https://remote.example/users/alice",
           object: {
-            id:
-              "https://remote.example/notes/legacy-malformed-absolute-context",
+            id: "https://remote.example/notes/legacy-malformed-absolute-context",
             type: "Note",
             attributedTo: "https://remote.example/users/alice",
             content: "Hello from malformed absolute context queue",
@@ -7537,10 +7357,7 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         baseUrl: "https://example.com",
         activity: {
           ...signed,
-          "@context": [
-            "http:/[",
-            "https://www.w3.org/ns/activitystreams",
-          ],
+          "@context": ["http:/[", "https://www.w3.org/ns/activitystreams"],
         },
         started: new Date().toISOString(),
         attempt: 0,
@@ -7572,37 +7389,35 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         kv,
         queue,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
         .onError(() => {
           errorCount++;
         });
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            id: "http://[",
-            type: "Create",
-            actor: "https://remote.example/users/alice",
-            object: {
-              id: "https://remote.example/notes/invalid-iri",
-              type: "Note",
-              attributedTo: "https://remote.example/users/alice",
-              content: "Hello from invalid IRI queue",
-            },
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "http://[",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          object: {
+            id: "https://remote.example/notes/invalid-iri",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello from invalid IRI queue",
           },
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
       assertEquals(errorCount, 1);
       assertEquals(queuedMessages, []);
     },
@@ -7627,40 +7442,38 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         kv,
         queue,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
         .onError(() => {
           errorCount++;
         });
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: {
-            "@context": [
-              "https://www.w3.org/ns/activitystreams",
-              "https://w3id.org/fep/ef61",
-            ],
-            id: "https://remote.example/activities/invalid-gateway",
-            type: "Create",
-            actor: "https://remote.example/users/alice",
-            // A gateway must not have a path:
-            object: {
-              id: "https://remote.example/users/bob",
-              type: "Person",
-              gateways: ["https://gw.example/path"],
-            },
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/fep/ef61",
+          ],
+          id: "https://remote.example/activities/invalid-gateway",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          // A gateway must not have a path:
+          object: {
+            id: "https://remote.example/users/bob",
+            type: "Person",
+            gateways: ["https://gw.example/path"],
           },
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
       assertEquals(errorCount, 1);
       assertEquals(queuedMessages, []);
     },
@@ -7706,7 +7519,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${resource}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -7792,7 +7606,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${resource}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -7802,13 +7617,11 @@ test("FederationImpl.processQueuedTask()", async (t) => {
       const signed = await signJsonLd(
         {
           "@context": "https://www.w3.org/ns/activitystreams",
-          id:
-            "https://remote.example/activities/legacy-malformed-network-path-context",
+          id: "https://remote.example/activities/legacy-malformed-network-path-context",
           type: "Create",
           actor: "https://remote.example/users/alice",
           object: {
-            id:
-              "https://remote.example/notes/legacy-malformed-network-path-context",
+            id: "https://remote.example/notes/legacy-malformed-network-path-context",
             type: "Note",
             attributedTo: "https://remote.example/users/alice",
             content: "Hello from malformed network-path legacy queue",
@@ -7824,10 +7637,7 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         baseUrl: "https://example.com",
         activity: {
           ...signed,
-          "@context": [
-            "//[",
-            "https://www.w3.org/ns/activitystreams",
-          ],
+          "@context": ["//[", "https://www.w3.org/ns/activitystreams"],
         },
         started: new Date().toISOString(),
         attempt: 0,
@@ -7880,7 +7690,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${resource}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -7910,10 +7721,7 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         baseUrl: "https://example.com",
         activity: {
           ...signed,
-          "@context": [
-            "not a url",
-            "https://www.w3.org/ns/activitystreams",
-          ],
+          "@context": ["not a url", "https://www.w3.org/ns/activitystreams"],
         },
         started: new Date().toISOString(),
         attempt: 0,
@@ -7966,7 +7774,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${resource}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -7976,8 +7785,7 @@ test("FederationImpl.processQueuedTask()", async (t) => {
       const signed = await signJsonLd(
         {
           "@context": "https://www.w3.org/ns/activitystreams",
-          id:
-            "https://remote.example/activities/legacy-malformed-percent-context",
+          id: "https://remote.example/activities/legacy-malformed-percent-context",
           type: "Create",
           actor: "https://remote.example/users/alice",
           object: {
@@ -7997,10 +7805,7 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         baseUrl: "https://example.com",
         activity: {
           ...signed,
-          "@context": [
-            "foo%zz",
-            "https://www.w3.org/ns/activitystreams",
-          ],
+          "@context": ["foo%zz", "https://www.w3.org/ns/activitystreams"],
         },
         started: new Date().toISOString(),
         attempt: 0,
@@ -8050,7 +7855,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${url}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -8147,7 +7953,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${url}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -8242,7 +8049,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${url}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -8340,7 +8148,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${url}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -8435,7 +8244,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
           throw new Error(`Unexpected context: ${url}`);
         },
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
@@ -8514,32 +8324,30 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         kv,
         queue,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
         .onError(() => {
           errorCount++;
         });
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            id: "https://remote.example/objects/not-an-activity",
-            type: "Note",
-            attributedTo: "https://remote.example/users/alice",
-            content: "Not an activity",
-          },
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "https://remote.example/objects/not-an-activity",
+          type: "Note",
+          attributedTo: "https://remote.example/users/alice",
+          content: "Not an activity",
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
       assertEquals(errorCount, 1);
       assertEquals(queuedMessages, []);
     },
@@ -8566,50 +8374,48 @@ test("FederationImpl.processQueuedTask()", async (t) => {
         documentLoaderFactory: () => mockDocumentLoader,
         contextLoaderFactory: () => mockDocumentLoader,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(Create, () => {
           throw new Error("listener should not run");
         })
         .onError(() => {
           errorCount++;
         });
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: {
-            "@context": [
-              "https://www.w3.org/ns/activitystreams",
-              "https://w3id.org/security/data-integrity/v1",
-            ],
-            id: "https://remote.example/activities/invalid-proof-created",
-            type: "Create",
-            actor: "https://remote.example/users/alice",
-            object: {
-              id: "https://remote.example/notes/invalid-proof-created",
-              type: "Note",
-              attributedTo: "https://remote.example/users/alice",
-              content: "Hello, world!",
-            },
-            proof: {
-              type: "DataIntegrityProof",
-              cryptosuite: "eddsa-jcs-2022",
-              verificationMethod:
-                "https://remote.example/users/alice#ed25519-key",
-              proofPurpose: "assertionMethod",
-              created: { "@value": "not-a-date" },
-              proofValue:
-                "zLaewdp4H9kqtwyrLatK4cjY5oRHwVcw4gibPSUDYDMhi4M49v8pcYk3ZB6D69dNpAPbUmY8ocuJ3m9KhKJEEg7z",
-            },
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/data-integrity/v1",
+          ],
+          id: "https://remote.example/activities/invalid-proof-created",
+          type: "Create",
+          actor: "https://remote.example/users/alice",
+          object: {
+            id: "https://remote.example/notes/invalid-proof-created",
+            type: "Note",
+            attributedTo: "https://remote.example/users/alice",
+            content: "Hello, world!",
           },
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+          proof: {
+            type: "DataIntegrityProof",
+            cryptosuite: "eddsa-jcs-2022",
+            verificationMethod:
+              "https://remote.example/users/alice#ed25519-key",
+            proofPurpose: "assertionMethod",
+            created: { "@value": "not-a-date" },
+            proofValue:
+              "zLaewdp4H9kqtwyrLatK4cjY5oRHwVcw4gibPSUDYDMhi4M49v8pcYk3ZB6D69dNpAPbUmY8ocuJ3m9KhKJEEg7z",
+          },
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
       assertEquals(errorCount, 1);
       assertEquals(queuedMessages, []);
     },
@@ -8617,10 +8423,10 @@ test("FederationImpl.processQueuedTask()", async (t) => {
 });
 
 test({
-  name:
-    "FederationImpl.processQueuedTask() accounts for destination validation failures",
+  name: "FederationImpl.processQueuedTask() accounts for destination validation failures",
   // The validator skips DNS when Deno has no network permission.
-  ignore: "Deno" in globalThis &&
+  ignore:
+    "Deno" in globalThis &&
     (await Deno.permissions.query({ name: "net" })).state !== "granted",
   async fn(t) {
     for (const result of ["throws", "empty", "private"] as const) {
@@ -8731,13 +8537,10 @@ test({
                 );
                 assertEquals(attempts, [0]);
                 const host = new URL(message.inbox).host;
-                const state = await kv.get<
-                  { state: string; failures: string[] }
-                >([
-                  "_fedify",
-                  "circuit",
-                  host,
-                ]);
+                const state = await kv.get<{
+                  state: string;
+                  failures: string[];
+                }>(["_fedify", "circuit", host]);
                 if (result === "private") {
                   assertEquals(state, undefined);
                 } else {
@@ -8759,9 +8562,8 @@ test({
                   assertEquals(queuedMessages, [{ ...message, attempt: 1 }]);
                   assertEquals(delays, [delay]);
                 }
-                const expectedCount = result === "private" && !redirected
-                  ? 0
-                  : 1;
+                const expectedCount =
+                  result === "private" && !redirected ? 0 : 1;
                 const sent = recorder.getMeasurements(
                   "activitypub.delivery.sent",
                 );
@@ -8827,12 +8629,12 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
     options: {
       permanentFailureStatusCodes?: readonly number[];
       nativeRetrial?: boolean;
-      meterProvider?: ConstructorParameters<typeof FederationImpl<void>>[0][
-        "meterProvider"
-      ];
-      tracerProvider?: ConstructorParameters<typeof FederationImpl<void>>[0][
-        "tracerProvider"
-      ];
+      meterProvider?: ConstructorParameters<
+        typeof FederationImpl<void>
+      >[0]["meterProvider"];
+      tracerProvider?: ConstructorParameters<
+        typeof FederationImpl<void>
+      >[0]["tracerProvider"];
     } = {},
   ): PermanentFailureSetup {
     const kv = new MemoryKvStore();
@@ -8920,10 +8722,7 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
       ),
     );
     assert(handlerCalled, "Permanent failure handler should be called");
-    assertEquals(
-      handlerValues.inbox,
-      new URL("https://gone.example/inbox"),
-    );
+    assertEquals(handlerValues.inbox, new URL("https://gone.example/inbox"));
     assertEquals(handlerValues.statusCode, 410);
     assertInstanceOf(handlerValues.activity, vocab.Create);
     assertEquals(handlerValues.actorIds, [
@@ -8942,14 +8741,9 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
       failures[0].attributes["activitypub.remote.host"],
       "gone.example",
     );
-    assertEquals(
-      failures[0].attributes["http.response.status_code"],
-      410,
-    );
+    assertEquals(failures[0].attributes["http.response.status_code"], 410);
 
-    const abandoned = recorder.getMeasurements(
-      "activitypub.outbox.activity",
-    );
+    const abandoned = recorder.getMeasurements("activitypub.outbox.activity");
     assertEquals(abandoned.length, 1);
     assertEquals(
       abandoned[0].attributes["activitypub.processing.result"],
@@ -9156,11 +8950,9 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
 
         await federation.processQueuedTask(
           undefined,
-          createOutboxMessage(
-            "not a url",
-            "https://example.com/activity/9",
-            ["https://gone.example/users/bob"],
-          ),
+          createOutboxMessage("not a url", "https://example.com/activity/9", [
+            "https://gone.example/users/bob",
+          ]),
         );
 
         assertEquals(queuedMessages.length, 1);
@@ -9176,10 +8968,11 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
         );
         assertEquals(events[0].attributes?.["activitypub.delivery.attempt"], 0);
         assertEquals(
-          records.some((record) =>
-            record.rawMessage ===
-              "Invalid inbox URL in queued outbox message: {inbox}" &&
-            record.properties.inbox === "not a url"
+          records.some(
+            (record) =>
+              record.rawMessage ===
+                "Invalid inbox URL in queued outbox message: {inbox}" &&
+              record.properties.inbox === "not a url",
           ),
           true,
         );
@@ -9274,7 +9067,7 @@ test(
         const deliveryLog = records.find((r) =>
           String(r.rawMessage).startsWith(
             "Failed to send activity {activityId} to {inbox} ({status}",
-          )
+          ),
         );
         assert(deliveryLog != null);
         assertEquals(deliveryLog.properties.spanId, deliveryCtx.spanId);
@@ -9285,7 +9078,7 @@ test(
         const retryLog = records.find((r) =>
           String(r.rawMessage).startsWith(
             "Failed to send activity {activityId} to {inbox} (attempt",
-          )
+          ),
         );
         assert(retryLog != null);
         assertEquals(retryLog.properties.spanId, workerCtx.spanId);
@@ -9316,9 +9109,9 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
   }
 
   function setup(
-    options: ConstructorParameters<typeof FederationImpl<void>>[0][
-      "circuitBreaker"
-    ],
+    options: ConstructorParameters<
+      typeof FederationImpl<void>
+    >[0]["circuitBreaker"],
     federationOptions: Pick<
       ConstructorParameters<typeof FederationImpl<void>>[0],
       | "meterProvider"
@@ -9494,11 +9287,13 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       createOutboxMessage("https://ports.example:8443/inbox"),
     );
     assertEquals(
-      (await kv.get<Record<string, unknown>>([
-        "_fedify",
-        "circuit",
-        "ports.example:8443",
-      ]))?.state,
+      (
+        await kv.get<Record<string, unknown>>([
+          "_fedify",
+          "circuit",
+          "ports.example:8443",
+        ])
+      )?.state,
       "open",
     );
     assertEquals(
@@ -9644,10 +9439,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
 
     assertEquals(queued.length, 1);
-    assertEquals(
-      queued[0].options?.delay,
-      Temporal.Duration.from({ days: 1 }),
-    );
+    assertEquals(queued[0].options?.delay, Temporal.Duration.from({ days: 1 }));
   });
 
   await t.step("negative calendar retry delays are clamped", async () => {
@@ -9698,11 +9490,13 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
 
     assertEquals(queued, []);
     assertEquals(
-      (await kv.get<Record<string, unknown>>([
-        "_fedify",
-        "circuit",
-        "hold-give-up.example",
-      ]))?.state,
+      (
+        await kv.get<Record<string, unknown>>([
+          "_fedify",
+          "circuit",
+          "hold-give-up.example",
+        ])
+      )?.state,
       "open",
     );
   });
@@ -9829,9 +9623,13 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
         headers: { "Retry-After": "120" },
         body: "rate limited",
       });
-      const { federation, queued, kv } = setup(false, {}, {
-        nativeRetrial: true,
-      });
+      const { federation, queued, kv } = setup(
+        false,
+        {},
+        {
+          nativeRetrial: true,
+        },
+      );
       assertEquals(federation.circuitBreaker, undefined);
 
       await federation.processQueuedTask(
@@ -9981,10 +9779,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     );
 
     assertEquals(queued.length, 1);
-    assertEquals(
-      queued[0].options?.delay?.total({ unit: "second" }),
-      3,
-    );
+    assertEquals(queued[0].options?.delay?.total({ unit: "second" }), 3);
     assertEquals(
       await kv.get(["_fedify", "circuit", "huge-retry-after.example"]),
       undefined,
@@ -10012,10 +9807,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       );
 
       assertEquals(queued.length, 1);
-      assertEquals(
-        queued[0].options?.delay?.total({ unit: "second" }),
-        3,
-      );
+      assertEquals(queued[0].options?.delay?.total({ unit: "second" }), 3);
       assertEquals(
         await kv.get(["_fedify", "circuit", "invalid-retry-after.example"]),
         undefined,
@@ -10480,32 +10272,30 @@ test("FederationImpl.processQueuedTask() queue task metrics", async (t) => {
         meterProvider,
         queue,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(vocab.Create, () => {
           throw new Error("Intended error for testing");
         });
 
       await assertRejects(
         () =>
-          federation.processQueuedTask(
-            undefined,
-            {
-              type: "inbox",
-              id: crypto.randomUUID(),
-              baseUrl: "https://example.com",
-              activity: {
-                "@context": "https://www.w3.org/ns/activitystreams",
-                type: "Create",
-                id: "https://remote.example/activities/2",
-                actor: "https://remote.example/users/alice",
-                object: { type: "Note", content: "Hello world" },
-              },
-              started: new Date().toISOString(),
-              attempt: 0,
-              identifier: null,
-              traceContext: {},
-            } satisfies InboxMessage,
-          ),
+          federation.processQueuedTask(undefined, {
+            type: "inbox",
+            id: crypto.randomUUID(),
+            baseUrl: "https://example.com",
+            activity: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Create",
+              id: "https://remote.example/activities/2",
+              actor: "https://remote.example/users/alice",
+              object: { type: "Note", content: "Hello world" },
+            },
+            started: new Date().toISOString(),
+            attempt: 0,
+            identifier: null,
+            traceContext: {},
+          } satisfies InboxMessage),
         Error,
       );
 
@@ -10563,30 +10353,28 @@ test("FederationImpl.processQueuedTask() queue task metrics", async (t) => {
         meterProvider,
         queue,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(vocab.Create, () => {
           throw new Error("Intended error for testing");
         });
 
-      await federation.processQueuedTask(
-        undefined,
-        {
-          type: "inbox",
-          id: crypto.randomUUID(),
-          baseUrl: "https://example.com",
-          activity: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Create",
-            id: "https://remote.example/activities/retry",
-            actor: "https://remote.example/users/alice",
-            object: { type: "Note", content: "Hello world" },
-          },
-          started: new Date().toISOString(),
-          attempt: 0,
-          identifier: null,
-          traceContext: {},
-        } satisfies InboxMessage,
-      );
+      await federation.processQueuedTask(undefined, {
+        type: "inbox",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com",
+        activity: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Create",
+          id: "https://remote.example/activities/retry",
+          actor: "https://remote.example/users/alice",
+          object: { type: "Note", content: "Hello world" },
+        },
+        started: new Date().toISOString(),
+        attempt: 0,
+        identifier: null,
+        traceContext: {},
+      } satisfies InboxMessage);
       assertEquals(queuedMessages.length, 1);
 
       const completed = recorder.getMeasurements("fedify.queue.task.completed");
@@ -10628,32 +10416,30 @@ test("FederationImpl.processQueuedTask() queue task metrics", async (t) => {
         tracerProvider,
         queue,
       });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .on(vocab.Create, () => {
           throw new DOMException("aborted", "AbortError");
         });
 
       await assertRejects(
         () =>
-          federation.processQueuedTask(
-            undefined,
-            {
-              type: "inbox",
-              id: crypto.randomUUID(),
-              baseUrl: "https://example.com",
-              activity: {
-                "@context": "https://www.w3.org/ns/activitystreams",
-                type: "Create",
-                id: "https://remote.example/activities/3",
-                actor: "https://remote.example/users/alice",
-                object: { type: "Note", content: "Hello world" },
-              },
-              started: new Date().toISOString(),
-              attempt: 0,
-              identifier: null,
-              traceContext: {},
-            } satisfies InboxMessage,
-          ),
+          federation.processQueuedTask(undefined, {
+            type: "inbox",
+            id: crypto.randomUUID(),
+            baseUrl: "https://example.com",
+            activity: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Create",
+              id: "https://remote.example/activities/3",
+              actor: "https://remote.example/users/alice",
+              object: { type: "Note", content: "Hello world" },
+            },
+            started: new Date().toISOString(),
+            attempt: 0,
+            identifier: null,
+            traceContext: {},
+          } satisfies InboxMessage),
         DOMException,
       );
 
@@ -10699,28 +10485,26 @@ test("FederationImpl.processQueuedTask() queue task metrics", async (t) => {
       meterProvider,
       queue: new TestMessageQueue(),
     });
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(vocab.Create, () => {});
 
-    await federation.processQueuedTask(
-      undefined,
-      {
-        type: "inbox",
-        id: crypto.randomUUID(),
-        baseUrl: "https://example.com",
-        activity: {
-          "@context": "https://www.w3.org/ns/activitystreams",
-          type: "Create",
-          id: "https://remote.example/activities/4",
-          actor: "https://remote.example/users/alice",
-          object: { type: "Note", content: "Hello world" },
-        },
-        started: new Date().toISOString(),
-        attempt: 0,
-        identifier: null,
-        traceContext: {},
-      } satisfies InboxMessage,
-    );
+    await federation.processQueuedTask(undefined, {
+      type: "inbox",
+      id: crypto.randomUUID(),
+      baseUrl: "https://example.com",
+      activity: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: "https://remote.example/activities/4",
+        actor: "https://remote.example/users/alice",
+        object: { type: "Note", content: "Hello world" },
+      },
+      started: new Date().toISOString(),
+      attempt: 0,
+      identifier: null,
+      traceContext: {},
+    } satisfies InboxMessage);
 
     const completed = recorder.getMeasurements("fedify.queue.task.completed");
     assertEquals(completed.length, 1);
@@ -10756,29 +10540,26 @@ test("FederationImpl.processQueuedTask() queue task metrics", async (t) => {
       fetchMock.spyGlobal();
       fetchMock.post("https://remote.example/inbox", { status: 202 });
       try {
-        await federation.processQueuedTask(
-          undefined,
-          {
-            type: "outbox",
-            id: crypto.randomUUID(),
-            baseUrl: "https://example.com",
-            keys: [],
-            activity: {
-              "@context": "https://www.w3.org/ns/activitystreams",
-              type: "Create",
-              id: "https://example.com/activities/1",
-              actor: "https://example.com/users/alice",
-              object: { type: "Note", content: "test" },
-            },
-            activityType: "https://www.w3.org/ns/activitystreams#Create",
-            inbox: "https://remote.example/inbox",
-            sharedInbox: false,
-            started: new Date().toISOString(),
-            attempt: 0,
-            headers: {},
-            traceContext: {},
-          } satisfies OutboxMessage,
-        );
+        await federation.processQueuedTask(undefined, {
+          type: "outbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          keys: [],
+          activity: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: "https://example.com/activities/1",
+            actor: "https://example.com/users/alice",
+            object: { type: "Note", content: "test" },
+          },
+          activityType: "https://www.w3.org/ns/activitystreams#Create",
+          inbox: "https://remote.example/inbox",
+          sharedInbox: false,
+          started: new Date().toISOString(),
+          attempt: 0,
+          headers: {},
+          traceContext: {},
+        } satisfies OutboxMessage);
       } finally {
         fetchMock.hardReset();
       }
@@ -10815,10 +10596,7 @@ test("FederationImpl.processQueuedTask() queue task metrics", async (t) => {
       // keys, so the worker still completes successfully.
       const kv = new MemoryKvStore();
       const [meterProvider, recorder] = createTestMeterProvider();
-      const exportedKey = await crypto.subtle.exportKey(
-        "jwk",
-        rsaPrivateKey3,
-      );
+      const exportedKey = await crypto.subtle.exportKey("jwk", rsaPrivateKey3);
       const queue: MessageQueue = {
         enqueue(_message, _options) {
           return Promise.resolve();
@@ -10979,8 +10757,7 @@ test("ContextImpl.sendActivity()", async (t) => {
         async set(
           _keyId: URL,
           _key: vocab.CryptographicKey | vocab.Multikey | null,
-        ) {
-        },
+        ) {},
       } satisfies KeyCache,
     };
     let json = await cl.request!.json();
@@ -10993,7 +10770,7 @@ test("ContextImpl.sendActivity()", async (t) => {
       verified.push("proof");
     }
     const key = await verifyRequest(request, options);
-    if (key != null && await doesActorOwnKey(activity, key, options)) {
+    if (key != null && (await doesActorOwnKey(activity, key, options))) {
       verified.push("http");
     }
     if (verified.length > 0) return new Response(null, { status: 202 });
@@ -11027,19 +10804,16 @@ test("ContextImpl.sendActivity()", async (t) => {
         },
       ];
     })
-    .mapHandle((_ctx, username) => username === "john" ? "1" : null);
+    .mapHandle((_ctx, username) => (username === "john" ? "1" : null));
 
-  federation.setFollowersDispatcher(
-    "/users/{identifier}/followers",
-    () => ({
-      items: [
-        {
-          id: new URL("https://example.com/recipient"),
-          inboxId: new URL("https://example.com/inbox"),
-        },
-      ],
-    }),
-  );
+  federation.setFollowersDispatcher("/users/{identifier}/followers", () => ({
+    items: [
+      {
+        id: new URL("https://example.com/recipient"),
+        inboxId: new URL("https://example.com/inbox"),
+      },
+    ],
+  }));
 
   await t.step("success", async () => {
     const activity = new vocab.Create({
@@ -11125,8 +10899,8 @@ test("ContextImpl.sendActivity()", async (t) => {
       "application/activity+json",
     );
 
-    const actorEdKey = (await ctx.getActorKeyPairs("1")).find((key) =>
-      key.privateKey.algorithm.name === "Ed25519"
+    const actorEdKey = (await ctx.getActorKeyPairs("1")).find(
+      (key) => key.privateKey.algorithm.name === "Ed25519",
     );
     assert(actorEdKey != null);
     assert(actorEdKey.multikey.id != null);
@@ -11159,7 +10933,7 @@ test("ContextImpl.sendActivity()", async (t) => {
       { normalizeExistingProofs: true },
     );
     assertEquals(verified, ["proof"]);
-    const postedSigned = await request?.json() as Record<string, unknown>;
+    const postedSigned = (await request?.json()) as Record<string, unknown>;
     const postedSignedObject = postedSigned.object as Record<string, unknown>;
     assertEquals(Array.isArray(postedSignedObject.attachment), true);
 
@@ -11171,7 +10945,7 @@ test("ContextImpl.sendActivity()", async (t) => {
           inboxId: new URL("https://example.com/inbox"),
         },
         activity.clone({ actor: ctx.getActorUri("1") }),
-      )
+      ),
     );
 
     await assertRejects(() =>
@@ -11182,7 +10956,7 @@ test("ContextImpl.sendActivity()", async (t) => {
           inboxId: new URL("https://example.com/inbox"),
         },
         activity.clone({ actor: ctx.getActorUri("1") }),
-      )
+      ),
     );
   });
 
@@ -11218,14 +10992,12 @@ test("ContextImpl.sendActivity()", async (t) => {
 
     const span = exporter.getSpan("activitypub.outbox");
     assert(span != null);
-    assertEquals(
-      span.attributes["activitypub.activity.cc"],
-      ["https://example.com/cc"],
-    );
-    assertEquals(
-      span.attributes["activitypub.activity.bcc"],
-      ["https://example.com/bcc"],
-    );
+    assertEquals(span.attributes["activitypub.activity.cc"], [
+      "https://example.com/cc",
+    ]);
+    assertEquals(span.attributes["activitypub.activity.bcc"], [
+      "https://example.com/bcc",
+    ]);
   });
 
   const queue: MessageQueue & { messages: Message[]; clear(): void } = {
@@ -11234,8 +11006,7 @@ test("ContextImpl.sendActivity()", async (t) => {
       this.messages.push(message);
       return Promise.resolve();
     },
-    async listen() {
-    },
+    async listen() {},
     clear() {
       while (this.messages.length > 0) this.messages.shift();
     },
@@ -11315,11 +11086,9 @@ test("ContextImpl.sendActivity()", async (t) => {
     });
     assertEquals(signedActivity.id?.href, "https://example.com/activity/1");
     let proofCount = 0;
-    for await (
-      const proof of signedActivity.getProofs({
-        contextLoader: documentLoader,
-      })
-    ) {
+    for await (const proof of signedActivity.getProofs({
+      contextLoader: documentLoader,
+    })) {
       assertEquals(
         proof.verificationMethodId?.href,
         "https://example.com/john#multikey-2",
@@ -11341,8 +11110,8 @@ test("ContextImpl.sendActivity()", async (t) => {
         documentLoader: documentLoader,
         contextLoader: documentLoader,
       });
-      const actorEdKey = (await ctxForProof.getActorKeyPairs("1")).find((key) =>
-        key.privateKey.algorithm.name === "Ed25519"
+      const actorEdKey = (await ctxForProof.getActorKeyPairs("1")).find(
+        (key) => key.privateKey.algorithm.name === "Ed25519",
       );
       assert(actorEdKey != null);
       assert(actorEdKey.multikey.id != null);
@@ -11387,7 +11156,7 @@ test("ContextImpl.sendActivity()", async (t) => {
       verified = null;
       await federation2.processQueuedTask(undefined, outboxMsg);
       assertEquals(verified, ["proof"]);
-      const postedSigned = await request?.json() as Record<string, unknown>;
+      const postedSigned = (await request?.json()) as Record<string, unknown>;
       const postedSignedObject = postedSigned.object as Record<string, unknown>;
       assertEquals(Array.isArray(postedSignedObject.attachment), true);
     },
@@ -11597,12 +11366,10 @@ test("ContextImpl.sendActivity()", async (t) => {
       to: ctx.getFollowersUri("1"),
     });
 
-    await ctx.sendActivity(
-      { identifier: "1" },
-      "followers",
-      activity,
-      { syncCollection: true, preferSharedInbox: true },
-    );
+    await ctx.sendActivity({ identifier: "1" }, "followers", activity, {
+      syncCollection: true,
+      preferSharedInbox: true,
+    });
 
     assertNotEquals(collectionSyncHeader, null);
   });
@@ -11627,10 +11394,7 @@ test("ContextImpl.sendActivity()", async (t) => {
     const fanoutMessage = queue.messages[0];
     assertEquals(fanoutMessage.type, "fanout");
     if (fanoutMessage.type === "fanout") {
-      assertEquals(
-        fanoutMessage.orderingKey,
-        "https://example.com/note/1",
-      );
+      assertEquals(fanoutMessage.orderingKey, "https://example.com/note/1");
     }
   });
 
@@ -11815,7 +11579,10 @@ test({
       ed25519Multikey.id!,
     );
     assert(await ctx.routeActivity("id", signedInvite));
-    assertEquals(activities, [[null, signedOffer], ["id", signedInvite]]);
+    assertEquals(activities, [
+      [null, signedOffer],
+      ["id", signedInvite],
+    ]);
 
     // Unsigned activity dereferenced to 404; the WebFinger fallback of
     // lookupObject() must not reach the network:
@@ -11832,7 +11599,10 @@ test({
           ),
       ),
     );
-    assertEquals(activities, [[null, signedOffer], ["id", signedInvite]]);
+    assertEquals(activities, [
+      [null, signedOffer],
+      ["id", signedInvite],
+    ]);
 
     // Unsigned activity dereferenced to 200, but not an Activity
     assertFalse(
@@ -11844,7 +11614,10 @@ test({
         }),
       ),
     );
-    assertEquals(activities, [[null, signedOffer], ["id", signedInvite]]);
+    assertEquals(activities, [
+      [null, signedOffer],
+      ["id", signedInvite],
+    ]);
 
     // Unsigned activity dereferenced to 200, but has a different id
     assertFalse(
@@ -11856,7 +11629,10 @@ test({
         }),
       ),
     );
-    assertEquals(activities, [[null, signedOffer], ["id", signedInvite]]);
+    assertEquals(activities, [
+      [null, signedOffer],
+      ["id", signedInvite],
+    ]);
 
     // Unsigned activity dereferenced to 200, but has no actor
     assertFalse(
@@ -11870,7 +11646,10 @@ test({
         }),
       ),
     );
-    assertEquals(activities, [[null, signedOffer], ["id", signedInvite]]);
+    assertEquals(activities, [
+      [null, signedOffer],
+      ["id", signedInvite],
+    ]);
 
     // Unsigned activity dereferenced to 200, but actor is cross-origin
     assertFalse(
@@ -11882,7 +11661,10 @@ test({
         }),
       ),
     );
-    assertEquals(activities, [[null, signedOffer], ["id", signedInvite]]);
+    assertEquals(activities, [
+      [null, signedOffer],
+      ["id", signedInvite],
+    ]);
 
     // Unsigned activity dereferenced to 200, but no inbox listener corresponds
     assert(
@@ -11894,7 +11676,10 @@ test({
         }),
       ),
     );
-    assertEquals(activities, [[null, signedOffer], ["id", signedInvite]]);
+    assertEquals(activities, [
+      [null, signedOffer],
+      ["id", signedInvite],
+    ]);
 
     // Unsigned activity dereferenced to 200
     assert(
@@ -11906,21 +11691,18 @@ test({
         }),
       ),
     );
-    assertEquals(
-      activities,
+    assertEquals(activities, [
+      [null, signedOffer],
+      ["id", signedInvite],
       [
-        [null, signedOffer],
-        ["id", signedInvite],
-        [
-          null,
-          new vocab.Invite({
-            id: new URL("https://example.com/invite"),
-            actor: new URL("https://example.com/person"),
-            object: new URL("https://example.com/object"),
-          }),
-        ],
+        null,
+        new vocab.Invite({
+          id: new URL("https://example.com/invite"),
+          actor: new URL("https://example.com/person"),
+          object: new URL("https://example.com/object"),
+        }),
       ],
-    );
+    ]);
   },
 });
 
@@ -11968,14 +11750,8 @@ test({
       "fedify.queue.task.enqueued",
     );
     assertEquals(enqueuedMetrics.length, 1);
-    assertEquals(
-      enqueuedMetrics[0].attributes["fedify.queue.role"],
-      "inbox",
-    );
-    assertEquals(
-      enqueuedMetrics[0].attributes["fedify.queue.task.attempt"],
-      0,
-    );
+    assertEquals(enqueuedMetrics[0].attributes["fedify.queue.role"], "inbox");
+    assertEquals(enqueuedMetrics[0].attributes["fedify.queue.task.attempt"], 0);
   },
 });
 
@@ -12032,8 +11808,7 @@ test({
 });
 
 test({
-  name:
-    "ContextImpl.routeActivity() records inbox.activity processed without queue",
+  name: "ContextImpl.routeActivity() records inbox.activity processed without queue",
   permissions: { env: true, read: true },
   async fn() {
     const [meterProvider, recorder] = createTestMeterProvider();
@@ -12041,7 +11816,8 @@ test({
       kv: new MemoryKvStore(),
       meterProvider,
     });
-    federation.setInboxListeners("/u/{identifier}/i", "/i")
+    federation
+      .setInboxListeners("/u/{identifier}/i", "/i")
       .on(vocab.Offer, () => {});
 
     const ctx = new ContextImpl({
@@ -12076,8 +11852,7 @@ test({
 });
 
 test({
-  name:
-    "ContextImpl.routeActivity() records inbox.activity rejected for unsupported type and duplicates",
+  name: "ContextImpl.routeActivity() records inbox.activity rejected for unsupported type and duplicates",
   permissions: { env: true, read: true },
   async fn() {
     const [meterProvider, recorder] = createTestMeterProvider();
@@ -12085,7 +11860,8 @@ test({
       kv: new MemoryKvStore(),
       meterProvider,
     });
-    federation.setInboxListeners("/u/{identifier}/i", "/i")
+    federation
+      .setInboxListeners("/u/{identifier}/i", "/i")
       .on(vocab.Offer, () => {});
 
     const ctx = new ContextImpl({
@@ -12120,8 +11896,8 @@ test({
     assert(await ctx.routeActivity(null, dupOffer));
 
     const measurements = recorder.getMeasurements("activitypub.inbox.activity");
-    const rejected = measurements.filter((m) =>
-      m.attributes["activitypub.processing.result"] === "rejected"
+    const rejected = measurements.filter(
+      (m) => m.attributes["activitypub.processing.result"] === "rejected",
     );
     // One for the unsupported Create, one for the duplicate Offer.
     assertEquals(rejected.length, 2);
@@ -12174,7 +11950,8 @@ for (const queued of [false, true]) {
     });
     const received: unknown[] = [];
     const contextDocuments: unknown[] = [];
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(Create, async (ctx, activity) => {
         received.push(
           await activity.toJsonLd({
@@ -12193,8 +11970,8 @@ for (const queued of [false, true]) {
       });
     const ctx = federation.createContext(new URL("https://local.example/"));
     async function processInbox() {
-      const inboxMessages = messages.filter((message) =>
-        message.type === "inbox"
+      const inboxMessages = messages.filter(
+        (message) => message.type === "inbox",
       );
       for (const message of inboxMessages) {
         await federation.processQueuedTask(undefined, message);
@@ -12235,18 +12012,15 @@ test("ContextImpl.routeActivity() marks queued signed activities as non-LDS", as
       queuedMessage = message as InboxMessage;
       return Promise.resolve();
     },
-    async listen() {
-    },
+    async listen() {},
   };
   const federation = new FederationImpl({
     kv: new MemoryKvStore(),
     queue,
   });
-  federation
-    .setInboxListeners("/u/{identifier}/i", "/i")
-    .on(Offer, () => {
-      throw new Error("listener should not run for queued routeActivity");
-    });
+  federation.setInboxListeners("/u/{identifier}/i", "/i").on(Offer, () => {
+    throw new Error("listener should not run for queued routeActivity");
+  });
 
   const ctx = new ContextImpl({
     url: new URL("https://example.com/"),
@@ -12288,7 +12062,8 @@ for (const queued of [false, true]) {
       manuallyStartQueue: true,
     });
     let listenerCalls = 0;
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(Create, () => {
         listenerCalls++;
       });
@@ -12319,7 +12094,8 @@ test("ContextImpl.routeActivity() rejects a missing actor before routing", async
     contextLoaderFactory: () => mockDocumentLoader,
   });
   let listenerCalls = 0;
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .on(Create, () => {
       listenerCalls++;
     });
@@ -12354,41 +12130,37 @@ test("FederationImpl.processQueuedTask() rejects untrusted activity origins befo
     }
   }
 
-  for (
-    const activity of [
-      {
-        "@context": "https://www.w3.org/ns/activitystreams",
-        id: "https://victim.example/activities/1",
-        type: "Create",
-        actor: "https://attacker.example/actor",
-      },
-      {
-        "@context": "https://www.w3.org/ns/activitystreams",
-        id: "https://victim.example/activities/2",
-        type: "Create",
-      },
-    ]
-  ) {
+  for (const activity of [
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://victim.example/activities/1",
+      type: "Create",
+      actor: "https://attacker.example/actor",
+    },
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://victim.example/activities/2",
+      type: "Create",
+    },
+  ]) {
     const kv = new TrackingKvStore();
     const federation = new FederationImpl<void>({ kv });
     let listenerCalls = 0;
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(Create, () => {
         listenerCalls++;
       });
-    await federation.processQueuedTask(
-      undefined,
-      {
-        type: "inbox",
-        id: crypto.randomUUID(),
-        baseUrl: "https://local.example",
-        activity,
-        started: new Date().toISOString(),
-        attempt: 0,
-        identifier: null,
-        traceContext: {},
-      } satisfies InboxMessage,
-    );
+    await federation.processQueuedTask(undefined, {
+      type: "inbox",
+      id: crypto.randomUUID(),
+      baseUrl: "https://local.example",
+      activity,
+      started: new Date().toISOString(),
+      attempt: 0,
+      identifier: null,
+      traceContext: {},
+    } satisfies InboxMessage);
     assertEquals(listenerCalls, 0);
     assertEquals(kv.reads, 0);
     assertEquals(kv.writes, 0);
@@ -12400,28 +12172,26 @@ test("FederationImpl.processQueuedTask() rejects untrusted activity origins befo
     skipSignatureVerification: true,
   });
   let listenerCalls = 0;
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .on(Create, () => {
       listenerCalls++;
     });
-  await federation.processQueuedTask(
-    undefined,
-    {
-      type: "inbox",
-      id: crypto.randomUUID(),
-      baseUrl: "https://local.example",
-      activity: {
-        "@context": "https://www.w3.org/ns/activitystreams",
-        id: "https://victim.example/activities/opt-out",
-        type: "Create",
-        actor: "https://attacker.example/actor",
-      },
-      started: new Date().toISOString(),
-      attempt: 0,
-      identifier: null,
-      traceContext: {},
-    } satisfies InboxMessage,
-  );
+  await federation.processQueuedTask(undefined, {
+    type: "inbox",
+    id: crypto.randomUUID(),
+    baseUrl: "https://local.example",
+    activity: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://victim.example/activities/opt-out",
+      type: "Create",
+      actor: "https://attacker.example/actor",
+    },
+    started: new Date().toISOString(),
+    attempt: 0,
+    identifier: null,
+    traceContext: {},
+  } satisfies InboxMessage);
   assertEquals(listenerCalls, 1);
   // The idempotency key, and the key that workers of older versions of Fedify
   // recorded:
@@ -12549,7 +12319,12 @@ test("symbol-named custom collections are served and parsed", async () => {
       );
     }
   }
-  assertEquals(calls, [[0, null], [0, "next"], [1, null], [1, "next"]]);
+  assertEquals(calls, [
+    [0, null],
+    [0, "next"],
+    [1, null],
+    [1, "next"],
+  ]);
 });
 
 test("InboxContextImpl.forwardActivity()", async (t) => {
@@ -12574,7 +12349,7 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
       verified.push("proof");
     }
     const key = await verifyRequest(request, options);
-    if (key != null && await doesActorOwnKey(activity, key, options)) {
+    if (key != null && (await doesActorOwnKey(activity, key, options))) {
       verified.push("http");
     }
     if (verified.length > 0) return new Response(null, { status: 202 });
@@ -12645,7 +12420,7 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
           id: new URL("https://example.com/recipient"),
           inboxId: new URL("https://example.com/inbox"),
         },
-      )
+      ),
     );
     assertEquals(verified, []);
   });
@@ -12755,7 +12530,7 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
           inboxId: new URL("https://example.com/inbox"),
         },
         { skipIfUnsigned: true },
-      )
+      ),
     );
     assertEquals(verified, []);
   });
@@ -12962,8 +12737,8 @@ class TtlRecordingKvStore implements KvStore {
 
   /** The TTL of the most recent write to `key`, or `undefined` if never set. */
   lastTtl(key: KvKey): Temporal.Duration | undefined {
-    const matches = this.writes.filter((w) =>
-      w.key.length === key.length && w.key.every((p, i) => p === key[i])
+    const matches = this.writes.filter(
+      (w) => w.key.length === key.length && w.key.every((p, i) => p === key[i]),
     );
     return matches.length < 1 ? undefined : matches[matches.length - 1].ttl;
   }
@@ -12989,10 +12764,11 @@ test("createFederation() applies httpMessageSignaturesSpecTtl to remembered spec
     const attempts: HttpMessageSignaturesSpec[] = [];
     fetchMock.post("https://example.com/inbox", async (cl) => {
       const request = cl.request!.clone() as Request;
-      const spec: HttpMessageSignaturesSpec =
-        request.headers.has("Signature-Input")
-          ? "rfc9421"
-          : "draft-cavage-http-signatures-12";
+      const spec: HttpMessageSignaturesSpec = request.headers.has(
+        "Signature-Input",
+      )
+        ? "rfc9421"
+        : "draft-cavage-http-signatures-12";
       attempts.push(spec);
       // This peer only understands the legacy spec, so the first knock with
       // RFC 9421 is rejected and Fedify has to fall back and remember.
@@ -13093,15 +12869,17 @@ test("createFederation() applies publicKeyTtl to cached public keys", async () =
     federation.allowPrivateAddress = true;
     const inbox: vocab.Create[] = [];
     federation
-      .setActorDispatcher(
-        "/users/{identifier}",
-        (_, identifier) => identifier === "john" ? new vocab.Person({}) : null,
+      .setActorDispatcher("/users/{identifier}", (_, identifier) =>
+        identifier === "john" ? new vocab.Person({}) : null,
       )
-      .setKeyPairsDispatcher(() => [{
-        privateKey: rsaPrivateKey2,
-        publicKey: rsaPublicKey2.publicKey!,
-      }]);
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      .setKeyPairsDispatcher(() => [
+        {
+          privateKey: rsaPrivateKey2,
+          publicKey: rsaPublicKey2.publicKey!,
+        },
+      ]);
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(vocab.Create, (_ctx, create) => {
         inbox.push(create);
       });
@@ -13133,7 +12911,7 @@ test("createFederation() applies publicKeyTtl to cached public keys", async () =
     assertEquals((await deliver()).status, 202);
     assertEquals(inbox.length, 1);
     assert(keyFetches > 0);
-    assert(await kv.get(publicKeyKey) != null);
+    assert((await kv.get(publicKeyKey)) != null);
     assertEquals(kv.lastTtl(publicKeyKey)?.total("day"), 7);
 
     // While the cache is warm the key is not refetched.  Delivery still
@@ -13141,9 +12919,10 @@ test("createFederation() applies publicKeyTtl to cached public keys", async () =
     // (GHSA-q9f8-5hc7-898f), and that document is served from this very URL,
     // so count writes to the key cache rather than fetches.
     const keyCacheWrites = () =>
-      kv.writes.filter((w) =>
-        w.key.length === publicKeyKey.length &&
-        w.key.every((part, i) => part === publicKeyKey[i])
+      kv.writes.filter(
+        (w) =>
+          w.key.length === publicKeyKey.length &&
+          w.key.every((part, i) => part === publicKeyKey[i]),
       ).length;
     const warmWrites = keyCacheWrites();
     assertEquals((await deliver()).status, 202);
@@ -13158,7 +12937,7 @@ test("createFederation() applies publicKeyTtl to cached public keys", async () =
     assertEquals((await deliver()).status, 202);
     assertEquals(inbox.length, 3);
     assert(keyFetches > 0);
-    assert(await kv.get(publicKeyKey) != null);
+    assert((await kv.get(publicKeyKey)) != null);
     assertEquals(kv.lastTtl(publicKeyKey)?.total("day"), 7);
   } finally {
     fetchMock.hardReset();
@@ -13438,7 +13217,10 @@ test("ContextImpl.enqueueTaskMany()", async (t) => {
       strictEqual(options.delay.total("second"), 30);
       strictEqual(options.orderingKey, "batch");
       const decoded = await Promise.all(messages.map(decodeEnvelope));
-      deepStrictEqual(decoded.map((d) => d.title), ["a", "b", "c"]);
+      deepStrictEqual(
+        decoded.map((d) => d.title),
+        ["a", "b", "c"],
+      );
       for (const message of messages) strictEqual(message.orderingKey, "batch");
     },
   );
@@ -13499,7 +13281,10 @@ test("ContextImpl.enqueueTaskMany()", async (t) => {
       const decoded = await Promise.all(
         queue.enqueued.map(({ message }) => decodeEnvelope(message)),
       );
-      deepStrictEqual(decoded.map((d) => d.title), ["x", "y"]);
+      deepStrictEqual(
+        decoded.map((d) => d.title),
+        ["x", "y"],
+      );
       for (const { message, options } of queue.enqueued) {
         strictEqual(message.orderingKey, "batch");
         strictEqual(options?.orderingKey, "batch");
@@ -13585,11 +13370,15 @@ test("Federation.fetch() bounds inbox bodies before dispatch", async () => {
     skipSignatureVerification: true,
     contextLoaderFactory: () => mockDocumentLoader,
   });
-  federation.setActorDispatcher("/actors/{identifier}", () =>
-    new Person({
-      id: new URL("https://example.com/actor"),
-    }));
-  federation.setInboxListeners("/actors/{identifier}/inbox", "/inbox")
+  federation.setActorDispatcher(
+    "/actors/{identifier}",
+    () =>
+      new Person({
+        id: new URL("https://example.com/actor"),
+      }),
+  );
+  federation
+    .setInboxListeners("/actors/{identifier}/inbox", "/inbox")
     .on(Create, () => {
       dispatched = true;
     });
@@ -13597,9 +13386,8 @@ test("Federation.fetch() bounds inbox bodies before dispatch", async () => {
     const response = await federation.fetch(
       new Request("https://example.com/inbox", {
         method: "POST",
-        headers: contentLength == null
-          ? {}
-          : { "Content-Length": contentLength },
+        headers:
+          contentLength == null ? {} : { "Content-Length": contentLength },
         body: json.padEnd(size + 1),
       }),
       { contextData: undefined },
@@ -13609,15 +13397,18 @@ test("Federation.fetch() bounds inbox bodies before dispatch", async () => {
   }
   let canceled = false;
   let pulls = 0;
-  const body = new ReadableStream<Uint8Array>({
-    pull(controller) {
-      pulls++;
-      controller.enqueue(new Uint8Array(64 * 1024));
+  const body = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        pulls++;
+        controller.enqueue(new Uint8Array(64 * 1024));
+      },
+      cancel() {
+        canceled = true;
+      },
     },
-    cancel() {
-      canceled = true;
-    },
-  }, { highWaterMark: 0 });
+    { highWaterMark: 0 },
+  );
   const request = new Request("https://example.com/inbox", {
     method: "POST",
     body,
@@ -13677,13 +13468,10 @@ test("Federation.fetch() serves tombstones of objects", async (t) => {
     (ctx, values) =>
       new vocab.Tombstone({ id: ctx.getObjectUri(vocab.Tombstone, values) }),
   );
-  federation.setObjectDispatcher(
-    vocab.Object,
-    "/objects/{id}",
-    (ctx, values) =>
-      values.id === "deleted"
-        ? new vocab.Tombstone({ id: ctx.getObjectUri(vocab.Object, values) })
-        : new vocab.Note({ id: ctx.getObjectUri(vocab.Object, values) }),
+  federation.setObjectDispatcher(vocab.Object, "/objects/{id}", (ctx, values) =>
+    values.id === "deleted"
+      ? new vocab.Tombstone({ id: ctx.getObjectUri(vocab.Object, values) })
+      : new vocab.Note({ id: ctx.getObjectUri(vocab.Object, values) }),
   );
 
   function fetch(path: string, method = "GET"): Promise<Response> {
@@ -13703,7 +13491,7 @@ test("Federation.fetch() serves tombstones of objects", async (t) => {
       response.headers.get("Content-Type"),
       "application/activity+json",
     );
-    const body = await response.json() as Record<string, unknown>;
+    const body = (await response.json()) as Record<string, unknown>;
     assertEquals(body.id, "https://example.com/users/john/notes/deleted");
     assertEquals(body.type, "Tombstone");
     assertEquals(body.formerType, "as:Note");
@@ -13719,7 +13507,7 @@ test("Federation.fetch() serves tombstones of objects", async (t) => {
   await t.step("objects and null are served as before", async () => {
     const response = await fetch("/users/john/notes/123");
     assertEquals(response.status, 200);
-    const body = await response.json() as Record<string, unknown>;
+    const body = (await response.json()) as Record<string, unknown>;
     assertEquals(body.type, "Note");
     const notFound = await fetch("/users/john/notes/missing");
     assertEquals(notFound.status, 404);
@@ -13789,10 +13577,7 @@ test("Federation.fetch() serves tombstones of objects", async (t) => {
     const broadOptions: GetObjectOptions = { tombstone: "passthrough" };
     const broadPromise = ctx.getObject(vocab.Note, values, broadOptions);
     type BroadType = Assert<
-      IsEqual<
-        Awaited<typeof broadPromise>,
-        vocab.Note | vocab.Tombstone | null
-      >
+      IsEqual<Awaited<typeof broadPromise>, vocab.Note | vocab.Tombstone | null>
     >;
     const broadTypeCheck: BroadType = true;
     void broadTypeCheck;
@@ -13803,9 +13588,13 @@ test("Federation.fetch() serves tombstones of objects", async (t) => {
       vocab.Note,
     );
     assertEquals(
-      await ctx.getObject(vocab.Note, { identifier: "john", id: "missing" }, {
-        tombstone: "passthrough",
-      }),
+      await ctx.getObject(
+        vocab.Note,
+        { identifier: "john", id: "missing" },
+        {
+          tombstone: "passthrough",
+        },
+      ),
       null,
     );
 
@@ -13816,73 +13605,73 @@ test("Federation.fetch() serves tombstones of objects", async (t) => {
       vocab.Tombstone,
     );
     assertInstanceOf(
-      await ctx.getObject(vocab.Object, { id: "deleted" }, {
-        tombstone: "suppress",
-      }),
+      await ctx.getObject(
+        vocab.Object,
+        { id: "deleted" },
+        {
+          tombstone: "suppress",
+        },
+      ),
       vocab.Tombstone,
     );
   });
 
-  await t.step(
-    "authorization predicates can get the tombstone",
-    async () => {
-      await withLogtapeLock(async () => {
-        const records: LogRecord[] = [];
-        await reset();
-        try {
-          await configure({
-            sinks: {
-              buffer(record: LogRecord): void {
-                records.push(record);
-              },
+  await t.step("authorization predicates can get the tombstone", async () => {
+    await withLogtapeLock(async () => {
+      const records: LogRecord[] = [];
+      await reset();
+      try {
+        await configure({
+          sinks: {
+            buffer(record: LogRecord): void {
+              records.push(record);
             },
-            filters: {},
-            loggers: [
-              { category: ["fedify", "federation"], sinks: ["buffer"] },
-              { category: ["logtape", "meta"], sinks: [] },
-            ],
-          });
-          const federation = createFederation<void>({
-            kv: new MemoryKvStore(),
-            documentLoaderFactory: () => mockDocumentLoader,
-            contextLoaderFactory: () => mockDocumentLoader,
-          });
-          let dispatched = 0;
-          federation.setObjectDispatcher(
-            vocab.Note,
-            "/notes/{id}",
-            (ctx, values) => {
-              dispatched++;
-              return new vocab.Tombstone({
-                id: ctx.getObjectUri(vocab.Note, values),
-              });
-            },
-          ).authorize(async (ctx, values) => {
+          },
+          filters: {},
+          loggers: [
+            { category: ["fedify", "federation"], sinks: ["buffer"] },
+            { category: ["logtape", "meta"], sinks: [] },
+          ],
+        });
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          documentLoaderFactory: () => mockDocumentLoader,
+          contextLoaderFactory: () => mockDocumentLoader,
+        });
+        let dispatched = 0;
+        federation
+          .setObjectDispatcher(vocab.Note, "/notes/{id}", (ctx, values) => {
+            dispatched++;
+            return new vocab.Tombstone({
+              id: ctx.getObjectUri(vocab.Note, values),
+            });
+          })
+          .authorize(async (ctx, values) => {
             const object = await ctx.getObject(vocab.Note, values, {
               tombstone: "passthrough",
             });
             return object instanceof vocab.Tombstone;
           });
-          const response = await federation.fetch(
-            new Request("https://example.com/notes/1", {
-              headers: { Accept: "application/activity+json" },
-            }),
-            { contextData: undefined },
-          );
-          assertEquals(response.status, 410);
-          assertEquals(dispatched, 2);
-          assert(
-            records.some((record) =>
+        const response = await federation.fetch(
+          new Request("https://example.com/notes/1", {
+            headers: { Accept: "application/activity+json" },
+          }),
+          { contextData: undefined },
+        );
+        assertEquals(response.status, 410);
+        assertEquals(dispatched, 2);
+        assert(
+          records.some(
+            (record) =>
               getRawMessage(record).startsWith("RequestContext.getObject(") &&
-              getRawMessage(record).includes("may cause an infinite loop")
-            ),
-          );
-        } finally {
-          await reset();
-        }
-      });
-    },
-  );
+              getRawMessage(record).includes("may cause an infinite loop"),
+          ),
+        );
+      } finally {
+        await reset();
+      }
+    });
+  });
 
   await t.step("warns about the id of a tombstone", async () => {
     await withLogtapeLock(async () => {
@@ -13922,8 +13711,8 @@ test("Federation.fetch() serves tombstones of objects", async (t) => {
           (_ctx, { id }) =>
             id === "live"
               ? new vocab.Note({
-                id: new URL("https://example.com/other/live"),
-              })
+                  id: new URL("https://example.com/other/live"),
+                })
               : new vocab.Tombstone({ id: ids[id] }),
         );
         const warnings = async (id: string) => {
@@ -14040,7 +13829,7 @@ test("createFederation() applies documentLoaderTimeout to built-in loaders", asy
         // the signal's reason or a generic AbortError:
         (error) =>
           error === reason ||
-          error instanceof Error && error.name === "AbortError",
+          (error instanceof Error && error.name === "AbortError"),
       );
     });
   } finally {
@@ -14049,14 +13838,12 @@ test("createFederation() applies documentLoaderTimeout to built-in loaders", asy
 });
 
 test("createFederation() validates documentLoaderTimeout", () => {
-  for (
-    const documentLoaderTimeout of [
-      { milliseconds: 0 },
-      { seconds: -1 },
-      { days: 25 },
-      { months: 1 },
-    ]
-  ) {
+  for (const documentLoaderTimeout of [
+    { milliseconds: 0 },
+    { seconds: -1 },
+    { days: 25 },
+    { months: 1 },
+  ]) {
     throws(
       () =>
         createFederation<void>({

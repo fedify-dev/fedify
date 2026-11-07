@@ -34,7 +34,7 @@ test("sparse scalar copies preserve own indices and omit metadata", () => {
     });
     strictEqual(copy.names[6000], "visible");
     strictEqual(0 in copy.names, false);
-    strictEqual((sparseLength - 1) in copy.names, false);
+    strictEqual(sparseLength - 1 in copy.names, false);
     notStrictEqual(copy.names, names);
   }
   deepStrictEqual(globalThis.Object.getOwnPropertyDescriptors(names), before);
@@ -222,7 +222,8 @@ test("sparse validation rejects invalid keys injected by element proxies", () =>
       },
     });
     throws(
-      () => replace ? new Note({}).clone({ licenses }) : new Note({ licenses }),
+      () =>
+        replace ? new Note({}).clone({ licenses }) : new Note({ licenses }),
       TypeError,
     );
   }
@@ -303,7 +304,10 @@ test("sparse validation propagates element reflection errors", () => {
       throw failure;
     },
   });
-  throws(() => new Note({ licenses }), (error) => error === failure);
+  throws(
+    () => new Note({ licenses }),
+    (error) => error === failure,
+  );
 });
 
 test("sparse deep traversal snapshots keys and reads later current values", () => {
@@ -316,7 +320,7 @@ test("sparse deep traversal snapshots keys and reads later current values", () =
   });
   class CapturesCopy extends Note {
     override clone(): Note {
-      return destination = super.clone();
+      return (destination = super.clone());
     }
   }
   class ChangesLaterEntries extends Translation {
@@ -371,20 +375,17 @@ test("small sparse object replacements retain trusted holes", async () => {
   const objects = new Array<Note>(3);
   objects[1] = child;
   const source = new Create({ objects });
-  for (
-    const copy of [
-      source,
-      source.clone(),
-      source.clone({ objects }),
-      source.deepClone({ objects }),
-    ]
-  ) {
+  for (const copy of [
+    source,
+    source.clone(),
+    source.clone({ objects }),
+    source.deepClone({ objects }),
+  ]) {
     const values = await Array.fromAsync(copy.getObjects());
-    deepStrictEqual(values.map((value) => value?.content), [
-      undefined,
-      "trusted",
-      undefined,
-    ]);
+    deepStrictEqual(
+      values.map((value) => value?.content),
+      [undefined, "trusted", undefined],
+    );
   }
   deepStrictEqual(
     await Array.fromAsync(source.clone({ object: child }).getObjects()),
@@ -398,16 +399,19 @@ test("small sparse object replacements retain trusted holes", async () => {
 
 test("decoded and warmed object trust stays local across clones", async () => {
   let fetches = 0;
-  const original = await Create.fromJsonLd({
-    "@context": "https://www.w3.org/ns/activitystreams",
-    id: "https://a.example/create",
-    type: "Create",
-    object: {
-      id: "https://b.example/note",
-      type: "Note",
-      content: "embedded",
+  const original = await Create.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://a.example/create",
+      type: "Create",
+      object: {
+        id: "https://b.example/note",
+        type: "Note",
+        content: "embedded",
+      },
     },
-  }, { contextLoader: mockDocumentLoader });
+    { contextLoader: mockDocumentLoader },
+  );
   // oxlint-disable-next-line eslint/require-await
   const documentLoader = async (url: string) => {
     fetches++;
@@ -454,25 +458,28 @@ for (const defaultKind of ["singular", "plural"] as const) {
         values: ConstructorParameters<typeof Create>[0],
         options: ConstructorParameters<typeof Create>[1] = {},
       ) {
-        const defaults = enableDefaults && values.object == null &&
-            values.objects == null
-          ? defaultKind === "singular"
-            ? { object: defaultObject }
-            : { objects: [defaultObject] }
-          : {};
+        const defaults =
+          enableDefaults && values.object == null && values.objects == null
+            ? defaultKind === "singular"
+              ? { object: defaultObject }
+              : { objects: [defaultObject] }
+            : {};
         super({ ...defaults, ...values }, options);
       }
     }
-    const original = await StatefulCreate.fromJsonLd({
-      "@context": "https://www.w3.org/ns/activitystreams",
-      id: "https://a.example/create",
-      type: "Create",
-      object: {
-        id: "https://b.example/note",
-        type: "Note",
-        content: "untrusted embedded",
+    const original = await StatefulCreate.fromJsonLd(
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: "https://a.example/create",
+        type: "Create",
+        object: {
+          id: "https://b.example/note",
+          type: "Note",
+          content: "untrusted embedded",
+        },
       },
-    }, { contextLoader: mockDocumentLoader });
+      { contextLoader: mockDocumentLoader },
+    );
     ok(original instanceof StatefulCreate);
     enableDefaults = true;
     strictEqual(await new StatefulCreate({}).getObject(), defaultObject);
@@ -495,10 +502,12 @@ for (const defaultKind of ["singular", "plural"] as const) {
     for (const copy of copies) {
       ok(copy instanceof StatefulCreate);
       strictEqual(
-        (await copy.getObject({
-          documentLoader,
-          contextLoader: mockDocumentLoader,
-        }))?.content,
+        (
+          await copy.getObject({
+            documentLoader,
+            contextLoader: mockDocumentLoader,
+          })
+        )?.content,
         "fetched",
       );
     }

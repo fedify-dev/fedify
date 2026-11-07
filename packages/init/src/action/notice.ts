@@ -26,14 +26,7 @@ ${d("                   ")}  ${f("                      |___/")}
 /** Prints the user's selected initialization options to stdout. */
 export const noticeOptions: <T extends RequiredNotNull<InitCommand>>(
   options: T,
-) => void = (
-  {
-    packageManager,
-    webFramework,
-    kvStore,
-    messageQueue,
-  },
-) =>
+) => void = ({ packageManager, webFramework, kvStore, messageQueue }) =>
   printMessage`
   Package manager: ${packageManager};
   Web framework: ${webFramework};
@@ -108,9 +101,9 @@ export const noticeEnvKeyValue = ([key, value]: [string, string]) => {
  * Prints the post-initialization instructions, showing how to start
  * the dev server and where to edit the federation configuration.
  */
-export const noticeHowToRun = (
-  { initializer: { instruction, federationFile } }: InitCommandData,
-) =>
+export const noticeHowToRun = ({
+  initializer: { instruction, federationFile },
+}: InitCommandData) =>
   printMessage`
 ${instruction}
     
@@ -118,13 +111,11 @@ Start by editing the ${text(federationFile)} file to define your federation!
 `;
 
 /** Prints a notice that dependency installation was skipped and how to install them manually. */
-export const noticeSkippedInstall = (
-  { packageManager }: InitCommandData,
-) =>
+export const noticeSkippedInstall = ({ packageManager }: InitCommandData) =>
   printMessage`
-Dependencies were not installed.  Run ${
-    commandLine(`${packageManager} install`)
-  } in the project directory to install them.
+Dependencies were not installed.  Run ${commandLine(
+    `${packageManager} install`,
+  )} in the project directory to install them.
 `;
 
 /**
@@ -133,9 +124,9 @@ Dependencies were not installed.  Run ${
  */
 export function noticeErrorWhileAddDeps(command: string[]) {
   return (error: unknown) => {
-    printErrorMessage`The command ${command.join(" ")} failed with the error: ${
-      String(error)
-    }`;
+    printErrorMessage`The command ${command.join(" ")} failed with the error: ${String(
+      error,
+    )}`;
     throw new Error("Failed to add dependencies.");
   };
 }

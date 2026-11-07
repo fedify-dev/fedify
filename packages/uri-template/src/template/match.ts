@@ -73,10 +73,10 @@ function canExpandTo(
       if (token.vars.some((variable) => variable.prefix != null)) return true;
       const spec = operatorSpecs[token.operator];
       specs.add(spec);
-      namedOrExploded ||= spec.named ||
-        token.vars.some((variable) => variable.explode);
+      namedOrExploded ||=
+        spec.named || token.vars.some((variable) => variable.explode);
       verbatimPercent ||= token.vars.some((variable) =>
-        variable.name.includes("%")
+        variable.name.includes("%"),
       );
     }
   }
@@ -85,20 +85,29 @@ function canExpandTo(
   // literal tokens. Percent encodings and composite separators are output too.
   for (const [char, difference] of counts) {
     if (
-      difference === 0 || char === "%" || char === "," ||
+      difference === 0 ||
+      char === "%" ||
+      char === "," ||
       (char === "=" && namedOrExploded)
-    ) continue;
+    )
+      continue;
     if (
-      [...specs].some((spec) =>
-        spec.first.includes(char) || spec.sep.includes(char) ||
-        equivalent(encodeValue(spec.allowReserved)(char), char)
+      [...specs].some(
+        (spec) =>
+          spec.first.includes(char) ||
+          spec.sep.includes(char) ||
+          equivalent(encodeValue(spec.allowReserved)(char), char),
       )
-    ) continue;
+    )
+      continue;
     return false;
   }
-  return verbatimPercent || hasPossiblePercentEncoding(
-    uri,
-    [...specs].some((spec) => spec.allowReserved),
+  return (
+    verbatimPercent ||
+    hasPossiblePercentEncoding(
+      uri,
+      [...specs].some((spec) => spec.allowReserved),
+    )
   );
 }
 
@@ -119,7 +128,8 @@ function hasPossiblePercentEncoding(
     }
     if (!isPctEncodedAt(uri, index)) return false;
     const start = index;
-    do index += 3; while (isPctEncodedAt(uri, index));
+    do index += 3;
+    while (isPctEncodedAt(uri, index));
     if (allowReserved) continue;
     const run = uri.slice(start, index);
     try {
@@ -177,25 +187,23 @@ function matchTokens(
   if (token.kind === "literal") {
     return uri.startsWith(token.text, uriIndex)
       ? matchTokens(
-        tokens,
-        uri,
-        accept,
-        tokenIndex + 1,
-        uriIndex + token.text.length,
-        bindings,
-      )
+          tokens,
+          uri,
+          accept,
+          tokenIndex + 1,
+          uriIndex + token.text.length,
+          bindings,
+        )
       : null;
   }
 
   for (const end of expressionEnds(tokens, uri, tokenIndex, uriIndex)) {
     const expression = uri.slice(uriIndex, end);
-    for (
-      const expressionBindings of matchExpression(
-        token.vars,
-        token.operator,
-        expression,
-      )
-    ) {
+    for (const expressionBindings of matchExpression(
+      token.vars,
+      token.operator,
+      expression,
+    )) {
       const merged = mergeBindings(bindings, expressionBindings);
       if (merged == null) continue;
       const result = matchTokens(
@@ -274,9 +282,9 @@ function* matchExpression(
   if (!expression.startsWith(spec.first)) return;
 
   const body = expression.slice(spec.first.length);
-  yield* (spec.named
+  yield* spec.named
     ? matchNamedExpression(vars, spec, body)
-    : matchUnnamedExpression(vars, spec, body));
+    : matchUnnamedExpression(vars, spec, body);
 }
 
 const matchEmptyExpression = (
@@ -319,18 +327,14 @@ function* matchUnnamedFrom(
   }
 
   const varSpec = vars[varIndex];
-  for (
-    const consumed of consumeUnnamed(varSpec, spec, parts, partIndex)
-  ) {
-    for (
-      const rest of matchUnnamedFrom(
-        vars,
-        spec,
-        parts,
-        varIndex + 1,
-        consumed.index,
-      )
-    ) {
+  for (const consumed of consumeUnnamed(varSpec, spec, parts, partIndex)) {
+    for (const rest of matchUnnamedFrom(
+      vars,
+      spec,
+      parts,
+      varIndex + 1,
+      consumed.index,
+    )) {
       const merged = mergeBindings(consumed.bindings, rest);
       if (merged != null) yield merged;
     }
@@ -494,9 +498,10 @@ function* parseNonExplodedValue(
     return;
   }
 
-  const associative = commaParts.length % 2 === 0
-    ? parseAssociative(commaParts, spec.allowReserved)
-    : null;
+  const associative =
+    commaParts.length % 2 === 0
+      ? parseAssociative(commaParts, spec.allowReserved)
+      : null;
 
   if (associative != null) yield bindValue(varSpec, associative);
   yield bindValue(varSpec, decodedList);
@@ -531,18 +536,14 @@ function* matchNamedFrom(
   }
 
   const varSpec = vars[varIndex];
-  for (
-    const consumed of consumeNamed(varSpec, spec, parts, partIndex, vars)
-  ) {
-    for (
-      const rest of matchNamedFrom(
-        vars,
-        spec,
-        parts,
-        varIndex + 1,
-        consumed.index,
-      )
-    ) {
+  for (const consumed of consumeNamed(varSpec, spec, parts, partIndex, vars)) {
+    for (const rest of matchNamedFrom(
+      vars,
+      spec,
+      parts,
+      varIndex + 1,
+      consumed.index,
+    )) {
       const merged = mergeBindings(consumed.bindings, rest);
       if (merged != null) yield merged;
     }
@@ -752,8 +753,8 @@ const mergeBinding = (left: Binding, right: Binding): Binding | null =>
   isPrefixBinding(left) || isPrefixBinding(right)
     ? mergePrefixBinding(left, right)
     : equalExpandValue(left.value, right.value)
-    ? left
-    : null;
+      ? left
+      : null;
 
 /**
  * Reconciles two bindings when at least one carries a prefix limit, by
@@ -797,14 +798,18 @@ const primitiveString = (value: ExpandValue): string | null =>
 
 function equalExpandValue(left: ExpandValue, right: ExpandValue): boolean {
   if (Array.isArray(left)) {
-    return Array.isArray(right) &&
+    return (
+      Array.isArray(right) &&
       left.length === right.length &&
-      left.every((item, index) => item === right[index]);
+      left.every((item, index) => item === right[index])
+    );
   }
 
   if (isAssociative(left)) {
-    return isAssociative(right) &&
-      equalEntries(Object.entries(left), Object.entries(right));
+    return (
+      isAssociative(right) &&
+      equalEntries(Object.entries(left), Object.entries(right))
+    );
   }
 
   return left === right;
@@ -825,8 +830,7 @@ const isAssociative = (value: ExpandValue): value is AssociativeValue =>
 
 const toExpandContext = (bindings: Bindings): ExpandContext =>
   Object.fromEntries(
-    Object.entries(bindings)
-      .map(([key, binding]) => [key, binding.value]),
+    Object.entries(bindings).map(([key, binding]) => [key, binding.value]),
   );
 
 const split = (value: string, separator: string): string[] =>

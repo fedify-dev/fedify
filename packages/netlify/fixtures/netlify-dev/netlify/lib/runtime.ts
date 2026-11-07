@@ -31,7 +31,8 @@ const taskSchema: StandardSchemaV1<unknown, TaskPayload> = {
     vendor: "fedify-netlify-integration-test",
     validate(value: unknown) {
       if (
-        typeof value === "object" && value != null &&
+        typeof value === "object" &&
+        value != null &&
         typeof (value as TaskPayload).id === "string" &&
         typeof (value as TaskPayload).value === "string" &&
         typeof (value as TaskPayload).failures === "number" &&
@@ -47,10 +48,12 @@ const taskSchema: StandardSchemaV1<unknown, TaskPayload> = {
 };
 
 export function createServices() {
-  const kv = new NetlifyBlobsKvStore(getStore({
-    name: "fedify-integration",
-    consistency: "strong",
-  }));
+  const kv = new NetlifyBlobsKvStore(
+    getStore({
+      name: "fedify-integration",
+      consistency: "strong",
+    }),
+  );
   const baseUrl = process.env.URL ?? process.env.DEPLOY_URL;
   const queue = new NetlifyMessageQueue({
     client: new AsyncWorkloadsClient(baseUrl == null ? undefined : { baseUrl }),
@@ -75,10 +78,7 @@ function increment(kv: KvStore, key: KvKey): Promise<number> {
   return add(kv, key, 1);
 }
 
-export function createTaskFederation(
-  kv: KvStore,
-  queue: NetlifyMessageQueue,
-) {
+export function createTaskFederation(kv: KvStore, queue: NetlifyMessageQueue) {
   const federation = createFederation<ContextData>({
     kv,
     queue,
@@ -87,9 +87,10 @@ export function createTaskFederation(
   const task = federation.defineTask("netlify-integration", {
     schema: taskSchema,
     handler: async (ctx, payload) => {
-      const activeKey: KvKey | undefined = payload.orderingKey == null
-        ? undefined
-        : ["integration", "ordering", payload.orderingKey, "active"];
+      const activeKey: KvKey | undefined =
+        payload.orderingKey == null
+          ? undefined
+          : ["integration", "ordering", payload.orderingKey, "active"];
       if (activeKey != null) {
         const active = await increment(kv, activeKey);
         if (active > 1) {
@@ -108,14 +109,15 @@ export function createTaskFederation(
         if (attempts <= payload.failures) {
           throw new Error(`Transient integration failure ${attempts}.`);
         }
-        const position = payload.orderingKey == null
-          ? undefined
-          : await increment(kv, [
-            "integration",
-            "ordering",
-            payload.orderingKey,
-            "completed",
-          ]);
+        const position =
+          payload.orderingKey == null
+            ? undefined
+            : await increment(kv, [
+                "integration",
+                "ordering",
+                payload.orderingKey,
+                "completed",
+              ]);
         await kv.set(["integration", payload.id, "completed"], {
           value: payload.value,
           eventId: ctx.data.eventId,

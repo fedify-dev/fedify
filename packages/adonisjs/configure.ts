@@ -126,10 +126,12 @@ export async function configure(command: ConfigureCommand): Promise<void> {
    * `application/json`, which would make Fedify serve the ActivityPub document
    * to a browser asking for HTML and skip the HTML fall-through.
    */
-  await codemods.registerMiddleware("server", [{
-    path: "@fedify/adonisjs/fedify_middleware",
-    position: "before",
-  }]);
+  await codemods.registerMiddleware("server", [
+    {
+      path: "@fedify/adonisjs/fedify_middleware",
+      position: "before",
+    },
+  ]);
 
   command.logger.success("Configured @fedify/adonisjs");
   command.logger.info(

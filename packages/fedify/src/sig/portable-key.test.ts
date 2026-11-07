@@ -43,10 +43,10 @@ import { createProof, verifyProof } from "./proof.ts";
 
 const did = await exportDidKey(ed25519PublicKey.publicKey);
 const didKeyId = `${did}#${did.slice("did:key:".length)}`;
-const otherKeyPair = await crypto.subtle.generateKey("Ed25519", true, [
+const otherKeyPair = (await crypto.subtle.generateKey("Ed25519", true, [
   "sign",
   "verify",
-]) as CryptoKeyPair;
+])) as CryptoKeyPair;
 const otherDid = await exportDidKey(otherKeyPair.publicKey);
 
 const actorId = `ap+ef61://${did}/actor`;
@@ -145,21 +145,31 @@ async function actorJson(
     preferredUsername: "alice",
     inbox: parseIri(`${options.id ?? actorId}/inbox`),
     gateways: (options.gateways ?? [gw1, gw2]).map((g) => new URL(g)),
-    assertionMethods: options.assertionMethod === false ? [] : [
-      new Multikey({ id: key, controller: id, publicKey: gatewayPublicKey }),
-    ],
-    publicKeys: options.publicKey === null ? [] : [
-      new CryptographicKey({
-        id: key,
-        owner: id,
-        publicKey: options.publicKey ?? gatewayPublicKey,
-      }),
-    ],
+    assertionMethods:
+      options.assertionMethod === false
+        ? []
+        : [
+            new Multikey({
+              id: key,
+              controller: id,
+              publicKey: gatewayPublicKey,
+            }),
+          ],
+    publicKeys:
+      options.publicKey === null
+        ? []
+        : [
+            new CryptographicKey({
+              id: key,
+              owner: id,
+              publicKey: options.publicKey ?? gatewayPublicKey,
+            }),
+          ],
   });
-  const json = await person.toJsonLd({
+  const json = (await person.toJsonLd({
     format: "compact",
     contextLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const context = json["@context"] as unknown[];
   if (!context.includes("https://w3id.org/security/data-integrity/v1")) {
     json["@context"] = [
@@ -224,7 +234,7 @@ test("verifyRequest() rejects gateway keys that portable actors do not vouch for
     ),
     "a key referred to by URL in assertionMethod, embedded in publicKey":
       await sign({
-        ...await actorJson({ assertionMethod: false }),
+        ...(await actorJson({ assertionMethod: false })),
         assertionMethod: [keyId.href],
       }),
     "a key only in publicKey without an owner": await sign(
@@ -234,7 +244,7 @@ test("verifyRequest() rejects gateway keys that portable actors do not vouch for
       await duplicatePublicKey(await actorJson({ assertionMethod: false })),
     ),
     "a key referred to by URL": await sign({
-      ...await actorJson({ publicKey: null, assertionMethod: false }),
+      ...(await actorJson({ publicKey: null, assertionMethod: false })),
       assertionMethod: [keyId.href],
     }),
     "a publicKey entry with other key material": await sign(
@@ -283,10 +293,13 @@ async function duplicatePublicKey(
   const publicKey = json.publicKey as Record<string, unknown>;
   return {
     ...json,
-    publicKey: [publicKey, {
-      ...publicKey,
-      publicKeyPem: await exportSpki(rsaPublicKey3.publicKey!),
-    }],
+    publicKey: [
+      publicKey,
+      {
+        ...publicKey,
+        publicKeyPem: await exportSpki(rsaPublicKey3.publicKey!),
+      },
+    ],
   };
 }
 
@@ -294,7 +307,7 @@ test("verifyRequest() accepts gateway keys referred to by URL in publicKey", asy
   // The publicKey entry names the key embedded in assertionMethod:
   const documentLoader = createLoader({
     [compatibleId(gw1)]: await sign({
-      ...await actorJson({ publicKey: null }),
+      ...(await actorJson({ publicKey: null })),
       publicKey: keyId.href,
     }),
   });
@@ -407,10 +420,7 @@ test("keys at ordinary URLs cannot belong to portable actors", async () => {
     await verifyRequest(await signedRequest(undefined, evilKeyId), options),
     null,
   );
-  strictEqual(
-    (await fetchKey(evilKeyId, CryptographicKey, options)).key,
-    null,
-  );
+  strictEqual((await fetchKey(evilKeyId, CryptographicKey, options)).key, null);
   strictEqual(await getKeyOwner(evilKeyId, options), null);
   const key = new CryptographicKey({
     id: evilKeyId,
@@ -419,32 +429,30 @@ test("keys at ordinary URLs cannot belong to portable actors", async () => {
   });
   strictEqual(await getKeyOwner(key, options), null);
   ok(
-    !await doesActorOwnKey(
+    !(await doesActorOwnKey(
       new Create({
         id: new URL(`${evil}/activities/1`),
         actor: new URL(evilActorId),
       }),
       key,
       options,
-    ),
+    )),
   );
   // Nor does the document at an ordinary key URL speak for the portable
   // actor it claims to be, even at the same origin:
   const actorKeyId = new URL(`${evil}/users/alice#main-key`);
-  for (
-    const document of [
-      await actorJson({ id: evilActorId, gateways: [evil], key: actorKeyId }),
-      // A key without an owner would belong to the actor it is embedded in:
-      withoutPublicKeyOwner(
-        await actorJson({
-          id: evilActorId,
-          gateways: [evil],
-          key: actorKeyId,
-          assertionMethod: false,
-        }),
-      ),
-    ]
-  ) {
+  for (const document of [
+    await actorJson({ id: evilActorId, gateways: [evil], key: actorKeyId }),
+    // A key without an owner would belong to the actor it is embedded in:
+    withoutPublicKeyOwner(
+      await actorJson({
+        id: evilActorId,
+        gateways: [evil],
+        key: actorKeyId,
+        assertionMethod: false,
+      }),
+    ),
+  ]) {
     const actorOptions = {
       documentLoader: createLoader({ [`${evil}/users/alice`]: document }),
       contextLoader,
@@ -501,8 +509,7 @@ test("keys at ordinary URLs cannot belong to portable actors", async () => {
     set: () => Promise.resolve(),
   };
   strictEqual(
-    (await fetchKey(evilKeyId, CryptographicKey, { ...options, keyCache }))
-      .key,
+    (await fetchKey(evilKeyId, CryptographicKey, { ...options, keyCache })).key,
     null,
   );
 });
@@ -586,10 +593,7 @@ test("verifyRequest() caches gateway keys only for HTTP Signatures", async () =>
     const { signature } = await signJsonLd(document, rsaPrivateKey2, keyId, {
       contextLoader,
     });
-    ok(
-      !await verifyJsonLd({ ...document, signature }, options),
-      spec,
-    );
+    ok(!(await verifyJsonLd({ ...document, signature }, options)), spec);
     // ...nor for an Object Integrity Proof:
     const note = new Note({
       id: new URL("https://gw1.example/notes/1"),
@@ -613,7 +617,7 @@ test("verifyRequest() caches gateway keys only for HTTP Signatures", async () =>
     }
     // Neither did they spoil the key for HTTP Signatures:
     const fetched = fetchCount(documentLoader);
-    ok(await verifyRequest(await signedRequest(spec), options) != null, spec);
+    ok((await verifyRequest(await signedRequest(spec), options)) != null, spec);
     strictEqual(fetchCount(documentLoader), fetched, spec);
   }
 });
@@ -628,7 +632,7 @@ test("verifyRequest() is not rejected by other purposes' negative entries", asyn
     const result = await fetchKeyOf(cls, options);
     strictEqual(result.key, null);
   }
-  ok(await verifyRequest(await signedRequest(), options) != null);
+  ok((await verifyRequest(await signedRequest(), options)) != null);
   // The negative entries are still there for their own purposes:
   const fetched = fetchCount(documentLoader);
   for (const cls of [CryptographicKey, Multikey]) {
@@ -698,7 +702,7 @@ test("verifyRequest() refetches a cached gateway key that fails to verify", asyn
     const documentLoader = createLoader(responses);
     const keyCache = new KvKeyCache(new MemoryKvStore(), ["pk"]);
     const options = { documentLoader, contextLoader, keyCache, spec };
-    ok(await verifyRequest(await signedRequest(spec), options) != null);
+    ok((await verifyRequest(await signedRequest(spec), options)) != null);
     // The gateway replaces its key:
     responses[compatibleId(gw1)] = await sign(
       await actorJson({
@@ -717,10 +721,10 @@ test("verifyRequest() refetches a cached gateway key that fails to verify", asyn
         keyId,
         { spec },
       );
-    ok(await verifyRequest(await rotated(), options) != null, spec);
+    ok((await verifyRequest(await rotated(), options)) != null, spec);
     strictEqual(fetchCount(documentLoader), 2, spec);
     // The freshly fetched key replaced the cached one:
-    ok(await verifyRequest(await rotated(), options) != null, spec);
+    ok((await verifyRequest(await rotated(), options)) != null, spec);
     strictEqual(fetchCount(documentLoader), 2, spec);
   }
 });
@@ -733,7 +737,7 @@ test("verifyRequest() drops a cached gateway key when its refetch fails", async 
     const documentLoader = createLoader(responses);
     const keyCache = new KvKeyCache(new MemoryKvStore(), ["pk"]);
     const options = { documentLoader, contextLoader, keyCache, spec };
-    ok(await verifyRequest(await signedRequest(spec), options) != null);
+    ok((await verifyRequest(await signedRequest(spec), options)) != null);
     delete responses[compatibleId(gw1)];
     // A signature the cached key does not verify makes Fedify refetch it:
     const forged = await signRequest(
@@ -776,12 +780,12 @@ test("verifyRequest() does not trust a cached gateway key for longer than its pr
     ),
   });
   const options = { documentLoader, contextLoader, keyCache };
-  ok(await verifyRequest(await signedRequest(), options) != null);
+  ok((await verifyRequest(await signedRequest(), options)) != null);
   now = expires.subtract({ seconds: 1 });
-  ok(await verifyRequest(await signedRequest(), options) != null);
+  ok((await verifyRequest(await signedRequest(), options)) != null);
   strictEqual(fetchCount(documentLoader), 1);
   now = expires;
-  ok(await verifyRequest(await signedRequest(), options) != null);
+  ok((await verifyRequest(await signedRequest(), options)) != null);
   strictEqual(fetchCount(documentLoader), 2);
 });
 
@@ -796,9 +800,9 @@ test("verifyRequest() looks up a cached gateway key again after an hour", async 
   const documentLoader = createLoader(responses);
   const options = { documentLoader, contextLoader, keyCache };
   const start = now;
-  ok(await verifyRequest(await signedRequest(), options) != null);
+  ok((await verifyRequest(await signedRequest(), options)) != null);
   now = start.add({ minutes: 59 });
-  ok(await verifyRequest(await signedRequest(), options) != null);
+  ok((await verifyRequest(await signedRequest(), options)) != null);
   strictEqual(fetchCount(documentLoader), 1);
   // The actor drops the gateway, which keeps signing with the same key:
   responses[compatibleId(gw1)] = await sign(
@@ -840,7 +844,7 @@ test("verifyRequest() takes the expiration of a proof whatever its context", asy
       {
         ...actor,
         "@context": [
-          ...actor["@context"] as unknown[],
+          ...(actor["@context"] as unknown[]),
           { expires: "https://example.com/ns#notExpiration" },
         ],
       },
@@ -850,12 +854,12 @@ test("verifyRequest() takes the expiration of a proof whatever its context", asy
     ),
   });
   const options = { documentLoader, contextLoader, keyCache };
-  ok(await verifyRequest(await signedRequest(), options) != null);
+  ok((await verifyRequest(await signedRequest(), options)) != null);
   now = expires.subtract({ seconds: 1 });
-  ok(await verifyRequest(await signedRequest(), options) != null);
+  ok((await verifyRequest(await signedRequest(), options)) != null);
   strictEqual(fetchCount(documentLoader), 1);
   now = expires;
-  ok(await verifyRequest(await signedRequest(), options) != null);
+  ok((await verifyRequest(await signedRequest(), options)) != null);
   strictEqual(fetchCount(documentLoader), 2);
 });
 
@@ -877,11 +881,11 @@ test("a key cache without namespaces caches only fetch failures of compatible ke
     [compatibleId(gw1)]: await sign(await actorJson()),
   });
   const options = { documentLoader, contextLoader, keyCache };
-  ok(await verifyRequest(await signedRequest(), options) != null);
+  ok((await verifyRequest(await signedRequest(), options)) != null);
   for (const cls of [CryptographicKey, Multikey]) {
     strictEqual((await fetchKeyOf(cls, options)).key, null);
   }
-  ok(await verifyRequest(await signedRequest(), options) != null);
+  ok((await verifyRequest(await signedRequest(), options)) != null);
   deepStrictEqual(
     calls.filter((c) => c.startsWith("set ") && c.includes(keyId.origin)),
     [],
@@ -913,7 +917,7 @@ test("doesActorOwnKey() and getKeyOwner() resolve gateway keys to portable actor
   // The actor's compatible identifier on any gateway is the same actor:
   ok(await doesActorOwnKey(activity(compatibleId(gw2)), key, options));
   // Another actor under the same DID is not:
-  ok(!await doesActorOwnKey(activity(`${actorId}/other`), key, options));
+  ok(!(await doesActorOwnKey(activity(`${actorId}/other`), key, options)));
   strictEqual(
     (await getKeyOwner(keyId, options))?.id?.href,
     parseIri(actorId).href,
@@ -922,7 +926,7 @@ test("doesActorOwnKey() and getKeyOwner() resolve gateway keys to portable actor
   // The same key ID with other key material is not the actor's key:
   const forged = key.clone({ publicKey: rsaPublicKey3.publicKey });
   strictEqual(await getKeyOwner(forged, options), null);
-  ok(!await doesActorOwnKey(activity(actorId), forged, options));
+  ok(!(await doesActorOwnKey(activity(actorId), forged, options)));
 });
 
 test("doesActorOwnKey() and getKeyOwner() do not fall back for rejected gateway keys", async () => {
@@ -939,7 +943,7 @@ test("doesActorOwnKey() and getKeyOwner() do not fall back for rejected gateway 
     id: parseIri(`ap+ef61://${did}/activities/1`),
     actor: parseIri(actorId),
   });
-  ok(!await doesActorOwnKey(activity, key, options));
+  ok(!(await doesActorOwnKey(activity, key, options)));
   strictEqual(await getKeyOwner(keyId, options), null);
   strictEqual(await getKeyOwner(key, options), null);
 });
@@ -959,9 +963,10 @@ test("verifyRequest() binds gateway keys to the actor whose document is signed",
     // Parsing the fetched document loads the context twice before its proof
     // is verified:
     const document = {
-      "@context": loads <= 2
-        ? { victimId: "@id", attackerId: "https://attacker.example/ns#a" }
-        : { victimId: "https://attacker.example/ns#v", attackerId: "@id" },
+      "@context":
+        loads <= 2
+          ? { victimId: "@id", attackerId: "https://attacker.example/ns#a" }
+          : { victimId: "https://attacker.example/ns#v", attackerId: "@id" },
     };
     return Promise.resolve({ contextUrl: null, documentUrl: url, document });
   };
@@ -969,7 +974,7 @@ test("verifyRequest() binds gateway keys to the actor whose document is signed",
   const document = await sign(
     {
       ...victim,
-      "@context": [...victim["@context"] as unknown[], shiftingContext],
+      "@context": [...(victim["@context"] as unknown[]), shiftingContext],
       victimId: actorId,
       attackerId: attackerActorId,
     },
@@ -1036,10 +1041,13 @@ test("verifyRequest() rejects ambiguous or foreign aliases of gateway keys", asy
     // just a reference:
     "an exact entry and an ap: alias in assertionMethod": {
       ...base,
-      assertionMethod: [assertionMethod, {
-        ...assertionMethod,
-        id: portableKeyId,
-      }],
+      assertionMethod: [
+        assertionMethod,
+        {
+          ...assertionMethod,
+          id: portableKeyId,
+        },
+      ],
     },
     "a reference and an embedded ap: alias in assertionMethod": {
       ...base,
@@ -1115,21 +1123,19 @@ test("verifyRequest() refuses key IDs whose identity URL parsing changes", async
   strictEqual(documentLoader.fetched.length, 0);
   // Nor can it be looked up as a string, however it is spelled:
   const dottedPortable = `${actorId.replace("/actor", "/x/../actor")}#main-key`;
-  for (
-    const id of [
-      dotted,
-      dottedPortable,
-      // URL parsing strips leading spaces, and tabs anywhere:
-      ` ${dotted}`,
-      ` ${dottedPortable}`,
-      ` ${parseIri(actorId).href}#main-key`,
-      dottedPortable.replace("ap+ef61:", "ap+\tef61:"),
-      dotted.replace("did:key:", "did:ke\ty:"),
-      // Dot segments can leave the gateway path altogether:
-      `${gw1}/.well-known/apgateway/${did}/../../../users/alice#main-key`,
-      ` ap://not-a-did/actor#main-key`,
-    ]
-  ) {
+  for (const id of [
+    dotted,
+    dottedPortable,
+    // URL parsing strips leading spaces, and tabs anywhere:
+    ` ${dotted}`,
+    ` ${dottedPortable}`,
+    ` ${parseIri(actorId).href}#main-key`,
+    dottedPortable.replace("ap+ef61:", "ap+\tef61:"),
+    dotted.replace("did:key:", "did:ke\ty:"),
+    // Dot segments can leave the gateway path altogether:
+    `${gw1}/.well-known/apgateway/${did}/../../../users/alice#main-key`,
+    ` ap://not-a-did/actor#main-key`,
+  ]) {
     let error: unknown;
     try {
       await fetchKey(id, CryptographicKey, { documentLoader, contextLoader });
@@ -1146,7 +1152,8 @@ test("verifyRequest() refuses key IDs whose identity URL parsing changes", async
 const apKeyId = parseIri(`${actorId}#main-key`);
 
 function hinted(...gateways: string[]): URL {
-  const query = gateways.map((g) => `@gateway=${encodeURIComponent(g)}`)
+  const query = gateways
+    .map((g) => `@gateway=${encodeURIComponent(g)}`)
     .join("&");
   return parseIri(`${actorId}${query === "" ? "" : `?${query}`}#main-key`);
 }
@@ -1191,10 +1198,7 @@ test("verifyRequest() accepts keys of portable actors at ap: key IDs", async () 
     strictEqual(key?.ownerId?.href, parseIri(actorId).href, written);
   }
   // Only the gateways in the location hints were asked:
-  deepStrictEqual(
-    [...new Set(documentLoader.fetched)],
-    [compatibleId(gw1)],
-  );
+  deepStrictEqual([...new Set(documentLoader.fetched)], [compatibleId(gw1)]);
 });
 
 test("verifyRequest() asks the document loader for ap: key IDs without hints", async () => {
@@ -1230,7 +1234,7 @@ test("verifyRequest() rejects keys at ap: key IDs that portable actors do not vo
       await apActorJson({ assertionMethod: false, publicKey: null }),
     ),
     "a key referred to by URL": await sign({
-      ...await apActorJson({ publicKey: null, assertionMethod: false }),
+      ...(await apActorJson({ publicKey: null, assertionMethod: false })),
       assertionMethod: [apKeyId.href],
     }),
     "a key only in publicKey without an owner": await sign(
@@ -1314,10 +1318,10 @@ test("verifyRequest() tries the gateways of ap: key IDs in order", async () => {
     [compatibleId(gw2)]: signed,
   });
   ok(
-    await verifyRequest(await signedRequest(undefined, hinted(gw1, gw2)), {
+    (await verifyRequest(await signedRequest(undefined, hinted(gw1, gw2)), {
       documentLoader,
       contextLoader,
-    }) != null,
+    })) != null,
   );
   deepStrictEqual(documentLoader.fetched, [compatibleId(gw1)]);
   // At most three hints are followed, fewer than when dereferencing objects,
@@ -1328,17 +1332,22 @@ test("verifyRequest() tries the gateways of ap: key IDs in order", async () => {
   );
   const many = createLoader({});
   ok(
-    !(await verifyRequestDetailed(
-      await signedRequest(undefined, hinted(...gateways)),
-      { documentLoader: many, contextLoader },
-    )).verified,
+    !(
+      await verifyRequestDetailed(
+        await signedRequest(undefined, hinted(...gateways)),
+        { documentLoader: many, contextLoader },
+      )
+    ).verified,
   );
   deepStrictEqual(
     many.fetched,
     gateways.slice(0, 3).map((g) => compatibleId(g)),
   );
   // The key is accepted at the third gateway, but never at the fourth:
-  for (const [index, expected] of [[2, true], [3, false]] as const) {
+  for (const [index, expected] of [
+    [2, true],
+    [3, false],
+  ] as const) {
     const documentLoader = createLoader({
       [compatibleId(gateways[index])]: signed,
     });
@@ -1356,7 +1365,7 @@ test("verifyRequest() tries the gateways of ap: key IDs in order", async () => {
   // Invalid and duplicate hints do not count:
   const sparse = createLoader({ [compatibleId(gateways[2])]: signed });
   ok(
-    await verifyRequest(
+    (await verifyRequest(
       await signedRequest(
         undefined,
         hinted(
@@ -1369,7 +1378,7 @@ test("verifyRequest() tries the gateways of ap: key IDs in order", async () => {
         ),
       ),
       { documentLoader: sparse, contextLoader },
-    ) != null,
+    )) != null,
   );
   deepStrictEqual(
     sparse.fetched,
@@ -1481,9 +1490,10 @@ test("verifyRequest() accepts keys at ap: key IDs only for HTTP Signatures", asy
   const options = { documentLoader, contextLoader, keyCache };
   // Other purposes never even fetch the key:
   for (const cls of [CryptographicKey, Multikey]) {
-    const result = cls === CryptographicKey
-      ? await fetchKey(hintedKeyId, CryptographicKey, options)
-      : await fetchKey(hintedKeyId, Multikey, options);
+    const result =
+      cls === CryptographicKey
+        ? await fetchKey(hintedKeyId, CryptographicKey, options)
+        : await fetchKey(hintedKeyId, Multikey, options);
     strictEqual(result.key, null);
   }
   strictEqual(documentLoader.fetched.length, 0);
@@ -1498,9 +1508,10 @@ test("verifyRequest() accepts keys at ap: key IDs only for HTTP Signatures", asy
   strictEqual(documentLoader.fetched.length, 1);
   // The cached key is not accepted for other purposes either:
   for (const cls of [CryptographicKey, Multikey]) {
-    const result = cls === CryptographicKey
-      ? await fetchKey(hintedKeyId, CryptographicKey, options)
-      : await fetchKey(hintedKeyId, Multikey, options);
+    const result =
+      cls === CryptographicKey
+        ? await fetchKey(hintedKeyId, CryptographicKey, options)
+        : await fetchKey(hintedKeyId, Multikey, options);
     strictEqual(result.key, null);
   }
   const document = {
@@ -1515,7 +1526,7 @@ test("verifyRequest() accepts keys at ap: key IDs only for HTTP Signatures", asy
     hintedKeyId,
     { contextLoader },
   );
-  ok(!await verifyJsonLd({ ...document, signature }, options));
+  ok(!(await verifyJsonLd({ ...document, signature }, options)));
   strictEqual(documentLoader.fetched.length, 1);
   // Nor is a key that an older version cached under the key ID:
   const legacyCache: KeyCache = {
@@ -1551,7 +1562,7 @@ test("verifyRequest() refreshes a cached key at an ap: key ID that fails to veri
     const keyCache = new KvKeyCache(new MemoryKvStore(), ["pk"]);
     const options = { documentLoader, contextLoader, keyCache, spec };
     ok(
-      await verifyRequest(await signedRequest(spec, hintedKeyId), options) !=
+      (await verifyRequest(await signedRequest(spec, hintedKeyId), options)) !=
         null,
     );
     strictEqual(documentLoader.fetched.length, 1, spec);
@@ -1608,17 +1619,17 @@ test("doesActorOwnKey() and getKeyOwner() resolve keys at ap: key IDs to portabl
   );
   // Not for another actor, nor with other key material:
   ok(
-    !await doesActorOwnKey(
+    !(await doesActorOwnKey(
       new Create({
         id: parseIri(`ap+ef61://${otherDid}/activities/1`),
         actor: parseIri(`ap+ef61://${otherDid}/actor`),
       }),
       key,
       options,
-    ),
+    )),
   );
   const other = key.clone({ publicKey: rsaPublicKey3.publicKey! });
-  ok(!await doesActorOwnKey(activity, other, options));
+  ok(!(await doesActorOwnKey(activity, other, options)));
   strictEqual(await getKeyOwner(other, options), null);
   // Nor if the actor's document does not vouch for the key, without falling
   // back to anything else:
@@ -1626,7 +1637,7 @@ test("doesActorOwnKey() and getKeyOwner() resolve keys at ap: key IDs to portabl
     documentLoader: createLoader({ [compatibleId(gw1)]: await apActorJson() }),
     contextLoader,
   };
-  ok(!await doesActorOwnKey(activity, key, unsigned));
+  ok(!(await doesActorOwnKey(activity, key, unsigned)));
   strictEqual(await getKeyOwner(hintedKeyId, unsigned), null);
 });
 
@@ -1647,19 +1658,25 @@ test("verifyRequest() does not trust a cached key at an ap: key ID for longer th
   const options = { documentLoader, contextLoader, keyCache };
   const hintedKeyId = hinted(gw1);
   ok(
-    await verifyRequest(await signedRequest(undefined, hintedKeyId), options) !=
-      null,
+    (await verifyRequest(
+      await signedRequest(undefined, hintedKeyId),
+      options,
+    )) != null,
   );
   now = expires.subtract({ seconds: 1 });
   ok(
-    await verifyRequest(await signedRequest(undefined, hintedKeyId), options) !=
-      null,
+    (await verifyRequest(
+      await signedRequest(undefined, hintedKeyId),
+      options,
+    )) != null,
   );
   strictEqual(documentLoader.fetched.length, 1);
   now = expires;
   ok(
-    await verifyRequest(await signedRequest(undefined, hintedKeyId), options) !=
-      null,
+    (await verifyRequest(
+      await signedRequest(undefined, hintedKeyId),
+      options,
+    )) != null,
   );
   strictEqual(documentLoader.fetched.length, 2);
 });
@@ -1717,7 +1734,10 @@ interface ControlledLoader extends DocumentLoader {
 function controlledLoader(
   responses: Record<string, unknown | number>,
   hanging: readonly string[],
-  { ignoreSignal = false, delays = {} }: {
+  {
+    ignoreSignal = false,
+    delays = {},
+  }: {
     ignoreSignal?: boolean;
     delays?: Record<string, number>;
   } = {},
@@ -1870,9 +1890,8 @@ test("resolvePortableActorKey() bounds loading the contexts of actor documents",
   );
   const hangingContextLoader: DocumentLoader = (_url, options) =>
     new Promise((_, reject) => {
-      options?.signal?.addEventListener(
-        "abort",
-        () => reject(options.signal!.reason),
+      options?.signal?.addEventListener("abort", () =>
+        reject(options.signal!.reason),
       );
     });
   const resolution = await resolvePortableActorKey(hinted(gw1, gw2), {
@@ -1893,9 +1912,9 @@ test("resolvePortableActorKey() ignores what is resolved after the timeout", asy
   // verifying the document's proof without loading anything, so
   // the verification ends after the timeout:
   let verifiedLate: () => void = () => {};
-  const late = new Promise<void>((resolve) => verifiedLate = resolve);
+  const late = new Promise<void>((resolve) => (verifiedLate = resolve));
   let lookupDone: () => void = () => {};
-  const done = new Promise<void>((resolve) => lookupDone = resolve);
+  const done = new Promise<void>((resolve) => (lookupDone = resolve));
   const slowKeyCache: KeyCache = {
     async get() {
       await done;

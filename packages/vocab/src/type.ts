@@ -93,10 +93,10 @@ export function getTypeId(
   // so we need an explicit type assertion here. This should be revisited when upgrading
   // to newer versions that might fix this type narrowing issue.
   if (object == null) return object as undefined | null;
-  const cls = object.constructor as
-    & (new (...args: unknown[]) => Object | Link)
-    & {
-      typeId: URL;
-    };
+  const cls = object.constructor as (new (
+    ...args: unknown[]
+  ) => Object | Link) & {
+    typeId: URL;
+  };
   return cls.typeId;
 }

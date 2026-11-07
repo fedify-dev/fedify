@@ -231,7 +231,7 @@ export function isActorAuthenticated(
   options: IsActorAuthenticatedOptions = {},
 ): boolean {
   return getEffectivePrincipals(evidence, options.scope).some((principal) =>
-    principalAuthenticates(principal, actorId)
+    principalAuthenticates(principal, actorId),
   );
 }
 
@@ -343,11 +343,15 @@ function deserializePrincipals(value: unknown): InboxPrincipal[] | null {
   const principals: InboxPrincipal[] = [];
   for (const item of value) {
     if (
-      item == null || typeof item !== "object" ||
-      !(typeof item.kind === "string" &&
-        Object.hasOwn(PUBLIC_KINDS, item.kind)) ||
-      !(typeof item.mechanism === "string" &&
-        Object.hasOwn(PUBLIC_MECHANISMS, item.mechanism)) ||
+      item == null ||
+      typeof item !== "object" ||
+      !(
+        typeof item.kind === "string" && Object.hasOwn(PUBLIC_KINDS, item.kind)
+      ) ||
+      !(
+        typeof item.mechanism === "string" &&
+        Object.hasOwn(PUBLIC_MECHANISMS, item.mechanism)
+      ) ||
       typeof item.id !== "string" ||
       !URL.canParse(item.id) ||
       (item.keyId != null &&
@@ -355,14 +359,17 @@ function deserializePrincipals(value: unknown): InboxPrincipal[] | null {
     ) {
       return null;
     }
-    principals.push(Object.freeze({
-      kind: PUBLIC_KINDS[item.kind as SerializedInboxPrincipal["kind"]],
-      id: new URL(item.id),
-      mechanism: PUBLIC_MECHANISMS[
-        item.mechanism as SerializedInboxPrincipal["mechanism"]
-      ],
-      keyId: item.keyId == null ? null : new URL(item.keyId),
-    }));
+    principals.push(
+      Object.freeze({
+        kind: PUBLIC_KINDS[item.kind as SerializedInboxPrincipal["kind"]],
+        id: new URL(item.id),
+        mechanism:
+          PUBLIC_MECHANISMS[
+            item.mechanism as SerializedInboxPrincipal["mechanism"]
+          ],
+        keyId: item.keyId == null ? null : new URL(item.keyId),
+      }),
+    );
   }
   return principals;
 }
@@ -382,7 +389,8 @@ export function deserializeAuthentication(
   baseUrl: URL | null,
 ): InboxAuthenticationEvidence | null {
   if (
-    value == null || typeof value !== "object" ||
+    value == null ||
+    typeof value !== "object" ||
     typeof (value as { verified?: unknown }).verified !== "boolean"
   ) {
     return null;
@@ -390,11 +398,10 @@ export function deserializeAuthentication(
   const record = value as Record<string, unknown>;
   const requestSigners = deserializePrincipals(record.requestSigners);
   const documentSigners = deserializePrincipals(record.documentSigners);
-  const originAuthenticated = deserializePrincipals(
-    record.originAuthenticated,
-  );
+  const originAuthenticated = deserializePrincipals(record.originAuthenticated);
   if (
-    requestSigners == null || documentSigners == null ||
+    requestSigners == null ||
+    documentSigners == null ||
     originAuthenticated == null
   ) {
     return null;

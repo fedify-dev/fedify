@@ -178,10 +178,7 @@ test("MysqlKvStore.get()", { skip: dbUrl == null }, async () => {
     await pool.query(
       `INSERT INTO \`${tableName}\` (\`key\`, \`value\`, \`expires\`)
        VALUES (?, CAST(? AS JSON), DATE_SUB(NOW(6), INTERVAL 1 SECOND))`,
-      [
-        JSON.stringify(["foo", "bar", "ttl"]),
-        JSON.stringify(["foobar"]),
-      ],
+      [JSON.stringify(["foo", "bar", "ttl"]), JSON.stringify(["foobar"])],
     );
     assert.strictEqual(await store.get(["foo", "bar", "ttl"]), undefined);
   } finally {
@@ -470,17 +467,11 @@ test("MysqlKvStore.cas()", { skip: dbUrl == null }, async () => {
     await store.set(["foo", "bar"], "foobar");
 
     // Mismatch: expected "bar" but current value is "foobar"
-    assert.strictEqual(
-      await store.cas!(["foo", "bar"], "bar", "baz"),
-      false,
-    );
+    assert.strictEqual(await store.cas!(["foo", "bar"], "bar", "baz"), false);
     assert.deepStrictEqual(await store.get(["foo", "bar"]), "foobar");
 
     // Match: expected "foobar" matches current value
-    assert.strictEqual(
-      await store.cas!(["foo", "bar"], "foobar", "baz"),
-      true,
-    );
+    assert.strictEqual(await store.cas!(["foo", "bar"], "foobar", "baz"), true);
     assert.deepStrictEqual(await store.get(["foo", "bar"]), "baz");
 
     // Delete the key, then CAS with wrong expected value
@@ -513,18 +504,12 @@ test(
     try {
       // Set up a key then CAS it away with undefined newValue
       await store.set(["foo"], "bar");
-      assert.strictEqual(
-        await store.cas!(["foo"], "bar", undefined),
-        true,
-      );
+      assert.strictEqual(await store.cas!(["foo"], "bar", undefined), true);
       assert.strictEqual(await store.get(["foo"]), undefined);
 
       // CAS with wrong expected value and undefined newValue should fail
       await store.set(["baz"], "qux");
-      assert.strictEqual(
-        await store.cas!(["baz"], "wrong", undefined),
-        false,
-      );
+      assert.strictEqual(await store.cas!(["baz"], "wrong", undefined), false);
       assert.deepStrictEqual(await store.get(["baz"]), "qux");
     } finally {
       await store.drop();
@@ -665,9 +650,9 @@ test(
       const stored = await store.get(["key"]);
       assert.ok(
         stored === "value-A" || stored === "value-B",
-        `Stored value must be one of the two attempted values, got ${
-          JSON.stringify(stored)
-        }`,
+        `Stored value must be one of the two attempted values, got ${JSON.stringify(
+          stored,
+        )}`,
       );
     } finally {
       await store.drop();
@@ -676,36 +661,32 @@ test(
   },
 );
 
-test(
-  "MysqlKvStore.cas() with TTL",
-  { skip: dbUrl == null },
-  async () => {
-    if (dbUrl == null) return;
+test("MysqlKvStore.cas() with TTL", { skip: dbUrl == null }, async () => {
+  if (dbUrl == null) return;
 
-    const { pool, store } = getStore();
-    try {
-      // CAS with TTL on non-existent key
-      assert.strictEqual(
-        await store.cas!(["ttl", "key"], undefined, "value", {
-          ttl: Temporal.Duration.from({ hours: 1 }),
-        }),
-        true,
-      );
-      assert.deepStrictEqual(await store.get(["ttl", "key"]), "value");
+  const { pool, store } = getStore();
+  try {
+    // CAS with TTL on non-existent key
+    assert.strictEqual(
+      await store.cas!(["ttl", "key"], undefined, "value", {
+        ttl: Temporal.Duration.from({ hours: 1 }),
+      }),
+      true,
+    );
+    assert.deepStrictEqual(await store.get(["ttl", "key"]), "value");
 
-      // CAS with zero TTL should effectively expire immediately
-      assert.strictEqual(
-        await store.cas!(["ttl", "key"], "value", "new-value", {
-          ttl: Temporal.Duration.from({ seconds: 0 }),
-        }),
-        true,
-      );
-      // Wait a bit for expiry
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      assert.strictEqual(await store.get(["ttl", "key"]), undefined);
-    } finally {
-      await store.drop();
-      await pool.end();
-    }
-  },
-);
+    // CAS with zero TTL should effectively expire immediately
+    assert.strictEqual(
+      await store.cas!(["ttl", "key"], "value", "new-value", {
+        ttl: Temporal.Duration.from({ seconds: 0 }),
+      }),
+      true,
+    );
+    // Wait a bit for expiry
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    assert.strictEqual(await store.get(["ttl", "key"]), undefined);
+  } finally {
+    await store.drop();
+    await pool.end();
+  }
+});

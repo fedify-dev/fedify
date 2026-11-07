@@ -53,13 +53,16 @@ test("TaskCodec.serialize() / deserialize()", async (t) => {
       big: 1234567890123456789n,
       url: new URL("https://example.com/some/path"),
       list: [person, link],
-      map: new Map<string, unknown>([["create", create], ["n", 42]]),
+      map: new Map<string, unknown>([
+        ["create", create],
+        ["n", 42],
+      ]),
       set: new Set([1, 2, 3]),
       nested: { create },
     };
     const encoded = await codec.serialize(payload);
     strictEqual(typeof encoded, "string");
-    const decoded = await codec.deserialize(encoded) as Record<
+    const decoded = (await codec.deserialize(encoded)) as Record<
       string,
       unknown
     >;
@@ -126,7 +129,7 @@ test("TaskCodec.serialize() / deserialize()", async (t) => {
     const payload: Cyclic = { name: "root", notes: [shared, shared] };
     payload.self = payload;
     const encoded = await codec.serialize(payload);
-    const decoded = await codec.deserialize(encoded) as Cyclic;
+    const decoded = (await codec.deserialize(encoded)) as Cyclic;
     strictEqual(decoded.self, decoded);
     ok(decoded.notes[0] instanceof Note);
     strictEqual(decoded.notes[0], decoded.notes[1]);
@@ -137,7 +140,7 @@ test("TaskCodec.serialize() / deserialize()", async (t) => {
     const list: unknown[] = ["head"];
     list.push(list);
     const encoded = await codec.serialize({ list });
-    const decoded = await codec.deserialize(encoded) as {
+    const decoded = (await codec.deserialize(encoded)) as {
       list: unknown[];
     };
     strictEqual(decoded.list[0], "head");
@@ -150,7 +153,7 @@ test("TaskCodec.serialize() / deserialize()", async (t) => {
     const map = new Map<string, unknown>();
     map.set("entry", { map });
     const encoded = await codec.serialize({ set, map });
-    const decoded = await codec.deserialize(encoded) as {
+    const decoded = (await codec.deserialize(encoded)) as {
       set: Set<{ set: Set<unknown> }>;
       map: Map<string, { map: Map<string, unknown> }>;
     };
@@ -165,7 +168,7 @@ test("TaskCodec.serialize() / deserialize()", async (t) => {
       const nullProto = Object.create(null) as Record<string, unknown>;
       nullProto.note = note;
       const encoded = await codec.serialize({ wrap: nullProto });
-      const decoded = await codec.deserialize(encoded) as {
+      const decoded = (await codec.deserialize(encoded)) as {
         wrap: Record<string, unknown>;
       };
       ok(decoded.wrap.note instanceof Note);
@@ -189,9 +192,10 @@ test("TaskCodec.serialize() / deserialize()", async (t) => {
       const encoded = await codec.serialize(payload);
       let decoded = await codec.deserialize(encoded);
       for (let i = depth - 1; i >= 0; i--) {
-        decoded = i % 2 === 0
-          ? (decoded as { inner: unknown }).inner
-          : (decoded as unknown[])[0];
+        decoded =
+          i % 2 === 0
+            ? (decoded as { inner: unknown }).inner
+            : (decoded as unknown[])[0];
       }
       ok(decoded instanceof Note);
       strictEqual(decoded.content?.toString(), "deep");
@@ -204,7 +208,7 @@ test("TaskCodec.serialize() / deserialize()", async (t) => {
       const length = 200_000;
       const payload = { big: Array.from({ length }, (_, i) => i) };
       const encoded = await codec.serialize(payload);
-      const decoded = await codec.deserialize(encoded) as { big: number[] };
+      const decoded = (await codec.deserialize(encoded)) as { big: number[] };
       strictEqual(decoded.big.length, length);
       strictEqual(decoded.big[0], 0);
       strictEqual(decoded.big[length - 1], length - 1);
@@ -220,7 +224,7 @@ test("TaskCodec.serialize() / deserialize()", async (t) => {
         duration: Temporal.Duration.from({ hours: 1, minutes: 30 }),
       };
       const encoded = await codec.serialize(payload);
-      const decoded = await codec.deserialize(encoded) as {
+      const decoded = (await codec.deserialize(encoded)) as {
         instant: Temporal.Instant;
         duration: Temporal.Duration;
       };
@@ -244,8 +248,8 @@ test("TaskCodec (one instance reused across decodes)", async (t) => {
     const second = await codec.serialize({
       note: new Note({ content: "B" }),
     });
-    const a = await codec.deserialize(first) as { note: Note };
-    const b = await codec.deserialize(second) as { note: Note };
+    const a = (await codec.deserialize(first)) as { note: Note };
+    const b = (await codec.deserialize(second)) as { note: Note };
     ok(a.note instanceof Note);
     ok(b.note instanceof Note);
     strictEqual(a.note.content?.toString(), "A");
@@ -260,7 +264,8 @@ test("TaskCodec.validate()", async (t) => {
   }
   const schema = makeSchema(
     (data): data is Envelope =>
-      typeof data === "object" && data != null &&
+      typeof data === "object" &&
+      data != null &&
       (data as Envelope).note instanceof Note &&
       typeof (data as Envelope).title === "string",
   );
@@ -316,7 +321,8 @@ test("TaskCodec.encode() / decode()", async (t) => {
   }
   const schema = makeSchema(
     (data): data is Envelope =>
-      typeof data === "object" && data != null &&
+      typeof data === "object" &&
+      data != null &&
       (data as Envelope).note instanceof Note &&
       typeof (data as Envelope).title === "string",
   );
@@ -336,10 +342,10 @@ test("TaskCodec.encode() / decode()", async (t) => {
   );
 
   await t.step("encode() rejects a wrong-shaped payload", async () => {
-    await rejects(
-      () => codec.encode(schema, { note: "nope", title: 42 }),
-      { name: "TypeError", message: /Task data failed schema validation/ },
-    );
+    await rejects(() => codec.encode(schema, { note: "nope", title: 42 }), {
+      name: "TypeError",
+      message: /Task data failed schema validation/,
+    });
   });
 
   await t.step(

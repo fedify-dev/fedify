@@ -36,38 +36,48 @@ function compareTotalAmountDonated(a: Member, b: Member): number {
 }
 
 function getBackers(members: MemberList): MemberList {
-  return members.filter((member) =>
-    member.role === "BACKER" &&
-    member.tier?.toLowerCase() === "backer"
-  ).toSorted(compareTotalAmountDonated);
+  return members
+    .filter(
+      (member) =>
+        member.role === "BACKER" && member.tier?.toLowerCase() === "backer",
+    )
+    .toSorted(compareTotalAmountDonated);
 }
 
 function getSupporters(members: MemberList): MemberList {
-  return members.filter((member) =>
-    member.role === "BACKER" &&
-    member.tier?.toLowerCase() === "supporter"
-  ).toSorted(compareTotalAmountDonated);
+  return members
+    .filter(
+      (member) =>
+        member.role === "BACKER" && member.tier?.toLowerCase() === "supporter",
+    )
+    .toSorted(compareTotalAmountDonated);
 }
 
 function getSponsors(members: MemberList): MemberList {
-  return members.filter((member) =>
-    member.role === "BACKER" &&
-    member.tier?.toLowerCase() === "sponsor"
-  ).toSorted(compareTotalAmountDonated);
+  return members
+    .filter(
+      (member) =>
+        member.role === "BACKER" && member.tier?.toLowerCase() === "sponsor",
+    )
+    .toSorted(compareTotalAmountDonated);
 }
 
 function getCorporateSponsors(members: MemberList): MemberList {
-  return members.filter((member) =>
-    member.role === "BACKER" &&
-    member.tier?.toLowerCase() === "corporate sponsor"
-  ).toSorted(compareTotalAmountDonated);
+  return members
+    .filter(
+      (member) =>
+        member.role === "BACKER" &&
+        member.tier?.toLowerCase() === "corporate sponsor",
+    )
+    .toSorted(compareTotalAmountDonated);
 }
 
 function getCustomDonations(members: MemberList): MemberList {
-  return members.filter((member) =>
-    member.role === "BACKER" &&
-    member.tier === "custom donation"
-  ).toSorted(compareTotalAmountDonated);
+  return members
+    .filter(
+      (member) => member.role === "BACKER" && member.tier === "custom donation",
+    )
+    .toSorted(compareTotalAmountDonated);
 }
 
 function escape(string: string): string {
@@ -101,12 +111,14 @@ function listNamesAndLinks(members: MemberList): string {
 
 function listNamesAndAvatars(members: MemberList, size: number): string {
   return members
-    .map((member) =>
-      `- [<img src="${
-        getAvatar(member, size * 2)
-      }" width="${size}" height="${size}"> ${escape(member.name)}](${
-        getLink(member)
-      })`
+    .map(
+      (member) =>
+        `- [<img src="${getAvatar(
+          member,
+          size * 2,
+        )}" width="${size}" height="${size}"> ${escape(member.name)}](${getLink(
+          member,
+        )})`,
     )
     .join("\n");
 }
@@ -115,12 +127,14 @@ function tableCorporateSponsors(members: MemberList, size: number): string {
   return [
     "| Avatar | Name | Description |",
     "| ------ | ---- | ----------- |",
-    ...members.map((member) =>
-      `| <img src="${
-        getAvatar(member, size * 2)
-      }" width="${size}" height="${size}"> | [${
-        escapeTableCell(member.name)
-      }](${getLink(member)}) | ${escapeTableCell(member.description)} |`
+    ...members.map(
+      (member) =>
+        `| <img src="${getAvatar(
+          member,
+          size * 2,
+        )}" width="${size}" height="${size}"> | [${escapeTableCell(
+          member.name,
+        )}](${getLink(member)}) | ${escapeTableCell(member.description)} |`,
     ),
   ].join("\n");
 }
@@ -172,8 +186,12 @@ function interpolate(text: string, members: MemberList): string {
   return text.replaceAll(PATTERN, (entire, start, level, end) => {
     const headingLevel = parseInt(level);
     if (
-      headingLevel !== 1 && headingLevel !== 2 && headingLevel !== 3 &&
-      headingLevel !== 4 && headingLevel !== 5 && headingLevel !== 6
+      headingLevel !== 1 &&
+      headingLevel !== 2 &&
+      headingLevel !== 3 &&
+      headingLevel !== 4 &&
+      headingLevel !== 5 &&
+      headingLevel !== 6
     ) {
       return entire;
     }

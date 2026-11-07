@@ -25,10 +25,13 @@ async function pipeline(
   // real wrapper. Keep the import lazy so other runtimes can discover tests.
   const { fedifyMiddleware } = await import("./index.ts");
   const federation = {
-    fetch: (_request: Request, options: {
-      onNotAcceptable: () => Response;
-      onNotFound: () => Response;
-    }) =>
+    fetch: (
+      _request: Request,
+      options: {
+        onNotAcceptable: () => Response;
+        onNotFound: () => Response;
+      },
+    ) =>
       Promise.resolve(
         deferred ? options.onNotAcceptable() : options.onNotFound(),
       ),
@@ -99,7 +102,7 @@ async function pipeline(
     };
   } finally {
     await new Promise<void>((resolve, reject) =>
-      server.close((error) => error ? reject(error) : resolve())
+      server.close((error) => (error ? reject(error) : resolve())),
     );
   }
 }
@@ -120,41 +123,55 @@ const missingHandlers: Record<string, (event: H3Event) => unknown> = {
   "returned error": () => createError({ statusCode: 404 }),
 };
 for (const [name, handler] of Object.entries(missingHandlers)) {
-  test(`SolidStart restores deferred 406 for ${name}`, {
-    ignore: !("Bun" in globalThis),
-  }, async () => {
-    const { response, errors } = await pipeline(handler);
-    equal(response.status, 406);
-    equal(response.statusText, "Not Acceptable");
-    equal(response.headers.get("content-type"), "text/plain");
-    equal(response.headers.get("vary"), "Accept");
-    equal(await response.text(), "Not Acceptable");
-    equal(errors, name === "thrown error" ? 1 : 0);
-  });
-}
-test("SolidStart restores thrown 404 through H3's Web handler", {
-  ignore: !("Bun" in globalThis),
-}, async () => {
-  const { response } = await pipeline(
-    missingHandlers["thrown error"],
-    true,
-    true,
+  test(
+    `SolidStart restores deferred 406 for ${name}`,
+    {
+      ignore: !("Bun" in globalThis),
+    },
+    async () => {
+      const { response, errors } = await pipeline(handler);
+      equal(response.status, 406);
+      equal(response.statusText, "Not Acceptable");
+      equal(response.headers.get("content-type"), "text/plain");
+      equal(response.headers.get("vary"), "Accept");
+      equal(await response.text(), "Not Acceptable");
+      equal(errors, name === "thrown error" ? 1 : 0);
+    },
   );
-  equal(response.status, 406);
-  equal(await response.text(), "Not Acceptable");
-});
-for (
-  const [name, handler, status] of [
-    ["success", () => new Response("HTML"), 200],
-    ["Response overrides event status", (event: H3Event) => {
+}
+test(
+  "SolidStart restores thrown 404 through H3's Web handler",
+  {
+    ignore: !("Bun" in globalThis),
+  },
+  async () => {
+    const { response } = await pipeline(
+      missingHandlers["thrown error"],
+      true,
+      true,
+    );
+    equal(response.status, 406);
+    equal(await response.text(), "Not Acceptable");
+  },
+);
+for (const [name, handler, status] of [
+  ["success", () => new Response("HTML"), 200],
+  [
+    "Response overrides event status",
+    (event: H3Event) => {
       setResponseStatus(event, 404);
       return new Response("HTML");
-    }, 200],
-    ["server error", () => {
+    },
+    200,
+  ],
+  [
+    "server error",
+    () => {
       throw createError({ statusCode: 500 });
-    }, 500],
-  ] as const
-) {
+    },
+    500,
+  ],
+] as const) {
   test(
     `SolidStart preserves ${name}`,
     { ignore: !("Bun" in globalThis) },
@@ -163,53 +180,69 @@ for (
     },
   );
 }
-test("SolidStart preserves non-deferred 404", {
-  ignore: !("Bun" in globalThis),
-}, async () => {
-  equal(
-    (await pipeline(missingHandlers["thrown error"], false)).response.status,
-    404,
-  );
-});
+test(
+  "SolidStart preserves non-deferred 404",
+  {
+    ignore: !("Bun" in globalThis),
+  },
+  async () => {
+    equal(
+      (await pipeline(missingHandlers["thrown error"], false)).response.status,
+      404,
+    );
+  },
+);
 
-test("SolidStart preserves already-handled redirects", {
-  ignore: !("Bun" in globalThis),
-}, async () => {
-  const { response, errors } = await pipeline((event) =>
-    sendRedirect(event, "/login")
-  );
-  // The harness request must not follow the redirect back into the middleware.
-  equal(response.status, 302);
-  equal(response.headers.get("location"), "/login");
-  equal(errors, 0);
-});
+test(
+  "SolidStart preserves already-handled redirects",
+  {
+    ignore: !("Bun" in globalThis),
+  },
+  async () => {
+    const { response, errors } = await pipeline((event) =>
+      sendRedirect(event, "/login"),
+    );
+    // The harness request must not follow the redirect back into the middleware.
+    equal(response.status, 302);
+    equal(response.headers.get("location"), "/login");
+    equal(errors, 0);
+  },
+);
 
-test("SolidStart keeps concurrent requests isolated", {
-  ignore: !("Bun" in globalThis),
-}, async () => {
-  const [deferred, ordinary] = await Promise.all([
-    pipeline(missingHandlers["thrown error"]),
-    pipeline(missingHandlers["thrown error"], false),
-  ]);
-  equal(deferred.response.status, 406);
-  equal(ordinary.response.status, 404);
-});
+test(
+  "SolidStart keeps concurrent requests isolated",
+  {
+    ignore: !("Bun" in globalThis),
+  },
+  async () => {
+    const [deferred, ordinary] = await Promise.all([
+      pipeline(missingHandlers["thrown error"]),
+      pipeline(missingHandlers["thrown error"], false),
+    ]);
+    equal(deferred.response.status, 406);
+    equal(ordinary.response.status, 404);
+  },
+);
 
 for (const status of [204, 302, 500]) {
-  test(`SolidStart preserves undefined bodies with status ${status}`, {
-    ignore: !("Bun" in globalThis),
-  }, async () => {
-    const { response, errors } = await pipeline(
-      (event) => {
-        setResponseStatus(event, status);
-        return undefined;
-      },
-      true,
-      false,
-      true,
-    );
-    equal(response.status, status);
-    equal(await response.text(), "");
-    equal(errors, 0);
-  });
+  test(
+    `SolidStart preserves undefined bodies with status ${status}`,
+    {
+      ignore: !("Bun" in globalThis),
+    },
+    async () => {
+      const { response, errors } = await pipeline(
+        (event) => {
+          setResponseStatus(event, status);
+          return undefined;
+        },
+        true,
+        false,
+        true,
+      );
+      equal(response.status, status);
+      equal(await response.text(), "");
+      equal(errors, 0);
+    },
+  );
 }

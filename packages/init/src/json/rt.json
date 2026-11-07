@@ -1,28 +1,19 @@
 {
   "deno": {
     "label": "Deno",
-    "checkCommand": [
-      "deno",
-      "--version"
-    ],
+    "checkCommand": ["deno", "--version"],
     "outputPattern": "^deno\\s+(\\d+\\.\\d+\\.\\d+\\b)",
     "minVersion": "2.0.0"
   },
   "bun": {
     "label": "Bun",
-    "checkCommand": [
-      "bun",
-      "--version"
-    ],
+    "checkCommand": ["bun", "--version"],
     "outputPattern": "^(\\d+\\.\\d+\\.\\d+\\b)",
     "minVersion": "1.1.0"
   },
   "node": {
     "label": "Node.js",
-    "checkCommand": [
-      "node",
-      "--version"
-    ],
+    "checkCommand": ["node", "--version"],
     "outputPattern": "^v(\\d+\\.\\d+\\.\\d+\\b)",
     "minVersion": "22.0.0"
   }

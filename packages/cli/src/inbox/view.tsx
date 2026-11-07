@@ -27,10 +27,12 @@ const Layout: FC<PropsWithChildren<LayoutProps>> = (
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>
-          {props.title == null
-            ? ""
-            : <Fragment>{props.title} &mdash;{" "}</Fragment>}Fedify Ephemeral
-          Inbox ({props.handle})
+          {props.title == null ? (
+            ""
+          ) : (
+            <Fragment>{props.title} &mdash; </Fragment>
+          )}
+          Fedify Ephemeral Inbox ({props.handle})
         </title>
         <link
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
@@ -54,10 +56,7 @@ const Layout: FC<PropsWithChildren<LayoutProps>> = (
             xmlns:dc="http://purl.org/dc/elements/1.1/"
           >
             <defs id="defs5">
-              <clipPath
-                clipPathUnits="userSpaceOnUse"
-                id="clipPath8"
-              >
+              <clipPath clipPathUnits="userSpaceOnUse" id="clipPath8">
                 <ellipse
                   style="fill:#000000;stroke:#000000;stroke-width:3.02635;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
                   id="ellipse8"
@@ -79,10 +78,7 @@ const Layout: FC<PropsWithChildren<LayoutProps>> = (
               rx="54.486828"
               ry="54.486824"
             />
-            <g
-              id="g8"
-              clip-path="url(#clipPath8)"
-            >
+            <g id="g8" clip-path="url(#clipPath8)">
               <g id="g5">
                 <path
                   d="M 77.4624,78.9593 C 78.2802,68.3428 73.7143,58.8833 71.3291,55.4806 L 87.6847,48.335 c 4.9066,1.6333 6.474,17.3537 6.6444,25.0098 0,0 -3.5778,0.5104 -5.6222,2.0416 -2.085,1.5616 -5.6222,5.1041 -11.2445,3.5729 z"
@@ -248,9 +244,7 @@ const Layout: FC<PropsWithChildren<LayoutProps>> = (
             {props.handle}
           </p>
         </header>
-        <main class="container mt-3 mb-3">
-          {props.children}
-        </main>
+        <main class="container mt-3 mb-3">{props.children}</main>
       </body>
     </html>
   );
@@ -264,56 +258,49 @@ interface TabProps {
   href: string;
 }
 
-const Tab: FC<TabProps> = (
-  { active, disabled, label, badge, href }: TabProps,
-) => {
+const Tab: FC<TabProps> = ({
+  active,
+  disabled,
+  label,
+  badge,
+  href,
+}: TabProps) => {
   return (
     <li class="nav-item">
-      {active
-        ? (
-          <span class="nav-link active" style="cursor: default;">
-            {label}
-            {badge != null
-              ? (
-                <Fragment>
-                  {" "}
-                  <span class="badge text-bg-secondary">{badge}</span>
-                </Fragment>
-              )
-              : undefined}
-          </span>
-        )
-        : disabled
-        ? <span class="nav-link disabled">{label}</span>
-        : (
-          <a class="nav-link" href={href}>
-            {label}
-            {badge != null
-              ? (
-                <Fragment>
-                  {" "}
-                  <span class="badge text-bg-secondary">{badge}</span>
-                </Fragment>
-              )
-              : undefined}
-          </a>
-        )}
+      {active ? (
+        <span class="nav-link active" style="cursor: default;">
+          {label}
+          {badge != null ? (
+            <Fragment>
+              {" "}
+              <span class="badge text-bg-secondary">{badge}</span>
+            </Fragment>
+          ) : undefined}
+        </span>
+      ) : disabled ? (
+        <span class="nav-link disabled">{label}</span>
+      ) : (
+        <a class="nav-link" href={href}>
+          {label}
+          {badge != null ? (
+            <Fragment>
+              {" "}
+              <span class="badge text-bg-secondary">{badge}</span>
+            </Fragment>
+          ) : undefined}
+        </a>
+      )}
     </li>
   );
 };
 
 // oxlint-disable-next-line typescript/no-empty-interface
-interface TabListProps {
-}
+interface TabListProps {}
 
-const TabList: FC<PropsWithChildren<TabListProps>> = (
-  { children }: PropsWithChildren<TabListProps>,
-) => {
-  return (
-    <ul class="nav nav-tabs">
-      {children}
-    </ul>
-  );
+const TabList: FC<PropsWithChildren<TabListProps>> = ({
+  children,
+}: PropsWithChildren<TabListProps>) => {
+  return <ul class="nav nav-tabs">{children}</ul>;
 };
 
 interface CodeBlockProps {
@@ -338,27 +325,28 @@ interface LogProps {
   log: LogRecord;
 }
 
-const Log: FC<LogProps> = (
-  { log: { timestamp, category, level, message } }: LogProps,
-) => {
-  const listClass = level === "debug"
-    ? "list-group-item-light"
-    : level === "info"
-    ? ""
-    : level === "warning"
-    ? "list-group-item-warning"
-    : "list-group-item-danger";
+const Log: FC<LogProps> = ({
+  log: { timestamp, category, level, message },
+}: LogProps) => {
+  const listClass =
+    level === "debug"
+      ? "list-group-item-light"
+      : level === "info"
+        ? ""
+        : level === "warning"
+          ? "list-group-item-warning"
+          : "list-group-item-danger";
   const time = Temporal.Instant.fromEpochMilliseconds(timestamp);
   return (
     <li class={"list-group-item " + listClass}>
       <div class="d-flex w-100 justify-content-between">
         <p class="mb-1" style="white-space: pre-wrap; word-break: break-word;">
           {message.map((m, i) =>
-            i % 2 == 0 ? m : (
-              <code key={i}>
-                {typeof m === "string" ? m : util.inspect(m)}
-              </code>
-            )
+            i % 2 == 0 ? (
+              m
+            ) : (
+              <code key={i}>{typeof m === "string" ? m : util.inspect(m)}</code>
+            ),
           )}
         </p>
         <time
@@ -371,7 +359,7 @@ const Log: FC<LogProps> = (
       </div>
       <small class="text-body-secondary">
         {category.map((c, i) =>
-          i < 1 ? c : <Fragment key={i.toString()}>{" "}/ {c}</Fragment>
+          i < 1 ? c : <Fragment key={i.toString()}> / {c}</Fragment>,
         )}
       </small>
     </li>
@@ -385,7 +373,9 @@ interface LogListProps {
 const LogList: FC<LogListProps> = ({ logs }: LogListProps) => {
   return (
     <ul class="list-group mt-3">
-      {logs.map((log) => <Log key={log.timestamp} log={log} />)}
+      {logs.map((log) => (
+        <Log key={log.timestamp} log={log} />
+      ))}
     </ul>
   );
 };
@@ -403,10 +393,10 @@ interface ActivityEntryViewProps {
   tabPage: ActivityEntryTabPage;
 }
 
-const ActivityEntryView: FC<ActivityEntryViewProps> = async (
-  { tabPage, entry: { activity, request, response, logs } }:
-    ActivityEntryViewProps,
-) => {
+const ActivityEntryView: FC<ActivityEntryViewProps> = async ({
+  tabPage,
+  entry: { activity, request, response, logs },
+}: ActivityEntryViewProps) => {
   return (
     <div>
       <TabList>
@@ -448,26 +438,17 @@ const ActivityEntryView: FC<ActivityEntryViewProps> = async (
       </TabList>
       {tabPage === "request" && (
         <div class="tab-page">
-          <CodeBlock
-            code={await renderRequest(request)}
-            language="http"
-          />
+          <CodeBlock code={await renderRequest(request)} language="http" />
         </div>
       )}
       {tabPage === "response" && response != null && (
         <div class="tab-page">
-          <CodeBlock
-            code={await renderResponse(response)}
-            language="http"
-          />
+          <CodeBlock code={await renderResponse(response)} language="http" />
         </div>
       )}
       {tabPage === "raw-activity" && (
         <div class="tab-page">
-          <CodeBlock
-            code={await renderRawActivity(request)}
-            language="json"
-          />
+          <CodeBlock code={await renderRawActivity(request)} language="json" />
         </div>
       )}
       {tabPage === "compact-activity" && activity != null && (
@@ -500,9 +481,12 @@ export interface ActivityEntryPageProps extends ActivityEntryViewProps {
   idx: number;
 }
 
-export const ActivityEntryPage: FC<ActivityEntryPageProps> = (
-  { handle, idx, entry, tabPage }: ActivityEntryPageProps,
-) => {
+export const ActivityEntryPage: FC<ActivityEntryPageProps> = ({
+  handle,
+  idx,
+  entry,
+  tabPage,
+}: ActivityEntryPageProps) => {
   return (
     <Layout handle={handle} title={`Request #${idx}`}>
       <nav aria-label="breadcrumb">
@@ -511,9 +495,11 @@ export const ActivityEntryPage: FC<ActivityEntryPageProps> = (
             <a href="/r">Inbox</a>
           </li>
           <li class="breadcrumb-item active" aria-current="page">
-            Request #{idx} (<time datetime={entry.timestamp.toString()}>
+            Request #{idx} (
+            <time datetime={entry.timestamp.toString()}>
               {entry.timestamp.toLocaleString()}
-            </time>)
+            </time>
+            )
           </li>
         </ol>
       </nav>
@@ -527,51 +513,65 @@ export interface ActivityListProps {
   entries: ActivityEntry[];
 }
 
-const ActivityList: FC<ActivityListProps> = (
-  { entries }: ActivityListProps,
-) => {
+const ActivityList: FC<ActivityListProps> = ({
+  entries,
+}: ActivityListProps) => {
   return (
     <div class="list-group">
-      {entries.map((entry, i) => {
-        const failed = entry.activity == null || entry.response == null ||
-          !entry.response.ok || entry.request.method !== "POST";
-        const itemClass = failed ? "list-group-item-danger" : "";
-        const url = new URL(entry.request.url);
-        return (
-          <a
-            key={url.toString()}
-            class={"list-group-item list-group-item-action d-flex w-100 justify-content-between " +
-              itemClass}
-            href={`/r/${i}`}
-          >
-            <span>
-              Request #{i}:{" "}
-              <code>{entry.request.method} {url.pathname + url.search}</code>
-              {entry.activity == null ? "" : (
-                <Fragment>
-                  {} &middot; <code>{entry.activity.constructor.name}</code>
-                </Fragment>
-              )}
-              {entry.response == null ? "" : (
-                <Fragment>
-                  {} &rarr;{" "}
-                  <code>
-                    {entry.response.status} {entry.response.statusText === ""
-                      ? getStatusText(entry.response.status)
-                      : entry.response.statusText}
-                  </code>
-                </Fragment>
-              )}
-            </span>
-            <time
-              class="text-body-secondary"
-              timestamp={entry.timestamp.toString()}
+      {entries
+        .map((entry, i) => {
+          const failed =
+            entry.activity == null ||
+            entry.response == null ||
+            !entry.response.ok ||
+            entry.request.method !== "POST";
+          const itemClass = failed ? "list-group-item-danger" : "";
+          const url = new URL(entry.request.url);
+          return (
+            <a
+              key={url.toString()}
+              class={
+                "list-group-item list-group-item-action d-flex w-100 justify-content-between " +
+                itemClass
+              }
+              href={`/r/${i}`}
             >
-              <small>{entry.timestamp.toLocaleString()}</small>
-            </time>
-          </a>
-        );
-      }).reverse()}
+              <span>
+                Request #{i}:{" "}
+                <code>
+                  {entry.request.method} {url.pathname + url.search}
+                </code>
+                {entry.activity == null ? (
+                  ""
+                ) : (
+                  <Fragment>
+                    {} &middot; <code>{entry.activity.constructor.name}</code>
+                  </Fragment>
+                )}
+                {entry.response == null ? (
+                  ""
+                ) : (
+                  <Fragment>
+                    {} &rarr;{" "}
+                    <code>
+                      {entry.response.status}{" "}
+                      {entry.response.statusText === ""
+                        ? getStatusText(entry.response.status)
+                        : entry.response.statusText}
+                    </code>
+                  </Fragment>
+                )}
+              </span>
+              <time
+                class="text-body-secondary"
+                timestamp={entry.timestamp.toString()}
+              >
+                <small>{entry.timestamp.toLocaleString()}</small>
+              </time>
+            </a>
+          );
+        })
+        .reverse()}
     </div>
   );
 };
@@ -580,14 +580,17 @@ export interface ActivityListPageProps extends ActivityListProps {
   handle: string;
 }
 
-export const ActivityListPage: FC<ActivityListPageProps> = (
-  { handle, entries }: ActivityListPageProps,
-) => {
+export const ActivityListPage: FC<ActivityListPageProps> = ({
+  handle,
+  entries,
+}: ActivityListPageProps) => {
   return (
     <Layout handle={handle}>
       <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item active" aria-current="page">Inbox</li>
+          <li class="breadcrumb-item active" aria-current="page">
+            Inbox
+          </li>
         </ol>
       </nav>
 

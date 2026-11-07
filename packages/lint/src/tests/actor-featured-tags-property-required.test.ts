@@ -10,10 +10,4 @@ const ruleName = RULE_IDS.actorFeaturedTagsPropertyRequired;
 const config = { rule, ruleName };
 
 runTests(ruleName, createRequiredDispatcherRuleTests("featuredTags", config));
-runTests(
-  ruleName,
-  createRequiredEdgeCaseTests(
-    "featuredTags",
-    config,
-  ),
-);
+runTests(ruleName, createRequiredEdgeCaseTests("featuredTags", config));

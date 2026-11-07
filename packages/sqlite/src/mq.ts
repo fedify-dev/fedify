@@ -249,14 +249,11 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
         new EnqueueEvent(delayMs),
       );
     }).catch((error) => {
-      logger.error(
-        "Failed to enqueue messages to table {tableName}: {error}",
-        {
-          tableName: this.#tableName,
-          messageCount: messages.length,
-          error,
-        },
-      );
+      logger.error("Failed to enqueue messages to table {tableName}: {error}", {
+        tableName: this.#tableName,
+        messageCount: messages.length,
+        error,
+      });
       throw error;
     });
   }
@@ -295,10 +292,9 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
     this.initialize();
 
     const { signal } = options ?? {};
-    logger.debug(
-      "Starting to listen for messages on table {tableName}...",
-      { tableName: this.#tableName },
-    );
+    logger.debug("Starting to listen for messages on table {tableName}...", {
+      tableName: this.#tableName,
+    });
 
     const channel = SqliteMessageQueue.#getNotifyChannel(this.#tableName);
     const timeouts = new Set<ReturnType<typeof setTimeout>>();
@@ -328,8 +324,8 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
               RETURNING id, message, ordering_key`,
             )
             .get(now) as
-              | { id: string; message: string; ordering_key: string | null }
-              | undefined;
+            | { id: string; message: string; ordering_key: string | null }
+            | undefined;
         });
 
         if (result) {
@@ -542,7 +538,8 @@ export class SqliteMessageQueue implements MessageQueue, Disposable {
 
     // Check errno property (bun:sqlite)
     const errorWithErrno = error as Error & { errno?: number };
-    if (errorWithErrno.errno === 5) { // SQLITE_BUSY = 5
+    if (errorWithErrno.errno === 5) {
+      // SQLITE_BUSY = 5
       return true;
     }
 

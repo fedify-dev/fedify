@@ -55,9 +55,10 @@ export function buildScenarioResult(
   if (measurements.length < 1) {
     throw new RangeError("At least one scenario measurement is required.");
   }
-  const aggregate = measurements.length === 1
-    ? measurements[0]
-    : aggregateMeasurements(measurements);
+  const aggregate =
+    measurements.length === 1
+      ? measurements[0]
+      : aggregateMeasurements(measurements);
   const { results, passed } = evaluateExpect(scenario.expect, aggregate);
   // A scenario that measured no requests must never pass: an empty sample set
   // makes every `expect` assertion vacuously true (and a missing-metric one
@@ -69,9 +70,11 @@ export function buildScenarioResult(
     load: loadSummary(scenario),
     requests: aggregate.requests,
     throughputPerSec: aggregate.throughputPerSec,
-    ...(aggregate.deliveryThroughputPerSec == null ? {} : {
-      deliveryThroughputPerSec: aggregate.deliveryThroughputPerSec,
-    }),
+    ...(aggregate.deliveryThroughputPerSec == null
+      ? {}
+      : {
+          deliveryThroughputPerSec: aggregate.deliveryThroughputPerSec,
+        }),
     client: aggregate.client,
     server: aggregate.server,
     errors: aggregate.errors,
@@ -159,9 +162,11 @@ function runResult(
     run,
     requests: measurement.requests,
     throughputPerSec: measurement.throughputPerSec,
-    ...(measurement.deliveryThroughputPerSec == null ? {} : {
-      deliveryThroughputPerSec: measurement.deliveryThroughputPerSec,
-    }),
+    ...(measurement.deliveryThroughputPerSec == null
+      ? {}
+      : {
+          deliveryThroughputPerSec: measurement.deliveryThroughputPerSec,
+        }),
     client: measurement.client,
     server: measurement.server,
     errors: measurement.errors,
@@ -186,7 +191,7 @@ function aggregateSignatureVerification(
   servers: readonly ServerMetrics[],
 ): NonNullable<ServerMetrics["signatureVerificationMs"]> | null {
   const values = servers.flatMap((s) =>
-    s.signatureVerificationMs == null ? [] : [s.signatureVerificationMs]
+    s.signatureVerificationMs == null ? [] : [s.signatureVerificationMs],
   );
   if (values.length !== servers.length) return null;
   const standards = new Set<string>();
@@ -209,7 +214,7 @@ function aggregateSignatureVerification(
 function aggregateQueue(
   servers: readonly ServerMetrics[],
 ): NonNullable<ServerMetrics["queue"]> | null {
-  const values = servers.flatMap((s) => s.queue == null ? [] : [s.queue]);
+  const values = servers.flatMap((s) => (s.queue == null ? [] : [s.queue]));
   if (values.length !== servers.length) return null;
   const drainMs = aggregatePartial(values.map((v) => v.drainMs));
   const depths = values.map((v) => v.depthMax);
@@ -237,8 +242,10 @@ function aggregatePartial(
 }
 
 function partialField(
-  values:
-    readonly ({ readonly [key: string]: number | undefined } | undefined)[],
+  values: readonly (
+    | { readonly [key: string]: number | undefined }
+    | undefined
+  )[],
   key: "p50" | "p95" | "p99",
   mode: "complete" | "present",
 ): Record<typeof key, number> | Record<string, never> {
@@ -247,13 +254,13 @@ function partialField(
     const present = fieldValues.filter(isNumber);
     return present.length < 1
       ? {}
-      : { [key]: median(present) } as Record<typeof key, number>;
+      : ({ [key]: median(present) } as Record<typeof key, number>);
   }
   return fieldValues.every(isNumber)
-    ? { [key]: median(fieldValues as readonly number[]) } as Record<
-      typeof key,
-      number
-    >
+    ? ({ [key]: median(fieldValues as readonly number[]) } as Record<
+        typeof key,
+        number
+      >)
     : {};
 }
 
@@ -330,9 +337,9 @@ export function detectEnvironment(): Environment {
  * @returns A `sha256:`-prefixed hex digest.
  */
 export function configHash(config: unknown): string {
-  const digest = createHash("sha256").update(canonicalJson(config)).digest(
-    "hex",
-  );
+  const digest = createHash("sha256")
+    .update(canonicalJson(config))
+    .digest("hex");
   return `sha256:${digest}`;
 }
 
@@ -359,19 +366,15 @@ function canonicalJson(value: unknown, depth = 0): string {
   const entries = Object.entries(value as Record<string, unknown>)
     .filter(([, v]) => v !== undefined)
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  return `{${
-    entries.map(([k, v]) =>
-      `${JSON.stringify(k)}:${canonicalJson(v, depth + 1)}`
-    )
-      .join(",")
-  }}`;
+  return `{${entries
+    .map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v, depth + 1)}`)
+    .join(",")}}`;
 }
 
 function loadSummary(scenario: ResolvedScenario): LoadSummary {
   const { load, durationMs, warmupMs } = scenario;
-  const maxInFlight = load.maxInFlight == null
-    ? {}
-    : { maxInFlight: load.maxInFlight };
+  const maxInFlight =
+    load.maxInFlight == null ? {} : { maxInFlight: load.maxInFlight };
   if (load.kind === "closed") {
     return {
       model: "closed",

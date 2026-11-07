@@ -120,7 +120,7 @@ test("PostgresKvStore coalesces background expiry and cools down after completio
 test("PostgresKvStore backs off cleanup failures without hiding mutation failures", async () => {
   const time = clock();
   const recording = recordingSql(() =>
-    Promise.reject(new Error("cleanup failed"))
+    Promise.reject(new Error("cleanup failed")),
   );
   const store = new PostgresKvStore(recording.sql, { initialized: true });
   try {
@@ -203,64 +203,68 @@ function observe(sql: postgres.Sql) {
 
 function database() {
   const sql = postgres(dbUrl!);
-  const tableName = `fedify_kv_expiry_${
-    crypto.randomUUID().replaceAll("-", "")
-  }`;
+  const tableName = `fedify_kv_expiry_${crypto
+    .randomUUID()
+    .replaceAll("-", "")}`;
   const observed = observe(sql);
   const store = new PostgresKvStore(observed.sql, { tableName });
   return { sql, tableName, observed, store };
 }
 
-test("PostgresKvStore bounds expiry batches and makes eventual progress", {
-  ignore: !dbUrl,
-}, async () => {
-  if (!dbUrl) return;
-  const time = clock();
-  const { sql, tableName, observed, store } = database();
-  try {
-    await store.initialize();
-    await sql`
+test(
+  "PostgresKvStore bounds expiry batches and makes eventual progress",
+  {
+    ignore: !dbUrl,
+  },
+  async () => {
+    if (!dbUrl) return;
+    const time = clock();
+    const { sql, tableName, observed, store } = database();
+    try {
+      await store.initialize();
+      await sql`
       INSERT INTO ${sql(tableName)} (key, value, created, ttl)
       SELECT ARRAY['expired', n::text], '1'::jsonb,
         CURRENT_TIMESTAMP - INTERVAL '2 days', INTERVAL '1 day'
       FROM generate_series(1, 2500) n;
     `;
-    await sql`
+      await sql`
       INSERT INTO ${sql(tableName)} (key, value, ttl)
       VALUES (ARRAY['live'], '1'::jsonb, INTERVAL '1 day'),
         (ARRAY['permanent'], '1'::jsonb, NULL);
     `;
-    for (const expected of [1500, 500, 0]) {
-      await store.delete(["missing"]);
-      await observed.complete();
-      const [row] = await sql`
+      for (const expected of [1500, 500, 0]) {
+        await store.delete(["missing"]);
+        await observed.complete();
+        const [row] = await sql`
         SELECT count(*)::int AS count FROM ${sql(tableName)}
         WHERE ttl IS NOT NULL AND created + ttl < CURRENT_TIMESTAMP;
       `;
-      assert.equal(row.count, expected);
-      assert.equal(await store.get(["live"]), 1);
-      assert.equal(await store.get(["permanent"]), 1);
-      if (expected > 0) {
-        time.advance(900);
-        await store.delete(["missing"]);
-        const [unchanged] = await sql`
+        assert.equal(row.count, expected);
+        assert.equal(await store.get(["live"]), 1);
+        assert.equal(await store.get(["permanent"]), 1);
+        if (expected > 0) {
+          time.advance(900);
+          await store.delete(["missing"]);
+          const [unchanged] = await sql`
           SELECT count(*)::int AS count FROM ${sql(tableName)}
           WHERE ttl IS NOT NULL AND created + ttl < CURRENT_TIMESTAMP;
         `;
-        assert.equal(
-          unchanged.count,
-          expected,
-          "full batches still have a cooldown",
-        );
-        time.advance(1_200);
+          assert.equal(
+            unchanged.count,
+            expected,
+            "full batches still have a cooldown",
+          );
+          time.advance(1_200);
+        }
       }
+    } finally {
+      await store.drop();
+      await sql.end();
+      time.restore();
     }
-  } finally {
-    await store.drop();
-    await sql.end();
-    time.restore();
-  }
-});
+  },
+);
 
 test(
   "PostgresKvStore shares an expiry lock across store instances and table aliases",
@@ -297,9 +301,9 @@ test(
       await ready.promise;
       await Promise.all([store.set(["a"], 1), alias.set(["b"], 2)]);
       await Promise.all([observed.complete(), other.complete()]);
-      const [row] = await sql`SELECT count(*)::int AS count FROM ${
-        sql(tableName)
-      } WHERE key = ARRAY['expired'];`;
+      const [row] = await sql`SELECT count(*)::int AS count FROM ${sql(
+        tableName,
+      )} WHERE key = ARRAY['expired'];`;
       assert.equal(
         row.count,
         1,
@@ -309,16 +313,16 @@ test(
       await holder;
       // A lock miss must also respect the cooldown.
       await alias.delete(["missing"]);
-      const [unchanged] = await sql`SELECT count(*)::int AS count FROM ${
-        sql(tableName)
-      } WHERE key = ARRAY['expired'];`;
+      const [unchanged] = await sql`SELECT count(*)::int AS count FROM ${sql(
+        tableName,
+      )} WHERE key = ARRAY['expired'];`;
       assert.equal(unchanged.count, 1);
       time.advance(121_000);
       await alias.delete(["missing"]);
       await other.complete();
-      const [cleaned] = await sql`SELECT count(*)::int AS count FROM ${
-        sql(tableName)
-      } WHERE key = ARRAY['expired'];`;
+      const [cleaned] = await sql`SELECT count(*)::int AS count FROM ${sql(
+        tableName,
+      )} WHERE key = ARRAY['expired'];`;
       assert.equal(cleaned.count, 0);
     } finally {
       gate.resolve();
@@ -350,9 +354,9 @@ test(
         for await (const entry of store.list(prefix)) entries.push(entry);
         assert.deepEqual(entries, []);
       }
-      const [retained] = await sql`SELECT count(*)::int AS count FROM ${
-        sql(tableName)
-      };`;
+      const [retained] = await sql`SELECT count(*)::int AS count FROM ${sql(
+        tableName,
+      )};`;
       assert.equal(
         retained.count,
         1,
@@ -392,20 +396,23 @@ test(
     `;
       holder = sql.begin(async (transaction) => {
         const tx = transaction as unknown as postgres.Sql;
-        await tx`SELECT key FROM ${
-          tx(tableName)
-        } WHERE key = ARRAY['locked'] FOR UPDATE;`;
+        await tx`SELECT key FROM ${tx(
+          tableName,
+        )} WHERE key = ARRAY['locked'] FOR UPDATE;`;
         ready.resolve();
         await gate.promise;
-        await tx`UPDATE ${
-          tx(tableName)
-        } SET created = CURRENT_TIMESTAMP WHERE key = ARRAY['locked'];`;
+        await tx`UPDATE ${tx(
+          tableName,
+        )} SET created = CURRENT_TIMESTAMP WHERE key = ARRAY['locked'];`;
       });
       await ready.promise;
       await store.delete(["missing"]);
       await promptly(observed.complete());
       const rows = await sql`SELECT key FROM ${sql(tableName)};`;
-      assert.deepEqual(rows.map((r) => r.key), [["locked"]]);
+      assert.deepEqual(
+        rows.map((r) => r.key),
+        [["locked"]],
+      );
       gate.resolve();
       await holder;
       time.advance(121_000);
@@ -422,33 +429,37 @@ test(
   },
 );
 
-test("PostgresKvStore expiry respects transformed table identifiers", {
-  ignore: !dbUrl,
-}, async () => {
-  if (!dbUrl) return;
-  const time = clock();
-  const sql = postgres(dbUrl!, { transform: postgres.camel });
-  const tableName = `fedifyKvExpiry${crypto.randomUUID().replaceAll("-", "")}`;
-  const observed = observe(sql);
-  const store = new PostgresKvStore(observed.sql, { tableName });
-  try {
-    await store.initialize();
-    await sql`
+test(
+  "PostgresKvStore expiry respects transformed table identifiers",
+  {
+    ignore: !dbUrl,
+  },
+  async () => {
+    if (!dbUrl) return;
+    const time = clock();
+    const sql = postgres(dbUrl!, { transform: postgres.camel });
+    const tableName = `fedifyKvExpiry${crypto.randomUUID().replaceAll("-", "")}`;
+    const observed = observe(sql);
+    const store = new PostgresKvStore(observed.sql, { tableName });
+    try {
+      await store.initialize();
+      await sql`
       INSERT INTO ${sql(tableName)} (key, value, created, ttl)
       VALUES (ARRAY['expired'], '1'::jsonb, CURRENT_TIMESTAMP - INTERVAL '2 days', INTERVAL '1 day');
     `;
-    await store.delete(["missing"]);
-    await observed.complete();
-    const [row] = await sql`SELECT count(*)::int AS count FROM ${
-      sql(tableName)
-    };`;
-    assert.equal(row.count, 0);
-  } finally {
-    await store.drop();
-    await sql.end();
-    time.restore();
-  }
-});
+      await store.delete(["missing"]);
+      await observed.complete();
+      const [row] = await sql`SELECT count(*)::int AS count FROM ${sql(
+        tableName,
+      )};`;
+      assert.equal(row.count, 0);
+    } finally {
+      await store.drop();
+      await sql.end();
+      time.restore();
+    }
+  },
+);
 
 for (const method of ["savepoint", "release"] as const) {
   test(`PostgresKvStore ${method} clients await shared cleanup and preserve errors`, async () => {
@@ -490,60 +501,64 @@ for (const method of ["savepoint", "release"] as const) {
   });
 }
 
-test("PostgresKvStore never reports a rolled-back transaction as successful", {
-  ignore: !dbUrl,
-}, async () => {
-  if (!dbUrl) return;
-  const { sql, tableName, store } = database();
-  const key = ["transaction"] as const;
-  let mutationFailed = false;
-  try {
-    await store.initialize();
-    await assert.rejects(
-      sql.begin(async (transaction) => {
+test(
+  "PostgresKvStore never reports a rolled-back transaction as successful",
+  {
+    ignore: !dbUrl,
+  },
+  async () => {
+    if (!dbUrl) return;
+    const { sql, tableName, store } = database();
+    const key = ["transaction"] as const;
+    let mutationFailed = false;
+    try {
+      await store.initialize();
+      await assert.rejects(
+        sql.begin(async (transaction) => {
+          const tx = transaction as unknown as postgres.Sql;
+          const failingCleanup = new Proxy(tx, {
+            apply(target, thisArg, args) {
+              if (
+                Array.isArray(args[0]) &&
+                args[0].join("").includes("pg_try_advisory_xact_lock")
+              ) {
+                // Use an actual SQL error so the caller-owned transaction aborts.
+                return tx`SELECT 1 / 0;`;
+              }
+              return Reflect.apply(target, thisArg, args);
+            },
+          });
+          const transactionalStore = new PostgresKvStore(failingCleanup, {
+            tableName,
+            initialized: true,
+          });
+          try {
+            await transactionalStore.set(key, "must roll back");
+          } catch (error) {
+            mutationFailed = true;
+            throw error;
+          }
+        }),
+        { code: "22012" },
+      );
+      assert.equal(mutationFailed, true);
+      assert.equal(await store.get(key), undefined);
+      // Successful transaction cleanup also finishes before the callback returns.
+      await sql.begin(async (transaction) => {
         const tx = transaction as unknown as postgres.Sql;
-        const failingCleanup = new Proxy(tx, {
-          apply(target, thisArg, args) {
-            if (
-              Array.isArray(args[0]) &&
-              args[0].join("").includes("pg_try_advisory_xact_lock")
-            ) {
-              // Use an actual SQL error so the caller-owned transaction aborts.
-              return tx`SELECT 1 / 0;`;
-            }
-            return Reflect.apply(target, thisArg, args);
-          },
-        });
-        const transactionalStore = new PostgresKvStore(failingCleanup, {
+        const transactionalStore = new PostgresKvStore(tx, {
           tableName,
           initialized: true,
         });
-        try {
-          await transactionalStore.set(key, "must roll back");
-        } catch (error) {
-          mutationFailed = true;
-          throw error;
-        }
-      }),
-      { code: "22012" },
-    );
-    assert.equal(mutationFailed, true);
-    assert.equal(await store.get(key), undefined);
-    // Successful transaction cleanup also finishes before the callback returns.
-    await sql.begin(async (transaction) => {
-      const tx = transaction as unknown as postgres.Sql;
-      const transactionalStore = new PostgresKvStore(tx, {
-        tableName,
-        initialized: true,
+        await transactionalStore.set(key, "committed");
       });
-      await transactionalStore.set(key, "committed");
-    });
-    assert.equal(await store.get(key), "committed");
-  } finally {
-    await store.drop();
-    await sql.end();
-  }
-});
+      assert.equal(await store.get(key), "committed");
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
 
 test(
   "PostgresKvStore does not backdate a replacement in an older transaction",
@@ -622,9 +637,9 @@ test(
         await transactionalStore.set(key, "expired", {
           ttl: Temporal.Duration.from({ seconds: 0 }),
         });
-        const [retained] = await tx`SELECT count(*)::int AS count FROM ${
-          tx(tableName)
-        };`;
+        const [retained] = await tx`SELECT count(*)::int AS count FROM ${tx(
+          tableName,
+        )};`;
         assert.equal(
           retained.count,
           1,
@@ -722,9 +737,9 @@ for (const layout of ["partitioned", "inherited"] as const) {
       if (!dbUrl) return;
       const time = clock();
       const sql = postgres(dbUrl);
-      const tableName = `fedify_kv_children_${
-        crypto.randomUUID().replaceAll("-", "")
-      }`;
+      const tableName = `fedify_kv_children_${crypto
+        .randomUUID()
+        .replaceAll("-", "")}`;
       const children = [`${tableName}_a`, `${tableName}_b`];
       const observed = observe(sql);
       const store = new PostgresKvStore(observed.sql, {
@@ -736,22 +751,22 @@ for (const layout of ["partitioned", "inherited"] as const) {
           await sql`CREATE TABLE ${sql(tableName)} (
           key text[], value jsonb NOT NULL, created timestamptz, ttl interval
         ) PARTITION BY RANGE (created)`;
-          await sql`CREATE TABLE ${sql(children[0])} PARTITION OF ${
-            sql(tableName)
-          }
+          await sql`CREATE TABLE ${sql(children[0])} PARTITION OF ${sql(
+            tableName,
+          )}
           FOR VALUES FROM (MINVALUE) TO ('2000-01-01')`;
-          await sql`CREATE TABLE ${sql(children[1])} PARTITION OF ${
-            sql(tableName)
-          }
+          await sql`CREATE TABLE ${sql(children[1])} PARTITION OF ${sql(
+            tableName,
+          )}
           FOR VALUES FROM ('2000-01-01') TO (MAXVALUE)`;
         } else {
           await sql`CREATE TABLE ${sql(tableName)} (
           key text[], value jsonb NOT NULL, created timestamptz, ttl interval
         )`;
           for (const child of children) {
-            await sql`CREATE TABLE ${sql(child)} () INHERITS (${
-              sql(tableName)
-            })`;
+            await sql`CREATE TABLE ${sql(child)} () INHERITS (${sql(
+              tableName,
+            )})`;
           }
         }
         for (const [i, child] of children.entries()) {
@@ -762,9 +777,9 @@ for (const layout of ["partitioned", "inherited"] as const) {
             INTERVAL '1 day' FROM generate_series(1, 1500) n`;
         }
         const [overlap] = await sql`SELECT count(*)::int AS count
-        FROM ${sql(children[0])} a JOIN ${
-          sql(children[1])
-        } b ON a.ctid = b.ctid`;
+        FROM ${sql(children[0])} a JOIN ${sql(
+          children[1],
+        )} b ON a.ctid = b.ctid`;
         assert.equal(
           overlap.count,
           1500,
@@ -773,9 +788,8 @@ for (const layout of ["partitioned", "inherited"] as const) {
         for (const expected of [2000, 1000, 0]) {
           await store.delete(["missing"]);
           await observed.complete();
-          const [remaining] = await sql`SELECT count(*)::int AS count FROM ${
-            sql(tableName)
-          }`;
+          const [remaining] =
+            await sql`SELECT count(*)::int AS count FROM ${sql(tableName)}`;
           assert.equal(
             remaining.count,
             expected,
@@ -796,9 +810,9 @@ for (const layout of ["partitioned", "inherited"] as const) {
         )`;
           await store.delete(["missing"]);
           await observed.complete();
-          const [retained] = await sql`SELECT count(*)::int AS count FROM ${
-            sql(tableName)
-          }`;
+          const [retained] = await sql`SELECT count(*)::int AS count FROM ${sql(
+            tableName,
+          )}`;
           assert.equal(
             retained.count,
             1,
@@ -808,9 +822,9 @@ for (const layout of ["partitioned", "inherited"] as const) {
         time.advance(121_000);
         await store.delete(["missing"]);
         await observed.complete();
-        const [cleaned] = await sql`SELECT count(*)::int AS count FROM ${
-          sql(tableName)
-        }`;
+        const [cleaned] = await sql`SELECT count(*)::int AS count FROM ${sql(
+          tableName,
+        )}`;
         assert.equal(cleaned.count, 0);
       } finally {
         await sql`DROP TABLE IF EXISTS ${sql(tableName)} CASCADE`;

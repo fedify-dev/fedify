@@ -23,7 +23,8 @@ export async function mockDocumentLoader(
 ): Promise<RemoteDocument> {
   const url = new URL(resource);
   if (
-    "navigator" in globalThis && navigator.userAgent === "Cloudflare-Workers"
+    "navigator" in globalThis &&
+    navigator.userAgent === "Cloudflare-Workers"
   ) {
     const testUrl = new URL(url);
     testUrl.hostname += ".test";

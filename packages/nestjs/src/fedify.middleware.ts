@@ -83,11 +83,12 @@ function fromERequest(req: ERequest): Request {
     headers,
     // @ts-ignore: duplex is not supported in Deno, but it is in Node.js
     duplex: "half",
-    body: req.method === "GET" || req.method === "HEAD"
-      ? undefined
-      : (req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)
-        ? JSON.stringify(req.body)
-        : req.body),
+    body:
+      req.method === "GET" || req.method === "HEAD"
+        ? undefined
+        : req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)
+          ? JSON.stringify(req.body)
+          : req.body,
   });
 }
 
@@ -132,10 +133,7 @@ function installNotAcceptableFallback(req: ERequest, res: EResponse): void {
   };
   res.json = wrappedJson;
   const wrapEnd = (end: typeof res.end): typeof res.end =>
-    function (
-      this: EResponse,
-      ...args: unknown[]
-    ) {
+    function (this: EResponse, ...args: unknown[]) {
       if (pending) {
         Object.defineProperty(this, "end", {
           configurable: true,
@@ -146,7 +144,9 @@ function installNotAcceptableFallback(req: ERequest, res: EResponse): void {
         if (this.json === wrappedJson) this.json = json;
       }
       if (
-        !pending || !defaultNotFound || this.headersSent ||
+        !pending ||
+        !defaultNotFound ||
+        this.headersSent ||
         this.statusCode !== 404
       ) {
         pending = false;
@@ -159,16 +159,15 @@ function installNotAcceptableFallback(req: ERequest, res: EResponse): void {
       const body = "Not acceptable";
       this.statusCode = 406;
       this.statusMessage = "Not Acceptable";
-      for (
-        const header of [
-          "Content-Encoding",
-          "Content-Language",
-          "Content-Range",
-          "ETag",
-          "Last-Modified",
-          "Transfer-Encoding",
-        ]
-      ) this.removeHeader(header);
+      for (const header of [
+        "Content-Encoding",
+        "Content-Language",
+        "Content-Range",
+        "ETag",
+        "Last-Modified",
+        "Transfer-Encoding",
+      ])
+        this.removeHeader(header);
       this.setHeader("Content-Type", "text/plain; charset=utf-8");
       this.setHeader("Content-Length", Buffer.byteLength(body));
       this.vary("Accept");
@@ -195,7 +194,9 @@ function installNotAcceptableFallback(req: ERequest, res: EResponse): void {
 /** A custom response copying Nest's exact default 404 is indistinguishable. */
 function isDefaultNotFound(req: ERequest, body: unknown): boolean {
   if (
-    body == null || typeof body !== "object" || Object.keys(body).length !== 3
+    body == null ||
+    typeof body !== "object" ||
+    Object.keys(body).length !== 3
   ) {
     return false;
   }
@@ -204,6 +205,9 @@ function isDefaultNotFound(req: ERequest, body: unknown): boolean {
     error?: unknown;
     message?: unknown;
   };
-  return error.statusCode === 404 && error.error === "Not Found" &&
-    error.message === `Cannot ${req.method} ${req.originalUrl}`;
+  return (
+    error.statusCode === 404 &&
+    error.error === "Not Found" &&
+    error.message === `Cannot ${req.method} ${req.originalUrl}`
+  );
 }

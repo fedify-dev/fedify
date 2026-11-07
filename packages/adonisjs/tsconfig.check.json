@@ -10,9 +10,5 @@
     "stubs/main.ts",
     "tsdown.config.ts"
   ],
-  "exclude": [
-    "dist",
-    "dist-tests",
-    "node_modules"
-  ]
+  "exclude": ["dist", "dist-tests", "node_modules"]
 }

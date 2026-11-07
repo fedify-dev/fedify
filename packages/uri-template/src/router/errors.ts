@@ -70,9 +70,9 @@ export class RouteTemplateOptionsNotMatchedError extends RouterError {
   ) {
     super(
       `Route options variables do not exactly match the template ` +
-        `"${template}"; mismatched: ${
-          variable.map((v) => `"${v}"`).join(", ")
-        }.`,
+        `"${template}"; mismatched: ${variable
+          .map((v) => `"${v}"`)
+          .join(", ")}.`,
     );
     this.name = "RouteTemplateOptionsNotMatchedError";
   }

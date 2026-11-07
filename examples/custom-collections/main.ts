@@ -32,10 +32,7 @@ async function printActivityJson(label: string, path: string): Promise<void> {
   console.log(JSON.stringify(await fetchActivityJson(path), null, 2));
 }
 
-async function printActivityStatus(
-  label: string,
-  path: string,
-): Promise<void> {
+async function printActivityStatus(label: string, path: string): Promise<void> {
   console.log(`\n## ${label}`);
   console.log(await fetchStatus(path));
 }

@@ -31,10 +31,10 @@ export type InboxJsonValue =
 export type InboxRequestCancellation =
   | { readonly type: "not-aborted" }
   | {
-    readonly type: "aborted";
-    /** Exact Request.signal reason, including non-Error values. */
-    readonly reason: unknown;
-  };
+      readonly type: "aborted";
+      /** Exact Request.signal reason, including non-Error values. */
+      readonly reason: unknown;
+    };
 
 /**
  * The final inbox authentication decision.
@@ -42,50 +42,49 @@ export type InboxRequestCancellation =
  */
 export type InboxAuthentication =
   | {
-    readonly status: "verified";
-    /** Direct references to the attempts that authenticated this delivery. */
-    readonly attempts: readonly Extract<
-      InboxVerificationAttempt,
-      { status: "verified" }
-    >[];
-  }
+      readonly status: "verified";
+      /** Direct references to the attempts that authenticated this delivery. */
+      readonly attempts: readonly Extract<
+        InboxVerificationAttempt,
+        { status: "verified" }
+      >[];
+    }
   | {
-    readonly status: "rejected";
-    readonly reason:
-      | { readonly type: "verificationFailed" }
-      | {
-        readonly type: "actorKeyMismatch";
-        readonly key: InboxVerificationKey;
-        readonly actorIds: readonly URL[];
-      }
-      | {
-        readonly type: "proofPolicy";
-        readonly policy: "portableActor" | "portableActivity" | "compound";
-        readonly detail?:
-          import("../sig/verification.ts").InboxProofPolicyFailureReason;
-      }
-      | { readonly type: "invalidNonce" }
-      | {
-        /**
-         * The activity's ID does not have the same [FEP-fe34] origin as all
-         * of its actors.
-         *
-         * [FEP-fe34]: https://w3id.org/fep/fe34
-         * @since 2.5.0
-         */
-        readonly type: "activity-origin-mismatch";
-        readonly activityId: URL;
-        readonly actorIds: readonly URL[];
-      }
-      | {
-        /**
-         * The activity declares no actor, and no principal was authenticated
-         * for it, although its listener allows activities without an actor.
-         * @since 2.5.0
-         */
-        readonly type: "no-authenticated-principal";
-      };
-  }
+      readonly status: "rejected";
+      readonly reason:
+        | { readonly type: "verificationFailed" }
+        | {
+            readonly type: "actorKeyMismatch";
+            readonly key: InboxVerificationKey;
+            readonly actorIds: readonly URL[];
+          }
+        | {
+            readonly type: "proofPolicy";
+            readonly policy: "portableActor" | "portableActivity" | "compound";
+            readonly detail?: import("../sig/verification.ts").InboxProofPolicyFailureReason;
+          }
+        | { readonly type: "invalidNonce" }
+        | {
+            /**
+             * The activity's ID does not have the same [FEP-fe34] origin as all
+             * of its actors.
+             *
+             * [FEP-fe34]: https://w3id.org/fep/fe34
+             * @since 2.5.0
+             */
+            readonly type: "activity-origin-mismatch";
+            readonly activityId: URL;
+            readonly actorIds: readonly URL[];
+          }
+        | {
+            /**
+             * The activity declares no actor, and no principal was authenticated
+             * for it, although its listener allows activities without an actor.
+             * @since 2.5.0
+             */
+            readonly type: "no-authenticated-principal";
+          };
+    }
   | { readonly status: "skipped" }
   | { readonly status: "notDetermined" };
 
@@ -95,47 +94,47 @@ export type InboxAuthentication =
  */
 export type InboxRequestOutcome =
   | {
-    readonly type: "response";
-    readonly status: number;
-    readonly disposition:
-      | "processed"
-      | "enqueued"
-      | "duplicate"
-      | "unhandled"
-      | "customResponse";
-  }
+      readonly type: "response";
+      readonly status: number;
+      readonly disposition:
+        | "processed"
+        | "enqueued"
+        | "duplicate"
+        | "unhandled"
+        | "customResponse";
+    }
   | {
-    readonly type: "response";
-    readonly status: number;
-    readonly disposition: "rejected";
-    readonly reason:
-      | "recipientNotFound"
-      | "invalidJson"
-      | "invalidJsonLd"
-      | "invalidActivity"
-      | "bodyTooLarge"
-      | "missingActor"
-      | "authentication";
-  }
+      readonly type: "response";
+      readonly status: number;
+      readonly disposition: "rejected";
+      readonly reason:
+        | "recipientNotFound"
+        | "invalidJson"
+        | "invalidJsonLd"
+        | "invalidActivity"
+        | "bodyTooLarge"
+        | "missingActor"
+        | "authentication";
+    }
   | {
-    readonly type: "response";
-    readonly status: number;
-    readonly disposition: "failed";
-    readonly reason: "bodyUnavailable" | "enqueueError" | "listenerError";
-    readonly error?: unknown;
-  }
+      readonly type: "response";
+      readonly status: number;
+      readonly disposition: "failed";
+      readonly reason: "bodyUnavailable" | "enqueueError" | "listenerError";
+      readonly error?: unknown;
+    }
   | {
-    readonly type: "exception";
-    readonly stage:
-      | "prepare"
-      | "parse"
-      | "verify"
-      | "policy"
-      | "dispatch"
-      | "respond";
-    /** The original thrown value, including null/undefined. */
-    readonly error: unknown;
-  };
+      readonly type: "exception";
+      readonly stage:
+        | "prepare"
+        | "parse"
+        | "verify"
+        | "policy"
+        | "dispatch"
+        | "respond";
+      /** The original thrown value, including null/undefined. */
+      readonly error: unknown;
+    };
 
 /**
  * Observations of a single inbox delivery request.
@@ -173,10 +172,12 @@ export interface InboxRequestReport {
     readonly recipient: string | null;
   };
   /** Unavailable differs from a successfully parsed JSON null. */
-  readonly payload: { readonly status: "unavailable" } | {
-    readonly status: "parsed";
-    readonly value: InboxJsonValue;
-  };
+  readonly payload:
+    | { readonly status: "unavailable" }
+    | {
+        readonly status: "parsed";
+        readonly value: InboxJsonValue;
+      };
   /** The Activity obtained by the normal processing flow, if any. */
   readonly activity: Activity | null;
   /** Logical evaluations, including unsuccessful fallback paths. */

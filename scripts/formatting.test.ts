@@ -80,12 +80,10 @@ it("formats owned languages and preserves excluded files through the real CLI", 
   const untouched = "intentionally not formatter input  {\n";
   try {
     await writeFile(join(dir, ".oxfmtrc.json"), configText);
-    for (
-      const [path, source] of [
-        ...Object.entries(owned),
-        ...ignored.map((path) => [path, untouched]),
-      ]
-    ) {
+    for (const [path, source] of [
+      ...Object.entries(owned),
+      ...ignored.map((path) => [path, untouched]),
+    ]) {
       const file = join(dir, path);
       await mkdir(dirname(file), { recursive: true });
       await writeFile(file, source);

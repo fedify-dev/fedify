@@ -62,9 +62,8 @@ test("aggregateSamples - groups errors by kind, status, and reason", () => {
 });
 
 test("aggregateSamples - latency percentiles come from the samples", () => {
-  const samples = Array.from(
-    { length: 100 },
-    (_, i) => sample({ latencyMs: i + 1 }),
+  const samples = Array.from({ length: 100 }, (_, i) =>
+    sample({ latencyMs: i + 1 }),
   );
   const m = aggregateSamples(samples, { measuredWindowMs: 1000 });
   assert.ok(m.client.latencyMs.p50 >= 45 && m.client.latencyMs.p50 <= 55);
