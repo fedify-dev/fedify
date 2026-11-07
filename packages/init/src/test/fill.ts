@@ -25,6 +25,8 @@ export const fillEmptyOptions = <T extends TestInitCommand>(
   ) as DefineAllOptions<T>;
 
 type FilledOption<T extends TestInitCommand, K extends MultipleOption> =
+  // Deno accepts repeated `infer J` in this union; Oxlint's no-redeclare flags it.
+  // oxlint-disable-next-line eslint/no-redeclare
   T extends Awaited<DefineOption<T, infer J>> | DefineOption<T, infer J>
     ? DefineOption<T, J | K>
     : DefineOption<T, K>;

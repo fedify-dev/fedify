@@ -89,7 +89,7 @@ export interface WorkersKvNamespaceLike<Key extends string = string> {
  */
 interface WrappedMessage {
   readonly __fedify_ordering_key__?: string;
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   readonly __fedify_payload__: any;
 }
 
@@ -116,7 +116,7 @@ export interface ProcessMessageResult {
    * The unwrapped message payload to process.
    * Only present when `shouldProcess` is `true`.
    */
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   readonly message?: any;
   /**
    * A cleanup function that must be called after processing the message.
@@ -321,7 +321,7 @@ export class WorkersMessageQueue implements MessageQueue {
   }
 
   async enqueue(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     message: any,
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
@@ -337,7 +337,7 @@ export class WorkersMessageQueue implements MessageQueue {
   }
 
   async enqueueMany(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
@@ -430,7 +430,7 @@ export class WorkersMessageQueue implements MessageQueue {
    * @returns A result object indicating whether to process the message.
    * @since 2.0.0
    */
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   async processMessage(rawMessage: any): Promise<ProcessMessageResult> {
     // Handle both wrapped and unwrapped messages for backwards compatibility
     const wrapped = rawMessage as WrappedMessage;
@@ -468,7 +468,7 @@ export class WorkersMessageQueue implements MessageQueue {
   }
 
   listen(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     _handler: (message: any) => Promise<void> | void,
     _options?: MessageQueueListenOptions,
   ): Promise<void> {

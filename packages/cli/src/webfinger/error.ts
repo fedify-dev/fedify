@@ -38,6 +38,8 @@ export class InvalidHandleError extends Error {
     this.name = "InvalidHandleError";
   }
   throw(): never {
+    // The receiver is the error instance itself.
+    // oxlint-disable-next-line eslint/no-throw-literal
     throw this;
   }
 }
@@ -53,6 +55,8 @@ export class NotFoundError extends Error {
     this.name = "NotFoundError";
   }
   throw(): never {
+    // The receiver is the error instance itself.
+    // oxlint-disable-next-line eslint/no-throw-literal
     throw this;
   }
 }
@@ -73,6 +77,8 @@ export class WebFingerLookupError extends Error {
     this.name = "WebFingerLookupError";
   }
   throw(): never {
+    // The receiver is the error instance itself.
+    // oxlint-disable-next-line eslint/no-throw-literal
     throw this;
   }
 }

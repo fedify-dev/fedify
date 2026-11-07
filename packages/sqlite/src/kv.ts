@@ -76,7 +76,7 @@ export class SqliteKvStore implements KvStore {
   /**
    * {@inheritDoc KvStore.get}
    */
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   async get<T = unknown>(key: KvKey): Promise<T | undefined> {
     this.initialize();
 
@@ -100,7 +100,7 @@ export class SqliteKvStore implements KvStore {
   /**
    * {@inheritDoc KvStore.set}
    */
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   async set(
     key: KvKey,
     value: unknown,
@@ -130,13 +130,12 @@ export class SqliteKvStore implements KvStore {
       .run(encodedKey, encodedValue, now, expiresAt);
 
     this.#expire();
-    return;
   }
 
   /**
    * {@inheritDoc KvStore.delete}
    */
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   async delete(key: KvKey): Promise<void> {
     this.initialize();
 
@@ -154,7 +153,7 @@ export class SqliteKvStore implements KvStore {
   /**
    * {@inheritDoc KvStore.cas}
    */
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   async cas(
     key: KvKey,
     expectedValue: unknown,

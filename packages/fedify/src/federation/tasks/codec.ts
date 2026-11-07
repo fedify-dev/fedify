@@ -245,5 +245,5 @@ const classReviver = <TNode extends object, TOut>(
   })();
 };
 
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 type Constructor<T> = new (...arg: any[]) => T;

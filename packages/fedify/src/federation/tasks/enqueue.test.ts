@@ -74,7 +74,7 @@ test("enqueueTasks() validation and dispatch", async (t) => {
       undefined,
     );
     await rejects(
-      // deno-lint-ignore no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       () => ctx.enqueueTask(task, "not a number" as any),
       { name: "TypeError", message: /Task data failed schema validation/ },
     );

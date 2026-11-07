@@ -1586,7 +1586,7 @@ test("outbound observers isolate callback and logging errors from success and or
     federation.setOutboundObservers({
       onBroadcast() {
         calls++;
-        throw "observer failed";
+        throw new Error("observer failed");
       },
     });
     const ctx = federation.createContext(
@@ -4435,6 +4435,8 @@ test("outbound worker-only observers count real sends and report local settlemen
               if (property === Symbol.iterator && ++reads === 1) {
                 throw preparationError;
               }
+              // Proxy forwarding requires dynamic property access.
+              // oxlint-disable-next-line anti-slop/no-reflect-get
               return Reflect.get(target, property, receiver);
             },
           }),

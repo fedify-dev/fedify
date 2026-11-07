@@ -1,9 +1,9 @@
 import { isActor, lookupObject } from "@fedify/vocab";
 import { formatIri } from "@fedify/vocab-runtime";
-import type { ResourceDescriptor } from "@fedify/webfinger";
 import {
   lookupWebFinger,
   type LookupWebFingerOptions,
+  type ResourceDescriptor,
 } from "@fedify/webfinger";
 import { formatMessage, message } from "@optique/core/message";
 import { print } from "@optique/run";

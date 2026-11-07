@@ -852,6 +852,8 @@ test("inbox request cancellation retains accepted queue work and its separate li
   federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .on(Create, (ctx) => {
       processed++;
+      // Read the internal signal property that is not part of the public type.
+      // oxlint-disable-next-line anti-slop/no-reflect-get
       workerSignal = Reflect.get(ctx, "signal");
     })
     .onRequestFinished((_ctx, report) => {

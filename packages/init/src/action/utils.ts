@@ -61,7 +61,8 @@ export function stringifyEnvs(object: Record<string, string>): string {
 
     let escapedValue = value ?? "";
     if (key.startsWith("#")) {
-      // deno-lint-ignore no-console
+      // This warning is user-facing CLI output, not debug logging.
+      // oxlint-disable-next-line eslint/no-console
       console.warn(
         `key starts with a '#' indicates a comment and is ignored: '${key}'`,
       );

@@ -340,12 +340,11 @@ function* flatten(node: Node): Generator<ReturnStatement> {
 
     case "WithStatement":
       yield* flatten(node.body);
-      return;
+      break;
 
     default:
       // For other node types (expressions, declarations, etc.),
       // we don't traverse deeper to avoid infinite recursion
       // from circular references like `parent`
-      return;
   }
 }

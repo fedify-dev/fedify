@@ -972,7 +972,7 @@ export class FederationBuilderImpl<TContextData>
     >();
     const setters: OutboxListenerSetters<TContextData> = {
       on<TActivity extends Activity>(
-        // deno-lint-ignore no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         type: new (...args: any[]) => TActivity,
         listener: OutboxListener<TContextData, TActivity>,
       ): OutboxListenerSetters<TContextData> {
@@ -1357,7 +1357,7 @@ export class FederationBuilderImpl<TContextData>
     >();
     const setters: InboxListenerSetters<TContextData> = {
       on<TActivity extends Activity>(
-        // deno-lint-ignore no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         type: new (...args: any[]) => TActivity,
         listener: InboxListener<TContextData, TActivity>,
         options?: InboxListenerOptions,

@@ -520,7 +520,7 @@ function checkListener(
   };
   for (let changed = true; changed;) {
     changed = false;
-    scopes.forEach((scope, index) => {
+    for (const [index, scope] of scopes.entries()) {
       for (const call of callsByScope[index]) {
         if (
           carriesDelivery(call, scope) && noteCarrying(fateOf(call, analysis))
@@ -528,7 +528,7 @@ function checkListener(
           changed = true;
         }
       }
-    });
+    }
   }
 
   const reported = new Set<Node>();
@@ -540,12 +540,12 @@ function checkListener(
 
   // A delivery call, or a call to a helper that delivers, whose promise is
   // dropped.
-  scopes.forEach((scope, index) => {
+  for (const [index, scope] of scopes.entries()) {
     for (const call of callsByScope[index]) {
       if (!carriesDelivery(call, scope)) continue;
       if (fateOf(call, analysis).fate === "dropped") flag(call);
     }
-  });
+  }
 
   // A callback that awaits a delivery hands its own promise to whoever runs
   // it: `forEach()` drops it, an immediately invoked one is as safe as the
@@ -561,7 +561,7 @@ function checkListener(
 
   // The same for a function that delivers when it is handed over by name,
   // as in `inboxes.forEach(deliver)`.
-  scopes.forEach((scope, index) => {
+  for (const [index, scope] of scopes.entries()) {
     for (const call of callsByScope[index]) {
       for (const arg of call.arguments as Node[]) {
         if (arg.type !== "Identifier") continue;
@@ -572,7 +572,7 @@ function checkListener(
         }
       }
     }
-  });
+  }
 }
 
 function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(

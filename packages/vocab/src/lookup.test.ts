@@ -311,7 +311,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
     "crossOrigin: ignore (default) - returns null for cross-origin objects",
     async () => {
       // Create a mock document loader that returns an object with different origin
-      // deno-lint-ignore require-await
+      // oxlint-disable-next-line eslint/require-await
       const crossOriginDocumentLoader = async (url: string) => {
         if (url === "https://example.com/note") {
           return {
@@ -341,7 +341,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
   await t.step(
     "crossOrigin: throw - throws error for cross-origin objects",
     async () => {
-      // deno-lint-ignore require-await
+      // oxlint-disable-next-line eslint/require-await
       const crossOriginDocumentLoader = async (url: string) => {
         if (url === "https://example.com/note") {
           return {
@@ -372,7 +372,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
   );
 
   await t.step("crossOrigin: trust - allows cross-origin objects", async () => {
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const crossOriginDocumentLoader = async (url: string) => {
       if (url === "https://example.com/note") {
         return {
@@ -404,7 +404,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
   });
 
   await t.step("same-origin objects are always trusted", async () => {
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const sameOriginDocumentLoader = async (url: string) => {
       if (url === "https://example.com/note") {
         return {
@@ -437,7 +437,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
   await t.step(
     "same-authority non-FE34 IRIs are still trusted",
     async () => {
-      // deno-lint-ignore require-await
+      // oxlint-disable-next-line eslint/require-await
       const atProtoDocumentLoader = async (url: string) => {
         if (url === "https://gateway.example/at-item") {
           return {
@@ -474,7 +474,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
   await t.step(
     "portable object IDs are trusted by DID cryptographic origin",
     async () => {
-      // deno-lint-ignore require-await
+      // oxlint-disable-next-line eslint/require-await
       const portableDocumentLoader = async (url: string) => {
         if (
           url ===
@@ -510,7 +510,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
   await t.step(
     "portable object IDs reject mismatched cryptographic origins",
     async () => {
-      // deno-lint-ignore require-await
+      // oxlint-disable-next-line eslint/require-await
       const portableDocumentLoader = async (url: string) => {
         if (
           url ===
@@ -556,7 +556,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
   );
 
   await t.step("objects without @id are trusted", async () => {
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const noIdDocumentLoader = async (url: string) => {
       if (url === "https://example.com/note") {
         return {
@@ -599,7 +599,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
     });
 
     // Mock document loader for the cross-origin actor
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const webfingerDocumentLoader = async (url: string) => {
       if (url === "https://different-origin.com/actor") {
         return {
@@ -653,7 +653,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
 
   await t.step("subdomain same-origin check", async () => {
     // Test that different subdomains are considered different origins
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const subdomainDocumentLoader = async (url: string) => {
       if (url === "https://api.example.com/note") {
         return {
@@ -680,7 +680,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
 
   await t.step("different port same-origin check", async () => {
     // Test that different ports are considered different origins
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const differentPortDocumentLoader = async (url: string) => {
       if (url === "https://example.com:8080/note") {
         return {
@@ -707,7 +707,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
 
   await t.step("protocol difference same-origin check", async () => {
     // Test that different protocols are considered different origins
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const differentProtocolDocumentLoader = async (url: string) => {
       if (url === "https://example.com/note") {
         return {
@@ -734,7 +734,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
 
   await t.step("error handling with crossOrigin throw option", async () => {
     // Test that other errors (not cross-origin) are still thrown normally
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const errorDocumentLoader = async (_url: string) => {
       throw new Error("Network error");
     };
@@ -762,7 +762,7 @@ test("FEP-fe34: lookupObject() cross-origin security", {
   });
 
   await t.step("malformed JSON handling with cross-origin policy", async () => {
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const malformedJsonDocumentLoader = async (url: string) => {
       if (url === "https://example.com/note") {
         return {

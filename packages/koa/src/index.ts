@@ -23,7 +23,7 @@ import { Readable } from "node:stream";
  * @returns A context data for the {@link Federation} object.
  * @since 1.9.0
  */
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 export type ContextDataFactory<TContextData, TKoaContext = any> = (
   context: TKoaContext,
 ) => TContextData | Promise<TContextData>;
@@ -40,7 +40,7 @@ export type ContextDataFactory<TContextData, TKoaContext = any> = (
  * @returns A Koa middleware.
  * @since 1.9.0
  */
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 export function createMiddleware<TContextData, TKoaContext = any>(
   federation: Federation<TContextData>,
   contextDataFactory: ContextDataFactory<TContextData, TKoaContext>,
@@ -91,7 +91,7 @@ export function createMiddleware<TContextData, TKoaContext = any>(
   };
 }
 
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 function toRequest(ctx: any): { request: Request; body?: RequestBody } {
   const url = `${ctx.protocol}://${ctx.host}${ctx.url}`;
   const headers = new Headers();
@@ -239,10 +239,10 @@ function waitForReadable(
   });
 }
 
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 function setResponse(ctx: any, response: Response): void {
   ctx.status = response.status;
-  response.headers.forEach((value, key) => ctx.set(key, value));
+  for (const [key, value] of response.headers) ctx.set(key, value);
   if (response.body == null) return;
   const body = response.body;
   const reader = body.getReader();
@@ -259,7 +259,7 @@ function setResponse(ctx: any, response: Response): void {
   });
 }
 
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 function setNotAcceptableResponse(ctx: any): void {
   // Downstream middleware has finished. Preserve application responses,
   // including explicit status-only 404s and raw Node responses. Koa sets

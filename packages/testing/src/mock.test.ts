@@ -19,8 +19,10 @@ import {
   computeDigestMultibase,
   exportDidKey,
   formatIri,
+  getDocumentLoader,
   parseIri,
   toCompatibleEf61Id,
+  UrlError,
 } from "@fedify/vocab-runtime";
 import {
   deepStrictEqual,
@@ -40,7 +42,6 @@ import {
   createOutboxContext,
   createRequestContext,
 } from "./mock.ts";
-import { getDocumentLoader, UrlError } from "@fedify/vocab-runtime";
 import { metrics, trace } from "@opentelemetry/api";
 
 test("MockFederation preserves telemetry providers with private-address loaders", () => {

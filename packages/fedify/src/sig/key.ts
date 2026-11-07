@@ -784,7 +784,7 @@ export function bypassKeyCacheReads(keyCache?: KeyCache): KeyCache {
 }
 
 type FetchableKeyClass<T extends CryptographicKey | Multikey> =
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   (new (...args: any[]) => T) & {
     fromJsonLd(
       jsonLd: unknown,
@@ -1911,7 +1911,11 @@ async function fetchKeyInternal<T extends CryptographicKey | Multikey>(
         } catch {
           // A custom loader can provide a response whose body is already used.
           // Collecting evidence must preserve the original verification result.
-          result = { error: error instanceof Error ? error : new Error() };
+          result = {
+            error: error instanceof Error
+              ? error
+              : new Error("Unknown verification error"),
+          };
         }
         check.reason = {
           type: "keyFetchError",

@@ -286,7 +286,7 @@ async function createProofInternal(
   const msgDigest = await crypto.subtle.digest("SHA-256", msgBytes);
   created ??= Temporal.Now.instant();
   const proofConfig = {
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     "@context": (compactMsg as any)["@context"],
     type: "DataIntegrityProof",
     cryptosuite: "eddsa-jcs-2022",
@@ -2502,7 +2502,7 @@ export interface VerifyObjectOptions extends VerifyProofOptions {
  * @since 0.10.0
  */
 export async function verifyObject<T extends Object>(
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   cls: (new (...args: any[]) => T) & {
     fromJsonLd(jsonLd: unknown, options: VerifyObjectOptions): Promise<T>;
   },
@@ -2559,7 +2559,7 @@ export type VerifyObjectDetailedResult<T> =
  * @internal
  */
 export async function verifyObjectDetailed<T extends Object>(
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   cls: (new (...args: any[]) => T) & {
     fromJsonLd(jsonLd: unknown, options: VerifyObjectOptions): Promise<T>;
   },
@@ -2655,7 +2655,7 @@ function isRetryableKeyFetchError(result: FetchKeyErrorResult): boolean {
 }
 
 async function verifyObjectCore<T extends Object>(
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   cls: (new (...args: any[]) => T) & {
     fromJsonLd(jsonLd: unknown, options: VerifyObjectOptions): Promise<T>;
   },
@@ -2704,7 +2704,7 @@ async function verifyObjectCore<T extends Object>(
   let acceptedPortableProofs = 0;
   // A portable proof document carries no proof of its own; it is
   // authenticated below, by verifying it against the object:
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const acceptPortableProofDocument: PortableObjectVerifier = async () => {
     acceptedPortableProofs++;
     return { verified: true };

@@ -226,8 +226,9 @@ function* generateEntityTypeHelpers(
   sortedTypeUris: string[],
   types: Record<string, TypeSchema>,
 ): Iterable<string> {
-  const entityTypes = sortedTypeUris.filter((typeUri) => types[typeUri].entity)
-    .map((typeUri) => ({ name: types[typeUri].name, uri: typeUri }));
+  const entityTypes = sortedTypeUris.flatMap((typeUri) =>
+    types[typeUri].entity ? [{ name: types[typeUri].name, uri: typeUri }] : []
+  );
   const entityTypeNames = entityTypes.map((entityType) => entityType.name);
   const entityTypeUnion = entityTypeNames.length < 1
     ? " never"
@@ -317,6 +318,7 @@ export async function* generateClasses(
 ): AsyncIterable<string> {
   validateTypeSchemas(types);
   yield "// deno-lint-ignore-file ban-unused-ignore no-explicit-any no-unused-vars prefer-const verbatim-module-syntax\n";
+  yield "// oxlint-disable typescript/no-explicit-any, no-unused-vars, prefer-const\n";
   yield 'import jsonld from "@fedify/vocab-runtime/jsonld";\n';
   yield 'import { getLogger } from "@logtape/logtape";\n';
   yield `import { type Span, SpanStatusCode, type TracerProvider, trace }

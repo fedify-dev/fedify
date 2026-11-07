@@ -1,8 +1,7 @@
 import { Activity } from "@fedify/vocab";
-import { getLogger } from "@logtape/logtape";
 import type { Span } from "@opentelemetry/api";
 import type { OutboundInboxRequest } from "./outbound-report.ts";
-import { withContext } from "@logtape/logtape";
+import { getLogger, withContext } from "@logtape/logtape";
 import type { RequestContext } from "./context.ts";
 import type {
   InboxAuthentication,

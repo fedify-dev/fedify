@@ -53,7 +53,7 @@ function createMockFederation(): {
 
   function track(name: string) {
     if (!calls[name]) calls[name] = [];
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     return (...args: any[]) => {
       calls[name].push(args);
       if (name === "fetch") {

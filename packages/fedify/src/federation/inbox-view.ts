@@ -294,7 +294,7 @@ export function createSnapshotOnlyLoader(
   for (const entry of entries) {
     if (entry.policy === policy) responses.set(entry.url, entry.response);
   }
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   return markEffectiveContextLoader(async (url) => {
     const response = responses.get(normalizeUrl(url));
     if (response == null) {
@@ -351,10 +351,10 @@ export async function expandDocument(
   document: unknown,
   contextLoader: DocumentLoader,
 ): Promise<Record<string, unknown>[]> {
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   return await jsonld.expand(document as any, {
     documentLoader: contextLoader,
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
   } as any) as Record<string, unknown>[];
 }
 

@@ -27,7 +27,7 @@
     ]
   },
   "tasks": {
-    "check": "deno fmt --check && deno lint && deno check",
+    "check": "deno fmt --check && deno check",
     "test": "deno test --allow-env",
     "test:old": {
       "command": "OLD=true deno test --allow-env old/",

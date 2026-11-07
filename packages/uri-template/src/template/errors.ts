@@ -129,7 +129,7 @@ export class InvalidLiteralError extends TemplateParseError {
       position,
       `Pct-encode '${char}' (e.g. '%${
         char.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")
-      }') or remove it. Literals may not contain CTL, SP, '\"', '\\'', lone ` +
+      }') or remove it. Literals may not contain CTL, SP, '"', '\\'', lone ` +
         "'%', '<', '>', '\\\\', '^', '`', or '|'.",
       `Invalid literal character '${char}'`,
     );

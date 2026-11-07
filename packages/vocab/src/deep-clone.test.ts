@@ -29,7 +29,7 @@ import {
 const options = { contextLoader: mockDocumentLoader };
 
 function personLoader(name: string, fetched: string[] = []): DocumentLoader {
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   return async (url) => {
     fetched.push(url);
     return {
@@ -203,7 +203,7 @@ test("deepClone() preserves origin checks and isolates hydrated trust", async ()
     },
   }, {
     ...options,
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     documentLoader: async (url) => {
       fetches++;
       return {

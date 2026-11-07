@@ -4,7 +4,7 @@
   "license": "MIT",
   "imports": {
     "@fresh/core": "jsr:@fresh/core@^2.1.4",
-    "@logtape/logtape": "jsr:@logtape/logtape@^2.2.0",
+    "@logtape/logtape": "jsr:@logtape/logtape@2.4.2",
     "fresh": "jsr:@fresh/core@^2.1.4"
   },
   "exports": {
@@ -20,7 +20,7 @@
     ]
   },
   "tasks": {
-    "check": "deno fmt --check && deno lint && deno check src/*.ts",
+    "check": "deno fmt --check && deno check src/*.ts",
     "test": "deno test --allow-all src/mod.test.ts"
   }
 }

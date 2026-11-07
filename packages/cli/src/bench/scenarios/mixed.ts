@@ -335,9 +335,9 @@ export function mergeMeasurements(
   const total = measurements.reduce((sum, m) => sum + m.requests.total, 0);
   const ok = measurements.reduce((sum, m) => sum + m.requests.ok, 0);
   const histogram = mergeHistograms(measurements);
-  const deliveryThroughputs = measurements
-    .map((m) => m.deliveryThroughputPerSec)
-    .filter((value): value is number => value != null);
+  const deliveryThroughputs = measurements.flatMap((m) =>
+    m.deliveryThroughputPerSec == null ? [] : [m.deliveryThroughputPerSec]
+  );
   return {
     requests: {
       total,

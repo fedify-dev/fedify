@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-explicit-any
+// oxlint-disable typescript/no-explicit-any
 import type {
   MessageQueue,
   MessageQueueDepth,
@@ -295,7 +295,6 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
         return { message: decoded[1], orderingKey };
       }
       // All messages have ordering keys that are being processed
-      return;
     } finally {
       await this.#redis.del(this.#lockKey);
     }

@@ -141,7 +141,8 @@ export interface PostgresMessageQueueOptions {
 export class PostgresMessageQueue implements MessageQueue {
   readonly atomicEnqueueMany = false;
 
-  // deno-lint-ignore ban-types
+  // postgres.js uses Sql<{}> to mean an untyped SQL client.
+  // oxlint-disable-next-line typescript/no-empty-object-type
   readonly #sql: Sql<{}>;
   readonly #tableName: string;
   readonly #channelName: string;
@@ -153,7 +154,8 @@ export class PostgresMessageQueue implements MessageQueue {
   #driverSerializesJson = false;
 
   constructor(
-    // deno-lint-ignore ban-types
+    // postgres.js uses Sql<{}> to mean an untyped SQL client.
+    // oxlint-disable-next-line typescript/no-empty-object-type
     sql: Sql<{}>,
     options: PostgresMessageQueueOptions = {},
   ) {
@@ -170,7 +172,7 @@ export class PostgresMessageQueue implements MessageQueue {
   }
 
   async enqueue(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     message: any,
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
@@ -204,7 +206,7 @@ export class PostgresMessageQueue implements MessageQueue {
   }
 
   async enqueueMany(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
@@ -260,7 +262,7 @@ export class PostgresMessageQueue implements MessageQueue {
   }
 
   async listen(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     handler: (message: any) => void | Promise<void>,
     options: MessageQueueListenOptions = {},
   ): Promise<void> {

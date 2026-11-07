@@ -107,8 +107,8 @@ Development environment
 -----------------------
 
 Fedify is a TypeScript monorepo.  Node.js runs dependency installation, code
-generation, builds, type checking, maintenance scripts, and test harnesses.
-Formatting, linting, and the local CLI still use Deno.  Supported packages
+generation, builds, type checking, maintenance scripts, test harnesses, and
+linting.  Formatting and the local CLI still use Deno.  Supported packages
 are tested on Deno, Node.js, and Bun.  [mise] installs the required tool
 versions and runs repository tasks.  Install mise before bootstrapping; it
 provisions Node.js and the tools declared in *mise.toml*, so Node.js needs no
@@ -135,8 +135,8 @@ Install or refresh the pre-commit hook explicitly with
 
 To bootstrap without installing Deno, set `MISE_DISABLE_TOOLS=deno` before
 running `mise install` (for example, `$env:MISE_DISABLE_TOOLS = "deno"` in
-PowerShell).  Deno is still needed for the current formatting, linting, and
-Deno compatibility tasks; those tools are being migrated separately.
+PowerShell).  Deno is still needed for the current formatting and Deno
+compatibility tasks; linting runs on Oxlint and does not need Deno.
 
 Run development workflows through mise.  Do not call `npm` or `pnpm` directly
 for repository tasks.  Start by inspecting the available commands:
@@ -237,6 +237,25 @@ only when selected Deno targets need workspace imports.  Run
 Deno task, since that option omits task dependencies. The existing Deno
 `compile` tasks still generate vocabulary, but no longer cache or type-check it
 as a side effect.
+
+### Linting
+
+Linting uses [Oxlint] and the root *.oxlintrc.json*.  Run it with:
+
+~~~~ bash
+mise run check:lint
+mise run check-each fedify
+~~~~
+
+The configuration mirrors the rule set that the repository previously used
+with `deno lint`; [linting.md] documents the mapping and the accepted gaps.
+Name rules explicitly in `oxlint-disable` comments and add a short reason when
+the suppression is not obvious.  The editor setup keeps the Deno language
+server for formatting and type diagnostics but disables `deno.lint`, so Oxlint
+is the only lint source.
+
+[Oxlint]: https://oxc.rs/docs/guide/usage/linter/
+[linting.md]: LINTING.md
 
 ### Type checking
 

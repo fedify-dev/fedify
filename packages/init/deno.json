@@ -17,7 +17,7 @@
     ]
   },
   "tasks": {
-    "check": "deno fmt --check && deno lint && deno check src/**/*.ts",
+    "check": "deno fmt --check && deno check src/**/*.ts",
     "run": "deno run --allow-all src/mod.ts",
     "update-init-deps": "node --experimental-strip-types scripts/update_init_deps.ts"
   },
@@ -25,16 +25,6 @@
     "exclude": [
       "src/templates/**"
     ]
-  },
-  "lint": {
-    "exclude": [
-      "src/templates/**"
-    ],
-    "rules": {
-      "exclude": [
-        "no-slow-types"
-      ]
-    }
   },
   "test": {
     "exclude": [

@@ -88,6 +88,8 @@ export const isTestable = (dir: string): boolean =>
 function printSkippedCases(dirs: string[]): void {
   const matchedPatterns = new Set<string>(
     dirs.filter(Boolean).flatMap((dir) =>
+      // The curried `join` helper makes this filter/map chain intentional.
+      // oxlint-disable-next-line anti-slop/no-array-filter-map
       BANNED_LOOKUP_CASES
         .filter(matchesLookupCasePattern(parseLookupCase(dir)))
         .map(join(","))

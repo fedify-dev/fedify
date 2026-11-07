@@ -21,6 +21,7 @@ import { FetchError, getDocumentLoader, UrlError } from "@fedify/vocab-runtime";
 import type { LookupWebFingerOptions } from "@fedify/webfinger";
 import {
   configure,
+  getTextFormatter,
   type LogRecord,
   reset,
   withContext,
@@ -274,10 +275,26 @@ test("createFederation()", async (t) => {
           assertEquals(records[0].level, "warning");
           assertEquals(
             records[0].rawMessage,
-            "Fedify benchmarkMode is enabled; private address checks " +
-              "disabled (allowPrivateAddress=true); HTTP Signature time " +
-              "window disabled (signatureTimeWindow=false). Benchmark " +
-              "endpoints are active and must not be used in production.",
+            "Fedify benchmarkMode is enabled; {relaxationSummary}. " +
+              "Benchmark endpoints are active and must not be used in " +
+              "production.",
+          );
+          assertEquals(
+            records[0].properties.relaxationSummary,
+            "private address checks disabled (allowPrivateAddress=true); " +
+              "HTTP Signature time window disabled " +
+              "(signatureTimeWindow=false)",
+          );
+          const formatted = getTextFormatter({ timestamp: "disabled" })(
+            records[0],
+          );
+          assert(
+            formatted.includes(
+              "private address checks disabled (allowPrivateAddress=true); " +
+                "HTTP Signature time window disabled " +
+                "(signatureTimeWindow=false)",
+            ),
+            formatted,
           );
           assertEquals(
             records[0].properties.relaxations,
@@ -2605,7 +2622,6 @@ test("Federation.fetch()", async (t) => {
     federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(vocab.Create, (_ctx, activity) => {
         inbox.push(activity.id!.toString());
-        return;
       });
 
     return {
@@ -5297,7 +5313,7 @@ test("Federation.setMediaUploader()", async (t) => {
           headers: { "content-type": "multipart/form-data; boundary=abc" },
           body: erroringBody,
           duplex: "half",
-          // deno-lint-ignore no-explicit-any
+          // oxlint-disable-next-line typescript/no-explicit-any
         } as any),
         { contextData: undefined },
       );
@@ -9409,7 +9425,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     ]);
     assertEquals(state?.state, "open");
     assertEquals(Array.isArray(state?.failures), true);
-    assertEquals((state?.failures as unknown[]).length, 1);
+    assertEquals((state?.failures as unknown[] | undefined)?.length, 1);
     assertExists(state?.opened);
   });
 
@@ -9909,7 +9925,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       "unavailable.example",
     ]);
     assertEquals(state?.state, "closed");
-    assertEquals((state?.failures as unknown[]).length, 1);
+    assertEquals((state?.failures as unknown[] | undefined)?.length, 1);
   });
 
   await t.step("503 Retry-After delays newly opened circuit hold", async () => {
@@ -13216,7 +13232,7 @@ test("createFederation() forwards DocumentLoaderFactoryOptions to a user-supplie
   impl.authenticatedDocumentLoaderFactory(
     {
       keyId: new URL("https://example.com/users/alice#main-key"),
-      // deno-lint-ignore no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       privateKey: {} as any,
     },
     { allowPrivateAddress: true, userAgent: "test-ua" },
@@ -13278,7 +13294,7 @@ class RendezvousQueue implements MessageQueue {
     this.#openGate();
   }
 
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   enqueue(message: any, options?: MessageQueueEnqueueOptions): Promise<void> {
     this.enqueued.push({ message, options });
     if (++this.#count >= this.expected) this.#markDispatched();
@@ -13286,7 +13302,7 @@ class RendezvousQueue implements MessageQueue {
   }
 
   listen(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     _handler: (message: any) => Promise<void> | void,
     _options?: MessageQueueListenOptions,
   ): Promise<void> {
@@ -13508,7 +13524,7 @@ test("ContextImpl.enqueueTaskMany()", async (t) => {
         undefined,
       );
       await rejects(
-        // deno-lint-ignore no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         () => ctx.enqueueTaskMany(task, [1, "two", 3] as any),
         { name: "TypeError", message: /Task data failed schema validation/ },
       );

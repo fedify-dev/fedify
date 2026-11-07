@@ -48,7 +48,7 @@ function createLoader(
   responses: Record<string, Response>,
 ): DocumentLoader & { readonly fetched: string[] } {
   const fetched: string[] = [];
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const loader = async (url: string): Promise<RemoteDocument> => {
     fetched.push(url);
     const response = responses[url];
@@ -78,7 +78,7 @@ function createVerifier(
   verified = true,
 ): PortableObjectVerifier & { readonly documents: unknown[] } {
   const documents: unknown[] = [];
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const verifier = async (document: unknown) => {
     documents.push(document);
     return { verified };
@@ -461,7 +461,7 @@ test("getObject() applies the portable object verifier", async () => {
       documentLoader,
       contextLoader: mockDocumentLoader,
       gateways,
-      // deno-lint-ignore require-await
+      // oxlint-disable-next-line eslint/require-await
       verifyPortableObject: async () => {
         throw new Error("Verifier failure");
       },
@@ -916,7 +916,7 @@ function createRecordingVerifier(
     document: unknown;
     options: PortableObjectVerifierOptions;
   }[] = [];
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const verifier = async (
     document: unknown,
     options: PortableObjectVerifierOptions,
@@ -1206,7 +1206,7 @@ function createRedirectingLoader(
   responses: Record<string, { documentUrl: string; document: unknown }>,
 ): DocumentLoader & { readonly fetched: string[] } {
   const fetched: string[] = [];
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const loader = async (url: string): Promise<RemoteDocument> => {
     fetched.push(url);
     const response = responses[url];
@@ -2298,7 +2298,7 @@ test("accessors pass the verifier of a call on to the objects they fetch", async
     const roots: [string, () => Promise<Create>][] = [
       [
         "constructed",
-        // deno-lint-ignore require-await
+        // oxlint-disable-next-line eslint/require-await
         async () =>
           new Create({
             id: new URL(gatewayUrl("https://gw.example", "/activities/1")),

@@ -60,7 +60,7 @@
       ]
     },
     "check": {
-      "command": "deno fmt --check && deno lint && deno check src/**/*.ts",
+      "command": "deno fmt --check && deno check src/**/*.ts",
       "dependencies": [
         "codegen"
       ]

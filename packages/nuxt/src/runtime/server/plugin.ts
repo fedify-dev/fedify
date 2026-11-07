@@ -100,17 +100,18 @@ const fedifyPlugin: NitroAppPlugin = (nitroApp) => {
       : getResponseStatus(event);
     if (!shouldConvert(event, status)) return;
     if (body instanceof Response) {
-      body.headers.forEach((value, name) => {
+      for (const [name, headerValue] of body.headers) {
+        let value = headerValue;
         if (name === "set-cookie") {
           appendResponseHeader(event, name, splitCookiesString(value));
-          return;
+          continue;
         }
         if (name === "vary") {
           const current = getResponseHeader(event, name);
           value = [current, value].filter(Boolean).join(", ");
         }
         setResponseHeader(event, name, value);
-      });
+      }
       void body.body?.cancel().catch(() => {});
     }
     setNotAcceptable(event);

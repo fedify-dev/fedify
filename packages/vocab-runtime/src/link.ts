@@ -200,26 +200,29 @@ export class HttpHeaderLink {
           ...input.map(
             ([uri, parameters]: HttpHeaderLinkEntry): HttpHeaderLinkEntry => {
               validateURI(uri);
-              Object.entries(parameters).forEach(
-                ([key, value]: [string, string]): void => {
-                  if (
-                    key !== key.toLowerCase() ||
-                    !(/^[\w-]+\*?$/.test(key))
-                  ) {
-                    throw new SyntaxError(
-                      `\`${key}\` is not a valid parameter key!`,
-                    );
-                  }
-                  if (
-                    parametersNeedLowerCase.includes(key) &&
-                    value !== value.toLowerCase()
-                  ) {
-                    throw new SyntaxError(
-                      `\`${value}\` is not a valid parameter value!`,
-                    );
-                  }
-                },
-              );
+              for (
+                const [key, value] of Object.entries(parameters) as [
+                  string,
+                  string,
+                ][]
+              ) {
+                if (
+                  key !== key.toLowerCase() ||
+                  !(/^[\w-]+\*?$/.test(key))
+                ) {
+                  throw new SyntaxError(
+                    `\`${key}\` is not a valid parameter key!`,
+                  );
+                }
+                if (
+                  parametersNeedLowerCase.includes(key) &&
+                  value !== value.toLowerCase()
+                ) {
+                  throw new SyntaxError(
+                    `\`${value}\` is not a valid parameter value!`,
+                  );
+                }
+              }
               return [uri, structuredClone(parameters)];
             },
           ),

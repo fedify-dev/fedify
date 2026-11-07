@@ -1,7 +1,7 @@
 import { Activity } from "@fedify/vocab";
 
 type ActivityConstructor<TActivity extends Activity = Activity> =
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   new (...args: any[]) => TActivity;
 
 type ActivityListener<TContext, TActivity extends Activity = Activity> = (

@@ -170,7 +170,7 @@ export class DenoKvStore implements KvStore {
  */
 interface WrappedMessage {
   readonly __fedify_ordering_key__?: string;
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   readonly __fedify_payload__: any;
 }
 
@@ -242,7 +242,7 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
   }
 
   async enqueue(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     message: any,
     options?: MessageQueueEnqueueOptions | undefined,
   ): Promise<void> {
@@ -259,7 +259,7 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
   }
 
   listen(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     handler: (message: any) => void | Promise<void>,
     options: MessageQueueListenOptions = {},
   ): Promise<void> {

@@ -1,4 +1,4 @@
-import { type RequestContext } from "@fedify/fedify";
+import type { RequestContext } from "@fedify/fedify";
 import { Note } from "@fedify/vocab";
 import type { Post, User } from "./types";
 import { postStore } from "./store";

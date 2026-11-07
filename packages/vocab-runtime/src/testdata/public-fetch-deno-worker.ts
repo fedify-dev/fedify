@@ -61,14 +61,14 @@ for (
     calls,
     hostnames,
     bodies,
-    logs: records
-      .filter((record) =>
-        typeof record.rawMessage === "string" &&
+    logs: records.flatMap((record) =>
+      typeof record.rawMessage === "string" &&
         record.rawMessage.startsWith("Outbound {protocol} connections are not")
-      )
-      .map((record) => [
-        record.level,
-        record.properties.runtime,
-        record.properties.protocol,
-      ]),
+        ? [[
+          record.level,
+          record.properties.runtime,
+          record.properties.protocol,
+        ]]
+        : []
+    ),
   });

@@ -4,6 +4,7 @@
       "settings": {
         "deno": {
           "enable": true,
+          "lint": false,
           "unstable": true
         }
       }

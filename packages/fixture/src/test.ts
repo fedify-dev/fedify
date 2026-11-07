@@ -134,16 +134,13 @@ export function test(
     });
   } else if ("Bun" in globalThis) {
     let failed: unknown = undefined;
-    // deno-lint-ignore no-inner-declarations
     function step(def: TestStepDefinition): Promise<boolean>;
-    // deno-lint-ignore no-inner-declarations
     function step(
       name: string,
       fn: TestFunction,
     ): Promise<boolean>;
-    // deno-lint-ignore no-inner-declarations
     function step(fn: TestFunction): Promise<boolean>;
-    // deno-lint-ignore no-inner-declarations
+    // oxlint-disable-next-line eslint/no-inner-declarations
     async function step(
       defOrNameOrFn:
         | TestStepDefinition
@@ -177,7 +174,7 @@ export function test(
       origin: "",
       step,
     };
-    // deno-lint-ignore no-inner-declarations
+    // oxlint-disable-next-line eslint/no-inner-declarations
     async function fn() {
       await def.fn(ctx);
       if (failed) throw failed;
@@ -260,7 +257,7 @@ function caller() {
   };
   const _ = Trace.prepareStackTrace;
   Trace.prepareStackTrace = (_, stack) => stack;
-  const { stack } = new Error();
+  const { stack } = new Error("capture stack");
   Trace.prepareStackTrace = _;
   const caller = (stack as unknown as CallSite[])[2];
   return caller.getFileName().replaceAll("\\", "/");

@@ -845,9 +845,11 @@ export class FederationImpl<TContextData>
       );
       const relaxationSummary = formatBenchmarkRelaxations(relaxations);
       getLogger(["fedify", "federation", "benchmark"]).warn(
-        `Fedify benchmarkMode is enabled; ${relaxationSummary}. Benchmark endpoints are active and must not be used in production.`,
+        "Fedify benchmarkMode is enabled; {relaxationSummary}. " +
+          "Benchmark endpoints are active and must not be used in production.",
         {
           relaxations,
+          relaxationSummary,
         },
       );
     }
@@ -3869,9 +3871,9 @@ export class FederationImpl<TContextData>
           recordOutboxEnqueue(this.meterProvider, outboxQueue, m.message);
         }),
       );
-      const errors = promises
-        .filter((r) => r.status === "rejected")
-        .map((r) => (r as PromiseRejectedResult).reason);
+      const errors = promises.flatMap((r) =>
+        r.status === "rejected" ? [(r as PromiseRejectedResult).reason] : []
+      );
       if (errors.length > 0) {
         logger.error(
           "Failed to enqueue activity {activityId} to send later: {errors}",
@@ -6132,14 +6134,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       } else {
         identifierPromise = Promise.resolve(identity.identifier);
       }
-      return identifierPromise.then((identifier) => {
+      return identifierPromise.then(async (identifier) => {
         if (identifier == null) return this.documentLoader;
-        const keyPair = this.getRsaKeyPairFromIdentifier(identifier);
-        return keyPair.then((pair) =>
-          pair == null
-            ? this.documentLoader
-            : this.federation.authenticatedDocumentLoaderFactory(pair)
-        );
+        const pair = await this.getRsaKeyPairFromIdentifier(identifier);
+        return pair == null
+          ? this.documentLoader
+          : this.federation.authenticatedDocumentLoaderFactory(pair);
       });
     }
     return this.federation.authenticatedDocumentLoaderFactory(identity);
@@ -7043,7 +7043,7 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
   isInActorDispatcher(): boolean {
     return this.#invokedFromActorDispatcher != null;
   }
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   override readonly url: URL = undefined as any;
   // An own property, so that the contexts derived by spreading this one, e.g.,
   // in getActor() and getObject(), keep it:
@@ -7722,9 +7722,9 @@ async function forwardActivityInternal<TContextData>(
         );
       }),
     );
-    const errors: unknown[] = promises
-      .filter((r) => r.status === "rejected")
-      .map((r) => (r as PromiseRejectedResult).reason);
+    const errors: unknown[] = promises.flatMap((r) =>
+      r.status === "rejected" ? [(r as PromiseRejectedResult).reason] : []
+    );
     if (errors.length > 0) {
       logger.error(
         "Failed to enqueue activity {activityId} to forward later:\n{errors}",

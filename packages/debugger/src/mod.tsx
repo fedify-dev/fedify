@@ -123,7 +123,7 @@ function validatePathPrefix(path: string): string {
     );
   }
   // Reject control characters, semicolons, and commas (unsafe in headers)
-  // deno-lint-ignore no-control-regex
+  // oxlint-disable-next-line eslint/no-control-regex
   if (/[\x00-\x1f\x7f;,]/.test(path)) {
     throw new TypeError(
       `Invalid debug dashboard path: ${JSON.stringify(path)}. ` +
@@ -270,7 +270,7 @@ export function createFederationDebugger<TContextData>(
           reset: true,
           sinks,
           loggers,
-          // deno-lint-ignore no-explicit-any
+          // oxlint-disable-next-line typescript/no-explicit-any
         } as any,
       );
     } else {
@@ -313,6 +313,8 @@ export function createFederationDebugger<TContextData>(
   return new Proxy(federation as Federation<TContextData> & { sink: Sink }, {
     get(target, prop, receiver) {
       if (prop in overrides) return overrides[prop];
+      // Proxy forwarding requires dynamic property access.
+      // oxlint-disable-next-line anti-slop/no-reflect-get
       const value = Reflect.get(target, prop, receiver);
       if (typeof value === "function") return value.bind(target);
       return value;

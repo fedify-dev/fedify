@@ -80,7 +80,7 @@ function assertPortablePathCanBeParsed(iri: string): void {
 function assertCompatiblePathCanBeParsed(raw: string, parsed: URL): void {
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return;
   const prepared = prepareUrlInput(raw);
-  const match = prepared.match(/^https?:[\/\\]*[^/?#\\]*([^?#]*)/i);
+  const match = prepared.match(/^https?:[/\\]*[^/?#\\]*([^?#]*)/i);
   if (match == null) return;
   const rawPath = match[1].replace(/\\/g, "/");
   const compatiblePath =

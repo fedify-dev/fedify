@@ -80,9 +80,9 @@ class MockStore {
   async *list(options: { prefix?: string }) {
     const prefix = options.prefix ?? "";
     this.listPrefixes.push(prefix);
-    const blobs = [...this.entries]
-      .filter(([key]) => key.startsWith(prefix))
-      .map(([key, entry]) => ({ key, etag: entry.etag ?? "" }));
+    const blobs = [...this.entries].flatMap(([key, entry]) =>
+      key.startsWith(prefix) ? [{ key, etag: entry.etag ?? "" }] : []
+    );
     for (const blob of blobs) {
       yield { blobs: [blob], directories: [] };
     }

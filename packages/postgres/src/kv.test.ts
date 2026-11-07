@@ -11,7 +11,7 @@ const Temporal = globalThis.Temporal ?? temporal.Temporal;
 const dbUrl = process.env.POSTGRES_URL;
 
 function getStore(): {
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   sql: postgres.Sql<any>;
   tableName: string;
   store: PostgresKvStore;

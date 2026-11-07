@@ -176,16 +176,16 @@ async function settlesWithin<T>(
 function cancelFailureLogs(
   records: readonly LogRecord[],
 ): [string, unknown, unknown][] {
-  return records
-    .filter((record) =>
-      record.rawMessage ===
+  return records.flatMap((record) =>
+    record.rawMessage ===
         "Failed to cancel a response body from {url}: {error}"
-    )
-    .map((record) => [
-      record.level,
-      record.properties.url,
-      record.properties.error,
-    ]);
+      ? [[
+        record.level,
+        record.properties.url,
+        record.properties.error,
+      ]]
+      : []
+  );
 }
 
 async function withMockedGlobalFetch<T>(

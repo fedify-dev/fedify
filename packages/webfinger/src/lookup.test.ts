@@ -1263,7 +1263,7 @@ function recordHops(respond: (url: URL) => FakeResponse): HopRecorder {
   let responses = 0;
   return {
     events,
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     async openHop(url) {
       opens++;
       events.push(`open ${url}`);
@@ -1271,7 +1271,7 @@ function recordHops(respond: (url: URL) => FakeResponse): HopRecorder {
       let closed = false;
       return {
         url: new URL(url),
-        // deno-lint-ignore require-await
+        // oxlint-disable-next-line eslint/require-await
         async fetch(input) {
           if (closed) throw new TypeError("The fetch session is closed.");
           const target = new URL(input instanceof Request ? input.url : input);
@@ -1308,7 +1308,7 @@ function recordHops(respond: (url: URL) => FakeResponse): HopRecorder {
           }
           return response;
         },
-        // deno-lint-ignore require-await
+        // oxlint-disable-next-line eslint/require-await
         async close() {
           if (closed) return;
           closed = true;

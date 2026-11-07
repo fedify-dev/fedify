@@ -71,7 +71,7 @@ function getCustomDonations(members: MemberList): MemberList {
 }
 
 function escape(string: string): string {
-  return string.replace(/[\\*_()\[\]]/g, (m) => `\\${m}`);
+  return string.replace(/[\\*_()[\]]/g, (m) => `\\${m}`);
 }
 
 function escapeTableCell(string: string | null): string {

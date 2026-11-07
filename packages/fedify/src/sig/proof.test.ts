@@ -2989,7 +2989,7 @@ test("verifyObject() does not pass its proof verifier on to cached proofs", asyn
     { "@graph": [{ "@id": proofUrl }] },
   ];
 
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const rootVerifier = async () => ({ verified: false });
   for (const verifyPortableObject of [undefined, rootVerifier]) {
     let proofFetches = 0;
@@ -3714,7 +3714,7 @@ test("verifyPortableObjectProof() verifies objects fetched through gateways", as
       object,
     }, { contextLoader: mockDocumentLoader });
     return await create.getObject({
-      // deno-lint-ignore require-await
+      // oxlint-disable-next-line eslint/require-await
       documentLoader: async (requestUrl) => {
         if (requestUrl !== url) {
           throw new Error(`Unexpected URL: ${requestUrl}`);

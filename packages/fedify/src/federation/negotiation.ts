@@ -55,7 +55,7 @@ interface MediaTypeSpecificity extends Specificity {
   params: { [param: string]: string | undefined };
 }
 
-const simpleMediaTypeRegExp = /^\s*([^\s\/;]+)\/([^;\s]+)\s*(?:;(.*))?$/;
+const simpleMediaTypeRegExp = /^\s*([^\s/;]+)\/([^;\s]+)\s*(?:;(.*))?$/;
 
 function splitKeyValuePair(str: string): [string, string | undefined] {
   const [key, value] = str.split("=");

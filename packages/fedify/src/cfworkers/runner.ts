@@ -12,7 +12,7 @@ export interface TestDefinition {
     ctx: {
       name: string;
       origin: string;
-      // deno-lint-ignore no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       step: any;
       env: unknown;
       messageBatches: MessageBatch[];
@@ -60,22 +60,22 @@ export function createTestWorker(tests: readonly TestDefinition[]) {
         let failed = false;
         let firstError: unknown;
         let capturedLogs: LogRecord[] | undefined = undefined;
-        // deno-lint-ignore no-inner-declarations
+        // oxlint-disable-next-line eslint/no-inner-declarations
         async function step(
           arg: string | {
             name: string;
             ignore?: boolean;
-            // deno-lint-ignore no-explicit-any
+            // oxlint-disable-next-line typescript/no-explicit-any
             fn: (def: any) => void | Promise<void>;
-            // deno-lint-ignore no-explicit-any
+            // oxlint-disable-next-line typescript/no-explicit-any
           } | ((ctx: any) => void | Promise<void>),
-          // deno-lint-ignore no-explicit-any
+          // oxlint-disable-next-line typescript/no-explicit-any
           fn?: (ctx: any) => void | Promise<void>,
         ) {
           let def: {
             name: string;
             ignore?: boolean;
-            // deno-lint-ignore no-explicit-any
+            // oxlint-disable-next-line typescript/no-explicit-any
             fn: (def: any) => void | Promise<void>;
           };
           if (typeof arg === "string") {

@@ -199,8 +199,8 @@ test("forced fanout signs before serializing so the child survives", async () =>
     // The fanout worker hands the activity on to the outbox queue, so drain
     // every message the run produces.
     assertEquals(queued.length, 1);
-    for (let i = 0; i < queued.length; i++) {
-      await federation.processQueuedTask(undefined, queued[i]);
+    for (const message of queued) {
+      await federation.processQueuedTask(undefined, message);
     }
 
     assert(delivered != null);
@@ -288,8 +288,8 @@ test("an already signed activity keeps its single proof through fanout", async (
       activity,
       { fanout: "force" },
     );
-    for (let i = 0; i < queued.length; i++) {
-      await federation.processQueuedTask(undefined, queued[i]);
+    for (const message of queued) {
+      await federation.processQueuedTask(undefined, message);
     }
 
     assert(delivered != null);

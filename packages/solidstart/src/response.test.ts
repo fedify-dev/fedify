@@ -1,3 +1,4 @@
+// oxlint-disable anti-slop/no-reflect-apply -- Proxy forwarding requires dynamic invocation.
 import { test } from "@fedify/fixture";
 import { deepEqual, equal, ok } from "node:assert/strict";
 import { once } from "node:events";

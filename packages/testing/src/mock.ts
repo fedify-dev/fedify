@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-explicit-any
+// oxlint-disable typescript/no-explicit-any
 import type {
   ActorKeyPair,
   Context,
@@ -603,7 +603,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   setInboxListeners(inboxPath: any, sharedInboxPath?: string): any {
     this.inboxPath = inboxPath;
     this.sharedInboxPath = sharedInboxPath;
-    // deno-lint-ignore no-this-alias
+    // oxlint-disable-next-line typescript/no-this-alias
     const self = this;
     return {
       on(type: any, listener: any): any {
@@ -639,7 +639,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     validateOutboxListenerPath(outboxPath, this.outboxPath);
     this.outboxListenersInitialized = true;
     this.outboxPath = outboxPath;
-    // deno-lint-ignore no-this-alias
+    // oxlint-disable-next-line typescript/no-this-alias
     const self = this;
     return {
       on(type: any, listener: any): any {
@@ -666,7 +666,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     }
     this.mediaUploaderPath = path;
     this.mediaUploaderCallback = callback;
-    // deno-lint-ignore no-this-alias
+    // oxlint-disable-next-line typescript/no-this-alias
     const self = this;
     return {
       authorize(predicate: any): any {
@@ -687,7 +687,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     // Mock implementation - no-op
   }
 
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   async startQueue(
     contextData: TContextData,
     options?: FederationStartQueueOptions,
@@ -707,7 +707,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     }
   }
 
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   async processQueuedTask(
     contextData: TContextData,
     _message: Message,
@@ -735,7 +735,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     contextData: TContextData,
     options: { portableRequest?: PortableRequest } = {},
   ): TestContext<TContextData> {
-    // deno-lint-ignore no-this-alias
+    // oxlint-disable-next-line typescript/no-this-alias
     const mockFederation = this;
 
     const request = baseUrlOrRequest instanceof Request
@@ -872,6 +872,8 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       Reflect.set(
         receivedActivity,
         "_cachedJsonLd",
+        // Preserve the internal JSON-LD cache across clones.
+        // oxlint-disable-next-line anti-slop/no-reflect-get
         Reflect.get(activity, "_cachedJsonLd"),
       );
     }
@@ -1038,7 +1040,11 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setCollectionDispatcher<
+    // These type parameters are part of the public dispatcher API even though
+    // this mock body does not reference them.
+    // oxlint-disable-next-line eslint/no-unused-vars
     TObject extends Object,
+    // oxlint-disable-next-line eslint/no-unused-vars
     TParams extends Record<string, string>,
   >(
     _name: string | symbol,
@@ -1058,7 +1064,11 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   setOrderedCollectionDispatcher<
+    // These type parameters are part of the public dispatcher API even though
+    // this mock body does not reference them.
+    // oxlint-disable-next-line eslint/no-unused-vars
     TObject extends Object,
+    // oxlint-disable-next-line eslint/no-unused-vars
     TParams extends Record<string, string>,
   >(
     _name: string | symbol,
@@ -1247,7 +1257,7 @@ class MockContext<TContextData> implements Context<TContextData> {
       options.contextLoader != null;
     this.data = options.data;
     this.federation = options.federation;
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     this.documentLoader = options.documentLoader ?? (async (url: string) => ({
       contextUrl: null,
       document: {},
@@ -1700,6 +1710,9 @@ class MockContext<TContextData> implements Context<TContextData> {
     });
   }
 
+  // TContext is part of the public generic API even though this mock body
+  // does not reference it.
+  // oxlint-disable-next-line eslint/no-unused-vars
   traverseCollection<TItem, TContext extends Context<TContextData>>(
     _collection: Collection | URL | null,
     _options?: TraverseCollectionOptions,

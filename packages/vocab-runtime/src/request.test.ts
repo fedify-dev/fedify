@@ -207,7 +207,7 @@ test("isTransientFetchError() classifies aggregate errors by their members", () 
       new AggregateError([
         notFound("https://a.example/"),
         notFound("https://b.example/"),
-      ]),
+      ], "fetch errors"),
     ),
     false,
   );
@@ -216,26 +216,32 @@ test("isTransientFetchError() classifies aggregate errors by their members", () 
       new AggregateError([
         notFound("https://a.example/"),
         unavailable("https://b.example/"),
-      ]),
+      ], "fetch errors"),
     ),
     true,
   );
-  deepStrictEqual(isTransientFetchError(new AggregateError([])), true);
+  deepStrictEqual(
+    isTransientFetchError(new AggregateError([], "fetch errors")),
+    true,
+  );
   const gone = new FetchError(
     "https://a.example/",
     "HTTP 410",
     new Response(null, { status: 410 }),
   );
   deepStrictEqual(
-    isTransientFetchError(new AggregateError([gone, gone])),
+    isTransientFetchError(new AggregateError([gone, gone], "fetch errors")),
     false,
   );
   deepStrictEqual(
     isTransientFetchError(
-      new AggregateError([
-        new FetchError("https://a.example/", "a", undefined),
-        new FetchError("https://b.example/", "b", undefined),
-      ].map((e) => Object.assign(e, { cause: gone }))),
+      new AggregateError(
+        [
+          new FetchError("https://a.example/", "a", undefined),
+          new FetchError("https://b.example/", "b", undefined),
+        ].map((e) => Object.assign(e, { cause: gone })),
+        "fetch errors",
+      ),
     ),
     false,
   );

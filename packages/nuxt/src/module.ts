@@ -77,12 +77,12 @@ const contextDataFactory =
   contextFactoryModule.contextDataFactory;
 if (contextDataFactory == null) {
   throw new TypeError(
-    \'@fedify/nuxt: contextDataFactoryModule must export a function as "default" or named "contextDataFactory", but neither was found.\'
+    '@fedify/nuxt: contextDataFactoryModule must export a function as "default" or named "contextDataFactory", but neither was found.'
   );
 }
 if (typeof contextDataFactory !== 'function') {
   throw new TypeError(
-    \'@fedify/nuxt: contextDataFactoryModule must export a function as "default" or named "contextDataFactory".\'
+    '@fedify/nuxt: contextDataFactoryModule must export a function as "default" or named "contextDataFactory".'
   );
 }`;
 }

@@ -87,18 +87,18 @@ export function findIntroducedEntries(
   );
   if (before.length < 1 && existing.size < 1) return "all";
   for (const key of ["paragraph", "firstLine", "references"] as const) {
-    after.forEach((entry, index) => {
-      if (existing.has(index) || entry[key] == null) return;
+    for (const [index, entry] of after.entries()) {
+      if (existing.has(index) || entry[key] == null) continue;
       const origin = before.findIndex((old, i) =>
         !matched.has(i) && old[key] === entry[key]
       );
-      if (origin < 0) return;
+      if (origin < 0) continue;
       // The same entry usually appears in several previous revisions:
       for (const [i, old] of before.entries()) {
         if (old.paragraph === before[origin].paragraph) matched.add(i);
       }
       existing.add(index);
-    });
+    }
   }
   return new Set([...after.keys()].filter((index) => !existing.has(index)));
 }
@@ -216,7 +216,7 @@ function extractEntries(content: string): Entry[] {
  * `[[#123], [#456] by John Doe]` or `\[[GHSA-xxxx-xxxx-xxxx], [#456]]`.
  */
 const TRAILING_REFERENCES_PATTERN =
-  /\\?\[(\[[^\[\]]+\](?:\s*,\s*\[[^\[\]]+\])*)(?:\s+by\s+[^\[\]]+)?\]\s*$/;
+  /\\?\[(\[[^[\]]+\](?:\s*,\s*\[[^[\]]+\])*)(?:\s+by\s+[^[\]]+)?\]\s*$/;
 
 /**
  * Return the trailing references of a paragraph, such as `#123` or
@@ -225,7 +225,7 @@ const TRAILING_REFERENCES_PATTERN =
 function extractTrailingReferences(paragraph: string): string[] | null {
   const match = TRAILING_REFERENCES_PATTERN.exec(paragraph);
   if (match == null) return null;
-  return Array.from(match[1].matchAll(/\[([^\[\]]+)\]/g), (m) => m[1]);
+  return Array.from(match[1].matchAll(/\[([^[\]]+)\]/g), (m) => m[1]);
 }
 
 /** Return the issue and pull request numbers among trailing references. */

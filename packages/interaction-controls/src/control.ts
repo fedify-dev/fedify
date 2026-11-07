@@ -1049,9 +1049,9 @@ async function materialize<T extends ASObject>(
       documentUrl.origin === value.origin
     ) {
       const expanded = await jsonld.expand(
-        // deno-lint-ignore no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         remoteDocument.document as any,
-        // deno-lint-ignore no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         { documentLoader: memoizedContextLoader } as any,
       );
       const root = getRootNode(expanded);
@@ -1520,6 +1520,9 @@ export function recognized<
   TInteracting extends ASObject,
   TTarget extends ASObject,
   TImpoliteSource extends ASObject,
+  // This type parameter is part of the public generic API even though the
+  // function body does not reference it.
+  // oxlint-disable-next-line eslint/no-unused-vars
   TRequestValidationOptions extends object,
 >(
   values: {

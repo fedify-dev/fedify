@@ -129,9 +129,9 @@ async function evidenceFor(
   requestSigners: readonly URL[] = [],
 ): Promise<InboxAuthenticationEvidence> {
   const expandedActivity = await jsonld.expand(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     document as any,
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     { documentLoader: getDocumentLoader() } as any,
   ) as Record<string, unknown>[];
   return {

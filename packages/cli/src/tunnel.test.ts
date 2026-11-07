@@ -140,7 +140,7 @@ test("tunnel successfully creates and manages tunnel", async () => {
       }) as unknown as Ora;
     },
     exit(): never {
-      throw new Error();
+      throw new Error("mock exit");
     },
   };
 

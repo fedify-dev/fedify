@@ -162,7 +162,7 @@ test("kvCache()", async (t) => {
       delete(_key: KvKey): Promise<void> {
         throw new Error("Failed to delete key");
       }
-      // deno-lint-ignore require-yield
+      // oxlint-disable-next-line eslint/require-yield
       async *list(_prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
         throw new Error("Failed to list keys");
       }

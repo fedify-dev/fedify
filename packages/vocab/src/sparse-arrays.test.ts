@@ -408,7 +408,7 @@ test("decoded and warmed object trust stays local across clones", async () => {
       content: "embedded",
     },
   }, { contextLoader: mockDocumentLoader });
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const documentLoader = async (url: string) => {
     fetches++;
     return {
@@ -478,7 +478,7 @@ for (const defaultKind of ["singular", "plural"] as const) {
     strictEqual(await new StatefulCreate({}).getObject(), defaultObject);
     const copies = [original, original.clone(), original.deepClone()];
     let fetches = 0;
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const documentLoader = async (url: string) => {
       fetches++;
       return {

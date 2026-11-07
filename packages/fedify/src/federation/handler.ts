@@ -6,7 +6,6 @@ import {
   verificationObservation,
 } from "../sig/verification.ts";
 import type { AcceptSignatureParameters } from "@fedify/fedify/sig";
-import type { Recipient } from "@fedify/vocab";
 import {
   Activity,
   Collection,
@@ -18,6 +17,7 @@ import {
   Object,
   OrderedCollection,
   OrderedCollectionPage,
+  type Recipient,
   Tombstone,
 } from "@fedify/vocab";
 import {
@@ -3430,7 +3430,7 @@ async function _handleOrderedCollection<
 
 async function respondWithCustomCollection<TContextData>(
   request: Request,
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   handler: CustomCollectionHandler<any, any, TContextData, any, any, any>,
   context: RequestContext<TContextData>,
   portable: PortableCollectionRepresentation | undefined,
@@ -4065,6 +4065,8 @@ class HandlerError extends Error {
    * @returns Never returns, always throws.
    */
   throw(): never {
+    // The receiver is the error instance itself.
+    // oxlint-disable-next-line eslint/no-throw-literal
     throw this;
   }
 }

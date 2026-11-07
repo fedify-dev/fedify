@@ -121,8 +121,7 @@ const encodeListMembers = (
   allowReserved: boolean,
 ): string[] =>
   value
-    .filter((item) => item != null)
-    .map(String)
+    .flatMap((item) => item == null ? [] : [String(item)])
     .map(encodeValue(allowReserved));
 
 const encodeAssociativePairs = (

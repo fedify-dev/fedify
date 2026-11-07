@@ -2100,7 +2100,7 @@ test({
 
       records.length = 0;
 
-      // deno-lint-ignore require-await
+      // oxlint-disable-next-line eslint/require-await
       const invalidDocumentLoader: DocumentLoader = async (url) => ({
         contextUrl: null,
         documentUrl: url,
@@ -2152,7 +2152,7 @@ test({
 
 test("Activity.getObject() fetches canonical portable IRIs", async () => {
   const fetchedUrls: string[] = [];
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const documentLoader: DocumentLoader = async (url) => {
     fetchedUrls.push(url);
     return {
@@ -2175,7 +2175,7 @@ test("Activity.getObject() fetches canonical portable IRIs", async () => {
   const object = await activity.getObject({
     documentLoader,
     contextLoader: mockDocumentLoader,
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     verifyPortableObject: async () => ({ verified: true }),
   });
 
@@ -4429,7 +4429,7 @@ test(
       attachments.push(a);
     }
     deepStrictEqual(attachments.length, 1);
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const doc = attachments[0] as any;
     deepStrictEqual(
       doc?.url?.href,
@@ -4578,7 +4578,7 @@ for (const property of ["object", "attachment"] as const) {
         const fetching = fetchOriginal ? original : copy;
         const untouched = fetchOriginal ? copy : original;
         let fetches = 0;
-        // deno-lint-ignore require-await
+        // oxlint-disable-next-line eslint/require-await
         const documentLoader = async (url: string) => {
           fetches++;
           return {
@@ -4722,7 +4722,7 @@ test("clone() preserves embedded object identity and trust", async () => {
     id: new URL("https://a.example/create"),
     object: note,
   });
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const documentLoader = async () => {
     throw new Error("Trusted embedded objects must not be fetched.");
   };
@@ -4744,7 +4744,7 @@ test("clone() isolates crossOrigin trust when fetching", async () => {
     object: new URL("https://b.example/note"),
   });
   const copy = original.clone();
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const documentLoader = async (url: string) => ({
     contextUrl: null,
     documentUrl: url,
@@ -4765,7 +4765,7 @@ test("clone() isolates crossOrigin trust when fetching", async () => {
 
 test("FEP-fe34: crossOrigin ignore behavior (default)", async () => {
   // Create a mock document loader that returns objects with different origins
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const crossOriginDocumentLoader = async (url: string) => {
     if (url === "https://different-origin.com/note") {
       return {
@@ -4796,7 +4796,7 @@ test("FEP-fe34: crossOrigin ignore behavior (default)", async () => {
 });
 
 test("FEP-fe34: crossOrigin throw behavior", async () => {
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const crossOriginDocumentLoader = async (url: string) => {
     if (url === "https://different-origin.com/note") {
       return {
@@ -4831,7 +4831,7 @@ test("FEP-fe34: crossOrigin throw behavior", async () => {
 });
 
 test("FEP-fe34: crossOrigin trust behavior", async () => {
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const crossOriginDocumentLoader = async (url: string) => {
     if (url === "https://different-origin.com/note") {
       return {
@@ -4879,7 +4879,7 @@ test("FEP-fe34: id-less owners honor crossOrigin trust", async () => {
 
   const result = await create.getObject({
     crossOrigin: "trust",
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     documentLoader: async (url) => {
       throw new Error(`Unexpected fetch: ${url}`);
     },
@@ -4891,7 +4891,7 @@ test("FEP-fe34: id-less owners honor crossOrigin trust", async () => {
 });
 
 test("FEP-fe34: Same origin objects are trusted", async () => {
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const sameOriginDocumentLoader = async (url: string) => {
     if (url === "https://example.com/note") {
       return {
@@ -4938,7 +4938,7 @@ test("FEP-fe34: Same-authority non-FE34 embedded objects are trusted", async () 
   });
 
   const result = await create.getObject({
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     documentLoader: async (url) => {
       throw new Error(`Unexpected fetch: ${url}`);
     },
@@ -4952,7 +4952,7 @@ test(
   "FEP-fe34: Embedded cross-origin objects from JSON-LD are ignored by default",
   async () => {
     // Mock document loader for creating the Create object from JSON-LD
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const createDocumentLoader = async (url: string) => {
       if (url === "https://example.com/create") {
         return {
@@ -4984,7 +4984,7 @@ test(
     );
 
     // Mock document loader that would return the "legitimate" version
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const objectDocumentLoader = async (url: string) => {
       if (url === "https://different-origin.com/note") {
         return {
@@ -5039,7 +5039,7 @@ test("FEP-fe34: Constructor vs JSON-LD parsing trust difference", async () => {
   });
 
   // Mock document loader for the cross-origin fetch
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const documentLoader = async (url: string) => {
     if (url === "https://different-origin.com/note") {
       return {
@@ -5076,7 +5076,7 @@ test(
       },
     });
 
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const documentLoader = async (url: string) => {
       if (url === "ap+ef61://did:key:z6MkOther/note") {
         return {
@@ -5096,7 +5096,7 @@ test(
     const result = await create.getObject({
       documentLoader,
       contextLoader: mockDocumentLoader,
-      // deno-lint-ignore require-await
+      // oxlint-disable-next-line eslint/require-await
       verifyPortableObject: async () => ({ verified: true }),
     });
     assertInstanceOf(result, Note);
@@ -5119,7 +5119,7 @@ test(
       }],
     });
 
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const documentLoader = async (url: string) => {
       throw new Error(`Unexpected fetch: ${url}`);
     };
@@ -5158,7 +5158,7 @@ test(
     for await (
       const method of person.getAssertionMethods({
         suppressError: true,
-        // deno-lint-ignore require-await
+        // oxlint-disable-next-line eslint/require-await
         documentLoader: async (url) => {
           fetches++;
           throw new Error(`Unexpected fetch: ${url}`);
@@ -5173,7 +5173,7 @@ test(
 );
 
 test("FEP-fe34: Array properties respect cross-origin policy", async () => {
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const crossOriginDocumentLoader = async (url: string) => {
     if (url === "https://different-origin.com/note1") {
       return {
@@ -5225,7 +5225,7 @@ test("FEP-fe34: Array properties respect cross-origin policy", async () => {
 });
 
 test("FEP-fe34: Array properties with crossOrigin trust option", async () => {
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const crossOriginDocumentLoader = async (url: string) => {
     if (url === "https://different-origin.com/note1") {
       return {
@@ -5301,7 +5301,7 @@ test("FEP-fe34: id-less arrays honor crossOrigin trust", async () => {
   for await (
     const item of collection.getItems({
       crossOrigin: "trust",
-      // deno-lint-ignore require-await
+      // oxlint-disable-next-line eslint/require-await
       documentLoader: async (url) => {
         throw new Error(`Unexpected fetch: ${url}`);
       },
@@ -5328,7 +5328,7 @@ test("FEP-fe34: Array properties track trust per item", async () => {
       new URL("https://different-origin.com/note2"),
     ],
   });
-  // deno-lint-ignore require-await
+  // oxlint-disable-next-line eslint/require-await
   const documentLoader = async (url: string) => {
     if (url === "https://different-origin.com/note2") {
       return {
@@ -5359,7 +5359,7 @@ test(
   "FEP-fe34: Embedded objects in arrays from JSON-LD respect cross-origin policy",
   async () => {
     // Mock document loader for creating the Collection object from JSON-LD
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const collectionDocumentLoader = async (url: string) => {
       if (url === "https://example.com/collection") {
         return {
@@ -5396,7 +5396,7 @@ test(
     );
 
     // Mock document loader for fetching objects
-    // deno-lint-ignore require-await
+    // oxlint-disable-next-line eslint/require-await
     const itemDocumentLoader = async (url: string) => {
       if (url === "https://example.com/trusted-note") {
         return {
@@ -5842,7 +5842,7 @@ const rsaPublicKey = new CryptographicKey({
   ),
 }) as CryptographicKey & { publicKey: CryptoKey };
 
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 const sampleValues: Record<string, any> = {
   "http://www.w3.org/2001/XMLSchema#boolean": true,
   "http://www.w3.org/2001/XMLSchema#integer": -123,
@@ -6542,7 +6542,7 @@ test("attribution chains alternate ordinary and portable suppression", async () 
   const contextLoader: DocumentLoader = (url, options) => {
     if (url !== contextUrl) return mockDocumentLoader(url, options);
     states.push(options?.suppressError);
-    const stack = new Error().stack;
+    const stack = new Error("capture stack").stack;
     ok(stack);
     depths[hop]?.push(stack.split("\n").length);
     return Promise.resolve({

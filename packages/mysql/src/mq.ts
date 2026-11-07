@@ -212,7 +212,7 @@ export class MysqlMessageQueue implements MessageQueue {
    * @since 2.1.0
    */
   async enqueue(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     message: any,
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
@@ -249,7 +249,7 @@ export class MysqlMessageQueue implements MessageQueue {
    * @since 2.1.0
    */
   async enqueueMany(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
@@ -332,7 +332,7 @@ export class MysqlMessageQueue implements MessageQueue {
    * @since 2.1.0
    */
   async listen(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     handler: (message: any) => void | Promise<void>,
     options: MessageQueueListenOptions = {},
   ): Promise<void> {

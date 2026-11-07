@@ -474,7 +474,6 @@ function printLookupFailureHint(
           optionNames(["-a", "--authorized-fetch"])
         }.`,
       );
-      return;
   }
 }
 
@@ -658,9 +657,9 @@ export function printRecursiveLookupFailure(
       return;
     case "diagnostic":
       printError(message`${text(failure.hint.message)}`);
-      return;
+      break;
     case "none":
-      return;
+      break;
   }
 }
 

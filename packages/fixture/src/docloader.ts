@@ -50,7 +50,7 @@ export async function mockDocumentLoader(
   }
   const pkg = "Deno" in globalThis ? "." : "@fedify/fixture";
   const fixturePath = `${pkg}/fixtures/${url.host}${url.pathname}.json`;
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   let document: any;
   try {
     document = (await import(fixturePath, { with: { type: "json" } })).default;

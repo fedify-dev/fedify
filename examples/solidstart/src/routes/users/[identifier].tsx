@@ -1,5 +1,4 @@
-import { useParams } from "@solidjs/router";
-import { createAsync, query } from "@solidjs/router";
+import { createAsync, query, useParams } from "@solidjs/router";
 import { Show } from "solid-js";
 
 const getProfile = query(async (identifier: string) => {
@@ -38,7 +37,7 @@ export default function UserProfile() {
       <p>
         Try:{" "}
         <code>
-          curl -H "Accept: application/activity+json"
+          curl -H &quot;Accept: application/activity+json&quot;
           http://localhost:3000/users/{params.identifier}
         </code>
       </p>

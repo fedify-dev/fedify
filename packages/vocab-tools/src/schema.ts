@@ -393,7 +393,7 @@ async function loadSchema(path: string): Promise<TypeSchema> {
       new SchemaError(path, `${path}:${e.instanceLocation}: ${e.error}`),
     );
   }
-  throw new AggregateError(errors);
+  throw new AggregateError(errors, "Invalid schema data");
 }
 
 /**
@@ -430,7 +430,9 @@ export async function loadSchemaFiles(
     }
     result[schema.uri] = schema;
   }
-  if (errors.length > 0) throw new AggregateError(errors);
+  if (errors.length > 0) {
+    throw new AggregateError(errors, "Failed to load schema files");
+  }
   const entries = Object.entries(result);
   entries.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
   return Object.fromEntries(entries);

@@ -1485,9 +1485,9 @@ test("verifyRequestDetailed() [rfc9421] caps the number of signatures", async (t
         );
         headers.set(
           "Signature",
-          labels.filter((label) => !label.startsWith("nobytes"))
-            .map((label) => signatures[label])
-            .join(", "),
+          labels.flatMap((label) =>
+            label.startsWith("nobytes") ? [] : [signatures[label]]
+          ).join(", "),
         );
         return new Request(signed.url, {
           method: "POST",

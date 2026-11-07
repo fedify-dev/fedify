@@ -158,7 +158,7 @@ test("validateExpectBlock - throws on a malformed assertion", () => {
 
 test("validateExpectBlock - throws on an entry without an assertion", () => {
   assert.throws(
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     () => validateExpectBlock({ successRate: { severity: "warn" } as any }),
     AssertionParseError,
   );

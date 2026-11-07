@@ -383,13 +383,13 @@ export async function runNodeInfo(
       layout[next()] += `  ${protocol}`;
     }
   }
-  if (nodeInfo.services?.inbound?.length ?? 0 > 0) {
+  if ((nodeInfo.services?.inbound?.length ?? 0) > 0) {
     layout[next()] += colors.bold(colors.dim("Inbound services:"));
     for (const service of nodeInfo.services?.inbound ?? []) {
       layout[next()] += `  ${service}`;
     }
   }
-  if (nodeInfo.services?.outbound?.length ?? 0 > 0) {
+  if ((nodeInfo.services?.outbound?.length ?? 0) > 0) {
     layout[next()] += colors.bold(colors.dim("Outbound services:"));
     for (const service of nodeInfo.services?.outbound ?? []) {
       layout[next()] += `  ${service}`;

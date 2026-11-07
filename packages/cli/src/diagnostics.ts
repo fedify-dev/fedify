@@ -289,7 +289,7 @@ function describePortableFailure(failure: LookupFailure): string {
 // the terminal when displaying a diagnostic.
 function escapeControlCharacters(message: string): string {
   return message.replace(
-    // deno-lint-ignore no-control-regex
+    // oxlint-disable-next-line eslint/no-control-regex
     /[\x00-\x1f\x7f-\x9f]/g,
     (character) =>
       `\\x${character.charCodeAt(0).toString(16).padStart(2, "0")}`,

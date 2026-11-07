@@ -28,11 +28,14 @@ catalogs:
       specifier: ^0.5.1
       version: 0.5.1
     '@logtape/file':
-      specifier: ^2.2.0
-      version: 2.2.0
+      specifier: 2.4.2
+      version: 2.4.2
+    '@logtape/lint':
+      specifier: 2.4.2
+      version: 2.4.2
     '@logtape/logtape':
-      specifier: ^2.2.0
-      version: 2.2.0
+      specifier: 2.4.2
+      version: 2.4.2
     '@multiformats/base-x':
       specifier: ^4.0.1
       version: 4.0.1
@@ -90,6 +93,9 @@ catalogs:
     '@optique/run':
       specifier: ^1.3.2
       version: 1.3.2
+    '@oxlint/plugins':
+      specifier: 1.90.0
+      version: 1.90.0
     '@standard-schema/spec':
       specifier: ^1.1.0
       version: 1.1.0
@@ -193,8 +199,8 @@ catalogs:
       specifier: ^4.4.2
       version: 4.4.2
     oxlint:
-      specifier: ^1.66.0
-      version: 1.66.0
+      specifier: 1.90.0
+      version: 1.90.0
     pkijs:
       specifier: ^3.3.3
       version: 3.3.3
@@ -237,12 +243,18 @@ importers:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
         version: 4.20260511.1
+      '@logtape/lint':
+        specifier: 'catalog:'
+        version: 2.4.2(eslint@9.32.0(jiti@2.6.1))
       '@optique/core':
         specifier: 'catalog:'
         version: 1.3.2
       '@optique/run':
         specifier: 'catalog:'
         version: 1.3.2
+      '@oxlint/plugins':
+        specifier: 'catalog:'
+        version: 1.90.0
       '@types/bun':
         specifier: 'catalog:'
         version: 1.3.3
@@ -258,6 +270,9 @@ importers:
       cross-spawn:
         specifier: 'catalog:'
         version: 7.0.6
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.90.0
       tsdown:
         specifier: 'catalog:'
         version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
@@ -386,10 +401,10 @@ importers:
         version: 1.14.4(hono@4.8.3)
       '@logtape/file':
         specifier: 'catalog:'
-        version: 2.2.0(@logtape/logtape@2.2.0)
+        version: 2.4.2(@logtape/logtape@2.4.2)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       '@lucide/vue':
         specifier: ^1.20.0
         version: 1.20.0(vue@3.5.40(typescript@6.0.3))
@@ -638,7 +653,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       express:
         specifier: 'catalog:'
         version: 5.2.1
@@ -691,7 +706,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       koa:
         specifier: 'catalog:'
         version: 2.16.2
@@ -723,7 +738,7 @@ importers:
         version: link:../../../packages/lint
       oxlint:
         specifier: 'catalog:'
-        version: 1.66.0
+        version: 1.90.0
 
   examples/netlify-astro:
     dependencies:
@@ -826,7 +841,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       next:
         specifier: ^14.0.0
         version: 14.2.30(@opentelemetry/api@1.9.1)(react-dom@19.0.0-rc-7771d3a7-20240827(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)
@@ -927,13 +942,13 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       h3:
         specifier: 'catalog:'
         version: 1.15.11
       nuxt:
         specifier: 'catalog:'
-        version: 4.4.2(d9f765576b8058af3393125d74d4050f)
+        version: 4.4.2(f147bdd4e83d5aab1290c9746e3bbfb8)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -1053,13 +1068,13 @@ importers:
         version: 0.5.0
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
 
   packages/adonisjs:
     dependencies:
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
     devDependencies:
       '@adonisjs/assembler':
         specifier: 'catalog:'
@@ -1214,10 +1229,10 @@ importers:
         version: 1.6.1
       '@logtape/file':
         specifier: 'catalog:'
-        version: 2.2.0(@logtape/logtape@2.2.0)
+        version: 2.4.2(@logtape/logtape@2.4.2)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       '@optique/config':
         specifier: 'catalog:'
         version: 1.3.2(@standard-schema/spec@1.1.0)
@@ -1351,7 +1366,7 @@ importers:
         version: link:../fedify
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -1466,7 +1481,7 @@ importers:
         version: link:../webfinger
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -1548,7 +1563,7 @@ importers:
         version: link:../vocab-runtime
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -1623,7 +1638,7 @@ importers:
         version: 7.10.1(@types/node@24.19.0)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       '@optique/core':
         specifier: 'catalog:'
         version: 1.3.2
@@ -1738,7 +1753,7 @@ importers:
         version: 9.32.0(jiti@2.6.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.66.0
+        version: 1.90.0
       tsdown:
         specifier: 'catalog:'
         version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))
@@ -1753,7 +1768,7 @@ importers:
         version: link:../fedify
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       es-toolkit:
         specifier: 'catalog:'
         version: 1.46.1
@@ -1892,7 +1907,7 @@ importers:
         version: 1.15.11
       nuxt:
         specifier: 'catalog:'
-        version: 4.4.2(d9f765576b8058af3393125d74d4050f)
+        version: 4.4.2(f147bdd4e83d5aab1290c9746e3bbfb8)
     devDependencies:
       '@fedify/fixture':
         specifier: workspace:^
@@ -1917,7 +1932,7 @@ importers:
         version: link:../fedify
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       '@types/emscripten':
         specifier: 'catalog:'
         version: 1.41.5
@@ -1948,7 +1963,7 @@ importers:
         version: link:../fedify
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       postgres:
         specifier: 'catalog:'
         version: 3.4.7
@@ -1979,7 +1994,7 @@ importers:
         version: link:../fedify
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       ioredis:
         specifier: 'catalog:'
         version: 5.10.1
@@ -2016,7 +2031,7 @@ importers:
         version: link:../vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       temporal-polyfill:
         specifier: 'catalog:'
         version: 1.0.1
@@ -2063,7 +2078,7 @@ importers:
         version: link:../fedify
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       es-toolkit:
         specifier: ^1.46.1
         version: 1.46.1
@@ -2165,7 +2180,7 @@ importers:
         version: link:../webfinger
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       '@multiformats/base-x':
         specifier: 'catalog:'
         version: 4.0.1
@@ -2220,7 +2235,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       '@multiformats/base-x':
         specifier: 'catalog:'
         version: 4.0.1
@@ -2279,7 +2294,7 @@ importers:
         version: link:../vocab-runtime
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -2300,7 +2315,7 @@ importers:
         version: link:../vocab-runtime
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.2.0
+        version: 2.4.2
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -5276,16 +5291,24 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@logtape/file@2.2.0':
-    resolution: {integrity: sha512-QfAqxvf5RS7IH078kwBlGYOcgYpA30xVhB55iYk/h94fFTGk44MKReH2GmcJZSfAnWqYKpHYR4HkAr5AUrpLfQ==}
+  '@logtape/file@2.4.2':
+    resolution: {integrity: sha512-Wit1GrwBQ1mCERREsBX5C4TKe3SWoAZ2bFBh7e4sbAnh1w2rOjD46puW+/f/A3G7HFIsAYlL03/r1/9CeKZ0XQ==}
     peerDependencies:
-      '@logtape/logtape': ^2.2.0
+      '@logtape/logtape': ^2.4.2
+
+  '@logtape/lint@2.4.2':
+    resolution: {integrity: sha512-2axZPC4gUivOT2elGPBEZTGO72sA2+boIR1mIU6D4oW728fFMn49uOCl4uLGq+P4vTAiE2ufLWAkQxhQw/I9ZA==}
+    peerDependencies:
+      eslint: '>=8.0.0'
+    peerDependenciesMeta:
+      eslint:
+        optional: true
 
   '@logtape/logtape@1.3.8':
     resolution: {integrity: sha512-iGk5CJFL0s/nTLmxCsVia/x1D/3oAFfw+40AaNMserTEwJf8m9eKV+R7RVWCXCcgYp41KLwk0/M0xiBvI0AFmA==}
 
-  '@logtape/logtape@2.2.0':
-    resolution: {integrity: sha512-lqjd2/2CVmyYBNBEUI377+G/sazT5qQvAAGB1msth8D94ovJ/kI6RtM/uoipwWoRjs6JG34cfFE1UNbgeSFsTA==}
+  '@logtape/logtape@2.4.2':
+    resolution: {integrity: sha512-YJyC1gEMgWmTqJTRtKkjgasEbi8/0gP7Dj8n6bL46gQIAhpTY8uXJ+1QYMOgF5asotlGMvy3G7ejXUe45Yd1MQ==}
 
   '@lucide/vue@1.20.0':
     resolution: {integrity: sha512-fy0XKdMPSGhhmfTp6evMN69ts7AJnopqflzbYM60a6vbnINhD5H/PbT+VeO9EQCHfSxQQiYBwUcBflbfKU57ng==}
@@ -7160,119 +7183,123 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@oxlint/binding-android-arm-eabi@1.66.0':
-    resolution: {integrity: sha512-f7kq8N51T4phpzqfBpA2qaVTI/KrkCmNwaj3t/97I/WLTDI+UhlP5GL9eER+zVxBhtlx5rKXWByJU1/zDAvyaw==}
+  '@oxlint/binding-android-arm-eabi@1.90.0':
+    resolution: {integrity: sha512-sgfalb1HuxYjiAa4wESZ626z1FGusqNcXYHyB5oIOEprS2sbPg0UYEfo83uF1GNG70DIfZxHkXuE6KFrlSdn8Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [android]
 
-  '@oxlint/binding-android-arm64@1.66.0':
-    resolution: {integrity: sha512-xu6QO71tdDS9mjmLZ3AqhtaVHBvdmsOKkYnReNNDgh+XiwnsipeQOIxbiYOOO0iAXycJ+GK0wdMSZP/2j/AmSg==}
+  '@oxlint/binding-android-arm64@1.90.0':
+    resolution: {integrity: sha512-RcKhz1ETMq+fazE9TKS2+5NIRGwigm/nW8egqF0LI+A8Yw2iW5r0E/C3XAPRiwIm/vcPiutIRIa6IQCIKhZsTQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [android]
 
-  '@oxlint/binding-darwin-arm64@1.66.0':
-    resolution: {integrity: sha512-HZ24VimSOC7mxuEA99e0H2FS0C1yO3+iW13jPRAk+e2njsUs3QeAXsafCDyaIrV/MirdOVez+etQNQsJE43zNQ==}
+  '@oxlint/binding-darwin-arm64@1.90.0':
+    resolution: {integrity: sha512-PSrxMvP6mx+p1karZcUxLdy9lpaP+JWQPti4al9FgTaPhxE+pT/BjhGExloVVSWgZgIfOlLOjVyyq8BXlodhLQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [darwin]
 
-  '@oxlint/binding-darwin-x64@1.66.0':
-    resolution: {integrity: sha512-awhj8ZvJrrRSnXj7V++rpZvTmnl99L6mi0B7gg7Cp7BN6cKpzuI481bHNLvXGA9GB1/oEgA3ponuyoAc6Md12A==}
+  '@oxlint/binding-darwin-x64@1.90.0':
+    resolution: {integrity: sha512-OLbU9qsrV2Q8QxT2OEzOPdO8zCCpyI8qB+hDI8yr6RsYELtkf0FAZhJdfjM/RnLHKzt44HWwAPnk92vBtKofvw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [darwin]
 
-  '@oxlint/binding-freebsd-x64@1.66.0':
-    resolution: {integrity: sha512-KQF0oVV21/FjIqkRuL8Q1vh8ECsE5+ocdH5tcqTQ4ZnYuDVoYibQUNfqBjQaUsP6UIIda5Y75Wpm5p4RgQWiWw==}
+  '@oxlint/binding-freebsd-x64@1.90.0':
+    resolution: {integrity: sha512-fBA4pWyVDARmNucQqpyFuPC49xYf1r+sX7dxPL5fNPQrSMLum39Sn56tZ9JPleWC7FzLPwSQ7plYYfirYBHF8A==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [freebsd]
 
-  '@oxlint/binding-linux-arm-gnueabihf@1.66.0':
-    resolution: {integrity: sha512-9u1rgwZSEXWb30vbFZzQ78HVXBo0WCKNwJ3a2InRUTNMRng+PUDIoSFmA+m4HdUfBaIqftShq8J8qHc+eE/Vig==}
+  '@oxlint/binding-linux-arm-gnueabihf@1.90.0':
+    resolution: {integrity: sha512-zhxH78eP2nR6/pGdhBc7MIfjhhcgATeu8fkmkFJbuzfk6Cj0FzBxyEhL85yDqrCybjx+G2YDzZGsxIO9kvO4Iw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
 
-  '@oxlint/binding-linux-arm-musleabihf@1.66.0':
-    resolution: {integrity: sha512-Ynot2HR1bHxUaNWoC280MVTDfZuaWuP3XfSMRDhyuZrVjhzoaBCVFlw8h8qeZjWKVUBhPWFIxB7AQTlK8Z2WWg==}
+  '@oxlint/binding-linux-arm-musleabihf@1.90.0':
+    resolution: {integrity: sha512-MvYmpHyJqUJjEvkZbJHdwfdL45cGn8EVBkYmoXFiaYFW9suoD3dbJl5mBdpy0DVgdjlyddmldbRtk3cCgETadQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
 
-  '@oxlint/binding-linux-arm64-gnu@1.66.0':
-    resolution: {integrity: sha512-xCbgzciGgo+A4aQZEknsNrNiIwY7sU5SfRuMmRjPIvZAgdF34cIHiKvwOsS5XRLjlTVSFwitmq6YclTtHTfU+g==}
+  '@oxlint/binding-linux-arm64-gnu@1.90.0':
+    resolution: {integrity: sha512-L13Sy+Kg0nZhwTsToniqjUFPA2TuM6962qCZ5Wp5KeB517Tw7ApdLTTtlb+bF86fcZZa2EtvCVvAJxk4Dya/MQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
 
-  '@oxlint/binding-linux-arm64-musl@1.66.0':
-    resolution: {integrity: sha512-hmo+ZB/lHkR1HdDmnziNpzSLmulnUSu10VEqX2Yex7OwvoBAbjJQLvy4gIBRV3AAwWnCvAxKp5Nv1GE6LU1QMg==}
+  '@oxlint/binding-linux-arm64-musl@1.90.0':
+    resolution: {integrity: sha512-wFDdZWGpzIPFdJFjSLWnKB0TGzFriTKUIrl04iMqMyM9BBIJTuerfCHYa0WpDSjr5x3lcW/CHLyacSt886WpGg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
 
-  '@oxlint/binding-linux-ppc64-gnu@1.66.0':
-    resolution: {integrity: sha512-2Invd4Uyy81mVooQC5FBtfxSNrvcX1OxbMlVQ6M2erRrNI2awFYF26YNW2yFxdVFZ4ffNOWKghtMjhnUPsXsVA==}
+  '@oxlint/binding-linux-ppc64-gnu@1.90.0':
+    resolution: {integrity: sha512-FRywfn+MoKn8xpBSzgNwNVliSKRI2QXkxi/iF7o6FEQs8Bh8z2RpVTaFAcO3pchXjvB2eGNFIoLLQABIQ+u7VA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ppc64]
     os: [linux]
 
-  '@oxlint/binding-linux-riscv64-gnu@1.66.0':
-    resolution: {integrity: sha512-s0iXPDQVdgayE3RGa/N2DZF7tjgg0TwEtD1sGoDxqPDGrIXgo45H0yHknT0f9A0yteASsweYZtDyTuVlM4aSag==}
+  '@oxlint/binding-linux-riscv64-gnu@1.90.0':
+    resolution: {integrity: sha512-IS2PaUgpc/qeLADTyhUNmdx3x4ijs9pjJdPKBYHaT+mAE7k3FsjnHPTjhpsak1b++h6CIPhv6WX9Z+y7Pw0voQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [riscv64]
     os: [linux]
 
-  '@oxlint/binding-linux-riscv64-musl@1.66.0':
-    resolution: {integrity: sha512-OekL4XFiu7RPK0JIZi8VeHgtIXPREf42t8Cy/rKEsC+P3gcqDgNAAGiyuUOpdbG4wwbfue1q4CHcCO7spSve6w==}
+  '@oxlint/binding-linux-riscv64-musl@1.90.0':
+    resolution: {integrity: sha512-s7JFKRkGS8O7i2ZVODfuO++NC7sH6HDqpMn8lYxw91w0SXJOxnAVjQ8utvmDwLMMT0jaSkuOKuUYJDGDtu4sHQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [riscv64]
     os: [linux]
 
-  '@oxlint/binding-linux-s390x-gnu@1.66.0':
-    resolution: {integrity: sha512-Ga1D0kj1SFslm34ThA/BdkUlyAYEnTsXyRC4pF0C5agZSwtGdHYWMTQWemUfBGp4RCG4QWXgdO+HmmmKqOtlBg==}
+  '@oxlint/binding-linux-s390x-gnu@1.90.0':
+    resolution: {integrity: sha512-b0GxrOQr5VONCkd7KLSqmP6b6nqZuTpuS8QPQHzltmqdXP5bY0Jl0CZ0QmlCTrS3ExaLYbioFYOARzNbYvcApQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [s390x]
     os: [linux]
 
-  '@oxlint/binding-linux-x64-gnu@1.66.0':
-    resolution: {integrity: sha512-p5jfP1wUZe/IC3qpQO84n9DRnf9g3lKRtLBlQq23ykyrDglHcVx7sWmVTlPuU6SBw8mNnPzyOn022G3XZHnlww==}
+  '@oxlint/binding-linux-x64-gnu@1.90.0':
+    resolution: {integrity: sha512-iaJeShJtgUp8rZbt9YUdTAGOpmX5KogCLba17Jp1tWdJ3F4M3D2g2TKUyI1FMTHxKH9NNHuQcuC2kZRg6IV7yQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
 
-  '@oxlint/binding-linux-x64-musl@1.66.0':
-    resolution: {integrity: sha512-vUB/sYlYZorDL1ZD+o9mRv7zbsykrrFRtmgS6R8musZqLtrPRQn1gc1eGpuX+sfdccz42STl/AqldY6XRb2upQ==}
+  '@oxlint/binding-linux-x64-musl@1.90.0':
+    resolution: {integrity: sha512-/aZoXnL5WBLCXuzfHqvEFXcm4iwYmr/cYByHDTXzLFzJdE5DC7bm6phpWqHv6BeqpVgY9IpBAxGDv2WEkl5JCg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
 
-  '@oxlint/binding-openharmony-arm64@1.66.0':
-    resolution: {integrity: sha512-yde+6p/F59xRkGR9H1HfngWRif1QRJjynZK349l+UI0H6w9hL3G8/AVaTHFyTtLVQ56qtNbX2/5Dc77n1ovnOg==}
+  '@oxlint/binding-openharmony-arm64@1.90.0':
+    resolution: {integrity: sha512-SMhk7ozwoxYDKfYqGZCQEfULOKDneF9uhaoIf2neoDLWvNtjY9yVeL7YHmE5L9WdKvMpWNwwZxhenxBu6AgfOg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [openharmony]
 
-  '@oxlint/binding-win32-arm64-msvc@1.66.0':
-    resolution: {integrity: sha512-O9GLucgoTdmOrbBX+EjzNe7o/Ze5TFOvXcib6bzUOtBOmj6cV+zw18NgB+cGKAkDw1Pdqs8vGkfHbbsLuDtXWg==}
+  '@oxlint/binding-win32-arm64-msvc@1.90.0':
+    resolution: {integrity: sha512-KBvR3A9fO7fCi2vCP8ifWvlia7tGEQV9NaYh+IGwa/7Groy48Mt/UaYqMK9/zOtAWl20BUCf6RPqzJ32fRw33Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [win32]
 
-  '@oxlint/binding-win32-ia32-msvc@1.66.0':
-    resolution: {integrity: sha512-m3Pjwc2MfTcom4E4gOv7DyuGyt7OfGNCbmqDHd+N7EzXmP+ppHuudm2NjcA3AjV5TSeGxaguVF4SbTKHe1USYA==}
+  '@oxlint/binding-win32-ia32-msvc@1.90.0':
+    resolution: {integrity: sha512-+x42rDHQGbTCuT3EzpWAzhP3NoVPE/cJsG4gnrakOSg0olV+GCdMpPU23Nvrl3zZMnXxFZdTtDv4D3SuaA5ZeQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ia32]
     os: [win32]
 
-  '@oxlint/binding-win32-x64-msvc@1.66.0':
-    resolution: {integrity: sha512-/DbBvw8UFBhja6PqudUjV4UtfsJr0Oa7jUjWVKB0g86lj/VwnPrkngn0sFql3c9RDA0O16dh7ozsXb6GjNAzBQ==}
+  '@oxlint/binding-win32-x64-msvc@1.90.0':
+    resolution: {integrity: sha512-30JiaFEBUB9peEOcvVM8ggo88SoN/IdSr9DW505JdBji/R6dM66gKEiG65hw6qcaF2f4mO0cEJ+RwRZprmun9g==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
+
+  '@oxlint/plugins@1.90.0':
+    resolution: {integrity: sha512-FT0JJDNbj9oobVWHpAzFckHY/bx1ftPjulBx4UCMXqmDUGqVWOkbKe5bj4zdEL+D5Ud7y/RfioLwSvlHBMjI4w==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
   '@parcel/watcher-android-arm64@2.5.6':
     resolution: {integrity: sha512-YQxSS34tPF/6ZG7r/Ih9xy+kP/WwediEUsqmtf0cuCV5TPPKw/PQHRhueUo6JdeFJaqV3pyjm0GdYjZotbRt/A==}
@@ -15375,14 +15402,17 @@ packages:
     peerDependencies:
       oxc-parser: '>=0.98.0'
 
-  oxlint@1.66.0:
-    resolution: {integrity: sha512-N4LLxYLd94KEBqXDMDM5f+2PUpItTjDLreXe2Gn5KhjhCK4Qp2YUXaBi8Yu325ryOgKwt22m45fpD7nPOn69Yw==}
+  oxlint@1.90.0:
+    resolution: {integrity: sha512-RkTN9EmgIUpLuhNoLhO3OliMGJlvb3Dk7XVjBZnfoMCHrVpuz5ESd97klfiyYeV7XfA2lNLnDCPMkUI+Qw5How==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
-      oxlint-tsgolint: '>=0.22.1'
+      oxlint-tsgolint: '>=7.0.2005'
+      vite-plus: '*'
     peerDependenciesMeta:
       oxlint-tsgolint:
+        optional: true
+      vite-plus:
         optional: true
 
   p-cancelable@2.1.1:
@@ -21892,13 +21922,17 @@ snapshots:
   '@lmdb/lmdb-win32-x64@2.5.3':
     optional: true
 
-  '@logtape/file@2.2.0(@logtape/logtape@2.2.0)':
+  '@logtape/file@2.4.2(@logtape/logtape@2.4.2)':
     dependencies:
-      '@logtape/logtape': 2.2.0
+      '@logtape/logtape': 2.4.2
+
+  '@logtape/lint@2.4.2(eslint@9.32.0(jiti@2.6.1))':
+    optionalDependencies:
+      eslint: 9.32.0(jiti@2.6.1)
 
   '@logtape/logtape@1.3.8': {}
 
-  '@logtape/logtape@2.2.0': {}
+  '@logtape/logtape@2.4.2': {}
 
   '@lucide/vue@1.20.0(vue@3.5.40(typescript@6.0.3))':
     dependencies:
@@ -24259,7 +24293,7 @@ snapshots:
     transitivePeerDependencies:
       - magicast
 
-  '@nuxt/nitro-server@4.4.2(@babel/core@7.29.0)(@electric-sql/pglite@0.5.8)(@netlify/blobs@10.7.9)(better-sqlite3@12.9.0)(db0@0.3.4(@electric-sql/pglite@0.5.8)(better-sqlite3@12.9.0)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260511.1)(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.3(@types/node@24.19.0))(pg@8.22.0)(postgres@3.4.7))(mysql2@3.22.3(@types/node@24.19.0)))(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260511.1)(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.3(@types/node@24.19.0))(pg@8.22.0)(postgres@3.4.7))(ioredis@5.10.1)(magicast@0.5.2)(mysql2@3.22.3(@types/node@24.19.0))(nuxt@4.4.2(d9f765576b8058af3393125d74d4050f))(rolldown@1.1.5)(typescript@6.0.3)':
+  '@nuxt/nitro-server@4.4.2(@babel/core@7.29.0)(@electric-sql/pglite@0.5.8)(@netlify/blobs@10.7.9)(better-sqlite3@12.9.0)(db0@0.3.4(@electric-sql/pglite@0.5.8)(better-sqlite3@12.9.0)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260511.1)(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.3(@types/node@24.19.0))(pg@8.22.0)(postgres@3.4.7))(mysql2@3.22.3(@types/node@24.19.0)))(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260511.1)(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.3(@types/node@24.19.0))(pg@8.22.0)(postgres@3.4.7))(ioredis@5.10.1)(magicast@0.5.2)(mysql2@3.22.3(@types/node@24.19.0))(nuxt@4.4.2(f147bdd4e83d5aab1290c9746e3bbfb8))(rolldown@1.1.5)(typescript@6.0.3)':
     dependencies:
       '@babel/plugin-syntax-typescript': 7.28.6(@babel/core@7.29.0)
       '@nuxt/devalue': 2.0.2
@@ -24278,7 +24312,7 @@ snapshots:
       klona: 2.0.6
       mocked-exports: 0.1.1
       nitropack: 2.13.3(@electric-sql/pglite@0.5.8)(@netlify/blobs@10.7.9)(better-sqlite3@12.9.0)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260511.1)(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.3(@types/node@24.19.0))(pg@8.22.0)(postgres@3.4.7))(mysql2@3.22.3(@types/node@24.19.0))(rolldown@1.1.5)
-      nuxt: 4.4.2(d9f765576b8058af3393125d74d4050f)
+      nuxt: 4.4.2(f147bdd4e83d5aab1290c9746e3bbfb8)
       nypm: 0.6.5
       ohash: 2.0.11
       pathe: 2.0.3
@@ -24349,7 +24383,7 @@ snapshots:
       rc9: 3.0.1
       std-env: 4.1.0
 
-  '@nuxt/vite-builder@4.4.2(@babel/plugin-syntax-jsx@7.28.6(@babel/core@7.29.0))(@types/node@24.19.0)(lightningcss@1.32.0)(magicast@0.5.2)(nuxt@4.4.2(d9f765576b8058af3393125d74d4050f))(optionator@0.9.4)(oxlint@1.66.0)(rolldown@1.1.5)(rollup-plugin-visualizer@7.0.1(rolldown@1.1.5)(rollup@4.60.2))(rollup@4.60.2)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.3)(vue@3.5.40(typescript@6.0.3))(yaml@2.9.0)':
+  '@nuxt/vite-builder@4.4.2(@babel/plugin-syntax-jsx@7.28.6(@babel/core@7.29.0))(@types/node@24.19.0)(eslint@9.32.0(jiti@2.6.1))(lightningcss@1.32.0)(magicast@0.5.2)(nuxt@4.4.2(f147bdd4e83d5aab1290c9746e3bbfb8))(optionator@0.9.4)(oxlint@1.90.0)(rolldown@1.1.5)(rollup-plugin-visualizer@7.0.1(rolldown@1.1.5)(rollup@4.60.2))(rollup@4.60.2)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.3)(vue@3.5.40(typescript@6.0.3))(yaml@2.9.0)':
     dependencies:
       '@nuxt/kit': 4.4.2(magicast@0.5.2)
       '@rollup/plugin-replace': 6.0.3(rollup@4.60.2)
@@ -24367,7 +24401,7 @@ snapshots:
       magic-string: 0.30.21
       mlly: 1.8.2
       mocked-exports: 0.1.1
-      nuxt: 4.4.2(d9f765576b8058af3393125d74d4050f)
+      nuxt: 4.4.2(f147bdd4e83d5aab1290c9746e3bbfb8)
       nypm: 0.6.5
       pathe: 2.0.3
       pkg-types: 2.3.0
@@ -24378,7 +24412,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       vite: 7.3.2(@types/node@24.19.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.9.0)
       vite-node: 5.3.0(@types/node@24.19.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.9.0)
-      vite-plugin-checker: 0.12.0(optionator@0.9.4)(oxlint@1.66.0)(typescript@6.0.3)(vite@7.3.2(@types/node@24.19.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.9.0))
+      vite-plugin-checker: 0.12.0(eslint@9.32.0(jiti@2.6.1))(optionator@0.9.4)(oxlint@1.90.0)(typescript@6.0.3)(vite@7.3.2(@types/node@24.19.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.9.0))
       vue: 3.5.40(typescript@6.0.3)
       vue-bundle-renderer: 2.2.0
     optionalDependencies:
@@ -25420,62 +25454,64 @@ snapshots:
   '@oxc-transform/binding-win32-x64-msvc@0.117.0':
     optional: true
 
-  '@oxlint/binding-android-arm-eabi@1.66.0':
+  '@oxlint/binding-android-arm-eabi@1.90.0':
     optional: true
 
-  '@oxlint/binding-android-arm64@1.66.0':
+  '@oxlint/binding-android-arm64@1.90.0':
     optional: true
 
-  '@oxlint/binding-darwin-arm64@1.66.0':
+  '@oxlint/binding-darwin-arm64@1.90.0':
     optional: true
 
-  '@oxlint/binding-darwin-x64@1.66.0':
+  '@oxlint/binding-darwin-x64@1.90.0':
     optional: true
 
-  '@oxlint/binding-freebsd-x64@1.66.0':
+  '@oxlint/binding-freebsd-x64@1.90.0':
     optional: true
 
-  '@oxlint/binding-linux-arm-gnueabihf@1.66.0':
+  '@oxlint/binding-linux-arm-gnueabihf@1.90.0':
     optional: true
 
-  '@oxlint/binding-linux-arm-musleabihf@1.66.0':
+  '@oxlint/binding-linux-arm-musleabihf@1.90.0':
     optional: true
 
-  '@oxlint/binding-linux-arm64-gnu@1.66.0':
+  '@oxlint/binding-linux-arm64-gnu@1.90.0':
     optional: true
 
-  '@oxlint/binding-linux-arm64-musl@1.66.0':
+  '@oxlint/binding-linux-arm64-musl@1.90.0':
     optional: true
 
-  '@oxlint/binding-linux-ppc64-gnu@1.66.0':
+  '@oxlint/binding-linux-ppc64-gnu@1.90.0':
     optional: true
 
-  '@oxlint/binding-linux-riscv64-gnu@1.66.0':
+  '@oxlint/binding-linux-riscv64-gnu@1.90.0':
     optional: true
 
-  '@oxlint/binding-linux-riscv64-musl@1.66.0':
+  '@oxlint/binding-linux-riscv64-musl@1.90.0':
     optional: true
 
-  '@oxlint/binding-linux-s390x-gnu@1.66.0':
+  '@oxlint/binding-linux-s390x-gnu@1.90.0':
     optional: true
 
-  '@oxlint/binding-linux-x64-gnu@1.66.0':
+  '@oxlint/binding-linux-x64-gnu@1.90.0':
     optional: true
 
-  '@oxlint/binding-linux-x64-musl@1.66.0':
+  '@oxlint/binding-linux-x64-musl@1.90.0':
     optional: true
 
-  '@oxlint/binding-openharmony-arm64@1.66.0':
+  '@oxlint/binding-openharmony-arm64@1.90.0':
     optional: true
 
-  '@oxlint/binding-win32-arm64-msvc@1.66.0':
+  '@oxlint/binding-win32-arm64-msvc@1.90.0':
     optional: true
 
-  '@oxlint/binding-win32-ia32-msvc@1.66.0':
+  '@oxlint/binding-win32-ia32-msvc@1.90.0':
     optional: true
 
-  '@oxlint/binding-win32-x64-msvc@1.66.0':
+  '@oxlint/binding-win32-x64-msvc@1.90.0':
     optional: true
+
+  '@oxlint/plugins@1.90.0': {}
 
   '@parcel/watcher-android-arm64@2.5.6':
     optional: true
@@ -35678,16 +35714,16 @@ snapshots:
     dependencies:
       boolbase: 1.0.0
 
-  nuxt@4.4.2(d9f765576b8058af3393125d74d4050f):
+  nuxt@4.4.2(f147bdd4e83d5aab1290c9746e3bbfb8):
     dependencies:
       '@dxup/nuxt': 0.4.1(magicast@0.5.2)(typescript@6.0.3)
       '@nuxt/cli': 3.34.0(@nuxt/schema@4.4.2)(cac@6.7.14)(magicast@0.5.2)
       '@nuxt/devtools': 3.2.4(vite@8.1.4(@types/node@24.19.0)(esbuild@0.28.1)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.9.0))(vue@3.5.40(typescript@6.0.3))
       '@nuxt/kit': 4.4.2(magicast@0.5.2)
-      '@nuxt/nitro-server': 4.4.2(@babel/core@7.29.0)(@electric-sql/pglite@0.5.8)(@netlify/blobs@10.7.9)(better-sqlite3@12.9.0)(db0@0.3.4(@electric-sql/pglite@0.5.8)(better-sqlite3@12.9.0)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260511.1)(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.3(@types/node@24.19.0))(pg@8.22.0)(postgres@3.4.7))(mysql2@3.22.3(@types/node@24.19.0)))(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260511.1)(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.3(@types/node@24.19.0))(pg@8.22.0)(postgres@3.4.7))(ioredis@5.10.1)(magicast@0.5.2)(mysql2@3.22.3(@types/node@24.19.0))(nuxt@4.4.2(d9f765576b8058af3393125d74d4050f))(rolldown@1.1.5)(typescript@6.0.3)
+      '@nuxt/nitro-server': 4.4.2(@babel/core@7.29.0)(@electric-sql/pglite@0.5.8)(@netlify/blobs@10.7.9)(better-sqlite3@12.9.0)(db0@0.3.4(@electric-sql/pglite@0.5.8)(better-sqlite3@12.9.0)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260511.1)(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.3(@types/node@24.19.0))(pg@8.22.0)(postgres@3.4.7))(mysql2@3.22.3(@types/node@24.19.0)))(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260511.1)(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.3(@types/node@24.19.0))(pg@8.22.0)(postgres@3.4.7))(ioredis@5.10.1)(magicast@0.5.2)(mysql2@3.22.3(@types/node@24.19.0))(nuxt@4.4.2(f147bdd4e83d5aab1290c9746e3bbfb8))(rolldown@1.1.5)(typescript@6.0.3)
       '@nuxt/schema': 4.4.2
       '@nuxt/telemetry': 2.8.0(@nuxt/kit@4.4.2(magicast@0.5.2))
-      '@nuxt/vite-builder': 4.4.2(@babel/plugin-syntax-jsx@7.28.6(@babel/core@7.29.0))(@types/node@24.19.0)(lightningcss@1.32.0)(magicast@0.5.2)(nuxt@4.4.2(d9f765576b8058af3393125d74d4050f))(optionator@0.9.4)(oxlint@1.66.0)(rolldown@1.1.5)(rollup-plugin-visualizer@7.0.1(rolldown@1.1.5)(rollup@4.60.2))(rollup@4.60.2)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.3)(vue@3.5.40(typescript@6.0.3))(yaml@2.9.0)
+      '@nuxt/vite-builder': 4.4.2(@babel/plugin-syntax-jsx@7.28.6(@babel/core@7.29.0))(@types/node@24.19.0)(eslint@9.32.0(jiti@2.6.1))(lightningcss@1.32.0)(magicast@0.5.2)(nuxt@4.4.2(f147bdd4e83d5aab1290c9746e3bbfb8))(optionator@0.9.4)(oxlint@1.90.0)(rolldown@1.1.5)(rollup-plugin-visualizer@7.0.1(rolldown@1.1.5)(rollup@4.60.2))(rollup@4.60.2)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.3)(vue@3.5.40(typescript@6.0.3))(yaml@2.9.0)
       '@unhead/vue': 2.1.13(vue@3.5.40(typescript@6.0.3))
       '@vue/shared': 3.5.33
       c12: 3.3.4(magicast@0.5.2)
@@ -36113,27 +36149,27 @@ snapshots:
       magic-regexp: 0.10.0
       oxc-parser: 0.117.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
-  oxlint@1.66.0:
+  oxlint@1.90.0:
     optionalDependencies:
-      '@oxlint/binding-android-arm-eabi': 1.66.0
-      '@oxlint/binding-android-arm64': 1.66.0
-      '@oxlint/binding-darwin-arm64': 1.66.0
-      '@oxlint/binding-darwin-x64': 1.66.0
-      '@oxlint/binding-freebsd-x64': 1.66.0
-      '@oxlint/binding-linux-arm-gnueabihf': 1.66.0
-      '@oxlint/binding-linux-arm-musleabihf': 1.66.0
-      '@oxlint/binding-linux-arm64-gnu': 1.66.0
-      '@oxlint/binding-linux-arm64-musl': 1.66.0
-      '@oxlint/binding-linux-ppc64-gnu': 1.66.0
-      '@oxlint/binding-linux-riscv64-gnu': 1.66.0
-      '@oxlint/binding-linux-riscv64-musl': 1.66.0
-      '@oxlint/binding-linux-s390x-gnu': 1.66.0
-      '@oxlint/binding-linux-x64-gnu': 1.66.0
-      '@oxlint/binding-linux-x64-musl': 1.66.0
-      '@oxlint/binding-openharmony-arm64': 1.66.0
-      '@oxlint/binding-win32-arm64-msvc': 1.66.0
-      '@oxlint/binding-win32-ia32-msvc': 1.66.0
-      '@oxlint/binding-win32-x64-msvc': 1.66.0
+      '@oxlint/binding-android-arm-eabi': 1.90.0
+      '@oxlint/binding-android-arm64': 1.90.0
+      '@oxlint/binding-darwin-arm64': 1.90.0
+      '@oxlint/binding-darwin-x64': 1.90.0
+      '@oxlint/binding-freebsd-x64': 1.90.0
+      '@oxlint/binding-linux-arm-gnueabihf': 1.90.0
+      '@oxlint/binding-linux-arm-musleabihf': 1.90.0
+      '@oxlint/binding-linux-arm64-gnu': 1.90.0
+      '@oxlint/binding-linux-arm64-musl': 1.90.0
+      '@oxlint/binding-linux-ppc64-gnu': 1.90.0
+      '@oxlint/binding-linux-riscv64-gnu': 1.90.0
+      '@oxlint/binding-linux-riscv64-musl': 1.90.0
+      '@oxlint/binding-linux-s390x-gnu': 1.90.0
+      '@oxlint/binding-linux-x64-gnu': 1.90.0
+      '@oxlint/binding-linux-x64-musl': 1.90.0
+      '@oxlint/binding-openharmony-arm64': 1.90.0
+      '@oxlint/binding-win32-arm64-msvc': 1.90.0
+      '@oxlint/binding-win32-ia32-msvc': 1.90.0
+      '@oxlint/binding-win32-x64-msvc': 1.90.0
 
   p-cancelable@2.1.1: {}
 
@@ -39541,7 +39577,7 @@ snapshots:
       - tsx
       - yaml
 
-  vite-plugin-checker@0.12.0(optionator@0.9.4)(oxlint@1.66.0)(typescript@6.0.3)(vite@7.3.2(@types/node@24.19.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.9.0)):
+  vite-plugin-checker@0.12.0(eslint@9.32.0(jiti@2.6.1))(optionator@0.9.4)(oxlint@1.90.0)(typescript@6.0.3)(vite@7.3.2(@types/node@24.19.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.9.0)):
     dependencies:
       '@babel/code-frame': 7.29.0
       chokidar: 4.0.3
@@ -39553,8 +39589,9 @@ snapshots:
       vite: 7.3.2(@types/node@24.19.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.9.0)
       vscode-uri: 3.1.0
     optionalDependencies:
+      eslint: 9.32.0(jiti@2.6.1)
       optionator: 0.9.4
-      oxlint: 1.66.0
+      oxlint: 1.90.0
       typescript: 6.0.3
 
   vite-plugin-inspect@11.3.3(@nuxt/kit@4.4.2(magicast@0.5.2))(vite@8.1.4(@types/node@24.19.0)(esbuild@0.28.1)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.9.0)):
