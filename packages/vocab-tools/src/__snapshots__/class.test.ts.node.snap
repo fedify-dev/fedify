@@ -6432,6 +6432,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_49BipA5dq9eoH8LX8xdsVumveTca_attachment;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -6484,16 +6486,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"attachment\\",
-                    [\\"https://www.w3.org/ns/activitystreams#attachment\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"attachment\\",
+                  [\\"https://www.w3.org/ns/activitystreams#attachment\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -7087,6 +7088,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_42CGqJ94zgQ3ZBbfHwD8Hrr2L5Py_attributedTo;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -7139,16 +7142,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"attributedTo\\",
-                    [\\"https://www.w3.org/ns/activitystreams#attributedTo\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"attributedTo\\",
+                  [\\"https://www.w3.org/ns/activitystreams#attributedTo\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -7680,6 +7682,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3ocC3VVi88cEd5sPWL8djkZsvTN6_audience;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -7732,16 +7736,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"audience\\",
-                    [\\"https://www.w3.org/ns/activitystreams#audience\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"audience\\",
+                  [\\"https://www.w3.org/ns/activitystreams#audience\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -8159,6 +8162,8 @@ get contents(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3mhZzGXSpQ431mBSz2kvych22v4e_context;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -8211,16 +8216,15 @@ get contents(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"context\\",
-                    [\\"https://www.w3.org/ns/activitystreams#context\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"context\\",
+                  [\\"https://www.w3.org/ns/activitystreams#context\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -8645,6 +8649,8 @@ get names(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_86xFhmgBapoMvYqjbjRuDPayTrS_generator;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -8697,16 +8703,15 @@ get names(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"generator\\",
-                    [\\"https://www.w3.org/ns/activitystreams#generator\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"generator\\",
+                  [\\"https://www.w3.org/ns/activitystreams#generator\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -9262,6 +9267,8 @@ get names(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_33CjRLy5ujtsUrwRSCrsggvGdKuR_icon;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -9314,16 +9321,15 @@ get names(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"icon\\",
-                    [\\"https://www.w3.org/ns/activitystreams#icon\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"icon\\",
+                  [\\"https://www.w3.org/ns/activitystreams#icon\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -9879,6 +9885,8 @@ get names(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3dXrUdkARxwyJLtJcYi1AJ92H41U_image;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -9931,16 +9939,15 @@ get names(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"image\\",
-                    [\\"https://www.w3.org/ns/activitystreams#image\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"image\\",
+                  [\\"https://www.w3.org/ns/activitystreams#image\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -10487,6 +10494,8 @@ get names(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3fpbDrvZgf3Kq1a5V9aByFn8kx3s_inReplyTo;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -10539,16 +10548,15 @@ get names(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"inReplyTo\\",
-                    [\\"https://www.w3.org/ns/activitystreams#inReplyTo\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"inReplyTo\\",
+                  [\\"https://www.w3.org/ns/activitystreams#inReplyTo\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -11095,6 +11103,8 @@ get names(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_31k5MUZJsnsPNg8dQQJieWaXTFnR_location;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -11147,16 +11157,15 @@ get names(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"location\\",
-                    [\\"https://www.w3.org/ns/activitystreams#location\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"location\\",
+                  [\\"https://www.w3.org/ns/activitystreams#location\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -11701,6 +11710,8 @@ get names(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_gCVTegXxWWCw6wWRxa1QF65zusg_preview;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -11753,16 +11764,15 @@ get names(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"preview\\",
-                    [\\"https://www.w3.org/ns/activitystreams#preview\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"preview\\",
+                  [\\"https://www.w3.org/ns/activitystreams#preview\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -13913,6 +13923,8 @@ get summaries(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_5chuqj6s95p5gg2sk1HntGfarRf_tag;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -13965,16 +13977,15 @@ get summaries(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"tag\\",
-                    [\\"https://www.w3.org/ns/activitystreams#tag\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"tag\\",
+                  [\\"https://www.w3.org/ns/activitystreams#tag\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -14540,6 +14551,8 @@ get urls(): ((URL | Link))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3hFbw7DTpHhq3cvVhkY8njhcsXbd_to;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -14592,16 +14605,15 @@ get urls(): ((URL | Link))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"to\\",
-                    [\\"https://www.w3.org/ns/activitystreams#to\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"to\\",
+                  [\\"https://www.w3.org/ns/activitystreams#to\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -15133,6 +15145,8 @@ get urls(): ((URL | Link))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_aLZupjwL8XB7tzdLgCMXdjZ6qej_bto;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -15185,16 +15199,15 @@ get urls(): ((URL | Link))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"bto\\",
-                    [\\"https://www.w3.org/ns/activitystreams#bto\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"bto\\",
+                  [\\"https://www.w3.org/ns/activitystreams#bto\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -15726,6 +15739,8 @@ get urls(): ((URL | Link))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_42a1SvBs24QSLzKcfjCyNTjW5a1g_cc;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -15778,16 +15793,15 @@ get urls(): ((URL | Link))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"cc\\",
-                    [\\"https://www.w3.org/ns/activitystreams#cc\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"cc\\",
+                  [\\"https://www.w3.org/ns/activitystreams#cc\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -16319,6 +16333,8 @@ get urls(): ((URL | Link))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3qvegKUB8YLgTXRpEf8E6JZSkz2H_bcc;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -16371,16 +16387,15 @@ get urls(): ((URL | Link))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"bcc\\",
-                    [\\"https://www.w3.org/ns/activitystreams#bcc\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"bcc\\",
+                  [\\"https://www.w3.org/ns/activitystreams#bcc\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -16974,6 +16989,8 @@ get urls(): ((URL | Link))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_42rPnotok1ivQ2RNCKNbeFJgx8b8_proof;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -17026,16 +17043,15 @@ get urls(): ((URL | Link))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"proof\\",
-                    [\\"https://w3id.org/security#proof\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"proof\\",
+                  [\\"https://w3id.org/security#proof\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -27973,6 +27989,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_2DjTTboo3CNHU2a2JQqUSE2dbv9D_actor;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -28025,16 +28043,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"actor\\",
-                    [\\"https://www.w3.org/ns/activitystreams#actor\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"actor\\",
+                  [\\"https://www.w3.org/ns/activitystreams#actor\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -28568,6 +28585,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -28620,16 +28639,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"object\\",
-                    [\\"https://www.w3.org/ns/activitystreams#object\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"object\\",
+                  [\\"https://www.w3.org/ns/activitystreams#object\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -29169,6 +29187,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3JQCmF2Ww56Ag9EWRYoSZRDNCYtF_target;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -29221,16 +29241,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"target\\",
-                    [\\"https://www.w3.org/ns/activitystreams#target\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"target\\",
+                  [\\"https://www.w3.org/ns/activitystreams#target\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -29764,6 +29783,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_u4QGFbRFcYmPEKGbPv1hpBR9r5G_result;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -29816,16 +29837,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"result\\",
-                    [\\"https://www.w3.org/ns/activitystreams#result\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"result\\",
+                  [\\"https://www.w3.org/ns/activitystreams#result\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -30361,6 +30381,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_25zu2s3VxVujgEKqrDycjE284XQR_origin;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -30413,16 +30435,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"origin\\",
-                    [\\"https://www.w3.org/ns/activitystreams#origin\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"origin\\",
+                  [\\"https://www.w3.org/ns/activitystreams#origin\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -30954,6 +30975,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -31006,16 +31029,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"instrument\\",
-                    [\\"https://www.w3.org/ns/activitystreams#instrument\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"instrument\\",
+                  [\\"https://www.w3.org/ns/activitystreams#instrument\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -48168,6 +48190,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_hQqsdZa1zG8Ra1bQ3MBVsnmGnBR;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -48220,16 +48244,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"translator\\",
-                    [\\"https://schema.org/translator\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"translator\\",
+                  [\\"https://schema.org/translator\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -54645,6 +54668,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -54697,16 +54722,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"items\\",
-                    [\\"https://www.w3.org/ns/activitystreams#items\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"items\\",
+                  [\\"https://www.w3.org/ns/activitystreams#items\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -60638,6 +60662,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -60690,16 +60716,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"orderedItems\\",
-                    [\\"https://www.w3.org/ns/activitystreams#items\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"orderedItems\\",
+                  [\\"https://www.w3.org/ns/activitystreams#items\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -79902,6 +79927,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -79954,16 +79981,15 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"publicKey\\",
-                    [\\"https://w3id.org/security#publicKey\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"publicKey\\",
+                  [\\"https://w3id.org/security#publicKey\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -80499,6 +80525,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -80551,16 +80579,15 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"assertionMethod\\",
-                    [\\"https://w3id.org/security#assertionMethod\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"assertionMethod\\",
+                  [\\"https://w3id.org/security#assertionMethod\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -84439,6 +84466,8 @@ get gateways(): (URL)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -84491,16 +84520,15 @@ get gateways(): (URL)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"streams\\",
-                    [\\"https://www.w3.org/ns/activitystreams#streams\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"streams\\",
+                  [\\"https://www.w3.org/ns/activitystreams#streams\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -85665,6 +85693,8 @@ get attributionDomains(): (string)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -85717,16 +85747,15 @@ get attributionDomains(): (string)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"alsoKnownAs\\",
-                    [\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"alsoKnownAs\\",
+                  [\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -86262,6 +86291,8 @@ get attributionDomains(): (string)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -86314,16 +86345,15 @@ get attributionDomains(): (string)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"service\\",
-                    [\\"https://www.w3.org/ns/did#service\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"service\\",
+                  [\\"https://www.w3.org/ns/did#service\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -106259,6 +106289,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -106311,16 +106343,15 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"publicKey\\",
-                    [\\"https://w3id.org/security#publicKey\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"publicKey\\",
+                  [\\"https://w3id.org/security#publicKey\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -106856,6 +106887,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -106908,16 +106941,15 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"assertionMethod\\",
-                    [\\"https://w3id.org/security#assertionMethod\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"assertionMethod\\",
+                  [\\"https://w3id.org/security#assertionMethod\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -110796,6 +110828,8 @@ get gateways(): (URL)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -110848,16 +110882,15 @@ get gateways(): (URL)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"streams\\",
-                    [\\"https://www.w3.org/ns/activitystreams#streams\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"streams\\",
+                  [\\"https://www.w3.org/ns/activitystreams#streams\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -112022,6 +112055,8 @@ get attributionDomains(): (string)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -112074,16 +112109,15 @@ get attributionDomains(): (string)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"alsoKnownAs\\",
-                    [\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"alsoKnownAs\\",
+                  [\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -112619,6 +112653,8 @@ get attributionDomains(): (string)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -112671,16 +112707,15 @@ get attributionDomains(): (string)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"service\\",
-                    [\\"https://www.w3.org/ns/did#service\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"service\\",
+                  [\\"https://www.w3.org/ns/did#service\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -117680,6 +117715,8 @@ get names(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_gCVTegXxWWCw6wWRxa1QF65zusg_preview;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -117732,16 +117769,15 @@ get names(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"preview\\",
-                    [\\"https://www.w3.org/ns/activitystreams#preview\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"preview\\",
+                  [\\"https://www.w3.org/ns/activitystreams#preview\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -127112,6 +127148,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -127164,16 +127202,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"orderedItems\\",
-                    [\\"https://www.w3.org/ns/activitystreams#items\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"orderedItems\\",
+                  [\\"https://www.w3.org/ns/activitystreams#items\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -131194,6 +131231,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -131246,16 +131285,15 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"publicKey\\",
-                    [\\"https://w3id.org/security#publicKey\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"publicKey\\",
+                  [\\"https://w3id.org/security#publicKey\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -131791,6 +131829,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -131843,16 +131883,15 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"assertionMethod\\",
-                    [\\"https://w3id.org/security#assertionMethod\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"assertionMethod\\",
+                  [\\"https://w3id.org/security#assertionMethod\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -135731,6 +135770,8 @@ get gateways(): (URL)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -135783,16 +135824,15 @@ get gateways(): (URL)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"streams\\",
-                    [\\"https://www.w3.org/ns/activitystreams#streams\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"streams\\",
+                  [\\"https://www.w3.org/ns/activitystreams#streams\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -136957,6 +136997,8 @@ get attributionDomains(): (string)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -137009,16 +137051,15 @@ get attributionDomains(): (string)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"alsoKnownAs\\",
-                    [\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"alsoKnownAs\\",
+                  [\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -137554,6 +137595,8 @@ get attributionDomains(): (string)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -137606,16 +137649,15 @@ get attributionDomains(): (string)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"service\\",
-                    [\\"https://www.w3.org/ns/did#service\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"service\\",
+                  [\\"https://www.w3.org/ns/did#service\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -144829,6 +144871,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -144881,16 +144925,15 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"publicKey\\",
-                    [\\"https://w3id.org/security#publicKey\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"publicKey\\",
+                  [\\"https://w3id.org/security#publicKey\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -145426,6 +145469,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -145478,16 +145523,15 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"assertionMethod\\",
-                    [\\"https://w3id.org/security#assertionMethod\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"assertionMethod\\",
+                  [\\"https://w3id.org/security#assertionMethod\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -149366,6 +149410,8 @@ get gateways(): (URL)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -149418,16 +149464,15 @@ get gateways(): (URL)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"streams\\",
-                    [\\"https://www.w3.org/ns/activitystreams#streams\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"streams\\",
+                  [\\"https://www.w3.org/ns/activitystreams#streams\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -150592,6 +150637,8 @@ get attributionDomains(): (string)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -150644,16 +150691,15 @@ get attributionDomains(): (string)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"alsoKnownAs\\",
-                    [\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"alsoKnownAs\\",
+                  [\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -151189,6 +151235,8 @@ get attributionDomains(): (string)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -151241,16 +151289,15 @@ get attributionDomains(): (string)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"service\\",
-                    [\\"https://www.w3.org/ns/did#service\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"service\\",
+                  [\\"https://www.w3.org/ns/did#service\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -158457,6 +158504,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_2N5scKaVEcdYHFmfKYYacAwUhUgQ_oneOf;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -158509,16 +158558,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"oneOf\\",
-                    [\\"https://www.w3.org/ns/activitystreams#oneOf\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"oneOf\\",
+                  [\\"https://www.w3.org/ns/activitystreams#oneOf\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -158888,6 +158936,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_2mV6isMTPRKbWdLCjcpiEysq5dAY_anyOf;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -158940,16 +158990,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"anyOf\\",
-                    [\\"https://www.w3.org/ns/activitystreams#anyOf\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"anyOf\\",
+                  [\\"https://www.w3.org/ns/activitystreams#anyOf\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -163492,6 +163541,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -163544,16 +163595,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"object\\",
-                    [\\"https://www.w3.org/ns/activitystreams#object\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"object\\",
+                  [\\"https://www.w3.org/ns/activitystreams#object\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -164087,6 +164137,8 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -164139,16 +164191,15 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"relationship\\",
-                    [\\"https://www.w3.org/ns/activitystreams#relationship\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"relationship\\",
+                  [\\"https://www.w3.org/ns/activitystreams#relationship\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -168816,6 +168867,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -168868,16 +168921,15 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"publicKey\\",
-                    [\\"https://w3id.org/security#publicKey\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"publicKey\\",
+                  [\\"https://w3id.org/security#publicKey\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -169413,6 +169465,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -169465,16 +169519,15 @@ get preferredUsernames(): ((string | LanguageString))[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"assertionMethod\\",
-                    [\\"https://w3id.org/security#assertionMethod\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"assertionMethod\\",
+                  [\\"https://w3id.org/security#assertionMethod\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -173353,6 +173406,8 @@ get gateways(): (URL)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -173405,16 +173460,15 @@ get gateways(): (URL)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"streams\\",
-                    [\\"https://www.w3.org/ns/activitystreams#streams\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"streams\\",
+                  [\\"https://www.w3.org/ns/activitystreams#streams\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -174579,6 +174633,8 @@ get attributionDomains(): (string)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -174631,16 +174687,15 @@ get attributionDomains(): (string)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"alsoKnownAs\\",
-                    [\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"alsoKnownAs\\",
+                  [\\"https://www.w3.org/ns/activitystreams#alsoKnownAs\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
@@ -175176,6 +175231,8 @@ get attributionDomains(): (string)[] {
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        // A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;
         const vs = this.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service;
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -175228,16 +175285,15 @@ get attributionDomains(): (string)[] {
                   this,
                   this._cachedJsonLd[\\"@context\\"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    \\"service\\",
-                    [\\"https://www.w3.org/ns/did#service\\"],
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  \\"service\\",
+                  [\\"https://www.w3.org/ns/did#service\\"],
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {

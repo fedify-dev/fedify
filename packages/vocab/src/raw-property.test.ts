@@ -561,6 +561,43 @@ test("key checks of nested objects skip non-propagating contexts", async () => {
   deepStrictEqual(await nested.toJsonLd(), attachment);
 });
 
+test("accessors do not repeat failed key checks for each embedded object", async () => {
+  const context = "https://example.com/contexts/extension";
+  const contextLoader = (url: string) =>
+    url === context
+      ? Promise.resolve({
+        contextUrl: null,
+        documentUrl: url,
+        document: { "@context": { ext: "https://example.com/ns#" } },
+      })
+      : mockDocumentLoader(url);
+  const note = await Note.fromJsonLd({
+    "@context": [AS, context],
+    id: "https://example.com/notes/1",
+    type: "Note",
+    attachment: Array.from({ length: 50 }, (_, i) => ({
+      "@context": AS,
+      type: "Document",
+      name: `Attachment ${i}`,
+    })),
+  }, { contextLoader });
+  let loads = 0;
+  const failingLoader = (url: string) => {
+    if (url !== context) return mockDocumentLoader(url);
+    loads++;
+    return Promise.reject(new Error("Temporary failure"));
+  };
+  await Array.fromAsync(
+    note.getAttachments({ contextLoader: failingLoader, suppressError: true }),
+  );
+  strictEqual(loads, 1);
+  // A later call tries again:
+  const attachments = await Array.fromAsync(
+    note.getAttachments({ contextLoader }),
+  );
+  strictEqual(attachments.length, 50);
+});
+
 test("embedded objects keep values under property-scoped contexts", async () => {
   const create = await Create.fromJsonLd({
     "@context": [AS, {

@@ -623,6 +623,12 @@ async function* generateProperty(
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        ${
+        property.compactName == null
+          ? ""
+          : `// A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;`
+      }
         const vs = this.${await getFieldName(property.uri)};
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -684,21 +690,20 @@ async function* generateProperty(
                   this,
                   this._cachedJsonLd["@context"],
                 );
-                if (
-                  await isCachedPropertyKey(
-                    this._cachedJsonLd as Record<string, unknown>,
-                    context,
-                    ${JSON.stringify(property.compactName)},
-                    ${
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  ${JSON.stringify(property.compactName)},
+                  ${
           JSON.stringify([
             property.uri,
             ...(property.redundantProperties ?? []).map((p) => p.uri),
           ])
         },
-                    options.contextLoader ?? this._contextLoader ??
-                      getDocumentLoader(),
-                  )
-                ) {
+                  options.contextLoader ?? this._contextLoader ??
+                    getDocumentLoader(),
+                );
+                if (await cachedKeyCheck) {
                   keepReceivedJsonLd(v, obj, context);
                 }
               } catch (error) {
