@@ -24,6 +24,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       MISE_DISABLE_TOOLS: deno
+      # Oxfmt's Node-API cleanup fix is in Node 24.13.1 and later.
+      # Keep Linux package tests and other bootstrap targets on Node 22.
+      MISE_NODE_VERSION: ${{ matrix.os == 'windows-latest' && '24.22.0' || '22' }}
     steps:
     - uses: actions/checkout@v6
     - uses: jdx/mise-action@v4

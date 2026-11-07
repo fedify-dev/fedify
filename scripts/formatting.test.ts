@@ -103,9 +103,7 @@ it("formats owned languages and preserves excluded files through the real CLI", 
     const run = async (mode: "--write" | "--check") => {
       const result = await commandOutput(
         nodeExecutable,
-        // This tiny fixture tests ownership and output, not worker concurrency.
-        // Repository-wide checks still exercise the default parallel run.
-        [cli, "--threads=1", "-c", ".oxfmtrc.json", mode, "."],
+        [cli, "-c", ".oxfmtrc.json", mode, "."],
         { cwd: dir },
       );
       equal(
