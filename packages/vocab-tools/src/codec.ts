@@ -61,6 +61,8 @@ function* generatePreprocessorBlock(
   }
   yield `
         if (_handled !== undefined) {
+          // The document does not describe what a preprocessor made of it:
+          skipReceivedJsonLd(_handled);
           ${variable}.push(_handled);
           continue;
         }

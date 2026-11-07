@@ -112,6 +112,10 @@ function getCachedJsonLdContext(object: object, context: unknown): unknown {
 // changed after decoding, which that document no longer describes:
 const receivedJsonLd = new WeakSet<object>();
 
+function skipReceivedJsonLd(value: unknown): void {
+  if (value != null && typeof value === "object") receivedJsonLd.add(value);
+}
+
 function invalidateCachedJsonLd(object: object): void {
   (object as unknown as { _cachedJsonLd?: unknown })._cachedJsonLd =
     undefined;

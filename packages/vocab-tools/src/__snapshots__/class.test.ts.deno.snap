@@ -436,6 +436,10 @@ function getCachedJsonLdContext(object: object, context: unknown): unknown {
 // changed after decoding, which that document no longer describes:
 const receivedJsonLd = new WeakSet<object>();
 
+function skipReceivedJsonLd(value: unknown): void {
+  if (value != null && typeof value === \\"object\\") receivedJsonLd.add(value);
+}
+
 function invalidateCachedJsonLd(object: object): void {
   (object as unknown as { _cachedJsonLd?: unknown })._cachedJsonLd =
     undefined;
@@ -21998,6 +22002,8 @@ get licenses(): (URL)[] {
         }
       
         if (_handled !== undefined) {
+          // The document does not describe what a preprocessor made of it:
+          skipReceivedJsonLd(_handled);
           _33CjRLy5ujtsUrwRSCrsggvGdKuR_icon.push(_handled);
           continue;
         }
@@ -22067,6 +22073,8 @@ get licenses(): (URL)[] {
         }
       
         if (_handled !== undefined) {
+          // The document does not describe what a preprocessor made of it:
+          skipReceivedJsonLd(_handled);
           _3dXrUdkARxwyJLtJcYi1AJ92H41U_image.push(_handled);
           continue;
         }

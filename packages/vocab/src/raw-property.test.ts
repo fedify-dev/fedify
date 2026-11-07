@@ -12,6 +12,7 @@ import {
   Create,
   getRawPropertyValue,
   getRawPropertyValues,
+  Image,
   Note,
   Object as ASObject,
   Person,
@@ -816,6 +817,25 @@ test("key checks map keys as decoding did, whatever the loader", async () => {
   ok(attachment != null);
   const jsonLd = await attachment.toJsonLd() as Record<string, unknown>;
   strictEqual(jsonLd.name, "Real");
+});
+
+test("values that preprocessors made do not get received JSON-LD", async () => {
+  const note = await Note.fromJsonLd({
+    "@context": AS,
+    id: "https://example.com/notes/1",
+    type: "Note",
+    // Normalized into an Image, which this document does not describe:
+    icon: {
+      "@context": AS,
+      type: "Link",
+      href: "https://example.com/icon.png",
+    },
+  });
+  const icon = await note.getIcon();
+  ok(icon instanceof Image);
+  const jsonLd = await icon.toJsonLd() as Record<string, unknown>;
+  strictEqual(jsonLd.type, "Image");
+  ok(await Image.fromJsonLd(jsonLd) instanceof Image);
 });
 
 test("embedded objects keep values under property-scoped contexts", async () => {
