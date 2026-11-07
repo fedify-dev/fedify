@@ -689,6 +689,44 @@ test("nested objects use the property-scoped contexts they were reached through"
   notDeepStrictEqual(jsonLd.name, "Wrong");
 });
 
+test("nested key checks drop scoped contexts that a null context reset", async () => {
+  const attachment = {
+    "@context": AS,
+    type: "Document",
+    name: "Correct",
+    [STRUCTURED_URL]: { "@id": "https://example.com/data/1" },
+  };
+  const create = await Create.fromJsonLd({
+    "@context": [
+      {
+        object: {
+          "@id": `${AS}#object`,
+          "@context": {
+            wrongTerm: `${AS}#attachment`,
+            attachment: "https://example.com/unrelated",
+          },
+        },
+      },
+      null,
+      AS,
+    ],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object: {
+      "@context": {},
+      id: "https://example.com/notes/1",
+      type: "Note",
+      attachment,
+    },
+  });
+  const note = await create.getObject();
+  ok(note instanceof Note);
+  const [nested] = await Array.fromAsync(note.getAttachments());
+  ok(nested != null);
+  deepStrictEqual(await nested.toJsonLd(), attachment);
+});
+
 test("embedded objects keep values under property-scoped contexts", async () => {
   const create = await Create.fromJsonLd({
     "@context": [AS, {
