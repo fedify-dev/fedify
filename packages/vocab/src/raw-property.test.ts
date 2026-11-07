@@ -598,6 +598,32 @@ test("accessors do not repeat failed key checks for each embedded object", async
   strictEqual(attachments.length, 50);
 });
 
+test("embedded objects under graph containers keep their received JSON-LD", async () => {
+  const proof = {
+    "@context": [
+      "https://w3id.org/security/data-integrity/v1",
+      { extra: "https://example.com/ns#extra" },
+    ],
+    type: "DataIntegrityProof",
+    cryptosuite: "eddsa-jcs-2022",
+    verificationMethod: "https://example.com/users/alice#key",
+    proofPurpose: "assertionMethod",
+    proofValue: "zAbc",
+    created: "2026-01-01T00:00:00Z",
+    extra: "Covered by the signature",
+  };
+  const create = await Create.fromJsonLd({
+    "@context": [AS, "https://w3id.org/security/data-integrity/v1"],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    proof,
+  });
+  const [received] = await Array.fromAsync(create.getProofs());
+  ok(received != null);
+  deepStrictEqual(await received.toJsonLd(), proof);
+});
+
 test("embedded objects keep values under property-scoped contexts", async () => {
   const create = await Create.fromJsonLd({
     "@context": [AS, {

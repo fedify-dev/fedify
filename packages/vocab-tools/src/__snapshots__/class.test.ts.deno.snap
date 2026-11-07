@@ -486,6 +486,13 @@ async function expandTopLevelKeys(
   );
 }
 
+// A value that keeps its key in the expansion whatever container the term has,
+// which an empty array does not for a graph container:
+const KEY_PROBE = [{
+  \\"@id\\": \\"urn:fedify:key-probe\\",
+  \\"urn:fedify:key-probe\\": [],
+}];
+
 // The number of expansions must not depend on the document, which can come
 // from a remote peer, as each of them can load the contexts again:
 async function mapsOnlyKeyToProperty(
@@ -516,13 +523,13 @@ async function mapsOnlyKeyToProperty(
   const others: Record<string, unknown> = { \\"@context\\": context };
   for (const [k, value] of globalThis.Object.entries(document)) {
     if (k === key || k.startsWith(\\"@\\")) continue;
-    others[k] = isScalarOrStrings(value) ? value : [];
+    others[k] = isScalarOrStrings(value) ? value : KEY_PROBE;
   }
   try {
     const without = await expandTopLevelKeys(others, loader);
     if (without.some((iri) => iris.includes(iri))) return false;
     const all = await expandTopLevelKeys(
-      { ...others, [key]: [] },
+      { ...others, [key]: KEY_PROBE },
       loader,
     );
     return all.includes(iris[0]);
