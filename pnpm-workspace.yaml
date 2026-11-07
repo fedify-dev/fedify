@@ -144,7 +144,7 @@ catalog:
   nuxt: ^4.4.2
   "@oxlint/plugins": 1.90.0
   oxlint: 1.90.0
-  oxfmt: 0.77.0
+  oxfmt: 0.76.0
   "@astrojs/compiler-rs": 0.5.2
   svelte: 5.57.3
   postgres: ^3.4.7

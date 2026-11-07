@@ -95,7 +95,7 @@
     "typescript": "npm:typescript@^6.0.3",
     "cross-spawn": "npm:cross-spawn@^7.0.6",
     "yaml": "npm:yaml@^2.9.0",
-    "oxfmt": "npm:oxfmt@0.77.0"
+    "oxfmt": "npm:oxfmt@0.76.0"
   },
   "unstable": ["fs", "kv", "process"],
   "exclude": [

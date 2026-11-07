@@ -42,8 +42,8 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        for ($attempt = 1; $attempt -le 20; $attempt++) {
-          Write-Host "Formatter process $attempt/20"
+        for ($attempt = 1; $attempt -le 100; $attempt++) {
+          Write-Host "Formatter process $attempt/100"
           mise exec -- node --experimental-transform-types --test scripts/formatting.test.ts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
