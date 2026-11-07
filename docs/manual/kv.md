@@ -496,8 +496,9 @@ const federation = createFederation<void>({
 > primarily for Deno Deploy, which is shutting down.  Fedify keeps supporting
 > `@fedify/denokv` throughout the 2.x series, but the package will be removed
 > in Fedify 3.0.0. Use [`SqliteKvStore`] for local or single-node deployments,
-> or [`PostgresKvStore`], [`RedisKvStore`], [`MysqlKvStore`], or
-> [`WorkersKvStore`] for production.  See [#1336] for the removal plan.
+> [`PostgresKvStore`], [`RedisKvStore`], or [`MysqlKvStore`] for production,
+> or [`WorkersD1KvStore`] if you move to Cloudflare Workers.  See [#1336] for
+> the removal plan.
 
 To use the [`DenoKvStore`], you need to install the *@fedify/denokv* package
 first:
@@ -536,11 +537,117 @@ const federation = createFederation<void>({
 ~~~~
 
 [deno-announcement]: https://deno.com/blog/cloudflare
-[`WorkersKvStore`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersKvStore
+[`WorkersD1KvStore`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersD1KvStore
 [#1336]: https://github.com/fedify-dev/fedify/issues/1336
 [`DenoKvStore`]: https://jsr.io/@fedify/denokv/doc/~/DenoKvStore
 [Deno]: https://deno.com/
 [`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
+
+### `WorkersD1KvStore` (Cloudflare Workers only)
+
+*This API is available since Fedify 2.5.0.*
+
+To use the [`WorkersD1KvStore`], you need to install the *@fedify/cfworkers*
+package first:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/cfworkers
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/cfworkers
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/cfworkers
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/cfworkers
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/cfworkers
+~~~~
+
+:::
+
+[`WorkersD1KvStore`] is a key–value store implementation for
+[Cloudflare Workers] that uses [Cloudflare D1], Cloudflare's serverless SQL
+database.  Fedify writes to its key–value store about as often as it reads
+from it, and some of its records, such as idempotency records and signature
+nonces, need strong consistency.  D1 fits this workload better than
+[Cloudflare Workers KV], which is tuned for read-heavy workloads and is
+eventually consistent.  [`WorkersD1KvStore`] also supports
+`~KvStore.cas()`, which some Fedify features need to work atomically.
+
+Best for
+:   Production use in Cloudflare Workers environments.
+
+Pros
+:   Persistent storage, strong consistency, supports `~KvStore.cas()`.
+
+Cons
+:   Only available in Cloudflare Workers runtime.
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import type { FederationBuilder } from "@fedify/fedify";
+const builder = undefined as unknown as FederationBuilder<void>;
+// ---cut-before---
+import type { Federation } from "@fedify/fedify";
+import { WorkersD1KvStore } from "@fedify/cfworkers";
+
+export default {
+  async fetch(request, env, ctx) {
+    const federation: Federation<void> = await builder.build({
+      // The table is created by a D1 migration; see below:
+      kv: new WorkersD1KvStore(env.DB, { initialized: true }),
+    });
+    return await federation.fetch(request, { contextData: undefined });
+  }
+} satisfies ExportedHandler<{ DB: D1Database }>;
+~~~~
+
+The store keeps its entries in a table named `fedify_kv` by default, which
+you can change with the `tableName` option.  Without `initialized: true`,
+each store instance creates the table on its first use.  Since you construct
+the store for every request, that costs an extra D1 query per request, so
+create the table with a [D1 migration][D1 migrations] in production and pass
+`initialized: true`:
+
+~~~~ sql
+CREATE TABLE IF NOT EXISTS fedify_kv (
+  key TEXT PRIMARY KEY NOT NULL,
+  value TEXT NOT NULL,
+  expires INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_fedify_kv_expires ON fedify_kv (expires);
+~~~~
+
+Expired entries are never returned.  Each write also purges a bounded number
+of expired entries from the table, so the table does not grow without limit.
+
+> [!WARNING]
+> Pass the `D1Database` binding itself (e.g., `env.DB`) to get strongly
+> consistent reads.  `WorkersD1KvStore` also accepts a D1 session created
+> with `D1Database.withSession()`, but sessions only provide sequential
+> consistency and can read stale data from a replica, which can make Fedify
+> process the same activity twice.
+
+> [!NOTE]
+> Since your `D1Database` is not bound to a global variable, but rather
+> passed as an argument to the `fetch()` method, you need to instantiate
+> your `Federation` object inside the `fetch()` method, rather than the top
+> level.  See the [*Builder pattern for structuring*
+> section](./federation.md#builder-pattern-for-structuring) for details.
+
+[Cloudflare Workers]: https://workers.cloudflare.com/
+[Cloudflare D1]: https://developers.cloudflare.com/d1/
+[Cloudflare Workers KV]: https://developers.cloudflare.com/kv/
+[D1 migrations]: https://developers.cloudflare.com/d1/reference/migrations/
 
 ### `WorkersKvStore` (Cloudflare Workers only)
 
@@ -575,17 +682,23 @@ bun add @fedify/cfworkers
 
 [`WorkersKvStore`] is a key–value store implementation for [Cloudflare Workers]
 that uses Cloudflare's built-in [Cloudflare Workers KV] API.  It provides
-persistent storage and good performance for Cloudflare Workers environments.
-It's suitable for production use in Cloudflare Workers applications.
+persistent storage with fast reads for Cloudflare Workers environments.
+
+However, Workers KV is tuned for read-heavy workloads and is eventually
+consistent, while Fedify writes to its key–value store about as often as it
+reads from it.  It also does not support `~KvStore.cas()`, so some features
+fall back to non-atomic code paths.  For new Cloudflare Workers deployments,
+prefer [`WorkersD1KvStore`].
 
 Best for
-:   Production use in Cloudflare Workers environments.
+:   Existing Cloudflare Workers applications that already use Workers KV.
 
 Pros
-:   Persistent storage, good performance, easy to set up.
+:   Persistent storage, fast reads, easy to set up.
 
 Cons
-:   Only available in Cloudflare Workers runtime.
+:   Only available in Cloudflare Workers runtime, eventually consistent,
+    priced for read-heavy workloads, and does not support `~KvStore.cas()`.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
@@ -616,8 +729,7 @@ export default {
 > object.  See the [*Builder pattern for structuring*
 > section](./federation.md#builder-pattern-for-structuring) for details.
 
-[Cloudflare Workers]: https://workers.cloudflare.com/
-[Cloudflare Workers KV]: https://developers.cloudflare.com/kv/
+[`WorkersKvStore`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersKvStore
 
 ### `NetlifyBlobsKvStore`
 

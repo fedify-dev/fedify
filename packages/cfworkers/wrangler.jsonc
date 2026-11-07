@@ -9,6 +9,13 @@
       "id": "00000000000000000000000000000000"
     }
   ],
+  "d1_databases": [
+    {
+      "binding": "D1",
+      "database_name": "fedify-cfworkers-test",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
   "queues": {
     "producers": [
       {

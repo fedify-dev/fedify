@@ -12,17 +12,18 @@
 This package provides [Fedify]'s [`KvStore`] and [`MessageQueue`]
 implementations for [Cloudflare Workers]:
 
+ -  [`WorkersD1KvStore`]
  -  [`WorkersKvStore`]
  -  [`WorkersMessageQueue`]
 
 ~~~~ typescript
 import { createFederation, type Message } from "@fedify/fedify";
-import { WorkersKvStore, WorkersMessageQueue } from "@fedify/cfworkers";
+import { WorkersD1KvStore, WorkersMessageQueue } from "@fedify/cfworkers";
 
 export default {
   async fetch(request, env, ctx) {
     const federation = createFederation({
-      kv: new WorkersKvStore(env.KV_BINDING),
+      kv: new WorkersD1KvStore(env.DB_BINDING, { initialized: true }),
       queue: new WorkersMessageQueue(env.QUEUE_BINDING),
       // ... other options
     });
@@ -32,7 +33,7 @@ export default {
 
   async queue(batch, env, ctx) {
     const federation = createFederation({
-      kv: new WorkersKvStore(env.KV_BINDING),
+      kv: new WorkersD1KvStore(env.DB_BINDING, { initialized: true }),
       queue: new WorkersMessageQueue(env.QUEUE_BINDING),
       // ... other options
     });
@@ -45,7 +46,7 @@ export default {
     }
   }
 } satisfies ExportedHandler<{
-  KV_BINDING: KVNamespace<string>;
+  DB_BINDING: D1Database;
   QUEUE_BINDING: Queue;
 }>;
 ~~~~
@@ -60,8 +61,42 @@ export default {
 [`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
 [`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue
 [Cloudflare Workers]: https://workers.cloudflare.com/
+[`WorkersD1KvStore`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersD1KvStore
 [`WorkersKvStore`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersKvStore
 [`WorkersMessageQueue`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersMessageQueue
+
+
+`WorkersD1KvStore`
+------------------
+
+*This API is available since Fedify 2.5.0.*
+
+`WorkersD1KvStore` is a key–value store implementation for
+[Cloudflare Workers] that uses [Cloudflare D1].  D1 is strongly consistent,
+which suits Fedify's balanced read and write workload, and
+`WorkersD1KvStore` supports the atomic `cas()` operation.  It is the
+recommended key–value store for Cloudflare Workers applications.
+
+Without `initialized: true`, each store instance creates its table
+(`fedify_kv` by default, configurable with the `tableName` option) on its
+first use, which costs an extra D1 query per request.  In production, create
+the table with [D1 migrations] and pass `initialized: true`, as in the example
+above:
+
+~~~~ sql
+CREATE TABLE IF NOT EXISTS fedify_kv (
+  key TEXT PRIMARY KEY NOT NULL,
+  value TEXT NOT NULL,
+  expires INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_fedify_kv_expires ON fedify_kv (expires);
+~~~~
+
+Pass the `D1Database` binding itself rather than a D1 session: sessions only
+provide sequential consistency and can read stale data from a replica.
+
+[Cloudflare D1]: https://developers.cloudflare.com/d1/
+[D1 migrations]: https://developers.cloudflare.com/d1/reference/migrations/
 
 
 `WorkersKvStore`
@@ -69,8 +104,9 @@ export default {
 
 `WorkersKvStore` is a key–value store implementation for [Cloudflare Workers]
 that uses Cloudflare's built-in [Cloudflare Workers KV] API.  It provides
-persistent storage and good performance for Cloudflare Workers environments.
-It's suitable for production use in Cloudflare Workers applications.
+persistent storage with fast reads.  However, Workers KV is tuned for
+read-heavy workloads and is eventually consistent, and `WorkersKvStore` does
+not support `cas()`.  Prefer `WorkersD1KvStore` for new applications.
 
 [Cloudflare Workers KV]: https://developers.cloudflare.com/kv/
 
@@ -85,7 +121,7 @@ Cloudflare Workers environments.  It requires a Cloudflare Queues setup and
 management.
 
 > [!NOTE]
-> Since your `KVNamespace` and `Queue` are not bound to global variables, but
+> Since your `D1Database` and `Queue` are not bound to global variables, but
 > rather passed as arguments to the `fetch()` and `queue()` methods, you need
 > to instantiate your `Federation` object inside these methods, rather than at
 > the top level.
