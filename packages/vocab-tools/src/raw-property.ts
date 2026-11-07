@@ -1,0 +1,577 @@
+import { getFieldName } from "./field.ts";
+import {
+  isNonFunctionalProperty,
+  type PropertySchema,
+  type TypeSchema,
+} from "./schema.ts";
+import { areAllScalarTypes, getAllProperties, getEncoders } from "./type.ts";
+
+/**
+ * Emits the body of a loop that encodes the values of a property into the
+ * shape that `toJsonLd({ format: "expand" })` passes to `jsonld.expand()`.
+ * The loop pushes encoded values into a local `array`, and expects the
+ * current value in `v` and the encoding options in `options`.
+ * @param property The property to encode.
+ * @param types The type schemas.
+ * @param signedValueScope The expression of the signed-value scope whose
+ *                         placeholders should replace retained signed values,
+ *                         or `undefined` to encode them as they are.
+ * @returns The code of the loop body.
+ */
+export function* generateExpandedPropertyElement(
+  property: PropertySchema,
+  types: Record<string, TypeSchema>,
+  signedValueScope?: string,
+): Iterable<string> {
+  yield `
+      let element = (
+    `;
+  const scalar = areAllScalarTypes(property.range, types);
+  if (!scalar) {
+    if (signedValueScope != null) {
+      yield `retainedSignedValueRef(v, ${signedValueScope}) ?? (`;
+    }
+    yield 'v instanceof URL ? { "@id": formatIri(v) } : ';
+  }
+  for (const code of getEncoders(property.range, types, "v", "options")) {
+    yield code;
+  }
+  if (!scalar && signedValueScope != null) yield ")";
+  yield `
+      );
+      if (Array.isArray(element)) {
+        if (element.length < 1) continue;
+        if (element.length == 1) element = element[0];
+      }
+      if (typeof element === "undefined") continue;
+    `;
+  if (isNonFunctionalProperty(property) && property.container === "graph") {
+    yield `array.push({ "@graph": element });`;
+  } else {
+    yield `array.push(element);`;
+  }
+}
+
+/**
+ * Emits module-private support for the raw property functions, shared by all
+ * generated classes, and the public functions themselves.
+ */
+export function generateRawPropertyHelpers(): string {
+  return `
+type RawPropertyEncoder = (
+  object: object,
+  options: { format: "expand"; contextLoader?: DocumentLoader },
+) => Promise<unknown>;
+
+interface RawPropertyDescriptor {
+  readonly canonicalIri: string;
+  readonly encode: RawPropertyEncoder;
+}
+
+// Unknown properties retained while decoding, keyed by the decoded object:
+const retainedRawProperties = new WeakMap<object, RetainedRawProperties>();
+
+// Encoders of the properties each generated class declares, keyed by the
+// class's prototype and then by the property IRIs, including aliases:
+const rawPropertyDescriptors = new Map<
+  object,
+  ReadonlyMap<string, RawPropertyDescriptor>
+>();
+
+function getRawPropertyDescriptor(
+  object: object,
+  iri: string,
+): RawPropertyDescriptor | undefined {
+  let prototype: object | null = globalThis.Object.getPrototypeOf(object);
+  while (prototype != null) {
+    const descriptor = rawPropertyDescriptors.get(prototype)?.get(iri);
+    if (descriptor != null) return descriptor;
+    prototype = globalThis.Object.getPrototypeOf(prototype);
+  }
+  return undefined;
+}
+
+function copyRawProperties(source: object, destination: object): void {
+  const retained = retainedRawProperties.get(source);
+  if (retained == null) retainedRawProperties.delete(destination);
+  else retainedRawProperties.set(destination, retained);
+}
+
+// The contexts in effect for the cached JSON-LD of embedded objects, which
+// stays as it was received, keyed by the objects.  Telling which keys of such
+// a document are which properties takes the contexts of its parents as well:
+const cachedJsonLdContexts = new WeakMap<object, unknown>();
+
+function getCachedJsonLdContext(object: object, context: unknown): unknown {
+  return cachedJsonLdContexts.has(object)
+    ? cachedJsonLdContexts.get(object)
+    : context;
+}
+
+// Objects that were given the document they were received as, or whose values
+// changed after decoding, which that document no longer describes:
+const receivedJsonLd = new WeakSet<object>();
+
+function skipReceivedJsonLd(value: unknown): void {
+  if (value != null && typeof value === "object") receivedJsonLd.add(value);
+}
+
+function invalidateCachedJsonLd(object: object): void {
+  (object as unknown as { _cachedJsonLd?: unknown })._cachedJsonLd =
+    undefined;
+  receivedJsonLd.add(object);
+}
+
+// Expansion drops nulls and flattens nested arrays, and decoding skips some
+// values, such as blank node references, so the cached documents line up with
+// the decoded values only when there are as many of them and none of those:
+const alignedCachedArrays = new WeakMap<object, boolean>();
+
+function getAlignedCachedDocument(
+  documents: unknown,
+  length: number,
+  index: number,
+): unknown {
+  if (!globalThis.Array.isArray(documents)) {
+    return length === 1 ? documents : undefined;
+  }
+  let aligned = alignedCachedArrays.get(documents);
+  if (aligned == null) {
+    aligned = documents.length === length &&
+      documents.every((document) =>
+        document != null && typeof document === "object" &&
+        !globalThis.Array.isArray(document)
+      );
+    alignedCachedArrays.set(documents, aligned);
+  }
+  return aligned ? documents[index] : undefined;
+}
+
+// The contexts that decoding loaded, keyed by the decoded objects, so that the
+// keys of their cached JSON-LD map as decoding mapped them, even if another
+// loader is passed later or a remote context has changed since:
+const decodedContexts = new WeakMap<object, Map<string, RemoteDocument>>();
+
+function recordContexts(
+  loader: DocumentLoader,
+  loaded: Map<string, RemoteDocument>,
+): DocumentLoader {
+  return async (url, options) => {
+    const document = await loader(url, options);
+    loaded.set(url, document);
+    return document;
+  };
+}
+
+function withDecodedContexts(
+  object: object,
+  loader: DocumentLoader,
+): DocumentLoader {
+  const loaded = decodedContexts.get(object);
+  return loaded == null ? loader : (url, options) => {
+    const document = loaded.get(url);
+    return document == null ? loader(url, options) : Promise.resolve(document);
+  };
+}
+
+// Gives an embedded object, decoded along with the whole document, the document
+// it was received as, which toJsonLd() has to return as is, as a proof can
+// cover it.  The object is not decoded from that document, since an embedded
+// document alone cannot rebuild what its parents' contexts contributed to it,
+// such as type-scoped and property-scoped contexts:
+function keepReceivedJsonLd(
+  object: unknown,
+  document: object,
+  parentContext: unknown,
+  key: string,
+  parent: object,
+): void {
+  if (
+    object == null || typeof object !== "object" ||
+    !(RAW_PROPERTY_PROTOCOL in object) || receivedJsonLd.has(object)
+  ) {
+    return;
+  }
+  receivedJsonLd.add(object);
+  (object as unknown as { _cachedJsonLd?: unknown })._cachedJsonLd =
+    structuredClone(document);
+  const loaded = decodedContexts.get(parent);
+  if (loaded != null) decodedContexts.set(object, loaded);
+  const own = (document as { "@context"?: unknown })["@context"];
+  const parentEntries = globalThis.Array.isArray(parentContext)
+    ? parentContext
+    : [parentContext];
+  // Only the first entry of a context can declare that it does not propagate,
+  // in which case it does not reach the embedded document:
+  const first = parentEntries[0];
+  const propagates = first == null || typeof first !== "object" ||
+    (first as Record<string, unknown>)["@propagate"] !== false;
+  // The context scoped to the term the document was reached through applies
+  // after the parent's, and before the document's own:
+  let scoped: unknown;
+  for (const entry of parentEntries) {
+    // A null context resets every term definition before it:
+    if (entry === null) {
+      scoped = undefined;
+      continue;
+    }
+    const term = typeof entry === "object"
+      ? (entry as Record<string, unknown>)[key]
+      : undefined;
+    if (term === undefined) continue;
+    scoped = term != null && typeof term === "object" && "@context" in term
+      ? (term as Record<string, unknown>)["@context"]
+      : undefined;
+  }
+  cachedJsonLdContexts.set(object, [
+    ...(propagates ? parentEntries : []),
+    ...(scoped === undefined
+      ? []
+      : globalThis.Array.isArray(scoped)
+      ? scoped
+      : [scoped]),
+    ...(globalThis.Array.isArray(own) ? own : [own]),
+  ]);
+}
+
+// The results of isCachedPropertyKey(), keyed by the document and then by the
+// key:
+const cachedPropertyKeys = new WeakMap<object, Map<string, Promise<boolean>>>();
+
+async function expandTopLevelKeys(
+  document: Record<string, unknown>,
+  contextLoader: DocumentLoader,
+): Promise<string[]> {
+  const expanded = await jsonld.expand(document, {
+    documentLoader: contextLoader,
+    keepFreeFloatingNodes: true,
+  });
+  return globalThis.Object.keys(expanded[0] ?? {}).filter((iri) =>
+    !iri.startsWith("@")
+  );
+}
+
+// A value that keeps its key in the expansion whatever container the term has,
+// which an empty array does not for a graph container:
+const KEY_PROBE = [{
+  "@id": "urn:fedify:key-probe",
+  "urn:fedify:key-probe": [],
+}];
+
+// The number of expansions must not depend on the document, which can come
+// from a remote peer, as each of them can load the contexts again:
+async function mapsOnlyKeyToProperty(
+  document: Record<string, unknown>,
+  context: unknown,
+  key: string,
+  iris: readonly string[],
+  contextLoader: DocumentLoader,
+): Promise<boolean> {
+  // A failure of the context loader is left to the caller, and is not to be
+  // mistaken for a term that cannot take a placeholder below:
+  let loaderFailure: { readonly error: unknown } | undefined;
+  const loader: DocumentLoader = async (url, options) => {
+    try {
+      return await contextLoader(url, options);
+    } catch (error) {
+      loaderFailure = { error };
+      throw error;
+    }
+  };
+  await jsonld.expand({ "@context": context }, {
+    documentLoader: loader,
+    keepFreeFloatingNodes: true,
+  });
+  // Only the keys matter, so nested values and their contexts are left out,
+  // while strings stay: keyword aliases such as id require them, and the types
+  // of the document can bring in type-scoped contexts that define the key:
+  const others: Record<string, unknown> = { "@context": context };
+  for (const [k, value] of globalThis.Object.entries(document)) {
+    if (k === key || k === "@context") continue;
+    if (k.startsWith("@")) {
+      // Types bring in their scoped contexts, while the rest of the keywords do
+      // not affect which keys are which properties:
+      if (k === "@type" && isScalarOrStrings(value)) others[k] = value;
+      continue;
+    }
+    others[k] = isScalarOrStrings(value) ? value : KEY_PROBE;
+  }
+  try {
+    const without = await expandTopLevelKeys(others, loader);
+    if (without.some((iri) => iris.includes(iri))) return false;
+    const all = await expandTopLevelKeys(
+      { ...others, [key]: KEY_PROBE },
+      loader,
+    );
+    return all.includes(iris[0]);
+  } catch (error) {
+    if (loaderFailure != null) throw error;
+    // Some term could not take the placeholder, so nothing is known:
+    return false;
+  }
+}
+
+function isScalarOrStrings(value: unknown): boolean {
+  return globalThis.Array.isArray(value)
+    ? value.every((item) => typeof item === "string")
+    : value == null || typeof value !== "object";
+}
+
+// Whether the embedded documents under a key of a compacted document are the
+// values decoded for a property.  The document has to map the key, and no other
+// key, to the property, as a context can remap the key or map another term to
+// the property, in which case the cached documents cannot be matched with the
+// decoded values:
+async function isCachedPropertyKey(
+  document: Record<string, unknown>,
+  context: unknown,
+  key: string,
+  iris: readonly string[],
+  contextLoader: DocumentLoader,
+): Promise<boolean> {
+  let checks = cachedPropertyKeys.get(document);
+  if (checks == null) {
+    checks = new Map();
+    cachedPropertyKeys.set(document, checks);
+  }
+  const cached = checks.get(key);
+  if (cached != null) return await cached;
+  const check = mapsOnlyKeyToProperty(
+    document,
+    context,
+    key,
+    iris,
+    contextLoader,
+  );
+  // A failure, such as of the context loader, is not remembered, as another
+  // call can pass another loader:
+  const map = checks;
+  check.catch(() => map.delete(key));
+  checks.set(key, check);
+  return await check;
+}
+
+async function readRawProperty(
+  object: object,
+  request: RawPropertyRequest,
+  contextLoader: DocumentLoader,
+): Promise<readonly unknown[]> {
+  const retained = retainedRawProperties.get(object);
+  for (const iri of request.candidates) {
+    const descriptor = getRawPropertyDescriptor(object, iri);
+    if (descriptor != null) {
+      const value = await descriptor.encode(
+        object,
+        createRawPropertyEncodingOptions(request.stack, contextLoader),
+      );
+      return value === undefined ? [] : await expandRawPropertyValue(
+        descriptor.canonicalIri,
+        value,
+        contextLoader,
+      );
+    }
+    if (retained != null && globalThis.Object.hasOwn(retained, iri)) {
+      return retained[iri];
+    }
+  }
+  return [];
+}
+
+/**
+ * Gets the values of a property of a vocabulary object in expanded JSON-LD,
+ * looking the property up by its full IRI.  This works for properties that
+ * have no typed accessor as well as for those that do.
+ *
+ * *Raw* means untyped expanded JSON-LD values, such as
+ * \`{ "@value": "Hello" }\` or \`{ "@id": "https://example.com/" }\`, as
+ * opposed to the values that typed accessors return.  It does not mean the
+ * received document:
+ *
+ *  -  For a property that the object's class has no accessor for, the result
+ *     is the values retained when the object was decoded by \`fromJsonLd()\`.
+ *     Objects constructed locally have none.
+ *  -  For a property that the class has an accessor for, including a
+ *     redundant alias of such a property, the result is the current typed
+ *     values encoded back into expanded JSON-LD.  It reflects \`clone()\`
+ *     replacements and objects fetched by dereferencing accessors, and it can
+ *     differ from the received values: for example, values that failed to
+ *     decode are missing, and lexical forms such as date-times are
+ *     normalized.  When a later release adds an accessor for a property,
+ *     the result for that property switches from the retained values to the
+ *     encoded ones.
+ *
+ * The values are not verified in any way, and IRIs in them are never
+ * dereferenced.  Validate them before use, as with any other data received
+ * from a remote server.  The result is a deep copy, so modifying it does not
+ * affect the object.
+ *
+ * The IRI is matched as given, and then as normalized by the WHATWG URL
+ * parser.  Prefixes are never expanded: \`"as:content"\` is a valid IRI with
+ * the \`as:\` scheme, so it normally matches nothing.  An IRI whose scheme is
+ * not \`http:\` or \`https:\` is therefore logged as a warning under the
+ * \`["fedify", "vocab"]\` category.
+ *
+ * \`\`\`typescript ignore
+ * const values = await getRawPropertyValues(
+ *   note,
+ *   "https://w3id.org/quantpub#structuredUrl",
+ * );
+ * for (const value of values) {
+ *   if ("@id" in value && typeof value["@id"] === "string") {
+ *     console.log(new URL(value["@id"]));
+ *   }
+ * }
+ * \`\`\`
+ *
+ * @param object The vocabulary object to read.  It can be an object of any
+ *               module generated by \`@fedify/vocab-tools\`.
+ * @param propertyIri The full IRI of the property.
+ * @returns The values of the property, or an empty array if it has none.
+ * @throws {TypeError} If \`propertyIri\` is not an absolute IRI, e.g., an
+ *                     empty string, a JSON-LD keyword such as \`"@id"\`, a
+ *                     blank node identifier, a term, or a relative
+ *                     reference; if \`object\` is not a generated vocabulary
+ *                     object; or if encoding the values of a known property
+ *                     meets a cycle of objects.
+ * @since 2.5.0
+ */
+export function getRawPropertyValues(
+  object: VocabularyObject,
+  propertyIri: string | URL,
+): Promise<RawPropertyValue[]> {
+  return readRawPropertyValues(object, propertyIri, "getRawPropertyValues");
+}
+
+/**
+ * Gets the first value of a property of a vocabulary object in expanded
+ * JSON-LD, looking the property up by its full IRI.  It is equivalent to
+ * \`(await getRawPropertyValues(object, propertyIri))[0] ?? null\`; see
+ * {@link getRawPropertyValues} for how the values are obtained.
+ *
+ * It does not throw when the property has multiple values.  JSON-LD does not
+ * order the values of a property unless it is a list, so the first value is
+ * not more significant than the others.  A list property has a single value,
+ * the \`{ "@list": [...] }\` object.
+ *
+ * @param object The vocabulary object to read.  It can be an object of any
+ *               module generated by \`@fedify/vocab-tools\`.
+ * @param propertyIri The full IRI of the property.
+ * @returns The first value of the property, or \`null\` if it has none.
+ * @throws {TypeError} In the same cases as {@link getRawPropertyValues}.
+ * @since 2.5.0
+ */
+export async function getRawPropertyValue(
+  object: VocabularyObject,
+  propertyIri: string | URL,
+): Promise<RawPropertyValue | null> {
+  const values = await readRawPropertyValues(
+    object,
+    propertyIri,
+    "getRawPropertyValue",
+  );
+  return values[0] ?? null;
+}
+`;
+}
+
+/**
+ * Collects the full IRIs of the properties that the given class decodes,
+ * including inherited properties and redundant aliases.
+ */
+export function getKnownPropertyIris(
+  typeUri: string,
+  types: Record<string, TypeSchema>,
+): string[] {
+  const iris = new Set<string>();
+  for (const property of getAllProperties(typeUri, types)) {
+    iris.add(property.uri);
+    if (property.redundantProperties != null) {
+      for (const alias of property.redundantProperties) iris.add(alias.uri);
+    }
+  }
+  return [...iris].sort();
+}
+
+/**
+ * Emits a static block that registers the encoders of the properties the
+ * given class declares, keeping them and their private-field access out of
+ * the declaration files.  A root class also installs the method through which
+ * the raw property functions reach these encoders and the retained unknown
+ * properties.
+ */
+export async function* generateRawPropertyDescriptors(
+  typeUri: string,
+  types: Record<string, TypeSchema>,
+): AsyncIterable<string> {
+  const type = types[typeUri];
+  if (type.extends != null && type.properties.length < 1) return;
+  yield "static {\n";
+  if (type.extends == null) {
+    yield `
+    globalThis.Object.defineProperty(this.prototype, RAW_PROPERTY_PROTOCOL, {
+      value: function (
+        this: ${type.name},
+        request: RawPropertyRequest,
+      ): Promise<readonly unknown[]> {
+        return readRawProperty(
+          this,
+          request,
+          this.#contextLoader ?? getDocumentLoader(),
+        );
+      },
+      configurable: true,
+      enumerable: false,
+      writable: true,
+    });
+    `;
+  }
+  if (type.properties.length > 0) {
+    yield `
+    const descriptors = new Map<string, RawPropertyDescriptor>();
+    let descriptor: RawPropertyDescriptor;
+    `;
+  }
+  for (const property of type.properties) {
+    let element = "";
+    for (const code of generateExpandedPropertyElement(property, types)) {
+      element += code;
+    }
+    yield `
+    descriptor = {
+      canonicalIri: ${JSON.stringify(property.uri)},
+      ${
+      // Scalar encoders are mostly synchronous, but some are not:
+      element.includes("await")
+        ? ""
+        : "// oxlint-disable-next-line require-await"}
+      async encode(
+        object: object,
+        options: { format: "expand"; contextLoader?: DocumentLoader },
+      ): Promise<unknown> {
+        const array: unknown[] = [];
+        for (const v of (object as ${type.name}).${await getFieldName(
+      property.uri,
+    )}) {
+    `;
+    yield element;
+    yield `
+        }
+        if (array.length < 1) return undefined;
+        return ${
+      isNonFunctionalProperty(property) && property.container === "list"
+        ? `{ "@list": array }`
+        : "array"
+    };
+      },
+    };
+    descriptors.set(${JSON.stringify(property.uri)}, descriptor);
+    `;
+    for (const alias of property.redundantProperties ?? []) {
+      yield `descriptors.set(${JSON.stringify(alias.uri)}, descriptor);\n`;
+    }
+  }
+  if (type.properties.length > 0) {
+    yield "rawPropertyDescriptors.set(this.prototype, descriptors);\n";
+  }
+  yield "}\n";
+}

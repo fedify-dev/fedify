@@ -3,6 +3,10 @@ import { generateField, getFieldName } from "./field.ts";
 import type { PropertyPreprocessorSchema, TypeSchema } from "./schema.ts";
 import { isNonFunctionalProperty } from "./schema.ts";
 import {
+  generateExpandedPropertyElement,
+  getKnownPropertyIris,
+} from "./raw-property.ts";
+import {
   areAllScalarTypes,
   emitOverride,
   getAllProperties,
@@ -57,6 +61,8 @@ function* generatePreprocessorBlock(
   }
   yield `
         if (_handled !== undefined) {
+          // The document does not describe what a preprocessor made of it:
+          skipReceivedJsonLd(_handled);
           ${variable}.push(_handled);
           continue;
         }
@@ -223,29 +229,12 @@ export async function* generateEncoder(
     yield `
     array = [];
     for (const v of this.${await getFieldName(property.uri)}) {
-      let element = (
     `;
-    if (!areAllScalarTypes(property.range, types)) {
-      yield "retainedSignedValueRef(v, signedValues.scope) ?? (";
-      yield 'v instanceof URL ? { "@id": formatIri(v) } : ';
-    }
-    for (const code of getEncoders(property.range, types, "v", "options")) {
-      yield code;
-    }
-    if (!areAllScalarTypes(property.range, types)) yield ")";
-    yield `
-      );
-      if (Array.isArray(element)) {
-        if (element.length < 1) continue;
-        if (element.length == 1) element = element[0];
-      }
-      if (typeof element === "undefined") continue;
-    `;
-    if (isNonFunctionalProperty(property) && property.container === "graph") {
-      yield `array.push({ "@graph": element });`;
-    } else {
-      yield `array.push(element);`;
-    }
+    yield* generateExpandedPropertyElement(
+      property,
+      types,
+      "signedValues.scope",
+    );
     yield `;
     }
     if (array.length > 0) {
@@ -400,6 +389,10 @@ export async function* generateDecoder(
 ): AsyncIterable<string> {
   const type = types[typeUri];
   yield `
+  static readonly #knownRawPropertyIris: ReadonlySet<string> = new Set(${
+    JSON.stringify(getKnownPropertyIris(typeUri, types))
+  });
+
   /**
    * Converts a JSON-LD structure to an object of this type.
    * @param json The JSON-LD structure to convert.
@@ -491,10 +484,18 @@ export async function* generateDecoder(
       values = {};
       expanded = [values];
     } else {
+      // The contexts loaded here are kept, so that the keys of the cached
+      // JSON-LD can later be mapped as this expansion mapped them:
+      const decodedContextMap = new Map<string, RemoteDocument>();
       expanded = await jsonld.expand(json, {
-        documentLoader: options.contextLoader,
+        documentLoader: recordContexts(
+          options.contextLoader ?? getDocumentLoader(),
+          decodedContextMap,
+        ),
         keepFreeFloatingNodes: true,
       });
+      options = { ...options, _decodedContexts: decodedContextMap } as
+        typeof options;
       values =
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
@@ -554,6 +555,9 @@ export async function* generateDecoder(
       ...options,
       // @ts-ignore: an internal option
       _fromSubclass: true,
+      // The subclass retains the unknown properties, since only it knows all
+      // properties of the object:
+      _retainsRawProperties: false,
     });
     if (!(instance instanceof ${type.name})) {
       throw new TypeError("Unexpected type: " + instance.constructor.name);
@@ -671,6 +675,22 @@ export async function* generateDecoder(
     `;
   }
   yield `
+    if (
+      !("_retainsRawProperties" in options) ||
+      options._retainsRawProperties !== false
+    ) {
+      const retained = retainRawProperties(
+        values,
+        ${type.name}.#knownRawPropertyIris,
+      );
+      if (retained != null) retainedRawProperties.set(instance, retained);
+    }
+    if (
+      "_decodedContexts" in options &&
+      options._decodedContexts instanceof Map
+    ) {
+      decodedContexts.set(instance, options._decodedContexts);
+    }
     instance._shouldCacheJsonLd = shouldCacheJsonLd;
     if (
       shouldCacheJsonLd &&

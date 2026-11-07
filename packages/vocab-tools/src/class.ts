@@ -11,6 +11,10 @@ import {
 import { generateFields } from "./field.ts";
 import { generateInspector, generateInspectorPostClass } from "./inspector.ts";
 import { generateProperties } from "./property.ts";
+import {
+  generateRawPropertyDescriptors,
+  generateRawPropertyHelpers,
+} from "./raw-property.ts";
 import { generatePropertyArrayHelpers } from "./property-array.ts";
 import {
   type PropertySchema,
@@ -49,6 +53,16 @@ const PORTABLE_DEREFERENCE_IMPORTS = [
   "rejectMalformedCompatibleReference",
   "warnUnverifiableEmbeddedObject",
 ].join(",\n    ");
+const RAW_PROPERTY_IMPORTS = [
+  "createRawPropertyEncodingOptions",
+  "encodeNestedVocabularyValue",
+  "expandRawPropertyValue",
+  "RAW_PROPERTY_PROTOCOL",
+  "type RawPropertyRequest",
+  "readRawPropertyValues",
+  "retainRawProperties",
+  "type RetainedRawProperties",
+].join(",\n    ");
 const SIGNED_REPRESENTATION_IMPORTS = [
   "enterSignedValueScope",
   "resolveSignedValues",
@@ -75,7 +89,9 @@ const RUNTIME_IMPORTS = [
   "parseIri",
   "parseJsonLdId",
   "type PortableObjectVerifier",
+  "type RawPropertyValue",
   "type RemoteDocument",
+  "type VocabularyObject",
 ].join(",\n    ");
 
 /**
@@ -117,7 +133,7 @@ async function* generateClass(
     const baseType = types[type.extends];
     yield `export class ${type.name} extends ${baseType.name} {\n`;
   } else {
-    yield `export class ${type.name} {\n`;
+    yield `export class ${type.name} implements VocabularyObject {\n`;
   }
   if (type.extends == null) {
     yield `
@@ -134,6 +150,14 @@ async function* generateClass(
     readonly #_baseUrl?: URL;
     #shouldCacheJsonLd = true;
     readonly id: URL | null;
+
+    /**
+     * Marks this object as a {@link VocabularyObject}.  It is always \`true\`.
+     * @since 2.5.0
+     */
+    get "~fedify.vocab"(): true {
+      return true;
+    }
 
     protected get _documentLoader(): DocumentLoader | undefined {
       return this.#documentLoader;
@@ -206,6 +230,9 @@ async function* generateClass(
     yield code.replace(/[ \t]+$/gm, "");
   }
   for await (const code of generateDeepCloneDescriptor(typeUri, types)) {
+    yield code.replace(/[ \t]+$/gm, "");
+  }
+  for await (const code of generateRawPropertyDescriptors(typeUri, types)) {
     yield code.replace(/[ \t]+$/gm, "");
   }
   for await (const code of generateProperties(typeUri, types, moduleVarNames)) {
@@ -326,6 +353,7 @@ export async function* generateClasses(
   yield `import {\n    ${RUNTIME_IMPORTS}\n} from "@fedify/vocab-runtime";\n`;
   yield `import {\n    ${INTERNAL_RUNTIME_IMPORTS}\n} from "@fedify/vocab-runtime/internal/jsonld-cache";\n`;
   yield `import {\n    ${PORTABLE_DEREFERENCE_IMPORTS}\n} from "@fedify/vocab-runtime/internal/portable-dereference";\n`;
+  yield `import {\n    ${RAW_PROPERTY_IMPORTS}\n} from "@fedify/vocab-runtime/internal/raw-property";\n`;
   yield `import {\n    ${SIGNED_REPRESENTATION_IMPORTS}\n} from "@fedify/vocab-runtime/internal/signed-representation";\n`;
   yield `import {
     isTemporalDuration,
@@ -350,6 +378,7 @@ function inspectIri(iri: URL): string {
 `;
   yield generatePropertyArrayHelpers();
   yield generateDeepCloneHelpers();
+  yield generateRawPropertyHelpers();
   yield `
 function isValidLanguageTag(language: string): boolean {
   try {

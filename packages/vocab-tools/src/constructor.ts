@@ -259,6 +259,10 @@ export async function* generateCloner(
    * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
    * for details, including how cached JSON-LD affects serialization.
    *
+   * Unknown properties retained when this instance was decoded are shared
+   * with the clone, so \`getRawPropertyValues()\` returns them for the clone
+   * as well, even if the clone replaces other values.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
@@ -299,6 +303,7 @@ export async function* generateCloner(
       options
     );
     copyPortableProvenance(this, clone);
+    copyRawProperties(this, clone);
     `;
   } else {
     yield `const clone = super.clone(values, options) as unknown as ${type.name};`;
@@ -422,9 +427,10 @@ export async function* generateDeepCloner(
    * Each copied object retains its own default loaders, tracer, verifier
    * and base URL. Options override defaults only on the root instance.
    * This method does not fetch or serialize objects. Cached JSON-LD and
-   * retained signed representations are not copied; unknown JSON-LD
-   * properties and original formatting are not preserved. Sign the copy
-   * again if it needs a valid proof.
+   * retained signed representations are not copied, and original formatting
+   * is not preserved. Unknown properties retained when an object was decoded
+   * are shared with its copy, so \`getRawPropertyValues()\` returns them for
+   * the copy as well. Sign the copy again if it needs a valid proof.
    *
    * Trust and portable provenance follow clone() rules at every level.
    * Historical referrers within the graph are copied without replacements;

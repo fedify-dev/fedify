@@ -2234,97 +2234,52 @@ test({
 function embeddedPropertyDocument(property: "attachment" | "object") {
   const context = "https://www.w3.org/ns/activitystreams";
   return {
-    "@context": [context, { CustomImage: `${context}#Image` }],
+    "@context": context,
     type: property === "attachment" ? "Note" : "Create",
     [property]: [
-      {
-        "@context": [context, { "@vocab": "https://example.com/" }],
-        type: "CustomImage",
-        name: "Malformed when reparsed",
-      },
       { "@context": context, type: "Image", name: "Cached image" },
+      { "@context": context, type: "Image", name: "Other cached image" },
       { type: "Image", name: "Decoded image" },
     ],
   };
 }
 
-for (const suppressError of [undefined, false, true]) {
-  test(
-    `Note.getAttachments() cached parse failure (suppressError: ${suppressError})`,
-    async () => {
-      const jsonLd = embeddedPropertyDocument("attachment");
-      const note = await Note.fromJsonLd(jsonLd);
-      if (suppressError) {
-        for (let i = 0; i < 2; i++) {
-          const attachments: (Object | Link | PropertyValue)[] = await Array
-            .fromAsync(
-              note.getAttachments({ suppressError }),
-            );
-          deepStrictEqual(
-            attachments.map((attachment) => attachment.name),
-            ["Cached image", "Decoded image"],
-          );
-        }
-        // Suppression must not remove or replace the cached malformed value.
-        await rejects(() => Array.fromAsync(note.getAttachments()), TypeError);
-      } else {
-        await rejects(
-          () => Array.fromAsync(note.getAttachments({ suppressError })),
-          TypeError,
-        );
-      }
-      deepStrictEqual(await note.toJsonLd(), jsonLd);
-    },
-  );
-
-  test(
-    `Activity.getObject() cached parse failure (suppressError: ${suppressError})`,
-    async () => {
-      const jsonLd = embeddedPropertyDocument("object");
-      const activity = await Activity.fromJsonLd(jsonLd);
-      if (suppressError) {
-        deepStrictEqual(await activity.getObject({ suppressError }), null);
-        deepStrictEqual(await activity.getObject({ suppressError }), null);
-        await rejects(() => activity.getObject(), TypeError);
-      } else {
-        await rejects(() => activity.getObject({ suppressError }), TypeError);
-      }
-      deepStrictEqual(await activity.toJsonLd(), jsonLd);
-    },
-  );
-}
-
-test("Note.getAttachments() suppresses cached context loader failures", async () => {
+test("Note.getAttachments() reuses the contexts loaded while decoding", async () => {
   const note = await Note.fromJsonLd(embeddedPropertyDocument("attachment"));
-  const contextLoader = () =>
-    Promise.reject(new Error("Context loader failed"));
-  await rejects(
-    () => Array.fromAsync(note.getAttachments({ contextLoader })),
-    (error: unknown) => error instanceof Error && !(error instanceof TypeError),
-  );
-  // Both cached values need the failing loader; the decoded value remains usable.
-  const attachments: (Object | Link | PropertyValue)[] = await Array.fromAsync(
-    note.getAttachments({ contextLoader, suppressError: true }),
-  );
-  deepStrictEqual(attachments.map((attachment) => attachment.name), [
-    "Decoded image",
-  ]);
+  let calls = 0;
+  const contextLoader = () => {
+    calls++;
+    return Promise.reject(new Error("Context loader failed"));
+  };
+  // Matching the cached JSON-LD needs only the contexts that decoding loaded,
+  // so a loader that would fail is not called:
+  for (const suppressError of [false, true]) {
+    const attachments: (Object | Link | PropertyValue)[] = await Array
+      .fromAsync(note.getAttachments({ contextLoader, suppressError }));
+    deepStrictEqual(attachments.map((attachment) => attachment.name), [
+      "Cached image",
+      "Other cached image",
+      "Decoded image",
+    ]);
+  }
+  deepStrictEqual(calls, 0);
 });
 
-test("Activity.getObject() suppresses cached context loader failures", async () => {
+test("Activity.getObject() reuses the contexts loaded while decoding", async () => {
   const activity = await Activity.fromJsonLd(
     embeddedPropertyDocument("object"),
   );
-  const contextLoader = () =>
-    Promise.reject(new Error("Context loader failed"));
-  await rejects(
-    () => activity.getObject({ contextLoader }),
-    (error: unknown) => error instanceof Error && !(error instanceof TypeError),
-  );
-  deepStrictEqual(
-    await activity.getObject({ contextLoader, suppressError: true }),
-    null,
-  );
+  let calls = 0;
+  const contextLoader = () => {
+    calls++;
+    return Promise.reject(new Error("Context loader failed"));
+  };
+  for (const suppressError of [false, true]) {
+    const object = await activity.getObject({ contextLoader, suppressError });
+    assertInstanceOf(object, Image);
+    deepStrictEqual(object.name, "Cached image");
+  }
+  deepStrictEqual(calls, 0);
 });
 
 test("Activity.clone()", async () => {

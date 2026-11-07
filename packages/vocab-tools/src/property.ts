@@ -31,13 +31,6 @@ async function* generateProperty(
   const override = emitOverride(type.uri, types, property);
   const trustOwner = type.trustEmbeddedObjects === false ? "null" : "this.id";
   const doc = `\n/** ${property.description.replaceAll("\n", "\n * ")}\n */\n`;
-  const cachedPropertyBaseUrl = `(options as { baseUrl?: URL }).baseUrl ??
-                this._baseUrl ??
-                (this.id != null &&
-                    (this.id.protocol === "http:" ||
-                      this.id.protocol === "https:")
-                  ? this.id
-                  : undefined)`;
   if (areAllScalarTypes(property.range, types)) {
     if (hasSingularAccessor(property)) {
       yield doc;
@@ -471,7 +464,7 @@ async function* generateProperty(
           if (isUnverifiedPortableClaim(fetched)) return fetched;
           this.${await getFieldName(property.uri)}[0] = fetched;
           this.${await getFieldName(property.uri, "#_trust")}.add(0);
-          this._cachedJsonLd = undefined;
+          invalidateCachedJsonLd(this);
           recordPortableReferrer(this, fetched, ${
         JSON.stringify(property.uri)
       });
@@ -488,15 +481,50 @@ async function* generateProperty(
         ) {
           const prop = this._cachedJsonLd[
             ${JSON.stringify(property.compactName)}];
-          const doc = Array.isArray(prop) ? prop[0] : prop;
+          const doc = getAlignedCachedDocument(
+            prop,
+            this.${await getFieldName(property.uri)}.length,
+            0,
+          );
           if (doc != null && typeof doc === "object" && "@context" in doc) {
             try {
-              v = await this.#${property.singularName}_fromJsonLd(doc, {
-                ...options,
-                // Keep the parent default for embedded objects.
-                verifyPortableObject: this._verifyPortableObject,
-                baseUrl: ${cachedPropertyBaseUrl},
-              });
+              const context = getCachedJsonLdContext(
+                this,
+                this._cachedJsonLd["@context"],
+              );
+              if (
+                await isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  ${JSON.stringify(property.compactName)},
+                  ${
+          JSON.stringify([
+            property.uri,
+            ...(property.redundantProperties ?? []).map((p) => p.uri),
+          ])
+        },
+                  withDecodedContexts(
+                    this,
+                    options.contextLoader ?? this._contextLoader ??
+                      getDocumentLoader(),
+                  ),
+                ).catch((error) => {
+                  // Only the cache is at stake, as v is decoded already:
+                  getLogger(["fedify", "vocab"]).debug(
+                    "Failed to match the cached JSON-LD of {property}: {error}",
+                    { property: ${JSON.stringify(property.uri)}, error },
+                  );
+                  return false;
+                })
+              ) {
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  ${JSON.stringify(property.compactName)},
+                  this,
+                );
+              }
             } catch (error) {
               if (!options.suppressError) throw error;
               getLogger(["fedify", "vocab"]).debug(
@@ -615,6 +643,12 @@ async function* generateProperty(
             verifyPortableObject: this._verifyPortableObject,
           };
         }
+        ${
+        property.compactName == null
+          ? ""
+          : `// A failed check is not repeated for each value of this call:
+        let cachedKeyCheck: Promise<boolean> | undefined;`
+      }
         const vs = this.${await getFieldName(property.uri)};
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -651,7 +685,7 @@ async function* generateProperty(
             }
             vs[i] = fetched;
             this.${await getFieldName(property.uri, "#_trust")}.add(i);
-            this._cachedJsonLd = undefined;
+            invalidateCachedJsonLd(this);
             recordPortableReferrer(this, fetched, ${
         JSON.stringify(property.uri)
       });
@@ -669,15 +703,46 @@ async function* generateProperty(
           ) {
             const prop = this._cachedJsonLd[
               ${JSON.stringify(property.compactName)}];
-            const obj = Array.isArray(prop) ? prop[i] : prop;
+            const obj = getAlignedCachedDocument(prop, vs.length, i);
             if (obj != null && typeof obj === "object" && "@context" in obj) {
               try {
-                v = await this.#${property.singularName}_fromJsonLd(obj, {
-                  ...options,
-                // Keep the parent default for embedded objects.
-                verifyPortableObject: this._verifyPortableObject,
-                  baseUrl: ${cachedPropertyBaseUrl},
+                const context = getCachedJsonLdContext(
+                  this,
+                  this._cachedJsonLd["@context"],
+                );
+                cachedKeyCheck ??= isCachedPropertyKey(
+                  this._cachedJsonLd as Record<string, unknown>,
+                  context,
+                  ${JSON.stringify(property.compactName)},
+                  ${
+          JSON.stringify([
+            property.uri,
+            ...(property.redundantProperties ?? []).map((p) => p.uri),
+          ])
+        },
+                  withDecodedContexts(
+                    this,
+                    options.contextLoader ?? this._contextLoader ??
+                      getDocumentLoader(),
+                  ),
+                ).catch((error) => {
+                  // Only the cache is at stake, as the values are decoded
+                  // already:
+                  getLogger(["fedify", "vocab"]).debug(
+                    "Failed to match the cached JSON-LD of {property}: {error}",
+                    { property: ${JSON.stringify(property.uri)}, error },
+                  );
+                  return false;
                 });
+                if (await cachedKeyCheck) {
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  ${JSON.stringify(property.compactName)},
+                  this,
+                );
+                }
               } catch (error) {
                 if (!options.suppressError) throw error;
                 getLogger(["fedify", "vocab"]).debug(

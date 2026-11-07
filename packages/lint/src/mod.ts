@@ -86,12 +86,15 @@ import {
   deno as outboxListenerDeliveryRequired,
 } from "./rules/outbox-listener-delivery-required.ts";
 
+import { deno as rawPropertyIriInvalid } from "./rules/raw-property-iri-invalid.ts";
+
 // `outbox-listener-delivery-not-awaited` is deliberately not registered here:
 // Deno turns on every rule of a plugin as soon as the plugin is listed, and
 // gives the rule no way to stay off until a project asks for it.
 const plugin: Deno.lint.Plugin = {
   name: "fedify-lint",
   rules: {
+    [RULE_IDS.rawPropertyIriInvalid]: rawPropertyIriInvalid,
     [RULE_IDS.actorIdMismatch]: actorIdMismatch,
     [RULE_IDS.actorIdRequired]: actorIdRequired,
     [RULE_IDS.actorFollowingPropertyRequired]: actorFollowingPropertyRequired,
