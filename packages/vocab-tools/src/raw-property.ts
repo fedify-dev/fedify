@@ -131,10 +131,16 @@ function keepReceivedJsonLd(
   (object as unknown as { _cachedJsonLd?: unknown })._cachedJsonLd =
     structuredClone(document);
   const own = (document as { "@context"?: unknown })["@context"];
+  const parentEntries = globalThis.Array.isArray(parentContext)
+    ? parentContext
+    : [parentContext];
+  // Only the first entry of a context can declare that it does not propagate,
+  // in which case it does not reach the embedded document:
+  const first = parentEntries[0];
+  const propagates = first == null || typeof first !== "object" ||
+    (first as Record<string, unknown>)["@propagate"] !== false;
   cachedJsonLdContexts.set(object, [
-    ...(globalThis.Array.isArray(parentContext)
-      ? parentContext
-      : [parentContext]),
+    ...(propagates ? parentEntries : []),
     ...(globalThis.Array.isArray(own) ? own : [own]),
   ]);
 }
@@ -165,9 +171,19 @@ async function mapsOnlyKeyToProperty(
   iris: readonly string[],
   contextLoader: DocumentLoader,
 ): Promise<boolean> {
-  // A failure of the context loader is left to the caller:
+  // A failure of the context loader is left to the caller, and is not to be
+  // mistaken for a term that cannot take a placeholder below:
+  let loaderFailure: { readonly error: unknown } | undefined;
+  const loader: DocumentLoader = async (url, options) => {
+    try {
+      return await contextLoader(url, options);
+    } catch (error) {
+      loaderFailure = { error };
+      throw error;
+    }
+  };
   await jsonld.expand({ "@context": context }, {
-    documentLoader: contextLoader,
+    documentLoader: loader,
     keepFreeFloatingNodes: true,
   });
   // Only the keys matter, so nested values and their contexts are left out,
@@ -179,14 +195,15 @@ async function mapsOnlyKeyToProperty(
     others[k] = isScalarOrStrings(value) ? value : [];
   }
   try {
-    const without = await expandTopLevelKeys(others, contextLoader);
+    const without = await expandTopLevelKeys(others, loader);
     if (without.some((iri) => iris.includes(iri))) return false;
     const all = await expandTopLevelKeys(
       { ...others, [key]: [] },
-      contextLoader,
+      loader,
     );
     return all.includes(iris[0]);
-  } catch {
+  } catch (error) {
+    if (loaderFailure != null) throw error;
     // Some term could not take the placeholder, so nothing is known:
     return false;
   }

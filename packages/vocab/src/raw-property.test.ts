@@ -498,6 +498,69 @@ test("embedded objects keep their received JSON-LD under type-scoped terms", asy
   deepStrictEqual(await note.toJsonLd(), object);
 });
 
+test("key checks do not remember context loader failures", async () => {
+  const context = "https://example.com/contexts/scoped";
+  const object = {
+    "@context": AS,
+    id: "https://example.com/notes/1",
+    type: "Note",
+    [STRUCTURED_URL]: { "@id": "https://example.com/data/1" },
+  };
+  const contextLoader = (url: string) =>
+    url === context
+      ? Promise.resolve({
+        contextUrl: null,
+        documentUrl: url,
+        document: { "@context": { ext: "https://example.com/ns#" } },
+      })
+      : mockDocumentLoader(url);
+  const create = await Create.fromJsonLd({
+    "@context": [AS, {
+      // Only the type brings in this remote context:
+      Create: { "@id": `${AS}#Create`, "@context": context },
+    }],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object,
+  }, { contextLoader });
+  const failingLoader = (url: string) =>
+    url === context
+      ? Promise.reject(new Error("Temporary failure"))
+      : mockDocumentLoader(url);
+  await rejects(() => create.getObject({ contextLoader: failingLoader }));
+  const note = await create.getObject({ contextLoader });
+  ok(note instanceof Note);
+  deepStrictEqual(await note.toJsonLd(), object);
+});
+
+test("key checks of nested objects skip non-propagating contexts", async () => {
+  const attachment = {
+    "@context": AS,
+    type: "Document",
+    [STRUCTURED_URL]: { "@id": "https://example.com/data/1" },
+  };
+  const create = await Create.fromJsonLd({
+    "@context": [{ "@propagate": false, extra: `${AS}#attachment` }, AS],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object: {
+      "@context": AS,
+      id: "https://example.com/notes/1",
+      type: "Note",
+      // The term is out of scope here, so this is not an attachment:
+      extra: "Not an attachment",
+      attachment,
+    },
+  });
+  const note = await create.getObject();
+  ok(note instanceof Note);
+  const [nested] = await Array.fromAsync(note.getAttachments());
+  ok(nested instanceof ASObject);
+  deepStrictEqual(await nested.toJsonLd(), attachment);
+});
+
 test("embedded objects keep values under property-scoped contexts", async () => {
   const create = await Create.fromJsonLd({
     "@context": [AS, {
