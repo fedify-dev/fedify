@@ -334,7 +334,16 @@ export function checkRawPropertyIris(
       let body: Ast | undefined;
       for (; declaration?.type === "TSModuleDeclaration"; declaration = body) {
         body = ast(declaration.body);
-        for (const id of qualifiedName(declaration.id)) {
+        const ids = qualifiedName(declaration.id);
+        const instantiated = isInstantiated(declaration);
+        for (const [index, id] of ids.entries()) {
+          // In a dotted name, each segment after the first is an exported
+          // namespace of the one before it, and the first one is bound in the
+          // enclosing scope, which bind() above does only for a plain name:
+          if (instantiated && ids.length > 1) {
+            if (index > 0) (owner as Set<string>).add(id);
+            else if (declaration === node) outer.bindings.set(id, {});
+          }
           const names = mergedMembers(owner, id);
           path.push(names);
           owner = names;

@@ -263,6 +263,14 @@ cases.push(
     `${setup} namespace N { export function read(o: unknown, i: string) {} } namespace N.Inner { read({}, "content"); }`,
   ],
   [
+    "intermediate dotted namespaces are exports",
+    'import * as H from "@fedify/vocab"; namespace N.H { export function getRawPropertyValue(o: unknown, i: string) {} } namespace N.Other { H.getRawPropertyValue({}, "content"); }',
+  ],
+  [
+    "dotted namespaces bind their first segment",
+    'import * as N from "@fedify/vocab"; namespace N.Inner { export const x = 1; } N.getRawPropertyValue({}, "content");',
+  ],
+  [
     "enclosing locals are not visible in dotted namespaces",
     `${setup} namespace N { function read(o: unknown, i: string) {} } namespace N.Inner { read({}, "content"); }`,
     "must be a full",
