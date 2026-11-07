@@ -11,7 +11,7 @@
   },
   "tasks": {
     "build": "pnpm build",
-    "check": "deno fmt --check && deno check",
+    "check": "deno check",
     "test": "deno test --allow-read --allow-net --allow-env",
     "test:node": {
       "dependencies": ["build"],

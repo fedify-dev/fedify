@@ -5817,7 +5817,6 @@ const sampleValues: Record<string, any> = {
     hours: 1,
   }),
   "https://w3id.org/security#cryptosuiteString": "eddsa-jcs-2022",
-  // deno-fmt-ignore
   // oxfmt-ignore
   "https://w3id.org/security#multibase": new Uint8Array([
     0x8f, 0x9b, 0x5a, 0xc9, 0x14, 0x17, 0xd0, 0xd1, 0x88, 0xbe, 0xfa, 0x85,

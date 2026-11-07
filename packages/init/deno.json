@@ -12,12 +12,9 @@
     "exclude": ["**/*.test.ts"]
   },
   "tasks": {
-    "check": "deno fmt --check && deno check src/**/*.ts",
+    "check": "deno check src/**/*.ts",
     "run": "deno run --allow-all src/mod.ts",
     "update-init-deps": "node --experimental-strip-types scripts/update_init_deps.ts"
-  },
-  "fmt": {
-    "exclude": ["src/templates/**"]
   },
   "test": {
     "exclude": ["src/test/**"]

@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "check": "deno fmt --check . && deno check",
+    "check": "deno check",
     "dev": "deno run -A npm:vite@^7.1.3 --configLoader native",
     "build": "deno run -A npm:vite@^7.1.3 build --configLoader native",
     "start": "deno serve -A _fresh/server.js",

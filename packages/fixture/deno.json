@@ -7,7 +7,7 @@
   },
   "exclude": ["dist", "dist-tests", "node_modules"],
   "tasks": {
-    "check": "deno fmt --check && deno check src/*.ts"
+    "check": "deno check src/*.ts"
   },
   "publish": false
 }

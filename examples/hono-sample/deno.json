@@ -5,7 +5,7 @@
   "tasks": {
     "codegen": "deno task -f @fedify/vocab compile",
     "check": {
-      "command": "deno fmt --check && deno check **/*.ts",
+      "command": "deno check **/*.ts",
       "dependencies": ["codegen"]
     },
     "start": {

@@ -161,7 +161,7 @@ rules: `no-message-interpolation` and `no-unawaited-log` as errors, and
 Vendored [anti-slop] rules live in *tools/oxlint/anti-slop/*.  They are copied
 from upstream and recorded in *tools/oxlint/anti-slop/UPSTREAM.md*; update
 them by following the upstream install skill and recording the new revision.
-The vendored directory is excluded from Oxlint, `deno fmt`, and Hongdown, and
+The vendored directory is excluded from Oxlint, Oxfmt, and Hongdown, and
 `@oxlint/plugins` is pinned to the same exact version as `oxlint`.
 
 The enabled generic rules are:

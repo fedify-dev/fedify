@@ -1,4 +1,5 @@
 import { deepStrictEqual, equal, match, notEqual } from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -6,6 +7,8 @@ import process from "node:process";
 import { it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { format, type OxfmtConfig } from "oxfmt";
+import { formatGenerated } from "../packages/vocab/scripts/codegen_lib.ts";
+import { generateVocab } from "../packages/vocab-tools/src/mod.ts";
 import { commandOutput } from "./tooling_process.ts";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
@@ -21,6 +24,7 @@ it("preserves source order, quoted keys and embedded template contents", async (
   const source = [
     'import z from "z";',
     'import a from "a";',
+    'import { zed, alpha, type Z, type A } from "members";',
     'export const value={"quoted":z,bare:a};',
     'export const template=html`<div   class="test">  text </div>`;',
     'export const component=<div className="text-red-500 p-2 block"/>;',
@@ -28,6 +32,7 @@ it("preserves source order, quoted keys and embedded template contents", async (
   const result = await format("example.tsx", source, config);
   deepStrictEqual(result.errors, []);
   match(result.code, /import z from "z";\nimport a from "a";/);
+  match(result.code, /import \{ zed, alpha, type Z, type A \} from "members";/);
   match(result.code, /"quoted": z/);
   match(result.code, /bare: a/);
   match(result.code, /html`<div {3}class="test"> {2}text <\/div>`/);
@@ -116,6 +121,61 @@ it("formats owned languages and preserves excluded files through the real CLI", 
       equal(await readFile(join(dir, path), "utf8"), expected, path);
     }
     await run("--check");
+    // Editors pass a buffer through stdin, including for excluded templates.
+    const stdin = spawnSync(
+      nodeExecutable,
+      [
+        cli,
+        "-c",
+        ".oxfmtrc.json",
+        "--stdin-filepath",
+        "packages/init/src/templates/example.ts",
+      ],
+      { cwd: dir, encoding: "utf8", input: untouched },
+    );
+    equal(stdin.status, 0, stdin.stderr);
+    equal(stdin.stdout, untouched);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+it("formats actual generated vocabulary identically through the API and CLI", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify generated formatting "));
+  const schemaDir = join(dir, "packages/vocab/src");
+  const generatedPath = join(schemaDir, "vocab.ts");
+  try {
+    await mkdir(schemaDir, { recursive: true });
+    await writeFile(join(dir, ".oxfmtrc.json"), configText);
+    await writeFile(join(schemaDir, ".gitignore"), "vocab.ts\n");
+    await writeFile(
+      join(schemaDir, "sample.yaml"),
+      [
+        "name: Sample",
+        "uri: https://example.com/Sample",
+        "entity: true",
+        'description: "A formatter parity fixture."',
+        "defaultContext: {}",
+        "properties: []",
+        "",
+      ].join("\n"),
+    );
+    await generateVocab(schemaDir, generatedPath);
+    const raw = await readFile(generatedPath, "utf8");
+    const expected = await formatGenerated(raw);
+    const result = await commandOutput(
+      nodeExecutable,
+      [cli, "-c", ".oxfmtrc.json", "--write", "packages/vocab/src/vocab.ts"],
+      { cwd: dir },
+    );
+    equal(
+      result.code,
+      0,
+      new TextDecoder().decode(result.stdout) +
+        new TextDecoder().decode(result.stderr),
+    );
+    equal(await readFile(generatedPath, "utf8"), expected);
+    equal(await formatGenerated(expected), expected);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

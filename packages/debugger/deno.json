@@ -10,7 +10,7 @@
     "exclude": ["**/*.test.ts", "tsdown.config.ts"]
   },
   "tasks": {
-    "check": "deno fmt --check && deno check src/**/*.ts src/**/*.tsx",
+    "check": "deno check src/**/*.ts src/**/*.tsx",
     "test": "deno test --allow-env"
   }
 }

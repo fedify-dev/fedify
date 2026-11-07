@@ -12,7 +12,6 @@ experimental = true
 
 [tools]
 bun = "1.2.22"
-# Keep the generated-code formatter @dprint/typescript in sync with Deno.
 deno = "2.9.7"
 node = "22"
 pnpm = "10.28.0"
@@ -59,6 +58,9 @@ sources = [
   "packages/vocab/src/**/*.[yY][mM][lL]",
   "packages/vocab/scripts/**/*.ts",
   "packages/vocab/package.json",
+  ".oxfmtrc.json",
+  "package.json",
+  "pnpm-workspace.yaml",
   "packages/vocab-tools/src/**/*.ts",
   "packages/vocab-tools/src/**/*.[yY][aA][mM][lL]",
   "packages/vocab-tools/src/**/*.[yY][mM][lL]",
@@ -144,7 +146,7 @@ run = "deno run --allow-read --allow-env --allow-run --allow-write scripts/insta
 depends = ["deno:cache"]
 description = "Validate generated vocabulary formatting and Deno types"
 run = [
-  "deno fmt --check packages/vocab/src/vocab.ts",
+  "pnpm exec oxfmt --check -c .oxfmtrc.json packages/vocab/src/vocab.ts",
   "deno check packages/vocab/src/vocab.ts",
 ]
 
@@ -223,9 +225,8 @@ fi
 '''
 
 [tasks."check:fmt"]
-depends = ["deno:cache"]
-description = "Check code formatting"
-run = "node --experimental-strip-types scripts/check_format_transition.ts"
+description = "Check code formatting with Oxfmt"
+run = "pnpm exec oxfmt --check -c .oxfmtrc.json . packages/vocab/src/vocab.ts"
 
 [tasks."check:lint"]
 description = "Check code linting"
@@ -293,12 +294,11 @@ description = "Check for invalid workspace: specifiers without version (*, ^, ~)
 run = "node --experimental-strip-types scripts/check_workspace_protocol.ts"
 
 [tasks.fmt]
-depends = ["deno:cache"]
-description = "Format the codebase"
-run = ["deno fmt", "hongdown --write", "sacho fmt"]
+description = "Format code with Oxfmt and Markdown with Hongdown and Sacho"
+run = ["pnpm exec oxfmt -c .oxfmtrc.json .", "hongdown --write", "sacho fmt"]
 
 [tasks.check-each]
-depends = ["deno:cache", "build"]
+depends = ["build"]
 description = "Check code quality for specific package(s)"
 usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
 shell = "nu -c"
@@ -310,7 +310,10 @@ for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
     print --stderr $"Error: Package directory ($dir) not found"
     exit 1
   }
-  node --experimental-strip-types scripts/check_format_transition.ts $dir
+  pnpm exec oxfmt --check -c .oxfmtrc.json $dir
+  if $pkg == "vocab" {
+    pnpm exec oxfmt --check -c .oxfmtrc.json packages/vocab/src/vocab.ts
+  }
   let lint_paths = if $pkg == "vocab" {
     [$dir "packages/vocab/src/vocab.ts"]
   } else {
@@ -322,6 +325,7 @@ for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
   if ($"($dir)/package.json" | path exists) {
     node --experimental-strip-types scripts/check_types.ts $pkg
   } else {
+    mise run deno:cache
     deno check $dir
   }
 }
@@ -530,12 +534,3 @@ run = "node --experimental-strip-types scripts/sponsors.ts"
 [tasks."test:tooling:no-deno"]
 description = "Verify Node-only tooling with Deno blocked and an empty cache"
 run = "node scripts/test_tooling_no_deno.mjs"
-
-# Preview the reviewed Oxfmt migration without changing the default writer.
-[tasks."check:fmt:oxfmt"]
-description = "Preview Oxfmt formatting differences during the migration"
-run = "pnpm exec oxfmt --check -c .oxfmtrc.json ."
-
-[tasks."fmt:oxfmt"]
-description = "Apply the reviewed Oxfmt formatting configuration"
-run = "pnpm exec oxfmt -c .oxfmtrc.json ."

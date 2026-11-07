@@ -1,5 +1,4 @@
-import { createContext } from "@dprint/formatter";
-import { getPath } from "@dprint/typescript";
+import { format, type OxfmtConfig } from "oxfmt";
 import { randomUUID } from "node:crypto";
 import {
   mkdir,
@@ -135,42 +134,31 @@ export async function acquireLock(
   }
 }
 
-let formatter: Promise<ReturnType<typeof createContext>> | undefined;
-
-/**
- * Preserve Deno's generated-code formatting without requiring Deno at bootstrap.
- *
- * TODO(#1285): Replace dprint with Oxfmt when migrating repository formatting.
- * Switch the generated-code checks and formatting exclusions together so Deno
- * and Oxfmt never compete over vocab.ts, then remove the dprint dependencies
- * and Deno-version coupling in mise.toml.  The vocab-tools code snapshots record
- * unformatted generator output, so a formatter change alone need not alter them.
- * https://github.com/fedify-dev/fedify/issues/1285
- */
-export async function formatGenerated(source: string): Promise<string> {
-  formatter ??= (async () => {
-    const context = createContext({
-      lineWidth: 80,
-      indentWidth: 2,
-      useTabs: false,
-      newLineKind: "lf",
-    });
-    context.addPlugin(await readFile(getPath()), { deno: true });
-    return context;
-  })();
-  const context = await formatter;
-  // Like Deno's format_ensure_stable(), keep formatting until the result is
-  // stable. Some long generated expressions need more than one dprint pass.
-  let current = source;
-  for (let pass = 0; pass < 6; pass++) {
-    const next = context.formatText({
-      filePath: "vocab.ts",
-      fileText: current,
-    });
-    if (next === current) return current;
-    current = next;
+/** Format generated TypeScript using the repository's global Oxfmt options. */
+export async function formatGenerated(
+  source: string,
+  rootDir = resolve(import.meta.dirname!, "../../.."),
+): Promise<string> {
+  const options = JSON.parse(
+    await readFile(join(rootDir, ".oxfmtrc.json"), "utf8"),
+  ) as OxfmtConfig & { $schema?: string };
+  // The API formats one known TypeScript file without CLI discovery rules.
+  delete options.$schema;
+  delete options.ignorePatterns;
+  delete options.overrides;
+  delete options.associations;
+  const result = await format(
+    join(rootDir, "packages/vocab/src/vocab.ts"),
+    source,
+    options,
+  );
+  if (result.errors.length > 0) {
+    throw new Error(
+      "Generated vocabulary formatting failed:\n" +
+        result.errors.map((error) => error.message).join("\n"),
+    );
   }
-  throw new Error("Generated vocabulary formatting did not stabilize");
+  return result.code;
 }
 
 interface CodegenOptions {
@@ -183,6 +171,7 @@ interface CodegenOptions {
 /** Generate and format vocabulary atomically, or leave a fresh output alone. */
 export async function codegen(options: CodegenOptions = {}): Promise<void> {
   const packageDir = options.packageDir ?? resolve(import.meta.dirname!, "..");
+  const rootDir = resolve(packageDir, "../..");
   const scriptsDir = join(packageDir, "scripts");
   const schemaDir = join(packageDir, "src");
   const generatedPath = join(schemaDir, "vocab.ts");
@@ -202,6 +191,9 @@ export async function codegen(options: CodegenOptions = {}): Promise<void> {
       await getLatestMtimeUnder(scriptsDir, [".ts"]),
       (await stat(join(toolsDir, "deno.json"))).mtimeMs,
       (await stat(join(packageDir, "package.json"))).mtimeMs,
+      (await stat(join(rootDir, ".oxfmtrc.json"))).mtimeMs,
+      (await stat(join(rootDir, "package.json"))).mtimeMs,
+      (await stat(join(rootDir, "pnpm-workspace.yaml"))).mtimeMs,
     );
     if (await isUpToDate(schemaDir, generatedPath, generatorMtime)) {
       console.log("vocab.ts is up to date, skipping codegen");
@@ -212,9 +204,10 @@ export async function codegen(options: CodegenOptions = {}): Promise<void> {
     const temporaryPath = join(schemaDir, `vocab-${randomUUID()}.ts`);
     try {
       await (options.generate ?? generateVocab)(schemaDir, temporaryPath);
-      const formatted = await (options.format ?? formatGenerated)(
-        await readFile(temporaryPath, "utf8"),
-      );
+      const source = await readFile(temporaryPath, "utf8");
+      const formatted = await (options.format
+        ? options.format(source)
+        : formatGenerated(source, rootDir));
       await writeFile(temporaryPath, formatted);
       // Publish only a complete, formatted file. Failed runs preserve vocab.ts.
       await rename(temporaryPath, generatedPath);

@@ -23,9 +23,9 @@ import {
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), "fedify-codegen-"));
-  const packageDir = join(root, "vocab");
+  const packageDir = join(root, "packages", "vocab");
   const src = join(packageDir, "src");
-  const tools = join(root, "vocab-tools");
+  const tools = join(root, "packages", "vocab-tools");
   await mkdir(src, { recursive: true });
   await mkdir(join(packageDir, "scripts"));
   await mkdir(join(tools, "src"), { recursive: true });
@@ -37,10 +37,13 @@ async function fixture() {
     join(packageDir, "scripts", "codegen_lib.ts"),
     join(tools, "deno.json"),
     join(packageDir, "package.json"),
+    join(root, ".oxfmtrc.json"),
+    join(root, "package.json"),
+    join(root, "pnpm-workspace.yaml"),
   ];
   const old = new Date(Date.now() - 60_000);
   for (const file of inputs) {
-    await writeFile(file, "input");
+    await writeFile(file, file.endsWith(".oxfmtrc.json") ? "{}\n" : "input");
     await utimes(file, old, old);
   }
   return {
@@ -56,7 +59,7 @@ async function fixture() {
   };
 }
 
-it("regenerates for every schema, generator, helper and metadata input", async () => {
+it("regenerates for schema, generator, metadata and formatter inputs", async () => {
   const f = await fixture();
   let generations = 0;
   const options = {
@@ -132,11 +135,60 @@ it("formats before publishing and preserves the old output on failure", async ()
       async generate(_schema, destination) {
         await writeFile(destination, "const value=1");
       },
-      format: formatGenerated,
     });
     const output = await readFile(f.output, "utf8");
     equal(output, "const value = 1;\n");
     equal(await formatGenerated(output), output);
+  } finally {
+    await f.cleanup();
+  }
+});
+
+it("preserves the old output when Oxfmt reports a parse error", async () => {
+  const f = await fixture();
+  try {
+    await writeFile(f.output, "old output");
+    const old = new Date(Date.now() - 120_000);
+    await utimes(f.output, old, old);
+    await rejects(
+      codegen({
+        packageDir: f.packageDir,
+        async generate(_schema, destination) {
+          await writeFile(destination, "export const value = ;");
+        },
+      }),
+      /Generated vocabulary formatting failed:/,
+    );
+    equal(await readFile(f.output, "utf8"), "old output");
+    deepStrictEqual((await readdir(f.src)).sort(), [
+      "extension.YmL",
+      "object.yaml",
+      "vocab.ts",
+    ]);
+    await rejects(stat(f.lock), { code: "ENOENT" });
+  } finally {
+    await f.cleanup();
+  }
+});
+
+it("reloads committed global formatter options without discovery rules", async () => {
+  const f = await fixture();
+  const source = 'const value = "hello";\n';
+  try {
+    await writeFile(
+      join(f.root, ".oxfmtrc.json"),
+      JSON.stringify({
+        $schema: "./node_modules/oxfmt/configuration_schema.json",
+        semi: false,
+        singleQuote: true,
+        ignorePatterns: ["**/*.ts"],
+        overrides: [{ files: ["**/*.ts"], options: { semi: true } }],
+        associations: [{ files: ["**/*.ts"], language: "json" }],
+      }),
+    );
+    equal(await formatGenerated(source, f.root), "const value = 'hello'\n");
+    await writeFile(join(f.root, ".oxfmtrc.json"), '{"semi": true}\n');
+    equal(await formatGenerated(source, f.root), source);
   } finally {
     await f.cleanup();
   }
@@ -212,7 +264,7 @@ it("recovers abandoned complete and incomplete locks", async () => {
   }
 });
 
-it("stabilizes long generated expressions with Deno's formatting", async () => {
+it("formats long generated expressions idempotently", async () => {
   const source = `class Sample {
   method() {
     let _27fgyFbosTtMAhuepJH8K3ZGURT6__array = values["http://www.ontology-of-units-of-measure.org/resource/om-2/hasUnit"];
@@ -224,9 +276,10 @@ it("stabilizes long generated expressions with Deno's formatting", async () => {
     formatted,
     `class Sample {
   method() {
-    let _27fgyFbosTtMAhuepJH8K3ZGURT6__array = values[
-      "http://www.ontology-of-units-of-measure.org/resource/om-2/hasUnit"
-    ];
+    let _27fgyFbosTtMAhuepJH8K3ZGURT6__array =
+      values[
+        "http://www.ontology-of-units-of-measure.org/resource/om-2/hasUnit"
+      ];
   }
 }
 `,

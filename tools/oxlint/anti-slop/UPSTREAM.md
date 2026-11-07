@@ -24,7 +24,7 @@ Local changes:
   `Readonly`, and `PropertyKey` bindings instead of treating them as the
   built-in utility types.  This avoids false reports when a local type shadows
   those names and is worth upstreaming.
-- The vendored directory is excluded from Oxlint, `deno fmt`, and Hongdown.
+- The vendored directory is excluded from Oxlint, Oxfmt, and Hongdown.
 
 Update procedure: reinstall the skill, run its installer into a staging
 directory, diff against this copy, review rule changes, then replace the

@@ -38,7 +38,7 @@
   "tasks": {
     "codegen": "deno task -f @fedify/vocab compile",
     "check": {
-      "command": "deno fmt --check && deno check src/**/*.ts",
+      "command": "deno check src/**/*.ts",
       "dependencies": ["codegen"]
     },
     "run": {
@@ -55,9 +55,6 @@
       "command": "deno test --allow-all",
       "dependencies": ["codegen"]
     }
-  },
-  "fmt": {
-    "exclude": ["src/init/templates/**"]
   },
   "test": {
     "exclude": ["src/init/test/**"]

@@ -540,7 +540,6 @@ test("parseSoftware()", () => {
 });
 
 test("parseProtocol()", () => {
-  // deno-fmt-ignore
   // oxfmt-ignore
   const protocols: Protocol[] = [
     // cSpell: disable
@@ -605,7 +604,6 @@ test("parseServices()", () => {
 });
 
 test("parseInboundService()", () => {
-  // deno-fmt-ignore
   // oxfmt-ignore
   const services: InboundService[] = [
     // cSpell: disable
@@ -620,7 +618,6 @@ test("parseInboundService()", () => {
 });
 
 test("parseOutboundService()", () => {
-  // deno-fmt-ignore
   // oxfmt-ignore
   const services: OutboundService[] = [
     // cSpell: disable
