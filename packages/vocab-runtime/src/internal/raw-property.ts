@@ -364,7 +364,10 @@ const IP_FUTURE_PATTERN = /^v[0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+$/i;
 function isAuthoritySyntax(authority: string): boolean {
   const hostPort = authority.slice(authority.lastIndexOf("@") + 1);
   const userinfo = authority.slice(0, authority.length - hostPort.length);
-  if (/[[\]]/.test(userinfo)) return false;
+  // The userinfo ends with the only unescaped @ an authority can have:
+  if (/[[\]]/.test(userinfo) || userinfo.slice(0, -1).includes("@")) {
+    return false;
+  }
   if (!/[[\]]/.test(hostPort)) return /^[^:]*(?::[0-9]*)?$/.test(hostPort);
   const match = IP_LITERAL_PATTERN.exec(hostPort);
   if (match == null) return false;

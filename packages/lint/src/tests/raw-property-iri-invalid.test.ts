@@ -17,6 +17,7 @@ const cases: [string, string, string?][] = [
     "https://a[::1]/x",
     "https://example:abc/p",
     "https://example:80:90/p",
+    "https://a@b@example/p",
     "https://example/\ud800",
     "@id",
     "_:node",

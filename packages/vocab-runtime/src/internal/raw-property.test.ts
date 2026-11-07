@@ -80,6 +80,7 @@ test("parseRawPropertyIri() rejects what is not an absolute IRI", () => {
       "https://example.com:abc/p",
       "https://example.com:80:90/p",
       "https://user@example.com:8a/p",
+      "https://a@b@example.com/p",
       "https://example.com/\uD800",
     ]
   ) {
