@@ -532,11 +532,18 @@ export async function* generateRawPropertyDescriptors(
     `;
   }
   for (const property of type.properties) {
+    let element = "";
+    for (const code of generateExpandedPropertyElement(property, types)) {
+      element += code;
+    }
     yield `
     descriptor = {
       canonicalIri: ${JSON.stringify(property.uri)},
+      ${
       // Scalar encoders are mostly synchronous, but some are not:
-      // deno-lint-ignore require-await
+      element.includes("await")
+        ? ""
+        : "// oxlint-disable-next-line require-await"}
       async encode(
         object: object,
         options: { format: "expand"; contextLoader?: DocumentLoader },
@@ -546,7 +553,7 @@ export async function* generateRawPropertyDescriptors(
       property.uri,
     )}) {
     `;
-    yield* generateExpandedPropertyElement(property, types);
+    yield element;
     yield `
         }
         if (array.length < 1) return undefined;

@@ -184,7 +184,7 @@ function toJsonString(raw: string): string | null {
   return result + '"';
 }
 
-const IP_LITERAL_PATTERN = /^\[([^\[\]]*)\](?::[0-9]*)?$/;
+const IP_LITERAL_PATTERN = /^\[([^[\]]*)\](?::[0-9]*)?$/;
 const IP_FUTURE_PATTERN = /^v[0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+$/i;
 
 /**

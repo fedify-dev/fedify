@@ -200,7 +200,7 @@ const SCHEME_PATTERN = /^([A-Za-z][A-Za-z0-9+.-]*):/;
 
 // Characters that RFC 3987 does not allow anywhere in an IRI: controls,
 // space, and the excluded ASCII characters.
-// deno-lint-ignore no-control-regex
+// oxlint-disable-next-line no-control-regex -- controls are what it rejects
 const INVALID_CHAR_PATTERN = /[\u0000- "<>\\^`{|}\u007f-\u009f]/;
 
 const INVALID_PERCENT_PATTERN = /%(?![0-9A-Fa-f]{2})/;
@@ -339,7 +339,7 @@ function isIriSyntax(rest: string): boolean {
     return false;
   }
   const fragmentIndex = rest.indexOf("#");
-  if (fragmentIndex >= 0 && rest.indexOf("#", fragmentIndex + 1) >= 0) {
+  if (fragmentIndex >= 0 && rest.includes("#", fragmentIndex + 1)) {
     return false;
   }
   // Square brackets may only delimit an IP literal in the authority:
@@ -353,7 +353,7 @@ function isIriSyntax(rest: string): boolean {
   return !path.includes("[") && !path.includes("]");
 }
 
-const IP_LITERAL_PATTERN = /^\[([^\[\]]*)\](?::[0-9]*)?$/;
+const IP_LITERAL_PATTERN = /^\[([^[\]]*)\](?::[0-9]*)?$/;
 const IP_FUTURE_PATTERN = /^v[0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+$/i;
 
 /**
