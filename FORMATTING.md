@@ -98,6 +98,10 @@ Oxfmt, `@astrojs/compiler-rs`, and `svelte` are pinned.  Review a formatter
 upgrade's diff before adopting it, and keep mechanical formatting separate
 from behavior changes so maintenance fixes remain easier to forward-merge.
 
+Keep Oxfmt pinned to 0.76.0: the 0.77.0 CLI crashed intermittently in the
+Windows formatter tests.  A formatter upgrade must pass the Windows bootstrap
+job, which runs *scripts/formatting.test.ts* in 100 fresh Node.js processes.
+
 
 Generated-code differences
 --------------------------
