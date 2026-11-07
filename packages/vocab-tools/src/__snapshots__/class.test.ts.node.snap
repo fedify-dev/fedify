@@ -442,6 +442,7 @@ function keepReceivedJsonLd(
   object: unknown,
   document: object,
   parentContext: unknown,
+  key: string,
 ): void {
   if (
     object == null || typeof object !== \\"object\\" ||
@@ -461,8 +462,25 @@ function keepReceivedJsonLd(
   const first = parentEntries[0];
   const propagates = first == null || typeof first !== \\"object\\" ||
     (first as Record<string, unknown>)[\\"@propagate\\"] !== false;
+  // The context scoped to the term the document was reached through applies
+  // after the parent's, and before the document's own:
+  let scoped: unknown;
+  for (const entry of parentEntries) {
+    const term = entry != null && typeof entry === \\"object\\"
+      ? (entry as Record<string, unknown>)[key]
+      : undefined;
+    if (term === undefined) continue;
+    scoped = term != null && typeof term === \\"object\\" && \\"@context\\" in term
+      ? (term as Record<string, unknown>)[\\"@context\\"]
+      : undefined;
+  }
   cachedJsonLdContexts.set(object, [
     ...(propagates ? parentEntries : []),
+    ...(scoped === undefined
+      ? []
+      : globalThis.Array.isArray(scoped)
+      ? scoped
+      : [scoped]),
     ...(globalThis.Array.isArray(own) ? own : [own]),
   ]);
 }
@@ -6508,7 +6526,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"attachment\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -6995,7 +7018,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"attributedTo\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -7164,7 +7192,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"attributedTo\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -7590,7 +7623,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"audience\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -7758,7 +7796,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"audience\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -8238,7 +8281,12 @@ get contents(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"context\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -8725,7 +8773,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"generator\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -9174,7 +9227,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"icon\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -9343,7 +9401,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"icon\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -9792,7 +9855,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"image\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -9961,7 +10029,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"image\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -10402,7 +10475,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"inReplyTo\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -10570,7 +10648,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"inReplyTo\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -11011,7 +11094,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"location\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -11179,7 +11267,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"location\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -11619,7 +11712,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"preview\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -11786,7 +11884,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"preview\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -12225,7 +12328,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"replies\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -12656,7 +12764,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"shares\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -13087,7 +13200,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"likes\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -13512,7 +13630,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"emojiReactions\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -13999,7 +14122,12 @@ get summaries(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"tag\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -14459,7 +14587,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"to\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -14627,7 +14760,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"to\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -15053,7 +15191,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"bto\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -15221,7 +15364,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"bto\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -15647,7 +15795,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"cc\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -15815,7 +15968,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"cc\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -16241,7 +16399,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"bcc\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -16409,7 +16572,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"bcc\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -16898,7 +17066,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"proof\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -17065,7 +17238,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"proof\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -17530,7 +17708,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"likeAuthorization\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -17955,7 +18138,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"replyAuthorization\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -18380,7 +18568,12 @@ get urls(): ((URL | Link))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"announceAuthorization\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -24932,7 +25125,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"quote\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -25380,7 +25578,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"quoteAuthorization\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -27896,7 +28099,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"actor\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -28065,7 +28273,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"actor\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -28492,7 +28705,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"object\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -28661,7 +28879,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"object\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -29091,7 +29314,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"target\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -29263,7 +29491,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"target\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -29690,7 +29923,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"result\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -29859,7 +30097,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"result\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -30287,7 +30530,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"origin\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -30457,7 +30705,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"origin\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -30883,7 +31136,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"instrument\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -31051,7 +31309,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"instrument\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -35385,7 +35648,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"interactingObject\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -35809,7 +36077,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"interactionTarget\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -40426,7 +40699,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"interactingObject\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -40850,7 +41128,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"interactionTarget\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -42770,7 +43053,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"interactingObject\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -43194,7 +43482,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"interactionTarget\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -45113,7 +45406,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"interactingObject\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -45537,7 +45835,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"interactionTarget\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -48094,7 +48397,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"translator\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -48266,7 +48574,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"translator\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -50118,7 +50431,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"interactingObject\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -50541,7 +50859,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"interactionTarget\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -53449,7 +53772,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"current\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -53874,7 +54202,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"first\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -54299,7 +54632,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"last\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -54744,7 +55082,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"items\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -55169,7 +55512,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"likesOf\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -55593,7 +55941,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"sharesOf\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -56017,7 +56370,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"repliesOf\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -56441,7 +56799,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"inboxOf\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -56865,7 +57228,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"outboxOf\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -57289,7 +57657,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"followersOf\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -57713,7 +58086,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"followingOf\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -58137,7 +58515,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"likedOf\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -60738,7 +61121,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"orderedItems\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -62927,7 +63315,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featuredObject\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -63352,7 +63745,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featureAuthorization\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -67965,7 +68363,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"owner\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -69509,7 +69912,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"controller\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -79837,7 +80245,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"publicKey\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -80003,7 +80416,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"publicKey\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -80431,7 +80849,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"assertionMethod\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -80601,7 +81024,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"assertionMethod\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -81099,7 +81527,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"inbox\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -81547,7 +81980,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"outbox\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -81975,7 +82413,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"following\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -82406,7 +82849,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"followers\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -82835,7 +83283,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"liked\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -83262,7 +83715,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featured\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -83689,7 +84147,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featuredTags\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -84113,7 +84576,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featuredCollections\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -84542,7 +85010,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"streams\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -85112,7 +85585,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"movedTo\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -85599,7 +86077,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"alsoKnownAs\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -85769,7 +86252,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"alsoKnownAs\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -86197,7 +86685,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"service\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -86367,7 +86860,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"service\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -91572,7 +92070,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"quote\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -92020,7 +92523,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"quoteAuthorization\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -96240,7 +96748,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"partOf\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -96663,7 +97176,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"next\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -97087,7 +97605,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"prev\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -106199,7 +106722,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"publicKey\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -106365,7 +106893,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"publicKey\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -106793,7 +107326,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"assertionMethod\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -106963,7 +107501,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"assertionMethod\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -107461,7 +108004,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"inbox\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -107909,7 +108457,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"outbox\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -108337,7 +108890,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"following\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -108768,7 +109326,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"followers\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -109197,7 +109760,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"liked\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -109624,7 +110192,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featured\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -110051,7 +110624,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featuredTags\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -110475,7 +111053,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featuredCollections\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -110904,7 +111487,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"streams\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -111474,7 +112062,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"movedTo\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -111961,7 +112554,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"alsoKnownAs\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -112131,7 +112729,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"alsoKnownAs\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -112559,7 +113162,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"service\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -112729,7 +113337,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"service\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -117791,7 +118404,12 @@ get names(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"preview\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -125243,7 +125861,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"quote\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -125691,7 +126314,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"quoteAuthorization\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -127224,7 +127852,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"orderedItems\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -131141,7 +131774,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"publicKey\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -131307,7 +131945,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"publicKey\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -131735,7 +132378,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"assertionMethod\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -131905,7 +132553,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"assertionMethod\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -132403,7 +133056,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"inbox\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -132851,7 +133509,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"outbox\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -133279,7 +133942,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"following\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -133710,7 +134378,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"followers\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -134139,7 +134812,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"liked\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -134566,7 +135244,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featured\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -134993,7 +135676,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featuredTags\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -135417,7 +136105,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featuredCollections\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -135846,7 +136539,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"streams\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -136416,7 +137114,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"movedTo\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -136903,7 +137606,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"alsoKnownAs\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -137073,7 +137781,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"alsoKnownAs\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -137501,7 +138214,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"service\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -137671,7 +138389,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"service\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -144781,7 +145504,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"publicKey\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -144947,7 +145675,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"publicKey\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -145375,7 +146108,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"assertionMethod\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -145545,7 +146283,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"assertionMethod\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -146043,7 +146786,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"inbox\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -146491,7 +147239,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"outbox\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -146919,7 +147672,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"following\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -147350,7 +148108,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"followers\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -147779,7 +148542,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"liked\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -148206,7 +148974,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featured\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -148633,7 +149406,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featuredTags\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -149057,7 +149835,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featuredCollections\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -149486,7 +150269,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"streams\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -150056,7 +150844,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"movedTo\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -150543,7 +151336,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"alsoKnownAs\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -150713,7 +151511,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"alsoKnownAs\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -151141,7 +151944,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"service\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -151311,7 +152119,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"service\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -156812,7 +157625,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"describes\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -158580,7 +159398,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"oneOf\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -159012,7 +159835,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"anyOf\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -159469,7 +160297,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"quote\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -159917,7 +160750,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"quoteAuthorization\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -163026,7 +163864,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"subject\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -163450,7 +164293,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"object\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -163617,7 +164465,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"object\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -164044,7 +164897,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"relationship\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -164213,7 +165071,12 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"relationship\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -168777,7 +169640,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"publicKey\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -168943,7 +169811,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"publicKey\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -169371,7 +170244,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"assertionMethod\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -169541,7 +170419,12 @@ get preferredUsernames(): ((string | LanguageString))[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"assertionMethod\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -170039,7 +170922,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"inbox\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -170487,7 +171375,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"outbox\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -170915,7 +171808,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"following\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -171346,7 +172244,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"followers\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -171775,7 +172678,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"liked\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -172202,7 +173110,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featured\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -172629,7 +173542,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featuredTags\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -173053,7 +173971,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"featuredCollections\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -173482,7 +174405,12 @@ get gateways(): (URL)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"streams\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -174052,7 +174980,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"movedTo\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -174539,7 +175472,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"alsoKnownAs\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -174709,7 +175647,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"alsoKnownAs\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;
@@ -175137,7 +176080,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  \\"service\\",
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -175307,7 +176255,12 @@ get attributionDomains(): (string)[] {
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  \\"service\\",
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;

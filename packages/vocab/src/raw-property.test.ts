@@ -1,7 +1,13 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import { LanguageString } from "@fedify/vocab-runtime";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
-import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
+import {
+  deepStrictEqual,
+  notDeepStrictEqual,
+  ok,
+  rejects,
+  strictEqual,
+} from "node:assert/strict";
 import {
   Create,
   getRawPropertyValue,
@@ -649,6 +655,38 @@ test("embedded objects under graph containers keep their received JSON-LD", asyn
   const [received] = await Array.fromAsync(create.getProofs());
   ok(received != null);
   deepStrictEqual(await received.toJsonLd(), proof);
+});
+
+test("nested objects use the property-scoped contexts they were reached through", async () => {
+  const right = { "@context": AS, type: "Document", name: "Right" };
+  const create = await Create.fromJsonLd({
+    "@context": [AS, {
+      object: {
+        "@id": `${AS}#object`,
+        "@context": {
+          attachment: "https://example.com/other",
+          payload: `${AS}#attachment`,
+        },
+      },
+    }],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object: {
+      "@context": {},
+      id: "https://example.com/notes/1",
+      type: "Note",
+      attachment: { "@context": AS, type: "Document", name: "Wrong" },
+      payload: right,
+    },
+  });
+  const note = await create.getObject();
+  ok(note instanceof Note);
+  const attachments = await Array.fromAsync(note.getAttachments());
+  deepStrictEqual(attachments.map((a) => a?.name?.toString()), ["Right"]);
+  ok(attachments[0] != null);
+  const jsonLd = await attachments[0].toJsonLd() as Record<string, unknown>;
+  notDeepStrictEqual(jsonLd.name, "Wrong");
 });
 
 test("embedded objects keep values under property-scoped contexts", async () => {

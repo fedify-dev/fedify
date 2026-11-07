@@ -503,7 +503,12 @@ async function* generateProperty(
                     getDocumentLoader(),
                 )
               ) {
-                keepReceivedJsonLd(v, doc, context);
+                keepReceivedJsonLd(
+                  v,
+                  doc,
+                  context,
+                  ${JSON.stringify(property.compactName)},
+                );
               }
             } catch (error) {
               if (!options.suppressError) throw error;
@@ -704,7 +709,12 @@ async function* generateProperty(
                     getDocumentLoader(),
                 );
                 if (await cachedKeyCheck) {
-                  keepReceivedJsonLd(v, obj, context);
+                  keepReceivedJsonLd(
+                  v,
+                  obj,
+                  context,
+                  ${JSON.stringify(property.compactName)},
+                );
                 }
               } catch (error) {
                 if (!options.suppressError) throw error;

@@ -120,6 +120,7 @@ function keepReceivedJsonLd(
   object: unknown,
   document: object,
   parentContext: unknown,
+  key: string,
 ): void {
   if (
     object == null || typeof object !== "object" ||
@@ -139,8 +140,25 @@ function keepReceivedJsonLd(
   const first = parentEntries[0];
   const propagates = first == null || typeof first !== "object" ||
     (first as Record<string, unknown>)["@propagate"] !== false;
+  // The context scoped to the term the document was reached through applies
+  // after the parent's, and before the document's own:
+  let scoped: unknown;
+  for (const entry of parentEntries) {
+    const term = entry != null && typeof entry === "object"
+      ? (entry as Record<string, unknown>)[key]
+      : undefined;
+    if (term === undefined) continue;
+    scoped = term != null && typeof term === "object" && "@context" in term
+      ? (term as Record<string, unknown>)["@context"]
+      : undefined;
+  }
   cachedJsonLdContexts.set(object, [
     ...(propagates ? parentEntries : []),
+    ...(scoped === undefined
+      ? []
+      : globalThis.Array.isArray(scoped)
+      ? scoped
+      : [scoped]),
     ...(globalThis.Array.isArray(own) ? own : [own]),
   ]);
 }
