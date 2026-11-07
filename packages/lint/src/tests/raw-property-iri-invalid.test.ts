@@ -253,6 +253,20 @@ cases.push(
     `${setup} namespace N.Inner { export function read(o: unknown, i: string) {} } namespace N.Inner { read({}, "content"); }`,
   ],
   [
+    "dotted namespace locals do not shadow helpers",
+    `${setup} namespace N.Inner { function read(o: unknown, i: string) {} } namespace N { export namespace Inner { read({}, "content"); } }`,
+    "must be a full",
+  ],
+  [
+    "enclosing exports are visible in dotted namespaces",
+    `${setup} namespace N { export function read(o: unknown, i: string) {} } namespace N.Inner { read({}, "content"); }`,
+  ],
+  [
+    "enclosing locals are not visible in dotted namespaces",
+    `${setup} namespace N { function read(o: unknown, i: string) {} } namespace N.Inner { read({}, "content"); }`,
+    "must be a full",
+  ],
+  [
     "merged namespace locals do not shadow helpers",
     `${setup} namespace N { function read(o: unknown, i: string) {} } namespace N { read({}, "content"); }`,
     "must be a full",

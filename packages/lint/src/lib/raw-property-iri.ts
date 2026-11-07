@@ -29,6 +29,8 @@ interface Scope {
    * It is set on the scopes of those, and only of those.
    */
   merged?: Set<string>;
+  /** What the namespaces a dotted namespace name goes through export. */
+  enclosing?: readonly Set<string>[];
   bindings: Map<string, Binding>;
 }
 
@@ -238,6 +240,7 @@ function lookup(
   for (; scope; scope = scope.parent) {
     if (scope.bindings.has(identifier)) return scope.bindings.get(identifier);
     if (scope.merged?.has(identifier)) return {};
+    if (scope.enclosing?.some((names) => names.has(identifier))) return {};
   }
 }
 
@@ -309,6 +312,7 @@ export function checkRawPropertyIris(
   // makes what each declaration exports visible in the others:
   const members = new Map<object, Map<string, Set<string>>>();
   const blockMembers = new WeakMap<Ast, Set<string>>();
+  const blockEnclosing = new WeakMap<Ast, readonly Set<string>[]>();
   function mergedMembers(owner: object, id: string | undefined): Set<string> {
     if (id == null) return new Set();
     let names = members.get(owner);
@@ -322,17 +326,21 @@ export function checkRawPropertyIris(
       // Declarations nested in a merged namespace merge with each other, too,
       // and a dotted name stands for such a nesting:
       let owner: object = outer.merged ?? outer;
+      const path: Set<string>[] = [];
       let declaration: Ast | undefined = node;
       let body: Ast | undefined;
       for (; declaration?.type === "TSModuleDeclaration"; declaration = body) {
         body = ast(declaration.body);
         for (const id of qualifiedName(declaration.id)) {
-          owner = mergedMembers(owner, id);
+          const names = mergedMembers(owner, id);
+          path.push(names);
+          owner = names;
         }
       }
       if (body?.type === "TSModuleBlock" && !blockMembers.has(body)) {
         const merged = owner as Set<string>;
         blockMembers.set(body, merged);
+        blockEnclosing.set(body, path.slice(0, -1));
         for (const exported of exportedNames(body)) merged.add(exported);
       }
     }
@@ -372,6 +380,7 @@ export function checkRawPropertyIris(
           : node.type === "TSEnumDeclaration"
           ? mergedMembers(outer.merged ?? outer, name(node.id))
           : undefined,
+        enclosing: blockEnclosing.get(node),
         bindings: new Map(),
       }
       : outer;
