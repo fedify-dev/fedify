@@ -1,5 +1,10 @@
 import { test } from "@fedify/fixture";
-import type { CryptographicKey, Multikey } from "@fedify/vocab";
+import type {
+  Activity,
+  CryptographicKey,
+  Multikey,
+  Recipient,
+} from "@fedify/vocab";
 import type {
   AuthenticatedDocumentLoaderFactory,
   CryptoKeyLike,
@@ -8,7 +13,7 @@ import type {
   exportSpki,
 } from "@fedify/vocab-runtime";
 import type { ActorKeyPairsDispatcher } from "../federation/callback.ts";
-import type { Context } from "../federation/context.ts";
+import type { Context, InboxContext } from "../federation/context.ts";
 import type {
   ActorCallbackSetters,
   InboxListenerSetters,
@@ -111,6 +116,28 @@ export type NodeKeyTypeChecks = [
   AssertAssignable<
     NodeCryptoKey,
     NonNullable<NonNullable<Parameters<Multikey["clone"]>[0]>["publicKey"]>
+  >,
+  // The `Context` methods are overloaded, and `Parameters<>` only sees the
+  // last overload, which does not take a key.  Assigning the whole method
+  // to a single signature checks that some overload accepts a Node.js key.
+  AssertAssignable<
+    Context<void>["getDocumentLoader"],
+    (identity: { keyId: URL; privateKey: NodeCryptoKey }) => unknown
+  >,
+  AssertAssignable<
+    Context<void>["sendActivity"],
+    (
+      sender: SenderKeyPair<NodeCryptoKey>,
+      recipients: Recipient,
+      activity: Activity,
+    ) => Promise<void>
+  >,
+  AssertAssignable<
+    InboxContext<void>["forwardActivity"],
+    (
+      forwarder: SenderKeyPair<NodeCryptoKey>,
+      recipients: Recipient,
+    ) => Promise<void>
   >,
 ];
 
