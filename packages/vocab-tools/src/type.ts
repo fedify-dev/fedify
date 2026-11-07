@@ -17,6 +17,11 @@ const ACTIVITY_TYPE_URI = "https://www.w3.org/ns/activitystreams#Activity";
 
 interface ScalarType {
   name: string;
+  /**
+   * The type name to use for values accepted by constructors and `clone()`,
+   * when it is wider than {@link name}.  Defaults to {@link name}.
+   */
+  inputName?: string;
   typeGuard(variable: string): string;
   encoder(variable: string): string;
   compactEncoder?: (variable: string) => string;
@@ -333,6 +338,7 @@ const scalarTypes: Record<string, ScalarType> = {
   },
   "fedify:publicKey": {
     name: "CryptoKey",
+    inputName: "CryptoKeyLike",
     typeGuard(v) {
       return `
         // @ts-ignore: CryptoKey exists in the global scope.
@@ -355,6 +361,7 @@ const scalarTypes: Record<string, ScalarType> = {
   },
   "fedify:multibaseKey": {
     name: "CryptoKey",
+    inputName: "CryptoKeyLike",
     typeGuard(v) {
       return `
         // @ts-ignore: CryptoKey exists in the global scope.
@@ -431,23 +438,50 @@ const scalarTypes: Record<string, ScalarType> = {
   },
 };
 
+/**
+ * Gets the TypeScript type name for a type URI.
+ * @param typeUri The type URI to resolve.
+ * @param types The vocabulary types in scope.
+ * @param forInput Whether to return the type accepted as input by
+ *                 constructors and `clone()`, which can be wider than the type
+ *                 those APIs return.
+ * @returns The TypeScript type name.
+ */
 export function getTypeName(
   typeUri: string,
   types: Record<string, TypeSchema>,
+  forInput = false,
 ): string {
   if (typeUri in types) return types[typeUri].name;
-  if (typeUri in scalarTypes) return scalarTypes[typeUri].name;
+  if (typeUri in scalarTypes) {
+    const scalar = scalarTypes[typeUri];
+    return forInput ? scalar.inputName ?? scalar.name : scalar.name;
+  }
   throw new Error(`Unknown type: ${typeUri}`);
 }
 
+/**
+ * Gets the TypeScript type names for a list of type URIs.
+ * @param typeUris The type URIs to resolve.
+ * @param types The vocabulary types in scope.
+ * @param parentheses Whether to wrap a union in parentheses.
+ * @param forInput Whether to return the types accepted as input by
+ *                 constructors and `clone()`.
+ * @returns The TypeScript type expression.
+ */
 export function getTypeNames(
   typeUris: string[],
   types: Record<string, TypeSchema>,
   parentheses = false,
+  forInput = false,
 ): string {
   if (typeUris.length < 1) return "never";
-  else if (typeUris.length === 1) return getTypeName(typeUris[0], types);
-  let typeNames = typeUris.map((typeUri) => getTypeName(typeUri, types));
+  else if (typeUris.length === 1) {
+    return getTypeName(typeUris[0], types, forInput);
+  }
+  let typeNames = typeUris.map((typeUri) =>
+    getTypeName(typeUri, types, forInput)
+  );
   typeNames = typeNames.filter((t, i) => typeNames.indexOf(t) === i);
   const t = typeNames.join(" | ");
   return parentheses && typeNames.length > 1 ? `(${t})` : t;

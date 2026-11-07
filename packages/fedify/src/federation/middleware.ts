@@ -16,6 +16,8 @@ import {
   Multikey,
   traverseCollection,
 } from "@fedify/vocab";
+import type { CryptoKeyLike, CryptoKeyPairLike } from "@fedify/vocab-runtime";
+import { asCryptoKey } from "@fedify/vocab-runtime/internal";
 import type {
   AuthenticatedDocumentLoaderFactory,
   DocumentLoader,
@@ -1365,7 +1367,7 @@ export class FederationImpl<TContextData>
   }
 
   async sendActivity(
-    keys: SenderKeyPair[],
+    keys: SenderKeyPair<CryptoKeyLike>[],
     inboxes: Record<
       string,
       { actorIds: Iterable<string>; sharedInbox: boolean }
@@ -1390,7 +1392,7 @@ export class FederationImpl<TContextData>
     );
     const activityId = activity.id.href;
     let proofCreated = false;
-    let rsaKey: { keyId: URL; privateKey: CryptoKey } | null = null;
+    let rsaKey: { keyId: URL; privateKey: CryptoKeyLike } | null = null;
     for (const { keyId, privateKey } of keys) {
       validateCryptoKey(privateKey, "private");
       if (rsaKey == null && privateKey.algorithm.name === "RSASSA-PKCS1-v1_5") {
@@ -2309,7 +2311,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         },
       );
     }
-    let keyPairs: (CryptoKeyPair & { keyId: URL })[];
+    let keyPairs: (CryptoKeyPairLike & { keyId: URL })[];
     try {
       keyPairs = await this.getKeyPairsFromIdentifier(identifier);
     } catch (_) {
@@ -2322,6 +2324,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     for (const keyPair of keyPairs) {
       const newPair: ActorKeyPair = {
         ...keyPair,
+        privateKey: asCryptoKey(keyPair.privateKey),
+        publicKey: asCryptoKey(keyPair.publicKey),
         cryptographicKey: new CryptographicKey({
           id: keyPair.keyId,
           owner,
@@ -2341,7 +2345,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   protected async getKeyPairsFromIdentifier(
     identifier: string,
-  ): Promise<(CryptoKeyPair & { keyId: URL })[]> {
+  ): Promise<(CryptoKeyPairLike & { keyId: URL })[]> {
     const logger = getLogger(["fedify", "federation", "actor"]);
     if (this.federation.actorCallbacks?.keyPairsDispatcher == null) {
       throw new Error("No actor key pairs dispatcher registered.");
@@ -2384,7 +2388,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   protected async getRsaKeyPairFromIdentifier(
     identifier: string,
-  ): Promise<CryptoKeyPair & { keyId: URL } | null> {
+  ): Promise<CryptoKeyPairLike & { keyId: URL } | null> {
     const keyPairs = await this.getKeyPairsFromIdentifier(identifier);
     for (const keyPair of keyPairs) {
       const { privateKey } = keyPair;
@@ -2409,10 +2413,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       | { identifier: string }
       | { username: string },
   ): Promise<DocumentLoader>;
-  getDocumentLoader(identity: SenderKeyPair): DocumentLoader;
+  getDocumentLoader(identity: SenderKeyPair<CryptoKeyLike>): DocumentLoader;
   getDocumentLoader(
     identity:
-      | SenderKeyPair
+      | SenderKeyPair<CryptoKeyLike>
       | { identifier: string }
       | { username: string },
   ): DocumentLoader | Promise<DocumentLoader> {
@@ -2440,11 +2444,17 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         return keyPair.then((pair) =>
           pair == null
             ? this.documentLoader
-            : this.federation.authenticatedDocumentLoaderFactory(pair)
+            : this.federation.authenticatedDocumentLoaderFactory({
+              keyId: pair.keyId,
+              privateKey: asCryptoKey(pair.privateKey),
+            })
         );
       });
     }
-    return this.federation.authenticatedDocumentLoaderFactory(identity);
+    return this.federation.authenticatedDocumentLoaderFactory({
+      keyId: identity.keyId,
+      privateKey: asCryptoKey(identity.privateKey),
+    });
   }
 
   lookupObject(
@@ -2514,8 +2524,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   async sendActivity(
     sender:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
@@ -2586,8 +2596,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   protected async sendActivityInternal(
     sender:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
@@ -2597,7 +2607,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activityJsonLd?: unknown,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "outbox"]);
-    let keys: SenderKeyPair[];
+    let keys: SenderKeyPair<CryptoKeyLike>[];
     let identifier: string | null = null;
     let actorKeyPairs: ActorKeyPair[] | null = null;
     if ("identifier" in sender || "username" in sender) {
@@ -3291,8 +3301,8 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
 
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[],
@@ -3307,8 +3317,8 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
   ): Promise<void>;
   forwardActivity(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
@@ -3344,15 +3354,15 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
 
   private async forwardActivityInternal(
     forwarder:
-      | SenderKeyPair
-      | SenderKeyPair[]
+      | SenderKeyPair<CryptoKeyLike>
+      | SenderKeyPair<CryptoKeyLike>[]
       | { identifier: string }
       | { username: string },
     recipients: Recipient | Recipient[] | "followers",
     options?: ForwardActivityOptions,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "inbox"]);
-    let keys: SenderKeyPair[];
+    let keys: SenderKeyPair<CryptoKeyLike>[];
     let identifier: string | null = null;
     if (
       "identifier" in forwarder || "username" in forwarder

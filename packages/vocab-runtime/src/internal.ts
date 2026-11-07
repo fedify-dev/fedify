@@ -11,3 +11,4 @@ export {
   type PublicFetchSession,
   withPublicFetch,
 } from "./public-fetch.ts";
+export { asCryptoKey } from "./crypto-key.ts";

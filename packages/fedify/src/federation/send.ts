@@ -1,5 +1,9 @@
 import type { Recipient } from "@fedify/vocab";
-import { FetchError, UrlError } from "@fedify/vocab-runtime";
+import {
+  type CryptoKeyLike,
+  FetchError,
+  UrlError,
+} from "@fedify/vocab-runtime";
 import {
   openDirectFetch,
   openPublicFetch,
@@ -84,13 +88,18 @@ export function extractInboxes(
 
 /**
  * A key pair for an actor who sends an activity.
+ *
+ * The private key type is parameterized so that Fedify can accept keys from
+ * `node:crypto` at its input boundaries while `SenderKeyPair` still exposes the
+ * ambient `CryptoKey` type by default.
+ * @template TKey The type of the private key.
  * @since 0.10.0
  */
-export interface SenderKeyPair {
+export interface SenderKeyPair<TKey extends CryptoKeyLike = CryptoKey> {
   /**
    * The actor's private key to sign the request.
    */
-  readonly privateKey: CryptoKey;
+  readonly privateKey: TKey;
 
   /**
    * The public key ID that corresponds to the private key.
@@ -123,7 +132,7 @@ export interface SendActivityParameters {
    * The key pairs of the sender to sign the request.  It must not be empty.
    * @since 0.10.0
    */
-  readonly keys: readonly SenderKeyPair[];
+  readonly keys: readonly SenderKeyPair<CryptoKeyLike>[];
 
   /**
    * The inbox URL to send the activity to.
@@ -318,7 +327,7 @@ async function sendActivityInternal(
     body: JSON.stringify(activity),
     redirect: "manual",
   });
-  let rsaKey: SenderKeyPair | null = null;
+  let rsaKey: SenderKeyPair<CryptoKeyLike> | null = null;
   for (const key of keys) {
     if (key.privateKey.algorithm.name === "RSASSA-PKCS1-v1_5") {
       rsaKey = key;

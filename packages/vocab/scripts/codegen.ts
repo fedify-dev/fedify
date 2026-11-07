@@ -7,35 +7,82 @@ const LOCK_RETRY_MS = 100;
 const LOCK_TIMEOUT_MS = 60 * 1000; // 1 minute
 
 /**
- * Get the latest mtime from all YAML files in the schema directory.
+ * Get the latest mtime of the files under the given directory that match the
+ * predicate.
+ * @param dir The directory to search.
+ * @param matches The predicate to select files by their path relative to
+ *                `dir`.
  */
-async function getLatestSourceMtime(schemaDir: Path): Promise<number> {
+async function getLatestMtime(
+  dir: Path,
+  matches: (relativePath: string) => boolean,
+): Promise<number> {
   let latestMtime = 0;
-  for await (const entry of schemaDir.readDir()) {
-    if (!entry.isFile) continue;
-    if (!entry.name.match(/\.ya?ml$/i)) continue;
-    if (entry.name === "schema.yaml") continue;
-    const fileStat = await schemaDir.join(entry.name).stat();
-    if (fileStat?.mtime && fileStat.mtime.getTime() > latestMtime) {
-      latestMtime = fileStat.mtime.getTime();
+  async function visit(current: Path, prefix: string): Promise<void> {
+    for await (const entry of Deno.readDir(current.toString())) {
+      const relativePath = prefix === ""
+        ? entry.name
+        : `${prefix}/${entry.name}`;
+      if (entry.isDirectory) {
+        await visit(current.join(entry.name), relativePath);
+      } else if (entry.isFile && matches(relativePath)) {
+        const fileStat = await current.join(entry.name).stat();
+        if (fileStat?.mtime && fileStat.mtime.getTime() > latestMtime) {
+          latestMtime = fileStat.mtime.getTime();
+        }
+      }
     }
   }
+  await visit(dir, "");
   return latestMtime;
 }
 
 /**
- * Check if the generated file is up to date compared to source files.
+ * Check whether a path under the schema directory holds a vocabulary schema.
+ */
+function isSchemaFile(relativePath: string): boolean {
+  return /\.ya?ml$/i.test(relativePath) && relativePath !== "schema.yaml";
+}
+
+/**
+ * Check whether a path under the generator directory can change the generated
+ * output.
+ */
+function isGeneratorSource(relativePath: string): boolean {
+  if (!relativePath.endsWith(".ts")) return false;
+  return !relativePath.endsWith(".test.ts") &&
+    !relativePath.endsWith(".bench.ts");
+}
+
+/**
+ * Check if the generated file is up to date compared to the vocabulary schemas
+ * and the code generator.
+ * @param schemaDir The directory holding the vocabulary schemas.
+ * @param generatedPath The generated file.
+ * @param generatorDir The directory holding the code generator sources.
+ * @param generatorMetadata The generator's *deno.json*, whose version is
+ *                          embedded in the generated code.
  */
 async function isUpToDate(
   schemaDir: Path,
   generatedPath: Path,
+  generatorDir: Path,
+  generatorMetadata: Path,
 ): Promise<boolean> {
   try {
-    const [sourceMtime, generatedStat] = await Promise.all([
-      getLatestSourceMtime(schemaDir),
-      generatedPath.stat(),
-    ]);
+    const [schemaMtime, generatorMtime, metadataStat, generatedStat] =
+      await Promise.all([
+        getLatestMtime(schemaDir, isSchemaFile),
+        getLatestMtime(generatorDir, isGeneratorSource),
+        generatorMetadata.stat(),
+        generatedPath.stat(),
+      ]);
     if (!generatedStat?.mtime) return false;
+    const sourceMtime = Math.max(
+      schemaMtime,
+      generatorMtime,
+      metadataStat?.mtime?.getTime() ?? 0,
+    );
     return generatedStat.mtime.getTime() >= sourceMtime;
   } catch {
     // If generated file doesn't exist, it's not up to date
@@ -111,6 +158,11 @@ async function codegen() {
   const scriptsDir = $.path(import.meta.dirname!);
   const packageDir = scriptsDir.parent()!;
   const schemaDir = packageDir.join("src");
+  const generatorDir = packageDir.parent()!.join("vocab-tools", "src");
+  const generatorMetadata = packageDir.parent()!.join(
+    "vocab-tools",
+    "deno.json",
+  );
   const realPath = schemaDir.join("vocab.ts");
   const lockPath = packageDir.join(".vocab-codegen.lock");
 
@@ -118,7 +170,9 @@ async function codegen() {
   const lock = await acquireLock(lockPath);
   try {
     // Check if regeneration is needed (after acquiring lock)
-    if (await isUpToDate(schemaDir, realPath)) {
+    if (
+      await isUpToDate(schemaDir, realPath, generatorDir, generatorMetadata)
+    ) {
       $.log("vocab.ts is up to date, skipping codegen");
       return;
     }

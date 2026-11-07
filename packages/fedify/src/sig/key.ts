@@ -6,11 +6,13 @@ import {
   Object,
 } from "@fedify/vocab";
 import {
+  type CryptoKeyLike,
   type DocumentLoader,
   FetchError,
   getDocumentLoader,
   UrlError,
 } from "@fedify/vocab-runtime";
+import { asCryptoKey } from "@fedify/vocab-runtime/internal";
 import { getLogger } from "@logtape/logtape";
 import {
   SpanKind,
@@ -105,7 +107,7 @@ function classifyKeyJsonLdError(
  * @throws {TypeError} If the key is invalid or unsupported.
  */
 export function validateCryptoKey(
-  key: CryptoKey,
+  key: CryptoKeyLike,
   type?: "public" | "private",
 ): void {
   if (type != null && key.type !== type) {
@@ -181,9 +183,9 @@ export function generateCryptoKeyPair(
  *          serialization and storage.
  * @throws {TypeError} If the key is invalid or unsupported.
  */
-export async function exportJwk(key: CryptoKey): Promise<JsonWebKey> {
+export async function exportJwk(key: CryptoKeyLike): Promise<JsonWebKey> {
   validateCryptoKey(key);
-  const jwk = await crypto.subtle.exportKey("jwk", key);
+  const jwk = await crypto.subtle.exportKey("jwk", asCryptoKey(key));
   if (jwk.crv === "Ed25519") jwk.alg = "Ed25519";
   return jwk;
 }

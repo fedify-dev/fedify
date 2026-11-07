@@ -143,6 +143,7 @@ export async function* generateClasses(
   yield `import { type Span, SpanStatusCode, type TracerProvider, trace }
     from "@opentelemetry/api";\n`;
   yield `import {
+    type CryptoKeyLike,
     decodeMultibase,
     type DocumentLoader,
     encodeMultibase,
