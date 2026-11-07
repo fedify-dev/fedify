@@ -144,7 +144,12 @@ function keepReceivedJsonLd(
   // after the parent's, and before the document's own:
   let scoped: unknown;
   for (const entry of parentEntries) {
-    const term = entry != null && typeof entry === "object"
+    // A null context resets every term definition before it:
+    if (entry === null) {
+      scoped = undefined;
+      continue;
+    }
+    const term = typeof entry === "object"
       ? (entry as Record<string, unknown>)[key]
       : undefined;
     if (term === undefined) continue;
