@@ -464,7 +464,7 @@ async function* generateProperty(
           if (isUnverifiedPortableClaim(fetched)) return fetched;
           this.${await getFieldName(property.uri)}[0] = fetched;
           this.${await getFieldName(property.uri, "#_trust")}.add(0);
-          this._cachedJsonLd = undefined;
+          invalidateCachedJsonLd(this);
           recordPortableReferrer(this, fetched, ${
         JSON.stringify(property.uri)
       });
@@ -481,7 +481,11 @@ async function* generateProperty(
         ) {
           const prop = this._cachedJsonLd[
             ${JSON.stringify(property.compactName)}];
-          const doc = Array.isArray(prop) ? prop[0] : prop;
+          const doc = getAlignedCachedDocument(
+            prop,
+            this.${await getFieldName(property.uri)}.length,
+            0,
+          );
           if (doc != null && typeof doc === "object" && "@context" in doc) {
             try {
               const context = getCachedJsonLdContext(
@@ -499,15 +503,26 @@ async function* generateProperty(
             ...(property.redundantProperties ?? []).map((p) => p.uri),
           ])
         },
-                  options.contextLoader ?? this._contextLoader ??
-                    getDocumentLoader(),
-                )
+                  withDecodedContexts(
+                    this,
+                    options.contextLoader ?? this._contextLoader ??
+                      getDocumentLoader(),
+                  ),
+                ).catch((error) => {
+                  // Only the cache is at stake, as v is decoded already:
+                  getLogger(["fedify", "vocab"]).debug(
+                    "Failed to match the cached JSON-LD of {property}: {error}",
+                    { property: ${JSON.stringify(property.uri)}, error },
+                  );
+                  return false;
+                })
               ) {
                 keepReceivedJsonLd(
                   v,
                   doc,
                   context,
                   ${JSON.stringify(property.compactName)},
+                  this,
                 );
               }
             } catch (error) {
@@ -670,7 +685,7 @@ async function* generateProperty(
             }
             vs[i] = fetched;
             this.${await getFieldName(property.uri, "#_trust")}.add(i);
-            this._cachedJsonLd = undefined;
+            invalidateCachedJsonLd(this);
             recordPortableReferrer(this, fetched, ${
         JSON.stringify(property.uri)
       });
@@ -688,7 +703,7 @@ async function* generateProperty(
           ) {
             const prop = this._cachedJsonLd[
               ${JSON.stringify(property.compactName)}];
-            const obj = Array.isArray(prop) ? prop[i] : prop;
+            const obj = getAlignedCachedDocument(prop, vs.length, i);
             if (obj != null && typeof obj === "object" && "@context" in obj) {
               try {
                 const context = getCachedJsonLdContext(
@@ -705,15 +720,27 @@ async function* generateProperty(
             ...(property.redundantProperties ?? []).map((p) => p.uri),
           ])
         },
-                  options.contextLoader ?? this._contextLoader ??
-                    getDocumentLoader(),
-                );
+                  withDecodedContexts(
+                    this,
+                    options.contextLoader ?? this._contextLoader ??
+                      getDocumentLoader(),
+                  ),
+                ).catch((error) => {
+                  // Only the cache is at stake, as the values are decoded
+                  // already:
+                  getLogger(["fedify", "vocab"]).debug(
+                    "Failed to match the cached JSON-LD of {property}: {error}",
+                    { property: ${JSON.stringify(property.uri)}, error },
+                  );
+                  return false;
+                });
                 if (await cachedKeyCheck) {
                   keepReceivedJsonLd(
                   v,
                   obj,
                   context,
                   ${JSON.stringify(property.compactName)},
+                  this,
                 );
                 }
               } catch (error) {

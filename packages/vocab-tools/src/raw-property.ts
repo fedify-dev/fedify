@@ -108,8 +108,67 @@ function getCachedJsonLdContext(object: object, context: unknown): unknown {
     : context;
 }
 
-// Objects that were given the document they were received as:
+// Objects that were given the document they were received as, or whose values
+// changed after decoding, which that document no longer describes:
 const receivedJsonLd = new WeakSet<object>();
+
+function invalidateCachedJsonLd(object: object): void {
+  (object as unknown as { _cachedJsonLd?: unknown })._cachedJsonLd =
+    undefined;
+  receivedJsonLd.add(object);
+}
+
+// Expansion drops nulls and flattens nested arrays, and decoding skips some
+// values, such as blank node references, so the cached documents line up with
+// the decoded values only when there are as many of them and none of those:
+const alignedCachedArrays = new WeakMap<object, boolean>();
+
+function getAlignedCachedDocument(
+  documents: unknown,
+  length: number,
+  index: number,
+): unknown {
+  if (!globalThis.Array.isArray(documents)) {
+    return length === 1 ? documents : undefined;
+  }
+  let aligned = alignedCachedArrays.get(documents);
+  if (aligned == null) {
+    aligned = documents.length === length &&
+      documents.every((document) =>
+        document != null && typeof document === "object" &&
+        !globalThis.Array.isArray(document)
+      );
+    alignedCachedArrays.set(documents, aligned);
+  }
+  return aligned ? documents[index] : undefined;
+}
+
+// The contexts that decoding loaded, keyed by the decoded objects, so that the
+// keys of their cached JSON-LD map as decoding mapped them, even if another
+// loader is passed later or a remote context has changed since:
+const decodedContexts = new WeakMap<object, Map<string, RemoteDocument>>();
+
+function recordContexts(
+  loader: DocumentLoader,
+  loaded: Map<string, RemoteDocument>,
+): DocumentLoader {
+  return async (url, options) => {
+    const document = await loader(url, options);
+    loaded.set(url, document);
+    return document;
+  };
+}
+
+function withDecodedContexts(
+  object: object,
+  loader: DocumentLoader,
+): DocumentLoader {
+  const loaded = decodedContexts.get(object);
+  return loaded == null ? loader : (url, options) => {
+    const document = loaded.get(url);
+    return document == null ? loader(url, options) : Promise.resolve(document);
+  };
+}
 
 // Gives an embedded object, decoded along with the whole document, the document
 // it was received as, which toJsonLd() has to return as is, as a proof can
@@ -121,6 +180,7 @@ function keepReceivedJsonLd(
   document: object,
   parentContext: unknown,
   key: string,
+  parent: object,
 ): void {
   if (
     object == null || typeof object !== "object" ||
@@ -131,6 +191,8 @@ function keepReceivedJsonLd(
   receivedJsonLd.add(object);
   (object as unknown as { _cachedJsonLd?: unknown })._cachedJsonLd =
     structuredClone(document);
+  const loaded = decodedContexts.get(parent);
+  if (loaded != null) decodedContexts.set(object, loaded);
   const own = (document as { "@context"?: unknown })["@context"];
   const parentEntries = globalThis.Array.isArray(parentContext)
     ? parentContext

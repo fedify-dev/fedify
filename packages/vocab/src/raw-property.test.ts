@@ -531,7 +531,7 @@ test("embedded objects keep their received JSON-LD under @type-scoped terms", as
   deepStrictEqual(await note.toJsonLd(), object);
 });
 
-test("key checks do not remember context loader failures", async () => {
+test("key checks use the contexts loaded while decoding", async () => {
   const context = "https://example.com/contexts/scoped";
   const object = {
     "@context": AS,
@@ -561,8 +561,9 @@ test("key checks do not remember context loader failures", async () => {
     url === context
       ? Promise.reject(new Error("Temporary failure"))
       : mockDocumentLoader(url);
-  await rejects(() => create.getObject({ contextLoader: failingLoader }));
-  const note = await create.getObject({ contextLoader });
+  // The type-scoped context was loaded while decoding, so a loader that fails
+  // later does not change which key is which property:
+  const note = await create.getObject({ contextLoader: failingLoader });
   ok(note instanceof Note);
   deepStrictEqual(await note.toJsonLd(), object);
 });
@@ -594,18 +595,10 @@ test("key checks of nested objects skip non-propagating contexts", async () => {
   deepStrictEqual(await nested.toJsonLd(), attachment);
 });
 
-test("accessors do not repeat failed key checks for each embedded object", async () => {
+test("accessors keep values when key checks fail, and check once per call", async () => {
   const context = "https://example.com/contexts/extension";
-  const contextLoader = (url: string) =>
-    url === context
-      ? Promise.resolve({
-        contextUrl: null,
-        documentUrl: url,
-        document: { "@context": { ext: "https://example.com/ns#" } },
-      })
-      : mockDocumentLoader(url);
   const note = await Note.fromJsonLd({
-    "@context": [AS, context],
+    "@context": AS,
     id: "https://example.com/notes/1",
     type: "Note",
     attachment: Array.from({ length: 50 }, (_, i) => ({
@@ -613,24 +606,26 @@ test("accessors do not repeat failed key checks for each embedded object", async
       type: "Document",
       name: `Attachment ${i}`,
     })),
-  }, { contextLoader });
+  });
+  // Pretend that the cached JSON-LD refers to a context that decoding did not
+  // load, so that checking its keys needs the loader passed to the accessor:
+  const target = note as unknown as { _cachedJsonLd: Record<string, unknown> };
+  target._cachedJsonLd = { ...target._cachedJsonLd, "@context": [AS, context] };
   let loads = 0;
   const failingLoader = (url: string) => {
     if (url !== context) return mockDocumentLoader(url);
     loads++;
     return Promise.reject(new Error("Temporary failure"));
   };
-  await Array.fromAsync(
-    note.getAttachments({ contextLoader: failingLoader, suppressError: true }),
-  );
-  strictEqual(loads, 1);
-  // A later call tries again:
-  const attachments = await Array.fromAsync(
-    note.getAttachments({ contextLoader }),
-  );
-  strictEqual(attachments.length, 50);
+  for (const suppressError of [false, true]) {
+    loads = 0;
+    const attachments = await Array.fromAsync(
+      note.getAttachments({ contextLoader: failingLoader, suppressError }),
+    );
+    strictEqual(attachments.length, 50);
+    strictEqual(loads, 1);
+  }
 });
-
 test("embedded objects under graph containers keep their received JSON-LD", async () => {
   const proof = {
     "@context": [
@@ -725,6 +720,102 @@ test("nested key checks drop scoped contexts that a null context reset", async (
   const [nested] = await Array.fromAsync(note.getAttachments());
   ok(nested != null);
   deepStrictEqual(await nested.toJsonLd(), attachment);
+});
+
+test("embedded objects do not get received JSON-LD after hydration", async () => {
+  const create = await Create.fromJsonLd({
+    "@context": AS,
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object: {
+      "@context": AS,
+      id: "https://example.com/notes/1",
+      type: "Note",
+      attributedTo: "https://example.com/person",
+    },
+  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  // A clone shares the embedded object, which gets hydrated through it first:
+  const shared = await create.clone().getObject();
+  ok(shared instanceof Note);
+  ok(await shared.getAttribution() != null);
+  const note = await create.getObject();
+  strictEqual(note, shared);
+  const jsonLd = await note!.toJsonLd() as Record<string, unknown>;
+  ok(
+    jsonLd.attributedTo != null && typeof jsonLd.attributedTo === "object",
+    "The hydrated value is kept rather than the received IRI.",
+  );
+});
+
+test("embedded objects get received JSON-LD only from aligned arrays", async () => {
+  const documents = ["A", "B"].map((name) => ({
+    "@context": AS,
+    type: "Document",
+    name,
+    [STRUCTURED_URL]: { "@id": `https://example.com/data/${name}` },
+  }));
+  const note = await Note.fromJsonLd({
+    "@context": AS,
+    id: "https://example.com/notes/1",
+    type: "Note",
+    // Expansion drops the null, so positions no longer correspond:
+    attachment: [null, ...documents],
+  });
+  const attachments = await Array.fromAsync(note.getAttachments());
+  deepStrictEqual(attachments.length, 2);
+  for (const [i, attachment] of attachments.entries()) {
+    ok(attachment != null);
+    const jsonLd = await attachment.toJsonLd() as Record<string, unknown>;
+    strictEqual(jsonLd.name, documents[i].name);
+  }
+  const create = await Create.fromJsonLd({
+    "@context": AS,
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    // Decoding skips the blank node reference:
+    object: [{ "@context": AS, id: "_:b0" }, documents[0]],
+  });
+  const object = await create.getObject();
+  ok(object != null);
+  const jsonLd = await object.toJsonLd() as Record<string, unknown>;
+  strictEqual(jsonLd.name, "A");
+});
+
+test("key checks map keys as decoding did, whatever the loader", async () => {
+  const context = "https://example.com/contexts/remap";
+  const remapping = (url: string) =>
+    url === context
+      ? Promise.resolve({
+        contextUrl: null,
+        documentUrl: url,
+        document: {
+          "@context": { extra: `${AS}#attachment`, attachment: null },
+        },
+      })
+      : mockDocumentLoader(url);
+  const plain = (url: string) =>
+    url === context
+      ? Promise.resolve({
+        contextUrl: null,
+        documentUrl: url,
+        document: { "@context": {} },
+      })
+      : mockDocumentLoader(url);
+  const note = await Note.fromJsonLd({
+    "@context": [AS, context],
+    id: "https://example.com/notes/1",
+    type: "Note",
+    attachment: { "@context": AS, type: "Document", name: "Ignored" },
+    extra: { "@context": AS, type: "Document", name: "Real" },
+  }, { contextLoader: remapping });
+  const [attachment] = await Array.fromAsync(
+    note.getAttachments({ contextLoader: plain }),
+  );
+  ok(attachment != null);
+  const jsonLd = await attachment.toJsonLd() as Record<string, unknown>;
+  strictEqual(jsonLd.name, "Real");
 });
 
 test("embedded objects keep values under property-scoped contexts", async () => {

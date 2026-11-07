@@ -2244,37 +2244,34 @@ function embeddedPropertyDocument(property: "attachment" | "object") {
   };
 }
 
-test("Note.getAttachments() suppresses cached context loader failures", async () => {
+test("Note.getAttachments() keeps decoded values when the context loader fails", async () => {
   const note = await Note.fromJsonLd(embeddedPropertyDocument("attachment"));
   const contextLoader = () =>
     Promise.reject(new Error("Context loader failed"));
-  await rejects(
-    () => Array.fromAsync(note.getAttachments({ contextLoader })),
-    (error: unknown) => error instanceof Error && !(error instanceof TypeError),
-  );
-  // Both cached values need the failing loader; the decoded value remains usable.
-  const attachments: (Object | Link | PropertyValue)[] = await Array.fromAsync(
-    note.getAttachments({ contextLoader, suppressError: true }),
-  );
-  deepStrictEqual(attachments.map((attachment) => attachment.name), [
-    "Decoded image",
-  ]);
+  // Only the cached JSON-LD depends on the contexts, and the values are
+  // decoded already:
+  for (const suppressError of [false, true]) {
+    const attachments: (Object | Link | PropertyValue)[] = await Array
+      .fromAsync(note.getAttachments({ contextLoader, suppressError }));
+    deepStrictEqual(attachments.map((attachment) => attachment.name), [
+      "Cached image",
+      "Other cached image",
+      "Decoded image",
+    ]);
+  }
 });
 
-test("Activity.getObject() suppresses cached context loader failures", async () => {
+test("Activity.getObject() keeps decoded values when the context loader fails", async () => {
   const activity = await Activity.fromJsonLd(
     embeddedPropertyDocument("object"),
   );
   const contextLoader = () =>
     Promise.reject(new Error("Context loader failed"));
-  await rejects(
-    () => activity.getObject({ contextLoader }),
-    (error: unknown) => error instanceof Error && !(error instanceof TypeError),
-  );
-  deepStrictEqual(
-    await activity.getObject({ contextLoader, suppressError: true }),
-    null,
-  );
+  for (const suppressError of [false, true]) {
+    const object = await activity.getObject({ contextLoader, suppressError });
+    assertInstanceOf(object, Image);
+    deepStrictEqual(object.name, "Cached image");
+  }
 });
 
 test("Activity.clone()", async () => {

@@ -482,10 +482,18 @@ export async function* generateDecoder(
       values = {};
       expanded = [values];
     } else {
+      // The contexts loaded here are kept, so that the keys of the cached
+      // JSON-LD can later be mapped as this expansion mapped them:
+      const decodedContextMap = new Map<string, RemoteDocument>();
       expanded = await jsonld.expand(json, {
-        documentLoader: options.contextLoader,
+        documentLoader: recordContexts(
+          options.contextLoader ?? getDocumentLoader(),
+          decodedContextMap,
+        ),
         keepFreeFloatingNodes: true,
       });
+      options = { ...options, _decodedContexts: decodedContextMap } as
+        typeof options;
       values =
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
@@ -674,6 +682,12 @@ export async function* generateDecoder(
         ${type.name}.#knownRawPropertyIris,
       );
       if (retained != null) retainedRawProperties.set(instance, retained);
+    }
+    if (
+      "_decodedContexts" in options &&
+      options._decodedContexts instanceof Map
+    ) {
+      decodedContexts.set(instance, options._decodedContexts);
     }
     instance._shouldCacheJsonLd = shouldCacheJsonLd;
     if (
