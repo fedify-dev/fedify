@@ -1,3 +1,5 @@
+* text=auto eol=lf
+
 CHANGES.md merge=sacho
 changes.d/next merge=ours
 changes.d/next.txt merge=ours
