@@ -522,7 +522,13 @@ async function mapsOnlyKeyToProperty(
   // of the document can bring in type-scoped contexts that define the key:
   const others: Record<string, unknown> = { "@context": context };
   for (const [k, value] of globalThis.Object.entries(document)) {
-    if (k === key || k.startsWith("@")) continue;
+    if (k === key || k === "@context") continue;
+    if (k.startsWith("@")) {
+      // Types bring in their scoped contexts, while the rest of the keywords do
+      // not affect which keys are which properties:
+      if (k === "@type" && isScalarOrStrings(value)) others[k] = value;
+      continue;
+    }
     others[k] = isScalarOrStrings(value) ? value : KEY_PROBE;
   }
   try {
