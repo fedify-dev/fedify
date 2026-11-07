@@ -49,7 +49,21 @@ jobs:
         }
     - name: Diagnose native formatter crashes on Windows
       if: ${{ !cancelled() && runner.os == 'Windows' && failure() }}
-      run: mise exec -- node scripts/diagnose_formatting.mjs "${{ runner.temp }}/fedify-formatting-diagnosis"
+      timeout-minutes: 10
+      shell: pwsh
+      run: |
+        $tools = "$env:RUNNER_TEMP/fedify-procdump"
+        New-Item -ItemType Directory -Force $tools | Out-Null
+        try {
+          Invoke-WebRequest https://download.sysinternals.com/files/Procdump.zip -OutFile "$tools/procdump.zip"
+          Expand-Archive "$tools/procdump.zip" $tools -Force
+          $env:FEDIFY_FORMATTER_PROCDUMP = "$tools/procdump64.exe"
+        } catch {
+          Write-Warning "ProcDump unavailable; collecting process results without a debugger: $_"
+          Remove-Item Env:FEDIFY_FORMATTER_PROCDUMP -ErrorAction SilentlyContinue
+        }
+        mise exec -- node scripts/diagnose_formatting.mjs "${{ runner.temp }}/fedify-formatting-diagnosis" --mixed
+        exit $LASTEXITCODE
     - name: Read Windows native application errors
       if: ${{ !cancelled() && runner.os == 'Windows' && failure() }}
       shell: pwsh
