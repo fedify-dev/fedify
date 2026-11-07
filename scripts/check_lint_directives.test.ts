@@ -1,11 +1,12 @@
-import { deepStrictEqual } from "node:assert/strict";
+import { deepStrictEqual, ok } from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
   checkLintDirectives,
+  collectKnownRules,
   findProblemsInText,
 } from "./check_lint_directives.ts";
 
@@ -13,6 +14,22 @@ const knownRules = new Set([
   "typescript/no-explicit-any",
   "eslint/no-unused-vars",
 ]);
+
+describe("collectKnownRules()", () => {
+  it("accepts prefixless built-in rule names", () => {
+    const rules = collectKnownRules({
+      jsPlugins: [{ name: "anti-slop", specifier: "./plugin.ts" }],
+      rules: {
+        "eslint/no-unused-vars": "error",
+        "typescript/no-explicit-any": "error",
+        "anti-slop/no-reflect-get": "error",
+      },
+    });
+    ok(rules.has("no-unused-vars"));
+    ok(rules.has("no-explicit-any"));
+    ok(!rules.has("no-reflect-get"));
+  });
+});
 
 describe("findProblemsInText()", () => {
   it("rejects a bare disable directive", () => {
@@ -276,6 +293,39 @@ describe("checkLintDirectives()", () => {
       deepStrictEqual(
         checkLintDirectives(root, join(root, ".oxlintrc.json")),
         [],
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("audits generated source files that Git ignores", () => {
+    const root = mkdtempSync(join(tmpdir(), "fedify-lint-directives-"));
+    try {
+      execFileSync("git", ["init", "--quiet"], {
+        cwd: root,
+        env: cleanGitEnv,
+      });
+      writeFileSync(
+        join(root, ".oxlintrc.json"),
+        JSON.stringify({ rules: { "typescript/no-explicit-any": "error" } }),
+      );
+      mkdirSync(join(root, "packages/vocab/src"), { recursive: true });
+      writeFileSync(
+        join(root, "packages/vocab/src/.gitignore"),
+        "vocab.ts\n",
+      );
+      writeFileSync(
+        join(root, "packages/vocab/src/vocab.ts"),
+        "// oxlint-disable\n",
+      );
+      deepStrictEqual(
+        checkLintDirectives(root, join(root, ".oxlintrc.json")),
+        [{
+          file: "packages/vocab/src/vocab.ts",
+          line: 1,
+          message: "bare oxlint-disable must name at least one rule",
+        }],
       );
     } finally {
       rmSync(root, { recursive: true, force: true });

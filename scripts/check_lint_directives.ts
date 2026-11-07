@@ -26,9 +26,30 @@ export interface DirectiveProblem {
 /** Rules enabled by the root configuration, including overrides. */
 export function collectKnownRules(config: unknown): Set<string> {
   const rules = new Set<string>();
+  const customPlugins = new Set<string>();
+  if (config != null && typeof config === "object") {
+    const plugins = (config as Record<string, unknown>).jsPlugins;
+    if (Array.isArray(plugins)) {
+      for (const plugin of plugins) {
+        if (typeof plugin === "string") customPlugins.add(plugin);
+        else if (plugin != null && typeof plugin === "object") {
+          const name = (plugin as Record<string, unknown>).name;
+          if (typeof name === "string") customPlugins.add(name);
+        }
+      }
+    }
+  }
   const addRules = (value: unknown) => {
     if (value == null || typeof value !== "object") return;
-    for (const name of Object.keys(value)) rules.add(name);
+    for (const name of Object.keys(value)) {
+      rules.add(name);
+      // Oxlint accepts built-in rules without their plugin prefix in
+      // directives, but custom JS plugins require it.
+      const slash = name.indexOf("/");
+      if (slash > 0 && !customPlugins.has(name.slice(0, slash))) {
+        rules.add(name.slice(slash + 1));
+      }
+    }
   };
   if (config != null && typeof config === "object") {
     const record = config as Record<string, unknown>;
@@ -131,6 +152,18 @@ export function findProblemsInText(
   return problems.sort((a, b) => a.line - b.line);
 }
 
+/**
+ * Source files that Oxlint lints explicitly even though Git ignores them.
+ * Keep this in sync with the explicit paths in the `lint` tasks.
+ */
+const GENERATED_SOURCE_FILES = ["packages/vocab/src/vocab.ts"];
+
+function isUnderPath(path: string, base: string): boolean {
+  const prefix = base.replace(/\/+$/, "");
+  return prefix === "" || prefix === "." || path === prefix ||
+    path.startsWith(`${prefix}/`);
+}
+
 /** Lists JS/TS files under the given paths, including untracked files. */
 function listFiles(root: string, paths: readonly string[]): string[] {
   const env = { ...process.env };
@@ -151,14 +184,25 @@ function listFiles(root: string, paths: readonly string[]): string[] {
     ],
     { cwd: root, encoding: "utf8", env },
   );
-  return output.split("\0").filter((path) =>
-    path.length > 0 &&
-    /\.(?:[cm]?[jt]sx?)$/.test(path) &&
-    !path.endsWith(".snap") &&
-    !path.includes("/__snapshots__/") &&
-    !path.startsWith("scripts/check_lint_directives") &&
-    path !== "examples/cloudflare-workers/worker-configuration.d.ts"
+  const files = new Set(
+    output.split("\0").filter((path) =>
+      path.length > 0 &&
+      /\.(?:[cm]?[jt]sx?)$/.test(path) &&
+      !path.endsWith(".snap") &&
+      !path.includes("/__snapshots__/") &&
+      !path.startsWith("scripts/check_lint_directives") &&
+      path !== "examples/cloudflare-workers/worker-configuration.d.ts"
+    ),
   );
+  for (const generated of GENERATED_SOURCE_FILES) {
+    if (
+      existsSync(join(root, generated)) &&
+      (paths.length === 0 || paths.some((path) => isUnderPath(generated, path)))
+    ) {
+      files.add(generated);
+    }
+  }
+  return [...files];
 }
 
 /** Scans the repository, or the given paths, for invalid directives. */
