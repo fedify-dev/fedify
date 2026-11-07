@@ -225,7 +225,7 @@ fi
 [tasks."check:fmt"]
 depends = ["deno:cache"]
 description = "Check code formatting"
-run = "deno fmt --check"
+run = "node --experimental-strip-types scripts/check_format_transition.ts"
 
 [tasks."check:lint"]
 description = "Check code linting"
@@ -310,7 +310,7 @@ for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
     print --stderr $"Error: Package directory ($dir) not found"
     exit 1
   }
-  deno fmt --check $dir
+  node --experimental-strip-types scripts/check_format_transition.ts $dir
   let lint_paths = if $pkg == "vocab" {
     [$dir "packages/vocab/src/vocab.ts"]
   } else {
@@ -530,3 +530,12 @@ run = "node --experimental-strip-types scripts/sponsors.ts"
 [tasks."test:tooling:no-deno"]
 description = "Verify Node-only tooling with Deno blocked and an empty cache"
 run = "node scripts/test_tooling_no_deno.mjs"
+
+# Preview the reviewed Oxfmt migration without changing the default writer.
+[tasks."check:fmt:oxfmt"]
+description = "Preview Oxfmt formatting differences during the migration"
+run = "pnpm exec oxfmt --check -c .oxfmtrc.json ."
+
+[tasks."fmt:oxfmt"]
+description = "Apply the reviewed Oxfmt formatting configuration"
+run = "pnpm exec oxfmt -c .oxfmtrc.json ."
