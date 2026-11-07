@@ -471,6 +471,33 @@ test("embedded objects keep values under type-scoped contexts", async () => {
   deepStrictEqual(note.contents, ["Hello"]);
 });
 
+test("embedded objects keep their received JSON-LD under type-scoped terms", async () => {
+  const object = {
+    "@context": AS,
+    id: "https://example.com/notes/1",
+    type: "Note",
+    content: "Hello",
+    [STRUCTURED_URL]: { "@id": "https://example.com/data/1" },
+  };
+  const create = await Create.fromJsonLd({
+    "@context": [AS, {
+      object: null,
+      // Only this type-scoped context maps the term to the property:
+      Create: {
+        "@id": `${AS}#Create`,
+        "@context": { object: `${AS}#object` },
+      },
+    }],
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    object,
+  });
+  const note = await create.getObject();
+  ok(note instanceof Note);
+  deepStrictEqual(await note.toJsonLd(), object);
+});
+
 test("embedded objects keep values under property-scoped contexts", async () => {
   const create = await Create.fromJsonLd({
     "@context": [AS, {

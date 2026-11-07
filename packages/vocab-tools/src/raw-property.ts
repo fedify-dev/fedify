@@ -165,25 +165,37 @@ async function mapsOnlyKeyToProperty(
   iris: readonly string[],
   contextLoader: DocumentLoader,
 ): Promise<boolean> {
-  const own = await expandTopLevelKeys(
-    { "@context": context, [key]: [] },
-    contextLoader,
-  );
-  if (own.length !== 1 || own[0] !== iris[0]) return false;
+  // A failure of the context loader is left to the caller:
+  await jsonld.expand({ "@context": context }, {
+    documentLoader: contextLoader,
+    keepFreeFloatingNodes: true,
+  });
   // Only the keys matter, so nested values and their contexts are left out,
-  // while scalars stay for keyword aliases such as id, which require them:
+  // while strings stay: keyword aliases such as id require them, and the types
+  // of the document can bring in type-scoped contexts that define the key:
   const others: Record<string, unknown> = { "@context": context };
   for (const [k, value] of globalThis.Object.entries(document)) {
     if (k === key || k.startsWith("@")) continue;
-    others[k] = value != null && typeof value === "object" ? [] : value;
+    others[k] = isScalarOrStrings(value) ? value : [];
   }
   try {
-    const expanded = await expandTopLevelKeys(others, contextLoader);
-    return !expanded.some((iri) => iris.includes(iri));
+    const without = await expandTopLevelKeys(others, contextLoader);
+    if (without.some((iri) => iris.includes(iri))) return false;
+    const all = await expandTopLevelKeys(
+      { ...others, [key]: [] },
+      contextLoader,
+    );
+    return all.includes(iris[0]);
   } catch {
-    // Some other term could not take the placeholder, so nothing is known:
+    // Some term could not take the placeholder, so nothing is known:
     return false;
   }
+}
+
+function isScalarOrStrings(value: unknown): boolean {
+  return globalThis.Array.isArray(value)
+    ? value.every((item) => typeof item === "string")
+    : value == null || typeof value !== "object";
 }
 
 // Whether the embedded documents under a key of a compacted document are the
