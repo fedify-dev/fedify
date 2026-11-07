@@ -52,18 +52,105 @@ jobs:
       timeout-minutes: 10
       shell: pwsh
       run: |
-        $tools = "$env:RUNNER_TEMP/fedify-procdump"
-        New-Item -ItemType Directory -Force $tools | Out-Null
-        try {
-          Invoke-WebRequest https://download.sysinternals.com/files/Procdump.zip -OutFile "$tools/procdump.zip"
-          Expand-Archive "$tools/procdump.zip" $tools -Force
-          $env:FEDIFY_FORMATTER_PROCDUMP = "$tools/procdump64.exe"
-        } catch {
-          Write-Warning "ProcDump unavailable; collecting process results without a debugger: $_"
-          Remove-Item Env:FEDIFY_FORMATTER_PROCDUMP -ErrorAction SilentlyContinue
+        $PSNativeCommandUseErrorActionPreference = $false
+        $node = (mise which node).Trim()
+        if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve the configured Node runtime' }
+        $output = "$env:RUNNER_TEMP/fedify-formatting-diagnosis"
+        $dumps = "$env:RUNNER_TEMP/fedify-formatter-wer-incoming"
+        $keptDumps = "$output/wer-dumps"
+        New-Item -ItemType Directory -Force $dumps, $keptDumps | Out-Null
+        $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
+          [Microsoft.Win32.RegistryHive]::LocalMachine,
+          [Microsoft.Win32.RegistryView]::Registry64
+        )
+        $parentPath = 'SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps'
+        $appPath = "$parentPath\node.exe"
+        $parent = $base.OpenSubKey($parentPath)
+        $parentExisted = $null -ne $parent
+        if ($parent) { $parent.Dispose() }
+        $oldApp = $base.OpenSubKey($appPath)
+        $appExisted = $null -ne $oldApp
+        $previous = @{}
+        if ($oldApp) {
+          foreach ($name in @('DumpFolder', 'DumpType', 'DumpCount')) {
+            if ($name -in $oldApp.GetValueNames()) {
+              $previous[$name] = @{
+                Value = $oldApp.GetValue($name, $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+                Kind = $oldApp.GetValueKind($name)
+              }
+            }
+          }
+          $oldApp.Dispose()
         }
-        mise exec -- node scripts/diagnose_formatting.mjs "${{ runner.temp }}/fedify-formatting-diagnosis" --mixed
-        exit $LASTEXITCODE
+        # Match the diagnostic's OS allowlist; neither parent nor child inherits CI credentials.
+        $savedEnvironment = @{}
+        Get-ChildItem Env: | Where-Object {
+          $_.Name -notmatch '^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|USERPROFILE|HOME|APPDATA|LOCALAPPDATA|NUMBER_OF_PROCESSORS|PROCESSOR_ARCHITECTURE|RUNNER_TRACKING_ID)$'
+        } | ForEach-Object {
+          $savedEnvironment[$_.Name] = $_.Value
+          [Environment]::SetEnvironmentVariable($_.Name, $null, 'Process')
+        }
+        $app = $null
+        $diagnosticExit = 1
+        try {
+          $app = $base.CreateSubKey($appPath)
+          $app.SetValue('DumpFolder', $dumps, [Microsoft.Win32.RegistryValueKind]::ExpandString)
+          $app.SetValue('DumpType', 1, [Microsoft.Win32.RegistryValueKind]::DWord)
+          $app.SetValue('DumpCount', 3, [Microsoft.Win32.RegistryValueKind]::DWord)
+          & $node scripts/diagnose_formatting.mjs $output --mixed
+          $diagnosticExit = $LASTEXITCODE
+        } finally {
+          try {
+            if ($app) {
+              if ($appExisted) {
+                foreach ($name in @('DumpFolder', 'DumpType', 'DumpCount')) {
+                  if ($previous.ContainsKey($name)) {
+                    $app.SetValue($name, $previous[$name].Value, $previous[$name].Kind)
+                  } else {
+                    $app.DeleteValue($name, $false)
+                  }
+                }
+              }
+              $app.Dispose()
+              $app = $null
+            }
+            if (-not $appExisted) { $base.DeleteSubKeyTree($appPath, $false) }
+            if (-not $parentExisted) {
+              $parent = $base.OpenSubKey($parentPath)
+              if ($parent) {
+                $empty = $parent.SubKeyCount -eq 0 -and $parent.ValueCount -eq 0
+                $parent.Dispose()
+                if ($empty) { $base.DeleteSubKey($parentPath, $false) }
+              }
+            }
+          } catch {
+            Write-Warning "Cannot fully restore formatter dump settings: $_"
+            $diagnosticExit = 1
+          } finally {
+            if ($app) { $app.Dispose() }
+            $base.Dispose()
+            foreach ($entry in $savedEnvironment.GetEnumerator()) {
+              [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
+            }
+          }
+          # WER selects an image name, not a PID. Keep only recorded formatter processes.
+          $probeIds = [Collections.Generic.HashSet[uint32]]::new()
+          Get-ChildItem $output -Recurse -Filter processes.jsonl | ForEach-Object {
+            Get-Content $_.FullName | ForEach-Object {
+              $record = $_ | ConvertFrom-Json
+              if ($record.pid) { $probeIds.Add([uint32]$record.pid) | Out-Null }
+            }
+          }
+          Get-ChildItem $dumps -Filter '*.dmp' | ForEach-Object {
+            if ($_.Name -match '^node\.exe\.(?<process>\d+)(?:\.|$)' -and
+                $probeIds.Contains([uint32]$Matches.process)) {
+              Move-Item -LiteralPath $_.FullName -Destination $keptDumps
+            } else {
+              Write-Warning "Leaving an unrecognized dump outside artifacts: $($_.Name)"
+            }
+          }
+        }
+        exit $diagnosticExit
     - name: Read Windows native application errors
       if: ${{ !cancelled() && runner.os == 'Windows' && failure() }}
       shell: pwsh
