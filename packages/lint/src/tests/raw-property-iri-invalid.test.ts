@@ -245,6 +245,14 @@ cases.push(
     `${setup} namespace N { export namespace Inner { export function read(o: unknown, i: string) {} } } namespace N { export namespace Inner { read({}, "content"); } }`,
   ],
   [
+    "dotted namespace exports shadow helpers",
+    `${setup} namespace N.Inner { export function read(o: unknown, i: string) {} } namespace N { export namespace Inner { read({}, "content"); } }`,
+  ],
+  [
+    "reopened dotted namespace exports shadow helpers",
+    `${setup} namespace N.Inner { export function read(o: unknown, i: string) {} } namespace N.Inner { read({}, "content"); }`,
+  ],
+  [
     "merged namespace locals do not shadow helpers",
     `${setup} namespace N { function read(o: unknown, i: string) {} } namespace N { read({}, "content"); }`,
     "must be a full",

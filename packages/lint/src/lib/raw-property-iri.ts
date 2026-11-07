@@ -241,6 +241,16 @@ function lookup(
   }
 }
 
+/** Splits the name of a TypeScript namespace, which can be dotted. */
+function qualifiedName(id: unknown): string[] {
+  const node = ast(id);
+  if (node?.type === "TSQualifiedName") {
+    return [...qualifiedName(node.left), ...qualifiedName(node.right)];
+  }
+  const identifier = name(node);
+  return identifier == null ? [] : [identifier];
+}
+
 /** Lists the values that the body of a TypeScript namespace exports. */
 function exportedNames(block: Ast): string[] {
   const scope: Scope = { functionScope: true, bindings: new Map() };
@@ -299,10 +309,8 @@ export function checkRawPropertyIris(
   // makes what each declaration exports visible in the others:
   const members = new Map<object, Map<string, Set<string>>>();
   const blockMembers = new WeakMap<Ast, Set<string>>();
-  function mergedMembers(scope: Scope, id: string | undefined): Set<string> {
+  function mergedMembers(owner: object, id: string | undefined): Set<string> {
     if (id == null) return new Set();
-    // Declarations nested in a merged namespace merge with each other, too:
-    const owner = scope.merged ?? scope;
     let names = members.get(owner);
     if (names == null) members.set(owner, names = new Map());
     let merged = names.get(id);
@@ -311,9 +319,19 @@ export function checkRawPropertyIris(
   }
   function visit(node: Ast, outer: Scope): void {
     if (node.type === "TSModuleDeclaration") {
-      const body = ast(node.body);
-      if (body?.type === "TSModuleBlock") {
-        const merged = mergedMembers(outer, name(node.id));
+      // Declarations nested in a merged namespace merge with each other, too,
+      // and a dotted name stands for such a nesting:
+      let owner: object = outer.merged ?? outer;
+      let declaration: Ast | undefined = node;
+      let body: Ast | undefined;
+      for (; declaration?.type === "TSModuleDeclaration"; declaration = body) {
+        body = ast(declaration.body);
+        for (const id of qualifiedName(declaration.id)) {
+          owner = mergedMembers(owner, id);
+        }
+      }
+      if (body?.type === "TSModuleBlock" && !blockMembers.has(body)) {
+        const merged = owner as Set<string>;
         blockMembers.set(body, merged);
         for (const exported of exportedNames(body)) merged.add(exported);
       }
@@ -352,7 +370,7 @@ export function checkRawPropertyIris(
         merged: node.type === "TSModuleBlock"
           ? blockMembers.get(node) ?? new Set()
           : node.type === "TSEnumDeclaration"
-          ? mergedMembers(outer, name(node.id))
+          ? mergedMembers(outer.merged ?? outer, name(node.id))
           : undefined,
         bindings: new Map(),
       }
