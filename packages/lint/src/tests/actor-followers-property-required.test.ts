@@ -10,7 +10,4 @@ const ruleName = RULE_IDS.actorFollowersPropertyRequired;
 const config = { rule, ruleName };
 
 runTests(ruleName, createRequiredDispatcherRuleTests("followers", config));
-runTests(
-  ruleName,
-  createRequiredEdgeCaseTests("followers", config),
-);
+runTests(ruleName, createRequiredEdgeCaseTests("followers", config));

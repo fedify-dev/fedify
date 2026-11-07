@@ -65,11 +65,13 @@ export async function discoverInbox(
   const { lookup = lookupObject, allowPrivateAddress } = options;
   // When private addresses are allowed but no loaders are supplied, build
   // private-address-allowing loaders so loopback discovery actually fetches.
-  const documentLoader = options.documentLoader ??
+  const documentLoader =
+    options.documentLoader ??
     (allowPrivateAddress
       ? await getDocumentLoader({ allowPrivateAddress: true })
       : undefined);
-  const contextLoader = options.contextLoader ??
+  const contextLoader =
+    options.contextLoader ??
     (allowPrivateAddress
       ? await getContextLoader({ allowPrivateAddress: true })
       : undefined);

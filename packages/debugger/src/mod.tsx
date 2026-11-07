@@ -250,35 +250,33 @@ export function createFederationDebugger<TContextData>(
       const sinks = { ...existingConfig.sinks, __fedify_debugger__: sink };
       const loggers = existingConfig.loggers.map((l) => ({
         ...l,
-        sinks: Array.isArray(l.category) && l.category.length < 1
-          ? [...(l.sinks ?? []), "__fedify_debugger__"]
-          : l.sinks,
+        sinks:
+          Array.isArray(l.category) && l.category.length < 1
+            ? [...(l.sinks ?? []), "__fedify_debugger__"]
+            : l.sinks,
       }));
       if (
-        loggers.every((l) =>
-          typeof l.category === "string" ||
-          Array.isArray(l.category) && l.category.length > 0
+        loggers.every(
+          (l) =>
+            typeof l.category === "string" ||
+            (Array.isArray(l.category) && l.category.length > 0),
         )
       ) {
         loggers.push({ category: [], sinks: ["__fedify_debugger__"] });
       }
-      configureSync(
-        {
-          ...existingConfig,
-          contextLocalStorage: existingConfig.contextLocalStorage ??
-            new AsyncLocalStorage(),
-          reset: true,
-          sinks,
-          loggers,
-          // oxlint-disable-next-line typescript/no-explicit-any
-        } as any,
-      );
+      configureSync({
+        ...existingConfig,
+        contextLocalStorage:
+          existingConfig.contextLocalStorage ?? new AsyncLocalStorage(),
+        reset: true,
+        sinks,
+        loggers,
+        // oxlint-disable-next-line typescript/no-explicit-any
+      } as any);
     } else {
       configureSync({
         sinks: { __fedify_debugger__: sink },
-        loggers: [
-          { category: [], sinks: ["__fedify_debugger__"] },
-        ],
+        loggers: [{ category: [], sinks: ["__fedify_debugger__"] }],
         contextLocalStorage: new AsyncLocalStorage(),
       });
     }

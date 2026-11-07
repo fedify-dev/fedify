@@ -42,22 +42,16 @@ const publicLookup = () => Promise.resolve([{ address: "8.8.8.8", family: 4 }]);
 test("getAuthenticatedDocumentLoader()", async (t) => {
   fetchMock.spyGlobal();
 
-  fetchMock.get(
-    "begin:https://example.com/object",
-    async (cl) => {
-      const v = await verifyRequest(
-        cl.request!,
-        {
-          documentLoader: mockDocumentLoader,
-          contextLoader: mockDocumentLoader,
-          currentTime: Temporal.Now.instant(),
-        },
-      );
-      return new Response(JSON.stringify(v != null), {
-        headers: { "Content-Type": "application/json" },
-      });
-    },
-  );
+  fetchMock.get("begin:https://example.com/object", async (cl) => {
+    const v = await verifyRequest(cl.request!, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      currentTime: Temporal.Now.instant(),
+    });
+    return new Response(JSON.stringify(v != null), {
+      headers: { "Content-Type": "application/json" },
+    });
+  });
 
   await t.step("test", async () => {
     const loader = createAuthenticatedDocumentLoader(identity, {}, directDeps);
@@ -124,9 +118,8 @@ test("getAuthenticatedDocumentLoader() validates redirects", async (t) => {
   fetchMock.spyGlobal();
 
   let privateRequestCount = 0;
-  fetchMock.get(
-    "https://example.com/redirect-to-private",
-    () => Response.redirect("http://localhost/private", 302),
+  fetchMock.get("https://example.com/redirect-to-private", () =>
+    Response.redirect("http://localhost/private", 302),
   );
   fetchMock.get("http://localhost/private", () => {
     privateRequestCount++;
@@ -144,13 +137,11 @@ test("getAuthenticatedDocumentLoader() validates redirects", async (t) => {
     assertEquals(privateRequestCount, 0);
   });
 
-  fetchMock.get(
-    "https://example.com/redirect-to-public",
-    () => Response.redirect("https://www.example.com/document", 302),
+  fetchMock.get("https://example.com/redirect-to-public", () =>
+    Response.redirect("https://www.example.com/document", 302),
   );
-  fetchMock.get(
-    "https://www.example.com/document",
-    () => Response.json({ public: true }),
+  fetchMock.get("https://www.example.com/document", () =>
+    Response.json({ public: true }),
   );
 
   await t.step("allow public-to-public redirects", async () => {
@@ -216,10 +207,7 @@ test("getAuthenticatedDocumentLoader() cancellation", async (t) => {
 
         controller.abort();
 
-        await assertRejects(
-          () => promise,
-          Error,
-        );
+        await assertRejects(() => promise, Error);
 
         await assertRejects(
           () =>
@@ -261,15 +249,18 @@ test("getAuthenticatedDocumentLoader() bounds JSON after redirects", async () =>
       status: 302,
       headers: { Location: `${url}/document` },
     });
-    fetchMock.get(`${url}/document`, () =>
-      new Response('{"name":"hello"}', {
-        headers: {
-          "Content-Type": "application/activity+json",
-          ...(oversized
-            ? { "Content-Length": String(16 * 1024 * 1024 + 1) }
-            : {}),
-        },
-      }));
+    fetchMock.get(
+      `${url}/document`,
+      () =>
+        new Response('{"name":"hello"}', {
+          headers: {
+            "Content-Type": "application/activity+json",
+            ...(oversized
+              ? { "Content-Length": String(16 * 1024 * 1024 + 1) }
+              : {}),
+          },
+        }),
+    );
     const identity = {
       privateKey: rsaPrivateKey2,
       keyId: new URL("https://example.com/key2"),
@@ -288,18 +279,23 @@ test("getAuthenticatedDocumentLoader() bounds JSON after redirects", async () =>
 test("authenticated document loader suppresses HTTP failure logs", async () => {
   const records: LogRecord[] = [];
   const url = "https://example.com/missing-authenticated-document";
-  const loader = getAuthenticatedDocumentLoader({
-    keyId: new URL("https://example.com/key2"),
-    privateKey: rsaPrivateKey2,
-  }, { allowPrivateAddress: true });
+  const loader = getAuthenticatedDocumentLoader(
+    {
+      keyId: new URL("https://example.com/key2"),
+      privateKey: rsaPrivateKey2,
+    },
+    { allowPrivateAddress: true },
+  );
   await reset();
   await configure({
     sinks: { capture: (record) => records.push(record) },
-    loggers: [{
-      category: ["fedify"],
-      lowestLevel: "debug",
-      sinks: ["capture"],
-    }],
+    loggers: [
+      {
+        category: ["fedify"],
+        lowestLevel: "debug",
+        sinks: ["capture"],
+      },
+    ],
   });
   fetchMock.mockGlobal();
   fetchMock.get(url, { status: 404 });
@@ -311,14 +307,18 @@ test("authenticated document loader suppresses HTTP failure logs", async () => {
         FetchError,
       );
       assertEquals(error.response?.status, 404);
-      const failures = records.filter((record) =>
-        record.rawMessage ===
-          "Failed to fetch document: {status} {url} {headers}"
+      const failures = records.filter(
+        (record) =>
+          record.rawMessage ===
+          "Failed to fetch document: {status} {url} {headers}",
       );
       assertEquals(failures.length, 1);
       assertEquals(failures[0].level, suppressError ? "warning" : "error");
       if (suppressError) {
-        assertEquals(records.filter((record) => record.level === "error"), []);
+        assertEquals(
+          records.filter((record) => record.level === "error"),
+          [],
+        );
       }
     }
   } finally {
@@ -344,11 +344,13 @@ test("authenticated document loader suppresses private URL logs", async () => {
         records.push(record);
       },
     },
-    loggers: [{
-      category: ["fedify"],
-      lowestLevel: "debug",
-      sinks: ["capture"],
-    }],
+    loggers: [
+      {
+        category: ["fedify"],
+        lowestLevel: "debug",
+        sinks: ["capture"],
+      },
+    ],
   });
   fetchMock.spyGlobal();
   let requests = 0;
@@ -357,18 +359,16 @@ test("authenticated document loader suppresses private URL logs", async () => {
     return Response.redirect("http://127.0.0.1/private", 302);
   });
   try {
-    for (
-      const url of [
-        "http://127.0.0.1/private",
-        "https://example.com/private-redirect",
-      ]
-    ) {
+    for (const url of [
+      "http://127.0.0.1/private",
+      "https://example.com/private-redirect",
+    ]) {
       for (const suppressError of [true, false, undefined]) {
         records.length = 0;
         requests = 0;
         await assertRejects(() => loader(url, { suppressError }), UrlError);
-        const failures = records.filter((r) =>
-          r.rawMessage === "Disallowed private URL: {url}"
+        const failures = records.filter(
+          (r) => r.rawMessage === "Disallowed private URL: {url}",
         );
         assertEquals(failures.length, 1);
         assertEquals(failures[0].level, suppressError ? "warning" : "error");
@@ -388,11 +388,15 @@ test("getAuthenticatedDocumentLoader() logs DNS failures as such", async (t) => 
         result === "throws"
           ? Promise.reject(new Error("Resolver unavailable"))
           : Promise.resolve(
-            result === "empty" ? [] : [{ address: "127.0.0.1", family: 4 }],
-          );
-      const loader = createAuthenticatedDocumentLoader(identity, {}, {
-        openHop: (url) => openPublicFetch(url, { lookup }),
-      });
+              result === "empty" ? [] : [{ address: "127.0.0.1", family: 4 }],
+            );
+      const loader = createAuthenticatedDocumentLoader(
+        identity,
+        {},
+        {
+          openHop: (url) => openPublicFetch(url, { lookup }),
+        },
+      );
       const records: LogRecord[] = [];
       await configure({
         sinks: {
@@ -426,10 +430,13 @@ test("getAuthenticatedDocumentLoader() logs DNS failures as such", async (t) => 
 
 test("getAuthenticatedDocumentLoader() bounds alternate document chains", async (t) => {
   const base = "https://example.com/alternate-chain/";
-  const loader = getAuthenticatedDocumentLoader({
-    keyId: new URL("https://example.com/key2"),
-    privateKey: rsaPrivateKey2,
-  }, { allowPrivateAddress: true });
+  const loader = getAuthenticatedDocumentLoader(
+    {
+      keyId: new URL("https://example.com/key2"),
+      privateKey: rsaPrivateKey2,
+    },
+    { allowPrivateAddress: true },
+  );
   for (const mode of ["header", "html", "mixed"] as const) {
     for (const hops of [20, 21]) {
       await t.step(`${mode}: ${hops} hops`, async () => {
@@ -468,15 +475,13 @@ test("getAuthenticatedDocumentLoader() bounds alternate document chains", async 
     }
   }
 
-  for (
-    const mode of [
-      "header",
-      "html",
-      "alternate-redirect",
-      "redirect-alternate",
-      "redirect-intermediate",
-    ]
-  ) {
+  for (const mode of [
+    "header",
+    "html",
+    "alternate-redirect",
+    "redirect-alternate",
+    "redirect-intermediate",
+  ]) {
     await t.step(`${mode}: cycle`, async () => {
       fetchMock.mockGlobal();
       let requests = 0;
@@ -486,13 +491,18 @@ test("getAuthenticatedDocumentLoader() bounds alternate document chains", async 
         const index = Number(new URL(url).pathname.split("/").at(-1));
         const next = `${base}${
           mode === "redirect-intermediate"
-            ? (index === 0 ? 1 : index === 1 ? 2 : 1)
+            ? index === 0
+              ? 1
+              : index === 1
+                ? 2
+                : 1
             : 1 - index
         }`;
         if (
           (mode === "alternate-redirect" && index === 1) ||
           ((mode === "redirect-alternate" ||
-            mode === "redirect-intermediate") && index === 0)
+            mode === "redirect-intermediate") &&
+            index === 0)
         ) {
           return Response.redirect(next, 302);
         }
@@ -564,26 +574,29 @@ test("getAuthenticatedDocumentLoader() bounds alternate document chains", async 
   function alternate(next: string, html: boolean): Response {
     return html
       ? new Response(
-        `<link rel="alternate" type="application/activity+json" href="${next}">`,
-        {
-          headers: { "Content-Type": "text/html" },
-        },
-      )
+          `<link rel="alternate" type="application/activity+json" href="${next}">`,
+          {
+            headers: { "Content-Type": "text/html" },
+          },
+        )
       : new Response("not JSON", {
-        headers: {
-          "Content-Type": "text/plain",
-          Link: `<${next}>; rel="alternate"; type="application/activity+json"`,
-        },
-      });
+          headers: {
+            "Content-Type": "text/plain",
+            Link: `<${next}>; rel="alternate"; type="application/activity+json"`,
+          },
+        });
   }
 });
 
 test("getAuthenticatedDocumentLoader() preserves cancellation across alternates", async (t) => {
   const base = "https://example.com/alternate-abort/";
-  const loader = getAuthenticatedDocumentLoader({
-    keyId: new URL("https://example.com/key2"),
-    privateKey: rsaPrivateKey2,
-  }, { allowPrivateAddress: true });
+  const loader = getAuthenticatedDocumentLoader(
+    {
+      keyId: new URL("https://example.com/key2"),
+      privateKey: rsaPrivateKey2,
+    },
+    { allowPrivateAddress: true },
+  );
   for (const html of [false, true]) {
     await t.step(html ? "HTML" : "Link header", async () => {
       fetchMock.mockGlobal();
@@ -601,11 +614,12 @@ test("getAuthenticatedDocumentLoader() preserves cancellation across alternates"
             ? `<link rel="alternate" type="application/activity+json" href="${next}">`
             : "not JSON",
           {
-            headers: html ? { "Content-Type": "text/html" } : {
-              "Content-Type": "text/plain",
-              Link:
-                `<${next}>; rel="alternate"; type="application/activity+json"`,
-            },
+            headers: html
+              ? { "Content-Type": "text/html" }
+              : {
+                  "Content-Type": "text/plain",
+                  Link: `<${next}>; rel="alternate"; type="application/activity+json"`,
+                },
           },
         );
       });
@@ -648,10 +662,13 @@ test("getAuthenticatedDocumentLoader() tracks fallback redirects after alternate
       : Response.redirect(first, 302);
   });
   try {
-    const loader = getAuthenticatedDocumentLoader({
-      keyId: new URL("https://example.com/key2"),
-      privateKey: rsaPrivateKey2,
-    }, { allowPrivateAddress: true });
+    const loader = getAuthenticatedDocumentLoader(
+      {
+        keyId: new URL("https://example.com/key2"),
+        privateKey: rsaPrivateKey2,
+      },
+      { allowPrivateAddress: true },
+    );
     await assertRejects(
       () => loader(first),
       FetchError,
@@ -685,10 +702,13 @@ test("getAuthenticatedDocumentLoader() resolves relative alternates without resp
     return Promise.resolve(Response.json({ done: true }));
   };
   try {
-    const loader = getAuthenticatedDocumentLoader({
-      keyId: new URL("https://example.com/key2"),
-      privateKey: rsaPrivateKey2,
-    }, { allowPrivateAddress: true });
+    const loader = getAuthenticatedDocumentLoader(
+      {
+        keyId: new URL("https://example.com/key2"),
+        privateKey: rsaPrivateKey2,
+      },
+      { allowPrivateAddress: true },
+    );
     assertEquals(await loader(`${base}start`), {
       contextUrl: null,
       document: { done: true },
@@ -713,8 +733,7 @@ test("getAuthenticatedDocumentLoader() validates alternate addresses", async () 
     new Response("", {
       headers: {
         "Content-Type": "text/plain",
-        Link:
-          '<http://127.0.0.1/private>; rel="alternate"; type="application/activity+json"',
+        Link: '<http://127.0.0.1/private>; rel="alternate"; type="application/activity+json"',
       },
     }),
   );
@@ -743,10 +762,13 @@ test("getAuthenticatedDocumentLoader() rejects cancellation before fetching", as
     return Response.json({ done: true });
   });
   try {
-    const loader = getAuthenticatedDocumentLoader({
-      keyId: new URL("https://example.com/key2"),
-      privateKey: rsaPrivateKey2,
-    }, { allowPrivateAddress: true });
+    const loader = getAuthenticatedDocumentLoader(
+      {
+        keyId: new URL("https://example.com/key2"),
+        privateKey: rsaPrivateKey2,
+      },
+      { allowPrivateAddress: true },
+    );
     const controller = new AbortController();
     controller.abort();
     await rejects(loader(url, { signal: controller.signal }), {
@@ -878,9 +900,9 @@ test("getAuthenticatedDocumentLoader() closes each hop before opening the next",
       request.url === start
         ? { status: 302, headers: { Location: next }, body: "Found" }
         : {
-          headers: { "Content-Type": "application/activity+json" },
-          body: '{"done":true}',
-        }
+            headers: { "Content-Type": "application/activity+json" },
+            body: '{"done":true}',
+          },
     );
     const loader = createAuthenticatedDocumentLoader(identity, {}, hops);
     deepStrictEqual(await loader(start), {
@@ -907,17 +929,16 @@ test("getAuthenticatedDocumentLoader() closes each hop before opening the next",
     const hops = recordHops((request): RecordedResponseInit =>
       request.url === start
         ? {
-          headers: {
-            "Content-Type": "text/plain",
-            Link:
-              `<${next}>; rel="alternate"; type="application/activity+json"`,
-          },
-          body: "not JSON",
-        }
+            headers: {
+              "Content-Type": "text/plain",
+              Link: `<${next}>; rel="alternate"; type="application/activity+json"`,
+            },
+            body: "not JSON",
+          }
         : {
-          headers: { "Content-Type": "application/activity+json" },
-          body: '{"done":true}',
-        }
+            headers: { "Content-Type": "application/activity+json" },
+            body: '{"done":true}',
+          },
     );
     const loader = createAuthenticatedDocumentLoader(identity, {}, hops);
     deepStrictEqual((await loader(start)).document, { done: true });
@@ -950,9 +971,13 @@ test("getAuthenticatedDocumentLoader() closes each hop before opening the next",
           ? Response.redirect(next, 302)
           : Response.json({ done: true }),
       async (fetched) => {
-        const loader = createAuthenticatedDocumentLoader(identity, {}, {
-          openHop: (url) => openPublicFetch(url, { lookup }),
-        });
+        const loader = createAuthenticatedDocumentLoader(
+          identity,
+          {},
+          {
+            openHop: (url) => openPublicFetch(url, { lookup }),
+          },
+        );
         deepStrictEqual((await loader(start)).document, { done: true });
         deepStrictEqual(lookups, ["first.example", "second.example"]);
         deepStrictEqual(fetched.length, 2);
@@ -987,7 +1012,7 @@ function getCancelFailures(records: readonly LogRecord[]): string[] {
   return records.flatMap((r) =>
     r.rawMessage === "Failed to cancel the response body from {url}: {error}"
       ? [(r.properties.error as Error).message]
-      : []
+      : [],
   );
 }
 
@@ -1012,12 +1037,12 @@ test("getAuthenticatedDocumentLoader() logs bodies failing to cancel and loads t
       const hops = recordHops((request): RecordedResponseInit =>
         request.url === start
           ? {
-            ...(kind === "redirect"
-              ? { status: 302, headers: { Location: next }, body: "Found" }
-              : linkAlternate(next)),
-            failCancel: true,
-          }
-          : jsonDocument
+              ...(kind === "redirect"
+                ? { status: 302, headers: { Location: next }, body: "Found" }
+                : linkAlternate(next)),
+              failCancel: true,
+            }
+          : jsonDocument,
       );
       const loader = createAuthenticatedDocumentLoader(identity, {}, hops);
       let document: unknown;
@@ -1050,8 +1075,8 @@ test("getAuthenticatedDocumentLoader() is not blocked by a body cancellation tha
       ...(request.url === start
         ? { status: 302, headers: { Location: page }, body: "Found" }
         : request.url === page
-        ? linkAlternate(next)
-        : jsonDocument),
+          ? linkAlternate(next)
+          : jsonDocument),
       hangCancel: true,
     }));
     const loader = createAuthenticatedDocumentLoader(identity, {}, hops);
@@ -1111,8 +1136,7 @@ test("getAuthenticatedDocumentLoader() completes with responses cloned by fetch-
         new Response("not JSON", {
           headers: {
             "Content-Type": "text/plain",
-            Link:
-              `<${base}document>; rel="alternate"; type="application/activity+json"`,
+            Link: `<${base}document>; rel="alternate"; type="application/activity+json"`,
           },
         }),
     );
@@ -1138,14 +1162,17 @@ test("getAuthenticatedDocumentLoader() completes with responses cloned by fetch-
 const unsupportedUrls = [
   "ftp://example.com/collection",
   "file:///collection",
-  `data:application/ld+json,${
-    encodeURIComponent(JSON.stringify({ id: "https://example.com/data" }))
-  }`,
+  `data:application/ld+json,${encodeURIComponent(
+    JSON.stringify({ id: "https://example.com/data" }),
+  )}`,
 ];
 
 function isCredentialUrlError(error: unknown): boolean {
-  return error instanceof UrlError && error.reason === "disallowed" &&
-    error.message === "URLs with credentials are not allowed";
+  return (
+    error instanceof UrlError &&
+    error.reason === "disallowed" &&
+    error.message === "URLs with credentials are not allowed"
+  );
 }
 
 test("getAuthenticatedDocumentLoader() rejects URLs with credentials", async (t) => {
@@ -1176,8 +1203,7 @@ test("getAuthenticatedDocumentLoader() rejects URLs with credentials", async (t)
               return new Response("", {
                 headers: {
                   "Content-Type": "text/plain",
-                  Link:
-                    `<${target}>; rel="alternate"; type="application/activity+json"`,
+                  Link: `<${target}>; rel="alternate"; type="application/activity+json"`,
                 },
               });
             },
@@ -1195,30 +1221,29 @@ test("getAuthenticatedDocumentLoader() rejects URLs with credentials", async (t)
         },
       );
     }
-    for (
-      const url of [
-        "https://user@8.8.8.8/document",
-        "https://:pass@8.8.8.8/document",
-        "https://%75ser:p%40ss@8.8.8.8/document",
-        "http://user:pass@8.8.8.8/document",
-      ]
-    ) {
+    for (const url of [
+      "https://user@8.8.8.8/document",
+      "https://:pass@8.8.8.8/document",
+      "https://%75ser:p%40ss@8.8.8.8/document",
+      "http://user:pass@8.8.8.8/document",
+    ]) {
       await t.step(
         `${url}, allowPrivateAddress=${allowPrivateAddress}`,
         async () => {
-          await withFetchStub(() => Response.json({}), async (fetched) => {
-            await rejects(loader(url), isCredentialUrlError);
-            deepStrictEqual(fetched, []);
-          });
+          await withFetchStub(
+            () => Response.json({}),
+            async (fetched) => {
+              await rejects(loader(url), isCredentialUrlError);
+              deepStrictEqual(fetched, []);
+            },
+          );
         },
       );
     }
-    for (
-      const url of [
-        "https://:@8.8.8.8/document",
-        "https://8.8.8.8/@user?q=@pass",
-      ]
-    ) {
+    for (const url of [
+      "https://:@8.8.8.8/document",
+      "https://8.8.8.8/@user?q=@pass",
+    ]) {
       await t.step(
         `allows ${url}, allowPrivateAddress=${allowPrivateAddress}`,
         async () => {
@@ -1227,16 +1252,20 @@ test("getAuthenticatedDocumentLoader() rejects URLs with credentials", async (t)
             async (fetched) => {
               const document = await loader(url);
               deepStrictEqual(document.document, { done: true });
-              deepStrictEqual(fetched.map((r) => r.url), [new URL(url).href]);
+              deepStrictEqual(
+                fetched.map((r) => r.url),
+                [new URL(url).href],
+              );
             },
           );
         },
       );
     }
   }
-  for (
-    const firstSpec of ["rfc9421", "draft-cavage-http-signatures-12"] as const
-  ) {
+  for (const firstSpec of [
+    "rfc9421",
+    "draft-cavage-http-signatures-12",
+  ] as const) {
     await t.step(`redirect after fallback from ${firstSpec}`, async () => {
       const loader = getAuthenticatedDocumentLoader(identity, {
         allowPrivateAddress: true,
@@ -1251,11 +1280,14 @@ test("getAuthenticatedDocumentLoader() rejects URLs with credentials", async (t)
             ? Response.json({})
             : request.headers.has("Signature-Input") ===
                 (firstSpec === "rfc9421")
-            ? new Response(null, { status: 401 })
-            : Response.redirect(target, 302),
+              ? new Response(null, { status: 401 })
+              : Response.redirect(target, 302),
         async (fetched) => {
           await rejects(loader(start), isCredentialUrlError);
-          deepStrictEqual(fetched.map((r) => r.url), [start, start]);
+          deepStrictEqual(
+            fetched.map((r) => r.url),
+            [start, start],
+          );
           deepStrictEqual(
             fetched.map((r) => r.headers.has("Signature-Input")),
             [firstSpec === "rfc9421", firstSpec !== "rfc9421"],
@@ -1267,9 +1299,11 @@ test("getAuthenticatedDocumentLoader() rejects URLs with credentials", async (t)
 });
 
 function isUnsupportedProtocolError(error: unknown, url: string): boolean {
-  return error instanceof UrlError &&
+  return (
+    error instanceof UrlError &&
     error.message === `Unsupported protocol: ${new URL(url).protocol}` &&
-    error.reason === "disallowed";
+    error.reason === "disallowed"
+  );
 }
 
 async function withFetchStub(
@@ -1279,9 +1313,10 @@ async function withFetchStub(
   const fetched: Request[] = [];
   const originalFetch = globalThis.fetch;
   globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
-    const request = input instanceof Request && init == null
-      ? input
-      : new Request(input, init);
+    const request =
+      input instanceof Request && init == null
+        ? input
+        : new Request(input, init);
     fetched.push(request);
     return Promise.resolve(respond(request));
   }) as typeof globalThis.fetch;
@@ -1294,52 +1329,70 @@ async function withFetchStub(
 
 for (const url of unsupportedUrls) {
   const scheme = new URL(url).protocol;
-  const loader = getAuthenticatedDocumentLoader({
-    keyId: new URL("https://example.com/key2"),
-    privateKey: rsaPrivateKey2,
-  }, { allowPrivateAddress: true });
+  const loader = getAuthenticatedDocumentLoader(
+    {
+      keyId: new URL("https://example.com/key2"),
+      privateKey: rsaPrivateKey2,
+    },
+    { allowPrivateAddress: true },
+  );
 
   test(`getAuthenticatedDocumentLoader() rejects ${scheme} URLs with private addresses allowed before fetching`, async () => {
-    await withFetchStub(() => Response.json({}), async (fetched) => {
-      await rejects(loader(url), (e) => isUnsupportedProtocolError(e, url));
-      deepStrictEqual(fetched, []);
-    });
+    await withFetchStub(
+      () => Response.json({}),
+      async (fetched) => {
+        await rejects(loader(url), (e) => isUnsupportedProtocolError(e, url));
+        deepStrictEqual(fetched, []);
+      },
+    );
   });
 
   test(`getAuthenticatedDocumentLoader() rejects redirects to ${scheme} URLs with private addresses allowed`, async () => {
     const start = "https://example.com/redirect-to-unsupported";
-    await withFetchStub(() => Response.redirect(url, 302), async (fetched) => {
-      await rejects(loader(start), (e) => isUnsupportedProtocolError(e, url));
-      deepStrictEqual(fetched.map((r) => r.url), [start]);
-    });
+    await withFetchStub(
+      () => Response.redirect(url, 302),
+      async (fetched) => {
+        await rejects(loader(start), (e) => isUnsupportedProtocolError(e, url));
+        deepStrictEqual(
+          fetched.map((r) => r.url),
+          [start],
+        );
+      },
+    );
   });
 
-  for (
-    const firstSpec of ["rfc9421", "draft-cavage-http-signatures-12"] as const
-  ) {
+  for (const firstSpec of [
+    "rfc9421",
+    "draft-cavage-http-signatures-12",
+  ] as const) {
     test(`getAuthenticatedDocumentLoader() rejects redirects to ${scheme} URLs after signature fallback from ${firstSpec}`, async () => {
       const start = "https://example.com/fallback-redirect-to-unsupported";
-      const fallbackLoader = getAuthenticatedDocumentLoader({
-        keyId: new URL("https://example.com/key2"),
-        privateKey: rsaPrivateKey2,
-      }, {
-        allowPrivateAddress: true,
-        specDeterminer: {
-          determineSpec: () => firstSpec,
-          rememberSpec: () => {},
+      const fallbackLoader = getAuthenticatedDocumentLoader(
+        {
+          keyId: new URL("https://example.com/key2"),
+          privateKey: rsaPrivateKey2,
         },
-      });
+        {
+          allowPrivateAddress: true,
+          specDeterminer: {
+            determineSpec: () => firstSpec,
+            rememberSpec: () => {},
+          },
+        },
+      );
       await withFetchStub(
         (request) =>
           request.headers.has("Signature-Input") === (firstSpec === "rfc9421")
             ? new Response("Unauthorized", { status: 401 })
             : Response.redirect(url, 302),
         async (fetched) => {
-          await rejects(
-            fallbackLoader(start),
-            (e) => isUnsupportedProtocolError(e, url),
+          await rejects(fallbackLoader(start), (e) =>
+            isUnsupportedProtocolError(e, url),
           );
-          deepStrictEqual(fetched.map((r) => r.url), [start, start]);
+          deepStrictEqual(
+            fetched.map((r) => r.url),
+            [start, start],
+          );
           deepStrictEqual(
             fetched.map((r) => r.headers.has("Signature-Input")),
             [firstSpec === "rfc9421", firstSpec !== "rfc9421"],
@@ -1350,36 +1403,34 @@ for (const url of unsupportedUrls) {
   }
 
   for (const html of [false, true]) {
-    test(
-      `getAuthenticatedDocumentLoader() rejects ${
-        html ? "HTML" : "Link header"
-      } alternates to ${scheme} URLs with private addresses allowed`,
-      async () => {
-        const start = "https://example.com/alternate-to-unsupported";
-        await withFetchStub(
-          () =>
-            html
-              ? new Response(
+    test(`getAuthenticatedDocumentLoader() rejects ${
+      html ? "HTML" : "Link header"
+    } alternates to ${scheme} URLs with private addresses allowed`, async () => {
+      const start = "https://example.com/alternate-to-unsupported";
+      await withFetchStub(
+        () =>
+          html
+            ? new Response(
                 `<link rel="alternate" type="application/activity+json" href="${url}">`,
                 { headers: { "Content-Type": "text/html" } },
               )
-              : new Response("", {
+            : new Response("", {
                 headers: {
                   "Content-Type": "text/plain",
-                  Link:
-                    `<${url}>; rel="alternate"; type="application/activity+json"`,
+                  Link: `<${url}>; rel="alternate"; type="application/activity+json"`,
                 },
               }),
-          async (fetched) => {
-            await rejects(
-              loader(start),
-              (e) => isUnsupportedProtocolError(e, url),
-            );
-            deepStrictEqual(fetched.map((r) => r.url), [start]);
-          },
-        );
-      },
-    );
+        async (fetched) => {
+          await rejects(loader(start), (e) =>
+            isUnsupportedProtocolError(e, url),
+          );
+          deepStrictEqual(
+            fetched.map((r) => r.url),
+            [start],
+          );
+        },
+      );
+    });
   }
 }
 
@@ -1409,25 +1460,28 @@ function createRecordedResponse(
   const chunkSize = init.chunkSize ?? 256;
   let offset = 0;
   let settled = false;
-  const body = new ReadableStream<Uint8Array>({
-    pull(controller) {
-      if (offset >= bytes.length) {
+  const body = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        if (offset >= bytes.length) {
+          settled = true;
+          events.push(`consumed #${index}`);
+          controller.close();
+          return;
+        }
+        controller.enqueue(bytes.slice(offset, offset + chunkSize));
+        offset += chunkSize;
+      },
+      cancel() {
         settled = true;
-        events.push(`consumed #${index}`);
-        controller.close();
-        return;
-      }
-      controller.enqueue(bytes.slice(offset, offset + chunkSize));
-      offset += chunkSize;
+        events.push(`cancel #${index}${cancelSuffix()}`);
+        if (init.failCancel) throw new Error(`cancel #${index} failed`);
+        // Like a branch of a tee whose other branch is never cancelled:
+        if (init.hangCancel) return new Promise<void>(() => {});
+      },
     },
-    cancel() {
-      settled = true;
-      events.push(`cancel #${index}${cancelSuffix()}`);
-      if (init.failCancel) throw new Error(`cancel #${index} failed`);
-      // Like a branch of a tee whose other branch is never cancelled:
-      if (init.hangCancel) return new Promise<void>(() => {});
-    },
-  }, { highWaterMark: 0 });
+    { highWaterMark: 0 },
+  );
   return {
     response: new Response(body, {
       status: init.status ?? 200,
@@ -1488,7 +1542,7 @@ function recordHops(
             events,
             index,
             await respond(request, index),
-            () => closing ? " by close" : "",
+            () => (closing ? " by close" : ""),
           );
           tracked.push({ ...recorded, index });
           return recorded.response;
@@ -1518,23 +1572,27 @@ function recordHops(
 test("authenticated loader closes a hop that opens after its timeout", async () => {
   const url = "https://example.com/late-open";
   let release: () => void = () => {};
-  const opened = new Promise<void>((resolve) => release = resolve);
+  const opened = new Promise<void>((resolve) => (release = resolve));
   let closed: () => void = () => {};
-  const closure = new Promise<void>((resolve) => closed = resolve);
+  const closure = new Promise<void>((resolve) => (closed = resolve));
   const hops = recordHops(() => jsonDocument);
-  const loader = createAuthenticatedDocumentLoader(identity, { timeout: 20 }, {
-    async openHop(url) {
-      await opened;
-      const session = await hops.openHop(url);
-      return {
-        ...session,
-        async close() {
-          await session.close();
-          closed();
-        },
-      };
+  const loader = createAuthenticatedDocumentLoader(
+    identity,
+    { timeout: 20 },
+    {
+      async openHop(url) {
+        await opened;
+        const session = await hops.openHop(url);
+        return {
+          ...session,
+          async close() {
+            await session.close();
+            closed();
+          },
+        };
+      },
     },
-  });
+  );
   await rejects(loader(url), (error) => assertTimeoutFetchError(error, url));
   release();
   await closure;

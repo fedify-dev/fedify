@@ -81,9 +81,13 @@ export interface GenerateDirective {
 export function isGenerateDirective(
   value: unknown,
 ): value is GenerateDirective {
-  return value != null && typeof value === "object" && !Array.isArray(value) &&
+  return (
+    value != null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
     Object.hasOwn(value, "generate") &&
-    typeof (value as { generate?: unknown }).generate === "string";
+    typeof (value as { generate?: unknown }).generate === "string"
+  );
 }
 
 /** A fixed lorem ipsum corpus used by the `lorem` generator. */

@@ -23,9 +23,10 @@ export function createFedifyMiddleware(
 
   return defineEventHandler(async (event) => {
     const request = toWebRequest(event);
-    const contextData = typeof contextDataFactory === "function"
-      ? await contextDataFactory(event, request)
-      : undefined;
+    const contextData =
+      typeof contextDataFactory === "function"
+        ? await contextDataFactory(event, request)
+        : undefined;
 
     const result = await fetchWithFedify(
       federation.fetch.bind(federation),

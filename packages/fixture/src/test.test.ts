@@ -34,7 +34,7 @@ nodeTest("the ESM build registers portable tests on Node.js", () => {
       "--input-type=module",
       "--eval",
       `import { test } from ${JSON.stringify(fixtureUrl.href)};\n` +
-      `test("external ESM test", () => {});`,
+        `test("external ESM test", () => {});`,
     ],
     { encoding: "utf8", env },
   );
@@ -81,12 +81,13 @@ const skip = "Deno" in globalThis;
 
 function fixtureRoot(): string {
   // The Node script runs from dist-tests; avoid import.meta in the CJS build.
-  for (let dir = process.cwd();; dir = dirname(dir)) {
+  for (let dir = process.cwd(); ; dir = dirname(dir)) {
     const manifest = join(dir, "package.json");
     if (
       existsSync(manifest) &&
       JSON.parse(readFileSync(manifest, "utf8")).name === "@fedify/fixture"
-    ) return dir;
+    )
+      return dir;
     if (dir === dirname(dir)) throw new Error("Cannot find @fedify/fixture");
   }
 }
@@ -94,12 +95,14 @@ function fixtureRoot(): string {
 for (const format of ["module", "commonjs"] as const) {
   // Bun 1.2 ignores node:test's skip option; these probes require Node.
   if ("Bun" in globalThis) break;
-  const load = format === "module"
-    ? 'const { test, testDefinitions } = await import("@fedify/fixture");'
-    : 'const { test, testDefinitions } = require("@fedify/fixture");';
-  const resolve = format === "module"
-    ? 'import.meta.resolve("@fedify/fixture")'
-    : 'require.resolve("@fedify/fixture")';
+  const load =
+    format === "module"
+      ? 'const { test, testDefinitions } = await import("@fedify/fixture");'
+      : 'const { test, testDefinitions } = require("@fedify/fixture");';
+  const resolve =
+    format === "module"
+      ? 'import.meta.resolve("@fedify/fixture")'
+      : 'require.resolve("@fedify/fixture")';
   const patch = `
     const { createRequire } = await import("node:module");
     createRequire(process.cwd() + "/")("node:test").test = () => {
@@ -196,7 +199,8 @@ for (const format of ["module", "commonjs"] as const) {
         test("Workers test", () => console.log("WORKERS_CALLBACK_EXECUTED"));
         console.log("DEFINITIONS:", testDefinitions.length);
       `,
-      patch + `
+      patch +
+        `
         Object.defineProperty(globalThis, "navigator", {
           value: { userAgent: "Cloudflare-Workers" }, configurable: true,
         });

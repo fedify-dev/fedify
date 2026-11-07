@@ -9,9 +9,7 @@ import {
 import { encodeMultibase, exportDidKey, parseIri } from "@fedify/vocab-runtime";
 import { assertEquals } from "@std/assert";
 import serialize from "json-canon";
-import vector from "../../test-vectors/fep-8b32/map-local-create-note.json" with {
-  type: "json",
-};
+import vector from "../../test-vectors/fep-8b32/map-local-create-note.json" with { type: "json" };
 import {
   createInboxContext,
   createRequestContext,
@@ -87,9 +85,10 @@ async function handle(
   requestOrBody: Request | Record<string, unknown>,
   dispatched?: { count: number },
 ): Promise<Response> {
-  const request = requestOrBody instanceof Request
-    ? requestOrBody
-    : requestFor(requestOrBody);
+  const request =
+    requestOrBody instanceof Request
+      ? requestOrBody
+      : requestFor(requestOrBody);
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
   const context = createRequestContext({
     federation,
@@ -177,9 +176,10 @@ test("handleInbox() enforces compounds after alternate outer auth", async () => 
     actor: rsaPublicKey3.ownerId!.href,
     object,
   });
-  const validInner = structuredClone(
-    vector.documents.securedInner,
-  ) as Record<string, unknown>;
+  const validInner = structuredClone(vector.documents.securedInner) as Record<
+    string,
+    unknown
+  >;
   const unsignedInner = structuredClone(validInner);
   delete unsignedInner.proof;
 
@@ -192,12 +192,9 @@ test("handleInbox() enforces compounds after alternate outer auth", async () => 
           rsaPublicKey3.id!,
         );
       }
-      const signed = await signJsonLd(
-        body,
-        rsaPrivateKey3,
-        rsaPublicKey3.id!,
-        { contextLoader: mockDocumentLoader },
-      );
+      const signed = await signJsonLd(body, rsaPrivateKey3, rsaPublicKey3.id!, {
+        contextLoader: mockDocumentLoader,
+      });
       return requestFor(signed);
     };
 
@@ -257,9 +254,9 @@ test("handleInbox() preserves ordinary top-level proof behavior", async () => {
 async function signLd(
   document: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  return await signJsonLd(document, rsaPrivateKey3, rsaPublicKey3.id!, {
+  return (await signJsonLd(document, rsaPrivateKey3, rsaPublicKey3.id!, {
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
 }
 
 async function isLdSignatureVerified(
@@ -309,7 +306,7 @@ test("handleInbox() ignores a portable activity's Linked Data Signature", async 
     vector.documents.finalSecuredCompound,
   ) as Record<string, unknown>;
   tampered.object = {
-    ...tampered.object as Record<string, unknown>,
+    ...(tampered.object as Record<string, unknown>),
     content: "Tampered",
   };
   assertEquals((await handleDispatched(await signLd(tampered)))[0], 401);
@@ -357,9 +354,10 @@ test("handleInbox() verifies compounds with verified Linked Data Signatures", as
   assertEquals(await isLdSignatureVerified(valid), true);
   assertEquals(await handleDispatched(valid), [202, "", 1]);
 
-  const invalidInner = structuredClone(
-    vector.documents.securedInner,
-  ) as Record<string, unknown>;
+  const invalidInner = structuredClone(vector.documents.securedInner) as Record<
+    string,
+    unknown
+  >;
   invalidInner.content = "Tampered";
   const invalid = await sign(invalidInner);
   assertEquals(await isLdSignatureVerified(invalid), true);
@@ -398,10 +396,11 @@ test("handleInbox() keeps embedded signature properties in proof inputs", async 
 
   const innerWithoutSignature = structuredClone(innerWithSignature);
   delete innerWithoutSignature.signature;
-  assertEquals(
-    await handleDispatched(await sign(innerWithoutSignature)),
-    [401, COMPOUND_FAILURE, 0],
-  );
+  assertEquals(await handleDispatched(await sign(innerWithoutSignature)), [
+    401,
+    COMPOUND_FAILURE,
+    0,
+  ]);
 });
 
 test("handleInbox() inspects compounds without the Linked Data Signature", async () => {
@@ -443,7 +442,7 @@ test("handleInbox() accepts portable actors with keys at ap: URIs", async () => 
   const privateJwk = await crypto.subtle.exportKey("jwk", ed25519PrivateKey);
   const actorId = `ap://${did}/actor`;
   const inboxId = `https://gw.example/.well-known/apgateway/${did}/actor/inbox`;
-  const actor = await new Person({
+  const actor = (await new Person({
     id: parseIri(actorId),
     inbox: new URL(inboxId),
     gateways: [new URL("https://gw.example")],
@@ -462,7 +461,7 @@ test("handleInbox() accepts portable actors with keys at ap: URIs", async () => 
   }).toJsonLd({
     format: "compact",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const update = async (keyBase: string) => {
     const [multikey] = actor.assertionMethod as Record<string, unknown>[];
     return await secureDocument(
@@ -479,7 +478,7 @@ test("handleInbox() accepts portable actors with keys at ap: URIs", async () => 
             ...actor,
             id: actorId,
             publicKey: {
-              ...actor.publicKey as Record<string, unknown>,
+              ...(actor.publicKey as Record<string, unknown>),
               id: `${keyBase}#main-key`,
               owner: actorId,
             },
@@ -500,12 +499,10 @@ test("handleInbox() accepts portable actors with keys at ap: URIs", async () => 
     );
   };
 
-  for (
-    const keyBase of [
-      actorId,
-      `ap+ef61://${encodeURIComponent(did)}/actor`,
-    ]
-  ) {
+  for (const keyBase of [
+    actorId,
+    `ap+ef61://${encodeURIComponent(did)}/actor`,
+  ]) {
     const dispatched = { count: 0 };
     const response = await handle(await update(keyBase), dispatched);
     assertEquals([response.status, dispatched.count], [202, 1], keyBase);

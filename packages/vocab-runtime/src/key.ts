@@ -76,13 +76,9 @@ export async function importSpki(pem: string): Promise<CryptoKey> {
   if (algorithm == null) {
     throw new TypeError("Unsupported algorithm: " + oid);
   }
-  return await crypto.subtle.importKey(
-    "spki",
-    spki,
-    algorithm,
-    true,
-    ["verify"],
-  );
+  return await crypto.subtle.importKey("spki", spki, algorithm, true, [
+    "verify",
+  ]);
 }
 
 /**
@@ -195,7 +191,7 @@ export async function exportDidKey(key: CryptoKey): Promise<string> {
       "Unsupported key type: " + JSON.stringify(key.algorithm),
     );
   }
-  return DID_KEY_PREFIX + await exportMultibaseKey(key);
+  return DID_KEY_PREFIX + (await exportMultibaseKey(key));
 }
 
 /**
@@ -241,7 +237,8 @@ export async function importMultibaseKey(key: string): Promise<CryptoKey> {
   const decoded = decodeMultibase(key);
   const { code } = getMulticodecPrefix(decoded);
   const content = removeMulticodecPrefix(decoded);
-  if (code === 0x1205) { // rsa-pub
+  if (code === 0x1205) {
+    // rsa-pub
     const keyObject = createPublicKey({
       // oxlint-disable-next-line typescript/no-explicit-any
       key: content as any,
@@ -249,9 +246,8 @@ export async function importMultibaseKey(key: string): Promise<CryptoKey> {
       type: "pkcs1",
     });
     const exported = keyObject.export({ type: "spki", format: "der" });
-    const spki = exported instanceof Uint8Array
-      ? exported
-      : new Uint8Array(exported);
+    const spki =
+      exported instanceof Uint8Array ? exported : new Uint8Array(exported);
     return await crypto.subtle.importKey(
       "spki",
       new Uint8Array(spki),
@@ -259,7 +255,8 @@ export async function importMultibaseKey(key: string): Promise<CryptoKey> {
       true,
       ["verify"],
     );
-  } else if (code === 0xed) { // ed25519-pub
+  } else if (code === 0xed) {
+    // ed25519-pub
     return await crypto.subtle.importKey(
       "raw",
       content.slice(),

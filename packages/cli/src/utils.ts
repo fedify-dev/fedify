@@ -11,7 +11,8 @@ import process from "node:process";
 import util from "node:util";
 import { getIriKey } from "./portable.ts";
 
-export const colorEnabled: boolean = process.stdout.isTTY &&
+export const colorEnabled: boolean =
+  process.stdout.isTTY &&
   !("NO_COLOR" in process.env && process.env.NO_COLOR !== "");
 
 export const colors = new Chalk(colorEnabled ? {} : { level: 0 });
@@ -56,9 +57,7 @@ export async function matchesActor(
   const actorUri = actor.id;
   if (actorUri == null) return false;
   const actorKey = getIriKey(actorUri);
-  let actorHandle:
-    | Promise<{ handle: string } | { error: unknown }>
-    | undefined;
+  let actorHandle: Promise<{ handle: string } | { error: unknown }> | undefined;
   let handleError: { error: unknown } | undefined;
   for (const entry of actorList) {
     if (entry == "*") return true;
@@ -89,15 +88,16 @@ export const isPromise = <T>(a: unknown): a is Promise<T> =>
  * The object that `set()` returns: the input with the computed property,
  * wrapped in a promise when the computed value is a promise.
  */
-type SetResult<K extends PropertyKey, T, S> = S extends Promise<infer U>
-  ? Promise<T & { [P in K]: Awaited<U> }>
-  : T & { [P in K]: S };
+type SetResult<K extends PropertyKey, T, S> =
+  S extends Promise<infer U>
+    ? Promise<T & { [P in K]: Awaited<U> }>
+    : T & { [P in K]: S };
 
 export function set<K extends PropertyKey, T extends object, S>(
   key: K,
   f: (value: T) => S,
 ): (obj: T) => SetResult<K, T, S> {
-  return ((obj) => {
+  return (obj) => {
     const result = f(obj);
     if (isPromise<S extends Promise<infer U> ? U : never>(result)) {
       return result.then((value) => ({ ...obj, [key]: value })) as SetResult<
@@ -106,18 +106,17 @@ export function set<K extends PropertyKey, T extends object, S>(
         S
       >;
     }
-    return ({ ...obj, [key]: result }) as SetResult<K, T, S>;
-  });
+    return { ...obj, [key]: result } as SetResult<K, T, S>;
+  };
 }
 
 export const merge =
   (source: Parameters<typeof toMerged>[1] = {}) =>
-  (target: Parameters<typeof toMerged>[0] = {}) => toMerged(target, source);
+  (target: Parameters<typeof toMerged>[0] = {}) =>
+    toMerged(target, source);
 
 export const isNotFoundError = (e: unknown): e is { code: "ENOENT" } =>
-  isObject(e) &&
-  "code" in e &&
-  e.code === "ENOENT";
+  isObject(e) && "code" in e && e.code === "ENOENT";
 
 export function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -223,17 +222,21 @@ export type RequiredNotNull<T> = {
 
 export const getCwd = () => process.cwd();
 
-export const replace = (
-  pattern: string | RegExp,
-  replacement: string | ((substring: string, ...args: unknown[]) => string),
-) =>
-(text: string): string => text.replace(pattern, replacement as string);
+export const replace =
+  (
+    pattern: string | RegExp,
+    replacement: string | ((substring: string, ...args: unknown[]) => string),
+  ) =>
+  (text: string): string =>
+    text.replace(pattern, replacement as string);
 
-export const replaceAll = (
-  pattern: string | RegExp,
-  replacement: string | ((substring: string, ...args: unknown[]) => string),
-) =>
-(text: string): string => text.replaceAll(pattern, replacement as string);
+export const replaceAll =
+  (
+    pattern: string | RegExp,
+    replacement: string | ((substring: string, ...args: unknown[]) => string),
+  ) =>
+  (text: string): string =>
+    text.replaceAll(pattern, replacement as string);
 
 export const getOsType = () => process.platform;
 
@@ -246,14 +249,11 @@ export async function writeTextFile(
   return await writeFile(path, data);
 }
 
-export const resolveProps = async <T extends object>(obj: T): Promise<
-  { [P in keyof T]: Awaited<T[P]> }
-> =>
+export const resolveProps = async <T extends object>(
+  obj: T,
+): Promise<{ [P in keyof T]: Awaited<T[P]> }> =>
   Object.fromEntries(
-    await Array.fromAsync(
-      Object.entries(obj),
-      async ([k, v]) => [k, await v],
-    ),
+    await Array.fromAsync(Object.entries(obj), async ([k, v]) => [k, await v]),
   ) as Promise<{ [P in keyof T]: Awaited<T[P]> }>;
 
 export const formatJson = (obj: unknown) => JSON.stringify(obj, null, 2) + "\n";
@@ -270,13 +270,15 @@ export const exit = (code: number) => process.exit(code);
 /**
  * Generic type to represent the types of the items in iterables.
  */
-export type ItersItems<T extends Iterable<unknown>[]> = T extends [] ? []
+export type ItersItems<T extends Iterable<unknown>[]> = T extends []
+  ? []
   : T extends [infer Head, ...infer Tail]
     ? Head extends Iterable<infer Item>
-      ? Tail extends Iterable<unknown>[] ? [Item, ...ItersItems<Tail>]
-      : [Item]
-    : never
-  : never;
+      ? Tail extends Iterable<unknown>[]
+        ? [Item, ...ItersItems<Tail>]
+        : [Item]
+      : never
+    : never;
 
 /**
  * ```haskell
@@ -308,8 +310,8 @@ export function* product<T extends Iterable<unknown>[]>(
   }
 }
 
-export type GeneratedType<T extends Generator> = T extends
-  Generator<infer R, unknown, unknown> ? R : never;
+export type GeneratedType<T extends Generator> =
+  T extends Generator<infer R, unknown, unknown> ? R : never;
 
 type PrintMessage = (...args: Parameters<typeof message>) => void;
 export const printMessage: PrintMessage = flow(message, print);

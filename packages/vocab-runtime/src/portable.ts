@@ -126,31 +126,31 @@ export interface PortableObjectReferrer {
  */
 export type PortableObjectVerification =
   | {
-    /** Whether the document is accepted. */
-    readonly verified: false;
-  }
+      /** Whether the document is accepted. */
+      readonly verified: false;
+    }
   | {
-    /** Whether the document is accepted. */
-    readonly verified: true;
+      /** Whether the document is accepted. */
+      readonly verified: true;
 
-    /**
-     * Whether the document was accepted without an integrity proof, e.g., as
-     * an unsecured [FEP-ef61] collection served by a gateway that its owner
-     * lists.  Objects embedded in such a document are not trusted because of
-     * their origin; property accessors dereference and verify them one by
-     * one instead.
-     *
-     * [FEP-ef61]: https://w3id.org/fep/ef61
-     */
-    readonly unsecured?: boolean;
+      /**
+       * Whether the document was accepted without an integrity proof, e.g., as
+       * an unsecured [FEP-ef61] collection served by a gateway that its owner
+       * lists.  Objects embedded in such a document are not trusted because of
+       * their origin; property accessors dereference and verify them one by
+       * one instead.
+       *
+       * [FEP-ef61]: https://w3id.org/fep/ef61
+       */
+      readonly unsecured?: boolean;
 
-    /**
-     * An opaque value that the verifier wants to receive again as
-     * {@link PortableObjectReferrer.collectionContext} when objects referred
-     * to by this document, such as collection pages, are verified.
-     */
-    readonly collectionContext?: unknown;
-  };
+      /**
+       * An opaque value that the verifier wants to receive again as
+       * {@link PortableObjectReferrer.collectionContext} when objects referred
+       * to by this document, such as collection pages, are verified.
+       */
+      readonly collectionContext?: unknown;
+    };
 
 /**
  * A function that applies the [FEP-ef61] trust policy to a portable object

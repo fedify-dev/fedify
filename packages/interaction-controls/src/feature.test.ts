@@ -56,12 +56,12 @@ function createServingContext(
       return url in preloadedContexts
         ? preloaded(url, options)
         : Promise.reject(
-          new FetchError(
-            new URL(url),
-            "Not found",
-            new Response(null, { status: 404 }),
-          ),
-        );
+            new FetchError(
+              new URL(url),
+              "Not found",
+              new Response(null, { status: 404 }),
+            ),
+          );
     }
     if (served.error !== undefined) return Promise.reject(served.error);
     return Promise.resolve({
@@ -128,12 +128,12 @@ async function evidenceFor(
   documentSigners: readonly URL[],
   requestSigners: readonly URL[] = [],
 ): Promise<InboxAuthenticationEvidence> {
-  const expandedActivity = await jsonld.expand(
+  const expandedActivity = (await jsonld.expand(
     // oxlint-disable-next-line typescript/no-explicit-any
     document as any,
     // oxlint-disable-next-line typescript/no-explicit-any
     { documentLoader: getDocumentLoader() } as any,
-  ) as Record<string, unknown>[];
+  )) as Record<string, unknown>[];
   return {
     verified: true,
     requestSigners: requestSigners.map((id) => ({
@@ -196,13 +196,11 @@ test("featureInteraction verifies Mastodon's actorless requests", async () => {
     [collectionId.href]: { document: collectionDocument() },
   });
 
-  for (
-    const authentication of [
-      await evidenceFor(document, [actor]),
-      // Without document signatures, the HTTP request signer counts:
-      await evidenceFor(document, [], [actor]),
-    ]
-  ) {
+  for (const authentication of [
+    await evidenceFor(document, [actor]),
+    // Without document signatures, the HTTP request signer counts:
+    await evidenceFor(document, [], [actor]),
+  ]) {
     const result = await featureInteraction.verifyRequest(context, {
       request,
       authentication,
@@ -351,35 +349,45 @@ test("featureInteraction denies mismatched collection owners", async () => {
   assert.equal(result.failure.type, "requesterMismatch");
 });
 
-for (
-  const [label, attributedTo, valid] of [
-    ["an anonymous attribution before the owner", [
-      { type: "Person", name: "Anonymous" },
-      actor.href,
-    ], false],
-    ["an anonymous attribution after the owner", [
-      actor.href,
-      { type: "Person", name: "Anonymous" },
-    ], false],
-    ["an untyped attribution before the owner", [
-      { name: "Anonymous" },
-      actor.href,
-    ], false],
-    ["a blank node attribution after the owner", [
-      actor.href,
-      { id: "_:b0" },
-    ], false],
-    ["a list with an anonymous attribution before the owner", {
+for (const [label, attributedTo, valid] of [
+  [
+    "an anonymous attribution before the owner",
+    [{ type: "Person", name: "Anonymous" }, actor.href],
+    false,
+  ],
+  [
+    "an anonymous attribution after the owner",
+    [actor.href, { type: "Person", name: "Anonymous" }],
+    false,
+  ],
+  [
+    "an untyped attribution before the owner",
+    [{ name: "Anonymous" }, actor.href],
+    false,
+  ],
+  [
+    "a blank node attribution after the owner",
+    [actor.href, { id: "_:b0" }],
+    false,
+  ],
+  [
+    "a list with an anonymous attribution before the owner",
+    {
       "@list": [{ type: "Person", name: "Anonymous" }, actor.href],
-    }, false],
-    ["a list with an anonymous attribution after the owner", {
+    },
+    false,
+  ],
+  [
+    "a list with an anonymous attribution after the owner",
+    {
       "@list": [actor.href, { type: "Person", name: "Anonymous" }],
-    }, false],
-    ["two owners", [actor.href, "https://example.com/users/carol"], false],
-    ["no owner", [], false],
-    ["a list with only the owner", { "@list": [actor.href] }, true],
-  ] as const
-) {
+    },
+    false,
+  ],
+  ["two owners", [actor.href, "https://example.com/users/carol"], false],
+  ["no owner", [], false],
+  ["a list with only the owner", { "@list": [actor.href] }, true],
+] as const) {
   test(`featureInteraction checks a collection with ${label}`, async () => {
     const document = mastodonRequestDocument();
     const result = await featureInteraction.verifyRequest(
@@ -411,27 +419,45 @@ for (
   });
 }
 
-for (
-  const [label, extra, property] of [
-    ["an anonymous instrument before the collection", {
+for (const [label, extra, property] of [
+  [
+    "an anonymous instrument before the collection",
+    {
       instrument: [{ type: "Object", name: "x" }, collectionId.href],
-    }, "instrument"],
-    ["an anonymous instrument after the collection", {
+    },
+    "instrument",
+  ],
+  [
+    "an anonymous instrument after the collection",
+    {
       instrument: [collectionId.href, { type: "Object", name: "x" }],
-    }, "instrument"],
-    ["an untyped instrument before the collection", {
+    },
+    "instrument",
+  ],
+  [
+    "an untyped instrument before the collection",
+    {
       instrument: [{ name: "x" }, collectionId.href],
-    }, "instrument"],
-    ["a list of instruments", {
+    },
+    "instrument",
+  ],
+  [
+    "a list of instruments",
+    {
       instrument: { "@list": [collectionId.href, { name: "x" }] },
-    }, "instrument"],
-    ["two objects", {
+    },
+    "instrument",
+  ],
+  [
+    "two objects",
+    {
       object: [targetId.href, "https://example.net/users/dave"],
-    }, "object"],
-    ["an anonymous actor", { actor: { type: "Person", name: "x" } }, "actor"],
-    ["a blank node actor", { actor: { id: "_:b0" } }, "actor"],
-  ] as const
-) {
+    },
+    "object",
+  ],
+  ["an anonymous actor", { actor: { type: "Person", name: "x" } }, "actor"],
+  ["a blank node actor", { actor: { id: "_:b0" } }, "actor"],
+] as const) {
   test(`featureInteraction rejects a request with ${label}`, async () => {
     const document = mastodonRequestDocument(extra);
     const result = await featureInteraction.verifyRequest(
@@ -465,17 +491,15 @@ test("featureInteraction binds authentication to the verified request", async ()
     [collectionId.href]: { document: collectionDocument() },
   });
   const request = await parseRequest(mastodonRequestDocument());
-  for (
-    const [other, property] of [
-      [mastodonRequestDocument({ type: "Offer" }), "type"],
-      [mastodonRequestDocument({ id: "https://example.com/requests/6" }), "id"],
-      [mastodonRequestDocument({ actor: actor.href }), "actor"],
-      [
-        mastodonRequestDocument({ instrument: "https://example.com/other" }),
-        "instrument",
-      ],
-    ] as const
-  ) {
+  for (const [other, property] of [
+    [mastodonRequestDocument({ type: "Offer" }), "type"],
+    [mastodonRequestDocument({ id: "https://example.com/requests/6" }), "id"],
+    [mastodonRequestDocument({ actor: actor.href }), "actor"],
+    [
+      mastodonRequestDocument({ instrument: "https://example.com/other" }),
+      "instrument",
+    ],
+  ] as const) {
     const result = await featureInteraction.verifyRequest(context, {
       request,
       authentication: await evidenceFor(other, [actor]),
@@ -564,11 +588,16 @@ test("featureInteraction rejects collection URLs with credentials", async () => 
   const document = mastodonRequestDocument({ instrument });
   const fetched: string[] = [];
   const result = await featureInteraction.verifyRequest(
-    createServingContext({
-      [targetId.href]: {
-        document: await target.toJsonLd({ contextLoader: getDocumentLoader() }),
+    createServingContext(
+      {
+        [targetId.href]: {
+          document: await target.toJsonLd({
+            contextLoader: getDocumentLoader(),
+          }),
+        },
       },
-    }, fetched),
+      fetched,
+    ),
     {
       request: await parseRequest(document),
       authentication: await evidenceFor(document, [actor]),
@@ -581,31 +610,32 @@ test("featureInteraction rejects collection URLs with credentials", async () => 
 
 test("featureInteraction tells transient collection failures", async () => {
   const document = mastodonRequestDocument();
-  for (
-    const [status, transient] of [
-      [503, true],
-      [429, true],
-      [408, true],
-      [404, false],
-      [410, false],
-    ] as const
-  ) {
+  for (const [status, transient] of [
+    [503, true],
+    [429, true],
+    [408, true],
+    [404, false],
+    [410, false],
+  ] as const) {
     const fetched: string[] = [];
     const result = await featureInteraction.verifyRequest(
-      createServingContext({
-        [targetId.href]: {
-          document: await target.toJsonLd({
-            contextLoader: getDocumentLoader(),
-          }),
+      createServingContext(
+        {
+          [targetId.href]: {
+            document: await target.toJsonLd({
+              contextLoader: getDocumentLoader(),
+            }),
+          },
+          [collectionId.href]: {
+            error: new FetchError(
+              collectionId,
+              `HTTP ${status}`,
+              new Response(null, { status }),
+            ),
+          },
         },
-        [collectionId.href]: {
-          error: new FetchError(
-            collectionId,
-            `HTTP ${status}`,
-            new Response(null, { status }),
-          ),
-        },
-      }, fetched),
+        fetched,
+      ),
       {
         request: await parseRequest(document),
         authentication: await evidenceFor(document, [actor]),
@@ -624,29 +654,27 @@ test("featureInteraction tells transient collection failures", async () => {
 
 test("featureInteraction rejects malformed collections", async () => {
   const document = mastodonRequestDocument();
-  for (
-    const extra of [
-      { published: "not-a-date" },
-      {
-        attachment: {
-          type: "Link",
-          href: "https://x.example/",
-          hreflang: "not a tag",
-        },
+  for (const extra of [
+    { published: "not-a-date" },
+    {
+      attachment: {
+        type: "Link",
+        href: "https://x.example/",
+        hreflang: "not a tag",
       },
-      {
-        "@context": [...CONTEXT, "https://w3id.org/security/data-integrity/v1"],
-        proof: {
-          type: "DataIntegrityProof",
-          cryptosuite: "eddsa-jcs-2022",
-          verificationMethod: "https://example.com/users/alice#key",
-          proofPurpose: "assertionMethod",
-          proofValue: "!invalid-multibase",
-          created: "2026-01-01T00:00:00Z",
-        },
+    },
+    {
+      "@context": [...CONTEXT, "https://w3id.org/security/data-integrity/v1"],
+      proof: {
+        type: "DataIntegrityProof",
+        cryptosuite: "eddsa-jcs-2022",
+        verificationMethod: "https://example.com/users/alice#key",
+        proofPurpose: "assertionMethod",
+        proofValue: "!invalid-multibase",
+        created: "2026-01-01T00:00:00Z",
       },
-    ]
-  ) {
+    },
+  ]) {
     const result = await featureInteraction.verifyRequest(
       createServingContext({
         [targetId.href]: {
@@ -730,12 +758,10 @@ test("featureInteraction authenticates fetched requests by their origin", async 
     request: fetchedRequest,
   });
   assert.equal(ok.verified, true);
-  for (
-    const url of [
-      "https://attacker.example/requests/1",
-      "https://example.com/requests/redirect",
-    ]
-  ) {
+  for (const url of [
+    "https://attacker.example/requests/1",
+    "https://example.com/requests/redirect",
+  ]) {
     const result = await featureInteraction.verifyRequest(context, {
       request: new URL(url),
     });
@@ -905,10 +931,10 @@ test("featureInteraction does not recognize standalone featured items", () => {
   assert.equal(featureInteraction.recognizeImpolite(target), null);
 });
 
-const portableKeyPair = await crypto.subtle.generateKey("Ed25519", true, [
+const portableKeyPair = (await crypto.subtle.generateKey("Ed25519", true, [
   "sign",
   "verify",
-]) as CryptoKeyPair;
+])) as CryptoKeyPair;
 const portableDid = await exportDidKey(portableKeyPair.publicKey);
 const portableActor = `ap://${portableDid}/actor`;
 const portableCollection = `ap://${portableDid}/featured`;
@@ -927,13 +953,15 @@ function compatibleId(gateway: string, id: string): string {
 function serialize(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(serialize).join(",")}]`;
   if (value != null && typeof value === "object") {
-    return `{${
-      Object.keys(value).sort().map((key) =>
-        `${JSON.stringify(key)}:${
-          serialize((value as Record<string, unknown>)[key])
-        }`
-      ).join(",")
-    }}`;
+    return `{${Object.keys(value)
+      .sort()
+      .map(
+        (key) =>
+          `${JSON.stringify(key)}:${serialize(
+            (value as Record<string, unknown>)[key],
+          )}`,
+      )
+      .join(",")}}`;
   }
   return JSON.stringify(value);
 }
@@ -961,8 +989,8 @@ async function signPortable(
       "Ed25519",
       portableKeyPair.privateKey,
       new Uint8Array([
-        ...await digest(proofConfig),
-        ...await digest(document),
+        ...(await digest(proofConfig)),
+        ...(await digest(document)),
       ]),
     ),
   );
@@ -992,19 +1020,19 @@ function createPortableContext(
   } as unknown as Context<void>;
 }
 
-for (
-  const [label, attributedTo, valid] of [
-    ["its owner", portableActor, true],
-    ["an anonymous attribution before its owner", [
-      { type: "Person", name: "Anonymous" },
-      portableActor,
-    ], false],
-    ["an anonymous attribution after its owner", [
-      portableActor,
-      { name: "Anonymous" },
-    ], false],
-  ] as const
-) {
+for (const [label, attributedTo, valid] of [
+  ["its owner", portableActor, true],
+  [
+    "an anonymous attribution before its owner",
+    [{ type: "Person", name: "Anonymous" }, portableActor],
+    false,
+  ],
+  [
+    "an anonymous attribution after its owner",
+    [portableActor, { name: "Anonymous" }],
+    false,
+  ],
+] as const) {
   test(`featureInteraction checks a portable collection with ${label}`, async () => {
     const instrument = compatibleId("https://gw.example", portableCollection);
     const document = mastodonRequestDocument({ instrument });
@@ -1029,13 +1057,15 @@ for (
         request: await parseRequest(document),
         // The requester is authenticated by a proof of the owner's DID:
         authentication: {
-          ...await evidenceFor(document, []),
-          documentSigners: [{
-            kind: "portable-authority",
-            id: new URL(portableDid),
-            mechanism: "object-integrity-proofs",
-            keyId: null,
-          }],
+          ...(await evidenceFor(document, [])),
+          documentSigners: [
+            {
+              kind: "portable-authority",
+              id: new URL(portableDid),
+              mechanism: "object-integrity-proofs",
+              keyId: null,
+            },
+          ],
         },
       },
     );

@@ -33,20 +33,25 @@ const expressDescription: WebFrameworkDescription = {
     loggingFile: "src/logging.ts",
     testFile: "scripts/smoke.test.ts",
     files: {
-      "src/app.ts": (await readTemplate("express/app.ts"))
-        .replace(/\/\* logger \*\//, projectName),
+      "src/app.ts": (await readTemplate("express/app.ts")).replace(
+        /\/\* logger \*\//,
+        projectName,
+      ),
       "src/index.ts": await readTemplate("express/index.ts"),
     },
-    compilerOptions: pm === "deno" ? undefined : {
-      "lib": ["ESNext", "DOM"],
-      "target": "ESNext",
-      "module": "NodeNext",
-      "moduleResolution": "NodeNext",
-      "allowImportingTsExtensions": true,
-      "verbatimModuleSyntax": true,
-      "noEmit": true,
-      "strict": true,
-    },
+    compilerOptions:
+      pm === "deno"
+        ? undefined
+        : {
+            "lib": ["ESNext", "DOM"],
+            "target": "ESNext",
+            "module": "NodeNext",
+            "moduleResolution": "NodeNext",
+            "allowImportingTsExtensions": true,
+            "verbatimModuleSyntax": true,
+            "noEmit": true,
+            "strict": true,
+          },
     tasks: TASKS[pmToRt(pm)],
     instruction: getInstruction(pm, 8000),
   }),
@@ -56,10 +61,8 @@ export default expressDescription;
 
 const TASKS = {
   deno: {
-    dev:
-      "deno run --allow-read --allow-net --allow-env --allow-sys --watch ./src/index.ts",
-    prod:
-      "deno run --allow-read --allow-net --allow-env --allow-sys ./src/index.ts",
+    dev: "deno run --allow-read --allow-net --allow-env --allow-sys --watch ./src/index.ts",
+    prod: "deno run --allow-read --allow-net --allow-env --allow-sys ./src/index.ts",
     test: getTestTask("deno"),
   },
   bun: {

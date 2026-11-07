@@ -41,7 +41,7 @@ function filterTracesByTypes(
 ): TraceSummary[] {
   if (types.length === 0) return [...traces];
   return traces.filter((trace) =>
-    trace.activityTypes.some((type) => types.includes(type))
+    trace.activityTypes.some((type) => types.includes(type)),
   );
 }
 
@@ -66,19 +66,18 @@ function snapshotOf(
 ): string {
   const types = distinctActivityTypes(traces);
   const rows = filterTracesByTypes(traces, selectedTypes)
-    .map((trace) =>
-      `${trace.traceId}:${
-        [...trace.activityTypes].sort().join("+")
-      }:${trace.activityCount}`
+    .map(
+      (trace) =>
+        `${trace.traceId}:${[...trace.activityTypes]
+          .sort()
+          .join("+")}:${trace.activityCount}`,
     )
     .sort();
   return `${types.join(",")}|${rows.join(";")}`;
 }
 
 /** Collects the distinct dot-joined log categories, sorted. */
-function distinctLogCategories(
-  logs: readonly SerializedLogRecord[],
-): string[] {
+function distinctLogCategories(logs: readonly SerializedLogRecord[]): string[] {
   const categories = new Set<string>();
   for (const log of logs) categories.add(log.category.join("."));
   return [...categories].sort();
@@ -112,7 +111,7 @@ function filterLogs(
   if (filter.q) {
     const needle = filter.q.toLowerCase();
     filtered = filtered.filter((log) =>
-      log.message.toLowerCase().includes(needle)
+      log.message.toLowerCase().includes(needle),
     );
   }
   return filtered;
@@ -152,9 +151,8 @@ export function createDebugApp(
       app.post("/login", async (c) => {
         const body = await c.req.parseBody();
         const password = typeof body.password === "string" ? body.password : "";
-        const username = typeof body.username === "string"
-          ? body.username
-          : undefined;
+        const username =
+          typeof body.username === "string" ? body.username : undefined;
         const ok = await checkAuth(auth, { username, password });
         if (!ok) {
           return c.html(
@@ -173,10 +171,9 @@ export function createDebugApp(
           status: 303,
           headers: {
             "Location": pathPrefix + "/",
-            "Set-Cookie":
-              `${SESSION_COOKIE_NAME}=${sig}; Path=${pathPrefix}; HttpOnly; SameSite=Strict${
-                secure ? "; Secure" : ""
-              }`,
+            "Set-Cookie": `${SESSION_COOKIE_NAME}=${sig}; Path=${pathPrefix}; HttpOnly; SameSite=Strict${
+              secure ? "; Secure" : ""
+            }`,
           },
         });
       });
@@ -188,10 +185,9 @@ export function createDebugApp(
           status: 303,
           headers: {
             "Location": pathPrefix + "/",
-            "Set-Cookie":
-              `${SESSION_COOKIE_NAME}=; Path=${pathPrefix}; HttpOnly; SameSite=Strict${
-                secure ? "; Secure" : ""
-              }; Max-Age=0`,
+            "Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=${pathPrefix}; HttpOnly; SameSite=Strict${
+              secure ? "; Secure" : ""
+            }; Max-Age=0`,
           },
         });
       });
@@ -218,10 +214,7 @@ export function createDebugApp(
 
         // Not authenticated — show login form
         return c.html(
-          <LoginPage
-            pathPrefix={pathPrefix}
-            showUsername={showUsername}
-          />,
+          <LoginPage pathPrefix={pathPrefix} showUsername={showUsername} />,
           401,
         );
       });

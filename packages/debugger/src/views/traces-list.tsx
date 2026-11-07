@@ -43,9 +43,13 @@ export interface TracesListPageProps {
 /**
  * The traces list page of the debug dashboard.
  */
-export const TracesListPage: FC<TracesListPageProps> = (
-  { traces, availableTypes, selectedTypes, initialSnapshot, pathPrefix },
-) => {
+export const TracesListPage: FC<TracesListPageProps> = ({
+  traces,
+  availableTypes,
+  selectedTypes,
+  initialSnapshot,
+  pathPrefix,
+}) => {
   const filtered = selectedTypes.length > 0;
   return (
     <Layout pathPrefix={pathPrefix}>
@@ -72,56 +76,52 @@ export const TracesListPage: FC<TracesListPageProps> = (
         </form>
       )}
       <p>
-        Showing <strong>{traces.length}</strong>{" "}
-        trace{traces.length !== 1 ? "s" : ""}.
+        Showing <strong>{traces.length}</strong> trace
+        {traces.length !== 1 ? "s" : ""}.
       </p>
-      {traces.length === 0
-        ? (
-          <p class="empty">
-            {filtered
-              ? "No traces match the selected filters."
-              : "No traces captured yet."}
-          </p>
-        )
-        : (
-          <table>
-            <thead>
-              <tr>
-                <th>Trace ID</th>
-                <th>Activity Types</th>
-                <th>Activities</th>
-                <th>Timestamp</th>
+      {traces.length === 0 ? (
+        <p class="empty">
+          {filtered
+            ? "No traces match the selected filters."
+            : "No traces captured yet."}
+        </p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Trace ID</th>
+              <th>Activity Types</th>
+              <th>Activities</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            {traces.map((trace) => (
+              <tr key={trace.traceId}>
+                <td>
+                  <a href={`${pathPrefix}/traces/${trace.traceId}`}>
+                    <code>{trace.traceId.slice(0, 8)}</code>
+                  </a>
+                </td>
+                <td>
+                  {trace.activityTypes.map((t) => (
+                    <span key={t} class="badge">
+                      {t}
+                    </span>
+                  ))}
+                  {trace.activityTypes.length === 0 && (
+                    <span class="empty">none</span>
+                  )}
+                </td>
+                <td>{trace.activityCount}</td>
+                <td>
+                  <time datetime={trace.timestamp}>{trace.timestamp}</time>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {traces.map((trace) => (
-                <tr key={trace.traceId}>
-                  <td>
-                    <a href={`${pathPrefix}/traces/${trace.traceId}`}>
-                      <code>{trace.traceId.slice(0, 8)}</code>
-                    </a>
-                  </td>
-                  <td>
-                    {trace.activityTypes.map((t) => (
-                      <span key={t} class="badge">
-                        {t}
-                      </span>
-                    ))}
-                    {trace.activityTypes.length === 0 && (
-                      <span class="empty">none</span>
-                    )}
-                  </td>
-                  <td>{trace.activityCount}</td>
-                  <td>
-                    <time datetime={trace.timestamp}>
-                      {trace.timestamp}
-                    </time>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+            ))}
+          </tbody>
+        </table>
+      )}
       <script
         dangerouslySetInnerHTML={{
           __html: `
@@ -150,13 +150,15 @@ export const TracesListPage: FC<TracesListPageProps> = (
     rows.sort();
     return types.join(",") + "|" + rows.join(";");
   }
-  var prevSnapshot = ${
-            JSON.stringify(initialSnapshot).replace(/</g, "\\u003c")
-          };
+  var prevSnapshot = ${JSON.stringify(initialSnapshot).replace(
+    /</g,
+    "\\u003c",
+  )};
   var interval = setInterval(function() {
-    fetch(${
-            JSON.stringify(pathPrefix).replace(/</g, "\\u003c")
-          } + "/api/traces")
+    fetch(${JSON.stringify(pathPrefix).replace(
+      /</g,
+      "\\u003c",
+    )} + "/api/traces")
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var snapshot = snapshotOf(data);

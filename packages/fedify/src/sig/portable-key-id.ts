@@ -79,8 +79,10 @@ export function hasPortableActor(activity: Activity): boolean {
  * @internal
  */
 export function isCompatibleKeyId(keyId: URL): boolean {
-  return (keyId.protocol === "http:" || keyId.protocol === "https:") &&
-    COMPATIBLE_KEY_ID_PATH_PATTERN.test(keyId.pathname);
+  return (
+    (keyId.protocol === "http:" || keyId.protocol === "https:") &&
+    COMPATIBLE_KEY_ID_PATH_PATTERN.test(keyId.pathname)
+  );
 }
 
 /**
@@ -293,6 +295,12 @@ export async function isSamePublicKey(
     crypto.subtle.exportKey("jwk", a),
     crypto.subtle.exportKey("jwk", b),
   ]);
-  return x.kty === y.kty && x.crv === y.crv && x.n === y.n && x.e === y.e &&
-    x.x === y.x && x.y === y.y;
+  return (
+    x.kty === y.kty &&
+    x.crv === y.crv &&
+    x.n === y.n &&
+    x.e === y.e &&
+    x.x === y.x &&
+    x.y === y.y
+  );
 }

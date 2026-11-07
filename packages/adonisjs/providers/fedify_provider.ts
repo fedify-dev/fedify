@@ -163,9 +163,8 @@ export default class FedifyProvider {
     this.app.container.bind(
       "fedify.config",
       memoizeSuccess(async () => {
-        const provider = this.app.config.get<
-          ConfigProvider<ResolvedFedifyConfig>
-        >("fedify");
+        const provider =
+          this.app.config.get<ConfigProvider<ResolvedFedifyConfig>>("fedify");
         const config = await configProvider.resolve<ResolvedFedifyConfig>(
           this.app,
           provider,
@@ -243,9 +242,8 @@ export default class FedifyProvider {
       const logger = await this.app.container.make("logger");
       this.#loggingConfigured = await configureFedifyLogging({
         logger,
-        categories: config.logging === true
-          ? undefined
-          : config.logging.categories,
+        categories:
+          config.logging === true ? undefined : config.logging.categories,
       });
     }
 

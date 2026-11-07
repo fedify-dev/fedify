@@ -17,11 +17,9 @@ export default defineConfig({
         join(ctx.options.outDir, "templates"),
         { recursive: true },
       );
-      await cp(
-        join("src", "json"),
-        join(ctx.options.outDir, "json"),
-        { recursive: true },
-      );
+      await cp(join("src", "json"), join(ctx.options.outDir, "json"), {
+        recursive: true,
+      });
     },
   },
 });

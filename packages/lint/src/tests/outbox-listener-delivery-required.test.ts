@@ -33,12 +33,10 @@ test(
   }),
 );
 
-for (
-  const [name, code] of [
-    ["uncalled setup", "await target.deliver();"],
-    ["setup called after delivery", "await target.deliver(); setup();"],
-  ] as const
-) {
+for (const [name, code] of [
+  ["uncalled setup", "await target.deliver();"],
+  ["setup called after delivery", "await target.deliver(); setup();"],
+] as const) {
   test(
     `${ruleName}: ❌ Bad - ${name}`,
     lintTest({
@@ -54,10 +52,12 @@ for (
 test(
   `${ruleName}: ❌ Bad - setup writes to a shadowing object`,
   lintTest({
-    code: assignedDelivery.replace(
-      "target.deliver = async () => {",
-      "const target = { deliver: async () => {} }; target.deliver = async () => {",
-    ).replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
+    code: assignedDelivery
+      .replace(
+        "target.deliver = async () => {",
+        "const target = { deliver: async () => {} }; target.deliver = async () => {",
+      )
+      .replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
     rule,
     ruleName,
     expectedError:
@@ -65,22 +65,22 @@ test(
   }),
 );
 
-for (
-  const [name, code] of [
-    ["uncalled setup with conditional assignment", "await target.deliver();"],
-    [
-      "called setup with conditional assignment",
-      "setup(); await target.deliver();",
-    ],
-  ] as const
-) {
+for (const [name, code] of [
+  ["uncalled setup with conditional assignment", "await target.deliver();"],
+  [
+    "called setup with conditional assignment",
+    "setup(); await target.deliver();",
+  ],
+] as const) {
   test(
     `${ruleName}: ❌ Bad - ${name}`,
     lintTest({
-      code: assignedDelivery.replace(
-        "      target.deliver = async () => {",
-        "      if (Math.random() < 0.5) target.deliver = async () => {",
-      ).replace("SETUP_AND_DELIVERY", code),
+      code: assignedDelivery
+        .replace(
+          "      target.deliver = async () => {",
+          "      if (Math.random() < 0.5) target.deliver = async () => {",
+        )
+        .replace("SETUP_AND_DELIVERY", code),
       rule,
       ruleName,
       expectedError:
@@ -92,13 +92,15 @@ for (
 test(
   `${ruleName}: ✅ Good - passed setup callback with conditional assignment`,
   lintTest({
-    code: assignedDelivery.replace(
-      "      target.deliver = async () => {",
-      "      if (true) target.deliver = async () => {",
-    ).replace(
-      "SETUP_AND_DELIVERY",
-      "await Promise.resolve().then(setup); await target.deliver();",
-    ),
+    code: assignedDelivery
+      .replace(
+        "      target.deliver = async () => {",
+        "      if (true) target.deliver = async () => {",
+      )
+      .replace(
+        "SETUP_AND_DELIVERY",
+        "await Promise.resolve().then(setup); await target.deliver();",
+      ),
     rule,
     ruleName,
   }),
@@ -107,13 +109,16 @@ test(
 test(
   `${ruleName}: ❌ Bad - setup assigns a nested object method`,
   lintTest({
-    code: assignedDelivery.replace(
-      "const target = { deliver: async () => {} };",
-      "const target = { methods: { deliver: async () => {} } };",
-    ).replaceAll("target.deliver", "target.methods.deliver").replace(
-      "SETUP_AND_DELIVERY",
-      "setup(); await target.methods.deliver();",
-    ),
+    code: assignedDelivery
+      .replace(
+        "const target = { deliver: async () => {} };",
+        "const target = { methods: { deliver: async () => {} } };",
+      )
+      .replaceAll("target.deliver", "target.methods.deliver")
+      .replace(
+        "SETUP_AND_DELIVERY",
+        "setup(); await target.methods.deliver();",
+      ),
     rule,
     ruleName,
     expectedError:
@@ -121,15 +126,13 @@ test(
   }),
 );
 
-for (
-  const [name, code] of [
-    ["returned method call", "setup(); return target.deliver();"],
-    [
-      "method call in initializer",
-      "setup(); const result = target.deliver(); await result;",
-    ],
-  ] as const
-) {
+for (const [name, code] of [
+  ["returned method call", "setup(); return target.deliver();"],
+  [
+    "method call in initializer",
+    "setup(); const result = target.deliver(); await result;",
+  ],
+] as const) {
   test(
     `${ruleName}: ✅ Good - setup before ${name}`,
     lintTest({
@@ -143,13 +146,15 @@ for (
 test(
   `${ruleName}: ❌ Bad - installed function uses unrelated parameter`,
   lintTest({
-    code: assignedDelivery.replace(
-      /target\.deliver = async \(\) => \{[\s\S]*?\n[ ]{6}\};/,
-      "target.deliver = async ({ sendActivity }) => { sendActivity(); };",
-    ).replace(
-      "SETUP_AND_DELIVERY",
-      "setup(); await target.deliver({ sendActivity: async () => {} });",
-    ),
+    code: assignedDelivery
+      .replace(
+        /target\.deliver = async \(\) => \{[\s\S]*?\n[ ]{6}\};/,
+        "target.deliver = async ({ sendActivity }) => { sendActivity(); };",
+      )
+      .replace(
+        "SETUP_AND_DELIVERY",
+        "setup(); await target.deliver({ sendActivity: async () => {} });",
+      ),
     rule,
     ruleName,
     expectedError:
@@ -160,13 +165,16 @@ test(
 test(
   `${ruleName}: ✅ Good - installed function calls captured delivery alias`,
   lintTest({
-    code: assignedDelivery.replace(
-      "    const setup = () => {",
-      "    const send = ctx.sendActivity.bind(ctx);\n    const setup = () => {",
-    ).replace(
-      /await ctx\.sendActivity\([\s\S]*?\);/,
-      'await send({ identifier: ctx.identifier }, "followers", activity);',
-    ).replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
+    code: assignedDelivery
+      .replace(
+        "    const setup = () => {",
+        "    const send = ctx.sendActivity.bind(ctx);\n    const setup = () => {",
+      )
+      .replace(
+        /await ctx\.sendActivity\([\s\S]*?\);/,
+        'await send({ identifier: ctx.identifier }, "followers", activity);',
+      )
+      .replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
     rule,
     ruleName,
   }),
@@ -175,16 +183,20 @@ test(
 test(
   `${ruleName}: ✅ Good - installed function shadows context but calls captured alias`,
   lintTest({
-    code: assignedDelivery.replace(
-      "    const setup = () => {",
-      "    const send = ctx.sendActivity.bind(ctx);\n    const setup = () => {",
-    ).replace(
-      "target.deliver = async () => {",
-      "target.deliver = async (ctx) => {",
-    ).replace(
-      /await ctx\.sendActivity\([\s\S]*?\);/,
-      'await send({ identifier: "alice" }, "followers", activity);',
-    ).replace("SETUP_AND_DELIVERY", "setup(); await target.deliver({});"),
+    code: assignedDelivery
+      .replace(
+        "    const setup = () => {",
+        "    const send = ctx.sendActivity.bind(ctx);\n    const setup = () => {",
+      )
+      .replace(
+        "target.deliver = async () => {",
+        "target.deliver = async (ctx) => {",
+      )
+      .replace(
+        /await ctx\.sendActivity\([\s\S]*?\);/,
+        'await send({ identifier: "alice" }, "followers", activity);',
+      )
+      .replace("SETUP_AND_DELIVERY", "setup(); await target.deliver({});"),
     rule,
     ruleName,
   }),
@@ -297,76 +309,80 @@ const aliasDelivery = assignedDelivery.replace(
   'await send({ identifier: ctx.identifier }, "followers", activity);',
 );
 
-for (
-  const [name, code] of [
-    [
-      "setup-local alias",
-      aliasDelivery.replace(
+for (const [name, code] of [
+  [
+    "setup-local alias",
+    aliasDelivery
+      .replace(
         "    const setup = () => {",
         "    const setup = () => {\n      const send = ctx.sendActivity.bind(ctx);",
-      ).replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
-    ],
-    [
-      "bracketed context method alias",
-      aliasDelivery.replace(
+      )
+      .replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
+  ],
+  [
+    "bracketed context method alias",
+    aliasDelivery
+      .replace(
         "    const setup = () => {",
         '    const send = ctx["sendActivity"].bind(ctx);\n    const setup = () => {',
-      ).replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
-    ],
-    [
-      "destructured context method alias",
-      aliasDelivery.replace(
+      )
+      .replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
+  ],
+  [
+    "destructured context method alias",
+    aliasDelivery
+      .replace(
         "    const setup = () => {",
         "    const { sendActivity: send } = ctx;\n    const setup = () => {",
-      ).replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
-    ],
-    [
-      "alias initialized after setup",
-      aliasDelivery.replace(
-        "SETUP_AND_DELIVERY",
-        "setup(); const send = ctx.sendActivity.bind(ctx); await target.deliver();",
-      ),
-    ],
-  ] as const
-) {
-  test(
-    `${ruleName}: ✅ Good - ${name}`,
-    lintTest({ code, rule, ruleName }),
-  );
+      )
+      .replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
+  ],
+  [
+    "alias initialized after setup",
+    aliasDelivery.replace(
+      "SETUP_AND_DELIVERY",
+      "setup(); const send = ctx.sendActivity.bind(ctx); await target.deliver();",
+    ),
+  ],
+] as const) {
+  test(`${ruleName}: ✅ Good - ${name}`, lintTest({ code, rule, ruleName }));
 }
 
 test(
   `${ruleName}: ✅ Good - called setup invokes captured alias directly`,
   lintTest({
-    code: assignedDelivery.replace(
-      "    const setup = () => {",
-      "    const send = ctx.sendActivity.bind(ctx);\n    const setup = () => {",
-    ).replace(
-      "    };\n    SETUP_AND_DELIVERY",
-      '      send({ identifier: ctx.identifier }, "followers", activity);\n    };\n    SETUP_AND_DELIVERY',
-    ).replace("SETUP_AND_DELIVERY", "setup();"),
+    code: assignedDelivery
+      .replace(
+        "    const setup = () => {",
+        "    const send = ctx.sendActivity.bind(ctx);\n    const setup = () => {",
+      )
+      .replace(
+        "    };\n    SETUP_AND_DELIVERY",
+        '      send({ identifier: ctx.identifier }, "followers", activity);\n    };\n    SETUP_AND_DELIVERY',
+      )
+      .replace("SETUP_AND_DELIVERY", "setup();"),
     rule,
     ruleName,
   }),
 );
 
-for (
-  const [name, call, expectedError] of [
-    ["called setup delivers directly", "setup();", undefined],
-    [
-      "uncalled setup with direct delivery",
-      "",
-      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
-    ],
-  ] as const
-) {
+for (const [name, call, expectedError] of [
+  ["called setup delivers directly", "setup();", undefined],
+  [
+    "uncalled setup with direct delivery",
+    "",
+    "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  ],
+] as const) {
   test(
     `${ruleName}: ${name}`,
     lintTest({
-      code: assignedDelivery.replace(
-        "    };\n    SETUP_AND_DELIVERY",
-        '      ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);\n    };\n    SETUP_AND_DELIVERY',
-      ).replace("SETUP_AND_DELIVERY", call),
+      code: assignedDelivery
+        .replace(
+          "    };\n    SETUP_AND_DELIVERY",
+          '      ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);\n    };\n    SETUP_AND_DELIVERY',
+        )
+        .replace("SETUP_AND_DELIVERY", call),
       rule,
       ruleName,
       expectedError,
@@ -2868,30 +2884,23 @@ federation
   }),
 );
 
-for (
-  const [kind, pattern, member, readsTarget] of [
-    [
-      "object",
-      "{ deliver: target.deliver = DEFAULT }",
-      "target.deliver",
-      false,
-    ],
-    ["array", "[target.deliver = DEFAULT]", "target.deliver", false],
-    [
-      "computed object",
-      '{ deliver: target["deliver"] = DEFAULT }',
-      'target["deliver"]',
-      false,
-    ],
-    [
-      "nested object",
-      "{ deliver: target.nested.deliver = DEFAULT }",
-      "target.nested.deliver",
-      // Accessing the intermediate object conservatively reaches its functions.
-      true,
-    ],
-  ] as const
-) {
+for (const [kind, pattern, member, readsTarget] of [
+  ["object", "{ deliver: target.deliver = DEFAULT }", "target.deliver", false],
+  ["array", "[target.deliver = DEFAULT]", "target.deliver", false],
+  [
+    "computed object",
+    '{ deliver: target["deliver"] = DEFAULT }',
+    'target["deliver"]',
+    false,
+  ],
+  [
+    "nested object",
+    "{ deliver: target.nested.deliver = DEFAULT }",
+    "target.nested.deliver",
+    // Accessing the intermediate object conservatively reaches its functions.
+    true,
+  ],
+] as const) {
   for (const used of [false, true]) {
     test(
       `${ruleName}: ${
@@ -2905,27 +2914,26 @@ federation
   .setOutboxListeners("/users/{identifier}/outbox")
   .on(Activity, async (ctx, activity) => {
     const target = { deliver: () => {}, nested: { deliver: () => {} } };
-    for (${
-          pattern.replace(
-            "DEFAULT",
-            `() => {
+    for (${pattern.replace(
+      "DEFAULT",
+      `() => {
       ctx.sendActivity(
         { identifier: ctx.identifier },
         new URL("https://example.com/inbox"),
         activity,
       );
     }`,
-          )
-        } of [${kind === "array" ? "[]" : "{}"}]) {
+    )} of [${kind === "array" ? "[]" : "{}"}]) {
       ${used ? `${member}();` : ""}
     }
   });
 `,
         rule,
         ruleName,
-        expectedError: used || readsTarget
-          ? undefined
-          : "Outbox listeners should deliver posted activities",
+        expectedError:
+          used || readsTarget
+            ? undefined
+            : "Outbox listeners should deliver posted activities",
       }),
     );
   }
@@ -2973,18 +2981,16 @@ federation
   );
 }
 
-for (
-  const [kind, pattern, existingValues] of [
-    ["object", "{ deliver = DEFAULT }", "[{ deliver }]"],
-    ["array", "[deliver = DEFAULT]", "[[deliver]]"],
-    [
-      "nested object",
-      "{ handler: { deliver } = { deliver: DEFAULT } }",
-      "[{ handler: { deliver } }]",
-    ],
-    ["nested array", "[[deliver] = [DEFAULT]]", "[[[deliver]]]"],
-  ] as const
-) {
+for (const [kind, pattern, existingValues] of [
+  ["object", "{ deliver = DEFAULT }", "[{ deliver }]"],
+  ["array", "[deliver = DEFAULT]", "[[deliver]]"],
+  [
+    "nested object",
+    "{ handler: { deliver } = { deliver: DEFAULT } }",
+    "[{ handler: { deliver } }]",
+  ],
+  ["nested array", "[[deliver] = [DEFAULT]]", "[[[deliver]]]"],
+] as const) {
   for (const dropped of [false, true]) {
     test(
       `${ruleName}: ${kind} assignment default preserves enclosing ${
@@ -3003,9 +3009,10 @@ federation
       );
     };
     const run = async () => {
-      for (${
-          pattern.replace("DEFAULT", "async () => {}")
-        } of ${existingValues}) {}
+      for (${pattern.replace(
+        "DEFAULT",
+        "async () => {}",
+      )} of ${existingValues}) {}
       await deliver();
     };
     await run();
@@ -3019,27 +3026,23 @@ federation
   }
 }
 
-for (
-  const [kind, pattern, missingValues] of [
-    ["object", "{ deliver = DEFAULT }", "[{}]"],
-    ["array", "[deliver = DEFAULT]", "[[]]"],
-  ] as const
-) {
-  for (
-    const [declaration, prefix, setup, parameter] of [
-      ["const", "const ", "", ""],
-      ["let", "let ", "", ""],
-      ["var", "var ", "", ""],
-      ["local assignment", "", "let deliver = async () => {};", ""],
-      ["uninitialized let", "", "let deliver;", ""],
-      ["uninitialized var", "", "var deliver;", ""],
-      ["var loop binding", "", "for (var deliver of [undefined]) {}", ""],
-      ["non-function let", "", "let deliver = undefined;", ""],
-      ["parameter", "", "", "deliver"],
-      ["object parameter", "", "", "{ deliver } = {}"],
-      ["array parameter", "", "", "[deliver] = []"],
-    ] as const
-  ) {
+for (const [kind, pattern, missingValues] of [
+  ["object", "{ deliver = DEFAULT }", "[{}]"],
+  ["array", "[deliver = DEFAULT]", "[[]]"],
+] as const) {
+  for (const [declaration, prefix, setup, parameter] of [
+    ["const", "const ", "", ""],
+    ["let", "let ", "", ""],
+    ["var", "var ", "", ""],
+    ["local assignment", "", "let deliver = async () => {};", ""],
+    ["uninitialized let", "", "let deliver;", ""],
+    ["uninitialized var", "", "var deliver;", ""],
+    ["var loop binding", "", "for (var deliver of [undefined]) {}", ""],
+    ["non-function let", "", "let deliver = undefined;", ""],
+    ["parameter", "", "", "deliver"],
+    ["object parameter", "", "", "{ deliver } = {}"],
+    ["array parameter", "", "", "[deliver] = []"],
+  ] as const) {
     test(
       `${ruleName}: ${kind} default respects ${declaration} shadowing`,
       lintTest({
@@ -3054,9 +3057,10 @@ federation
     };
     const run = async (${parameter}) => {
       ${setup}
-      for (${prefix}${
-          pattern.replace("DEFAULT", "async () => {}")
-        } of ${missingValues}) {
+      for (${prefix}${pattern.replace(
+        "DEFAULT",
+        "async () => {}",
+      )} of ${missingValues}) {
         await deliver();
       }
     };
@@ -3084,14 +3088,12 @@ federation
   .on(Activity, async (ctx, activity) => {
     let deliver;
     const run = async () => {
-      for (${
-          pattern.replace(
-            "DEFAULT",
-            `async () => {
+      for (${pattern.replace(
+        "DEFAULT",
+        `async () => {
         ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);
       }`,
-          )
-        } of ${missingValues}) {}
+      )} of ${missingValues}) {}
       ${used ? "await deliver();" : ""}
     };
     await run();
@@ -3107,15 +3109,13 @@ federation
   }
 }
 
-for (
-  const [kind, block] of [
-    [
-      "nested block",
-      'if (dryRun) { const deliver = "skipped"; console.log(deliver); }',
-    ],
-    ["for initializer", "for (let deliver = 0; deliver < 1; deliver++) {}"],
-  ] as const
-) {
+for (const [kind, block] of [
+  [
+    "nested block",
+    'if (dryRun) { const deliver = "skipped"; console.log(deliver); }',
+  ],
+  ["for initializer", "for (let deliver = 0; deliver < 1; deliver++) {}"],
+] as const) {
   for (const dropped of [false, true]) {
     test(
       `${ruleName}: non-function ${kind} declaration preserves an outer ${
@@ -3148,19 +3148,17 @@ federation
   }
 }
 
-for (
-  const [kind, declaration] of [
-    ["block let", "{ let deliver; }"],
-    ["block const", "{ const deliver = 0; }"],
-    ["for initializer", "for (let deliver = 0; deliver < 1; deliver++) {}"],
-    ["for binding", "for (const deliver of [0]) {}"],
-    ["class static block", "const C = class { static { var deliver; } };"],
-    [
-      "class static block assignment default",
-      "const C = class { static { for ({ deliver = async () => {} } of [{ deliver }]); } };",
-    ],
-  ] as const
-) {
+for (const [kind, declaration] of [
+  ["block let", "{ let deliver; }"],
+  ["block const", "{ const deliver = 0; }"],
+  ["for initializer", "for (let deliver = 0; deliver < 1; deliver++) {}"],
+  ["for binding", "for (const deliver of [0]) {}"],
+  ["class static block", "const C = class { static { var deliver; } };"],
+  [
+    "class static block assignment default",
+    "const C = class { static { for ({ deliver = async () => {} } of [{ deliver }]); } };",
+  ],
+] as const) {
   for (const dropped of [false, true]) {
     test(
       `${ruleName}: assignment default preserves outer ${
@@ -3209,21 +3207,17 @@ const OUTER_TARGET = (dropped: boolean) => `
       handlers: {},
     };`;
 
-for (
-  const [kind, write] of [
-    ["property", "target.fallback = () => {};"],
-    ["computed literal", 'target["fallback"] = () => {};'],
-    ["computed key", "target[key] = () => {};"],
-    ["nested property", "target.handlers.fallback = () => {};"],
-  ] as const
-) {
-  for (
-    const [scenario, read, call] of [
-      ["called", "await target.deliver();", "await run();"],
-      ["uncalled", "await target.deliver();", ""],
-      ["write-only", "", "await run();"],
-    ] as const
-  ) {
+for (const [kind, write] of [
+  ["property", "target.fallback = () => {};"],
+  ["computed literal", 'target["fallback"] = () => {};'],
+  ["computed key", "target[key] = () => {};"],
+  ["nested property", "target.handlers.fallback = () => {};"],
+] as const) {
+  for (const [scenario, read, call] of [
+    ["called", "await target.deliver();", "await run();"],
+    ["uncalled", "await target.deliver();", ""],
+    ["write-only", "", "await run();"],
+  ] as const) {
     for (const dropped of [false, true]) {
       test(
         `${ruleName}: ${kind} write in a ${scenario} nested helper keeps ${
@@ -3252,79 +3246,78 @@ federation
   }
 }
 
-for (
-  const [kind, reaches, helper] of [
-    [
-      "local object",
-      false,
-      `const run = async () => {
+for (const [kind, reaches, helper] of [
+  [
+    "local object",
+    false,
+    `const run = async () => {
       const target = { deliver: async () => {}, handlers: {} };
       target.fallback = () => {};
       await target.deliver();
     };`,
-    ],
-    [
-      "local empty object",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "local empty object",
+    false,
+    `const run = async () => {
       const target = { handlers: {} };
       target.fallback = () => {};
       await target.deliver();
     };`,
-    ],
-    [
-      "parameter",
-      false,
-      `const run = async (target = { handlers: {} }) => {
+  ],
+  [
+    "parameter",
+    false,
+    `const run = async (target = { handlers: {} }) => {
       target.fallback = () => {};
       await target.deliver();
     };`,
-    ],
-    [
-      "constructor parameter property",
-      false,
-      `class Runner {
+  ],
+  [
+    "constructor parameter property",
+    false,
+    `class Runner {
       constructor(private target: any) {
         target.fallback = () => {};
         target.deliver();
       }
     }
     const run = async () => new Runner({});`,
-    ],
-    [
-      "empty class",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "empty class",
+    false,
+    `const run = async () => {
       class target {}
       target.fallback = () => {};
       await target.deliver();
     };`,
-    ],
-    [
-      "var in dead code",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "var in dead code",
+    false,
+    `const run = async () => {
       if (false) {
         var target;
       }
       target.fallback = () => {};
       await target.deliver();
     };`,
-    ],
-    [
-      "var after return",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "var after return",
+    false,
+    `const run = async () => {
       target.fallback = () => {};
       await target.deliver();
       return;
       var target;
     };`,
-    ],
-    [
-      "catch binding",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "catch binding",
+    false,
+    `const run = async () => {
       try {
         throw {};
       } catch (target) {
@@ -3332,21 +3325,21 @@ for (
         await target.deliver();
       }
     };`,
-    ],
-    [
-      "loop binding",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "loop binding",
+    false,
+    `const run = async () => {
       for (const target of [{ handlers: {} }]) {
         target.fallback = () => {};
         await target.deliver();
       }
     };`,
-    ],
-    [
-      "switch-local binding",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "switch-local binding",
+    false,
+    `const run = async () => {
       switch (activity.id) {
         default:
           let target = { handlers: {} };
@@ -3354,11 +3347,11 @@ for (
           await target.deliver();
       }
     };`,
-    ],
-    [
-      "static block var",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "static block var",
+    false,
+    `const run = async () => {
       const C = class {
         static {
           var target = { handlers: {} };
@@ -3367,60 +3360,60 @@ for (
         }
       };
     };`,
-    ],
-    [
-      "enum member",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "enum member",
+    false,
+    `const run = async () => {
       enum E {
         target = 0,
         result = (target.fallback = () => {}, target.deliver(), 1),
       }
     };`,
-    ],
-    [
-      "block-local read",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "block-local read",
+    false,
+    `const run = async () => {
       target.fallback = () => {};
       {
         const target = { deliver: async () => {}, handlers: {} };
         await target.deliver();
       }
     };`,
-    ],
-    [
-      "reassigned outer binding",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "reassigned outer binding",
+    false,
+    `const run = async () => {
       target = { deliver: async () => {}, handlers: {} };
       target.fallback = () => {};
       await target.deliver();
     };`,
-    ],
-    [
-      "reassignment in a parameter default",
-      false,
-      `const run = async (
+  ],
+  [
+    "reassignment in a parameter default",
+    false,
+    `const run = async (
       _ = (target = { deliver: async () => {}, handlers: {} }),
     ) => {
       target.fallback = () => {};
       await target.deliver();
     };`,
-    ],
-    [
-      "destructured reassignment",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "destructured reassignment",
+    false,
+    `const run = async () => {
       ({ target } = { target: { deliver: async () => {}, handlers: {} } });
       target.fallback = () => {};
       await target.deliver();
     };`,
-    ],
-    [
-      "closure over a local empty object",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "closure over a local empty object",
+    false,
+    `const run = async () => {
       const target = {};
       const go = async () => {
         target.fallback = () => {};
@@ -3428,11 +3421,11 @@ for (
       };
       await go();
     };`,
-    ],
-    [
-      "closure over a loop binding",
-      false,
-      `const run = async () => {
+  ],
+  [
+    "closure over a loop binding",
+    false,
+    `const run = async () => {
       for (const target of [{}]) {
         const go = async () => {
           target.fallback = () => {};
@@ -3441,55 +3434,54 @@ for (
         await go();
       }
     };`,
-    ],
-    [
-      "closure over the outer object",
-      true,
-      `const run = async () => {
+  ],
+  [
+    "closure over the outer object",
+    true,
+    `const run = async () => {
       const go = async () => {
         target.fallback = () => {};
         await target.deliver();
       };
       await go();
     };`,
-    ],
-    [
-      "write inside a block",
-      true,
-      `const run = async () => {
+  ],
+  [
+    "write inside a block",
+    true,
+    `const run = async () => {
       if (activity.id != null) {
         target.fallback = () => {};
       }
       await target.deliver();
     };`,
-    ],
-    [
-      "expression-bodied helper",
-      true,
-      `const run = async () => (
+  ],
+  [
+    "expression-bodied helper",
+    true,
+    `const run = async () => (
       target.fallback = () => {}, await target.deliver()
     );`,
-    ],
-    [
-      "write before a member loop default",
-      true,
-      `const run = async () => {
+  ],
+  [
+    "write before a member loop default",
+    true,
+    `const run = async () => {
       target.fallback = () => {};
       for ({ other: target.other = () => {} } of [{}]) {}
       await target.deliver();
     };`,
-    ],
-    [
-      "write after a member loop default",
-      true,
-      `const run = async () => {
+  ],
+  [
+    "write after a member loop default",
+    true,
+    `const run = async () => {
       for ({ other: target.other = () => {} } of [{}]) {}
       target.fallback = () => {};
       await target.deliver();
     };`,
-    ],
-  ] as const
-) {
+  ],
+] as const) {
   for (const dropped of [false, true]) {
     test(
       `${ruleName}: nested helper property write with ${kind} ${
@@ -4480,9 +4472,10 @@ federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => 
   }),
 );
 
-for (
-  const statement of ["if (false) { deliver(ctx); }", "return; deliver(ctx);"]
-) {
+for (const statement of [
+  "if (false) { deliver(ctx); }",
+  "return; deliver(ctx);",
+]) {
   test(
     `${ruleName}: dead module helper call (${statement})`,
     lintTest({

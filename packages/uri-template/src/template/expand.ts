@@ -20,11 +20,13 @@ export default function expand(
   context: ExpandContext,
   options: TemplateOptions,
 ): string {
-  return tokens.map((token) =>
-    token.kind === "literal"
-      ? token.text
-      : expandExpressions(token.vars, token.operator, context, options)
-  ).join("");
+  return tokens
+    .map((token) =>
+      token.kind === "literal"
+        ? token.text
+        : expandExpressions(token.vars, token.operator, context, options),
+    )
+    .join("");
 }
 
 function expandExpressions(
@@ -35,7 +37,7 @@ function expandExpressions(
 ): string {
   const spec = operatorSpecs[operator];
   const parts = vars.flatMap((varSpec) =>
-    expandValue(varSpec, context[varSpec.name], spec, options)
+    expandValue(varSpec, context[varSpec.name], spec, options),
   );
   return parts.length < 1 ? "" : `${spec.first}${parts.join(spec.sep)}`;
 }
@@ -68,9 +70,8 @@ function expandPrimitive(
   spec: OperatorSpec,
 ): string[] {
   const text = String(value);
-  const prefixed = varSpec.prefix == null
-    ? text
-    : truncateValue(text, varSpec.prefix);
+  const prefixed =
+    varSpec.prefix == null ? text : truncateValue(text, varSpec.prefix);
   const encoded = encodeValue(spec.allowReserved)(prefixed);
   if (!spec.named) return [encoded];
 
@@ -114,14 +115,14 @@ const expandNamedPair = (
   key: string,
   item: string,
   spec: OperatorSpec,
-): string => item === "" ? `${key}${spec.ifEmpty}` : `${key}=${item}`;
+): string => (item === "" ? `${key}${spec.ifEmpty}` : `${key}=${item}`);
 
 const encodeListMembers = (
   value: readonly PrimitiveValue[],
   allowReserved: boolean,
 ): string[] =>
   value
-    .flatMap((item) => item == null ? [] : [String(item)])
+    .flatMap((item) => (item == null ? [] : [String(item)]))
     .map(encodeValue(allowReserved));
 
 const encodeAssociativePairs = (

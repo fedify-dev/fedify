@@ -21,7 +21,7 @@ test("normalizeAttachmentArrays() wraps scalar attachments", async () => {
       },
     },
   };
-  const output = await normalizeAttachmentArrays(input) as Record<
+  const output = (await normalizeAttachmentArrays(input)) as Record<
     string,
     unknown
   >;
@@ -48,9 +48,9 @@ test("normalizeAttachmentArrays() skips canonicalization for known-safe contexts
       url: "https://example.com/image.png",
     },
   };
-  const output = await normalizeAttachmentArrays(input, () => {
+  const output = (await normalizeAttachmentArrays(input, () => {
     throw new Error("context loader should not be called");
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   assertEquals(output.attachment, [
     {
       type: "Document",
@@ -96,18 +96,16 @@ test("isPreloadedContextAttachmentSafe() checks scoped contexts", () => {
 
 test("normalizeAttachmentArrays() does not wrap JSON-LD list objects", async () => {
   const attachment = {
-    "@list": [
-      { type: "Document", url: "https://example.com/image.png" },
-    ],
+    "@list": [{ type: "Document", url: "https://example.com/image.png" }],
   };
   const input = {
     "@context": "https://www.w3.org/ns/activitystreams",
     type: "Note",
     attachment,
   };
-  const output = await normalizeAttachmentArrays(input, () => {
+  const output = (await normalizeAttachmentArrays(input, () => {
     throw new Error("context loader should not be called");
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   assertEquals(output.attachment, attachment);
 });
 
@@ -126,9 +124,9 @@ test("normalizeAttachmentArrays() does not traverse JSON-LD value payloads", asy
       },
     },
   };
-  const output = await normalizeAttachmentArrays(input, () => {
+  const output = (await normalizeAttachmentArrays(input, () => {
     throw new Error("context loader should not be called");
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   assertEquals(output.attachment, [{ type: "Document" }]);
   assertEquals(output.content, {
     "@type": "@json",
@@ -154,7 +152,7 @@ test("normalizeAttachmentArrays() leaves attachment arrays unchanged", async () 
     type: "Note",
     attachment,
   };
-  const output = await normalizeAttachmentArrays(input) as Record<
+  const output = (await normalizeAttachmentArrays(input)) as Record<
     string,
     unknown
   >;
@@ -179,7 +177,7 @@ test("normalizeAttachmentArrays() leaves @context subtrees untouched", async () 
     type: "Note",
     attachment: "https://example.com/attachment",
   };
-  const output = await normalizeAttachmentArrays(input) as Record<
+  const output = (await normalizeAttachmentArrays(input)) as Record<
     string,
     unknown
   >;
@@ -202,7 +200,7 @@ test("normalizeAttachmentArrays() bails out when wrapping changes semantics", as
       custom: true,
     },
   };
-  const output = await normalizeAttachmentArrays(input) as Record<
+  const output = (await normalizeAttachmentArrays(input)) as Record<
     string,
     unknown
   >;
@@ -247,9 +245,9 @@ test("normalizeAttachmentArrays() skips canonicalization for pathological nestin
     attachment: { type: "Document" },
     object: deep,
   };
-  const output = await normalizeAttachmentArrays(input, () => {
+  const output = (await normalizeAttachmentArrays(input, () => {
     throw new Error("context loader should not be called");
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   assertEquals(output.attachment, { type: "Document" });
 });
 
@@ -269,7 +267,7 @@ test("normalizeOutgoingActivityJsonLd() applies outgoing JSON-LD workarounds", a
     }),
     tos: [PUBLIC_COLLECTION],
   });
-  const compact = await activity.toJsonLd({ format: "compact" }) as Record<
+  const compact = (await activity.toJsonLd({ format: "compact" })) as Record<
     string,
     unknown
   >;
@@ -277,10 +275,10 @@ test("normalizeOutgoingActivityJsonLd() applies outgoing JSON-LD workarounds", a
   const compactObject = compact.object as Record<string, unknown>;
   assertEquals(Array.isArray(compactObject.attachment), false);
 
-  const normalized = await normalizeOutgoingActivityJsonLd(
+  const normalized = (await normalizeOutgoingActivityJsonLd(
     compact,
     mockDocumentLoader,
-  ) as Record<string, unknown>;
+  )) as Record<string, unknown>;
   assertEquals(normalized.to, PUBLIC_COLLECTION.href);
   const normalizedObject = normalized.object as Record<string, unknown>;
   assertEquals(Array.isArray(normalizedObject.attachment), true);
@@ -330,11 +328,11 @@ function compoundWithSecuredChild(): Record<string, unknown> {
 
 test("normalizeOutgoingActivityJsonLd() can preserve a nested secured child", async () => {
   const input = compoundWithSecuredChild();
-  const preserved = await normalizeOutgoingActivityJsonLd(
+  const preserved = (await normalizeOutgoingActivityJsonLd(
     input,
     mockDocumentLoader,
     { preserveNestedSecuredDocuments: true },
-  ) as Record<string, unknown>;
+  )) as Record<string, unknown>;
 
   // The parent is still normalized …
   assertEquals(preserved.to, PUBLIC_COLLECTION.href);
@@ -344,10 +342,10 @@ test("normalizeOutgoingActivityJsonLd() can preserve a nested secured child", as
 
 test("normalizeOutgoingActivityJsonLd() rewrites a nested secured child by default", async () => {
   const input = compoundWithSecuredChild();
-  const normalized = await normalizeOutgoingActivityJsonLd(
+  const normalized = (await normalizeOutgoingActivityJsonLd(
     input,
     mockDocumentLoader,
-  ) as Record<string, unknown>;
+  )) as Record<string, unknown>;
   const child = normalized.object as Record<string, unknown>;
 
   assertEquals(normalized.to, PUBLIC_COLLECTION.href);
@@ -358,23 +356,23 @@ test("normalizeOutgoingActivityJsonLd() rewrites a nested secured child by defau
 test("normalizeOutgoingActivityJsonLd() only preserves a complete secured child", async () => {
   const cases: Record<string, (child: Record<string, unknown>) => void> = {
     "no proof": (child) => delete child.proof,
-    "null proof": (child) => child.proof = null,
-    "proof set": (child) => child.proof = [securedChild.proof],
+    "null proof": (child) => (child.proof = null),
+    "proof set": (child) => (child.proof = [securedChild.proof]),
     "proof without a verification method": (child) =>
       delete (child.proof as Record<string, unknown>).verificationMethod,
     "incomplete proof": (child) =>
       delete (child.proof as Record<string, unknown>).cryptosuite,
     "empty proof value": (child) =>
-      (child.proof as Record<string, unknown>).proofValue = "",
+      ((child.proof as Record<string, unknown>).proofValue = ""),
   };
   for (const [name, mutate] of Object.entries(cases)) {
     const input = compoundWithSecuredChild();
     mutate(input.object as Record<string, unknown>);
-    const normalized = await normalizeOutgoingActivityJsonLd(
+    const normalized = (await normalizeOutgoingActivityJsonLd(
       input,
       mockDocumentLoader,
       { preserveNestedSecuredDocuments: true },
-    ) as Record<string, unknown>;
+    )) as Record<string, unknown>;
     const child = normalized.object as Record<string, unknown>;
 
     assertEquals(child.to, PUBLIC_COLLECTION.href, name);
@@ -387,11 +385,11 @@ test("normalizeOutgoingActivityJsonLd() still normalizes a top-level secured doc
     ...structuredClone(securedChild),
     id: "ap://did:key:z6Mkabc/objects/top-level",
   };
-  const normalized = await normalizeOutgoingActivityJsonLd(
+  const normalized = (await normalizeOutgoingActivityJsonLd(
     input,
     mockDocumentLoader,
     { preserveNestedSecuredDocuments: true },
-  ) as Record<string, unknown>;
+  )) as Record<string, unknown>;
 
   assertEquals(normalized.to, PUBLIC_COLLECTION.href);
   assertEquals(normalized.attachment, [securedChild.attachment]);

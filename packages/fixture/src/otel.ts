@@ -170,14 +170,14 @@ export class TestMetricRecorder {
   }
 }
 
-class TestCounter<AttributesTypes extends MetricAttributes = MetricAttributes>
-  implements Counter<AttributesTypes> {
+class TestCounter<
+  AttributesTypes extends MetricAttributes = MetricAttributes,
+> implements Counter<AttributesTypes> {
   constructor(
     private readonly name: string,
     private readonly recorder: TestMetricRecorder,
     private readonly type: TestMetricMeasurement["type"] = "counter",
-  ) {
-  }
+  ) {}
 
   add(value: number, attributes?: AttributesTypes, _context?: Context): void {
     this.recorder.record({
@@ -189,15 +189,14 @@ class TestCounter<AttributesTypes extends MetricAttributes = MetricAttributes>
   }
 }
 
-class TestHistogram<
-  AttributesTypes extends MetricAttributes = MetricAttributes,
-> implements Histogram<AttributesTypes>, Gauge<AttributesTypes> {
+class TestHistogram<AttributesTypes extends MetricAttributes = MetricAttributes>
+  implements Histogram<AttributesTypes>, Gauge<AttributesTypes>
+{
   constructor(
     private readonly name: string,
     private readonly recorder: TestMetricRecorder,
     private readonly type: TestMetricMeasurement["type"] = "histogram",
-  ) {
-  }
+  ) {}
 
   record(
     value: number,
@@ -228,8 +227,7 @@ class TestObservable<
 }
 
 class TestMeter implements Meter {
-  constructor(private readonly recorder: TestMetricRecorder) {
-  }
+  constructor(private readonly recorder: TestMetricRecorder) {}
 
   createCounter<AttributesTypes extends MetricAttributes = MetricAttributes>(
     name: string,
@@ -240,10 +238,7 @@ class TestMeter implements Meter {
 
   createUpDownCounter<
     AttributesTypes extends MetricAttributes = MetricAttributes,
-  >(
-    name: string,
-    _options?: MetricOptions,
-  ): UpDownCounter<AttributesTypes> {
+  >(name: string, _options?: MetricOptions): UpDownCounter<AttributesTypes> {
     return new TestCounter(name, this.recorder, "upDownCounter");
   }
 
@@ -281,10 +276,7 @@ class TestMeter implements Meter {
 
   createObservableGauge<
     AttributesTypes extends MetricAttributes = MetricAttributes,
-  >(
-    _name: string,
-    _options?: MetricOptions,
-  ): ObservableGauge<AttributesTypes> {
+  >(_name: string, _options?: MetricOptions): ObservableGauge<AttributesTypes> {
     return new TestObservable();
   }
 
@@ -293,27 +285,20 @@ class TestMeter implements Meter {
   >(
     _callback: BatchObservableCallback<AttributesTypes>,
     _observables: Observable<AttributesTypes>[],
-  ): void {
-  }
+  ): void {}
 
   removeBatchObservableCallback<
     AttributesTypes extends MetricAttributes = MetricAttributes,
   >(
     _callback: BatchObservableCallback<AttributesTypes>,
     _observables: Observable<AttributesTypes>[],
-  ): void {
-  }
+  ): void {}
 }
 
 class TestMeterProvider implements MeterProvider {
-  constructor(private readonly recorder: TestMetricRecorder) {
-  }
+  constructor(private readonly recorder: TestMetricRecorder) {}
 
-  getMeter(
-    _name: string,
-    _version?: string,
-    _options?: MeterOptions,
-  ): Meter {
+  getMeter(_name: string, _version?: string, _options?: MeterOptions): Meter {
     return new TestMeter(this.recorder);
   }
 }
@@ -323,10 +308,7 @@ class TestMeterProvider implements MeterProvider {
  * @returns A tuple of [meterProvider, testRecorder].
  * @since 2.3.0
  */
-export function createTestMeterProvider(): [
-  MeterProvider,
-  TestMetricRecorder,
-] {
+export function createTestMeterProvider(): [MeterProvider, TestMetricRecorder] {
   const recorder = new TestMetricRecorder();
   return [new TestMeterProvider(recorder), recorder];
 }

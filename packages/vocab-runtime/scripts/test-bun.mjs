@@ -4,10 +4,14 @@ import { spawnSync } from "node:child_process";
 const sources = await Array.fromAsync(glob("src/**/*.test.ts"));
 if (sources.length === 0) throw new Error("No vocab-runtime tests found.");
 
-const tests = sources.map((source) =>
-  source.replaceAll("\\", "/").replace(/^src\//, "dist/tests/")
-    .replace(/\.ts$/, ".mjs")
-).sort();
+const tests = sources
+  .map((source) =>
+    source
+      .replaceAll("\\", "/")
+      .replace(/^src\//, "dist/tests/")
+      .replace(/\.ts$/, ".mjs"),
+  )
+  .sort();
 for (const test of tests) await access(test);
 
 const result = spawnSync("bun", ["test", "--timeout", "60000", ...tests], {

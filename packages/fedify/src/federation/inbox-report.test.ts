@@ -37,16 +37,16 @@ function setup(skipSignatureVerification = false) {
     documentLoaderFactory: () => mockDocumentLoader,
     contextLoaderFactory: () => mockDocumentLoader,
   });
-  federation.setActorDispatcher(
-    "/users/{identifier}",
-    (_ctx, id) => id === "missing" ? null : new Person({}),
-  ).setKeyPairsDispatcher(() => []);
-  const setters = federation.setInboxListeners(
-    "/users/{identifier}/inbox",
-    "/inbox",
-  ).onRequestFinished((_ctx, report) => {
-    reports.push(report);
-  });
+  federation
+    .setActorDispatcher("/users/{identifier}", (_ctx, id) =>
+      id === "missing" ? null : new Person({}),
+    )
+    .setKeyPairsDispatcher(() => []);
+  const setters = federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .onRequestFinished((_ctx, report) => {
+      reports.push(report);
+    });
   return { federation, setters, reports, spanExporter };
 }
 async function payload(
@@ -68,9 +68,11 @@ function request(body: unknown, path = "/inbox") {
 test("onRequestFinished classifies early rejection, JSON null, and excluded routes", async () => {
   const { federation, reports } = setup(true);
   strictEqual(
-    (await federation.fetch(request({}, "/users/missing/inbox"), {
-      contextData: undefined,
-    })).status,
+    (
+      await federation.fetch(request({}, "/users/missing/inbox"), {
+        contextData: undefined,
+      })
+    ).status,
     404,
   );
   deepStrictEqual(reports[0].inbox, { kind: "personal", recipient: "missing" });
@@ -108,10 +110,10 @@ test("onRequestFinished classifies early rejection, JSON null, and excluded rout
 test("onRequestFinished leaves deferred policy errors undetermined", async () => {
   const did = await exportDidKey(ed25519Multikey.publicKey!);
   const keyId = parseIri(`${did}#${did.substring("did:key:".length)}`);
-  const otherPair = await crypto.subtle.generateKey("Ed25519", true, [
+  const otherPair = (await crypto.subtle.generateKey("Ed25519", true, [
     "sign",
     "verify",
-  ]) as CryptoKeyPair;
+  ])) as CryptoKeyPair;
   const otherDid = await exportDidKey(otherPair.publicKey);
   for (const withProof of [false, true]) {
     const contextUrl = `https://example.com/context/deferred-${withProof}`;
@@ -136,10 +138,12 @@ test("onRequestFinished leaves deferred policy errors undetermined", async () =>
       contextUrl,
     ];
     const body = withProof
-      ? await (await signObject(activity, ed25519PrivateKey, keyId, {
-        context,
-        contextLoader,
-      })).toJsonLd({ format: "compact", context, contextLoader })
+      ? await (
+          await signObject(activity, ed25519PrivateKey, keyId, {
+            context,
+            contextLoader,
+          })
+        ).toJsonLd({ format: "compact", context, contextLoader })
       : await activity.toJsonLd({ format: "compact", context, contextLoader });
     (body as Record<string, unknown>).signature = {
       type: "RsaSignature2017",
@@ -160,9 +164,11 @@ test("onRequestFinished leaves deferred policy errors undetermined", async () =>
         return await contextLoader(url);
       },
     });
-    federation.setActorDispatcher("/users/{identifier}", () => new Person({}))
+    federation
+      .setActorDispatcher("/users/{identifier}", () => new Person({}))
       .setKeyPairsDispatcher(() => []);
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
       .on(Create, () => {})
       .onRequestFinished((_ctx, report) => {
         reports.push(report);
@@ -184,8 +190,10 @@ test("onRequestFinished leaves deferred policy errors undetermined", async () =>
       },
     );
     strictEqual(
-      reports[0].attempts.some((attempt) =>
-        attempt.mechanism === "objectIntegrity" && attempt.status === "verified"
+      reports[0].attempts.some(
+        (attempt) =>
+          attempt.mechanism === "objectIntegrity" &&
+          attempt.status === "verified",
       ),
       withProof,
     );
@@ -216,12 +224,14 @@ test("onRequestFinished awaits once and isolates observer failures", async () =>
     throw new Error("observer failed");
   });
   let finished = false;
-  const response = federation.fetch(request(await payload()), {
-    contextData: undefined,
-  }).then((response) => {
-    finished = true;
-    return response;
-  });
+  const response = federation
+    .fetch(request(await payload()), {
+      contextData: undefined,
+    })
+    .then((response) => {
+      finished = true;
+      return response;
+    });
   await started;
   strictEqual(finished, false);
   release();
@@ -296,8 +306,8 @@ test("onRequestFinished retains HTTP keys and separates ownership rejection", as
   );
   const report = reports[0];
   strictEqual(report.authentication.status, "verified");
-  const attempt = report.attempts.find((attempt) =>
-    attempt.mechanism === "http"
+  const attempt = report.attempts.find(
+    (attempt) => attempt.mechanism === "http",
   );
   ok(attempt?.status === "verified");
   strictEqual(attempt.subject.id?.href, "https://example.com/create");
@@ -364,8 +374,9 @@ test("onRequestFinished reports an activity ID on another origin than its actor"
   });
   strictEqual(reports[0].attempts.at(-1)?.status, "verified");
   strictEqual(
-    spanExporter.getSpans("activitypub.inbox")[0]
-      .attributes["activitypub.verification.failure_reason"],
+    spanExporter.getSpans("activitypub.inbox")[0].attributes[
+      "activitypub.verification.failure_reason"
+    ],
     "activity-origin-mismatch",
   );
 });
@@ -387,8 +398,8 @@ test("onRequestFinished retains LDS crypto success before HTTP fallback", async 
     (await federation.fetch(signed, { contextData: undefined })).status,
     202,
   );
-  const ld = reports[0].attempts.find((attempt) =>
-    attempt.mechanism === "linkedData"
+  const ld = reports[0].attempts.find(
+    (attempt) => attempt.mechanism === "linkedData",
   );
   ok(ld?.status === "rejected");
   strictEqual(ld.reason.type, "uncoveredAttribution");
@@ -409,13 +420,15 @@ test("onRequestFinished keeps valid OIP checks when attributions are uncovered",
     loaders,
   );
   strictEqual(
-    (await federation.fetch(request(await signed.toJsonLd(loaders)), {
-      contextData: undefined,
-    })).status,
+    (
+      await federation.fetch(request(await signed.toJsonLd(loaders)), {
+        contextData: undefined,
+      })
+    ).status,
     401,
   );
-  const proof = reports[0].attempts.find((attempt) =>
-    attempt.mechanism === "objectIntegrity"
+  const proof = reports[0].attempts.find(
+    (attempt) => attempt.mechanism === "objectIntegrity",
   );
   ok(proof?.status === "rejected");
   strictEqual(proof.reason.type, "uncoveredAttribution");
@@ -432,9 +445,11 @@ test("onRequestFinished reports listener failures with original values", async (
     throw error;
   });
   strictEqual(
-    (await federation.fetch(request(await payload()), {
-      contextData: undefined,
-    })).status,
+    (
+      await federation.fetch(request(await payload()), {
+        contextData: undefined,
+      })
+    ).status,
     500,
   );
   deepStrictEqual(reports[0].outcome, {
@@ -450,12 +465,11 @@ test("onRequestFinished builder snapshots callbacks", async () => {
   const builder = createFederationBuilder<void>();
   builder.setActorDispatcher("/users/{identifier}", () => new Person({}));
   const reports: InboxRequestReport[] = [];
-  const setters = builder.setInboxListeners(
-    "/users/{identifier}/inbox",
-    "/inbox",
-  ).onRequestFinished((_ctx, report) => {
-    reports.push(report);
-  });
+  const setters = builder
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .onRequestFinished((_ctx, report) => {
+      reports.push(report);
+    });
   const federation = await builder.build({
     kv: new MemoryKvStore(),
     skipSignatureVerification: true,
@@ -499,14 +513,17 @@ test("onRequestFinished reports enqueue acceptance without adding queue fields",
     contextLoaderFactory: () => mockDocumentLoader,
   });
   federation.setActorDispatcher("/users/{identifier}", () => new Person({}));
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .onRequestFinished((_ctx, report) => {
       reports.push(report);
     });
   strictEqual(
-    (await federation.fetch(request(await payload()), {
-      contextData: undefined,
-    })).status,
+    (
+      await federation.fetch(request(await payload()), {
+        contextData: undefined,
+      })
+    ).status,
     202,
   );
   deepStrictEqual(reports[0].outcome, {
@@ -535,7 +552,8 @@ test("onRequestFinished preserves a non-Error value thrown during enqueue", asyn
     contextLoaderFactory: () => mockDocumentLoader,
   });
   federation.setActorDispatcher("/users/{identifier}", () => new Person({}));
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .onRequestFinished((_ctx, report) => {
       reports.push(report);
       throw new Error("observer failure");
@@ -559,9 +577,8 @@ test("onRequestFinished preserves a non-Error value thrown during enqueue", asyn
 });
 
 test("onRequestFinished runs with tracing disabled", async () => {
-  const { AlwaysOffSampler, BasicTracerProvider } = await import(
-    "@opentelemetry/sdk-trace-base"
-  );
+  const { AlwaysOffSampler, BasicTracerProvider } =
+    await import("@opentelemetry/sdk-trace-base");
   const provider = new BasicTracerProvider({ sampler: new AlwaysOffSampler() });
   const reports: InboxRequestReport[] = [];
   const federation = createFederation<void>({
@@ -572,7 +589,8 @@ test("onRequestFinished runs with tracing disabled", async () => {
     contextLoaderFactory: () => mockDocumentLoader,
   });
   federation.setActorDispatcher("/users/{identifier}", () => new Person({}));
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .onRequestFinished((_ctx, report) => {
       reports.push(report);
     });
@@ -584,24 +602,28 @@ test("onRequestFinished runs with tracing disabled", async () => {
 test("onRequestFinished preserves non-POST shared inbox behavior without reports", async () => {
   const { federation, reports } = setup(true);
   strictEqual(
-    (await federation.fetch(
-      new Request("https://example.com/inbox", {
-        headers: { Accept: "application/activity+json" },
-      }),
-      { contextData: undefined },
-    )).status,
+    (
+      await federation.fetch(
+        new Request("https://example.com/inbox", {
+          headers: { Accept: "application/activity+json" },
+        }),
+        { contextData: undefined },
+      )
+    ).status,
     400,
   );
   strictEqual(reports.length, 0);
   strictEqual(
-    (await federation.fetch(
-      new Request("https://example.com/inbox", {
-        method: "PUT",
-        body: JSON.stringify(await payload()),
-        headers: { Accept: "application/activity+json" },
-      }),
-      { contextData: undefined },
-    )).status,
+    (
+      await federation.fetch(
+        new Request("https://example.com/inbox", {
+          method: "PUT",
+          body: JSON.stringify(await payload()),
+          headers: { Accept: "application/activity+json" },
+        }),
+        { contextData: undefined },
+      )
+    ).status,
     202,
   );
   strictEqual(reports.length, 0);
@@ -618,7 +640,8 @@ test("onRequestFinished covers errors constructing the initial request context",
     contextLoaderFactory: () => mockDocumentLoader,
   });
   federation.setActorDispatcher("/users/{identifier}", () => new Person({}));
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .onRequestFinished((ctx, report) => {
       strictEqual(ctx.data, "data");
       strictEqual(ctx.request.url, "https://example.com/inbox");
@@ -676,15 +699,13 @@ test("onRequestFinished observes the final response decoration result", async ()
 });
 
 test("inbox request cancellation snapshots preserve exact reasons without stopping processing", async (t) => {
-  for (
-    const [label, reason] of [
-      ["live", undefined],
-      ["object", { kind: "client disconnect" }],
-      ["zero", 0],
-      ["nan", NaN],
-      ["symbol", Symbol("client")],
-    ] as const
-  ) {
+  for (const [label, reason] of [
+    ["live", undefined],
+    ["object", { kind: "client disconnect" }],
+    ["zero", 0],
+    ["nan", NaN],
+    ["symbol", Symbol("client")],
+  ] as const) {
     await t.step(label, async () => {
       const { federation, setters, reports } = setup(true);
       let processed = 0;
@@ -849,7 +870,8 @@ test("inbox request cancellation retains accepted queue work and its separate li
     },
   });
   federation.setActorDispatcher("/users/{identifier}", () => new Person({}));
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .on(Create, (ctx) => {
       processed++;
       // Read the internal signal property that is not part of the public type.
@@ -897,7 +919,8 @@ test("inbox request cancellation preserves early preparation failures and canoni
     contextLoaderFactory: () => mockDocumentLoader,
   });
   federation.setActorDispatcher("/users/{identifier}", () => new Person({}));
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .onRequestFinished((_ctx, report) => {
       reports.push(report);
     });

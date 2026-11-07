@@ -6,17 +6,15 @@ import { styleText } from "node:util";
 import { expectedTestNames } from "./expected-tests.ts";
 
 const selfTest = process.argv[2] === "--selftest";
-const filters = process.argv.slice(selfTest ? 3 : 2).map((f) =>
-  f.toLowerCase()
-);
+const filters = process.argv
+  .slice(selfTest ? 3 : 2)
+  .map((f) => f.toLowerCase());
 
 const scriptPath = join(import.meta.dirname ?? ".", "server.js");
 const mf = new Miniflare({
   // @ts-ignore: scriptPath is not recognized in the type definitions
   scriptPath,
-  modules: [
-    { type: "ESModule", path: scriptPath },
-  ],
+  modules: [{ type: "ESModule", path: scriptPath }],
   kvNamespaces: ["KV1", "KV2", "KV3"],
   queueProducers: ["Q1"],
   queueConsumers: { Q1: { maxBatchSize: 1 } },
@@ -54,7 +52,7 @@ try {
     url.searchParams.set("selftest", "");
   }
   const response = await mf.dispatchFetch(url);
-  const tests = await response.json() as string[];
+  const tests = (await response.json()) as string[];
   if (!selfTest) {
     const actual = [...tests].sort();
     const expected = [...expectedTestNames].sort();
@@ -89,9 +87,10 @@ try {
     }
   }
   console.log(
-    `Tests completed: ${styleText("green", `${passed} passed`)}, ${
-      styleText("red", `${failed} failed`)
-    }, ${styleText("yellow", `${skipped} skipped`)}.`,
+    `Tests completed: ${styleText("green", `${passed} passed`)}, ${styleText(
+      "red",
+      `${failed} failed`,
+    )}, ${styleText("yellow", `${skipped} skipped`)}.`,
   );
 
   if (failed > 0 || (!selfTest && skipped > 0)) process.exitCode = 1;

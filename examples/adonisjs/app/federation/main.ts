@@ -55,7 +55,7 @@ federation
    * back to — but only after complaining about the missing mapper on every
    * lookup.
    */
-  .mapHandle((_ctx, username) => username === "demo" ? "demo" : null)
+  .mapHandle((_ctx, username) => (username === "demo" ? "demo" : null))
   .setKeyPairsDispatcher(async (_, identifier) => {
     if (identifier !== "demo") return [];
     const keyPairs = keyPairsStore.get(identifier);
@@ -77,7 +77,9 @@ federation
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
   .on(Follow, async (context, follow) => {
     if (
-      follow.id == null || follow.actorId == null || follow.objectId == null
+      follow.id == null ||
+      follow.actorId == null ||
+      follow.objectId == null
     ) {
       return;
     }

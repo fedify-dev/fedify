@@ -83,20 +83,10 @@ export const getJsonsCacheKey = (data: JsonConfigData): string =>
  * @returns A processed data object with files and JSONs ready for creation
  */
 export const patchFiles = (data: InitCommandData) =>
-  pipe(
-    data,
-    set("files", getFiles),
-    set("jsons", getJsons),
-    createFiles,
-  );
+  pipe(data, set("files", getFiles), set("jsons", getJsons), createFiles);
 
 export const recommendPatchFiles = (data: InitCommandData) =>
-  pipe(
-    data,
-    set("files", getFiles),
-    set("jsons", getJsons),
-    recommendFiles,
-  );
+  pipe(data, set("files", getFiles), set("jsons", getJsons), recommendFiles);
 
 /**
  * Verifies that `--allow-non-empty` will not modify files that already
@@ -130,9 +120,7 @@ export class GeneratedFileConflictError extends Error {
  * @param data - The initialization command data
  * @returns A record of file paths to their string content
  */
-const getFiles = async <
-  T extends InitCommandData,
->(data: T) => ({
+const getFiles = async <T extends InitCommandData>(data: T) => ({
   [data.initializer.federationFile]: await loadFederation({
     imports: getImports(data),
     ...data,
@@ -152,31 +140,34 @@ const getFiles = async <
  * @param data - The initialization command data
  * @returns A record of file paths to their JSON object content
  */
-const getJsons = <
-  T extends InitCommandData,
->(data: T): Record<string, object> => {
+const getJsons = <T extends InitCommandData>(
+  data: T,
+): Record<string, object> => {
   const cacheKey = getJsonsCacheKey(data);
   const cached = jsonsCache.get(cacheKey);
   if (cached != null) return cached;
 
-  const jsons: Record<string, object> = data.packageManager === "deno"
-    ? {
-      "deno.json": loadDenoConfig(data).data,
-      [devToolConfigs["vscSetDeno"].path]: devToolConfigs["vscSetDeno"].data,
-      [devToolConfigs["vscExtDeno"].path]: devToolConfigs["vscExtDeno"].data,
-    }
-    : {
-      ...(data.initializer.compilerOptions
-        ? { "tsconfig.json": loadTsConfig(data).data }
-        : {}),
-      "package.json": loadPackageJson(data).data,
-      ...(data.initializer.format?.tool !== "prettier"
-        ? { [devToolConfigs["oxfmt"].path]: loadOxfmtConfig(data).data }
-        : {}),
-      [devToolConfigs["oxlint"].path]: loadOxlintConfig(data).data,
-      [devToolConfigs["vscSet"].path]: loadVscodeSettings(data).data,
-      [devToolConfigs["vscExt"].path]: loadVscodeExtensions(data).data,
-    };
+  const jsons: Record<string, object> =
+    data.packageManager === "deno"
+      ? {
+          "deno.json": loadDenoConfig(data).data,
+          [devToolConfigs["vscSetDeno"].path]:
+            devToolConfigs["vscSetDeno"].data,
+          [devToolConfigs["vscExtDeno"].path]:
+            devToolConfigs["vscExtDeno"].data,
+        }
+      : {
+          ...(data.initializer.compilerOptions
+            ? { "tsconfig.json": loadTsConfig(data).data }
+            : {}),
+          "package.json": loadPackageJson(data).data,
+          ...(data.initializer.format?.tool !== "prettier"
+            ? { [devToolConfigs["oxfmt"].path]: loadOxfmtConfig(data).data }
+            : {}),
+          [devToolConfigs["oxlint"].path]: loadOxlintConfig(data).data,
+          [devToolConfigs["vscSet"].path]: loadVscodeSettings(data).data,
+          [devToolConfigs["vscExt"].path]: loadVscodeExtensions(data).data,
+        };
   jsonsCache.set(cacheKey, jsons);
   return jsons;
 };
@@ -274,22 +265,15 @@ interface InitCommandWithFiles extends InitCommandData {
  * @param process - Function to process each file (either display or create)
  * @returns A function that processes all files in the given directory with the provided processor
  */
-const processAllFiles = (
-  process: (path: string, content: string) => void | Promise<void>,
-) =>
-({ dir, files }: InitCommandWithFiles) =>
-  pipe(
-    files,
-    entries,
-    map(
-      pipeLazy(
-        joinDir(dir),
-        apply(patchContent),
-        apply(process),
-      ),
-    ),
-    Array.fromAsync,
-  );
+const processAllFiles =
+  (process: (path: string, content: string) => void | Promise<void>) =>
+  ({ dir, files }: InitCommandWithFiles) =>
+    pipe(
+      files,
+      entries,
+      map(pipeLazy(joinDir(dir), apply(patchContent), apply(process))),
+      Array.fromAsync,
+    );
 
 /**
  * Patches file content by either merging JSON or appending text content.
@@ -305,9 +289,10 @@ async function patchContent(
   content: string | object,
 ): Promise<[string, string]> {
   const prev = await readFileIfExists(path);
-  const data = typeof content === "object"
-    ? mergeJson(prev, content)
-    : appendText(prev, content);
+  const data =
+    typeof content === "object"
+      ? mergeJson(prev, content)
+      : appendText(prev, content);
   return [path, data];
 }
 
@@ -330,17 +315,15 @@ const mergeJson = (prev: string, data: object): string =>
  * @param jsonString - The JSON string potentially containing JSONC syntax
  * @returns Parsed JSON value
  */
-const parseJsoncObject = (
-  jsonString: string,
-): Record<PropertyKey, unknown> => {
+const parseJsoncObject = (jsonString: string): Record<PropertyKey, unknown> => {
   const errors: ParseError[] = [];
   const value = parseJsonc(jsonString, errors, { allowTrailingComma: true });
   if (value === undefined && isEmptyJsonc(errors)) return {};
   if (errors.length > 0) {
     throw new SyntaxError(
       errors
-        .map(({ error, offset }) =>
-          `${printParseErrorCode(error)} at ${offset}`
+        .map(
+          ({ error, offset }) => `${printParseErrorCode(error)} at ${offset}`,
         )
         .join("; "),
     );
@@ -377,5 +360,4 @@ const appendText = (prev: string, data: string) =>
  * @throws Error if file access fails for reasons other than file not existing
  */
 const readFileIfExists = (path: string): Promise<string> =>
-  readFile(path, "utf8")
-    .catch(pipeLazy(tap(throwUnlessNotExists), always("")));
+  readFile(path, "utf8").catch(pipeLazy(tap(throwUnlessNotExists), always("")));

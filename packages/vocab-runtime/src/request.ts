@@ -123,15 +123,19 @@ function classifyErrorShape(
 }
 
 function isNamedError(error: unknown): boolean {
-  return typeof error === "object" && error != null &&
-    typeof (error as { readonly name?: unknown }).name === "string";
+  return (
+    typeof error === "object" &&
+    error != null &&
+    typeof (error as { readonly name?: unknown }).name === "string"
+  );
 }
 
-function isResponseLike(
-  value: unknown,
-): value is { readonly status: number } {
-  return typeof value === "object" && value != null &&
-    typeof (value as { readonly status?: unknown }).status === "number";
+function isResponseLike(value: unknown): value is { readonly status: number } {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    typeof (value as { readonly status?: unknown }).status === "number"
+  );
 }
 
 function isInvalidUrlError(error: unknown): boolean {
@@ -140,8 +144,10 @@ function isInvalidUrlError(error: unknown): boolean {
     readonly code?: unknown;
     readonly message?: unknown;
   };
-  return code === "ERR_INVALID_URL" ||
-    typeof message === "string" && message.startsWith("Invalid URL");
+  return (
+    code === "ERR_INVALID_URL" ||
+    (typeof message === "string" && message.startsWith("Invalid URL"))
+  );
 }
 
 /**
@@ -174,9 +180,10 @@ export function createActivityPubRequest(
   return new Request(url, {
     headers: {
       Accept: ACTIVITYPUB_ACCEPT,
-      "User-Agent": typeof options.userAgent === "string"
-        ? options.userAgent
-        : getUserAgent(options.userAgent),
+      "User-Agent":
+        typeof options.userAgent === "string"
+          ? options.userAgent
+          : getUserAgent(options.userAgent),
     },
     redirect: "manual",
   });
@@ -205,23 +212,25 @@ export interface GetUserAgentOptions {
  * @returns The user agent string.
  * @since 1.3.0
  */
-export function getUserAgent(
-  { software, url }: GetUserAgentOptions = {},
-): string {
+export function getUserAgent({
+  software,
+  url,
+}: GetUserAgentOptions = {}): string {
   const fedify = `Fedify/${metadata.version}`;
   // Typed structurally so that this module does not depend on Deno's
   // ambient types:
   const deno = (globalThis as { Deno?: { version?: { deno?: string } } }).Deno;
-  const runtime = deno?.version?.deno != null
-    ? `Deno/${deno.version.deno}`
-    : globalThis.process?.versions?.bun != null
-    ? `Bun/${process.versions.bun}`
-    : "navigator" in globalThis &&
-        navigator.userAgent === "Cloudflare-Workers"
-    ? navigator.userAgent
-    : globalThis.process?.versions?.node != null
-    ? `Node.js/${process.versions.node}`
-    : null;
+  const runtime =
+    deno?.version?.deno != null
+      ? `Deno/${deno.version.deno}`
+      : globalThis.process?.versions?.bun != null
+        ? `Bun/${process.versions.bun}`
+        : "navigator" in globalThis &&
+            navigator.userAgent === "Cloudflare-Workers"
+          ? navigator.userAgent
+          : globalThis.process?.versions?.node != null
+            ? `Node.js/${process.versions.node}`
+            : null;
   const userAgent = software == null ? [fedify] : [software, fedify];
   if (runtime != null) userAgent.push(runtime);
   if (url != null) userAgent.push(`+${url.toString()}`);
@@ -235,12 +244,9 @@ export function getUserAgent(
  * @internal
  */
 export function logRequest(logger: Logger, request: Request): void {
-  logger.debug(
-    "Fetching document: {method} {url} {headers}",
-    {
-      method: request.method,
-      url: request.url,
-      headers: Object.fromEntries(request.headers.entries()),
-    },
-  );
+  logger.debug("Fetching document: {method} {url} {headers}", {
+    method: request.method,
+    url: request.url,
+    headers: Object.fromEntries(request.headers.entries()),
+  });
 }

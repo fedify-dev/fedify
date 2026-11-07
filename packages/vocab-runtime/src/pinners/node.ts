@@ -45,9 +45,10 @@ type LookupCallback = (
  * @param options The pinner options.
  * @returns The pinner.
  */
-export function createNodePinner(
-  { verifyAddress, undici }: NodePinnerOptions,
-): ConnectionPinner {
+export function createNodePinner({
+  verifyAddress,
+  undici,
+}: NodePinnerOptions): ConnectionPinner {
   const grants = new Map<string, Map<PinGrant, PinGrantRecord>>();
 
   function lookup(
@@ -81,15 +82,16 @@ export function createNodePinner(
         addresses.set(address.address, address);
       }
     }
-    const familyNumber = family === "IPv4"
-      ? 4
-      : family === "IPv6"
-      ? 6
-      : typeof family === "number"
-      ? family
-      : 0;
-    const result = [...addresses.values()].filter((address) =>
-      familyNumber === 0 || address.family === familyNumber
+    const familyNumber =
+      family === "IPv4"
+        ? 4
+        : family === "IPv6"
+          ? 6
+          : typeof family === "number"
+            ? family
+            : 0;
+    const result = [...addresses.values()].filter(
+      (address) => familyNumber === 0 || address.family === familyNumber,
     );
     if (result.length < 1) {
       throw new UrlError(`No validated address to connect to: ${hostname}`);
@@ -126,9 +128,10 @@ export function createNodePinner(
         redirect: "manual",
         // A signal in the options replaces the request's own signal, so both
         // are combined:
-        signal: signal == null || signal === request.signal
-          ? request.signal
-          : AbortSignal.any([signal, request.signal]),
+        signal:
+          signal == null || signal === request.signal
+            ? request.signal
+            : AbortSignal.any([signal, request.signal]),
         dispatcher: agent,
       } as RequestInit);
     },

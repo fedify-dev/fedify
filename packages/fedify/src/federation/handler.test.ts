@@ -132,30 +132,24 @@ test("handleActor()", async () => {
     onUnauthorizedCalled = request;
     return new Response("Unauthorized", { status: 401 });
   };
-  let response = await handleActor(
-    context.request,
-    {
-      context,
-      identifier: "someone",
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  let response = await handleActor(context.request, {
+    context,
+    identifier: "someone",
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
-  response = await handleActor(
-    context.request,
-    {
-      context,
-      identifier: "no-one",
-      actorDispatcher,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleActor(context.request, {
+    context,
+    identifier: "no-one",
+    actorDispatcher,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
@@ -169,16 +163,13 @@ test("handleActor()", async () => {
       },
     }),
   });
-  response = await handleActor(
-    context.request,
-    {
-      context,
-      identifier: "someone",
-      actorDispatcher,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleActor(context.request, {
+    context,
+    identifier: "someone",
+    actorDispatcher,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -241,34 +232,28 @@ test("handleActor()", async () => {
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
-  response = await handleActor(
-    context.request,
-    {
-      context,
-      identifier: "no-one",
-      actorDispatcher,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleActor(context.request, {
+    context,
+    identifier: "no-one",
+    actorDispatcher,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
-  response = await handleActor(
-    context.request,
-    {
-      context,
-      identifier: "someone",
-      actorDispatcher,
-      authorizePredicate: async (ctx, _handle) =>
-        await ctx.getSignedKey() != null &&
-        await ctx.getSignedKeyOwner() != null,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleActor(context.request, {
+    context,
+    identifier: "someone",
+    actorDispatcher,
+    authorizePredicate: async (ctx, _handle) =>
+      (await ctx.getSignedKey()) != null &&
+      (await ctx.getSignedKeyOwner()) != null,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 401);
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, context.request);
@@ -279,19 +264,16 @@ test("handleActor()", async () => {
     getSignedKey: () => Promise.resolve(rsaPublicKey2),
     getSignedKeyOwner: () => Promise.resolve(new Person({})),
   });
-  response = await handleActor(
-    context.request,
-    {
-      context,
-      identifier: "someone",
-      actorDispatcher,
-      authorizePredicate: async (ctx, _handle) =>
-        await ctx.getSignedKey() != null &&
-        await ctx.getSignedKeyOwner() != null,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleActor(context.request, {
+    context,
+    identifier: "someone",
+    actorDispatcher,
+    authorizePredicate: async (ctx, _handle) =>
+      (await ctx.getSignedKey()) != null &&
+      (await ctx.getSignedKeyOwner()) != null,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -355,33 +337,27 @@ test("handleActor()", async () => {
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
-  response = await handleActor(
-    context.request,
-    {
-      context,
-      identifier: "gone",
-      actorDispatcher: tombstoneDispatcher,
-      authorizePredicate: () => false,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleActor(context.request, {
+    context,
+    identifier: "gone",
+    actorDispatcher: tombstoneDispatcher,
+    authorizePredicate: () => false,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 401);
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, context.request);
 
   onUnauthorizedCalled = null;
-  response = await handleActor(
-    context.request,
-    {
-      context,
-      identifier: "gone",
-      actorDispatcher: tombstoneDispatcher,
-      authorizePredicate: () => true,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleActor(context.request, {
+    context,
+    identifier: "gone",
+    actorDispatcher: tombstoneDispatcher,
+    authorizePredicate: () => true,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 410);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -438,59 +414,47 @@ test("handleObject()", async () => {
     onUnauthorizedCalled = request;
     return new Response("Unauthorized", { status: 401 });
   };
-  let response = await handleObject(
-    context.request,
-    {
-      context,
-      values: { identifier: "someone", id: "123" },
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  let response = await handleObject(context.request, {
+    context,
+    values: { identifier: "someone", id: "123" },
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
-  response = await handleObject(
-    context.request,
-    {
-      context,
-      values: { identifier: "someone", id: "123" },
-      objectDispatcher,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleObject(context.request, {
+    context,
+    values: { identifier: "someone", id: "123" },
+    objectDispatcher,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 200);
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
-  response = await handleObject(
-    context.request,
-    {
-      context,
-      values: { identifier: "no-one", id: "123" },
-      objectDispatcher,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleObject(context.request, {
+    context,
+    values: { identifier: "no-one", id: "123" },
+    objectDispatcher,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
-  response = await handleObject(
-    context.request,
-    {
-      context,
-      values: { identifier: "someone", id: "not-exist" },
-      objectDispatcher,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleObject(context.request, {
+    context,
+    values: { identifier: "someone", id: "not-exist" },
+    objectDispatcher,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
@@ -504,16 +468,13 @@ test("handleObject()", async () => {
       },
     }),
   });
-  response = await handleObject(
-    context.request,
-    {
-      context,
-      values: { identifier: "someone", id: "123" },
-      objectDispatcher,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleObject(context.request, {
+    context,
+    values: { identifier: "someone", id: "123" },
+    objectDispatcher,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -548,49 +509,40 @@ test("handleObject()", async () => {
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
-  response = await handleObject(
-    context.request,
-    {
-      context,
-      values: { identifier: "no-one", id: "123" },
-      objectDispatcher,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleObject(context.request, {
+    context,
+    values: { identifier: "no-one", id: "123" },
+    objectDispatcher,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
-  response = await handleObject(
-    context.request,
-    {
-      context,
-      values: { identifier: "someone", id: "not-exist" },
-      objectDispatcher,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleObject(context.request, {
+    context,
+    values: { identifier: "someone", id: "not-exist" },
+    objectDispatcher,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
-  response = await handleObject(
-    context.request,
-    {
-      context,
-      values: { identifier: "someone", id: "123" },
-      objectDispatcher,
-      authorizePredicate: async (ctx, _values) =>
-        await ctx.getSignedKey() != null &&
-        await ctx.getSignedKeyOwner() != null,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleObject(context.request, {
+    context,
+    values: { identifier: "someone", id: "123" },
+    objectDispatcher,
+    authorizePredicate: async (ctx, _values) =>
+      (await ctx.getSignedKey()) != null &&
+      (await ctx.getSignedKeyOwner()) != null,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 401);
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, context.request);
@@ -601,19 +553,16 @@ test("handleObject()", async () => {
     getSignedKey: () => Promise.resolve(rsaPublicKey2),
     getSignedKeyOwner: () => Promise.resolve(new Person({})),
   });
-  response = await handleObject(
-    context.request,
-    {
-      context,
-      values: { identifier: "someone", id: "123" },
-      objectDispatcher,
-      authorizePredicate: async (ctx, _values) =>
-        await ctx.getSignedKey() != null &&
-        await ctx.getSignedKeyOwner() != null,
-      onNotFound,
-      onUnauthorized,
-    },
-  );
+  response = await handleObject(context.request, {
+    context,
+    values: { identifier: "someone", id: "123" },
+    objectDispatcher,
+    authorizePredicate: async (ctx, _values) =>
+      (await ctx.getSignedKey()) != null &&
+      (await ctx.getSignedKeyOwner()) != null,
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -696,7 +645,7 @@ test("handleObject() with a tombstone", async () => {
     "application/activity+json",
   );
   assertEquals(response.headers.get("Vary"), "Accept");
-  const body = await response.json() as Record<string, unknown>;
+  const body = (await response.json()) as Record<string, unknown>;
   assertEquals(body.id, "https://example.com/users/someone/notes/123");
   assertEquals(body.type, "Tombstone");
   assertEquals(body.formerType, "as:Note");
@@ -782,11 +731,7 @@ test("handleCollection()", async () => {
     RequestContext<void>,
     void,
     void
-  > = (
-    _ctx,
-    identifier,
-    cursor,
-  ) => {
+  > = (_ctx, identifier, cursor) => {
     if (identifier !== "someone") return null;
     const items = [
       new Create({ id: new URL("https://example.com/activities/1") }),
@@ -808,11 +753,11 @@ test("handleCollection()", async () => {
   const firstCursor: CollectionCursor<RequestContext<void>, void, void> = (
     _ctx,
     identifier,
-  ) => identifier === "someone" ? "0" : null;
+  ) => (identifier === "someone" ? "0" : null);
   const lastCursor: CollectionCursor<RequestContext<void>, void, void> = (
     _ctx,
     identifier,
-  ) => identifier === "someone" ? "2" : null;
+  ) => (identifier === "someone" ? "2" : null);
   let onNotFoundCalled: Request | null = null;
   const onNotFound = (request: Request) => {
     onNotFoundCalled = request;
@@ -823,56 +768,47 @@ test("handleCollection()", async () => {
     onUnauthorizedCalled = request;
     return new Response("Unauthorized", { status: 401 });
   };
-  let response = await handleCollection(
-    context.request,
-    {
-      context,
-      name: "collection",
-      identifier: "someone",
-      uriGetter(identifier) {
-        return new URL(`https://example.com/users/${identifier}`);
-      },
-      onNotFound,
-      onUnauthorized,
+  let response = await handleCollection(context.request, {
+    context,
+    name: "collection",
+    identifier: "someone",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}`);
     },
-  );
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
-  response = await handleCollection(
-    context.request,
-    {
-      context,
-      name: "collection",
-      identifier: "someone",
-      uriGetter(identifier) {
-        return new URL(`https://example.com/users/${identifier}`);
-      },
-      collectionCallbacks: { dispatcher },
-      onNotFound,
-      onUnauthorized,
+  response = await handleCollection(context.request, {
+    context,
+    name: "collection",
+    identifier: "someone",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}`);
     },
-  );
+    collectionCallbacks: { dispatcher },
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 200);
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
-  response = await handleCollection(
-    context.request,
-    {
-      context,
-      name: "collection",
-      identifier: "no-one",
-      uriGetter(identifier) {
-        return new URL(`https://example.com/users/${identifier}`);
-      },
-      collectionCallbacks: { dispatcher },
-      onNotFound,
-      onUnauthorized,
+  response = await handleCollection(context.request, {
+    context,
+    name: "collection",
+    identifier: "no-one",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}`);
     },
-  );
+    collectionCallbacks: { dispatcher },
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
@@ -886,39 +822,33 @@ test("handleCollection()", async () => {
       },
     }),
   });
-  response = await handleCollection(
-    context.request,
-    {
-      context,
-      name: "collection",
-      identifier: "no-one",
-      uriGetter(identifier) {
-        return new URL(`https://example.com/users/${identifier}`);
-      },
-      collectionCallbacks: { dispatcher },
-      onNotFound,
-      onUnauthorized,
+  response = await handleCollection(context.request, {
+    context,
+    name: "collection",
+    identifier: "no-one",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}`);
     },
-  );
+    collectionCallbacks: { dispatcher },
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
   onNotFoundCalled = null;
-  response = await handleCollection(
-    context.request,
-    {
-      context,
-      name: "collection",
-      identifier: "someone",
-      uriGetter(identifier) {
-        return new URL(`https://example.com/users/${identifier}`);
-      },
-      collectionCallbacks: { dispatcher },
-      onNotFound,
-      onUnauthorized,
+  response = await handleCollection(context.request, {
+    context,
+    name: "collection",
+    identifier: "someone",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}`);
     },
-  );
+    collectionCallbacks: { dispatcher },
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -998,25 +928,22 @@ test("handleCollection()", async () => {
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
-  response = await handleCollection(
-    context.request,
-    {
-      context,
-      name: "collection",
-      identifier: "someone",
-      uriGetter(identifier) {
-        return new URL(`https://example.com/users/${identifier}`);
-      },
-      collectionCallbacks: {
-        dispatcher,
-        authorizePredicate: async (ctx, _handle) =>
-          await ctx.getSignedKey() != null &&
-          await ctx.getSignedKeyOwner() != null,
-      },
-      onNotFound,
-      onUnauthorized,
+  response = await handleCollection(context.request, {
+    context,
+    name: "collection",
+    identifier: "someone",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}`);
     },
-  );
+    collectionCallbacks: {
+      dispatcher,
+      authorizePredicate: async (ctx, _handle) =>
+        (await ctx.getSignedKey()) != null &&
+        (await ctx.getSignedKeyOwner()) != null,
+    },
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 401);
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, context.request);
@@ -1027,25 +954,22 @@ test("handleCollection()", async () => {
     getSignedKey: () => Promise.resolve(rsaPublicKey2),
     getSignedKeyOwner: () => Promise.resolve(new Person({})),
   });
-  response = await handleCollection(
-    context.request,
-    {
-      context,
-      name: "collection",
-      identifier: "someone",
-      uriGetter(identifier) {
-        return new URL(`https://example.com/users/${identifier}`);
-      },
-      collectionCallbacks: {
-        dispatcher,
-        authorizePredicate: async (ctx, _handle) =>
-          await ctx.getSignedKey() != null &&
-          await ctx.getSignedKeyOwner() != null,
-      },
-      onNotFound,
-      onUnauthorized,
+  response = await handleCollection(context.request, {
+    context,
+    name: "collection",
+    identifier: "someone",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}`);
     },
-  );
+    collectionCallbacks: {
+      dispatcher,
+      authorizePredicate: async (ctx, _handle) =>
+        (await ctx.getSignedKey()) != null &&
+        (await ctx.getSignedKeyOwner()) != null,
+    },
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -1098,25 +1022,22 @@ test("handleCollection()", async () => {
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, null);
 
-  response = await handleCollection(
-    context.request,
-    {
-      context,
-      name: "collection",
-      identifier: "someone",
-      uriGetter(identifier) {
-        return new URL(`https://example.com/users/${identifier}`);
-      },
-      collectionCallbacks: {
-        dispatcher,
-        counter,
-        firstCursor,
-        lastCursor,
-      },
-      onNotFound,
-      onUnauthorized,
+  response = await handleCollection(context.request, {
+    context,
+    name: "collection",
+    identifier: "someone",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}`);
     },
-  );
+    collectionCallbacks: {
+      dispatcher,
+      counter,
+      firstCursor,
+      lastCursor,
+    },
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -1165,25 +1086,22 @@ test("handleCollection()", async () => {
       },
     }),
   });
-  response = await handleCollection(
-    context.request,
-    {
-      context,
-      name: "collection",
-      identifier: "someone",
-      uriGetter(identifier) {
-        return new URL(`https://example.com/users/${identifier}`);
-      },
-      collectionCallbacks: {
-        dispatcher,
-        counter,
-        firstCursor,
-        lastCursor,
-      },
-      onNotFound,
-      onUnauthorized,
+  response = await handleCollection(context.request, {
+    context,
+    name: "collection",
+    identifier: "someone",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}`);
     },
-  );
+    collectionCallbacks: {
+      dispatcher,
+      counter,
+      firstCursor,
+      lastCursor,
+    },
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -1217,11 +1135,13 @@ test("handleCollection()", async () => {
     type: "OrderedCollectionPage",
     partOf: "https://example.com/",
     next: "https://example.com/?cursor=1",
-    orderedItems: [{
-      "@context": createCtx,
-      id: "https://example.com/activities/1",
-      type: "Create",
-    }],
+    orderedItems: [
+      {
+        "@context": createCtx,
+        id: "https://example.com/activities/1",
+        type: "Create",
+      },
+    ],
   });
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, null);
@@ -1236,25 +1156,22 @@ test("handleCollection()", async () => {
       },
     }),
   });
-  response = await handleCollection(
-    context.request,
-    {
-      context,
-      name: "collection",
-      identifier: "someone",
-      uriGetter(identifier) {
-        return new URL(`https://example.com/users/${identifier}`);
-      },
-      collectionCallbacks: {
-        dispatcher,
-        counter,
-        firstCursor,
-        lastCursor,
-      },
-      onNotFound,
-      onUnauthorized,
+  response = await handleCollection(context.request, {
+    context,
+    name: "collection",
+    identifier: "someone",
+    uriGetter(identifier) {
+      return new URL(`https://example.com/users/${identifier}`);
     },
-  );
+    collectionCallbacks: {
+      dispatcher,
+      counter,
+      firstCursor,
+      lastCursor,
+    },
+    onNotFound,
+    onUnauthorized,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -1288,11 +1205,13 @@ test("handleCollection()", async () => {
     type: "OrderedCollectionPage",
     partOf: "https://example.com/",
     prev: "https://example.com/?cursor=1",
-    orderedItems: [{
-      "@context": createCtx,
-      id: "https://example.com/activities/3",
-      type: "Create",
-    }],
+    orderedItems: [
+      {
+        "@context": createCtx,
+        id: "https://example.com/activities/3",
+        type: "Create",
+      },
+    ],
   });
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, null);
@@ -1323,12 +1242,12 @@ test("handleCollection() records OpenTelemetry collection metrics", async () => 
   > = (_ctx, identifier) =>
     identifier === "someone"
       ? {
-        items: [
-          new Create({ id: new URL("https://example.com/activities/1") }),
-          new Create({ id: new URL("https://example.com/activities/2") }),
-          new Create({ id: new URL("https://example.com/activities/3") }),
-        ],
-      }
+          items: [
+            new Create({ id: new URL("https://example.com/activities/1") }),
+            new Create({ id: new URL("https://example.com/activities/2") }),
+            new Create({ id: new URL("https://example.com/activities/3") }),
+          ],
+        }
       : null;
   const counter: CollectionCounter<void, void> = (_ctx, identifier) =>
     identifier === "someone" ? 3 : null;
@@ -1365,10 +1284,7 @@ test("handleCollection() records OpenTelemetry collection metrics", async () => 
     "served",
   );
   assertEquals(requests[0].attributes["http.response.status_code"], 200);
-  assertEquals(
-    "activitypub.collection.id" in requests[0].attributes,
-    false,
-  );
+  assertEquals("activitypub.collection.id" in requests[0].attributes, false);
 
   const durations = recorder.getMeasurements(
     "activitypub.collection.dispatch.duration",
@@ -1824,10 +1740,10 @@ test("handleInbox()", async () => {
     },
     ...inboxOptions,
   });
-  assertEquals([response.status, await response.text()], [
-    400,
-    "Invalid activity.",
-  ]);
+  assertEquals(
+    [response.status, await response.text()],
+    [400, "Invalid activity."],
+  );
 
   onNotFoundCalled = null;
   const signedRequest = await signRequest(
@@ -1921,10 +1837,7 @@ test("handleInbox()", async () => {
     return await mockDocumentLoader(url);
   };
   const httpSignedLdBody = {
-    "@context": [
-      remoteContextUrl,
-      "https://www.w3.org/ns/activitystreams",
-    ],
+    "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
     id: "https://example.com/activities/http-signed-ld",
     type: "Create",
     actor: "https://example.com/person2",
@@ -1971,10 +1884,7 @@ test("handleInbox()", async () => {
 
   const ldSignedOnlyBody = await signJsonLd(
     {
-      "@context": [
-        remoteContextUrl,
-        "https://www.w3.org/ns/activitystreams",
-      ],
+      "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
       id: "https://example.com/activities/ld-only-transient",
       type: "Create",
       actor: "https://example.com/person2",
@@ -2049,10 +1959,10 @@ test("handleInbox()", async () => {
     },
     ...inboxOptions,
   });
-  assertEquals([response.status, await response.text()], [
-    400,
-    "Invalid activity.",
-  ]);
+  assertEquals(
+    [response.status, await response.text()],
+    [400, "Invalid activity."],
+  );
   const malformedClosedLdSignedBody = await signJsonLd(
     {
       "@context": "https://www.w3.org/ns/activitystreams",
@@ -2089,10 +1999,10 @@ test("handleInbox()", async () => {
     },
     ...inboxOptions,
   });
-  assertEquals([response.status, await response.text()], [
-    400,
-    "Invalid activity.",
-  ]);
+  assertEquals(
+    [response.status, await response.text()],
+    [400, "Invalid activity."],
+  );
 
   const malformedIriHttpSignedRequest = await signRequest(
     new Request("https://example.com/", {
@@ -2132,10 +2042,10 @@ test("handleInbox()", async () => {
     },
     ...inboxOptions,
   });
-  assertEquals([response.status, await response.text()], [
-    400,
-    "Invalid activity.",
-  ]);
+  assertEquals(
+    [response.status, await response.text()],
+    [400, "Invalid activity."],
+  );
 
   const ldSignedOnlyRequest = new Request("https://example.com/", {
     method: "POST",
@@ -2266,18 +2176,15 @@ test("handleInbox()", async () => {
     },
     ...inboxOptions,
   });
-  assertEquals([response.status, await response.text()], [
-    401,
-    "Failed to verify the request signature.",
-  ]);
+  assertEquals(
+    [response.status, await response.text()],
+    [401, "Failed to verify the request signature."],
+  );
 
   failRemoteContextOnce = true;
   const deferredMalformedTemporalLdSignedBody = await signJsonLd(
     {
-      "@context": [
-        remoteContextUrl,
-        "https://www.w3.org/ns/activitystreams",
-      ],
+      "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
       id: "https://example.com/activities/deferred-invalid-published",
       type: "Create",
       actor: "https://example.com/person2",
@@ -2337,19 +2244,16 @@ test("handleInbox()", async () => {
     },
     ...inboxOptions,
   });
-  assertEquals([response.status, await response.text()], [
-    400,
-    "Invalid activity.",
-  ]);
+  assertEquals(
+    [response.status, await response.text()],
+    [400, "Invalid activity."],
+  );
 
   const malformedLdSignedRequest = new Request("https://example.com/", {
     method: "POST",
     body: JSON.stringify({
       ...ldSignedOnlyBody,
-      "@context": [
-        "not a url",
-        "https://www.w3.org/ns/activitystreams",
-      ],
+      "@context": ["not a url", "https://www.w3.org/ns/activitystreams"],
     }),
   });
   const malformedLdSignedContext = createRequestContext({
@@ -2371,10 +2275,10 @@ test("handleInbox()", async () => {
     },
     ...inboxOptions,
   });
-  assertEquals([response.status, await response.text()], [
-    400,
-    "Invalid JSON-LD.",
-  ]);
+  assertEquals(
+    [response.status, await response.text()],
+    [400, "Invalid JSON-LD."],
+  );
 
   const dualSignedInvalidCreatorRequest = await signRequest(
     new Request("https://example.com/", {
@@ -2416,10 +2320,7 @@ test("handleInbox()", async () => {
     new Request("https://example.com/", {
       method: "POST",
       body: JSON.stringify({
-        "@context": [
-          remoteContextUrl,
-          "https://www.w3.org/ns/activitystreams",
-        ],
+        "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
         id: "https://example.com/activities/http-signed-invalid-context",
         type: "Create",
         actor: "https://example.com/person2",
@@ -2477,10 +2378,7 @@ test("handleInbox()", async () => {
     new Request("https://example.com/", {
       method: "POST",
       body: JSON.stringify({
-        "@context": [
-          "app-context",
-          "https://www.w3.org/ns/activitystreams",
-        ],
+        "@context": ["app-context", "https://www.w3.org/ns/activitystreams"],
         id: "https://example.com/activities/http-signed-opaque-context",
         type: "Create",
         actor: "https://example.com/person2",
@@ -2536,10 +2434,7 @@ test("handleInbox()", async () => {
     new Request("https://example.com/", {
       method: "POST",
       body: JSON.stringify({
-        "@context": [
-          "app:context",
-          "https://www.w3.org/ns/activitystreams",
-        ],
+        "@context": ["app:context", "https://www.w3.org/ns/activitystreams"],
         id: "https://example.com/activities/http-signed-opaque-typeerror",
         type: "Create",
         actor: "https://example.com/person2",
@@ -2646,17 +2541,12 @@ test("handleInbox()", async () => {
     new Request("https://example.com/", {
       method: "POST",
       body: JSON.stringify({
-        "@context": [
-          "//[",
-          "https://www.w3.org/ns/activitystreams",
-        ],
-        id:
-          "https://example.com/activities/http-signed-malformed-network-path-context",
+        "@context": ["//[", "https://www.w3.org/ns/activitystreams"],
+        id: "https://example.com/activities/http-signed-malformed-network-path-context",
         type: "Create",
         actor: "https://example.com/person2",
         object: {
-          id:
-            "https://example.com/notes/http-signed-malformed-network-path-context",
+          id: "https://example.com/notes/http-signed-malformed-network-path-context",
           type: "Note",
           attributedTo: "https://example.com/person2",
           content: "Hello, world!",
@@ -2687,37 +2577,29 @@ test("handleInbox()", async () => {
       return await mockDocumentLoader(new URL(resource).href);
     },
   });
-  response = await handleInbox(
-    malformedNetworkPathContextHttpSignedRequest,
-    {
-      recipient: null,
-      context: malformedNetworkPathContextHttpSignedContext,
-      inboxContextFactory(_activity) {
-        return createInboxContext({
-          ...malformedNetworkPathContextHttpSignedContext,
-          clone: undefined,
-        });
-      },
-      ...inboxOptions,
+  response = await handleInbox(malformedNetworkPathContextHttpSignedRequest, {
+    recipient: null,
+    context: malformedNetworkPathContextHttpSignedContext,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...malformedNetworkPathContextHttpSignedContext,
+        clone: undefined,
+      });
     },
-  );
+    ...inboxOptions,
+  });
   assertEquals(response.status, 400);
 
   const malformedUrlLikeContextHttpSignedRequest = await signRequest(
     new Request("https://example.com/", {
       method: "POST",
       body: JSON.stringify({
-        "@context": [
-          "http://[",
-          "https://www.w3.org/ns/activitystreams",
-        ],
-        id:
-          "https://example.com/activities/http-signed-malformed-url-like-context",
+        "@context": ["http://[", "https://www.w3.org/ns/activitystreams"],
+        id: "https://example.com/activities/http-signed-malformed-url-like-context",
         type: "Create",
         actor: "https://example.com/person2",
         object: {
-          id:
-            "https://example.com/notes/http-signed-malformed-url-like-context",
+          id: "https://example.com/notes/http-signed-malformed-url-like-context",
           type: "Note",
           attributedTo: "https://example.com/person2",
           content: "Hello, world!",
@@ -2765,10 +2647,7 @@ test("handleInbox()", async () => {
     new Request("https://example.com/", {
       method: "POST",
       body: JSON.stringify({
-        "@context": [
-          "not a url",
-          "https://www.w3.org/ns/activitystreams",
-        ],
+        "@context": ["not a url", "https://www.w3.org/ns/activitystreams"],
         id: "https://example.com/activities/http-signed-malformed-context",
         type: "Create",
         actor: "https://example.com/person2",
@@ -2821,10 +2700,7 @@ test("handleInbox()", async () => {
     new Request("https://example.com/", {
       method: "POST",
       body: JSON.stringify({
-        "@context": [
-          remoteContextUrl,
-          "https://www.w3.org/ns/activitystreams",
-        ],
+        "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
         id: "https://example.com/activities/http-signed-invalid-remote-context",
         type: "Create",
         actor: "https://example.com/person2",
@@ -2874,10 +2750,7 @@ test("handleInbox()", async () => {
     new Request("https://example.com/", {
       method: "POST",
       body: JSON.stringify({
-        "@context": [
-          remoteContextUrl,
-          "https://www.w3.org/ns/activitystreams",
-        ],
+        "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
         id: "https://example.com/activities/http-signed-invalid-url-context",
         type: "Create",
         actor: "https://example.com/person2",
@@ -2927,10 +2800,7 @@ test("handleInbox()", async () => {
     new Request("https://example.com/", {
       method: "POST",
       body: JSON.stringify({
-        "@context": [
-          remoteContextUrl,
-          "https://www.w3.org/ns/activitystreams",
-        ],
+        "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
         id: "https://example.com/activities/http-signed-typeerror-context",
         type: "Create",
         actor: "https://example.com/person2",
@@ -2980,10 +2850,7 @@ test("handleInbox()", async () => {
     new Request("https://example.com/", {
       method: "POST",
       body: JSON.stringify({
-        "@context": [
-          remoteContextUrl,
-          "https://www.w3.org/ns/activitystreams",
-        ],
+        "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
         id: "https://example.com/activities/http-signed-rangeerror-context",
         type: "Create",
         actor: "https://example.com/person2",
@@ -3035,10 +2902,7 @@ test("handleInbox()", async () => {
     new Request("https://example.com/", {
       method: "POST",
       body: JSON.stringify({
-        "@context": [
-          remoteContextUrl,
-          "https://www.w3.org/ns/activitystreams",
-        ],
+        "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
         id: "https://example.com/activities/http-signed-syntax-context",
         type: "Create",
         actor: "https://example.com/person2",
@@ -3063,9 +2927,9 @@ test("handleInbox()", async () => {
     contextLoader: async (resource: string) => {
       const url = new URL(resource).href;
       if (url === remoteContextUrl) {
-        const error = new Error(
-          `Transient syntax failure: ${url}`,
-        ) as Error & { details?: { code: string } };
+        const error = new Error(`Transient syntax failure: ${url}`) as Error & {
+          details?: { code: string };
+        };
         error.name = "jsonld.SyntaxError";
         error.details = { code: "loading remote context failed" };
         throw error;
@@ -3133,10 +2997,7 @@ test("handleInbox()", async () => {
   assertEquals(response.status, 202);
 
   const unsafeJson = {
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      { rev: "@reverse" },
-    ],
+    "@context": ["https://www.w3.org/ns/activitystreams", { rev: "@reverse" }],
     id: "https://example.com/activities/unsafe",
     type: "Announce",
     actor: "https://example.com/person2",
@@ -3177,12 +3038,9 @@ test("handleInbox()", async () => {
   const unsafeLdRequest = new Request("https://example.com/", {
     method: "POST",
     body: JSON.stringify(
-      await signJsonLd(
-        unsafeJson,
-        rsaPrivateKey3,
-        rsaPublicKey3.id!,
-        { contextLoader: mockDocumentLoader },
-      ),
+      await signJsonLd(unsafeJson, rsaPrivateKey3, rsaPublicKey3.id!, {
+        contextLoader: mockDocumentLoader,
+      }),
     ),
   });
   const unsafeLdContext = createRequestContext({
@@ -3205,11 +3063,7 @@ test("handleInbox()", async () => {
   const invalidRequest = new Request("https://example.com/", {
     method: "POST",
     body: JSON.stringify({
-      "@context": [
-        "https://www.w3.org/ns/activitystreams",
-        true,
-        23,
-      ],
+      "@context": ["https://www.w3.org/ns/activitystreams", true, 23],
       type: "Create",
       object: { type: "Note", content: "Hello, world!" },
       actor: "https://example.com/users/alice",
@@ -3398,9 +3252,7 @@ test("handleOutbox()", async () => {
     response.headers.get("content-type"),
     "text/plain; charset=utf-8",
   );
-  assertEquals(seen, [
-    `someone:${activity.id?.href}`,
-  ]);
+  assertEquals(seen, [`someone:${activity.id?.href}`]);
 
   onUnauthorizedCalled = null;
   ({ request, context } = createRequestContextPair());
@@ -3469,11 +3321,7 @@ test("handleOutbox()", async () => {
     {
       method: "POST",
       body: JSON.stringify({
-        "@context": [
-          "https://www.w3.org/ns/activitystreams",
-          true,
-          23,
-        ],
+        "@context": ["https://www.w3.org/ns/activitystreams", true, 23],
         type: "Create",
         object: { type: "Note", content: "Hello, world!" },
         actor: "https://example.com/users/alice",
@@ -3682,31 +3530,27 @@ test("handleOutbox() matches portable actors by their canonical IDs", async () =
     return [response.status, seen.length] as const;
   };
 
-  for (
-    const actor of [
-      actorId,
-      "ap://did:key:z6MkAlice/users/someone",
-      "ap+ef61://did%3Akey%3Az6MkAlice/users/someone",
-      "ap://did:key:z6MkAlice/users/someone" +
+  for (const actor of [
+    actorId,
+    "ap://did:key:z6MkAlice/users/someone",
+    "ap+ef61://did%3Akey%3Az6MkAlice/users/someone",
+    "ap://did:key:z6MkAlice/users/someone" +
       "?@gateway=https%3A%2F%2Fserver1.example" +
       "&@gateway=https%3A%2F%2Fserver2.example",
-      "https://server2.example/.well-known/apgateway/did:key:z6MkAlice/users/someone",
-    ]
-  ) {
+    "https://server2.example/.well-known/apgateway/did:key:z6MkAlice/users/someone",
+  ]) {
     assertEquals(await post(actor), [202, 1], actor);
   }
 
-  for (
-    const actor of [
-      "ap://did:key:z6MkBob/users/someone",
-      "ap://did:key:z6MkAlice/users/other?@gateway=https%3A%2F%2Fserver1.example",
-      "ap://did:key:z6MkAlice/users/someone#main-key",
-      "https://server1.example/.well-known/apgateway/did:key:z6MkAlice/users/someone" +
+  for (const actor of [
+    "ap://did:key:z6MkBob/users/someone",
+    "ap://did:key:z6MkAlice/users/other?@gateway=https%3A%2F%2Fserver1.example",
+    "ap://did:key:z6MkAlice/users/someone#main-key",
+    "https://server1.example/.well-known/apgateway/did:key:z6MkAlice/users/someone" +
       "?@gateway=https%3A%2F%2Fserver1.example",
-      "https://example.com/users/someone",
-      [actorId, "ap://did:key:z6MkAlice/users/other"],
-    ]
-  ) {
+    "https://example.com/users/someone",
+    [actorId, "ap://did:key:z6MkAlice/users/other"],
+  ]) {
     assertEquals(await post(actor), [400, 0], String(actor));
   }
 });
@@ -3731,10 +3575,7 @@ test("handleInbox() preserves the raw signed payload for inboxContextFactory", a
   };
   const signed = await signJsonLd(
     {
-      "@context": [
-        remoteContextUrl,
-        "https://www.w3.org/ns/activitystreams",
-      ],
+      "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
       id: "https://example.com/activities/preserve-raw",
       type: "Create",
       actor: "https://example.com/person2",
@@ -3831,8 +3672,7 @@ test("handleInbox() enqueues normalizedActivity for LD-signed inbox work", async
       queuedMessage = message as InboxMessage;
       return Promise.resolve();
     },
-    async listen() {
-    },
+    async listen() {},
   };
   const federation = createFederation<void>({
     kv: new MemoryKvStore(),
@@ -3840,10 +3680,7 @@ test("handleInbox() enqueues normalizedActivity for LD-signed inbox work", async
   });
   const signed = await signJsonLd(
     {
-      "@context": [
-        remoteContextUrl,
-        "https://www.w3.org/ns/activitystreams",
-      ],
+      "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
       id: "https://example.com/activities/enqueued-normalized",
       type: "Create",
       actor: "https://example.com/person2",
@@ -3899,10 +3736,10 @@ test("handleInbox() enqueues normalizedActivity for LD-signed inbox work", async
     signatureTimeWindow: { minutes: 5 },
     skipSignatureVerification: false,
   });
-  assertEquals([response.status, await response.text()], [
-    202,
-    "Activity is enqueued.",
-  ]);
+  assertEquals(
+    [response.status, await response.text()],
+    [202, "Activity is enqueued."],
+  );
   const enqueued = queuedMessage;
   assert(enqueued != null);
   const inboxMessage = enqueued as InboxMessage;
@@ -3925,8 +3762,7 @@ test(
         queuedMessage = message as InboxMessage;
         return Promise.resolve();
       },
-      async listen() {
-      },
+      async listen() {},
     };
     const federation = createFederation<void>({
       kv: new MemoryKvStore(),
@@ -3948,10 +3784,7 @@ test(
       return await mockDocumentLoader(url);
     };
     const unsignedBody = {
-      "@context": [
-        remoteContextUrl,
-        "https://www.w3.org/ns/activitystreams",
-      ],
+      "@context": [remoteContextUrl, "https://www.w3.org/ns/activitystreams"],
       id: "https://example.com/activities/non-lds-queued-signature",
       type: "Create",
       actor: "https://example.com/person2",
@@ -4013,10 +3846,10 @@ test(
       signatureTimeWindow: { minutes: 5 },
       skipSignatureVerification: false,
     });
-    assertEquals([response.status, await response.text()], [
-      202,
-      "Activity is enqueued.",
-    ]);
+    assertEquals(
+      [response.status, await response.text()],
+      [202, "Activity is enqueued."],
+    );
     if (queuedMessage == null) throw new Error("Inbox message not queued.");
     const inboxMessage = queuedMessage as InboxMessage;
     assertEquals(inboxMessage, {
@@ -4032,12 +3865,14 @@ test(
       verifiedView: inboxMessage.verifiedView,
       authentication: {
         verified: true,
-        requestSigners: [{
-          kind: "actor",
-          id: "https://example.com/person2",
-          mechanism: "httpSignatures",
-          keyId: "https://example.com/person2#key3",
-        }],
+        requestSigners: [
+          {
+            kind: "actor",
+            id: "https://example.com/person2",
+            mechanism: "httpSignatures",
+            keyId: "https://example.com/person2#key3",
+          },
+        ],
         documentSigners: [],
         originAuthenticated: [],
       },
@@ -4051,9 +3886,10 @@ test(
     assertEquals(inboxMessage.verifiedView?.policy, "standard");
     assertEquals(inboxMessage.verifiedView?.source, "activity");
     assert(
-      inboxMessage.verifiedView?.contexts.some((entry) =>
-        entry.url === "https://remote.example/contexts/ext" &&
-        "response" in entry
+      inboxMessage.verifiedView?.contexts.some(
+        (entry) =>
+          entry.url === "https://remote.example/contexts/ext" &&
+          "response" in entry,
       ),
     );
   },
@@ -4228,12 +4064,9 @@ test("handleInbox() rejects cross-origin activity IDs", async () => {
     new Request("https://local.example/inbox", {
       method: "POST",
       body: JSON.stringify(
-        await signJsonLd(
-          activityJson,
-          rsaPrivateKey3,
-          rsaPublicKey3.id!,
-          { contextLoader: mockDocumentLoader },
-        ),
+        await signJsonLd(activityJson, rsaPrivateKey3, rsaPublicKey3.id!, {
+          contextLoader: mockDocumentLoader,
+        }),
       ),
     }),
     new Request("https://local.example/inbox", {
@@ -4362,12 +4195,9 @@ test("handleInbox() rejects missing actors before idempotency", async () => {
     new Request("https://local.example/inbox", {
       method: "POST",
       body: JSON.stringify(
-        await signJsonLd(
-          unsignedJson,
-          rsaPrivateKey3,
-          rsaPublicKey3.id!,
-          { contextLoader: mockDocumentLoader },
-        ),
+        await signJsonLd(unsignedJson, rsaPrivateKey3, rsaPublicKey3.id!, {
+          contextLoader: mockDocumentLoader,
+        }),
       ),
     }),
   ];
@@ -4426,10 +4256,10 @@ test("handleInbox() leaves a rejected activity ID available", async () => {
   const documentLoader = (resource: string) =>
     resource === attackerId.href || resource === attackerKeyId.href
       ? Promise.resolve({
-        contextUrl: null,
-        documentUrl: resource,
-        document: attackerDocument,
-      })
+          contextUrl: null,
+          documentUrl: resource,
+          document: attackerDocument,
+        })
       : mockDocumentLoader(resource);
 
   for (const strategy of ["per-inbox", "global"] as const) {
@@ -4486,11 +4316,7 @@ test("handleInbox() leaves a rejected activity ID available", async () => {
       );
 
     const forged = await handle(
-      await createRequest(
-        attackerId,
-        attackerKeys.privateKey,
-        attackerKeyId,
-      ),
+      await createRequest(attackerId, attackerKeys.privateKey, attackerKeyId),
     );
     const genuine = await handle(
       await createRequest(
@@ -4602,25 +4428,21 @@ test("handleCustomCollection()", async () => {
   const counter: CustomCollectionCounter<string, void> = (
     _ctx: RequestContext<void>,
     values: Record<string, string>,
-  ) => values.identifier === "someone" ? 3 : null;
+  ) => (values.identifier === "someone" ? 3 : null);
 
   const firstCursor: CustomCollectionCursor<
     string,
     RequestContext<void>,
     void
-  > = (
-    _ctx: RequestContext<void>,
-    values: Record<string, string>,
-  ) => values.identifier === "someone" ? "0" : null;
+  > = (_ctx: RequestContext<void>, values: Record<string, string>) =>
+    values.identifier === "someone" ? "0" : null;
 
   const lastCursor: CustomCollectionCursor<
     string,
     RequestContext<void>,
     void
-  > = (
-    _ctx: RequestContext<void>,
-    values: Record<string, string>,
-  ) => values.identifier === "someone" ? "2" : null;
+  > = (_ctx: RequestContext<void>, values: Record<string, string>) =>
+    values.identifier === "someone" ? "2" : null;
 
   const callbacks: CustomCollectionCallbacks<
     Create,
@@ -4650,15 +4472,12 @@ test("handleCustomCollection()", async () => {
   };
 
   // Test without callbacks (should return 404)
-  let response = await handleCustomCollection(
-    context.request,
-    {
-      context,
-      name: "custom collection",
-      values: { identifier: "someone" },
-      ...errorHandlers,
-    },
-  );
+  let response = await handleCustomCollection(context.request, {
+    context,
+    name: "custom collection",
+    values: { identifier: "someone" },
+    ...errorHandlers,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
@@ -4672,32 +4491,26 @@ test("handleCustomCollection()", async () => {
       },
     }),
   });
-  response = await handleCustomCollection(
-    context.request,
-    {
-      context,
-      name: "custom collection",
-      values: { identifier: "no-one" },
-      collectionCallbacks: { dispatcher },
-      ...errorHandlers,
-    },
-  );
+  response = await handleCustomCollection(context.request, {
+    context,
+    name: "custom collection",
+    values: { identifier: "no-one" },
+    collectionCallbacks: { dispatcher },
+    ...errorHandlers,
+  });
   assertEquals(response.status, 404);
   assertEquals(onNotFoundCalled, context.request);
   assertEquals(onUnauthorizedCalled, null);
 
   // Test successful request without pagination
   onNotFoundCalled = null;
-  response = await handleCustomCollection(
-    context.request,
-    {
-      context,
-      name: "custom collection",
-      values: { identifier: "someone" },
-      collectionCallbacks: { dispatcher },
-      ...errorHandlers,
-    },
-  );
+  response = await handleCustomCollection(context.request, {
+    context,
+    name: "custom collection",
+    values: { identifier: "someone" },
+    collectionCallbacks: { dispatcher },
+    ...errorHandlers,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -4779,21 +4592,18 @@ test("handleCustomCollection()", async () => {
   assertEquals(onUnauthorizedCalled, null);
 
   // Test with authorization predicate (should fail without signature)
-  response = await handleCustomCollection(
-    context.request,
-    {
-      context,
-      name: "custom collection",
-      values: { identifier: "someone" },
-      collectionCallbacks: {
-        dispatcher,
-        authorizePredicate: async (ctx, _values) =>
-          await ctx.getSignedKey() != null &&
-          await ctx.getSignedKeyOwner() != null,
-      },
-      ...errorHandlers,
+  response = await handleCustomCollection(context.request, {
+    context,
+    name: "custom collection",
+    values: { identifier: "someone" },
+    collectionCallbacks: {
+      dispatcher,
+      authorizePredicate: async (ctx, _values) =>
+        (await ctx.getSignedKey()) != null &&
+        (await ctx.getSignedKeyOwner()) != null,
     },
-  );
+    ...errorHandlers,
+  });
   assertEquals(response.status, 401);
   assertEquals(onNotFoundCalled, null);
   assertEquals(onUnauthorizedCalled, context.request);
@@ -4805,21 +4615,18 @@ test("handleCustomCollection()", async () => {
     getSignedKey: () => Promise.resolve(rsaPublicKey2),
     getSignedKeyOwner: () => Promise.resolve(new Person({})),
   });
-  response = await handleCustomCollection(
-    context.request,
-    {
-      context,
-      name: "custom collection",
-      values: { identifier: "someone" },
-      collectionCallbacks: {
-        dispatcher,
-        authorizePredicate: async (ctx, _values) =>
-          await ctx.getSignedKey() != null &&
-          await ctx.getSignedKeyOwner() != null,
-      },
-      ...errorHandlers,
+  response = await handleCustomCollection(context.request, {
+    context,
+    name: "custom collection",
+    values: { identifier: "someone" },
+    collectionCallbacks: {
+      dispatcher,
+      authorizePredicate: async (ctx, _values) =>
+        (await ctx.getSignedKey()) != null &&
+        (await ctx.getSignedKeyOwner()) != null,
     },
-  );
+    ...errorHandlers,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -4851,16 +4658,13 @@ test("handleCustomCollection()", async () => {
   assertEquals(onUnauthorizedCalled, null);
 
   // Test with pagination - full collection with pagination info
-  response = await handleCustomCollection(
-    context.request,
-    {
-      context,
-      name: "custom collection",
-      values: { identifier: "someone" },
-      collectionCallbacks: callbacks,
-      ...errorHandlers,
-    },
-  );
+  response = await handleCustomCollection(context.request, {
+    context,
+    name: "custom collection",
+    values: { identifier: "someone" },
+    collectionCallbacks: callbacks,
+    ...errorHandlers,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -4888,16 +4692,13 @@ test("handleCustomCollection()", async () => {
       },
     }),
   });
-  response = await handleCustomCollection(
-    context.request,
-    {
-      context,
-      name: "custom collection",
-      values: { identifier: "someone" },
-      collectionCallbacks: callbacks,
-      ...errorHandlers,
-    },
-  );
+  response = await handleCustomCollection(context.request, {
+    context,
+    name: "custom collection",
+    values: { identifier: "someone" },
+    collectionCallbacks: callbacks,
+    ...errorHandlers,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -4929,16 +4730,13 @@ test("handleCustomCollection()", async () => {
       },
     }),
   });
-  response = await handleCustomCollection(
-    context.request,
-    {
-      context,
-      name: "custom collection",
-      values: { identifier: "someone" },
-      collectionCallbacks: callbacks,
-      ...errorHandlers,
-    },
-  );
+  response = await handleCustomCollection(context.request, {
+    context,
+    name: "custom collection",
+    values: { identifier: "someone" },
+    collectionCallbacks: callbacks,
+    ...errorHandlers,
+  });
   assertEquals(response.status, 200);
   assertEquals(
     response.headers.get("Content-Type"),
@@ -4982,11 +4780,11 @@ test("handleCustomCollection() records OpenTelemetry collection metrics", async 
   > = (_ctx, values) =>
     values.identifier === "someone"
       ? {
-        items: [
-          new Create({ id: new URL("https://example.com/activities/1") }),
-          new Create({ id: new URL("https://example.com/activities/2") }),
-        ],
-      }
+          items: [
+            new Create({ id: new URL("https://example.com/activities/1") }),
+            new Create({ id: new URL("https://example.com/activities/2") }),
+          ],
+        }
       : null;
   const counter: CustomCollectionCounter<string, void> = (_ctx, values) =>
     values.identifier === "someone" ? 2 : null;
@@ -5148,10 +4946,7 @@ test("handleCustomCollection() classifies deferred collection metrics as error",
   const items = recorder.getMeasurements("activitypub.collection.page.items");
   assertEquals(items.length, 1);
   assertEquals(items[0].value, 1);
-  assertEquals(
-    items[0].attributes["activitypub.collection.result"],
-    "error",
-  );
+  assertEquals(items[0].attributes["activitypub.collection.result"], "error");
 
   const totalItems = recorder.getMeasurements(
     "activitypub.collection.total_items",
@@ -5426,9 +5221,7 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
           await new Promise<void>((resolve) => {
             fedifyExporter.export([span], () => resolve());
           });
-          const [record] = await fedifyExporter.getActivitiesByTraceId(
-            traceId,
-          );
+          const [record] = await fedifyExporter.getActivitiesByTraceId(traceId);
           assert(record != null);
           assertEquals(record.direction, "inbound");
           assertEquals(record.spanId, spanId);
@@ -5436,15 +5229,15 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
           const failureLog = records.find((r) =>
             String(r.rawMessage).startsWith(
               "Failed to process the incoming activity",
-            )
+            ),
           );
           assert(failureLog != null);
           assertEquals(failureLog.properties.spanId, record.spanId);
           assertEquals(failureLog.properties.traceId, record.traceId);
           assertEquals(failureLog.properties.requestId, "outer-request");
 
-          const afterLog = records.find((r) =>
-            r.rawMessage === "after handled failure"
+          const afterLog = records.find(
+            (r) => r.rawMessage === "after handled failure",
           );
           assert(afterLog != null);
           assertEquals(afterLog.properties.requestId, outerContext.requestId);
@@ -5494,8 +5287,8 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
           assert(span != null);
           const { spanId } = span.spanContext();
 
-          const afterLog = records.find((r) =>
-            r.rawMessage === "after success"
+          const afterLog = records.find(
+            (r) => r.rawMessage === "after success",
           );
           assert(afterLog != null);
           assertNotEquals(afterLog.properties.spanId, spanId);
@@ -5564,13 +5357,15 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
 
           const spans = exporter.getSpans("activitypub.inbox");
           assertEquals(spans.length, 2);
-          const spanA = spans.find((s) =>
-            s.attributes["activitypub.activity.id"] ===
-              "https://example.com/activity/concurrent-a"
+          const spanA = spans.find(
+            (s) =>
+              s.attributes["activitypub.activity.id"] ===
+              "https://example.com/activity/concurrent-a",
           );
-          const spanB = spans.find((s) =>
-            s.attributes["activitypub.activity.id"] ===
-              "https://example.com/activity/concurrent-b"
+          const spanB = spans.find(
+            (s) =>
+              s.attributes["activitypub.activity.id"] ===
+              "https://example.com/activity/concurrent-b",
           );
           assert(spanA != null && spanB != null);
           assertNotEquals(
@@ -5578,31 +5373,27 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
             spanB.spanContext().spanId,
           );
 
-          const logA = records.find((r) =>
-            r.properties.activityId ===
-              "https://example.com/activity/concurrent-a" &&
-            String(r.rawMessage).startsWith(
-              "Failed to process the incoming activity",
-            )
+          const logA = records.find(
+            (r) =>
+              r.properties.activityId ===
+                "https://example.com/activity/concurrent-a" &&
+              String(r.rawMessage).startsWith(
+                "Failed to process the incoming activity",
+              ),
           );
-          const logB = records.find((r) =>
-            r.properties.activityId ===
-              "https://example.com/activity/concurrent-b" &&
-            String(r.rawMessage).startsWith(
-              "Failed to process the incoming activity",
-            )
+          const logB = records.find(
+            (r) =>
+              r.properties.activityId ===
+                "https://example.com/activity/concurrent-b" &&
+              String(r.rawMessage).startsWith(
+                "Failed to process the incoming activity",
+              ),
           );
           assert(logA != null && logB != null);
           assertEquals(logA.properties.spanId, spanA.spanContext().spanId);
           assertEquals(logB.properties.spanId, spanB.spanContext().spanId);
-          assertEquals(
-            logA.properties.traceId,
-            spanA.spanContext().traceId,
-          );
-          assertEquals(
-            logB.properties.traceId,
-            spanB.spanContext().traceId,
-          );
+          assertEquals(logA.properties.traceId, spanA.spanContext().traceId);
+          assertEquals(logB.properties.traceId, spanB.spanContext().traceId);
           assertNotEquals(logA.properties.spanId, logB.properties.spanId);
         } finally {
           exporter.clear();
@@ -5902,14 +5693,8 @@ test("handleInbox() challenge policy enabled + unsigned request", async () => {
     parsed[0].components.some((c) => c.value === "@method"),
     "Must include @method component",
   );
-  assertEquals(
-    response.headers.get("Cache-Control"),
-    "no-store",
-  );
-  assertEquals(
-    response.headers.get("Vary"),
-    "Accept, Signature",
-  );
+  assertEquals(response.headers.get("Cache-Control"), "no-store");
+  assertEquals(response.headers.get("Vary"), "Accept, Signature");
 });
 
 test("handleInbox() challenge policy enabled + invalid signature", async () => {
@@ -5933,7 +5718,7 @@ test("handleInbox() challenge policy enabled + invalid signature", async () => {
     rsaPublicKey3.id!,
   );
   // Reconstruct with a different body but same signature headers
-  const jsonLd = await activity.toJsonLd() as Record<string, unknown>;
+  const jsonLd = (await activity.toJsonLd()) as Record<string, unknown>;
   const tamperedBody = JSON.stringify({
     ...jsonLd,
     "https://example.com/tampered": true,
@@ -6161,10 +5946,7 @@ test("handleInbox() actor/key mismatch → plain 401 (no challenge)", async () =
     null,
     "Actor/key mismatch should not emit Accept-Signature challenge",
   );
-  assertEquals(
-    await response.text(),
-    "The signer and the actor do not match.",
-  );
+  assertEquals(await response.text(), "The signer and the actor do not match.");
 });
 
 test("handleInbox() nonce issuance in challenge", async () => {
@@ -6253,11 +6035,9 @@ test("handleInbox() nonce consumption on valid signed request", async () => {
   const noncePrefix = ["_fedify", "acceptSignatureNonce"] as const;
   // Pre-store a nonce in KV
   const nonce = "test-nonce-abc123";
-  await kv.set(
-    ["_fedify", "acceptSignatureNonce", nonce] as const,
-    true,
-    { ttl: Temporal.Duration.from({ seconds: 300 }) },
-  );
+  await kv.set(["_fedify", "acceptSignatureNonce", nonce] as const, true, {
+    ttl: Temporal.Duration.from({ seconds: 300 }),
+  });
   // Sign request with the nonce included via rfc9421
   const signedRequest = await signRequest(
     new Request("https://example.com/", {
@@ -6308,9 +6088,11 @@ test("handleInbox() nonce consumption on valid signed request", async () => {
   });
   assertEquals(response.status, 202);
   // Nonce must have been consumed (deleted from KV)
-  const stored = await kv.get(
-    ["_fedify", "acceptSignatureNonce", nonce] as const,
-  );
+  const stored = await kv.get([
+    "_fedify",
+    "acceptSignatureNonce",
+    nonce,
+  ] as const);
   assertEquals(stored, undefined, "Nonce must be consumed after use");
 });
 
@@ -6395,8 +6177,9 @@ test("handleInbox() nonce replay prevention", async () => {
   });
   assertEquals(report.attempts.at(-1)?.status, "verified");
   assertEquals(
-    spanExporter.getSpans("activitypub.inbox")[0]
-      .attributes["activitypub.verification.failure_reason"],
+    spanExporter.getSpans("activitypub.inbox")[0].attributes[
+      "activitypub.verification.failure_reason"
+    ],
     "invalidNonce",
   );
   // Should return a fresh challenge with a new nonce
@@ -6432,249 +6215,238 @@ test("handleInbox() nonce replay prevention", async () => {
   );
 });
 
-test(
-  "handleInbox() nonce bypass: valid sig without nonce + invalid sig with nonce",
-  async () => {
-    // This test demonstrates a vulnerability where verifySignatureNonce() scans
-    // ALL Signature-Input entries for a nonce, but verifyRequestDetailed() does
-    // not report which signature label was verified.  An attacker can bypass
-    // nonce enforcement by submitting:
-    //   1. A valid signature (sig1) WITHOUT a nonce
-    //   2. A bogus signature (sig2) that carries a stored nonce
-    // verifyRequestDetailed() succeeds on sig1, then verifySignatureNonce()
-    // finds and consumes the nonce from sig2, so the request is accepted even
-    // though the *verified* signature never carried a nonce.
+test("handleInbox() nonce bypass: valid sig without nonce + invalid sig with nonce", async () => {
+  // This test demonstrates a vulnerability where verifySignatureNonce() scans
+  // ALL Signature-Input entries for a nonce, but verifyRequestDetailed() does
+  // not report which signature label was verified.  An attacker can bypass
+  // nonce enforcement by submitting:
+  //   1. A valid signature (sig1) WITHOUT a nonce
+  //   2. A bogus signature (sig2) that carries a stored nonce
+  // verifyRequestDetailed() succeeds on sig1, then verifySignatureNonce()
+  // finds and consumes the nonce from sig2, so the request is accepted even
+  // though the *verified* signature never carried a nonce.
 
-    const activity = new Create({
-      id: new URL("https://example.com/activities/nonce-bypass-1"),
-      actor: new URL("https://example.com/person2"),
-      object: new Note({
-        id: new URL("https://example.com/notes/nonce-bypass-1"),
-        attribution: new URL("https://example.com/person2"),
-        content: "Hello!",
-      }),
-    });
+  const activity = new Create({
+    id: new URL("https://example.com/activities/nonce-bypass-1"),
+    actor: new URL("https://example.com/person2"),
+    object: new Note({
+      id: new URL("https://example.com/notes/nonce-bypass-1"),
+      attribution: new URL("https://example.com/person2"),
+      content: "Hello!",
+    }),
+  });
 
-    const kv = new MemoryKvStore();
-    const noncePrefix = ["_fedify", "acceptSignatureNonce"] as const;
+  const kv = new MemoryKvStore();
+  const noncePrefix = ["_fedify", "acceptSignatureNonce"] as const;
 
-    // Pre-store a nonce that the attacker knows (e.g., from a prior challenge)
-    const storedNonce = "bypass-nonce-abc123";
-    await kv.set(
-      ["_fedify", "acceptSignatureNonce", storedNonce] as const,
-      true,
-      { ttl: Temporal.Duration.from({ seconds: 300 }) },
-    );
+  // Pre-store a nonce that the attacker knows (e.g., from a prior challenge)
+  const storedNonce = "bypass-nonce-abc123";
+  await kv.set(
+    ["_fedify", "acceptSignatureNonce", storedNonce] as const,
+    true,
+    { ttl: Temporal.Duration.from({ seconds: 300 }) },
+  );
 
-    // Step 1: Create a legitimately signed request (sig1) WITHOUT a nonce
-    const signedRequest = await signRequest(
-      new Request("https://example.com/", {
-        method: "POST",
-        body: JSON.stringify(await activity.toJsonLd()),
-      }),
-      rsaPrivateKey3,
-      rsaPublicKey3.id!,
-      { spec: "rfc9421" }, // no nonce
-    );
+  // Step 1: Create a legitimately signed request (sig1) WITHOUT a nonce
+  const signedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(await activity.toJsonLd()),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    { spec: "rfc9421" }, // no nonce
+  );
 
-    // Step 2: Manually inject a second bogus signature entry (sig2) that carries
-    // the stored nonce.  The signature bytes are garbage—it will never verify—
-    // but verifySignatureNonce() doesn't check validity, only presence.
-    const existingSignatureInput = signedRequest.headers.get(
-      "Signature-Input",
-    )!;
-    const existingSignature = signedRequest.headers.get("Signature")!;
-    const bogusSigInput = `sig2=("@method" "@target-uri");` +
-      `alg="rsa-v1_5-sha256";keyid="${rsaPublicKey3.id!.href}";` +
-      `created=${Math.floor(Date.now() / 1000)};` +
-      `nonce="${storedNonce}"`;
-    const bogusSigValue = `sig2=:AAAA:`; // garbage base64
+  // Step 2: Manually inject a second bogus signature entry (sig2) that carries
+  // the stored nonce.  The signature bytes are garbage—it will never verify—
+  // but verifySignatureNonce() doesn't check validity, only presence.
+  const existingSignatureInput = signedRequest.headers.get("Signature-Input")!;
+  const existingSignature = signedRequest.headers.get("Signature")!;
+  const bogusSigInput =
+    `sig2=("@method" "@target-uri");` +
+    `alg="rsa-v1_5-sha256";keyid="${rsaPublicKey3.id!.href}";` +
+    `created=${Math.floor(Date.now() / 1000)};` +
+    `nonce="${storedNonce}"`;
+  const bogusSigValue = `sig2=:AAAA:`; // garbage base64
 
-    const tamperedHeaders = new Headers(signedRequest.headers);
-    tamperedHeaders.set(
-      "Signature-Input",
-      `${existingSignatureInput}, ${bogusSigInput}`,
-    );
-    tamperedHeaders.set(
-      "Signature",
-      `${existingSignature}, ${bogusSigValue}`,
-    );
+  const tamperedHeaders = new Headers(signedRequest.headers);
+  tamperedHeaders.set(
+    "Signature-Input",
+    `${existingSignatureInput}, ${bogusSigInput}`,
+  );
+  tamperedHeaders.set("Signature", `${existingSignature}, ${bogusSigValue}`);
 
-    const tamperedRequest = new Request(signedRequest.url, {
-      method: signedRequest.method,
-      headers: tamperedHeaders,
-      body: await signedRequest.clone().arrayBuffer(),
-    });
+  const tamperedRequest = new Request(signedRequest.url, {
+    method: signedRequest.method,
+    headers: tamperedHeaders,
+    body: await signedRequest.clone().arrayBuffer(),
+  });
 
-    const federation = createFederation<void>({ kv: new MemoryKvStore() });
-    const context = createRequestContext({
-      federation,
-      request: tamperedRequest,
-      url: new URL(tamperedRequest.url),
-      data: undefined,
-      documentLoader: mockDocumentLoader,
-    });
-    const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
-      if (identifier !== "someone") return null;
-      return new Person({ name: "Someone" });
-    };
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const context = createRequestContext({
+    federation,
+    request: tamperedRequest,
+    url: new URL(tamperedRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+  });
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ name: "Someone" });
+  };
 
-    const response = await handleInbox(tamperedRequest, {
-      recipient: "someone",
-      context,
-      inboxContextFactory(_activity) {
-        return createInboxContext({
-          ...context,
-          clone: undefined,
-          recipient: "someone",
-        });
-      },
-      kv,
-      kvPrefixes: {
-        activityIdempotence: ["_fedify", "activityIdempotence"],
-        publicKey: ["_fedify", "publicKey"],
-        acceptSignatureNonce: noncePrefix,
-      },
-      actorDispatcher,
-      onNotFound: () => new Response("Not found", { status: 404 }),
-      signatureTimeWindow: { minutes: 5 },
-      skipSignatureVerification: false,
-      inboxChallengePolicy: {
-        enabled: true,
-        requestNonce: true,
-        nonceTtlSeconds: 300,
-      },
-    });
+  const response = await handleInbox(tamperedRequest, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...context,
+        clone: undefined,
+        recipient: "someone",
+      });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: noncePrefix,
+    },
+    actorDispatcher,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+    inboxChallengePolicy: {
+      enabled: true,
+      requestNonce: true,
+      nonceTtlSeconds: 300,
+    },
+  });
 
-    // The verified signature (sig1) has no nonce.  The nonce was only in the
-    // bogus sig2.  A correct implementation MUST reject this request because
-    // the *verified* signature did not carry a valid nonce.
-    assertEquals(
-      response.status,
-      401,
-      "Request with nonce only in a non-verified signature must be rejected " +
-        "(nonce verification must be bound to the verified signature label)",
-    );
+  // The verified signature (sig1) has no nonce.  The nonce was only in the
+  // bogus sig2.  A correct implementation MUST reject this request because
+  // the *verified* signature did not carry a valid nonce.
+  assertEquals(
+    response.status,
+    401,
+    "Request with nonce only in a non-verified signature must be rejected " +
+      "(nonce verification must be bound to the verified signature label)",
+  );
 
-    // The stored nonce should NOT have been consumed by a bogus signature
-    const stored = await kv.get(
-      ["_fedify", "acceptSignatureNonce", storedNonce] as const,
-    );
-    assertEquals(
-      stored,
-      true,
-      "Nonce must not be consumed when it comes from a non-verified signature",
-    );
-  },
-);
+  // The stored nonce should NOT have been consumed by a bogus signature
+  const stored = await kv.get([
+    "_fedify",
+    "acceptSignatureNonce",
+    storedNonce,
+  ] as const);
+  assertEquals(
+    stored,
+    true,
+    "Nonce must not be consumed when it comes from a non-verified signature",
+  );
+});
 
-test(
-  "handleInbox() actor/key mismatch does not consume nonce",
-  async () => {
-    const [meterProvider, recorder] = createTestMeterProvider();
-    // A request that has a valid RFC 9421 signature with a nonce, but the
-    // signing key does not belong to the claimed actor.  The nonce must NOT be
-    // consumed so the legitimate sender can still use it.
-    const maliciousActivity = new Create({
-      id: new URL("https://attacker.example.com/activities/mismatch-nonce-1"),
-      actor: new URL("https://victim.example.com/users/alice"),
-      object: new Note({
-        id: new URL("https://attacker.example.com/notes/mismatch-nonce-1"),
-        attribution: new URL("https://victim.example.com/users/alice"),
-        content: "Forged message with nonce!",
-      }),
-    });
-    const kv = new MemoryKvStore();
-    const noncePrefix = ["_fedify", "acceptSignatureNonce"] as const;
-    const nonce = "mismatch-nonce-xyz";
-    await kv.set(
-      ["_fedify", "acceptSignatureNonce", nonce] as const,
-      true,
-      { ttl: Temporal.Duration.from({ seconds: 300 }) },
-    );
-    // Sign with rsaPrivateKey3 (associated with example.com/person2, not
-    // victim.example.com/users/alice), and include the stored nonce.
-    const maliciousRequest = await signRequest(
-      new Request("https://example.com/", {
-        method: "POST",
-        body: JSON.stringify(await maliciousActivity.toJsonLd()),
-      }),
-      rsaPrivateKey3,
-      rsaPublicKey3.id!,
-      { spec: "rfc9421", rfc9421: { nonce } },
-    );
-    const federation = createFederation<void>({
-      kv: new MemoryKvStore(),
-      meterProvider,
-    });
-    const context = createRequestContext({
-      federation,
-      request: maliciousRequest,
-      url: new URL(maliciousRequest.url),
-      data: undefined,
-      documentLoader: mockDocumentLoader,
-    });
-    const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
-      if (identifier !== "someone") return null;
-      return new Person({ name: "Someone" });
-    };
-    const response = await handleInbox(maliciousRequest, {
-      recipient: "someone",
-      context,
-      inboxContextFactory(_activity) {
-        return createInboxContext({
-          ...context,
-          clone: undefined,
-          recipient: "someone",
-        });
-      },
-      kv,
-      kvPrefixes: {
-        activityIdempotence: ["_fedify", "activityIdempotence"],
-        publicKey: ["_fedify", "publicKey"],
-        acceptSignatureNonce: noncePrefix,
-      },
-      actorDispatcher,
-      onNotFound: () => new Response("Not found", { status: 404 }),
-      signatureTimeWindow: { minutes: 5 },
-      skipSignatureVerification: false,
-      meterProvider,
-      inboxChallengePolicy: {
-        enabled: true,
-        requestNonce: true,
-        nonceTtlSeconds: 300,
-      },
-    });
-    assertEquals(response.status, 401);
-    assertEquals(
-      await response.text(),
-      "The signer and the actor do not match.",
-    );
-    // The nonce must NOT have been consumed—the actor/key mismatch should
-    // reject before nonce consumption so the nonce remains usable.
-    const stored = await kv.get(
-      ["_fedify", "acceptSignatureNonce", nonce] as const,
-    );
-    assertEquals(
-      stored,
-      true,
-      "Nonce must not be consumed when actor/key ownership check fails",
-    );
-    const failures = recorder.getMeasurements(
-      "activitypub.signature.verification_failure",
-    );
-    assertEquals(failures.length, 1);
-    assertEquals(failures[0].value, 1);
-    assertEquals(
-      failures[0].attributes["activitypub.remote.host"],
-      "example.com",
-    );
-    assertEquals(
-      failures[0].attributes["activitypub.verification.failure_reason"],
-      "actorKeyMismatch",
-    );
-  },
-);
+test("handleInbox() actor/key mismatch does not consume nonce", async () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  // A request that has a valid RFC 9421 signature with a nonce, but the
+  // signing key does not belong to the claimed actor.  The nonce must NOT be
+  // consumed so the legitimate sender can still use it.
+  const maliciousActivity = new Create({
+    id: new URL("https://attacker.example.com/activities/mismatch-nonce-1"),
+    actor: new URL("https://victim.example.com/users/alice"),
+    object: new Note({
+      id: new URL("https://attacker.example.com/notes/mismatch-nonce-1"),
+      attribution: new URL("https://victim.example.com/users/alice"),
+      content: "Forged message with nonce!",
+    }),
+  });
+  const kv = new MemoryKvStore();
+  const noncePrefix = ["_fedify", "acceptSignatureNonce"] as const;
+  const nonce = "mismatch-nonce-xyz";
+  await kv.set(["_fedify", "acceptSignatureNonce", nonce] as const, true, {
+    ttl: Temporal.Duration.from({ seconds: 300 }),
+  });
+  // Sign with rsaPrivateKey3 (associated with example.com/person2, not
+  // victim.example.com/users/alice), and include the stored nonce.
+  const maliciousRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(await maliciousActivity.toJsonLd()),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    { spec: "rfc9421", rfc9421: { nonce } },
+  );
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    meterProvider,
+  });
+  const context = createRequestContext({
+    federation,
+    request: maliciousRequest,
+    url: new URL(maliciousRequest.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+  });
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ name: "Someone" });
+  };
+  const response = await handleInbox(maliciousRequest, {
+    recipient: "someone",
+    context,
+    inboxContextFactory(_activity) {
+      return createInboxContext({
+        ...context,
+        clone: undefined,
+        recipient: "someone",
+      });
+    },
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: noncePrefix,
+    },
+    actorDispatcher,
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+    meterProvider,
+    inboxChallengePolicy: {
+      enabled: true,
+      requestNonce: true,
+      nonceTtlSeconds: 300,
+    },
+  });
+  assertEquals(response.status, 401);
+  assertEquals(await response.text(), "The signer and the actor do not match.");
+  // The nonce must NOT have been consumed—the actor/key mismatch should
+  // reject before nonce consumption so the nonce remains usable.
+  const stored = await kv.get([
+    "_fedify",
+    "acceptSignatureNonce",
+    nonce,
+  ] as const);
+  assertEquals(
+    stored,
+    true,
+    "Nonce must not be consumed when actor/key ownership check fails",
+  );
+  const failures = recorder.getMeasurements(
+    "activitypub.signature.verification_failure",
+  );
+  assertEquals(failures.length, 1);
+  assertEquals(failures[0].value, 1);
+  assertEquals(
+    failures[0].attributes["activitypub.remote.host"],
+    "example.com",
+  );
+  assertEquals(
+    failures[0].attributes["activitypub.verification.failure_reason"],
+    "actorKeyMismatch",
+  );
+});
 
 test(
   "handleInbox() challenge policy enabled + unverifiedActivityHandler " +
@@ -6699,7 +6471,7 @@ test(
       rsaPrivateKey3,
       rsaPublicKey3.id!,
     );
-    const jsonLd = await activity.toJsonLd() as Record<string, unknown>;
+    const jsonLd = (await activity.toJsonLd()) as Record<string, unknown>;
     const tamperedBody = JSON.stringify({
       ...jsonLd,
       "https://example.com/tampered": true,
@@ -6754,10 +6526,7 @@ test(
         "returns undefined and challenge policy is enabled",
     );
     const parsed = parseAcceptSignature(acceptSig);
-    assert(
-      parsed.length > 0,
-      "Accept-Signature must have at least one entry",
-    );
+    assert(parsed.length > 0, "Accept-Signature must have at least one entry");
     assertEquals(
       response.headers.get("Cache-Control"),
       "no-store",
@@ -6793,7 +6562,7 @@ test(
       rsaPrivateKey3,
       rsaPublicKey3.id!,
     );
-    const jsonLd = await activity.toJsonLd() as Record<string, unknown>;
+    const jsonLd = (await activity.toJsonLd()) as Record<string, unknown>;
     const tamperedBody = JSON.stringify({
       ...jsonLd,
       "https://example.com/tampered": true,
@@ -6850,10 +6619,7 @@ test(
         "throws and challenge policy is enabled",
     );
     const parsed = parseAcceptSignature(acceptSig);
-    assert(
-      parsed.length > 0,
-      "Accept-Signature must have at least one entry",
-    );
+    assert(parsed.length > 0, "Accept-Signature must have at least one entry");
     assertEquals(
       response.headers.get("Cache-Control"),
       "no-store",
@@ -6877,9 +6643,8 @@ test("handleInbox() rejects forged key ownership", async () => {
   const impersonated = "https://example.com/person2";
   const attackerKeyId = new URL("https://attacker.example/key");
   const attackerMultikeyId = new URL("https://attacker.example/multikey");
-  const { privateKey, publicKey } = await generateCryptoKeyPair(
-    "RSASSA-PKCS1-v1_5",
-  );
+  const { privateKey, publicKey } =
+    await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
   const forgedKeyDocument = await new CryptographicKey({
     id: attackerKeyId,
     owner: new URL(impersonated),
@@ -6916,11 +6681,10 @@ test("handleInbox() rejects forged key ownership", async () => {
       publicKey: ["_fedify", "publicKey"],
       acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
     },
-    actorDispatcher:
-      ((_ctx, identifier) =>
-        identifier === "someone"
-          ? new Person({ name: "Someone" })
-          : null) as ActorDispatcher<void>,
+    actorDispatcher: ((_ctx, identifier) =>
+      identifier === "someone"
+        ? new Person({ name: "Someone" })
+        : null) as ActorDispatcher<void>,
     inboxListeners: new ActivityListenerSet<InboxContext<void>>(),
     onNotFound: () => new Response("Not found", { status: 404 }),
     signatureTimeWindow: { minutes: 5 },

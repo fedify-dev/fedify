@@ -81,7 +81,7 @@ class MockStore {
     const prefix = options.prefix ?? "";
     this.listPrefixes.push(prefix);
     const blobs = [...this.entries].flatMap(([key, entry]) =>
-      key.startsWith(prefix) ? [{ key, etag: entry.etag ?? "" }] : []
+      key.startsWith(prefix) ? [{ key, etag: entry.etag ?? "" }] : [],
     );
     for (const blob of blobs) {
       yield { blobs: [blob], directories: [] };
@@ -97,9 +97,7 @@ function encodeKey(key: KvKey): string {
   return `fedify1.${key.map((part) => encodeBase64Url(part)).join(".")}.`;
 }
 
-async function collect(
-  entries: AsyncIterable<{ key: KvKey; value: unknown }>,
-) {
+async function collect(entries: AsyncIterable<{ key: KvKey; value: unknown }>) {
   return await Array.fromAsync(entries);
 }
 
@@ -260,10 +258,7 @@ describe("NetlifyBlobsKvStore key encoding", () => {
       await kv.get(["a".repeat(443)]),
       "exactly 600 encoded bytes",
     );
-    equal(
-      new TextEncoder().encode(store.setCalls[0].key).byteLength,
-      600,
-    );
+    equal(new TextEncoder().encode(store.setCalls[0].key).byteLength, 600);
 
     await rejects(
       kv.set(["a".repeat(444)], "too long"),
@@ -347,10 +342,9 @@ describe("NetlifyBlobsKvStore.cas()", () => {
     deepStrictEqual(await kv.get(["deleted"]), undefined);
     deepStrictEqual(await collect(kv.list(["deleted"])), []);
     deepStrictEqual(store.entries.get(encodeKey(["deleted"]))?.data, null);
-    deepStrictEqual(
-      store.entries.get(encodeKey(["deleted"]))?.metadata,
-      { tombstone: true },
-    );
+    deepStrictEqual(store.entries.get(encodeKey(["deleted"]))?.metadata, {
+      tombstone: true,
+    });
   });
 
   it("recreates a tombstoned key with its ETag", async () => {
@@ -401,9 +395,8 @@ describe("NetlifyBlobsKvStore.cas()", () => {
   it("allows only one concurrent create", async () => {
     const kv = createKv(new MockStore());
     const results = await Promise.all(
-      Array.from(
-        { length: 10 },
-        (_, index) => kv.cas(["create-race"], undefined, index),
+      Array.from({ length: 10 }, (_, index) =>
+        kv.cas(["create-race"], undefined, index),
       ),
     );
 
@@ -414,9 +407,8 @@ describe("NetlifyBlobsKvStore.cas()", () => {
     const kv = createKv(new MockStore());
     await kv.set(["update-race"], "old");
     const results = await Promise.all(
-      Array.from(
-        { length: 10 },
-        (_, index) => kv.cas(["update-race"], "old", index),
+      Array.from({ length: 10 }, (_, index) =>
+        kv.cas(["update-race"], "old", index),
       ),
     );
 

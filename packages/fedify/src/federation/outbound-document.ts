@@ -30,44 +30,62 @@ function safeContext(context: unknown): boolean {
   if (context == null || typeof context !== "object") return false;
   for (const [name, definition] of Object.entries(context)) {
     if (name === "@import") return false;
-    const mapping = typeof definition === "string"
-      ? definition
-      : definition != null && typeof definition === "object"
-      ? (definition as Record<string, unknown>)["@id"]
-      : undefined;
+    const mapping =
+      typeof definition === "string"
+        ? definition
+        : definition != null && typeof definition === "object"
+          ? (definition as Record<string, unknown>)["@id"]
+          : undefined;
     if (name === "as" && mapping !== asNamespace) return false;
     if (
-      name !== "as" && typeof mapping === "string" &&
+      name !== "as" &&
+      typeof mapping === "string" &&
       mapping.startsWith(asNamespace) &&
-      (mapping.endsWith("#") || mapping.endsWith("/") ||
-        typeof definition === "object" &&
-          (definition as Record<string, unknown>)["@prefix"] === true)
-    ) return false;
+      (mapping.endsWith("#") ||
+        mapping.endsWith("/") ||
+        (typeof definition === "object" &&
+          (definition as Record<string, unknown>)["@prefix"] === true))
+    )
+      return false;
     if (
-      typeof mapping === "string" && blind.has(mapping) && name !== "bto" &&
+      typeof mapping === "string" &&
+      blind.has(mapping) &&
+      name !== "bto" &&
       name !== "bcc"
-    ) return false;
+    )
+      return false;
     if (
-      (name === "bto" || name === "bcc") && mapping !== `as:${name}` &&
+      (name === "bto" || name === "bcc") &&
+      mapping !== `as:${name}` &&
       mapping !== `${asNamespace}${name}`
-    ) return false;
+    )
+      return false;
     if (
-      name === "@vocab" && typeof mapping === "string" &&
+      name === "@vocab" &&
+      typeof mapping === "string" &&
       mapping.startsWith(asNamespace)
-    ) return false;
+    )
+      return false;
     if (
-      definition != null && typeof definition === "object" &&
+      definition != null &&
+      typeof definition === "object" &&
       "@context" in definition &&
       !safeContext((definition as Record<string, unknown>)["@context"])
-    ) return false;
+    )
+      return false;
   }
   return true;
 }
-const contexts = new Set(contextCandidates.filter((url) => {
-  const document = preloadedContexts[url];
-  return document != null && typeof document === "object" &&
-    safeContext((document as Record<string, unknown>)["@context"]);
-}));
+const contexts = new Set(
+  contextCandidates.filter((url) => {
+    const document = preloadedContexts[url];
+    return (
+      document != null &&
+      typeof document === "object" &&
+      safeContext((document as Record<string, unknown>)["@context"])
+    );
+  }),
+);
 // Exact generated extension definitions, not an interpreter for arbitrary inline
 // contexts. In particular, callers cannot redefine prefixes or add blind aliases.
 const generatedTerms: Record<string, unknown> = {
@@ -97,24 +115,32 @@ const generatedTerms: Record<string, unknown> = {
 function sameDefinition(value: OutboundJsonValue, expected: unknown): boolean {
   if (value === expected) return true;
   if (
-    value == null || expected == null || typeof value !== "object" ||
-    typeof expected !== "object" || Array.isArray(value)
-  ) return false;
+    value == null ||
+    expected == null ||
+    typeof value !== "object" ||
+    typeof expected !== "object" ||
+    Array.isArray(value)
+  )
+    return false;
   const actual = value as Record<string, OutboundJsonValue>;
   const reference = expected as Record<string, unknown>;
-  return Object.keys(actual).length === Object.keys(reference).length &&
-    Object.keys(actual).every((name) =>
-      Object.hasOwn(reference, name) &&
-      sameDefinition(actual[name], reference[name])
-    );
+  return (
+    Object.keys(actual).length === Object.keys(reference).length &&
+    Object.keys(actual).every(
+      (name) =>
+        Object.hasOwn(reference, name) &&
+        sameDefinition(actual[name], reference[name]),
+    )
+  );
 }
 function generatedContext(value: OutboundJsonValue): boolean {
   if (value == null || typeof value !== "object" || Array.isArray(value)) {
     return false;
   }
-  return Object.entries(value).every(([name, definition]) =>
-    Object.hasOwn(generatedTerms, name) &&
-    sameDefinition(definition, generatedTerms[name])
+  return Object.entries(value).every(
+    ([name, definition]) =>
+      Object.hasOwn(generatedTerms, name) &&
+      sameDefinition(definition, generatedTerms[name]),
   );
 }
 const keywords = new Set([
@@ -156,9 +182,11 @@ export function projectSenderPayload(input: unknown): OutboundSenderPayload {
     ): OutboundJsonValue => {
       if (depth >= 64) throw new TypeError("Unsafe document depth.");
       if (
-        value === null || typeof value === "string" ||
+        value === null ||
+        typeof value === "string" ||
         typeof value === "boolean"
-      ) return value;
+      )
+        return value;
       if (typeof value === "number" && Number.isFinite(value)) return value;
       if (typeof value !== "object" || value == null || seen.has(value)) {
         throw new TypeError("Not independent JSON data.");
@@ -169,36 +197,37 @@ export function projectSenderPayload(input: unknown): OutboundSenderPayload {
         array
           ? prototype !== Array.prototype
           : prototype !== Object.prototype && prototype !== null
-      ) throw new TypeError("Unsupported document object.");
+      )
+        throw new TypeError("Unsupported document object.");
       seen.add(value);
       try {
         const descriptors = Object.getOwnPropertyDescriptors(value);
         if (Object.hasOwn(descriptors, "toJSON")) {
           throw new TypeError("Custom JSON conversion is not projected.");
         }
-        const names = Reflect.ownKeys(descriptors).filter((name) =>
-          descriptors[name as string].enumerable
+        const names = Reflect.ownKeys(descriptors).filter(
+          (name) => descriptors[name as string].enumerable,
         );
         if (
-          names.some((name) =>
-            typeof name !== "string" || !("value" in descriptors[name])
+          names.some(
+            (name) =>
+              typeof name !== "string" || !("value" in descriptors[name]),
           )
-        ) throw new TypeError("Not plain JSON properties.");
+        )
+          throw new TypeError("Not plain JSON properties.");
         let contextValue: OutboundJsonValue | undefined;
-        if (
-          !contextData && !array &&
-          descriptors["@context"]?.enumerable
-        ) {
+        if (!contextData && !array && descriptors["@context"]?.enumerable) {
           const context = copy(descriptors["@context"].value, depth + 1, true);
           contextValue = context;
           const urls = typeof context === "string" ? [context] : context;
           if (
-            !Array.isArray(urls) || urls.length === 0 ||
+            !Array.isArray(urls) ||
+            urls.length === 0 ||
             (depth === 0 ? !urls.includes(asContext) : !compact) ||
             !urls.every((url) =>
               typeof url === "string"
                 ? contexts.has(url)
-                : depth === 0 && generatedContext(url)
+                : depth === 0 && generatedContext(url),
             )
           ) {
             throw new TypeError("Unsupported document context.");
@@ -210,10 +239,11 @@ export function projectSenderPayload(input: unknown): OutboundSenderPayload {
           if (
             names.length !== length ||
             names.some((name, index) => name !== String(index))
-          ) throw new TypeError("Not a JSON array.");
+          )
+            throw new TypeError("Not a JSON array.");
           return Object.freeze(
             names.map((name) =>
-              copy(descriptors[name as string].value, depth + 1, contextData)
+              copy(descriptors[name as string].value, depth + 1, contextData),
             ),
           );
         }
@@ -231,9 +261,11 @@ export function projectSenderPayload(input: unknown): OutboundSenderPayload {
             continue;
           }
           if (
-            !compact && !keywords.has(name) &&
+            !compact &&
+            !keywords.has(name) &&
             !/^[A-Za-z][A-Za-z0-9+.-]*:/.test(name)
-          ) throw new TypeError("Unresolved document property.");
+          )
+            throw new TypeError("Unresolved document property.");
           const next = copy(descriptors[name].value, depth + 1);
           if (blind.has(name)) {
             redacted = true;

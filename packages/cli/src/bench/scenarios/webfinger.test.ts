@@ -33,13 +33,15 @@ test("webfingerRunner - drives lookups and aggregates results", async () => {
     const suite: Suite = {
       version: 1,
       target: target.href,
-      scenarios: [{
-        name: "wf",
-        type: "webfinger",
-        recipient: [`acct:alice@${target.host}`, `acct:bob@${target.host}`],
-        load: { concurrency: 4 },
-        duration: "50ms",
-      }],
+      scenarios: [
+        {
+          name: "wf",
+          type: "webfinger",
+          recipient: [`acct:alice@${target.host}`, `acct:bob@${target.host}`],
+          load: { concurrency: 4 },
+          duration: "50ms",
+        },
+      ],
     };
     const scenario = normalizeSuite(suite).scenarios[0];
     const measurement = await webfingerRunner.run({

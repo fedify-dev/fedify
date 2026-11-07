@@ -10,7 +10,4 @@ const ruleName = RULE_IDS.actorLikedPropertyRequired;
 const config = { rule, ruleName };
 
 runTests(ruleName, createRequiredDispatcherRuleTests("liked", config));
-runTests(
-  ruleName,
-  createRequiredEdgeCaseTests("liked", config),
-);
+runTests(ruleName, createRequiredEdgeCaseTests("liked", config));

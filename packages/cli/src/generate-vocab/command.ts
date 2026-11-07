@@ -22,8 +22,7 @@ const schemaDir = withDefault(
 const generatedPath = argument(
   path({ metavar: "PATH", type: "file", allowCreate: true }),
   {
-    description:
-      message`Path to output the generated vocabulary classes.  Should end with ${".ts"} suffix.`,
+    description: message`Path to output the generated vocabulary classes.  Should end with ${".ts"} suffix.`,
   },
 );
 

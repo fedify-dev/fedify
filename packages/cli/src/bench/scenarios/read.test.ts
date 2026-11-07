@@ -10,39 +10,44 @@ test("runReadLoad - unauthenticated reads use the read destination gate", async 
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "read",
-      type: "actor",
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    scenarios: [
+      {
+        name: "read",
+        type: "actor",
+        load: { concurrency: 1 },
+        duration: "25ms",
+      },
+    ],
   }).scenarios[0];
   let readGateCalls = 0;
 
-  const measurement = await runReadLoad({
-    scenario,
-    target: new URL("http://target.test/"),
-    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
-    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
-    allowPrivateAddress: true,
-    fleet: null,
-    fetch: (input) => {
-      const url = new URL(input instanceof Request ? input.url : input);
-      if (url.pathname === "/.well-known/fedify/bench/stats") {
-        return Promise.resolve(new Response("not found", { status: 404 }));
-      }
-      return Promise.resolve(new Response("{}", { status: 200 }));
+  const measurement = await runReadLoad(
+    {
+      scenario,
+      target: new URL("http://target.test/"),
+      documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+      contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+      allowPrivateAddress: true,
+      fleet: null,
+      fetch: (input) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        if (url.pathname === "/.well-known/fedify/bench/stats") {
+          return Promise.resolve(new Response("not found", { status: 404 }));
+        }
+        return Promise.resolve(new Response("{}", { status: 200 }));
+      },
+      assertDestinationAllowed: () => {
+        throw new Error("signed destination gate should not run");
+      },
+      assertReadDestinationAllowed: () => {
+        readGateCalls++;
+      },
     },
-    assertDestinationAllowed: () => {
-      throw new Error("signed destination gate should not run");
+    {
+      urls: [new URL("http://remote.test/users/alice")],
+      authenticated: false,
     },
-    assertReadDestinationAllowed: () => {
-      readGateCalls++;
-    },
-  }, {
-    urls: [new URL("http://remote.test/users/alice")],
-    authenticated: false,
-  });
+  );
 
   assert.strictEqual(readGateCalls, 1);
   assert.ok(measurement.requests.total > 0);
@@ -53,43 +58,48 @@ test("runReadLoad - gates resolved read URLs concurrently", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "read",
-      type: "actor",
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    scenarios: [
+      {
+        name: "read",
+        type: "actor",
+        load: { concurrency: 1 },
+        duration: "25ms",
+      },
+    ],
   }).scenarios[0];
   let activeGates = 0;
   let maxActiveGates = 0;
 
-  await runReadLoad({
-    scenario,
-    target: new URL("http://target.test/"),
-    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
-    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
-    allowPrivateAddress: true,
-    fleet: null,
-    fetch: (input) => {
-      const url = new URL(input instanceof Request ? input.url : input);
-      if (url.pathname === "/.well-known/fedify/bench/stats") {
-        return Promise.resolve(new Response("not found", { status: 404 }));
-      }
-      return Promise.resolve(new Response("{}", { status: 200 }));
+  await runReadLoad(
+    {
+      scenario,
+      target: new URL("http://target.test/"),
+      documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+      contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+      allowPrivateAddress: true,
+      fleet: null,
+      fetch: (input) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        if (url.pathname === "/.well-known/fedify/bench/stats") {
+          return Promise.resolve(new Response("not found", { status: 404 }));
+        }
+        return Promise.resolve(new Response("{}", { status: 200 }));
+      },
+      assertReadDestinationAllowed: async () => {
+        activeGates++;
+        maxActiveGates = Math.max(maxActiveGates, activeGates);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        activeGates--;
+      },
     },
-    assertReadDestinationAllowed: async () => {
-      activeGates++;
-      maxActiveGates = Math.max(maxActiveGates, activeGates);
-      await new Promise((resolve) => setTimeout(resolve, 5));
-      activeGates--;
+    {
+      urls: [
+        new URL("http://remote.test/users/alice"),
+        new URL("http://remote.test/users/bob"),
+      ],
+      authenticated: false,
     },
-  }, {
-    urls: [
-      new URL("http://remote.test/users/alice"),
-      new URL("http://remote.test/users/bob"),
-    ],
-    authenticated: false,
-  });
+  );
 
   assert.strictEqual(maxActiveGates, 2);
 });
@@ -98,43 +108,48 @@ test("runReadLoad - limits resolved read URL gate concurrency", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "read",
-      type: "actor",
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    scenarios: [
+      {
+        name: "read",
+        type: "actor",
+        load: { concurrency: 1 },
+        duration: "25ms",
+      },
+    ],
   }).scenarios[0];
   let activeGates = 0;
   let maxActiveGates = 0;
 
-  await runReadLoad({
-    scenario,
-    target: new URL("http://target.test/"),
-    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
-    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
-    allowPrivateAddress: true,
-    fleet: null,
-    fetch: (input) => {
-      const url = new URL(input instanceof Request ? input.url : input);
-      if (url.pathname === "/.well-known/fedify/bench/stats") {
-        return Promise.resolve(new Response("not found", { status: 404 }));
-      }
-      return Promise.resolve(new Response("{}", { status: 200 }));
+  await runReadLoad(
+    {
+      scenario,
+      target: new URL("http://target.test/"),
+      documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+      contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+      allowPrivateAddress: true,
+      fleet: null,
+      fetch: (input) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        if (url.pathname === "/.well-known/fedify/bench/stats") {
+          return Promise.resolve(new Response("not found", { status: 404 }));
+        }
+        return Promise.resolve(new Response("{}", { status: 200 }));
+      },
+      assertReadDestinationAllowed: async () => {
+        activeGates++;
+        maxActiveGates = Math.max(maxActiveGates, activeGates);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        activeGates--;
+      },
     },
-    assertReadDestinationAllowed: async () => {
-      activeGates++;
-      maxActiveGates = Math.max(maxActiveGates, activeGates);
-      await new Promise((resolve) => setTimeout(resolve, 5));
-      activeGates--;
+    {
+      urls: Array.from(
+        { length: 32 },
+        (_, i) => new URL(`http://remote.test/users/${i}`),
+      ),
+      authenticated: false,
     },
-  }, {
-    urls: Array.from(
-      { length: 32 },
-      (_, i) => new URL(`http://remote.test/users/${i}`),
-    ),
-    authenticated: false,
-  });
+  );
 
   assert.strictEqual(maxActiveGates, 16);
 });
@@ -143,12 +158,14 @@ test("runReadLoad - stops read URL gates after a gate failure", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "read",
-      type: "actor",
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    scenarios: [
+      {
+        name: "read",
+        type: "actor",
+        load: { concurrency: 1 },
+        duration: "25ms",
+      },
+    ],
   }).scenarios[0];
   const urls = Array.from(
     { length: 64 },
@@ -158,23 +175,28 @@ test("runReadLoad - stops read URL gates after a gate failure", async () => {
 
   await assert.rejects(
     async () =>
-      await runReadLoad({
-        scenario,
-        target: new URL("http://target.test/"),
-        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
-        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
-        allowPrivateAddress: true,
-        fleet: null,
-        fetch: () => Promise.resolve(new Response("{}", { status: 200 })),
-        assertReadDestinationAllowed: async () => {
-          gateCalls++;
-          if (gateCalls === 1) throw new Error("gate failed");
-          await new Promise((resolve) => setTimeout(resolve, 1));
+      await runReadLoad(
+        {
+          scenario,
+          target: new URL("http://target.test/"),
+          documentLoader: await getDocumentLoader({
+            allowPrivateAddress: true,
+          }),
+          contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+          allowPrivateAddress: true,
+          fleet: null,
+          fetch: () => Promise.resolve(new Response("{}", { status: 200 })),
+          assertReadDestinationAllowed: async () => {
+            gateCalls++;
+            if (gateCalls === 1) throw new Error("gate failed");
+            await new Promise((resolve) => setTimeout(resolve, 1));
+          },
         },
-      }, {
-        urls,
-        authenticated: false,
-      }),
+        {
+          urls,
+          authenticated: false,
+        },
+      ),
     /gate failed/,
   );
   await new Promise((resolve) => setTimeout(resolve, 30));
@@ -186,12 +208,14 @@ test("runReadLoad - waits for in-flight read URL gates after a failure", async (
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "read",
-      type: "actor",
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    scenarios: [
+      {
+        name: "read",
+        type: "actor",
+        load: { concurrency: 1 },
+        duration: "25ms",
+      },
+    ],
   }).scenarios[0];
   const urls = Array.from(
     { length: 32 },
@@ -202,25 +226,30 @@ test("runReadLoad - waits for in-flight read URL gates after a failure", async (
 
   await assert.rejects(
     async () =>
-      await runReadLoad({
-        scenario,
-        target: new URL("http://target.test/"),
-        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
-        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
-        allowPrivateAddress: true,
-        fleet: null,
-        fetch: () => Promise.resolve(new Response("{}", { status: 200 })),
-        assertReadDestinationAllowed: async () => {
-          gateCalls++;
-          if (gateCalls === 1) throw new Error("first gate failed");
-          await new Promise((resolve) => setTimeout(resolve, 20));
-          delayedGatesSettled++;
-          throw new Error("later gate failed");
+      await runReadLoad(
+        {
+          scenario,
+          target: new URL("http://target.test/"),
+          documentLoader: await getDocumentLoader({
+            allowPrivateAddress: true,
+          }),
+          contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+          allowPrivateAddress: true,
+          fleet: null,
+          fetch: () => Promise.resolve(new Response("{}", { status: 200 })),
+          assertReadDestinationAllowed: async () => {
+            gateCalls++;
+            if (gateCalls === 1) throw new Error("first gate failed");
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            delayedGatesSettled++;
+            throw new Error("later gate failed");
+          },
         },
-      }, {
-        urls,
-        authenticated: false,
-      }),
+        {
+          urls,
+          authenticated: false,
+        },
+      ),
     /first gate failed/,
   );
 
@@ -232,44 +261,49 @@ test("runReadLoad - rejects invalid read URL schemes before load", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "read",
-      type: "object",
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    scenarios: [
+      {
+        name: "read",
+        type: "object",
+        load: { concurrency: 1 },
+        duration: "25ms",
+      },
+    ],
   }).scenarios[0];
   let fetchCalls = 0;
   let gateCalls = 0;
 
-  for (
-    const url of [
-      new URL("ftp://remote.test/object"),
-      new URL("http://user:pass@remote.test/object"),
-    ]
-  ) {
+  for (const url of [
+    new URL("ftp://remote.test/object"),
+    new URL("http://user:pass@remote.test/object"),
+  ]) {
     await assert.rejects(
       async () =>
-        await runReadLoad({
-          scenario,
-          target: new URL("http://target.test/"),
-          documentLoader: await getDocumentLoader({
+        await runReadLoad(
+          {
+            scenario,
+            target: new URL("http://target.test/"),
+            documentLoader: await getDocumentLoader({
+              allowPrivateAddress: true,
+            }),
+            contextLoader: await getContextLoader({
+              allowPrivateAddress: true,
+            }),
             allowPrivateAddress: true,
-          }),
-          contextLoader: await getContextLoader({ allowPrivateAddress: true }),
-          allowPrivateAddress: true,
-          fleet: null,
-          fetch: () => {
-            fetchCalls++;
-            return Promise.resolve(new Response("{}", { status: 200 }));
+            fleet: null,
+            fetch: () => {
+              fetchCalls++;
+              return Promise.resolve(new Response("{}", { status: 200 }));
+            },
+            assertReadDestinationAllowed: () => {
+              gateCalls++;
+            },
           },
-          assertReadDestinationAllowed: () => {
-            gateCalls++;
+          {
+            urls: [url],
+            authenticated: false,
           },
-        }, {
-          urls: [url],
-          authenticated: false,
-        }),
+        ),
       /read URL must be a bare http\(s\) URL/,
     );
   }
@@ -282,54 +316,61 @@ test("runReadLoad - authenticated reads support presign mode", async () => {
   let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
   try {
     fleet = await spawnSyntheticServer(
-      await buildFleet([{
-        count: 1,
-        signatureStandards: ["draft-cavage-http-signatures-12"],
-      }]),
+      await buildFleet([
+        {
+          count: 1,
+          signatureStandards: ["draft-cavage-http-signatures-12"],
+        },
+      ]),
     );
     const scenario = normalizeSuite({
       version: 1,
       target: "http://target.test/",
-      scenarios: [{
-        name: "read",
-        type: "actor",
-        authenticated: true,
-        signing: "presign",
-        load: { rate: "20/s" },
-        duration: "50ms",
-      }],
+      scenarios: [
+        {
+          name: "read",
+          type: "actor",
+          authenticated: true,
+          signing: "presign",
+          load: { rate: "20/s" },
+          duration: "50ms",
+        },
+      ],
     }).scenarios[0];
     let signedGets = 0;
 
-    const measurement = await runReadLoad({
-      scenario,
-      target: new URL("http://target.test/"),
-      documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
-      contextLoader: await getContextLoader({ allowPrivateAddress: true }),
-      allowPrivateAddress: true,
-      fleet,
-      fetch: (input) => {
-        const request = input instanceof Request ? input : new Request(input);
-        const url = new URL(request.url);
-        if (url.pathname === "/.well-known/fedify/bench/stats") {
-          return Promise.resolve(new Response("not found", { status: 404 }));
-        }
-        if (
-          request.headers.has("authorization") ||
-          request.headers.has("signature")
-        ) {
-          signedGets++;
-        }
-        return Promise.resolve(new Response("{}", { status: 200 }));
+    const measurement = await runReadLoad(
+      {
+        scenario,
+        target: new URL("http://target.test/"),
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet,
+        fetch: (input) => {
+          const request = input instanceof Request ? input : new Request(input);
+          const url = new URL(request.url);
+          if (url.pathname === "/.well-known/fedify/bench/stats") {
+            return Promise.resolve(new Response("not found", { status: 404 }));
+          }
+          if (
+            request.headers.has("authorization") ||
+            request.headers.has("signature")
+          ) {
+            signedGets++;
+          }
+          return Promise.resolve(new Response("{}", { status: 200 }));
+        },
+        assertDestinationAllowed: () => {},
+        assertReadDestinationAllowed: () => {
+          throw new Error("authenticated reads should use the signed gate");
+        },
       },
-      assertDestinationAllowed: () => {},
-      assertReadDestinationAllowed: () => {
-        throw new Error("authenticated reads should use the signed gate");
+      {
+        urls: [new URL("http://remote.test/users/alice")],
+        authenticated: true,
       },
-    }, {
-      urls: [new URL("http://remote.test/users/alice")],
-      authenticated: true,
-    });
+    );
 
     assert.ok(measurement.requests.total > 0);
     assert.strictEqual(measurement.requests.successRate, 1);
@@ -343,39 +384,48 @@ test("runReadLoad - reports missing authenticated read keys clearly", async () =
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "read",
-      type: "actor",
-      authenticated: true,
-      signing: "pipeline",
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    scenarios: [
+      {
+        name: "read",
+        type: "actor",
+        authenticated: true,
+        signing: "pipeline",
+        load: { concurrency: 1 },
+        duration: "25ms",
+      },
+    ],
   }).scenarios[0];
 
   await assert.rejects(
     async () =>
-      await runReadLoad({
-        scenario,
-        target: new URL("http://target.test/"),
-        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
-        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
-        allowPrivateAddress: true,
-        fleet: {
-          actors: [{
-            id: new URL("http://synthetic.test/actors/0"),
-            index: 0,
-            keys: undefined,
-          }],
-          url: new URL("http://synthetic.test/"),
-          close: async () => {},
-        } as unknown as Awaited<ReturnType<typeof spawnSyntheticServer>>,
-        fetch: () => Promise.resolve(new Response("{}", { status: 200 })),
-        assertDestinationAllowed: () => {},
-      }, {
-        urls: [new URL("http://remote.test/users/alice")],
-        authenticated: true,
-      }),
+      await runReadLoad(
+        {
+          scenario,
+          target: new URL("http://target.test/"),
+          documentLoader: await getDocumentLoader({
+            allowPrivateAddress: true,
+          }),
+          contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+          allowPrivateAddress: true,
+          fleet: {
+            actors: [
+              {
+                id: new URL("http://synthetic.test/actors/0"),
+                index: 0,
+                keys: undefined,
+              },
+            ],
+            url: new URL("http://synthetic.test/"),
+            close: async () => {},
+          } as unknown as Awaited<ReturnType<typeof spawnSyntheticServer>>,
+          fetch: () => Promise.resolve(new Response("{}", { status: 200 })),
+          assertDestinationAllowed: () => {},
+        },
+        {
+          urls: [new URL("http://remote.test/users/alice")],
+          authenticated: true,
+        },
+      ),
     /Actor is missing the RSA key required for authenticated fetch signing/,
   );
 });

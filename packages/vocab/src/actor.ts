@@ -45,20 +45,7 @@ interface ActorDiscoveryInstruments {
 }
 
 const ACTOR_DISCOVERY_HISTOGRAM_BUCKETS: ReadonlyArray<number> = [
-  5,
-  10,
-  25,
-  50,
-  75,
-  100,
-  250,
-  500,
-  750,
-  1000,
-  2500,
-  5000,
-  7500,
-  10000,
+  5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000,
 ];
 
 const actorDiscoveryInstruments = new WeakMap<
@@ -74,7 +61,8 @@ function getActorDiscoveryInstruments(
     const meter = meterProvider.getMeter(metadata.name, metadata.version);
     instruments = {
       discovery: meter.createCounter("activitypub.actor.discovery", {
-        description: "Actor handle discovery attempts via getActorHandle(), " +
+        description:
+          "Actor handle discovery attempts via getActorHandle(), " +
           "classified by terminal outcome.",
         unit: "{discovery}",
       }),
@@ -94,9 +82,7 @@ function getActorDiscoveryInstruments(
   return instruments;
 }
 
-function getActorDiscoveryRemoteHost(
-  actor: Actor | URL,
-): string | undefined {
+function getActorDiscoveryRemoteHost(actor: Actor | URL): string | undefined {
   const id = actor instanceof URL ? actor : actor.id;
   if (id == null) return undefined;
   // The authority of a portable ID is a DID, not a host; the handle of
@@ -156,9 +142,7 @@ export type ActorTypeName =
  * @param actor The actor to get the type name of.
  * @returns The type name of the given actor.
  */
-export function getActorTypeName(
-  actor: Actor,
-): ActorTypeName {
+export function getActorTypeName(actor: Actor): ActorTypeName {
   if (actor instanceof Application) return "Application";
   else if (actor instanceof Group) return "Group";
   else if (actor instanceof Organization) return "Organization";
@@ -270,10 +254,7 @@ export async function getActorHandle(
   options: GetActorHandleOptions = {},
 ): Promise<`@${string}@${string}` | `${string}@${string}`> {
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
-  const tracer = tracerProvider.getTracer(
-    metadata.name,
-    metadata.version,
-  );
+  const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   return await tracer.startActiveSpan(
     "activitypub.get_actor_handle",
     async (span) => {
@@ -291,9 +272,8 @@ export async function getActorHandle(
         result = "resolved";
         return handle;
       } catch (error) {
-        result = error instanceof ActorHandleNotFoundError
-          ? "not_found"
-          : "error";
+        result =
+          error instanceof ActorHandleNotFoundError ? "not_found" : "error";
         span.setStatus({
           code: SpanStatusCode.ERROR,
           message: String(error),
@@ -343,13 +323,13 @@ async function getActorHandleInternal(
           const hostname = new URL(`https://${match[2]}/`).hostname;
           if (
             hostname !== actorId.hostname &&
-            !await verifyCrossOriginActorHandle(
+            !(await verifyCrossOriginActorHandle(
               actorId.href,
               alias,
               options.userAgent,
               options.tracerProvider,
               options.meterProvider,
-            )
+            ))
           ) {
             continue;
           }
@@ -359,7 +339,8 @@ async function getActorHandleInternal(
     }
   }
   if (
-    !(actor instanceof URL) && actor.preferredUsername != null &&
+    !(actor instanceof URL) &&
+    actor.preferredUsername != null &&
     actor.id != null
   ) {
     return normalizeActorHandle(
@@ -394,8 +375,8 @@ async function getPortableActorHandle(
     userAgent: options.userAgent,
     tracerProvider: options.tracerProvider,
     meterProvider: options.meterProvider,
-    allowPrivateAddress: "allowPrivateAddress" in options &&
-      options.allowPrivateAddress === true,
+    allowPrivateAddress:
+      "allowPrivateAddress" in options && options.allowPrivateAddress === true,
   });
   // Unlike an ordinary actor, whose ID vouches for its host, a portable
   // actor's gateways are claimed by the actor itself, so there is no
@@ -411,11 +392,13 @@ async function getPortableActorHandle(
       userAgent: options.userAgent,
       tracerProvider: options.tracerProvider,
       meterProvider: options.meterProvider,
-      allowPrivateAddress: "allowPrivateAddress" in options &&
+      allowPrivateAddress:
+        "allowPrivateAddress" in options &&
         options.allowPrivateAddress === true,
     });
     if (
-      subjectResult != null && linksToPortableActor(subjectResult, canonicalId)
+      subjectResult != null &&
+      linksToPortableActor(subjectResult, canonicalId)
     ) {
       return normalizeActorHandle(`@${subject[1]}@${subject[2]}`, options);
     }
@@ -432,12 +415,14 @@ function linksToPortableActor(
   jrd: ResourceDescriptor,
   canonicalId: string,
 ): boolean {
-  const link = jrd.links?.find((l) =>
-    l.rel === "self" && l.href != null &&
-    (l.type === "application/activity+json" ||
-      l.type?.match(
+  const link = jrd.links?.find(
+    (l) =>
+      l.rel === "self" &&
+      l.href != null &&
+      (l.type === "application/activity+json" ||
+        l.type?.match(
           /application\/ld\+json;\s*profile="https:\/\/www.w3.org\/ns\/activitystreams"/,
-        ) != null)
+        ) != null),
   );
   if (link?.href == null) return false;
   try {

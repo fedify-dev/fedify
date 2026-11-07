@@ -24,16 +24,17 @@ import { Collection, Note, Object, Person } from "./vocab.ts";
 // depend on the real DNS:
 const allowPrivateAddress = { allowPrivateAddress: true };
 
-test("lookupObject()", {
-  sanitizeResources: false,
-  sanitizeOps: false,
-}, async (t) => {
-  const responseTimers: ReturnType<typeof setTimeout>[] = [];
-  fetchMock.spyGlobal();
+test(
+  "lookupObject()",
+  {
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  async (t) => {
+    const responseTimers: ReturnType<typeof setTimeout>[] = [];
+    fetchMock.spyGlobal();
 
-  fetchMock.get(
-    "begin:https://example.com/.well-known/webfinger",
-    {
+    fetchMock.get("begin:https://example.com/.well-known/webfinger", {
       subject: "acct:johndoe@example.com",
       links: [
         {
@@ -52,106 +53,105 @@ test("lookupObject()", {
           type: "application/activity+json",
         },
       ],
-    },
-  );
-
-  const options = {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-    ...allowPrivateAddress,
-  };
-
-  await t.step("actor", async () => {
-    const person = await lookupObject("@johndoe@example.com", options);
-    assertInstanceOf(person, Person);
-    deepStrictEqual(person.id, new URL("https://example.com/person"));
-    equal(person.name, "John Doe");
-    const person2 = await lookupObject("johndoe@example.com", options);
-    deepStrictEqual(person2, person);
-    const person3 = await lookupObject("acct:johndoe@example.com", options);
-    deepStrictEqual(person3, person);
-  });
-
-  await t.step("object", async () => {
-    const object = await lookupObject("https://example.com/object", options);
-    assertInstanceOf(object, Object);
-    deepStrictEqual(
-      object,
-      new Object({
-        id: new URL("https://example.com/object"),
-        name: "Fetched object",
-      }),
-    );
-    const person = await lookupObject(
-      "https://example.com/hong-gildong",
-      options,
-    );
-    assertInstanceOf(person, Person);
-    deepStrictEqual(
-      person,
-      new Person({
-        id: new URL("https://example.com/hong-gildong"),
-        name: "Hong Gildong",
-      }),
-    );
-  });
-
-  // Workers load fixtures through fetch(), so keep the spy fallback between steps.
-  fetchMock.removeRoutes({ includeFallback: false });
-  fetchMock.get("begin:https://example.com/.well-known/webfinger", {
-    subject: "acct:janedoe@example.com",
-    links: [
-      {
-        rel: "self",
-        href: "https://example.com/404",
-        type: "application/activity+json",
-      },
-    ],
-  });
-
-  await t.step("not found", async () => {
-    deepStrictEqual(await lookupObject("janedoe@example.com", options), null);
-    deepStrictEqual(
-      await lookupObject("https://example.com/404", options),
-      null,
-    );
-  });
-
-  fetchMock.removeRoutes({ includeFallback: false });
-  fetchMock.get(
-    "begin:https://example.com/.well-known/webfinger",
-    () =>
-      new Promise((resolve) => {
-        responseTimers.push(setTimeout(() => {
-          resolve({
-            subject: "acct:johndoe@example.com",
-            links: [
-              {
-                rel: "self",
-                href: "https://example.com/person",
-                type: "application/activity+json",
-              },
-            ],
-          });
-        }, 1000));
-      }),
-  );
-
-  await t.step("request cancellation", async () => {
-    const controller = new AbortController();
-    const promise = lookupObject("johndoe@example.com", {
-      ...options,
-      signal: controller.signal,
     });
 
-    controller.abort();
-    deepStrictEqual(await promise, null);
-  });
+    const options = {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      ...allowPrivateAddress,
+    };
 
-  fetchMock.removeRoutes({ includeFallback: false });
-  fetchMock.get(
-    "begin:https://example.com/.well-known/webfinger",
-    {
+    await t.step("actor", async () => {
+      const person = await lookupObject("@johndoe@example.com", options);
+      assertInstanceOf(person, Person);
+      deepStrictEqual(person.id, new URL("https://example.com/person"));
+      equal(person.name, "John Doe");
+      const person2 = await lookupObject("johndoe@example.com", options);
+      deepStrictEqual(person2, person);
+      const person3 = await lookupObject("acct:johndoe@example.com", options);
+      deepStrictEqual(person3, person);
+    });
+
+    await t.step("object", async () => {
+      const object = await lookupObject("https://example.com/object", options);
+      assertInstanceOf(object, Object);
+      deepStrictEqual(
+        object,
+        new Object({
+          id: new URL("https://example.com/object"),
+          name: "Fetched object",
+        }),
+      );
+      const person = await lookupObject(
+        "https://example.com/hong-gildong",
+        options,
+      );
+      assertInstanceOf(person, Person);
+      deepStrictEqual(
+        person,
+        new Person({
+          id: new URL("https://example.com/hong-gildong"),
+          name: "Hong Gildong",
+        }),
+      );
+    });
+
+    // Workers load fixtures through fetch(), so keep the spy fallback between steps.
+    fetchMock.removeRoutes({ includeFallback: false });
+    fetchMock.get("begin:https://example.com/.well-known/webfinger", {
+      subject: "acct:janedoe@example.com",
+      links: [
+        {
+          rel: "self",
+          href: "https://example.com/404",
+          type: "application/activity+json",
+        },
+      ],
+    });
+
+    await t.step("not found", async () => {
+      deepStrictEqual(await lookupObject("janedoe@example.com", options), null);
+      deepStrictEqual(
+        await lookupObject("https://example.com/404", options),
+        null,
+      );
+    });
+
+    fetchMock.removeRoutes({ includeFallback: false });
+    fetchMock.get(
+      "begin:https://example.com/.well-known/webfinger",
+      () =>
+        new Promise((resolve) => {
+          responseTimers.push(
+            setTimeout(() => {
+              resolve({
+                subject: "acct:johndoe@example.com",
+                links: [
+                  {
+                    rel: "self",
+                    href: "https://example.com/person",
+                    type: "application/activity+json",
+                  },
+                ],
+              });
+            }, 1000),
+          );
+        }),
+    );
+
+    await t.step("request cancellation", async () => {
+      const controller = new AbortController();
+      const promise = lookupObject("johndoe@example.com", {
+        ...options,
+        signal: controller.signal,
+      });
+
+      controller.abort();
+      deepStrictEqual(await promise, null);
+    });
+
+    fetchMock.removeRoutes({ includeFallback: false });
+    fetchMock.get("begin:https://example.com/.well-known/webfinger", {
       subject: "acct:johndoe@example.com",
       links: [
         {
@@ -160,159 +160,264 @@ test("lookupObject()", {
           type: "application/activity+json",
         },
       ],
-    },
-  );
-
-  await t.step("successful request with signal", async () => {
-    const controller = new AbortController();
-    const person = await lookupObject("johndoe@example.com", {
-      ...options,
-      signal: controller.signal,
-    });
-    assertInstanceOf(person, Person);
-    deepStrictEqual(person.id, new URL("https://example.com/person"));
-  });
-
-  fetchMock.removeRoutes({ includeFallback: false });
-  fetchMock.get(
-    "begin:https://example.com/.well-known/webfinger",
-    () =>
-      new Promise((resolve) => {
-        responseTimers.push(setTimeout(() => {
-          resolve({
-            subject: "acct:johndoe@example.com",
-            links: [
-              {
-                rel: "self",
-                href: "https://example.com/person",
-                type: "application/activity+json",
-              },
-            ],
-          });
-        }, 500));
-      }),
-  );
-
-  await t.step("cancellation with immediate abort", async () => {
-    const controller = new AbortController();
-    controller.abort();
-
-    const result = await lookupObject("johndoe@example.com", {
-      ...options,
-      signal: controller.signal,
-    });
-    deepStrictEqual(result, null);
-  });
-
-  fetchMock.removeRoutes({ includeFallback: false });
-  fetchMock.get(
-    "https://example.com/slow-object",
-    () =>
-      new Promise((resolve) => {
-        responseTimers.push(setTimeout(() => {
-          resolve({
-            status: 200,
-            headers: { "Content-Type": "application/activity+json" },
-            body: {
-              "@context": "https://www.w3.org/ns/activitystreams",
-              type: "Note",
-              content: "Slow response",
-            },
-          });
-        }, 1000));
-      }),
-  );
-
-  await t.step("direct object fetch cancellation", async () => {
-    const controller = new AbortController();
-    const promise = lookupObject("https://example.com/slow-object", {
-      contextLoader: mockDocumentLoader,
-      signal: controller.signal,
     });
 
-    controller.abort();
-    deepStrictEqual(await promise, null);
-  });
-
-  for (const timer of responseTimers) clearTimeout(timer);
-  fetchMock.hardReset();
-  fetchMock.removeRoutes();
-});
-
-test("traverseCollection()", {
-  sanitizeResources: false,
-  sanitizeOps: false,
-}, async () => {
-  const options = {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-  };
-  const collection = await lookupObject(
-    "https://example.com/collection",
-    options,
-  );
-  assertInstanceOf(collection, Collection);
-  deepStrictEqual(
-    await Array.fromAsync(traverseCollection(collection, options)),
-    [
-      new Note({ content: "This is a simple note" }),
-      new Note({ content: "This is another simple note" }),
-      new Note({ content: "This is a third simple note" }),
-    ],
-  );
-  const pagedCollection = await lookupObject(
-    "https://example.com/paged-collection",
-    options,
-  );
-  assertInstanceOf(pagedCollection, Collection);
-  deepStrictEqual(
-    await Array.fromAsync(traverseCollection(pagedCollection, options)),
-    [
-      new Note({ content: "This is a simple note" }),
-      new Note({ content: "This is another simple note" }),
-      new Note({ content: "This is a third simple note" }),
-    ],
-  );
-  deepStrictEqual(
-    await Array.fromAsync(
-      traverseCollection(pagedCollection, {
+    await t.step("successful request with signal", async () => {
+      const controller = new AbortController();
+      const person = await lookupObject("johndoe@example.com", {
         ...options,
-        interval: { milliseconds: 250 },
-      }),
-    ),
-    [
-      new Note({ content: "This is a simple note" }),
-      new Note({ content: "This is another simple note" }),
-      new Note({ content: "This is a third simple note" }),
-    ],
-  );
-  // Inline-paged collection (CollectionPage embedded without id, with next)
-  const inlinePagedCollection = await lookupObject(
-    "https://example.com/inline-paged-collection",
-    options,
-  );
-  assertInstanceOf(inlinePagedCollection, Collection);
-  deepStrictEqual(
-    await Array.fromAsync(
-      traverseCollection(inlinePagedCollection, options),
-    ),
-    [
-      new Note({ content: "Inline first note" }),
-      new Note({ content: "Inline second note" }),
-    ],
-  );
-});
+        signal: controller.signal,
+      });
+      assertInstanceOf(person, Person);
+      deepStrictEqual(person.id, new URL("https://example.com/person"));
+    });
 
-test("FEP-fe34: lookupObject() cross-origin security", {
-  sanitizeResources: false,
-  sanitizeOps: false,
-}, async (t) => {
-  await t.step(
-    "crossOrigin: ignore (default) - returns null for cross-origin objects",
-    async () => {
-      // Create a mock document loader that returns an object with different origin
+    fetchMock.removeRoutes({ includeFallback: false });
+    fetchMock.get(
+      "begin:https://example.com/.well-known/webfinger",
+      () =>
+        new Promise((resolve) => {
+          responseTimers.push(
+            setTimeout(() => {
+              resolve({
+                subject: "acct:johndoe@example.com",
+                links: [
+                  {
+                    rel: "self",
+                    href: "https://example.com/person",
+                    type: "application/activity+json",
+                  },
+                ],
+              });
+            }, 500),
+          );
+        }),
+    );
+
+    await t.step("cancellation with immediate abort", async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const result = await lookupObject("johndoe@example.com", {
+        ...options,
+        signal: controller.signal,
+      });
+      deepStrictEqual(result, null);
+    });
+
+    fetchMock.removeRoutes({ includeFallback: false });
+    fetchMock.get(
+      "https://example.com/slow-object",
+      () =>
+        new Promise((resolve) => {
+          responseTimers.push(
+            setTimeout(() => {
+              resolve({
+                status: 200,
+                headers: { "Content-Type": "application/activity+json" },
+                body: {
+                  "@context": "https://www.w3.org/ns/activitystreams",
+                  type: "Note",
+                  content: "Slow response",
+                },
+              });
+            }, 1000),
+          );
+        }),
+    );
+
+    await t.step("direct object fetch cancellation", async () => {
+      const controller = new AbortController();
+      const promise = lookupObject("https://example.com/slow-object", {
+        contextLoader: mockDocumentLoader,
+        signal: controller.signal,
+      });
+
+      controller.abort();
+      deepStrictEqual(await promise, null);
+    });
+
+    for (const timer of responseTimers) clearTimeout(timer);
+    fetchMock.hardReset();
+    fetchMock.removeRoutes();
+  },
+);
+
+test(
+  "traverseCollection()",
+  {
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  async () => {
+    const options = {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    };
+    const collection = await lookupObject(
+      "https://example.com/collection",
+      options,
+    );
+    assertInstanceOf(collection, Collection);
+    deepStrictEqual(
+      await Array.fromAsync(traverseCollection(collection, options)),
+      [
+        new Note({ content: "This is a simple note" }),
+        new Note({ content: "This is another simple note" }),
+        new Note({ content: "This is a third simple note" }),
+      ],
+    );
+    const pagedCollection = await lookupObject(
+      "https://example.com/paged-collection",
+      options,
+    );
+    assertInstanceOf(pagedCollection, Collection);
+    deepStrictEqual(
+      await Array.fromAsync(traverseCollection(pagedCollection, options)),
+      [
+        new Note({ content: "This is a simple note" }),
+        new Note({ content: "This is another simple note" }),
+        new Note({ content: "This is a third simple note" }),
+      ],
+    );
+    deepStrictEqual(
+      await Array.fromAsync(
+        traverseCollection(pagedCollection, {
+          ...options,
+          interval: { milliseconds: 250 },
+        }),
+      ),
+      [
+        new Note({ content: "This is a simple note" }),
+        new Note({ content: "This is another simple note" }),
+        new Note({ content: "This is a third simple note" }),
+      ],
+    );
+    // Inline-paged collection (CollectionPage embedded without id, with next)
+    const inlinePagedCollection = await lookupObject(
+      "https://example.com/inline-paged-collection",
+      options,
+    );
+    assertInstanceOf(inlinePagedCollection, Collection);
+    deepStrictEqual(
+      await Array.fromAsync(traverseCollection(inlinePagedCollection, options)),
+      [
+        new Note({ content: "Inline first note" }),
+        new Note({ content: "Inline second note" }),
+      ],
+    );
+  },
+);
+
+test(
+  "FEP-fe34: lookupObject() cross-origin security",
+  {
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  async (t) => {
+    await t.step(
+      "crossOrigin: ignore (default) - returns null for cross-origin objects",
+      async () => {
+        // Create a mock document loader that returns an object with different origin
+        // oxlint-disable-next-line eslint/require-await
+        const crossOriginDocumentLoader = async (url: string) => {
+          if (url === "https://example.com/note") {
+            return {
+              documentUrl: url,
+              contextUrl: null,
+              document: {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                type: "Note",
+                id: "https://malicious.com/fake-note", // Different origin!
+                content: "This is a spoofed note from a different origin",
+              },
+            };
+          }
+          throw new Error(`Unexpected URL: ${url}`);
+        };
+
+        const result = await lookupObject("https://example.com/note", {
+          documentLoader: crossOriginDocumentLoader,
+          contextLoader: mockDocumentLoader,
+        });
+
+        // Should return null and log a warning (default behavior)
+        deepStrictEqual(result, null);
+      },
+    );
+
+    await t.step(
+      "crossOrigin: throw - throws error for cross-origin objects",
+      async () => {
+        // oxlint-disable-next-line eslint/require-await
+        const crossOriginDocumentLoader = async (url: string) => {
+          if (url === "https://example.com/note") {
+            return {
+              documentUrl: url,
+              contextUrl: null,
+              document: {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                type: "Note",
+                id: "https://malicious.com/fake-note", // Different origin!
+                content: "This is a spoofed note from a different origin",
+              },
+            };
+          }
+          throw new Error(`Unexpected URL: ${url}`);
+        };
+
+        await rejects(
+          () =>
+            lookupObject("https://example.com/note", {
+              documentLoader: crossOriginDocumentLoader,
+              contextLoader: mockDocumentLoader,
+              crossOrigin: "throw",
+            }),
+          Error,
+          "The object's @id (https://malicious.com/fake-note) has a different origin than the document URL (https://example.com/note)",
+        );
+      },
+    );
+
+    await t.step(
+      "crossOrigin: trust - allows cross-origin objects",
+      async () => {
+        // oxlint-disable-next-line eslint/require-await
+        const crossOriginDocumentLoader = async (url: string) => {
+          if (url === "https://example.com/note") {
+            return {
+              documentUrl: url,
+              contextUrl: null,
+              document: {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                type: "Note",
+                id: "https://malicious.com/fake-note", // Different origin!
+                content: "This is a spoofed note from a different origin",
+              },
+            };
+          }
+          throw new Error(`Unexpected URL: ${url}`);
+        };
+
+        const result = await lookupObject("https://example.com/note", {
+          documentLoader: crossOriginDocumentLoader,
+          contextLoader: mockDocumentLoader,
+          crossOrigin: "trust",
+        });
+
+        assertInstanceOf(result, Note);
+        deepStrictEqual(result.id, new URL("https://malicious.com/fake-note"));
+        deepStrictEqual(
+          result.content,
+          "This is a spoofed note from a different origin",
+        );
+      },
+    );
+
+    await t.step("same-origin objects are always trusted", async () => {
       // oxlint-disable-next-line eslint/require-await
-      const crossOriginDocumentLoader = async (url: string) => {
+      const sameOriginDocumentLoader = async (url: string) => {
         if (url === "https://example.com/note") {
           return {
             documentUrl: url,
@@ -320,8 +425,8 @@ test("FEP-fe34: lookupObject() cross-origin security", {
             document: {
               "@context": "https://www.w3.org/ns/activitystreams",
               type: "Note",
-              id: "https://malicious.com/fake-note", // Different origin!
-              content: "This is a spoofed note from a different origin",
+              id: "https://example.com/note", // Same origin
+              content: "This is a legitimate note from the same origin",
             },
           };
         }
@@ -329,114 +434,19 @@ test("FEP-fe34: lookupObject() cross-origin security", {
       };
 
       const result = await lookupObject("https://example.com/note", {
-        documentLoader: crossOriginDocumentLoader,
+        documentLoader: sameOriginDocumentLoader,
         contextLoader: mockDocumentLoader,
       });
 
-      // Should return null and log a warning (default behavior)
-      deepStrictEqual(result, null);
-    },
-  );
-
-  await t.step(
-    "crossOrigin: throw - throws error for cross-origin objects",
-    async () => {
-      // oxlint-disable-next-line eslint/require-await
-      const crossOriginDocumentLoader = async (url: string) => {
-        if (url === "https://example.com/note") {
-          return {
-            documentUrl: url,
-            contextUrl: null,
-            document: {
-              "@context": "https://www.w3.org/ns/activitystreams",
-              type: "Note",
-              id: "https://malicious.com/fake-note", // Different origin!
-              content: "This is a spoofed note from a different origin",
-            },
-          };
-        }
-        throw new Error(`Unexpected URL: ${url}`);
-      };
-
-      await rejects(
-        () =>
-          lookupObject("https://example.com/note", {
-            documentLoader: crossOriginDocumentLoader,
-            contextLoader: mockDocumentLoader,
-            crossOrigin: "throw",
-          }),
-        Error,
-        "The object's @id (https://malicious.com/fake-note) has a different origin than the document URL (https://example.com/note)",
+      assertInstanceOf(result, Note);
+      deepStrictEqual(result.id, new URL("https://example.com/note"));
+      deepStrictEqual(
+        result.content,
+        "This is a legitimate note from the same origin",
       );
-    },
-  );
-
-  await t.step("crossOrigin: trust - allows cross-origin objects", async () => {
-    // oxlint-disable-next-line eslint/require-await
-    const crossOriginDocumentLoader = async (url: string) => {
-      if (url === "https://example.com/note") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Note",
-            id: "https://malicious.com/fake-note", // Different origin!
-            content: "This is a spoofed note from a different origin",
-          },
-        };
-      }
-      throw new Error(`Unexpected URL: ${url}`);
-    };
-
-    const result = await lookupObject("https://example.com/note", {
-      documentLoader: crossOriginDocumentLoader,
-      contextLoader: mockDocumentLoader,
-      crossOrigin: "trust",
     });
 
-    assertInstanceOf(result, Note);
-    deepStrictEqual(result.id, new URL("https://malicious.com/fake-note"));
-    deepStrictEqual(
-      result.content,
-      "This is a spoofed note from a different origin",
-    );
-  });
-
-  await t.step("same-origin objects are always trusted", async () => {
-    // oxlint-disable-next-line eslint/require-await
-    const sameOriginDocumentLoader = async (url: string) => {
-      if (url === "https://example.com/note") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Note",
-            id: "https://example.com/note", // Same origin
-            content: "This is a legitimate note from the same origin",
-          },
-        };
-      }
-      throw new Error(`Unexpected URL: ${url}`);
-    };
-
-    const result = await lookupObject("https://example.com/note", {
-      documentLoader: sameOriginDocumentLoader,
-      contextLoader: mockDocumentLoader,
-    });
-
-    assertInstanceOf(result, Note);
-    deepStrictEqual(result.id, new URL("https://example.com/note"));
-    deepStrictEqual(
-      result.content,
-      "This is a legitimate note from the same origin",
-    );
-  });
-
-  await t.step(
-    "same-authority non-FE34 IRIs are still trusted",
-    async () => {
+    await t.step("same-authority non-FE34 IRIs are still trusted", async () => {
       // oxlint-disable-next-line eslint/require-await
       const atProtoDocumentLoader = async (url: string) => {
         if (url === "https://gateway.example/at-item") {
@@ -454,13 +464,10 @@ test("FEP-fe34: lookupObject() cross-origin security", {
         throw new Error(`Unexpected URL: ${url}`);
       };
 
-      const result = await lookupObject(
-        "https://gateway.example/at-item",
-        {
-          documentLoader: atProtoDocumentLoader,
-          contextLoader: mockDocumentLoader,
-        },
-      );
+      const result = await lookupObject("https://gateway.example/at-item", {
+        documentLoader: atProtoDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
 
       assertInstanceOf(result, Note);
       deepStrictEqual(
@@ -468,341 +475,344 @@ test("FEP-fe34: lookupObject() cross-origin security", {
         new URL("at://did%3Aplc%3Aexample/collection/reply"),
       );
       deepStrictEqual(result.content, "AT Protocol note");
-    },
-  );
+    });
 
-  await t.step(
-    "portable object IDs are trusted by DID cryptographic origin",
-    async () => {
-      // oxlint-disable-next-line eslint/require-await
-      const portableDocumentLoader = async (url: string) => {
-        if (
-          url ===
+    await t.step(
+      "portable object IDs are trusted by DID cryptographic origin",
+      async () => {
+        // oxlint-disable-next-line eslint/require-await
+        const portableDocumentLoader = async (url: string) => {
+          if (
+            url ===
             "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note"
-        ) {
+          ) {
+            return {
+              documentUrl: "ap+ef61://did:key:z6Mkabc/note",
+              contextUrl: null,
+              document: {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                type: "Note",
+                id: "ap://did:key:z6Mkabc/note",
+                content: "Portable note",
+              },
+            };
+          }
+          throw new Error(`Unexpected URL: ${url}`);
+        };
+
+        const result = await lookupObject(
+          "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note",
+          {
+            documentLoader: portableDocumentLoader,
+            contextLoader: mockDocumentLoader,
+          },
+        );
+
+        assertInstanceOf(result, Note);
+        deepStrictEqual(result.content, "Portable note");
+      },
+    );
+
+    await t.step(
+      "portable object IDs reject mismatched cryptographic origins",
+      async () => {
+        // oxlint-disable-next-line eslint/require-await
+        const portableDocumentLoader = async (url: string) => {
+          if (
+            url ===
+            "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note"
+          ) {
+            return {
+              documentUrl: "ap+ef61://did:key:z6Mkabc/note",
+              contextUrl: null,
+              document: {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                type: "Note",
+                id: "ap://did:key:z6Mkdef/note",
+                content: "Spoofed portable note",
+              },
+            };
+          }
+          throw new Error(`Unexpected URL: ${url}`);
+        };
+
+        const result = await lookupObject(
+          "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note",
+          {
+            documentLoader: portableDocumentLoader,
+            contextLoader: mockDocumentLoader,
+          },
+        );
+
+        deepStrictEqual(result, null);
+        await rejects(
+          () =>
+            lookupObject(
+              "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note",
+              {
+                documentLoader: portableDocumentLoader,
+                contextLoader: mockDocumentLoader,
+                crossOrigin: "throw",
+              },
+            ),
+          Error,
+          "The object's @id (ap+ef61://did%3Akey%3Az6Mkdef/note) has a different origin than the document URL (ap+ef61://did:key:z6Mkabc/note)",
+        );
+      },
+    );
+
+    await t.step("objects without @id are trusted", async () => {
+      // oxlint-disable-next-line eslint/require-await
+      const noIdDocumentLoader = async (url: string) => {
+        if (url === "https://example.com/note") {
           return {
-            documentUrl: "ap+ef61://did:key:z6Mkabc/note",
+            documentUrl: url,
             contextUrl: null,
             document: {
               "@context": "https://www.w3.org/ns/activitystreams",
               type: "Note",
-              id: "ap://did:key:z6Mkabc/note",
-              content: "Portable note",
+              // No @id field
+              content: "This is a note without an ID",
             },
           };
         }
         throw new Error(`Unexpected URL: ${url}`);
       };
 
-      const result = await lookupObject(
-        "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note",
-        {
-          documentLoader: portableDocumentLoader,
-          contextLoader: mockDocumentLoader,
-        },
-      );
+      const result = await lookupObject("https://example.com/note", {
+        documentLoader: noIdDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
 
       assertInstanceOf(result, Note);
-      deepStrictEqual(result.content, "Portable note");
-    },
-  );
+      deepStrictEqual(result.id, null);
+      deepStrictEqual(result.content, "This is a note without an ID");
+    });
 
-  await t.step(
-    "portable object IDs reject mismatched cryptographic origins",
-    async () => {
+    await t.step("WebFinger lookup with cross-origin actor URL", async () => {
+      fetchMock.spyGlobal();
+
+      // Mock WebFinger response
+      fetchMock.get("begin:https://example.com/.well-known/webfinger", {
+        subject: "acct:user@example.com",
+        links: [
+          {
+            rel: "self",
+            href: "https://different-origin.com/actor", // Cross-origin actor URL
+            type: "application/activity+json",
+          },
+        ],
+      });
+
+      // Mock document loader for the cross-origin actor
       // oxlint-disable-next-line eslint/require-await
-      const portableDocumentLoader = async (url: string) => {
-        if (
-          url ===
-            "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note"
-        ) {
+      const webfingerDocumentLoader = async (url: string) => {
+        if (url === "https://different-origin.com/actor") {
           return {
-            documentUrl: "ap+ef61://did:key:z6Mkabc/note",
+            documentUrl: url,
             contextUrl: null,
             document: {
               "@context": "https://www.w3.org/ns/activitystreams",
-              type: "Note",
-              id: "ap://did:key:z6Mkdef/note",
-              content: "Spoofed portable note",
+              type: "Person",
+              id: "https://malicious.com/fake-actor", // Different origin than document URL!
+              name: "Fake Actor",
             },
           };
         }
         throw new Error(`Unexpected URL: ${url}`);
       };
 
-      const result = await lookupObject(
-        "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note",
-        {
-          documentLoader: portableDocumentLoader,
-          contextLoader: mockDocumentLoader,
-        },
-      );
+      // Default behavior should return null
+      const result1 = await lookupObject("@user@example.com", {
+        ...allowPrivateAddress,
+        documentLoader: webfingerDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      deepStrictEqual(result1, null);
 
-      deepStrictEqual(result, null);
+      // With crossOrigin: throw, should throw error
       await rejects(
         () =>
-          lookupObject(
-            "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note",
-            {
-              documentLoader: portableDocumentLoader,
-              contextLoader: mockDocumentLoader,
-              crossOrigin: "throw",
-            },
-          ),
+          lookupObject("@user@example.com", {
+            ...allowPrivateAddress,
+            documentLoader: webfingerDocumentLoader,
+            contextLoader: mockDocumentLoader,
+            crossOrigin: "throw",
+          }),
         Error,
-        "The object's @id (ap+ef61://did%3Akey%3Az6Mkdef/note) has a different origin than the document URL (ap+ef61://did:key:z6Mkabc/note)",
+        "The object's @id (https://malicious.com/fake-actor) has a different origin than the document URL (https://different-origin.com/actor)",
       );
-    },
-  );
 
-  await t.step("objects without @id are trusted", async () => {
-    // oxlint-disable-next-line eslint/require-await
-    const noIdDocumentLoader = async (url: string) => {
-      if (url === "https://example.com/note") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Note",
-            // No @id field
-            content: "This is a note without an ID",
-          },
-        };
-      }
-      throw new Error(`Unexpected URL: ${url}`);
-    };
-
-    const result = await lookupObject("https://example.com/note", {
-      documentLoader: noIdDocumentLoader,
-      contextLoader: mockDocumentLoader,
-    });
-
-    assertInstanceOf(result, Note);
-    deepStrictEqual(result.id, null);
-    deepStrictEqual(result.content, "This is a note without an ID");
-  });
-
-  await t.step("WebFinger lookup with cross-origin actor URL", async () => {
-    fetchMock.spyGlobal();
-
-    // Mock WebFinger response
-    fetchMock.get("begin:https://example.com/.well-known/webfinger", {
-      subject: "acct:user@example.com",
-      links: [
-        {
-          rel: "self",
-          href: "https://different-origin.com/actor", // Cross-origin actor URL
-          type: "application/activity+json",
-        },
-      ],
-    });
-
-    // Mock document loader for the cross-origin actor
-    // oxlint-disable-next-line eslint/require-await
-    const webfingerDocumentLoader = async (url: string) => {
-      if (url === "https://different-origin.com/actor") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Person",
-            id: "https://malicious.com/fake-actor", // Different origin than document URL!
-            name: "Fake Actor",
-          },
-        };
-      }
-      throw new Error(`Unexpected URL: ${url}`);
-    };
-
-    // Default behavior should return null
-    const result1 = await lookupObject("@user@example.com", {
-      ...allowPrivateAddress,
-      documentLoader: webfingerDocumentLoader,
-      contextLoader: mockDocumentLoader,
-    });
-    deepStrictEqual(result1, null);
-
-    // With crossOrigin: throw, should throw error
-    await rejects(
-      () =>
-        lookupObject("@user@example.com", {
-          ...allowPrivateAddress,
-          documentLoader: webfingerDocumentLoader,
-          contextLoader: mockDocumentLoader,
-          crossOrigin: "throw",
-        }),
-      Error,
-      "The object's @id (https://malicious.com/fake-actor) has a different origin than the document URL (https://different-origin.com/actor)",
-    );
-
-    // With crossOrigin: trust, should return the object
-    const result2 = await lookupObject("@user@example.com", {
-      ...allowPrivateAddress,
-      documentLoader: webfingerDocumentLoader,
-      contextLoader: mockDocumentLoader,
-      crossOrigin: "trust",
-    });
-    assertInstanceOf(result2, Person);
-    deepStrictEqual(result2.id, new URL("https://malicious.com/fake-actor"));
-
-    fetchMock.removeRoutes();
-    fetchMock.hardReset();
-  });
-
-  await t.step("subdomain same-origin check", async () => {
-    // Test that different subdomains are considered different origins
-    // oxlint-disable-next-line eslint/require-await
-    const subdomainDocumentLoader = async (url: string) => {
-      if (url === "https://api.example.com/note") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Note",
-            id: "https://www.example.com/note", // Different subdomain = different origin
-            content: "Cross-subdomain note",
-          },
-        };
-      }
-      throw new Error(`Unexpected URL: ${url}`);
-    };
-
-    const result = await lookupObject("https://api.example.com/note", {
-      documentLoader: subdomainDocumentLoader,
-      contextLoader: mockDocumentLoader,
-    });
-
-    deepStrictEqual(result, null); // Should be blocked
-  });
-
-  await t.step("different port same-origin check", async () => {
-    // Test that different ports are considered different origins
-    // oxlint-disable-next-line eslint/require-await
-    const differentPortDocumentLoader = async (url: string) => {
-      if (url === "https://example.com:8080/note") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Note",
-            id: "https://example.com:9090/note", // Different port = different origin
-            content: "Cross-port note",
-          },
-        };
-      }
-      throw new Error(`Unexpected URL: ${url}`);
-    };
-
-    const result = await lookupObject("https://example.com:8080/note", {
-      documentLoader: differentPortDocumentLoader,
-      contextLoader: mockDocumentLoader,
-    });
-
-    deepStrictEqual(result, null); // Should be blocked
-  });
-
-  await t.step("protocol difference same-origin check", async () => {
-    // Test that different protocols are considered different origins
-    // oxlint-disable-next-line eslint/require-await
-    const differentProtocolDocumentLoader = async (url: string) => {
-      if (url === "https://example.com/note") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Note",
-            id: "http://example.com/note", // Different protocol = different origin
-            content: "Cross-protocol note",
-          },
-        };
-      }
-      throw new Error(`Unexpected URL: ${url}`);
-    };
-
-    const result = await lookupObject("https://example.com/note", {
-      documentLoader: differentProtocolDocumentLoader,
-      contextLoader: mockDocumentLoader,
-    });
-
-    deepStrictEqual(result, null); // Should be blocked
-  });
-
-  await t.step("error handling with crossOrigin throw option", async () => {
-    // Test that other errors (not cross-origin) are still thrown normally
-    // oxlint-disable-next-line eslint/require-await
-    const errorDocumentLoader = async (_url: string) => {
-      throw new Error("Network error");
-    };
-
-    // The WebFinger fallback must not reach the network:
-    fetchMock.spyGlobal();
-    fetchMock.get("begin:https://example.com/.well-known/webfinger", 404);
-
-    // Network errors should not be confused with cross-origin errors
-    let result;
-    try {
-      result = await lookupObject("https://example.com/note", {
+      // With crossOrigin: trust, should return the object
+      const result2 = await lookupObject("@user@example.com", {
         ...allowPrivateAddress,
-        documentLoader: errorDocumentLoader,
-        contextLoader: mockDocumentLoader,
-        crossOrigin: "throw",
-      });
-    } finally {
-      fetchMock.hardReset();
-    }
-
-    // Should return null because the document loader failed,
-    // not because of cross-origin policy
-    deepStrictEqual(result, null);
-  });
-
-  await t.step("malformed JSON handling with cross-origin policy", async () => {
-    // oxlint-disable-next-line eslint/require-await
-    const malformedJsonDocumentLoader = async (url: string) => {
-      if (url === "https://example.com/note") {
-        return {
-          documentUrl: url,
-          contextUrl: null,
-          document: "invalid json", // Malformed document
-        };
-      }
-      throw new Error(`Unexpected URL: ${url}`);
-    };
-
-    // Should return null for malformed JSON regardless of crossOrigin setting
-    deepStrictEqual(
-      await lookupObject("https://example.com/note", {
-        documentLoader: malformedJsonDocumentLoader,
-        contextLoader: mockDocumentLoader,
-        crossOrigin: "ignore",
-      }),
-      null,
-    );
-
-    deepStrictEqual(
-      await lookupObject("https://example.com/note", {
-        documentLoader: malformedJsonDocumentLoader,
-        contextLoader: mockDocumentLoader,
-        crossOrigin: "throw",
-      }),
-      null,
-    );
-
-    deepStrictEqual(
-      await lookupObject("https://example.com/note", {
-        documentLoader: malformedJsonDocumentLoader,
+        documentLoader: webfingerDocumentLoader,
         contextLoader: mockDocumentLoader,
         crossOrigin: "trust",
-      }),
-      null,
+      });
+      assertInstanceOf(result2, Person);
+      deepStrictEqual(result2.id, new URL("https://malicious.com/fake-actor"));
+
+      fetchMock.removeRoutes();
+      fetchMock.hardReset();
+    });
+
+    await t.step("subdomain same-origin check", async () => {
+      // Test that different subdomains are considered different origins
+      // oxlint-disable-next-line eslint/require-await
+      const subdomainDocumentLoader = async (url: string) => {
+        if (url === "https://api.example.com/note") {
+          return {
+            documentUrl: url,
+            contextUrl: null,
+            document: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Note",
+              id: "https://www.example.com/note", // Different subdomain = different origin
+              content: "Cross-subdomain note",
+            },
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      };
+
+      const result = await lookupObject("https://api.example.com/note", {
+        documentLoader: subdomainDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+
+      deepStrictEqual(result, null); // Should be blocked
+    });
+
+    await t.step("different port same-origin check", async () => {
+      // Test that different ports are considered different origins
+      // oxlint-disable-next-line eslint/require-await
+      const differentPortDocumentLoader = async (url: string) => {
+        if (url === "https://example.com:8080/note") {
+          return {
+            documentUrl: url,
+            contextUrl: null,
+            document: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Note",
+              id: "https://example.com:9090/note", // Different port = different origin
+              content: "Cross-port note",
+            },
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      };
+
+      const result = await lookupObject("https://example.com:8080/note", {
+        documentLoader: differentPortDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+
+      deepStrictEqual(result, null); // Should be blocked
+    });
+
+    await t.step("protocol difference same-origin check", async () => {
+      // Test that different protocols are considered different origins
+      // oxlint-disable-next-line eslint/require-await
+      const differentProtocolDocumentLoader = async (url: string) => {
+        if (url === "https://example.com/note") {
+          return {
+            documentUrl: url,
+            contextUrl: null,
+            document: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Note",
+              id: "http://example.com/note", // Different protocol = different origin
+              content: "Cross-protocol note",
+            },
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      };
+
+      const result = await lookupObject("https://example.com/note", {
+        documentLoader: differentProtocolDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+
+      deepStrictEqual(result, null); // Should be blocked
+    });
+
+    await t.step("error handling with crossOrigin throw option", async () => {
+      // Test that other errors (not cross-origin) are still thrown normally
+      // oxlint-disable-next-line eslint/require-await
+      const errorDocumentLoader = async (_url: string) => {
+        throw new Error("Network error");
+      };
+
+      // The WebFinger fallback must not reach the network:
+      fetchMock.spyGlobal();
+      fetchMock.get("begin:https://example.com/.well-known/webfinger", 404);
+
+      // Network errors should not be confused with cross-origin errors
+      let result;
+      try {
+        result = await lookupObject("https://example.com/note", {
+          ...allowPrivateAddress,
+          documentLoader: errorDocumentLoader,
+          contextLoader: mockDocumentLoader,
+          crossOrigin: "throw",
+        });
+      } finally {
+        fetchMock.hardReset();
+      }
+
+      // Should return null because the document loader failed,
+      // not because of cross-origin policy
+      deepStrictEqual(result, null);
+    });
+
+    await t.step(
+      "malformed JSON handling with cross-origin policy",
+      async () => {
+        // oxlint-disable-next-line eslint/require-await
+        const malformedJsonDocumentLoader = async (url: string) => {
+          if (url === "https://example.com/note") {
+            return {
+              documentUrl: url,
+              contextUrl: null,
+              document: "invalid json", // Malformed document
+            };
+          }
+          throw new Error(`Unexpected URL: ${url}`);
+        };
+
+        // Should return null for malformed JSON regardless of crossOrigin setting
+        deepStrictEqual(
+          await lookupObject("https://example.com/note", {
+            documentLoader: malformedJsonDocumentLoader,
+            contextLoader: mockDocumentLoader,
+            crossOrigin: "ignore",
+          }),
+          null,
+        );
+
+        deepStrictEqual(
+          await lookupObject("https://example.com/note", {
+            documentLoader: malformedJsonDocumentLoader,
+            contextLoader: mockDocumentLoader,
+            crossOrigin: "throw",
+          }),
+          null,
+        );
+
+        deepStrictEqual(
+          await lookupObject("https://example.com/note", {
+            documentLoader: malformedJsonDocumentLoader,
+            contextLoader: mockDocumentLoader,
+            crossOrigin: "trust",
+          }),
+          null,
+        );
+      },
     );
-  });
-});
+  },
+);
 
 test("lookupObject() records OpenTelemetry span events", async () => {
   const [tracerProvider, exporter] = createTestTracerProvider();
@@ -846,18 +856,19 @@ test("lookupObject() records OpenTelemetry span events", async () => {
   deepStrictEqual(recordedObject.id, "https://example.com/object");
 });
 
-test("lookupObject() records activitypub.object.lookup counter", {
-  sanitizeResources: false,
-  sanitizeOps: false,
-}, async (t) => {
-  fetchMock.spyGlobal();
-  // Cleanup must run even if a test step throws so the global `fetch`
-  // spy does not leak into subsequent tests.
-  try {
-    fetchMock.removeRoutes();
-    fetchMock.get(
-      "begin:https://example.com/.well-known/webfinger",
-      {
+test(
+  "lookupObject() records activitypub.object.lookup counter",
+  {
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  async (t) => {
+    fetchMock.spyGlobal();
+    // Cleanup must run even if a test step throws so the global `fetch`
+    // spy does not leak into subsequent tests.
+    try {
+      fetchMock.removeRoutes();
+      fetchMock.get("begin:https://example.com/.well-known/webfinger", {
         subject: "acct:johndoe@example.com",
         links: [
           {
@@ -866,139 +877,136 @@ test("lookupObject() records activitypub.object.lookup counter", {
             type: "application/activity+json",
           },
         ],
-      },
-    );
-
-    await t.step("records kind=actor for an actor result", async () => {
-      const [meterProvider, recorder] = createTestMeterProvider();
-      const person = await lookupObject("@johndoe@example.com", {
-        ...allowPrivateAddress,
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
-        meterProvider,
       });
-      assertInstanceOf(person, Person);
-      const counters = recorder.getMeasurements("activitypub.object.lookup");
-      deepStrictEqual(counters.length, 1);
-      deepStrictEqual(counters[0].type, "counter");
-      deepStrictEqual(counters[0].value, 1);
-      deepStrictEqual(
-        counters[0].attributes["activitypub.lookup.kind"],
-        "actor",
-      );
-      deepStrictEqual(
-        counters[0].attributes["activitypub.remote.host"],
-        "example.com",
-      );
-      // No `activitypub.document.fetch` measurement should be recorded by
-      // lookupObject itself; that lives on the document-loader path.
-      deepStrictEqual(
-        recorder.getMeasurements("activitypub.document.fetch").length,
-        0,
-      );
-    });
 
-    await t.step("records kind=object for a non-actor object", async () => {
-      const [meterProvider, recorder] = createTestMeterProvider();
-      const object = await lookupObject("https://example.com/object", {
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
-        meterProvider,
-      });
-      assertInstanceOf(object, Object);
-      const counters = recorder.getMeasurements("activitypub.object.lookup");
-      deepStrictEqual(counters.length, 1);
-      deepStrictEqual(
-        counters[0].attributes["activitypub.lookup.kind"],
-        "object",
-      );
-      deepStrictEqual(
-        counters[0].attributes["activitypub.remote.host"],
-        "example.com",
-      );
-    });
-
-    await t.step(
-      "records non-default ports for URL identifiers",
-      async () => {
+      await t.step("records kind=actor for an actor result", async () => {
         const [meterProvider, recorder] = createTestMeterProvider();
-        const object = await lookupObject("https://example.com:8443/object", {
-          documentLoader: (url) =>
-            Promise.resolve({
-              contextUrl: null,
-              documentUrl: url,
-              document: {
-                "@context": "https://www.w3.org/ns/activitystreams",
-                id: url,
-                type: "Note",
-              },
-            }),
+        const person = await lookupObject("@johndoe@example.com", {
+          ...allowPrivateAddress,
+          documentLoader: mockDocumentLoader,
+          contextLoader: mockDocumentLoader,
+          meterProvider,
+        });
+        assertInstanceOf(person, Person);
+        const counters = recorder.getMeasurements("activitypub.object.lookup");
+        deepStrictEqual(counters.length, 1);
+        deepStrictEqual(counters[0].type, "counter");
+        deepStrictEqual(counters[0].value, 1);
+        deepStrictEqual(
+          counters[0].attributes["activitypub.lookup.kind"],
+          "actor",
+        );
+        deepStrictEqual(
+          counters[0].attributes["activitypub.remote.host"],
+          "example.com",
+        );
+        // No `activitypub.document.fetch` measurement should be recorded by
+        // lookupObject itself; that lives on the document-loader path.
+        deepStrictEqual(
+          recorder.getMeasurements("activitypub.document.fetch").length,
+          0,
+        );
+      });
+
+      await t.step("records kind=object for a non-actor object", async () => {
+        const [meterProvider, recorder] = createTestMeterProvider();
+        const object = await lookupObject("https://example.com/object", {
+          documentLoader: mockDocumentLoader,
           contextLoader: mockDocumentLoader,
           meterProvider,
         });
         assertInstanceOf(object, Object);
-        const counter = recorder.getMeasurement("activitypub.object.lookup");
+        const counters = recorder.getMeasurements("activitypub.object.lookup");
+        deepStrictEqual(counters.length, 1);
         deepStrictEqual(
-          counter?.attributes["activitypub.remote.host"],
-          "example.com:8443",
+          counters[0].attributes["activitypub.lookup.kind"],
+          "object",
         );
-      },
-    );
-
-    await t.step("records kind=other on null result", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.get("begin:https://example.com/.well-known/webfinger", {
-        subject: "acct:janedoe@example.com",
-        links: [
-          {
-            rel: "self",
-            href: "https://example.com/404",
-            type: "application/activity+json",
-          },
-        ],
+        deepStrictEqual(
+          counters[0].attributes["activitypub.remote.host"],
+          "example.com",
+        );
       });
-      const [meterProvider, recorder] = createTestMeterProvider();
-      const result = await lookupObject("janedoe@example.com", {
-        ...allowPrivateAddress,
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
-        meterProvider,
-      });
-      deepStrictEqual(result, null);
-      const counters = recorder.getMeasurements("activitypub.object.lookup");
-      deepStrictEqual(counters.length, 1);
-      deepStrictEqual(
-        counters[0].attributes["activitypub.lookup.kind"],
-        "other",
-      );
-      deepStrictEqual(
-        counters[0].attributes["activitypub.remote.host"],
-        "example.com",
-      );
-    });
 
-    await t.step(
-      "omits counter when no meterProvider is provided",
-      async () => {
-        const [_unused, recorder] = createTestMeterProvider();
-        await lookupObject("https://example.com/object", {
+      await t.step(
+        "records non-default ports for URL identifiers",
+        async () => {
+          const [meterProvider, recorder] = createTestMeterProvider();
+          const object = await lookupObject("https://example.com:8443/object", {
+            documentLoader: (url) =>
+              Promise.resolve({
+                contextUrl: null,
+                documentUrl: url,
+                document: {
+                  "@context": "https://www.w3.org/ns/activitystreams",
+                  id: url,
+                  type: "Note",
+                },
+              }),
+            contextLoader: mockDocumentLoader,
+            meterProvider,
+          });
+          assertInstanceOf(object, Object);
+          const counter = recorder.getMeasurement("activitypub.object.lookup");
+          deepStrictEqual(
+            counter?.attributes["activitypub.remote.host"],
+            "example.com:8443",
+          );
+        },
+      );
+
+      await t.step("records kind=other on null result", async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get("begin:https://example.com/.well-known/webfinger", {
+          subject: "acct:janedoe@example.com",
+          links: [
+            {
+              rel: "self",
+              href: "https://example.com/404",
+              type: "application/activity+json",
+            },
+          ],
+        });
+        const [meterProvider, recorder] = createTestMeterProvider();
+        const result = await lookupObject("janedoe@example.com", {
+          ...allowPrivateAddress,
           documentLoader: mockDocumentLoader,
           contextLoader: mockDocumentLoader,
+          meterProvider,
         });
+        deepStrictEqual(result, null);
+        const counters = recorder.getMeasurements("activitypub.object.lookup");
+        deepStrictEqual(counters.length, 1);
         deepStrictEqual(
-          recorder.getMeasurements("activitypub.object.lookup").length,
-          0,
+          counters[0].attributes["activitypub.lookup.kind"],
+          "other",
         );
-      },
-    );
+        deepStrictEqual(
+          counters[0].attributes["activitypub.remote.host"],
+          "example.com",
+        );
+      });
 
-    await t.step(
-      "propagates meterProvider into the nested webfinger.lookup",
-      async () => {
-        fetchMock.removeRoutes();
-        fetchMock.get(
-          "begin:https://example.com/.well-known/webfinger",
-          {
+      await t.step(
+        "omits counter when no meterProvider is provided",
+        async () => {
+          const [_unused, recorder] = createTestMeterProvider();
+          await lookupObject("https://example.com/object", {
+            documentLoader: mockDocumentLoader,
+            contextLoader: mockDocumentLoader,
+          });
+          deepStrictEqual(
+            recorder.getMeasurements("activitypub.object.lookup").length,
+            0,
+          );
+        },
+      );
+
+      await t.step(
+        "propagates meterProvider into the nested webfinger.lookup",
+        async () => {
+          fetchMock.removeRoutes();
+          fetchMock.get("begin:https://example.com/.well-known/webfinger", {
             subject: "acct:johndoe@example.com",
             links: [
               {
@@ -1007,31 +1015,28 @@ test("lookupObject() records activitypub.object.lookup counter", {
                 type: "application/activity+json",
               },
             ],
-          },
-        );
-        const [meterProvider, recorder] = createTestMeterProvider();
-        await lookupObject("@johndoe@example.com", {
-          ...allowPrivateAddress,
-          documentLoader: mockDocumentLoader,
-          contextLoader: mockDocumentLoader,
-          meterProvider,
-        });
-        const webFingerCounter = recorder.getMeasurement("webfinger.lookup");
-        ok(webFingerCounter != null);
-        deepStrictEqual(
-          webFingerCounter.attributes["webfinger.lookup.result"],
-          "found",
-        );
-        deepStrictEqual(
-          webFingerCounter.attributes["activitypub.remote.host"],
-          "example.com",
-        );
-      },
-    );
+          });
+          const [meterProvider, recorder] = createTestMeterProvider();
+          await lookupObject("@johndoe@example.com", {
+            ...allowPrivateAddress,
+            documentLoader: mockDocumentLoader,
+            contextLoader: mockDocumentLoader,
+            meterProvider,
+          });
+          const webFingerCounter = recorder.getMeasurement("webfinger.lookup");
+          ok(webFingerCounter != null);
+          deepStrictEqual(
+            webFingerCounter.attributes["webfinger.lookup.result"],
+            "found",
+          );
+          deepStrictEqual(
+            webFingerCounter.attributes["activitypub.remote.host"],
+            "example.com",
+          );
+        },
+      );
 
-    await t.step(
-      "extracts host from a URL acct: instance",
-      async () => {
+      await t.step("extracts host from a URL acct: instance", async () => {
         fetchMock.removeRoutes();
         fetchMock.get("begin:https://example.com/.well-known/webfinger", {
           subject: "acct:johndoe@example.com",
@@ -1055,34 +1060,34 @@ test("lookupObject() records activitypub.object.lookup counter", {
           counter?.attributes["activitypub.remote.host"],
           "example.com",
         );
-      },
-    );
+      });
 
-    await t.step(
-      "omits host when the identifier carries path/query characters",
-      async () => {
-        const [meterProvider, recorder] = createTestMeterProvider();
-        // The bare-handle parser must refuse to put a path-bearing string
-        // like "example.com/leak" into the metric attribute.
-        await lookupObject("johndoe@example.com/leak", {
-          documentLoader: mockDocumentLoader,
-          contextLoader: mockDocumentLoader,
-          meterProvider,
-        });
-        const counter = recorder.getMeasurement("activitypub.object.lookup");
-        ok(counter != null);
-        deepStrictEqual(
-          "activitypub.remote.host" in counter.attributes,
-          false,
-          "high-cardinality handle suffixes must not be recorded as remote.host",
-        );
-      },
-    );
-  } finally {
-    fetchMock.removeRoutes();
-    fetchMock.hardReset();
-  }
-});
+      await t.step(
+        "omits host when the identifier carries path/query characters",
+        async () => {
+          const [meterProvider, recorder] = createTestMeterProvider();
+          // The bare-handle parser must refuse to put a path-bearing string
+          // like "example.com/leak" into the metric attribute.
+          await lookupObject("johndoe@example.com/leak", {
+            documentLoader: mockDocumentLoader,
+            contextLoader: mockDocumentLoader,
+            meterProvider,
+          });
+          const counter = recorder.getMeasurement("activitypub.object.lookup");
+          ok(counter != null);
+          deepStrictEqual(
+            "activitypub.remote.host" in counter.attributes,
+            false,
+            "high-cardinality handle suffixes must not be recorded as remote.host",
+          );
+        },
+      );
+    } finally {
+      fetchMock.removeRoutes();
+      fetchMock.hardReset();
+    }
+  },
+);
 
 // cSpell: ignore gildong
 
@@ -1129,12 +1134,10 @@ test("lookupObject() offers each candidate to the observer", async () => {
   deepStrictEqual(failures, []);
 
   // A refused candidate is not returned, and neither is an observer error:
-  for (
-    const accept of [
-      () => Promise.resolve(false),
-      () => Promise.reject(new Error("Oops")),
-    ]
-  ) {
+  for (const accept of [
+    () => Promise.resolve(false),
+    () => Promise.reject(new Error("Oops")),
+  ]) {
     const refusals: DereferenceFailure[] = [];
     equal(
       await lookupObject("https://example.com/notes/1", {
@@ -1144,7 +1147,10 @@ test("lookupObject() offers each candidate to the observer", async () => {
       }),
       null,
     );
-    deepStrictEqual(refusals.map((f) => f.operation), ["accept"]);
+    deepStrictEqual(
+      refusals.map((f) => f.operation),
+      ["accept"],
+    );
   }
 
   // Without WebFinger, a URL that cannot be fetched is not looked up further:
@@ -1159,7 +1165,10 @@ test("lookupObject() offers each candidate to the observer", async () => {
     null,
   );
   deepStrictEqual(fetched, ["https://example.com/notes/2"]);
-  deepStrictEqual(missing.map((f) => f.operation), ["fetch"]);
+  deepStrictEqual(
+    missing.map((f) => f.operation),
+    ["fetch"],
+  );
 });
 
 test("lookupObject() keeps looking after the observer refuses a portable candidate", async () => {
@@ -1198,5 +1207,8 @@ test("lookupObject() keeps looking after the observer refuses a portable candida
   equal(offered.length, 2);
   ok(offered[0].startsWith("https://gw1.example/"));
   ok(offered[1].startsWith("https://gw2.example/"));
-  deepStrictEqual(failures.map((f) => f.operation), ["accept"]);
+  deepStrictEqual(
+    failures.map((f) => f.operation),
+    ["accept"],
+  );
 });

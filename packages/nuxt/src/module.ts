@@ -45,9 +45,7 @@ export function resolveModulePath(
 ): string {
   const resolved = resolveAlias(modulePath, aliases);
   if (isAbsolute(resolved)) return resolved;
-  if (
-    resolved.startsWith("./") || resolved.startsWith("../")
-  ) {
+  if (resolved.startsWith("./") || resolved.startsWith("../")) {
     return resolve(rootDir, resolved);
   }
   // Bare specifier (e.g. "@acme/federation")—pass through for the bundler
@@ -108,13 +106,14 @@ const fedifyNuxtModule: NuxtModule<ModuleOptions, ModuleOptions, false> =
         nuxt.options.alias,
         rootDir,
       );
-      const contextDataFactoryModule = options.contextDataFactoryModule == null
-        ? undefined
-        : resolveModulePath(
-          options.contextDataFactoryModule,
-          nuxt.options.alias,
-          rootDir,
-        );
+      const contextDataFactoryModule =
+        options.contextDataFactoryModule == null
+          ? undefined
+          : resolveModulePath(
+              options.contextDataFactoryModule,
+              nuxt.options.alias,
+              rootDir,
+            );
 
       const middlewareFilename = "fedify-nuxt-options.mjs";
       const middlewareModule = resolveRuntimeServerPath(
@@ -127,19 +126,19 @@ const fedifyNuxtModule: NuxtModule<ModuleOptions, ModuleOptions, false> =
         filename: middlewareFilename,
         getContents: () => {
           const imports = [
-            `import * as federationModule from ${
-              JSON.stringify(federationModule)
-            };`,
-            `import { createFedifyMiddleware } from ${
-              JSON.stringify(middlewareModule)
-            };`,
+            `import * as federationModule from ${JSON.stringify(
+              federationModule,
+            )};`,
+            `import { createFedifyMiddleware } from ${JSON.stringify(
+              middlewareModule,
+            )};`,
           ];
 
           if (contextDataFactoryModule != null) {
             imports.push(
-              `import * as contextFactoryModule from ${
-                JSON.stringify(contextDataFactoryModule)
-              };`,
+              `import * as contextFactoryModule from ${JSON.stringify(
+                contextDataFactoryModule,
+              )};`,
             );
           }
 

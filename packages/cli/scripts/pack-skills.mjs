@@ -25,12 +25,13 @@ const sentinel = join(root, "..", ".skills-fedify-cli-symlink");
 function restore() {
   const saved = readFileSync(sentinel, "utf8");
   // Versions before the representation was recorded used an empty sentinel.
-  const original = saved === ""
-    ? {
-      type: "symlink",
-      target: "../../../claude-plugin/skills/fedify-cli",
-    }
-    : JSON.parse(saved);
+  const original =
+    saved === ""
+      ? {
+          type: "symlink",
+          target: "../../../claude-plugin/skills/fedify-cli",
+        }
+      : JSON.parse(saved);
   rmSync(skillsPath, { recursive: true, force: true });
   if (original.type === "file") {
     writeFileSync(skillsPath, Buffer.from(original.contents, "base64"), {

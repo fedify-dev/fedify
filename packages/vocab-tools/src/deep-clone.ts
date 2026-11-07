@@ -6,8 +6,9 @@ function needsCopy(
   property: PropertySchema,
   types: Record<string, TypeSchema>,
 ): boolean {
-  return property.range.some((uri) =>
-    uri in types || ["URL", "Uint8Array"].includes(getTypeName(uri, types))
+  return property.range.some(
+    (uri) =>
+      uri in types || ["URL", "Uint8Array"].includes(getTypeName(uri, types)),
   );
 }
 

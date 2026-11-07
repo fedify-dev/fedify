@@ -26,10 +26,7 @@ export type BackfillStrategy =
  *
  * @since 2.3.0
  */
-export type BackfillOrigin =
-  | "collection"
-  | "in-reply-to"
-  | "replies";
+export type BackfillOrigin = "collection" | "in-reply-to" | "replies";
 
 /**
  * Options passed to {@link BackfillDocumentLoader}.
@@ -138,9 +135,7 @@ export interface BackfillOptions<
  *
  * @since 2.3.0
  */
-export interface BackfillItem<
-  TObject extends APObject = APObject,
-> {
+export interface BackfillItem<TObject extends APObject = APObject> {
   /**
    * The discovered ActivityPub object.
    */

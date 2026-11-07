@@ -66,11 +66,9 @@ function parseArgs(args: string[]): CompatibilityCase | undefined {
 }
 
 async function testCompatibility(testCase: CompatibilityCase): Promise<void> {
-  const adapterName = testCase.runtime === "deno"
-    ? "@deno/astro-adapter"
-    : "@astrojs/node";
-  const label =
-    `Astro ${testCase.astro}, ${adapterName} ${testCase.adapter}, ${testCase.runtime}`;
+  const adapterName =
+    testCase.runtime === "deno" ? "@deno/astro-adapter" : "@astrojs/node";
+  const label = `Astro ${testCase.astro}, ${adapterName} ${testCase.adapter}, ${testCase.runtime}`;
   console.log(`Testing ${label}...`);
   const tempDir = await mkdtemp(join(tmpdir(), "fedify-astro-compat-"));
   const port = await reservePort();
@@ -128,16 +126,11 @@ async function removeTempDir(tempDir: string, testFailed: boolean) {
     await rm(tempDir, { recursive: true });
   } catch (error) {
     if (!testFailed) throw error;
-    console.error(
-      `Failed to remove temporary directory ${tempDir}:`,
-      error,
-    );
+    console.error(`Failed to remove temporary directory ${tempDir}:`, error);
   }
 }
 
-function getBuildCommand(
-  testCase: CompatibilityCase,
-): string[] {
+function getBuildCommand(testCase: CompatibilityCase): string[] {
   if (testCase.runtime === "deno") {
     return ["deno", "run", "-A", `npm:astro@${testCase.astro}`, "build"];
   }
@@ -272,7 +265,7 @@ async function exerciseServer(
       headers: { Accept: "application/activity+json" },
     });
     assertEquals(actor.status, 200, "ActivityPub route status");
-    const actorJson = await actor.json() as {
+    const actorJson = (await actor.json()) as {
       id?: string;
       preferredUsername?: string;
     };
@@ -281,17 +274,13 @@ async function exerciseServer(
     const actorHost = new URL(actorJson.id).host;
 
     const webFinger = await fetch(
-      `http://127.0.0.1:${port}/.well-known/webfinger?resource=${
-        encodeURIComponent(`acct:alice@${actorHost}`)
-      }`,
+      `http://127.0.0.1:${port}/.well-known/webfinger?resource=${encodeURIComponent(
+        `acct:alice@${actorHost}`,
+      )}`,
     );
     assertEquals(webFinger.status, 200, "WebFinger status");
-    const jrd = await webFinger.json() as { subject?: string };
-    assertEquals(
-      jrd.subject,
-      `acct:alice@${actorHost}`,
-      "WebFinger subject",
-    );
+    const jrd = (await webFinger.json()) as { subject?: string };
+    assertEquals(jrd.subject, `acct:alice@${actorHost}`, "WebFinger subject");
 
     const notFound = await fetch(`http://127.0.0.1:${port}/unrelated`);
     try {
@@ -319,10 +308,7 @@ async function exerciseServer(
     }
   } catch (error) {
     await child.stop();
-    const [stdout, stderr] = await Promise.all([
-      stdoutPromise,
-      stderrPromise,
-    ]);
+    const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise]);
     console.error(stdout);
     console.error(stderr);
     throw error;
@@ -342,7 +328,7 @@ async function reservePort(): Promise<number> {
         reject(new Error("Cannot reserve compatibility port"));
         return;
       }
-      server.close((error) => error ? reject(error) : resolve(address.port));
+      server.close((error) => (error ? reject(error) : resolve(address.port)));
     });
   });
 }
@@ -366,9 +352,9 @@ async function run(command: string[], cwd: string): Promise<void> {
   if (!output.success) {
     const decoder = new TextDecoder();
     throw new Error(
-      `${command.join(" ")} failed:\n${decoder.decode(output.stdout)}${
-        decoder.decode(output.stderr)
-      }`,
+      `${command.join(" ")} failed:\n${decoder.decode(output.stdout)}${decoder.decode(
+        output.stderr,
+      )}`,
     );
   }
 }
@@ -384,9 +370,9 @@ function assertEquals(actual: unknown, expected: unknown, label: string): void {
 function assertIncludes(actual: string, expected: string, label: string): void {
   if (!actual.includes(expected)) {
     throw new Error(
-      `${label}: expected ${JSON.stringify(actual)} to include ${
-        JSON.stringify(expected)
-      }`,
+      `${label}: expected ${JSON.stringify(actual)} to include ${JSON.stringify(
+        expected,
+      )}`,
     );
   }
 }

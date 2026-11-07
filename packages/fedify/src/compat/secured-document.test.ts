@@ -44,34 +44,32 @@ test("isSelfContainedSecuredDocument() rejects anything less", () => {
   assert(!isSelfContainedSecuredDocument("string"));
   assert(!isSelfContainedSecuredDocument([securedDocument()]));
 
-  for (
-    const mutate of [
-      // Without its own context the map cannot be extracted and verified
-      // on its own, so it is not a self-contained secured document.
-      (d: Record<string, unknown>) => delete d["@context"],
-      (d: Record<string, unknown>) => d["@context"] = null,
-      (d: Record<string, unknown>) => delete d.proof,
-      (d: Record<string, unknown>) => d.proof = null,
-      // A proof set is outside the map-local compound-proof profile.
-      (d: Record<string, unknown>) => d.proof = [d.proof],
-      // Anything short of a complete `eddsa-jcs-2022` proof could be an
-      // application's own unrelated `proof` term.
-      (d: Record<string, unknown>) =>
-        (d.proof as Record<string, unknown>).type = "SomethingElse",
-      (d: Record<string, unknown>) =>
-        delete (d.proof as Record<string, unknown>).cryptosuite,
-      (d: Record<string, unknown>) =>
-        delete (d.proof as Record<string, unknown>).created,
-      (d: Record<string, unknown>) =>
-        delete (d.proof as Record<string, unknown>).verificationMethod,
-      (d: Record<string, unknown>) =>
-        delete (d.proof as Record<string, unknown>).proofPurpose,
-      (d: Record<string, unknown>) =>
-        (d.proof as Record<string, unknown>).proofValue = "",
-      (d: Record<string, unknown>) =>
-        (d.proof as Record<string, unknown>).proofValue = 42,
-    ]
-  ) {
+  for (const mutate of [
+    // Without its own context the map cannot be extracted and verified
+    // on its own, so it is not a self-contained secured document.
+    (d: Record<string, unknown>) => delete d["@context"],
+    (d: Record<string, unknown>) => (d["@context"] = null),
+    (d: Record<string, unknown>) => delete d.proof,
+    (d: Record<string, unknown>) => (d.proof = null),
+    // A proof set is outside the map-local compound-proof profile.
+    (d: Record<string, unknown>) => (d.proof = [d.proof]),
+    // Anything short of a complete `eddsa-jcs-2022` proof could be an
+    // application's own unrelated `proof` term.
+    (d: Record<string, unknown>) =>
+      ((d.proof as Record<string, unknown>).type = "SomethingElse"),
+    (d: Record<string, unknown>) =>
+      delete (d.proof as Record<string, unknown>).cryptosuite,
+    (d: Record<string, unknown>) =>
+      delete (d.proof as Record<string, unknown>).created,
+    (d: Record<string, unknown>) =>
+      delete (d.proof as Record<string, unknown>).verificationMethod,
+    (d: Record<string, unknown>) =>
+      delete (d.proof as Record<string, unknown>).proofPurpose,
+    (d: Record<string, unknown>) =>
+      ((d.proof as Record<string, unknown>).proofValue = ""),
+    (d: Record<string, unknown>) =>
+      ((d.proof as Record<string, unknown>).proofValue = 42),
+  ]) {
     const document = securedDocument();
     mutate(document);
     assert(!isSelfContainedSecuredDocument(document));

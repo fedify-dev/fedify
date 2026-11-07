@@ -41,7 +41,7 @@ async function fetchFaviconResource(
   userAgent?: string,
 ): Promise<{ response: Response; url: URL }> {
   let current = typeof url === "string" ? new URL(url) : url;
-  for (let redirects = 0;; redirects++) {
+  for (let redirects = 0; ; redirects++) {
     await validatePublicUrl(current.href);
     const response = await fetch(current, {
       headers: {
@@ -50,8 +50,10 @@ async function fetchFaviconResource(
       redirect: "manual",
     });
     if (
-      response.status !== 301 && response.status !== 302 &&
-      response.status !== 303 && response.status !== 307 &&
+      response.status !== 301 &&
+      response.status !== 302 &&
+      response.status !== 303 &&
+      response.status !== 307 &&
       response.status !== 308
     ) {
       return { response, url: current };
@@ -81,7 +83,7 @@ type ResvgModule = typeof import("@resvg/resvg-wasm");
 let svgRasterizer: Promise<ResvgModule> | undefined;
 
 function loadSvgRasterizer(): Promise<ResvgModule> {
-  return svgRasterizer ??= (async () => {
+  return (svgRasterizer ??= (async () => {
     try {
       const resvg = await import("@resvg/resvg-wasm");
       const wasmUrl = import.meta.resolve("@resvg/resvg-wasm/index_bg.wasm");
@@ -91,7 +93,7 @@ function loadSvgRasterizer(): Promise<ResvgModule> {
       logger.debug("Failed to load the SVG rasterizer: {error}", { error });
       throw error;
     }
-  })();
+  })());
 }
 
 export async function rasterizeSvg(buffer: ImageBuffer): Promise<Uint8Array> {
@@ -201,8 +203,7 @@ const nodeInfoOption = merge(
     ),
     metadata: bindConfig(
       flag("-m", "--metadata", {
-        description:
-          message`Show the extra metadata of the NodeInfo, i.e., the metadata field of the document.`,
+        description: message`Show the extra metadata of the NodeInfo, i.e., the metadata field of the document.`,
       }),
       {
         context: configContext,
@@ -214,8 +215,7 @@ const nodeInfoOption = merge(
   object("Parsing options", {
     bestEffort: bindConfig(
       flag("-b", "--best-effort", {
-        description:
-          message`Parse the NodeInfo document with best effort.  If the NodeInfo document is not well-formed, the option will try to parse it as much as possible.`,
+        description: message`Parse the NodeInfo document with best effort.  If the NodeInfo document is not well-formed, the option will try to parse it as much as possible.`,
       }),
       {
         context: configContext,
@@ -238,10 +238,8 @@ export const nodeInfoOptions = merge(
 );
 
 export const nodeInfoMetadata = {
-  brief:
-    message`Get information about a remote node using the NodeInfo protocol`,
-  description:
-    message`Get information about a remote node using the NodeInfo protocol.
+  brief: message`Get information about a remote node using the NodeInfo protocol`,
+  description: message`Get information about a remote node using the NodeInfo protocol.
 
 The argument is the hostname of the remote node, or the URL of the remote node.`,
 };
@@ -260,8 +258,11 @@ async function renderFavicon(url: URL, userAgent?: string): Promise<string[]> {
       `Failed to fetch the favicon: ${response.status} ${response.statusText}`,
     );
   }
-  const contentType = response.headers.get("Content-Type")
-    ?.split(";")[0].trim().toLowerCase();
+  const contentType = response.headers
+    .get("Content-Type")
+    ?.split(";")[0]
+    .trim()
+    .toLowerCase();
   let buffer: ImageBuffer = await response.arrayBuffer();
   if (
     contentType === "image/vnd.microsoft.icon" ||
@@ -274,19 +275,19 @@ async function renderFavicon(url: URL, userAgent?: string): Promise<string[]> {
     }
     buffer = images[0].buffer;
   } else if (
-    !isPng(buffer) && (contentType === "image/svg+xml" || isSvg(buffer))
+    !isPng(buffer) &&
+    (contentType === "image/svg+xml" || isSvg(buffer))
   ) {
     buffer = await rasterizeSvg(buffer);
   }
   const image = await readImage(buffer);
   const colorSupport = checkTerminalColorSupport();
   return getAsciiArt(image, DEFAULT_IMAGE_WIDTH, colorSupport, colors)
-    .split("\n").map((line) => ` ${line}  `);
+    .split("\n")
+    .map((line) => ` ${line}  `);
 }
 
-export async function runNodeInfo(
-  command: InferValue<typeof nodeInfoCommand>,
-) {
+export async function runNodeInfo(command: InferValue<typeof nodeInfoCommand>) {
   const spinner = ora({
     text: "Fetching a NodeInfo document...",
     discardStdin: false,
@@ -348,10 +349,7 @@ export async function runNodeInfo(
       }
       defaultWidth = 41;
     } catch (error) {
-      logger.error(
-        "Failed to fetch or render the favicon: {error}",
-        { error },
-      );
+      logger.error("Failed to fetch or render the favicon: {error}", { error });
       layout = [""];
     }
   } else {
@@ -374,8 +372,7 @@ export async function runNodeInfo(
     layout[next()] += `  ${nodeInfo.software.homepage.href}`;
   }
   if (nodeInfo.software.repository != null) {
-    layout[next()] += "  " +
-      colors.dim(nodeInfo.software.repository.href);
+    layout[next()] += "  " + colors.dim(nodeInfo.software.repository.href);
   }
   if (nodeInfo.protocols.length > 0) {
     layout[next()] += colors.bold(colors.dim("Protocols:"));
@@ -396,7 +393,8 @@ export async function runNodeInfo(
     }
   }
   if (
-    nodeInfo.usage?.users != null && (nodeInfo.usage.users.total != null ||
+    nodeInfo.usage?.users != null &&
+    (nodeInfo.usage.users.total != null ||
       nodeInfo.usage.users.activeHalfyear != null ||
       nodeInfo.usage.users.activeMonth != null)
   ) {
@@ -419,13 +417,12 @@ export async function runNodeInfo(
   }
   if (nodeInfo.usage?.localPosts != null) {
     layout[next()] += colors.bold(colors.dim("Local posts: "));
-    layout[next()] += "  " +
-      nodeInfo.usage.localPosts.toLocaleString("en-US");
+    layout[next()] += "  " + nodeInfo.usage.localPosts.toLocaleString("en-US");
   }
   if (nodeInfo.usage?.localComments != null) {
     layout[next()] += colors.bold(colors.dim("Local comments:"));
-    layout[next()] += "  " +
-      nodeInfo.usage.localComments.toLocaleString("en-US");
+    layout[next()] +=
+      "  " + nodeInfo.usage.localComments.toLocaleString("en-US");
   }
   if (nodeInfo.openRegistrations != null) {
     layout[next()] += colors.bold(colors.dim("Open registrations:"));
@@ -433,17 +430,16 @@ export async function runNodeInfo(
   }
 
   if (
-    command.metadata && nodeInfo.metadata != null &&
+    command.metadata &&
+    nodeInfo.metadata != null &&
     Object.keys(nodeInfo.metadata).length > 0
   ) {
     layout[next()] += colors.bold(colors.dim("Metadata:"));
     for (const [key, value] of Object.entries(nodeInfo.metadata)) {
-      layout[next()] += `  ${colors.dim(key + ":")} ${
-        indent(
-          typeof value === "string" ? value : formatObject(value),
-          defaultWidth + 4 + key.length,
-        )
-      }`;
+      layout[next()] += `  ${colors.dim(key + ":")} ${indent(
+        typeof value === "string" ? value : formatObject(value),
+        defaultWidth + 4 + key.length,
+      )}`;
     }
   }
 
@@ -455,8 +451,8 @@ function indent(text: string, depth: number) {
 }
 
 const LINK_REGEXP =
-  /<link((?:\s+(?:[-a-z]+)=(?:"[^"]*"|'[^']*'|[^\s]+))*)\s*\/?>/ig;
-const LINK_ATTRS_REGEXP = /(?:\s+([-a-z]+)=("[^"]*"|'[^']*'|[^\s]+))/ig;
+  /<link((?:\s+(?:[-a-z]+)=(?:"[^"]*"|'[^']*'|[^\s]+))*)\s*\/?>/gi;
+const LINK_ATTRS_REGEXP = /(?:\s+([-a-z]+)=("[^"]*"|'[^']*'|[^\s]+))/gi;
 
 export async function getFaviconUrl(
   url: string | URL,
@@ -472,9 +468,10 @@ export async function getFaviconUrl(
     const attrs: Record<string, string> = {};
     for (const attrMatch of match[1].matchAll(LINK_ATTRS_REGEXP)) {
       const [, key, value] = attrMatch;
-      attrs[key] = value.startsWith('"') || value.startsWith("'")
-        ? value.slice(1, -1)
-        : value;
+      attrs[key] =
+        value.startsWith('"') || value.startsWith("'")
+          ? value.slice(1, -1)
+          : value;
     }
     const rel = attrs.rel?.toLowerCase()?.trim()?.split(/\s+/) ?? [];
     if (!rel.includes("icon") && !rel.includes("apple-touch-icon")) continue;
@@ -489,11 +486,13 @@ export async function getFaviconUrl(
       }
       const tokens = attrs.sizes?.match(/\d+x\d+/g);
       if (
-        tokens != null && !tokens.some((token) => {
+        tokens != null &&
+        !tokens.some((token) => {
           const [w, h] = token.split("x").map((v) => Number.parseInt(v));
           return w >= 38 && h >= 19;
         })
-      ) continue;
+      )
+        continue;
       return parsedUrl;
     }
   }
@@ -569,7 +568,9 @@ const findClosestIndex = (value: number): number => {
 export function rgbTo256Color(r: number, g: number, b: number): number {
   // Check if it's a grayscale color first (when all RGB values are very close)
   const gray = Math.round((r + g + b) / 3);
-  const isGrayscale = Math.abs(r - gray) <= 5 && Math.abs(g - gray) <= 5 &&
+  const isGrayscale =
+    Math.abs(r - gray) <= 5 &&
+    Math.abs(g - gray) <= 5 &&
     Math.abs(b - gray) <= 5;
 
   // Handle grayscale colors (colors 232-255) - but exclude exact cube values
@@ -594,7 +595,7 @@ export function rgbTo256Color(r: number, g: number, b: number): number {
   const g6 = findClosestIndex(g);
   const b6 = findClosestIndex(b);
 
-  return 16 + (36 * r6) + (6 * g6) + b6;
+  return 16 + 36 * r6 + 6 * g6 + b6;
 }
 
 export function getAsciiArt(
@@ -605,7 +606,7 @@ export function getAsciiArt(
 ): string {
   const ratio = image.width / image.height;
   const height = Math.round(
-    width / ratio * 0.5, // Multiply by 0.5 because characters are taller than they are wide.
+    (width / ratio) * 0.5, // Multiply by 0.5 because characters are taller than they are wide.
   );
   image.resize({ w: width, h: height });
   let art = "";

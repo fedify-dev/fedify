@@ -96,7 +96,8 @@ test("verifyRequest() [draft-cavage]", async () => {
       "Content-Type": "text/plain; charset=utf-8",
       Date: "Tue, 05 Mar 2024 07:49:44 GMT",
       Digest: "sha-256=MV9b23bQeMQ7isAGTkoBZGErH853yGk0W/yUx1iU7dM=",
-      Signature: 'keyId="https://example.com/key",' +
+      Signature:
+        'keyId="https://example.com/key",' +
         'headers="(request-target) accept content-type date digest host",' +
         // cSpell: disable
         'signature="ZDeMzjBKPfJvkv4QaxAdOQxKCJ96pOzOCFhhGgGnlsw4N80oN4GEZ/n8n' +
@@ -131,13 +132,10 @@ test("verifyRequest() [draft-cavage]", async () => {
   assertEquals(cache, { "https://example.com/key": rsaPublicKey1 });
 
   assertEquals(
-    await verifyRequest(
-      new Request("https://example.com/"),
-      {
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
-      },
-    ),
+    await verifyRequest(new Request("https://example.com/"), {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    }),
     null,
   );
   assertEquals(
@@ -193,80 +191,61 @@ test("verifyRequest() [draft-cavage]", async () => {
     null,
   );
   assertEquals(
-    await verifyRequest(
-      request,
-      {
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
-        currentTime: Temporal.Instant.from("2024-03-05T06:49:43.9999Z"),
-      },
-    ),
+    await verifyRequest(request, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      currentTime: Temporal.Instant.from("2024-03-05T06:49:43.9999Z"),
+    }),
     null,
   );
   assertEquals(
-    await verifyRequest(
-      request,
-      {
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
-        currentTime: Temporal.Instant.from("2024-03-05T07:49:13.9999Z"),
-        timeWindow: { seconds: 30 },
-      },
-    ),
+    await verifyRequest(request, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      currentTime: Temporal.Instant.from("2024-03-05T07:49:13.9999Z"),
+      timeWindow: { seconds: 30 },
+    }),
     null,
   );
   assertEquals(
-    await verifyRequest(
-      request,
-      {
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
-        currentTime: Temporal.Instant.from("2024-03-05T08:49:44.0001Z"),
-      },
-    ),
+    await verifyRequest(request, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      currentTime: Temporal.Instant.from("2024-03-05T08:49:44.0001Z"),
+    }),
     null,
   );
   assertEquals(
-    await verifyRequest(
-      request,
-      {
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
-        currentTime: Temporal.Instant.from("2024-03-05T07:50:14.0001Z"),
-        timeWindow: { seconds: 30 },
-      },
-    ),
+    await verifyRequest(request, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      currentTime: Temporal.Instant.from("2024-03-05T07:50:14.0001Z"),
+      timeWindow: { seconds: 30 },
+    }),
     null,
   );
   assertEquals(
-    await verifyRequest(
-      request,
-      {
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
-        currentTime: Temporal.Instant.from("2024-01-01T00:00:00.0000Z"),
-        timeWindow: false,
-      },
-    ),
+    await verifyRequest(request, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      currentTime: Temporal.Instant.from("2024-01-01T00:00:00.0000Z"),
+      timeWindow: false,
+    }),
     rsaPublicKey1,
   );
   assertEquals(
-    await verifyRequest(
-      request,
-      {
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
-        currentTime: Temporal.Instant.from("2025-01-01T00:00:00.0000Z"),
-        timeWindow: false,
-      },
-    ),
+    await verifyRequest(request, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      currentTime: Temporal.Instant.from("2025-01-01T00:00:00.0000Z"),
+      timeWindow: false,
+    }),
     rsaPublicKey1,
   );
 
   const request2 = new Request("https://c27a97f98d5f.ngrok.app/i/inbox", {
     method: "POST",
-    body:
-      '{"@context":["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1"],"actor":"https://oeee.cafe/ap/users/3609fd4e-d51d-4db8-9f04-4189815864dd","object":{"actor":"https://c27a97f98d5f.ngrok.app/i","object":"https://oeee.cafe/ap/users/3609fd4e-d51d-4db8-9f04-4189815864dd","type":"Follow","id":"https://c27a97f98d5f.ngrok.app/i#follows/https://oeee.cafe/ap/users/3609fd4e-d51d-4db8-9f04-4189815864dd"},"type":"Accept","id":"https://oeee.cafe/objects/0fc2608f-5660-4b91-b8c7-63c0c2ac2e20"}',
+    body: '{"@context":["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1"],"actor":"https://oeee.cafe/ap/users/3609fd4e-d51d-4db8-9f04-4189815864dd","object":{"actor":"https://c27a97f98d5f.ngrok.app/i","object":"https://oeee.cafe/ap/users/3609fd4e-d51d-4db8-9f04-4189815864dd","type":"Follow","id":"https://c27a97f98d5f.ngrok.app/i#follows/https://oeee.cafe/ap/users/3609fd4e-d51d-4db8-9f04-4189815864dd"},"type":"Accept","id":"https://oeee.cafe/objects/0fc2608f-5660-4b91-b8c7-63c0c2ac2e20"}',
     headers: {
       Host: "c27a97f98d5f.ngrok.app",
       "Content-Type": "application/activity+json",
@@ -280,7 +259,7 @@ test("verifyRequest() [draft-cavage]", async () => {
     ...options,
     currentTime: Temporal.Instant.from("2025-08-25T12:58:14Z"),
   };
-  assert(await verifyRequest(request2, options2) != null);
+  assert((await verifyRequest(request2, options2)) != null);
 });
 
 test("verifyRequestDetailed() classifies malformed signatures as invalid", async () => {
@@ -309,7 +288,8 @@ test("verifyRequestDetailed() classifies malformed signatures as invalid", async
       headers: {
         Date: "Tue, 05 Mar 2024 07:49:44 GMT",
         Digest: "sha-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-        Signature: 'keyId="not a url",headers="(request-target) date digest",' +
+        Signature:
+          'keyId="not a url",headers="(request-target) date digest",' +
           'signature="AAAA"',
       },
       body: "",
@@ -433,10 +413,7 @@ test("verifyRequestDetailed() records verification duration metric", async (t) =
     const measurement = measurements[0];
     assertEquals(measurement.type, "histogram");
     assertGreaterOrEqual(measurement.value, 0);
-    assertEquals(
-      measurement.attributes["activitypub.signature.kind"],
-      "http",
-    );
+    assertEquals(measurement.attributes["activitypub.signature.kind"], "http");
     assertEquals(
       measurement.attributes["activitypub.signature.result"],
       "verified",
@@ -445,9 +422,7 @@ test("verifyRequestDetailed() records verification duration metric", async (t) =
       measurement.attributes["http_signatures.algorithm"],
       "rsa-sha256",
     );
-    assertFalse(
-      "http_signatures.failure_reason" in measurement.attributes,
-    );
+    assertFalse("http_signatures.failure_reason" in measurement.attributes);
 
     // The HTTP draft-cavage verifier must also forward `meterProvider`
     // through to `fetchKeyDetailed` so the generic
@@ -494,9 +469,7 @@ test("verifyRequestDetailed() records verification duration metric", async (t) =
       measurements[0].attributes["activitypub.signature.result"],
       "missing",
     );
-    assertFalse(
-      "http_signatures.failure_reason" in measurements[0].attributes,
-    );
+    assertFalse("http_signatures.failure_reason" in measurements[0].attributes);
   });
 
   await t.step(
@@ -509,7 +482,8 @@ test("verifyRequestDetailed() records verification duration metric", async (t) =
           headers: {
             Date: "Tue, 05 Mar 2024 07:49:44 GMT",
             Digest: "sha-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-            Signature: 'keyId="https://example.com/key2",' +
+            Signature:
+              'keyId="https://example.com/key2",' +
               'headers="(request-target) date digest",signature="AAAA"',
           },
           body: "",
@@ -608,91 +582,82 @@ test("verifyRequestDetailed() records verification duration metric", async (t) =
       });
       assertExists(key);
       assertEquals(
-        recorder.getMeasurements(
-          "activitypub.signature.verification.duration",
-        ).length,
+        recorder.getMeasurements("activitypub.signature.verification.duration")
+          .length,
         1,
       );
     },
   );
 
-  await t.step(
-    "cached-key retry emits one measurement, not two",
-    async () => {
-      for (
-        const spec of ["draft-cavage-http-signatures-12", "rfc9421"] as const
-      ) {
-        const [meterProvider, recorder] = createTestMeterProvider();
-        // Prime the cache with a wrong key so the verifier fails with the
-        // cached key and falls through to the fresh-fetch retry path; both
-        // attempts must collapse to a single measurement.
-        const cache: Record<string, CryptographicKey | Multikey | null> = {
-          "https://example.com/key2": rsaPublicKey1,
-        };
-        const request = await buildSignedRequest(spec);
-        const key = await verifyRequest(request, {
-          contextLoader: mockDocumentLoader,
-          documentLoader: mockDocumentLoader,
-          meterProvider,
-          keyCache: {
-            get(keyId) {
-              return Promise.resolve(cache[keyId.href]);
-            },
-            set(keyId, k) {
-              cache[keyId.href] = k;
-              return Promise.resolve();
-            },
-          } satisfies KeyCache,
-        });
-        assertExists(key, spec);
-        assertEquals(
-          recorder.getMeasurements(
-            "activitypub.signature.verification.duration",
-          ).length,
-          1,
-          spec,
-        );
-        // The cached key and the fresh one are looked up separately:
-        assertEquals(
-          recorder.getMeasurements("activitypub.signature.key_fetch.duration")
-            .length,
-          2,
-          spec,
-        );
-      }
-    },
-  );
-
-  await t.step(
-    "key fetch records result=fetched on a cold cache",
-    async () => {
+  await t.step("cached-key retry emits one measurement, not two", async () => {
+    for (const spec of [
+      "draft-cavage-http-signatures-12",
+      "rfc9421",
+    ] as const) {
       const [meterProvider, recorder] = createTestMeterProvider();
-      const request = await buildSignedRequest();
+      // Prime the cache with a wrong key so the verifier fails with the
+      // cached key and falls through to the fresh-fetch retry path; both
+      // attempts must collapse to a single measurement.
+      const cache: Record<string, CryptographicKey | Multikey | null> = {
+        "https://example.com/key2": rsaPublicKey1,
+      };
+      const request = await buildSignedRequest(spec);
       const key = await verifyRequest(request, {
         contextLoader: mockDocumentLoader,
         documentLoader: mockDocumentLoader,
         meterProvider,
+        keyCache: {
+          get(keyId) {
+            return Promise.resolve(cache[keyId.href]);
+          },
+          set(keyId, k) {
+            cache[keyId.href] = k;
+            return Promise.resolve();
+          },
+        } satisfies KeyCache,
       });
-      assertExists(key);
+      assertExists(key, spec);
+      assertEquals(
+        recorder.getMeasurements("activitypub.signature.verification.duration")
+          .length,
+        1,
+        spec,
+      );
+      // The cached key and the fresh one are looked up separately:
+      assertEquals(
+        recorder.getMeasurements("activitypub.signature.key_fetch.duration")
+          .length,
+        2,
+        spec,
+      );
+    }
+  });
 
-      const measurements = recorder.getMeasurements(
-        "activitypub.signature.key_fetch.duration",
-      );
-      assertEquals(measurements.length, 1);
-      assertEquals(measurements[0].type, "histogram");
-      assertGreaterOrEqual(measurements[0].value, 0);
-      assertEquals(
-        measurements[0].attributes["activitypub.signature.kind"],
-        "http",
-      );
-      assertEquals(
-        measurements[0].attributes[
-          "activitypub.signature.key_fetch.result"
-        ],
-        "fetched",
-      );
-    },
-  );
+  await t.step("key fetch records result=fetched on a cold cache", async () => {
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const request = await buildSignedRequest();
+    const key = await verifyRequest(request, {
+      contextLoader: mockDocumentLoader,
+      documentLoader: mockDocumentLoader,
+      meterProvider,
+    });
+    assertExists(key);
+
+    const measurements = recorder.getMeasurements(
+      "activitypub.signature.key_fetch.duration",
+    );
+    assertEquals(measurements.length, 1);
+    assertEquals(measurements[0].type, "histogram");
+    assertGreaterOrEqual(measurements[0].value, 0);
+    assertEquals(
+      measurements[0].attributes["activitypub.signature.kind"],
+      "http",
+    );
+    assertEquals(
+      measurements[0].attributes["activitypub.signature.key_fetch.result"],
+      "fetched",
+    );
+  });
 
   await t.step(
     "key fetch records result=hit when served from the key cache",
@@ -723,9 +688,7 @@ test("verifyRequestDetailed() records verification duration metric", async (t) =
       );
       assertEquals(measurements.length, 1);
       assertEquals(
-        measurements[0].attributes[
-          "activitypub.signature.key_fetch.result"
-        ],
+        measurements[0].attributes["activitypub.signature.key_fetch.result"],
         "hit",
       );
     },
@@ -769,9 +732,7 @@ test("verifyRequestDetailed() records verification duration metric", async (t) =
       );
       assertEquals(measurements.length, 1);
       assertEquals(
-        measurements[0].attributes[
-          "activitypub.signature.key_fetch.result"
-        ],
+        measurements[0].attributes["activitypub.signature.key_fetch.result"],
         "error",
       );
     },
@@ -804,9 +765,7 @@ test("verifyRequestDetailed() records verification duration metric", async (t) =
         "activitypub.signature.verification.duration",
       );
       assertEquals(measurements.length, 1);
-      assertFalse(
-        "http_signatures.algorithm" in measurements[0].attributes,
-      );
+      assertFalse("http_signatures.algorithm" in measurements[0].attributes);
     },
   );
 });
@@ -1133,8 +1092,7 @@ test("formatRfc9421Signature()", () => {
 });
 
 test("parseRfc9421SignatureInput()", () => {
-  const signatureInput =
-    `sig1=("@method" "@target-uri" "host" "date");keyid="https://example.com/key";alg="rsa-v1_5-sha256";created=1709626184`;
+  const signatureInput = `sig1=("@method" "@target-uri" "host" "date");keyid="https://example.com/key";alg="rsa-v1_5-sha256";created=1709626184`;
 
   const parsed = parseRfc9421SignatureInput(signatureInput);
 
@@ -1220,15 +1178,13 @@ test("verifyRequest() [rfc9421] successful GET verification", async () => {
   );
 });
 
-for (
-  const failure of [
-    "missing key",
-    "invalid signature",
-    "digest mismatch",
-    "empty body",
-    "cached key",
-  ]
-) {
+for (const failure of [
+  "missing key",
+  "invalid signature",
+  "digest mismatch",
+  "empty body",
+  "cached key",
+]) {
   test(`verifyRequest() [rfc9421] multiple POST signatures: ${failure}`, async () => {
     const body = failure === "empty body" ? "" : "Hello, world!";
     const currentTime = Temporal.Instant.from("2024-03-05T08:09:44Z");
@@ -1240,12 +1196,13 @@ for (
     );
     const input = signed.headers.get("Signature-Input")!;
     const signature = signed.headers.get("Signature")!;
-    const firstInput = failure === "missing key"
-      ? input.replace(
-        "https://example.com/key2",
-        "https://example.com/missing-key",
-      )
-      : input;
+    const firstInput =
+      failure === "missing key"
+        ? input.replace(
+            "https://example.com/key2",
+            "https://example.com/missing-key",
+          )
+        : input;
     signed.headers.set(
       "Signature-Input",
       `${firstInput}, ${input.replace(/^sig1=/, "sig2=")}`,
@@ -1254,14 +1211,16 @@ for (
       "Signature",
       `sig1=:AAAAAA==:, ${signature.replace(/^sig1=/, "sig2=")}`,
     );
-    const request = failure === "digest mismatch"
-      ? new Request(signed, { body: "Tampered body" })
-      : signed;
+    const request =
+      failure === "digest mismatch"
+        ? new Request(signed, { body: "Tampered body" })
+        : signed;
     const loaded: string[] = [];
     const key = await verifyRequest(request, {
-      keyCache: failure === "cached key"
-        ? { get: () => Promise.resolve(rsaPublicKey1), set: async () => {} }
-        : undefined,
+      keyCache:
+        failure === "cached key"
+          ? { get: () => Promise.resolve(rsaPublicKey1), set: async () => {} }
+          : undefined,
       spec: "rfc9421",
       currentTime,
       contextLoader: mockDocumentLoader,
@@ -1276,8 +1235,8 @@ for (
       failure === "digest mismatch"
         ? []
         : failure === "missing key"
-        ? ["https://example.com/missing-key", "https://example.com/key2"]
-        : ["https://example.com/key2"],
+          ? ["https://example.com/missing-key", "https://example.com/key2"]
+          : ["https://example.com/key2"],
     );
     assertFalse(request.bodyUsed);
     assertEquals(
@@ -1295,10 +1254,10 @@ async function signRfc9421Many(
   signatures: readonly (
     | string
     | {
-      readonly label?: string;
-      readonly keyId: string;
-      readonly privateKey?: CryptoKey;
-    }
+        readonly label?: string;
+        readonly keyId: string;
+        readonly privateKey?: CryptoKey;
+      }
   )[],
   currentTime: Temporal.Instant,
 ): Promise<Request> {
@@ -1308,9 +1267,8 @@ async function signRfc9421Many(
   });
   let i = 0;
   for (const signature of signatures) {
-    const { label, keyId, privateKey } = typeof signature === "string"
-      ? { keyId: signature }
-      : signature;
+    const { label, keyId, privateKey } =
+      typeof signature === "string" ? { keyId: signature } : signature;
     i++;
     request = await signRequest(
       request,
@@ -1326,10 +1284,9 @@ async function signRfc9421Many(
 // members by label:
 function splitRfc9421Header(header: string): Record<string, string> {
   return Object.fromEntries(
-    header.split(/,\s*/).map((member) => [
-      member.slice(0, member.indexOf("=")),
-      member,
-    ]),
+    header
+      .split(/,\s*/)
+      .map((member) => [member.slice(0, member.indexOf("=")), member]),
   );
 }
 
@@ -1357,14 +1314,12 @@ test("verifyRequestDetailed() [rfc9421] caps the number of signatures", async (t
       [1, 2, 3, 4, 5].map(missing),
       currentTime,
     );
-    for (
-      const [maxSignatures, count] of [
-        [undefined, 3],
-        [1, 1],
-        [5, 5],
-        [Infinity, 5],
-      ] as const
-    ) {
+    for (const [maxSignatures, count] of [
+      [undefined, 3],
+      [1, 1],
+      [5, 5],
+      [Infinity, 5],
+    ] as const) {
       const documentLoader = createCountingKeyLoader();
       const result = await verifyRequestDetailed(request, {
         documentLoader,
@@ -1485,9 +1440,11 @@ test("verifyRequestDetailed() [rfc9421] caps the number of signatures", async (t
         );
         headers.set(
           "Signature",
-          labels.flatMap((label) =>
-            label.startsWith("nobytes") ? [] : [signatures[label]]
-          ).join(", "),
+          labels
+            .flatMap((label) =>
+              label.startsWith("nobytes") ? [] : [signatures[label]],
+            )
+            .join(", "),
         );
         return new Request(signed.url, {
           method: "POST",
@@ -1546,9 +1503,10 @@ test("verifyRequestDetailed() [rfc9421] looks up each key once per request", asy
 
   await t.step("signatures naming the same key", async () => {
     const request = await signRfc9421Many([forged, forged, valid], currentTime);
-    for (
-      const keyCache of [undefined, new KvKeyCache(new MemoryKvStore(), ["pk"])]
-    ) {
+    for (const keyCache of [
+      undefined,
+      new KvKeyCache(new MemoryKvStore(), ["pk"]),
+    ]) {
       const documentLoader = createCountingKeyLoader();
       const result = await verifyRequestDetailed(request, {
         documentLoader,
@@ -1597,8 +1555,8 @@ test("verifyRequestDetailed() [rfc9421] looks up each key once per request", asy
           keyId.href === valid
             ? rsaPublicKey1
             : keyId.href === missing(1)
-            ? null
-            : undefined,
+              ? null
+              : undefined,
         );
       },
       set: () => Promise.resolve(),
@@ -1642,80 +1600,72 @@ test("verifyRequestDetailed() [rfc9421] looks up each key once per request", asy
     },
   );
 
-  await t.step(
-    "refreshes each stale cached key at most once",
-    async () => {
-      const stale = (n: number) => `https://example.com/stale-${n}`;
-      const gets: string[] = [];
-      const keyCache: KeyCache = {
-        get(keyId) {
-          gets.push(keyId.href);
-          return Promise.resolve(rsaPublicKey1);
-        },
-        set: () => Promise.resolve(),
-      };
-      const documentLoader = createCountingKeyLoader();
-      const result = await verifyRequestDetailed(
-        await signRfc9421Many(
-          [stale(1), stale(2), stale(1), stale(4)],
-          currentTime,
-        ),
-        {
-          documentLoader,
-          contextLoader: mockDocumentLoader,
-          currentTime,
-          keyCache,
-        },
-      );
-      assertFalse(result.verified);
-      // The fresh lookup of stale-1 failed, which the third signature reuses:
-      assertEquals(result.reason.type, "keyFetchError");
-      assertEquals(
-        "keyId" in result.reason ? result.reason.keyId?.href : undefined,
-        stale(1),
-      );
-      assertEquals(documentLoader.loaded, [stale(1), stale(2)]);
-      assertEquals(gets, [stale(1), stale(2)]);
-    },
-  );
+  await t.step("refreshes each stale cached key at most once", async () => {
+    const stale = (n: number) => `https://example.com/stale-${n}`;
+    const gets: string[] = [];
+    const keyCache: KeyCache = {
+      get(keyId) {
+        gets.push(keyId.href);
+        return Promise.resolve(rsaPublicKey1);
+      },
+      set: () => Promise.resolve(),
+    };
+    const documentLoader = createCountingKeyLoader();
+    const result = await verifyRequestDetailed(
+      await signRfc9421Many(
+        [stale(1), stale(2), stale(1), stale(4)],
+        currentTime,
+      ),
+      {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        currentTime,
+        keyCache,
+      },
+    );
+    assertFalse(result.verified);
+    // The fresh lookup of stale-1 failed, which the third signature reuses:
+    assertEquals(result.reason.type, "keyFetchError");
+    assertEquals(
+      "keyId" in result.reason ? result.reason.keyId?.href : undefined,
+      stale(1),
+    );
+    assertEquals(documentLoader.loaded, [stale(1), stale(2)]);
+    assertEquals(gets, [stale(1), stale(2)]);
+  });
 
-  await t.step(
-    "does not refresh a cached key for other failures",
-    async () => {
-      const [input] = Object.values(
-        splitRfc9421Header(
-          (await signRfc9421Many([valid], currentTime)).headers.get(
-            "Signature-Input",
-          )!,
-        ),
-      );
-      const withAlg = (alg: string) =>
-        /;alg="[^"]*"/.test(input)
-          ? input.replace(/;alg="[^"]*"/, `;alg="${alg}"`)
-          : `${input};alg="${alg}"`;
-      for (
-        const signatureInput of [
-          // An unsupported algorithm:
-          withAlg("unknown"),
-          // A signature base that cannot be made:
-          input.replace(/^sig1=\([^)]*\)/, 'sig1=("@unsupported")'),
-        ]
-      ) {
-        const request = await signRfc9421Many([valid], currentTime);
-        request.headers.set("Signature-Input", signatureInput);
-        const { keyCache } = createStaleKeyCache();
-        const documentLoader = createCountingKeyLoader();
-        const key = await verifyRequest(request, {
-          documentLoader,
-          contextLoader: mockDocumentLoader,
-          currentTime,
-          keyCache,
-        });
-        assertEquals(key, null, signatureInput);
-        assertEquals(documentLoader.loaded, [], signatureInput);
-      }
-    },
-  );
+  await t.step("does not refresh a cached key for other failures", async () => {
+    const [input] = Object.values(
+      splitRfc9421Header(
+        (await signRfc9421Many([valid], currentTime)).headers.get(
+          "Signature-Input",
+        )!,
+      ),
+    );
+    const withAlg = (alg: string) =>
+      /;alg="[^"]*"/.test(input)
+        ? input.replace(/;alg="[^"]*"/, `;alg="${alg}"`)
+        : `${input};alg="${alg}"`;
+    for (const signatureInput of [
+      // An unsupported algorithm:
+      withAlg("unknown"),
+      // A signature base that cannot be made:
+      input.replace(/^sig1=\([^)]*\)/, 'sig1=("@unsupported")'),
+    ]) {
+      const request = await signRfc9421Many([valid], currentTime);
+      request.headers.set("Signature-Input", signatureInput);
+      const { keyCache } = createStaleKeyCache();
+      const documentLoader = createCountingKeyLoader();
+      const key = await verifyRequest(request, {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        currentTime,
+        keyCache,
+      });
+      assertEquals(key, null, signatureInput);
+      assertEquals(documentLoader.loaded, [], signatureInput);
+    }
+  });
 
   await t.step(
     "refreshes a cached key of another algorithm family",
@@ -1894,8 +1844,8 @@ test("verifyRequest() [rfc9421] error cases and edge cases", async () => {
   );
 
   // Get the headers for tampering tests
-  const validSignatureInput = signedRequest.headers.get("Signature-Input") ||
-    "";
+  const validSignatureInput =
+    signedRequest.headers.get("Signature-Input") || "";
   const validSignature = signedRequest.headers.get("Signature") || "";
 
   // =================================================================
@@ -1937,14 +1887,11 @@ test("verifyRequest() [rfc9421] error cases and edge cases", async () => {
     },
   );
 
-  const missingSignatureResult = await verifyRequest(
-    missingSignatureHeader,
-    {
-      contextLoader: mockDocumentLoader,
-      documentLoader: mockDocumentLoader,
-      spec: "rfc9421",
-    },
-  );
+  const missingSignatureResult = await verifyRequest(missingSignatureHeader, {
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+    spec: "rfc9421",
+  });
 
   assertEquals(
     missingSignatureResult,
@@ -2163,8 +2110,7 @@ test("verifyRequest() [rfc9421] error cases and edge cases", async () => {
       "Date": "Tue, 05 Mar 2024 07:49:44 GMT",
       "Host": "example.com",
       // Valid format with structured test values
-      "Signature-Input":
-        `sig1=("@method" "@target-uri" "host" "date");keyid="https://example.com/key";alg="rsa-v1_5-sha256";created=1709626184`,
+      "Signature-Input": `sig1=("@method" "@target-uri" "host" "date");keyid="https://example.com/key";alg="rsa-v1_5-sha256";created=1709626184`,
       // cSpell: disable-next-line
       "Signature": `sig1=:YXNkZmprc2RmaGprc2RoZmprc2hkZmtqaHNkZg==:`, // Base64 of fake data
     }),
@@ -2226,8 +2172,7 @@ test("verifyRequest() [rfc9421] error cases and edge cases", async () => {
 
   const multiSigRequest = new Request("https://example.com/", {
     headers: new Headers({
-      "Signature-Input":
-        `sig1=("@method");keyid="key1";alg="rsa-v1_5-sha256";created=1709626184,sig2=("@target-uri");keyid="key2";alg="rsa-pss-sha512";created=1709626185`,
+      "Signature-Input": `sig1=("@method");keyid="key1";alg="rsa-v1_5-sha256";created=1709626184,sig2=("@target-uri");keyid="key2";alg="rsa-pss-sha512";created=1709626185`,
       // cSpell: disable-next-line
       "Signature": `sig1=:AQIDBA==:,sig2=:Zm9vYmFy:`,
     }),
@@ -2297,8 +2242,7 @@ test("verifyRequest() [rfc9421] error cases and edge cases", async () => {
       "Accept": "application/json",
       "Host": "example.com",
       "Date": "Tue, 05 Mar 2024 07:49:44 GMT",
-      "Signature-Input":
-        `${validSignatureInput},sig2=("@method" "@target-uri" "host" "date");keyid="https://example.com/invalid-key";alg="rsa-v1_5-sha256";created=${currentTimestamp}`,
+      "Signature-Input": `${validSignatureInput},sig2=("@method" "@target-uri" "host" "date");keyid="https://example.com/invalid-key";alg="rsa-v1_5-sha256";created=${currentTimestamp}`,
       "Signature": `${validSignature},sig2=:AAAAAA==:`,
     }),
   });
@@ -2333,15 +2277,12 @@ test("verifyRequest() [rfc9421] test vector from Mastodon", async () => {
       },
     },
   );
-  const result = await verifyRequest(
-    signedRequest,
-    {
-      contextLoader: mockDocumentLoader,
-      documentLoader: mockDocumentLoader,
-      currentTime: Temporal.Instant.from("2023-12-20T10:00:00.0000Z"),
-      spec: "rfc9421",
-    },
-  );
+  const result = await verifyRequest(signedRequest, {
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+    currentTime: Temporal.Instant.from("2023-12-20T10:00:00.0000Z"),
+    spec: "rfc9421",
+  });
   assertExists(result);
   assertExists(result.publicKey);
   assertEquals(result, rsaPublicKey5);
@@ -2351,14 +2292,11 @@ test("verifyRequest() [rfc9421] test vector from Mastodon", async () => {
   );
 
   // Implicit spec
-  const result2 = await verifyRequest(
-    signedRequest,
-    {
-      contextLoader: mockDocumentLoader,
-      documentLoader: mockDocumentLoader,
-      currentTime: Temporal.Instant.from("2023-12-20T10:00:00.0000Z"),
-    },
-  );
+  const result2 = await verifyRequest(signedRequest, {
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+    currentTime: Temporal.Instant.from("2023-12-20T10:00:00.0000Z"),
+  });
   assertExists(result2);
   assertExists(result2.publicKey);
   assertEquals(result2, rsaPublicKey5);
@@ -2635,13 +2573,10 @@ test("doubleKnock() validates redirects after signature fallback", async () => {
     return new Response("", { status: 202 });
   });
 
-  const request = new Request(
-    "https://example.com/redirect-after-fallback",
-    {
-      method: "POST",
-      body: "Test message",
-    },
-  );
+  const request = new Request("https://example.com/redirect-after-fallback", {
+    method: "POST",
+    body: "Test message",
+  });
 
   await assertRejects(
     () =>
@@ -2700,13 +2635,10 @@ test("doubleKnock() function with both specs rejected", async () => {
   });
 
   // Call doubleKnock with the rejecting server
-  const response = await doubleKnock(
-    request,
-    {
-      keyId: rsaPublicKey2.id!,
-      privateKey: rsaPrivateKey2,
-    },
-  );
+  const response = await doubleKnock(request, {
+    keyId: rsaPublicKey2.id!,
+    privateKey: rsaPrivateKey2,
+  });
 
   // Verify both specs were tried and 401 was returned
   assertEquals(
@@ -2916,13 +2848,10 @@ test("doubleKnock() throws on too many redirects", async () => {
 
   await assertRejects(
     () =>
-      doubleKnock(
-        request,
-        {
-          keyId: rsaPublicKey2.id!,
-          privateKey: rsaPrivateKey2,
-        },
-      ),
+      doubleKnock(request, {
+        keyId: rsaPublicKey2.id!,
+        privateKey: rsaPrivateKey2,
+      }),
     Error,
     "Too many redirections",
   );
@@ -2999,13 +2928,10 @@ test("doubleKnock() detects redirect loops", async () => {
 
   await assertRejects(
     () =>
-      doubleKnock(
-        request,
-        {
-          keyId: rsaPublicKey2.id!,
-          privateKey: rsaPrivateKey2,
-        },
-      ),
+      doubleKnock(request, {
+        keyId: rsaPublicKey2.id!,
+        privateKey: rsaPrivateKey2,
+      }),
     Error,
     "Redirect loop detected",
   );
@@ -3028,13 +2954,10 @@ test("doubleKnock() retries idempotent request transport errors", async () => {
     });
 
     const request = new Request("https://example.com/flaky-document");
-    const response = await doubleKnock(
-      request,
-      {
-        keyId: rsaPublicKey2.id!,
-        privateKey: rsaPrivateKey2,
-      },
-    );
+    const response = await doubleKnock(request, {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    });
 
     assertEquals(response.status, 200);
     assertEquals(await response.text(), "Success");
@@ -3058,13 +2981,10 @@ test("doubleKnock() wraps repeated transport errors", async () => {
     const request = new Request("https://example.com/unreachable-document");
     const error = await assertRejects(
       () =>
-        doubleKnock(
-          request,
-          {
-            keyId: rsaPublicKey2.id!,
-            privateKey: rsaPrivateKey2,
-          },
-        ),
+        doubleKnock(request, {
+          keyId: rsaPublicKey2.id!,
+          privateKey: rsaPrivateKey2,
+        }),
       FetchError,
       "DNS lookup failed",
     );
@@ -3097,13 +3017,10 @@ test("doubleKnock() does not retry non-idempotent transport errors", async () =>
     });
     const error = await assertRejects(
       () =>
-        doubleKnock(
-          request,
-          {
-            keyId: rsaPublicKey2.id!,
-            privateKey: rsaPrivateKey2,
-          },
-        ),
+        doubleKnock(request, {
+          keyId: rsaPublicKey2.id!,
+          privateKey: rsaPrivateKey2,
+        }),
       FetchError,
       "connection reset",
     );
@@ -3124,15 +3041,11 @@ test("doubleKnock() preserves Request signal abort reasons", async () => {
   const request = new Request("https://example.com/request-abort", {
     signal: controller.signal,
   });
-  const error = await assertRejects(
-    () =>
-      doubleKnock(
-        request,
-        {
-          keyId: rsaPublicKey2.id!,
-          privateKey: rsaPrivateKey2,
-        },
-      ),
+  const error = await assertRejects(() =>
+    doubleKnock(request, {
+      keyId: rsaPublicKey2.id!,
+      privateKey: rsaPrivateKey2,
+    }),
   );
 
   assertEquals(error, abortReason);
@@ -3154,15 +3067,11 @@ test("doubleKnock() preserves Request signal aborts during retry delay", async (
     const request = new Request("https://example.com/aborted-retry", {
       signal: controller.signal,
     });
-    const error = await assertRejects(
-      () =>
-        doubleKnock(
-          request,
-          {
-            keyId: rsaPublicKey2.id!,
-            privateKey: rsaPrivateKey2,
-          },
-        ),
+    const error = await assertRejects(() =>
+      doubleKnock(request, {
+        keyId: rsaPublicKey2.id!,
+        privateKey: rsaPrivateKey2,
+      }),
     );
 
     assertEquals(error, abortReason);
@@ -3189,15 +3098,11 @@ test("doubleKnock() prefers Request aborts over transport errors", async () => {
       "https://example.com/abort-with-transport-error",
       { signal: controller.signal },
     );
-    const error = await assertRejects(
-      () =>
-        doubleKnock(
-          request,
-          {
-            keyId: rsaPublicKey2.id!,
-            privateKey: rsaPrivateKey2,
-          },
-        ),
+    const error = await assertRejects(() =>
+      doubleKnock(request, {
+        keyId: rsaPublicKey2.id!,
+        privateKey: rsaPrivateKey2,
+      }),
     );
 
     assertEquals(error, abortReason);
@@ -3338,15 +3243,15 @@ test("doubleKnockScoped() keeps challenge retries and fallback in the validated 
   const hops = recordHops((_, index): RecordedResponseInit =>
     index === 1
       ? {
-        status: 401,
-        headers: {
-          "Accept-Signature": 'challenge=("@method");nonce="challenge-nonce"',
-        },
-        body: "Challenge",
-      }
+          status: 401,
+          headers: {
+            "Accept-Signature": 'challenge=("@method");nonce="challenge-nonce"',
+          },
+          body: "Challenge",
+        }
       : index === 2
-      ? { status: 401, body: "Unauthorized" }
-      : { status: 202, body: "Accepted" }
+        ? { status: 401, body: "Unauthorized" }
+        : { status: 202, body: "Accepted" },
   );
   const result = await doubleKnockScoped(
     new Request(url, { method: "POST", body: "activity" }),
@@ -3381,13 +3286,13 @@ test("doubleKnockScoped() reopens the session after challenge redirects", async 
   const hops = recordHops((_, index): RecordedResponseInit =>
     index === 1
       ? {
-        status: 401,
-        headers: { "Accept-Signature": 'challenge=("@method");created' },
-        body: "Challenge",
-      }
+          status: 401,
+          headers: { "Accept-Signature": 'challenge=("@method");created' },
+          body: "Challenge",
+        }
       : index === 2
-      ? { status: 307, headers: { Location: next }, body: "Redirect" }
-      : { status: 200, body: "Done" }
+        ? { status: 307, headers: { Location: next }, body: "Redirect" }
+        : { status: 200, body: "Done" },
   );
   const result = await doubleKnockScoped(
     new Request(url, { method: "POST", body: "activity" }),
@@ -3425,15 +3330,15 @@ test("doubleKnockScoped() preserves maxRedirection across challenge redirects", 
       const hops = recordHops((request, index): RecordedResponseInit =>
         index % 2 === 1
           ? {
-            status: 401,
-            headers: { "Accept-Signature": 'challenge=("@method");created' },
-            body: "Challenge",
-          }
+              status: 401,
+              headers: { "Accept-Signature": 'challenge=("@method");created' },
+              body: "Challenge",
+            }
           : {
-            status: 307,
-            headers: { Location: `${request.url}/next` },
-            body: "Redirect",
-          }
+              status: 307,
+              headers: { Location: `${request.url}/next` },
+              body: "Redirect",
+            },
       );
       await assertRejects(
         () =>
@@ -3466,11 +3371,11 @@ test("doubleKnockScoped() detects loops after challenge redirects", async () => 
   const hops = recordHops((_, index): RecordedResponseInit =>
     index === 1
       ? {
-        status: 401,
-        headers: { "Accept-Signature": 'challenge=("@method");created' },
-        body: "Challenge",
-      }
-      : { status: 307, headers: { Location: url }, body: "Redirect" }
+          status: 401,
+          headers: { "Accept-Signature": 'challenge=("@method");created' },
+          body: "Challenge",
+        }
+      : { status: 307, headers: { Location: url }, body: "Redirect" },
   );
   await assertRejects(
     () =>
@@ -3533,7 +3438,7 @@ test("doubleKnockScoped() retries another spec on the same hop", async () => {
   const hops = recordHops((_, index) =>
     index === 1
       ? { status: 401, body: "Unauthorized" }
-      : { status: 202, body: "Accepted" }
+      : { status: 202, body: "Accepted" },
   );
   const result = await doubleKnockScoped(
     new Request(url, { method: "POST", body: "activity" }),
@@ -3565,8 +3470,8 @@ test("doubleKnockScoped() closes the retried hop before a redirect", async () =>
     index === 1
       ? { status: 401, body: "Unauthorized" }
       : index === 2
-      ? { status: 302, headers: { Location: next }, body: "Found" }
-      : { status: 200, body: "Done" }
+        ? { status: 302, headers: { Location: next }, body: "Found" }
+        : { status: 200, body: "Done" },
   );
   const result = await doubleKnockScoped(
     new Request(url, { method: "POST", body: "activity" }),
@@ -3669,12 +3574,12 @@ test("doubleKnockScoped() logs a redirect body failing to cancel and follows the
   const hops = recordHops((_, index) =>
     index === 1
       ? {
-        status: 302,
-        headers: { Location: next },
-        body: "Found",
-        failCancel: true,
-      }
-      : { status: 200, body: "Done" }
+          status: 302,
+          headers: { Location: next },
+          body: "Found",
+          failCancel: true,
+        }
+      : { status: 200, body: "Done" },
   );
   let result: string | undefined;
   const records = await captureLogs(async () => {
@@ -3697,12 +3602,14 @@ test("doubleKnockScoped() logs a redirect body failing to cancel and follows the
     "consumed #2",
     `close ${next}`,
   ]);
-  const failures = records.filter((r) =>
-    r.rawMessage === "Failed to cancel the response body from {url}: {error}"
+  const failures = records.filter(
+    (r) =>
+      r.rawMessage === "Failed to cancel the response body from {url}: {error}",
   );
-  assertEquals(failures.map((r) => [r.level, r.properties.url]), [
-    ["debug", url],
-  ]);
+  assertEquals(
+    failures.map((r) => [r.level, r.properties.url]),
+    [["debug", url]],
+  );
   assertEquals(
     (failures[0].properties.error as Error).message,
     "cancel #1 failed",
@@ -3717,13 +3624,13 @@ test("doubleKnockScoped() is not blocked by a body cancellation that never settl
     index === 1
       ? { status: 401, body: "Unauthorized", hangCancel: true }
       : index === 2
-      ? {
-        status: 302,
-        headers: { Location: next },
-        body: "Found",
-        hangCancel: true,
-      }
-      : { status: 200, body: "Done", hangCancel: true }
+        ? {
+            status: 302,
+            headers: { Location: next },
+            body: "Found",
+            hangCancel: true,
+          }
+        : { status: 200, body: "Done", hangCancel: true },
   );
   const result = await doubleKnockScoped(
     new Request(url, { method: "POST", body: "activity" }),
@@ -3760,9 +3667,9 @@ test("doubleKnockScoped() completes with responses cloned by fetch-mock", async 
       return attempts === 1
         ? new Response("Unauthorized", { status: 401 })
         : new Response("Found", {
-          status: 302,
-          headers: { Location: "https://example.com/tee/final" },
-        });
+            status: 302,
+            headers: { Location: "https://example.com/tee/final" },
+          });
     });
     fetchMock.post(
       "https://example.com/tee/final",
@@ -3839,7 +3746,7 @@ test("doubleKnockScoped() closes the session when consuming fails", async (t) =>
           controller.signal.throwIfAborted();
           return Promise.resolve();
         },
-      )
+      ),
     );
     assert(error === reason);
     assertEquals(hops.events, [
@@ -3900,13 +3807,13 @@ test("doubleKnock() is not blocked by a body cancellation that never settles", a
         index === 1
           ? { status: 401, body: "Unauthorized", hangCancel: true }
           : index === 2
-          ? {
-            status: 302,
-            headers: { Location: next },
-            body: "Found",
-            hangCancel: true,
-          }
-          : { status: 200, body: "Done" },
+            ? {
+                status: 302,
+                headers: { Location: next },
+                body: "Found",
+                hangCancel: true,
+              }
+            : { status: 200, body: "Done" },
       ).response,
     );
   }) as typeof globalThis.fetch;
@@ -4151,13 +4058,10 @@ test("doubleKnock() regression test for TypeError: unusable bug #294", async () 
   // This should trigger the bug: 401 -> retry -> 302 -> TypeError: unusable
   // because the second redirect path uses request.clone().body instead of
   // await request.clone().arrayBuffer()
-  const response = await doubleKnock(
-    request,
-    {
-      keyId: rsaPublicKey2.id!,
-      privateKey: rsaPrivateKey2,
-    },
-  );
+  const response = await doubleKnock(request, {
+    keyId: rsaPublicKey2.id!,
+    privateKey: rsaPrivateKey2,
+  });
 
   // The test should pass after the fix
   assertEquals(response.status, 200);
@@ -4193,87 +4097,89 @@ test("doubleKnock() regression test for redirect handling bug", async () => {
     },
   });
 
-  const response = await doubleKnock(
-    request,
-    {
-      keyId: rsaPublicKey2.id!,
-      privateKey: rsaPrivateKey2,
-    },
-  );
+  const response = await doubleKnock(request, {
+    keyId: rsaPublicKey2.id!,
+    privateKey: rsaPrivateKey2,
+  });
 
   assertEquals(response.status, 200);
 
   fetchMock.hardReset();
 });
 
-test("signRequest() and verifyRequest() cancellation", {
-  sanitizeResources: false,
-  sanitizeOps: false,
-}, async (t) => {
-  fetchMock.spyGlobal();
+test(
+  "signRequest() and verifyRequest() cancellation",
+  {
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  async (t) => {
+    fetchMock.spyGlobal();
 
-  await t.step("doubleKnock cancellation", async () => {
-    fetchMock.post(
-      "https://example.com/slow-endpoint",
-      () =>
-        new Promise((resolve) => {
-          setTimeout(() => {
-            resolve(new Response("", { status: 202 }));
-          }, 1000);
-        }),
-    );
+    await t.step("doubleKnock cancellation", async () => {
+      fetchMock.post(
+        "https://example.com/slow-endpoint",
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => {
+              resolve(new Response("", { status: 202 }));
+            }, 1000);
+          }),
+      );
 
-    const request = new Request("https://example.com/slow-endpoint", {
-      method: "POST",
-      body: "Test message",
-      headers: {
-        "Content-Type": "text/plain",
-      },
-    });
+      const request = new Request("https://example.com/slow-endpoint", {
+        method: "POST",
+        body: "Test message",
+        headers: {
+          "Content-Type": "text/plain",
+        },
+      });
 
-    const controller = new AbortController();
-    const promise = doubleKnock(
-      request,
-      {
-        keyId: rsaPublicKey2.id!,
-        privateKey: rsaPrivateKey2,
-      },
-      { signal: controller.signal },
-    );
-
-    controller.abort();
-
-    await assertRejects(
-      () => promise,
-      Error,
-    );
-  });
-
-  await t.step("doubleKnock immediate cancellation", async () => {
-    const request = new Request("https://example.com/", {
-      method: "POST",
-      body: "Hello, world!",
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        Accept: "text/plain",
-      },
-    });
-
-    const controller = new AbortController();
-    controller.abort();
-
-    await assertRejects(
-      () =>
-        doubleKnock(request, {
+      const controller = new AbortController();
+      const promise = doubleKnock(
+        request,
+        {
           keyId: rsaPublicKey2.id!,
           privateKey: rsaPrivateKey2,
-        }, { signal: controller.signal }),
-      Error,
-    );
-  });
+        },
+        { signal: controller.signal },
+      );
 
-  fetchMock.hardReset();
-});
+      controller.abort();
+
+      await assertRejects(() => promise, Error);
+    });
+
+    await t.step("doubleKnock immediate cancellation", async () => {
+      const request = new Request("https://example.com/", {
+        method: "POST",
+        body: "Hello, world!",
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          Accept: "text/plain",
+        },
+      });
+
+      const controller = new AbortController();
+      controller.abort();
+
+      await assertRejects(
+        () =>
+          doubleKnock(
+            request,
+            {
+              keyId: rsaPublicKey2.id!,
+              privateKey: rsaPrivateKey2,
+            },
+            { signal: controller.signal },
+          ),
+        Error,
+      );
+    });
+
+    fetchMock.hardReset();
+  },
+);
 
 // ---------------------------------------------------------------------------
 // signRequest() with rfc9421 options
@@ -4394,585 +4300,520 @@ test("formatRfc9421SignatureParameters() escapes nonce and tag", () => {
   assertStringIncludes(mixed, 'tag="t\\"ag\\\\value"');
 });
 
-test(
-  "signRequest() [rfc9421] accumulates multiple signatures when called sequentially",
-  async () => {
-    // RFC 9421 §5 requires all labeled signatures from an Accept-Signature
-    // challenge to be present in the target message.  The implementation
-    // satisfies this by calling signRequest() once per entry, passing the
-    // result of each call into the next so that Signature-Input and Signature
-    // headers accumulate Dictionary members rather than being overwritten.
-    const request = new Request("https://example.com/inbox", {
-      method: "POST",
-      body: "Hello",
-      headers: { "Content-Type": "text/plain" },
-    });
+test("signRequest() [rfc9421] accumulates multiple signatures when called sequentially", async () => {
+  // RFC 9421 §5 requires all labeled signatures from an Accept-Signature
+  // challenge to be present in the target message.  The implementation
+  // satisfies this by calling signRequest() once per entry, passing the
+  // result of each call into the next so that Signature-Input and Signature
+  // headers accumulate Dictionary members rather than being overwritten.
+  const request = new Request("https://example.com/inbox", {
+    method: "POST",
+    body: "Hello",
+    headers: { "Content-Type": "text/plain" },
+  });
 
-    // First signature
-    const onceSigned = await signRequest(
-      request,
-      rsaPrivateKey2,
-      new URL("https://example.com/key2"),
-      {
-        spec: "rfc9421",
-        rfc9421: {
-          label: "sig1",
-          components: [
-            { value: "@method", params: {} },
-            { value: "@target-uri", params: {} },
-          ],
-        },
+  // First signature
+  const onceSigned = await signRequest(
+    request,
+    rsaPrivateKey2,
+    new URL("https://example.com/key2"),
+    {
+      spec: "rfc9421",
+      rfc9421: {
+        label: "sig1",
+        components: [
+          { value: "@method", params: {} },
+          { value: "@target-uri", params: {} },
+        ],
       },
-    );
+    },
+  );
 
-    // Second signature appended onto the already-signed request
-    const twiceSigned = await signRequest(
-      onceSigned,
-      rsaPrivateKey2,
-      new URL("https://example.com/key2"),
-      {
-        spec: "rfc9421",
-        rfc9421: {
-          label: "sig2",
-          components: [
-            { value: "@authority", params: {} },
-          ],
-        },
+  // Second signature appended onto the already-signed request
+  const twiceSigned = await signRequest(
+    onceSigned,
+    rsaPrivateKey2,
+    new URL("https://example.com/key2"),
+    {
+      spec: "rfc9421",
+      rfc9421: {
+        label: "sig2",
+        components: [{ value: "@authority", params: {} }],
       },
-    );
+    },
+  );
 
-    const sigInput = twiceSigned.headers.get("Signature-Input") ?? "";
-    const sig = twiceSigned.headers.get("Signature") ?? "";
+  const sigInput = twiceSigned.headers.get("Signature-Input") ?? "";
+  const sig = twiceSigned.headers.get("Signature") ?? "";
 
-    // Both labels must appear in both Dictionary headers
-    assertStringIncludes(sigInput, "sig1=");
-    assertStringIncludes(sigInput, "sig2=");
-    assertStringIncludes(sig, "sig1=");
-    assertStringIncludes(sig, "sig2=");
-  },
-);
+  // Both labels must appear in both Dictionary headers
+  assertStringIncludes(sigInput, "sig1=");
+  assertStringIncludes(sigInput, "sig2=");
+  assertStringIncludes(sig, "sig1=");
+  assertStringIncludes(sig, "sig2=");
+});
 
 // ---------------------------------------------------------------------------
 // doubleKnock() with Accept-Signature challenge
 // ---------------------------------------------------------------------------
 
-test(
-  "doubleKnock(): Accept-Signature challenge retry succeeds",
-  async () => {
-    fetchMock.spyGlobal();
-    let requestCount = 0;
+test("doubleKnock(): Accept-Signature challenge retry succeeds", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
 
-    fetchMock.post("https://example.com/inbox-challenge-ok", (cl) => {
-      const req = cl.request!;
-      requestCount++;
-      if (requestCount === 1) {
-        // First attempt fails with Accept-Signature challenge
-        return new Response("Not Authorized", {
-          status: 401,
-          headers: {
-            "Accept-Signature":
-              'sig1=("@method" "@target-uri" "@authority" "content-digest")' +
-              ';created;nonce="challenge-nonce-1"',
-          },
-        });
-      }
-      // Second attempt (challenge retry) succeeds
-      const sigInput = req.headers.get("Signature-Input") ?? "";
-      if (sigInput.includes("challenge-nonce-1")) {
-        return new Response("", { status: 202 });
-      }
-      return new Response("Bad", { status: 400 });
-    });
-
-    const request = new Request("https://example.com/inbox-challenge-ok", {
-      method: "POST",
-      body: "Test message",
-      headers: { "Content-Type": "text/plain" },
-    });
-
-    const response = await doubleKnock(request, {
-      keyId: rsaPublicKey2.id!,
-      privateKey: rsaPrivateKey2,
-    });
-
-    assertEquals(response.status, 202);
-    assertEquals(requestCount, 2);
-
-    fetchMock.hardReset();
-  },
-);
-
-test(
-  "doubleKnock(): validates redirects after Accept-Signature challenge retry",
-  async () => {
-    fetchMock.spyGlobal();
-    let requestCount = 0;
-    let privateRequestCount = 0;
-
-    fetchMock.post("https://example.com/inbox-challenge-redirect", () => {
-      requestCount++;
-      if (requestCount === 1) {
-        return new Response("Not Authorized", {
-          status: 401,
-          headers: {
-            "Accept-Signature":
-              'sig1=("@method" "@target-uri" "@authority" "content-digest")' +
-              ';created;nonce="challenge-nonce-redirect"',
-          },
-        });
-      }
-      return Response.redirect("http://localhost/private", 302);
-    });
-    fetchMock.post("http://localhost/private", () => {
-      privateRequestCount++;
+  fetchMock.post("https://example.com/inbox-challenge-ok", (cl) => {
+    const req = cl.request!;
+    requestCount++;
+    if (requestCount === 1) {
+      // First attempt fails with Accept-Signature challenge
+      return new Response("Not Authorized", {
+        status: 401,
+        headers: {
+          "Accept-Signature":
+            'sig1=("@method" "@target-uri" "@authority" "content-digest")' +
+            ';created;nonce="challenge-nonce-1"',
+        },
+      });
+    }
+    // Second attempt (challenge retry) succeeds
+    const sigInput = req.headers.get("Signature-Input") ?? "";
+    if (sigInput.includes("challenge-nonce-1")) {
       return new Response("", { status: 202 });
-    });
+    }
+    return new Response("Bad", { status: 400 });
+  });
 
-    const request = new Request(
-      "https://example.com/inbox-challenge-redirect",
-      {
-        method: "POST",
-        body: "Test message",
-        headers: { "Content-Type": "text/plain" },
-      },
-    );
+  const request = new Request("https://example.com/inbox-challenge-ok", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
 
-    await assertRejects(
-      () =>
-        doubleKnock(
-          request,
-          {
-            keyId: rsaPublicKey2.id!,
-            privateKey: rsaPrivateKey2,
+  const response = await doubleKnock(request, {
+    keyId: rsaPublicKey2.id!,
+    privateKey: rsaPrivateKey2,
+  });
+
+  assertEquals(response.status, 202);
+  assertEquals(requestCount, 2);
+
+  fetchMock.hardReset();
+});
+
+test("doubleKnock(): validates redirects after Accept-Signature challenge retry", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
+  let privateRequestCount = 0;
+
+  fetchMock.post("https://example.com/inbox-challenge-redirect", () => {
+    requestCount++;
+    if (requestCount === 1) {
+      return new Response("Not Authorized", {
+        status: 401,
+        headers: {
+          "Accept-Signature":
+            'sig1=("@method" "@target-uri" "@authority" "content-digest")' +
+            ';created;nonce="challenge-nonce-redirect"',
+        },
+      });
+    }
+    return Response.redirect("http://localhost/private", 302);
+  });
+  fetchMock.post("http://localhost/private", () => {
+    privateRequestCount++;
+    return new Response("", { status: 202 });
+  });
+
+  const request = new Request("https://example.com/inbox-challenge-redirect", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
+
+  await assertRejects(
+    () =>
+      doubleKnock(
+        request,
+        {
+          keyId: rsaPublicKey2.id!,
+          privateKey: rsaPrivateKey2,
+        },
+        {
+          validateRedirect(url) {
+            throw new Error(`Disallowed redirect: ${url}`);
           },
-          {
-            validateRedirect(url) {
-              throw new Error(`Disallowed redirect: ${url}`);
-            },
-          },
-        ),
-      Error,
-      "Disallowed redirect: http://localhost/private",
-    );
-    assertEquals(requestCount, 2);
-    assertEquals(privateRequestCount, 0);
+        },
+      ),
+    Error,
+    "Disallowed redirect: http://localhost/private",
+  );
+  assertEquals(requestCount, 2);
+  assertEquals(privateRequestCount, 0);
 
-    fetchMock.hardReset();
-  },
-);
+  fetchMock.hardReset();
+});
 
-test(
-  "doubleKnock(): unfulfillable Accept-Signature falls to legacy fallback",
-  async () => {
-    fetchMock.spyGlobal();
-    let requestCount = 0;
+test("doubleKnock(): unfulfillable Accept-Signature falls to legacy fallback", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
 
-    fetchMock.post("https://example.com/inbox-unfulfillable", (cl) => {
-      const req = cl.request!;
-      requestCount++;
-      if (requestCount === 1) {
-        // Challenge with incompatible algorithm
-        return new Response("Not Authorized", {
-          status: 401,
-          headers: {
-            "Accept-Signature": 'sig1=("@method");alg="ecdsa-p256-sha256"',
-          },
-        });
-      }
-      // Legacy fallback (draft-cavage) succeeds
-      if (req.headers.has("Signature") && !req.headers.has("Signature-Input")) {
-        return new Response("", { status: 202 });
-      }
-      return new Response("Bad", { status: 400 });
-    });
+  fetchMock.post("https://example.com/inbox-unfulfillable", (cl) => {
+    const req = cl.request!;
+    requestCount++;
+    if (requestCount === 1) {
+      // Challenge with incompatible algorithm
+      return new Response("Not Authorized", {
+        status: 401,
+        headers: {
+          "Accept-Signature": 'sig1=("@method");alg="ecdsa-p256-sha256"',
+        },
+      });
+    }
+    // Legacy fallback (draft-cavage) succeeds
+    if (req.headers.has("Signature") && !req.headers.has("Signature-Input")) {
+      return new Response("", { status: 202 });
+    }
+    return new Response("Bad", { status: 400 });
+  });
 
-    const request = new Request("https://example.com/inbox-unfulfillable", {
-      method: "POST",
-      body: "Test message",
-      headers: { "Content-Type": "text/plain" },
-    });
+  const request = new Request("https://example.com/inbox-unfulfillable", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
 
-    const response = await doubleKnock(request, {
-      keyId: rsaPublicKey2.id!,
-      privateKey: rsaPrivateKey2,
-    });
+  const response = await doubleKnock(request, {
+    keyId: rsaPublicKey2.id!,
+    privateKey: rsaPrivateKey2,
+  });
 
-    assertEquals(response.status, 202);
-    assertEquals(requestCount, 2);
+  assertEquals(response.status, 202);
+  assertEquals(requestCount, 2);
 
-    fetchMock.hardReset();
-  },
-);
+  fetchMock.hardReset();
+});
 
-test(
-  "doubleKnock(): no Accept-Signature falls to legacy fallback",
-  async () => {
-    fetchMock.spyGlobal();
-    let requestCount = 0;
+test("doubleKnock(): no Accept-Signature falls to legacy fallback", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
 
-    fetchMock.post("https://example.com/inbox-no-challenge", (cl) => {
-      const req = cl.request!;
-      requestCount++;
-      if (requestCount === 1) {
-        return new Response("Not Authorized", { status: 401 });
-      }
-      if (req.headers.has("Signature")) {
-        return new Response("", { status: 202 });
-      }
-      return new Response("Bad", { status: 400 });
-    });
+  fetchMock.post("https://example.com/inbox-no-challenge", (cl) => {
+    const req = cl.request!;
+    requestCount++;
+    if (requestCount === 1) {
+      return new Response("Not Authorized", { status: 401 });
+    }
+    if (req.headers.has("Signature")) {
+      return new Response("", { status: 202 });
+    }
+    return new Response("Bad", { status: 400 });
+  });
 
-    const request = new Request("https://example.com/inbox-no-challenge", {
-      method: "POST",
-      body: "Test message",
-      headers: { "Content-Type": "text/plain" },
-    });
+  const request = new Request("https://example.com/inbox-no-challenge", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
 
-    const response = await doubleKnock(request, {
-      keyId: rsaPublicKey2.id!,
-      privateKey: rsaPrivateKey2,
-    });
+  const response = await doubleKnock(request, {
+    keyId: rsaPublicKey2.id!,
+    privateKey: rsaPrivateKey2,
+  });
 
-    assertEquals(response.status, 202);
-    assertEquals(requestCount, 2);
+  assertEquals(response.status, 202);
+  assertEquals(requestCount, 2);
 
-    fetchMock.hardReset();
-  },
-);
+  fetchMock.hardReset();
+});
 
-test(
-  "doubleKnock(): challenge retry also fails → legacy fallback attempted",
-  async () => {
-    fetchMock.spyGlobal();
-    let requestCount = 0;
+test("doubleKnock(): challenge retry also fails → legacy fallback attempted", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
 
-    fetchMock.post("https://example.com/inbox-challenge-fails", (cl) => {
-      const req = cl.request!;
-      requestCount++;
-      if (requestCount === 1) {
-        return new Response("Not Authorized", {
-          status: 401,
-          headers: {
-            "Accept-Signature": 'sig1=("@method" "@target-uri");created',
-          },
-        });
-      }
-      if (requestCount === 2) {
-        // Challenge retry also fails
-        return new Response("Still Not Authorized", { status: 401 });
-      }
-      // Legacy fallback (3rd attempt)
-      if (req.headers.has("Signature") && !req.headers.has("Signature-Input")) {
-        return new Response("", { status: 202 });
-      }
-      return new Response("Bad", { status: 400 });
-    });
+  fetchMock.post("https://example.com/inbox-challenge-fails", (cl) => {
+    const req = cl.request!;
+    requestCount++;
+    if (requestCount === 1) {
+      return new Response("Not Authorized", {
+        status: 401,
+        headers: {
+          "Accept-Signature": 'sig1=("@method" "@target-uri");created',
+        },
+      });
+    }
+    if (requestCount === 2) {
+      // Challenge retry also fails
+      return new Response("Still Not Authorized", { status: 401 });
+    }
+    // Legacy fallback (3rd attempt)
+    if (req.headers.has("Signature") && !req.headers.has("Signature-Input")) {
+      return new Response("", { status: 202 });
+    }
+    return new Response("Bad", { status: 400 });
+  });
 
-    const request = new Request(
-      "https://example.com/inbox-challenge-fails",
-      {
-        method: "POST",
-        body: "Test message",
-        headers: { "Content-Type": "text/plain" },
-      },
-    );
+  const request = new Request("https://example.com/inbox-challenge-fails", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
 
-    const response = await doubleKnock(request, {
-      keyId: rsaPublicKey2.id!,
-      privateKey: rsaPrivateKey2,
-    });
+  const response = await doubleKnock(request, {
+    keyId: rsaPublicKey2.id!,
+    privateKey: rsaPrivateKey2,
+  });
 
-    assertEquals(response.status, 202);
-    assertEquals(requestCount, 3);
+  assertEquals(response.status, 202);
+  assertEquals(requestCount, 3);
 
-    fetchMock.hardReset();
-  },
-);
+  fetchMock.hardReset();
+});
 
-test(
-  "doubleKnock(): challenge retry returns another challenge → not followed",
-  async () => {
-    fetchMock.spyGlobal();
-    let requestCount = 0;
+test("doubleKnock(): challenge retry returns another challenge → not followed", async () => {
+  fetchMock.spyGlobal();
+  let requestCount = 0;
 
-    fetchMock.post(
-      "https://example.com/inbox-challenge-loop",
-      (cl) => {
-        const req = cl.request!;
-        requestCount++;
-        if (requestCount === 1) {
-          // First attempt: returns Accept-Signature challenge
-          return new Response("Not Authorized", {
-            status: 401,
-            headers: {
-              "Accept-Signature":
-                'sig1=("@method" "@target-uri");created;nonce="nonce-1"',
-            },
-          });
-        }
-        if (requestCount === 2) {
-          // Challenge retry: returns ANOTHER Accept-Signature challenge
-          // (should NOT be followed—loop prevention)
-          return new Response("Still Not Authorized", {
-            status: 401,
-            headers: {
-              "Accept-Signature":
-                'sig1=("@method" "@target-uri");created;nonce="nonce-2"',
-            },
-          });
-        }
-        // Legacy fallback (3rd attempt, spec-swap to draft-cavage)
-        if (
-          req.headers.has("Signature") &&
-          !req.headers.has("Signature-Input")
-        ) {
-          return new Response("", { status: 202 });
-        }
-        return new Response("Bad", { status: 400 });
-      },
-    );
+  fetchMock.post("https://example.com/inbox-challenge-loop", (cl) => {
+    const req = cl.request!;
+    requestCount++;
+    if (requestCount === 1) {
+      // First attempt: returns Accept-Signature challenge
+      return new Response("Not Authorized", {
+        status: 401,
+        headers: {
+          "Accept-Signature":
+            'sig1=("@method" "@target-uri");created;nonce="nonce-1"',
+        },
+      });
+    }
+    if (requestCount === 2) {
+      // Challenge retry: returns ANOTHER Accept-Signature challenge
+      // (should NOT be followed—loop prevention)
+      return new Response("Still Not Authorized", {
+        status: 401,
+        headers: {
+          "Accept-Signature":
+            'sig1=("@method" "@target-uri");created;nonce="nonce-2"',
+        },
+      });
+    }
+    // Legacy fallback (3rd attempt, spec-swap to draft-cavage)
+    if (req.headers.has("Signature") && !req.headers.has("Signature-Input")) {
+      return new Response("", { status: 202 });
+    }
+    return new Response("Bad", { status: 400 });
+  });
 
-    const request = new Request(
-      "https://example.com/inbox-challenge-loop",
-      {
-        method: "POST",
-        body: "Test message",
-        headers: { "Content-Type": "text/plain" },
-      },
-    );
+  const request = new Request("https://example.com/inbox-challenge-loop", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
 
-    const response = await doubleKnock(request, {
-      keyId: rsaPublicKey2.id!,
-      privateKey: rsaPrivateKey2,
-    });
+  const response = await doubleKnock(request, {
+    keyId: rsaPublicKey2.id!,
+    privateKey: rsaPrivateKey2,
+  });
 
-    // Should have made exactly 3 requests:
-    // 1. Initial → 401 + Accept-Signature
-    // 2. Challenge retry → 401 + Accept-Signature (NOT followed again)
-    // 3. Legacy fallback (draft-cavage) → 202
-    assertEquals(response.status, 202);
-    assertEquals(requestCount, 3);
+  // Should have made exactly 3 requests:
+  // 1. Initial → 401 + Accept-Signature
+  // 2. Challenge retry → 401 + Accept-Signature (NOT followed again)
+  // 3. Legacy fallback (draft-cavage) → 202
+  assertEquals(response.status, 202);
+  assertEquals(requestCount, 3);
 
-    fetchMock.hardReset();
-  },
-);
+  fetchMock.hardReset();
+});
 
-test(
-  "doubleKnock(): Accept-Signature with unsupported component falls to legacy fallback",
-  async () => {
-    // Regression test for missing error guard in doubleKnock() challenge retry.
-    // When a server sends an Accept-Signature challenge containing a component
-    // that causes signRequest() to throw (e.g., a header not present on the
-    // request), the error should be caught so that doubleKnock() falls through
-    // to the legacy spec-swap fallback instead of propagating the TypeError.
-    fetchMock.spyGlobal();
-    let requestCount = 0;
+test("doubleKnock(): Accept-Signature with unsupported component falls to legacy fallback", async () => {
+  // Regression test for missing error guard in doubleKnock() challenge retry.
+  // When a server sends an Accept-Signature challenge containing a component
+  // that causes signRequest() to throw (e.g., a header not present on the
+  // request), the error should be caught so that doubleKnock() falls through
+  // to the legacy spec-swap fallback instead of propagating the TypeError.
+  fetchMock.spyGlobal();
+  let requestCount = 0;
 
-    fetchMock.post(
-      "https://example.com/inbox-bad-challenge",
-      (cl) => {
-        const req = cl.request!;
-        requestCount++;
-        if (requestCount === 1) {
-          // Challenge with a header component ("x-custom-required") that is
-          // absent from the request—createRfc9421SignatureBase() will throw
-          // "Missing header: x-custom-required".
-          return new Response("Not Authorized", {
-            status: 401,
-            headers: {
-              "Accept-Signature":
-                'sig1=("@method" "@target-uri" "x-custom-required");created',
-            },
-          });
-        }
-        // Legacy fallback (draft-cavage) should still be reached
-        if (
-          req.headers.has("Signature") && !req.headers.has("Signature-Input")
-        ) {
-          return new Response("", { status: 202 });
-        }
-        return new Response("Bad", { status: 400 });
-      },
-    );
+  fetchMock.post("https://example.com/inbox-bad-challenge", (cl) => {
+    const req = cl.request!;
+    requestCount++;
+    if (requestCount === 1) {
+      // Challenge with a header component ("x-custom-required") that is
+      // absent from the request—createRfc9421SignatureBase() will throw
+      // "Missing header: x-custom-required".
+      return new Response("Not Authorized", {
+        status: 401,
+        headers: {
+          "Accept-Signature":
+            'sig1=("@method" "@target-uri" "x-custom-required");created',
+        },
+      });
+    }
+    // Legacy fallback (draft-cavage) should still be reached
+    if (req.headers.has("Signature") && !req.headers.has("Signature-Input")) {
+      return new Response("", { status: 202 });
+    }
+    return new Response("Bad", { status: 400 });
+  });
 
-    const request = new Request("https://example.com/inbox-bad-challenge", {
-      method: "POST",
-      body: "Test message",
-      headers: { "Content-Type": "text/plain" },
-    });
+  const request = new Request("https://example.com/inbox-bad-challenge", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
 
-    const response = await doubleKnock(request, {
-      keyId: rsaPublicKey2.id!,
-      privateKey: rsaPrivateKey2,
-    });
+  const response = await doubleKnock(request, {
+    keyId: rsaPublicKey2.id!,
+    privateKey: rsaPrivateKey2,
+  });
 
-    // The challenge retry should fail gracefully and fall through to legacy
-    assertEquals(response.status, 202);
-    assertEquals(requestCount, 2);
+  // The challenge retry should fail gracefully and fall through to legacy
+  assertEquals(response.status, 202);
+  assertEquals(requestCount, 2);
 
-    fetchMock.hardReset();
-  },
-);
+  fetchMock.hardReset();
+});
 
-test(
-  "doubleKnock(): Accept-Signature with unsupported derived component falls to legacy fallback",
-  async () => {
-    // Similar to the above test, but with an unsupported derived component
-    // (e.g., "@query-param") instead of a missing header.
-    fetchMock.spyGlobal();
-    let requestCount = 0;
+test("doubleKnock(): Accept-Signature with unsupported derived component falls to legacy fallback", async () => {
+  // Similar to the above test, but with an unsupported derived component
+  // (e.g., "@query-param") instead of a missing header.
+  fetchMock.spyGlobal();
+  let requestCount = 0;
 
-    fetchMock.post(
-      "https://example.com/inbox-bad-derived",
-      (cl) => {
-        const req = cl.request!;
-        requestCount++;
-        if (requestCount === 1) {
-          // Challenge with "@query-param"—a derived component that throws
-          // in createRfc9421SignatureBase() because it requires special params.
-          return new Response("Not Authorized", {
-            status: 401,
-            headers: {
-              "Accept-Signature": 'sig1=("@method" "@query-param");created',
-            },
-          });
-        }
-        // Legacy fallback should be reached
-        if (
-          req.headers.has("Signature") && !req.headers.has("Signature-Input")
-        ) {
-          return new Response("", { status: 202 });
-        }
-        return new Response("Bad", { status: 400 });
-      },
-    );
+  fetchMock.post("https://example.com/inbox-bad-derived", (cl) => {
+    const req = cl.request!;
+    requestCount++;
+    if (requestCount === 1) {
+      // Challenge with "@query-param"—a derived component that throws
+      // in createRfc9421SignatureBase() because it requires special params.
+      return new Response("Not Authorized", {
+        status: 401,
+        headers: {
+          "Accept-Signature": 'sig1=("@method" "@query-param");created',
+        },
+      });
+    }
+    // Legacy fallback should be reached
+    if (req.headers.has("Signature") && !req.headers.has("Signature-Input")) {
+      return new Response("", { status: 202 });
+    }
+    return new Response("Bad", { status: 400 });
+  });
 
-    const request = new Request("https://example.com/inbox-bad-derived", {
-      method: "POST",
-      body: "Test message",
-      headers: { "Content-Type": "text/plain" },
-    });
+  const request = new Request("https://example.com/inbox-bad-derived", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
 
-    const response = await doubleKnock(request, {
-      keyId: rsaPublicKey2.id!,
-      privateKey: rsaPrivateKey2,
-    });
+  const response = await doubleKnock(request, {
+    keyId: rsaPublicKey2.id!,
+    privateKey: rsaPrivateKey2,
+  });
 
-    assertEquals(response.status, 202);
-    assertEquals(requestCount, 2);
+  assertEquals(response.status, 202);
+  assertEquals(requestCount, 2);
 
-    fetchMock.hardReset();
-  },
-);
+  fetchMock.hardReset();
+});
 
-test(
-  "doubleKnock(): Accept-Signature with multiple entries where first throws falls to next entry",
-  async () => {
-    // When Accept-Signature contains multiple entries, if the first entry
-    // causes signRequest() to throw, the loop should catch the error and
-    // try the next entry (or fall through to legacy fallback).
-    fetchMock.spyGlobal();
-    let requestCount = 0;
+test("doubleKnock(): Accept-Signature with multiple entries where first throws falls to next entry", async () => {
+  // When Accept-Signature contains multiple entries, if the first entry
+  // causes signRequest() to throw, the loop should catch the error and
+  // try the next entry (or fall through to legacy fallback).
+  fetchMock.spyGlobal();
+  let requestCount = 0;
 
-    fetchMock.post(
-      "https://example.com/inbox-multi-challenge",
-      (cl) => {
-        const req = cl.request!;
-        requestCount++;
-        if (requestCount === 1) {
-          // First entry has a missing header; second entry is valid
-          return new Response("Not Authorized", {
-            status: 401,
-            headers: {
-              "Accept-Signature": 'sig1=("@method" "x-nonexistent");created,' +
-                'sig2=("@method" "@target-uri" "@authority");created',
-            },
-          });
-        }
-        // Challenge retry with valid sig2 should succeed
-        if (req.headers.has("Signature-Input")) {
-          return new Response("", { status: 202 });
-        }
-        return new Response("Bad", { status: 400 });
-      },
-    );
+  fetchMock.post("https://example.com/inbox-multi-challenge", (cl) => {
+    const req = cl.request!;
+    requestCount++;
+    if (requestCount === 1) {
+      // First entry has a missing header; second entry is valid
+      return new Response("Not Authorized", {
+        status: 401,
+        headers: {
+          "Accept-Signature":
+            'sig1=("@method" "x-nonexistent");created,' +
+            'sig2=("@method" "@target-uri" "@authority");created',
+        },
+      });
+    }
+    // Challenge retry with valid sig2 should succeed
+    if (req.headers.has("Signature-Input")) {
+      return new Response("", { status: 202 });
+    }
+    return new Response("Bad", { status: 400 });
+  });
 
-    const request = new Request(
-      "https://example.com/inbox-multi-challenge",
-      {
-        method: "POST",
-        body: "Test message",
-        headers: { "Content-Type": "text/plain" },
-      },
-    );
+  const request = new Request("https://example.com/inbox-multi-challenge", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
 
-    const response = await doubleKnock(request, {
-      keyId: rsaPublicKey2.id!,
-      privateKey: rsaPrivateKey2,
-    });
+  const response = await doubleKnock(request, {
+    keyId: rsaPublicKey2.id!,
+    privateKey: rsaPrivateKey2,
+  });
 
-    assertEquals(response.status, 202);
-    assertEquals(requestCount, 2);
+  assertEquals(response.status, 202);
+  assertEquals(requestCount, 2);
 
-    fetchMock.hardReset();
-  },
-);
+  fetchMock.hardReset();
+});
 
-test(
-  "doubleKnock(): Accept-Signature with multiple compatible entries fulfills all (RFC 9421 §5 MUST)",
-  async () => {
-    // "The target message of an Accept-Signature field MUST
-    // include all labeled signatures indicated in the Accept-Signature field."
-    // When both entries are compatible with the local key, the retry request
-    // must carry signatures for sig1 AND sig2—not just the first one.
-    fetchMock.spyGlobal();
-    let requestCount = 0;
+test("doubleKnock(): Accept-Signature with multiple compatible entries fulfills all (RFC 9421 §5 MUST)", async () => {
+  // "The target message of an Accept-Signature field MUST
+  // include all labeled signatures indicated in the Accept-Signature field."
+  // When both entries are compatible with the local key, the retry request
+  // must carry signatures for sig1 AND sig2—not just the first one.
+  fetchMock.spyGlobal();
+  let requestCount = 0;
 
-    fetchMock.post(
-      "https://example.com/inbox-multi-compat",
-      (cl) => {
-        const req = cl.request!;
-        requestCount++;
-        if (requestCount === 1) {
-          // Both entries are compatible (no alg/keyid constraint)
-          return new Response("Not Authorized", {
-            status: 401,
-            headers: {
-              "Accept-Signature": 'sig1=("@method" "@target-uri");created,' +
-                'sig2=("@authority");created;nonce="nonce-for-sig2"',
-            },
-          });
-        }
-        // The retry request must include signatures for both labels
-        const sigInput = req.headers.get("Signature-Input") ?? "";
-        const sig = req.headers.get("Signature") ?? "";
-        if (
-          sigInput.includes("sig1=") && sigInput.includes("sig2=") &&
-          sig.includes("sig1=") && sig.includes("sig2=")
-        ) {
-          return new Response("", { status: 202 });
-        }
-        return new Response("Missing signatures", { status: 400 });
-      },
-    );
+  fetchMock.post("https://example.com/inbox-multi-compat", (cl) => {
+    const req = cl.request!;
+    requestCount++;
+    if (requestCount === 1) {
+      // Both entries are compatible (no alg/keyid constraint)
+      return new Response("Not Authorized", {
+        status: 401,
+        headers: {
+          "Accept-Signature":
+            'sig1=("@method" "@target-uri");created,' +
+            'sig2=("@authority");created;nonce="nonce-for-sig2"',
+        },
+      });
+    }
+    // The retry request must include signatures for both labels
+    const sigInput = req.headers.get("Signature-Input") ?? "";
+    const sig = req.headers.get("Signature") ?? "";
+    if (
+      sigInput.includes("sig1=") &&
+      sigInput.includes("sig2=") &&
+      sig.includes("sig1=") &&
+      sig.includes("sig2=")
+    ) {
+      return new Response("", { status: 202 });
+    }
+    return new Response("Missing signatures", { status: 400 });
+  });
 
-    const request = new Request("https://example.com/inbox-multi-compat", {
-      method: "POST",
-      body: "Test message",
-      headers: { "Content-Type": "text/plain" },
-    });
+  const request = new Request("https://example.com/inbox-multi-compat", {
+    method: "POST",
+    body: "Test message",
+    headers: { "Content-Type": "text/plain" },
+  });
 
-    const response = await doubleKnock(request, {
-      keyId: rsaPublicKey2.id!,
-      privateKey: rsaPrivateKey2,
-    });
+  const response = await doubleKnock(request, {
+    keyId: rsaPublicKey2.id!,
+    privateKey: rsaPrivateKey2,
+  });
 
-    assertEquals(response.status, 202);
-    assertEquals(requestCount, 2);
+  assertEquals(response.status, 202);
+  assertEquals(requestCount, 2);
 
-    fetchMock.hardReset();
-  },
-);
+  fetchMock.hardReset();
+});
 
 test("listRequestSignatures()", async (t) => {
   const request = () =>
@@ -4987,13 +4828,16 @@ test("listRequestSignatures()", async (t) => {
       rsaPublicKey2.id!,
     );
     const signatures = listRequestSignatures(signed);
-    assertEquals(signatures.map((s) => [s.keyId.href, s.label]), [
-      [rsaPublicKey2.id!.href, null],
-    ]);
+    assertEquals(
+      signatures.map((s) => [s.keyId.href, s.label]),
+      [[rsaPublicKey2.id!.href, null]],
+    );
     const components = signatures[0].components;
     assertEquals(
       components.map((c) => c.value),
-      signed.headers.get("Signature")!.match(/headers="([^"]*)"/)![1]
+      signed.headers
+        .get("Signature")!
+        .match(/headers="([^"]*)"/)![1]
         .split(" "),
     );
     assert(components.every((c) => Object.keys(c.params).length < 1));
@@ -5006,9 +4850,10 @@ test("listRequestSignatures()", async (t) => {
       { spec: "rfc9421", rfc9421: { label: "a" } },
     );
     const signatures = listRequestSignatures(signed);
-    assertEquals(signatures.map((s) => [s.keyId.href, s.label]), [
-      [rsaPublicKey2.id!.href, "a"],
-    ]);
+    assertEquals(
+      signatures.map((s) => [s.keyId.href, s.label]),
+      [[rsaPublicKey2.id!.href, "a"]],
+    );
     assertEquals(
       signatures[0].components.map((c) => c.value),
       [
@@ -5032,10 +4877,9 @@ test("listRequestSignatures()", async (t) => {
     const headers = new Headers(signed.headers);
     headers.set(
       "Signature-Input",
-      headers.get("Signature-Input")!.replace(
-        "https://example.com/key-1",
-        "not a URL",
-      ),
+      headers
+        .get("Signature-Input")!
+        .replace("https://example.com/key-1", "not a URL"),
     );
     const request = new Request(signed.url, { method: "POST", headers });
     const keyIds = (maxSignatures?: number) =>
@@ -5084,7 +4928,10 @@ test("selectRequestSignature()", async () => {
   }
   const request = new Request(second.url, { method: "POST", headers, body });
   const signatures = listRequestSignatures(request);
-  assertEquals(signatures.map((s) => s.label), ["a", "b"]);
+  assertEquals(
+    signatures.map((s) => s.label),
+    ["a", "b"],
+  );
   const selected = selectRequestSignature(request, signatures[1]);
   assertEquals(
     listRequestSignatures(selected).map((s) => [s.label, s.keyId.href]),
@@ -5212,25 +5059,28 @@ function createRecordedResponse(
   const chunkSize = init.chunkSize ?? 256;
   let offset = 0;
   let settled = false;
-  const body = new ReadableStream<Uint8Array>({
-    pull(controller) {
-      if (offset >= bytes.length) {
+  const body = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        if (offset >= bytes.length) {
+          settled = true;
+          events.push(`consumed #${index}`);
+          controller.close();
+          return;
+        }
+        controller.enqueue(bytes.slice(offset, offset + chunkSize));
+        offset += chunkSize;
+      },
+      cancel() {
         settled = true;
-        events.push(`consumed #${index}`);
-        controller.close();
-        return;
-      }
-      controller.enqueue(bytes.slice(offset, offset + chunkSize));
-      offset += chunkSize;
+        events.push(`cancel #${index}${cancelSuffix()}`);
+        if (init.failCancel) throw new Error(`cancel #${index} failed`);
+        // Like a branch of a tee whose other branch is never cancelled:
+        if (init.hangCancel) return new Promise<void>(() => {});
+      },
     },
-    cancel() {
-      settled = true;
-      events.push(`cancel #${index}${cancelSuffix()}`);
-      if (init.failCancel) throw new Error(`cancel #${index} failed`);
-      // Like a branch of a tee whose other branch is never cancelled:
-      if (init.hangCancel) return new Promise<void>(() => {});
-    },
-  }, { highWaterMark: 0 });
+    { highWaterMark: 0 },
+  );
   return {
     response: new Response(body, {
       status: init.status ?? 200,
@@ -5291,7 +5141,7 @@ function recordHops(
             events,
             index,
             await respond(request, index),
-            () => closing ? " by close" : "",
+            () => (closing ? " by close" : ""),
           );
           tracked.push({ ...recorded, index });
           return recorded.response;

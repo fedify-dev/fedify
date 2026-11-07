@@ -22,9 +22,11 @@ export async function generateField(
 ): Promise<string> {
   const fieldName = await getFieldName(property.uri, prefix);
   if (areAllScalarTypes(property.range, types)) {
-    return `${fieldName}: (${
-      getTypeNames(property.range, types, true)
-    })[] = [];\n`;
+    return `${fieldName}: (${getTypeNames(
+      property.range,
+      types,
+      true,
+    )})[] = [];\n`;
   } else {
     const typeNames = getTypeNames(property.range, types);
     const trustFieldName = await getFieldName(property.uri, `${prefix}_trust`);

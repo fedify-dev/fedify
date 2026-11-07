@@ -17,9 +17,7 @@
         "kty": "OKP",
         "crv": "Ed25519",
         "x": "sA2Nk45_dz1RVlqtNqYj9TRPf10ZYPnPPo4SYg6igQ8",
-        "key_ops": [
-          "verify"
-        ],
+        "key_ops": ["verify"],
         "ext": true
       },
       "testPrivateKeyJwk": {
@@ -27,9 +25,7 @@
         "crv": "Ed25519",
         "d": "yW756hDF5BTEcXI6_53nLDX6W3D66X6IMuysfS4rjtY",
         "x": "sA2Nk45_dz1RVlqtNqYj9TRPf10ZYPnPPo4SYg6igQ8",
-        "key_ops": [
-          "sign"
-        ],
+        "key_ops": ["sign"],
         "ext": true
       }
     },
@@ -41,9 +37,7 @@
         "kty": "OKP",
         "crv": "Ed25519",
         "x": "LR8epAGDe-cVq5p2Tx49CCfphpk1rNhkNoY9i-XEUfg",
-        "key_ops": [
-          "verify"
-        ],
+        "key_ops": ["verify"],
         "ext": true
       },
       "testPrivateKeyJwk": {
@@ -51,9 +45,7 @@
         "crv": "Ed25519",
         "d": "LledL195fP9TQGQrkE2l2Y2k48UvqCzYI9M1zXyh7zQ",
         "x": "LR8epAGDe-cVq5p2Tx49CCfphpk1rNhkNoY9i-XEUfg",
-        "key_ops": [
-          "sign"
-        ],
+        "key_ops": ["sign"],
         "ext": true
       }
     }

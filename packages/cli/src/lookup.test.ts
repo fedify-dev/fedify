@@ -52,10 +52,12 @@ async function parseWithConfig<TValue, TState>(
   // Optique 1.0 removed the old active-config test helpers. For parser-only
   // assertions, we still need the phase-2 annotations that bindConfig()
   // consumes, so these tests emulate that request directly.
-  const annotations = await (configContext.getAnnotations as (
-    request?: unknown,
-    options?: unknown,
-  ) => PromiseLike<Annotations> | Annotations)(
+  const annotations = await (
+    configContext.getAnnotations as (
+      request?: unknown,
+      options?: unknown,
+    ) => PromiseLike<Annotations> | Annotations
+  )(
     { phase: "phase2", parsed: {} },
     { load: () => ({ config, meta: undefined }) },
   );
@@ -211,14 +213,14 @@ test("writeSeparator - writes to provided output stream", async () => {
 test("writeSeparator - writes to stdout when no stream is provided", async () => {
   const originalWrite = process.stdout.write;
   let output = "";
-  process.stdout.write =
-    ((chunk: string | Uint8Array, callback?: () => void) => {
-      output += typeof chunk === "string"
-        ? chunk
-        : Buffer.from(chunk).toString();
-      callback?.();
-      return true;
-    }) as typeof process.stdout.write;
+  process.stdout.write = ((
+    chunk: string | Uint8Array,
+    callback?: () => void,
+  ) => {
+    output += typeof chunk === "string" ? chunk : Buffer.from(chunk).toString();
+    callback?.();
+    return true;
+  }) as typeof process.stdout.write;
   try {
     await writeSeparator("----");
     assert.strictEqual(output, "----\n");
@@ -305,10 +307,7 @@ test("toDocumentLoaderTimeout - converts seconds to milliseconds", () => {
 });
 
 function createDocumentLoaderTimeoutError(): FetchError {
-  const error = new FetchError(
-    "https://example.com/",
-    "Timed out after 10 ms",
-  );
+  const error = new FetchError("https://example.com/", "Timed out after 10 ms");
   error.cause = new DOMException("Timed out", "TimeoutError");
   return error;
 }
@@ -344,8 +343,8 @@ test("wrapDocumentLoaderWithTimeout - reports timeouts as TimeoutError", async (
     assert.equal(error.cause, timeoutError);
     return true;
   });
-  const timingOutByDefault = wrapDocumentLoaderWithTimeout(
-    () => Promise.reject(timeoutError),
+  const timingOutByDefault = wrapDocumentLoaderWithTimeout(() =>
+    Promise.reject(timeoutError),
   );
   await assert.rejects(timingOutByDefault("https://example.com/"), {
     name: "TimeoutError",
@@ -386,11 +385,9 @@ test("authorizedFetchOption - parses with -a without tunnelService config", asyn
 });
 
 test("authorizedFetchOption - uses config to enable authorized fetch", async () => {
-  const result = await parseWithConfig(
-    authorizedFetchOption,
-    [],
-    { lookup: { authorizedFetch: true } },
-  );
+  const result = await parseWithConfig(authorizedFetchOption, [], {
+    lookup: { authorizedFetch: true },
+  });
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(result.value.authorizedFetch, true);
@@ -403,17 +400,13 @@ test("authorizedFetchOption - uses config to enable authorized fetch", async () 
 });
 
 test("authorizedFetchOption - reads firstKnock from config", async () => {
-  const result = await parseWithConfig(
-    authorizedFetchOption,
-    [],
-    {
-      lookup: {
-        authorizedFetch: true,
-        firstKnock: "rfc9421",
-      },
-      tunnelService: "serveo.net",
+  const result = await parseWithConfig(authorizedFetchOption, [], {
+    lookup: {
+      authorizedFetch: true,
+      firstKnock: "rfc9421",
     },
-  );
+    tunnelService: "serveo.net",
+  });
   assert.ok(result.success);
   if (result.success) {
     assert.strictEqual(result.value.authorizedFetch, true);
@@ -453,10 +446,7 @@ test("lookup runner honors --ignore-config", async () => {
     );
     process.chdir(tempDir);
 
-    const withConfig = await runCli([
-      "lookup",
-      "https://example.com/notes/1",
-    ]);
+    const withConfig = await runCli(["lookup", "https://example.com/notes/1"]);
     assert.strictEqual(withConfig.command, "lookup");
     assert.strictEqual(withConfig.allowPrivateAddress, true);
 
@@ -474,10 +464,7 @@ test("lookup runner honors --ignore-config", async () => {
 });
 
 test("authorizedFetchOption - invalid when --first-knock is used without -a", () => {
-  const result = parse(authorizedFetchOption, [
-    "--first-knock",
-    "rfc9421",
-  ]);
+  const result = parse(authorizedFetchOption, ["--first-knock", "rfc9421"]);
   assert.ok(!result.success);
 });
 
@@ -669,14 +656,12 @@ test("lookupCommand - accepts short-form quote", () => {
   }
 });
 
-for (
-  const recurseProperty of [
-    "https://w3id.org/fep/044f#quote",
-    "https://www.w3.org/ns/activitystreams#quoteUrl",
-    "https://misskey-hub.net/ns#_misskey_quote",
-    "http://fedibird.com/ns#quoteUri",
-  ]
-) {
+for (const recurseProperty of [
+  "https://w3id.org/fep/044f#quote",
+  "https://www.w3.org/ns/activitystreams#quoteUrl",
+  "https://misskey-hub.net/ns#_misskey_quote",
+  "http://fedibird.com/ns#quoteUri",
+]) {
   test(`lookupCommand - accepts IRI ${recurseProperty}`, () => {
     const result = parse(lookupCommand, [
       "lookup",
@@ -745,13 +730,11 @@ test("getRecursiveTargetId - returns quote for IRI", () => {
   );
 });
 
-for (
-  const recurseProperty of [
-    "https://www.w3.org/ns/activitystreams#quoteUrl",
-    "https://misskey-hub.net/ns#_misskey_quote",
-    "http://fedibird.com/ns#quoteUri",
-  ] as const
-) {
+for (const recurseProperty of [
+  "https://www.w3.org/ns/activitystreams#quoteUrl",
+  "https://misskey-hub.net/ns#_misskey_quote",
+  "http://fedibird.com/ns#quoteUri",
+] as const) {
   test(`getRecursiveTargetId - returns quote URL for IRI ${recurseProperty}`, () => {
     const quoteUrl = new URL("https://example.com/notes/quoted");
     const note = new Note({
@@ -811,10 +794,14 @@ test("classifyRecursiveLookupFailure - preserves target and timeout presentation
       presentation: "target",
     },
     {
-      error: new RecursiveLookupError(target, {
-        error: timeout,
-        source: "context",
-      }, { cause: privateContextError("http://localhost/context") }),
+      error: new RecursiveLookupError(
+        target,
+        {
+          error: timeout,
+          source: "context",
+        },
+        { cause: privateContextError("http://localhost/context") },
+      ),
       target,
       presentation: "target",
     },
@@ -858,10 +845,16 @@ test("classifyRecursiveLookupFailure - distinguishes private targets and context
     url: new URL(contextUrl),
   });
   // The actual jsonld path retains the loader error but throws its wrapper.
-  const raw = new RecursiveLookupError(target, {
-    error: new UrlError("Invalid or private address", { reason: "disallowed" }),
-    source: "context",
-  }, { cause: contextError });
+  const raw = new RecursiveLookupError(
+    target,
+    {
+      error: new UrlError("Invalid or private address", {
+        reason: "disallowed",
+      }),
+      source: "context",
+    },
+    { cause: contextError },
+  );
   const failure = classifyRecursiveLookupFailure(raw, recursiveFailureOptions);
   assert.equal(failure.target, target);
   assert.equal(failure.source, "context");
@@ -901,9 +894,13 @@ test("classifyRecursiveLookupFailure - preserves recorded and raw DNS hints", ()
   for (const authorizedFetch of [false, true]) {
     const options = { ...recursiveFailureOptions, authorizedFetch };
     const raw = classifyRecursiveLookupFailure(
-      new RecursiveLookupError(target, { error, source: "object" }, {
-        cause: error,
-      }),
+      new RecursiveLookupError(
+        target,
+        { error, source: "object" },
+        {
+          cause: error,
+        },
+      ),
       options,
     );
     assert.equal(raw.kind, "fetch-or-parse");
@@ -940,7 +937,8 @@ test("classifyRecursiveLookupFailure - retains context, HTTP and portable diagno
         assert.equal(failure.suppressible, true);
         assert.deepEqual(failure.hint, {
           type: "diagnostic",
-          message: `HTTP ${status} from ${target}.` +
+          message:
+            `HTTP ${status} from ${target}.` +
             (source === "object" && !authorizedFetch
               ? "  It may be a private object.  Try with -a/--authorized-fetch."
               : ""),
@@ -950,9 +948,13 @@ test("classifyRecursiveLookupFailure - retains context, HTTP and portable diagno
   }
   const parse = new SyntaxError("Unexpected token");
   const context = classifyRecursiveLookupFailure(
-    new RecursiveLookupError(target, { error: parse, source: "context" }, {
-      cause: new Error("JSON-LD processing failed"),
-    }),
+    new RecursiveLookupError(
+      target,
+      { error: parse, source: "context" },
+      {
+        cause: new Error("JSON-LD processing failed"),
+      },
+    ),
     recursiveFailureOptions,
   );
   assert.equal(context.kind, "context");
@@ -1051,10 +1053,7 @@ test("getPrivateUrlCandidate - detects obvious private hosts without DNS", () =>
     getPrivateUrlCandidate("http://[::1]:8080/object")?.href,
     "http://[::1]:8080/object",
   );
-  assert.equal(
-    getPrivateUrlCandidate("https://example.com/object"),
-    null,
-  );
+  assert.equal(getPrivateUrlCandidate("https://example.com/object"), null);
 });
 
 test("getLookupFailureHint - does not treat all UrlError values as private", () => {
@@ -1068,13 +1067,11 @@ test("getLookupFailureHint - does not treat all UrlError values as private", () 
 
 test("getLookupFailureHint - distinguishes DNS failures from private addresses", () => {
   for (const recursive of [false, true]) {
-    for (
-      const message of [
-        "DNS lookup failed",
-        "Invalid or private address",
-        "Localhost is not allowed",
-      ]
-    ) {
+    for (const message of [
+      "DNS lookup failed",
+      "Invalid or private address",
+      "Localhost is not allowed",
+    ]) {
       assert.equal(
         getLookupFailureHint(new UrlError(message, { reason: "dns" }), {
           recursive,
@@ -1086,23 +1083,13 @@ test("getLookupFailureHint - distinguishes DNS failures from private addresses",
 });
 
 test("shouldPrintLookupFailureHint - suppresses only authorized-fetch hint", () => {
-  const loader =
-    ((_url: string) =>
-      Promise.reject(new Error("not used"))) as unknown as Parameters<
-        typeof shouldPrintLookupFailureHint
-      >[0];
-  assert.equal(
-    shouldPrintLookupFailureHint(loader, "authorized-fetch"),
-    false,
-  );
-  assert.equal(
-    shouldPrintLookupFailureHint(loader, "dns"),
-    true,
-  );
-  assert.equal(
-    shouldPrintLookupFailureHint(loader, "private-address"),
-    true,
-  );
+  const loader = ((_url: string) =>
+    Promise.reject(new Error("not used"))) as unknown as Parameters<
+    typeof shouldPrintLookupFailureHint
+  >[0];
+  assert.equal(shouldPrintLookupFailureHint(loader, "authorized-fetch"), false);
+  assert.equal(shouldPrintLookupFailureHint(loader, "dns"), true);
+  assert.equal(shouldPrintLookupFailureHint(loader, "private-address"), true);
   assert.equal(
     shouldPrintLookupFailureHint(loader, "recursive-private-address"),
     true,
@@ -1110,11 +1097,10 @@ test("shouldPrintLookupFailureHint - suppresses only authorized-fetch hint", () 
 });
 
 test("shouldSuggestSuppressErrorsForLookupFailure - only for authorized-fetch with auth", () => {
-  const loader =
-    ((_url: string) =>
-      Promise.reject(new Error("not used"))) as unknown as Parameters<
-        typeof shouldSuggestSuppressErrorsForLookupFailure
-      >[0];
+  const loader = ((_url: string) =>
+    Promise.reject(new Error("not used"))) as unknown as Parameters<
+    typeof shouldSuggestSuppressErrorsForLookupFailure
+  >[0];
   assert.equal(
     shouldSuggestSuppressErrorsForLookupFailure(loader, "authorized-fetch"),
     true,
@@ -1243,38 +1229,32 @@ test("collectRecursiveObjects - suppresses errors in best-effort mode", async ()
   assert.deepEqual(result, []);
 });
 
-test(
-  "collectRecursiveObjects - suppress mode does not poison visited set",
-  async () => {
-    const note2 = new Note({
-      id: new URL("https://example.com/notes/2"),
-      replyTarget: new URL("https://example.com/notes/1"),
-    });
-    const visited = new Set<string>();
-    const result = await collectRecursiveObjects(
-      note2,
-      "replyTarget",
-      10,
-      () => Promise.reject(new Error("temporary failure")),
-      { suppressErrors: true, visited },
-    );
-    assert.deepEqual(result, []);
-    assert.equal(visited.has("https://example.com/notes/1"), false);
-  },
-);
+test("collectRecursiveObjects - suppress mode does not poison visited set", async () => {
+  const note2 = new Note({
+    id: new URL("https://example.com/notes/2"),
+    replyTarget: new URL("https://example.com/notes/1"),
+  });
+  const visited = new Set<string>();
+  const result = await collectRecursiveObjects(
+    note2,
+    "replyTarget",
+    10,
+    () => Promise.reject(new Error("temporary failure")),
+    { suppressErrors: true, visited },
+  );
+  assert.deepEqual(result, []);
+  assert.equal(visited.has("https://example.com/notes/1"), false);
+});
 
-test(
-  "toPresentationOrder - keeps order when reverse is false (default mode)",
-  () => {
-    assert.deepEqual(
-      toPresentationOrder(
-        ["https://example.com/1", "https://example.com/2"],
-        false,
-      ),
+test("toPresentationOrder - keeps order when reverse is false (default mode)", () => {
+  assert.deepEqual(
+    toPresentationOrder(
       ["https://example.com/1", "https://example.com/2"],
-    );
-  },
-);
+      false,
+    ),
+    ["https://example.com/1", "https://example.com/2"],
+  );
+});
 
 test("toPresentationOrder - reverses order when reverse is true (default mode)", () => {
   assert.deepEqual(
@@ -1287,17 +1267,19 @@ test("toPresentationOrder - reverses order when reverse is true (default mode)",
 });
 
 test("toPresentationOrder - reverses recursive chain order when reverse is true", () => {
-  assert.deepEqual(
-    toPresentationOrder(["self", "parent", "root"], true),
-    ["root", "parent", "self"],
-  );
+  assert.deepEqual(toPresentationOrder(["self", "parent", "root"], true), [
+    "root",
+    "parent",
+    "self",
+  ]);
 });
 
 test("toPresentationOrder - reverses traversed item order when reverse is true", () => {
-  assert.deepEqual(
-    toPresentationOrder(["item-1", "item-2", "item-3"], true),
-    ["item-3", "item-2", "item-1"],
-  );
+  assert.deepEqual(toPresentationOrder(["item-1", "item-2", "item-3"], true), [
+    "item-3",
+    "item-2",
+    "item-1",
+  ]);
 });
 
 test("collectAsyncItems - collects items without error", async () => {
@@ -1415,11 +1397,15 @@ test("printRecursiveLookupFailure - preserves timeout targets and authenticated 
     );
     const headlines: string[] = [];
     const { stderr } = await captureStderr(() => {
-      printRecursiveLookupFailure(failure, {
-        fail: (headline) => {
-          headlines.push(headline);
+      printRecursiveLookupFailure(
+        failure,
+        {
+          fail: (headline) => {
+            headlines.push(headline);
+          },
         },
-      }, 0.2);
+        0.2,
+      );
       return Promise.resolve();
     });
     assert.equal(headlines.length, 1);
@@ -1474,7 +1460,7 @@ test("runLookup - reports recorded recursive timeouts with the target", async ()
             throw new TimeoutError("timed out");
           },
         },
-      )
+      ),
     );
     assert.equal(exitCode, 1);
     assert.match(
@@ -1567,8 +1553,8 @@ test("runLookup - does not treat a DNS UrlError with a private-address message a
 });
 
 function extractIdsFromRawOutput(content: string): string[] {
-  return [...content.matchAll(/"id"\s*:\s*"([^"]+)"/g)].map((match) =>
-    match[1]
+  return [...content.matchAll(/"id"\s*:\s*"([^"]+)"/g)].map(
+    (match) => match[1],
   );
 }
 
@@ -1591,9 +1577,10 @@ async function withRecursiveLookupServer<T>(
       const requestUrl = new URL(request.url);
       const rootUrl = new URL("/notes/1", requestUrl.origin);
       const replyUrl = new URL("/notes/0", requestUrl.origin);
-      const replyContextUrl = options.replyContextPath == null
-        ? undefined
-        : new URL(options.replyContextPath, requestUrl.origin);
+      const replyContextUrl =
+        options.replyContextPath == null
+          ? undefined
+          : new URL(options.replyContextPath, requestUrl.origin);
       requestedPaths.push(requestUrl.pathname);
 
       let body: unknown;
@@ -1607,12 +1594,10 @@ async function withRecursiveLookupServer<T>(
         };
       } else if (requestUrl.pathname === replyUrl.pathname) {
         body = {
-          "@context": replyContextUrl == null
-            ? "https://www.w3.org/ns/activitystreams"
-            : [
-              "https://www.w3.org/ns/activitystreams",
-              replyContextUrl.href,
-            ],
+          "@context":
+            replyContextUrl == null
+              ? "https://www.w3.org/ns/activitystreams"
+              : ["https://www.w3.org/ns/activitystreams", replyContextUrl.href],
           id: replyUrl.href,
           type: "Note",
           content: "reply",
@@ -1658,31 +1643,25 @@ test("runLookup - rejects recursive private targets by default", async () => {
   const testFile = `${testDir}/out.jsonl`;
   await mkdir(testDir, { recursive: true });
   try {
-    await withRecursiveLookupServer(
-      {},
-      async ({ rootUrl, requestedPaths }) => {
-        const { result: exitCode, stderr } = await captureStderr(() =>
-          runLookupAndCaptureExitCode(
-            createLookupRunCommand({
-              urls: [rootUrl.href],
-              recurse: "replyTarget",
-              recurseDepth: 20,
-              allowPrivateAddress: false,
-              output: testFile,
-            }),
-          )
-        );
-        assert.equal(exitCode, 1);
-        assert.deepEqual(requestedPaths, ["/notes/1"]);
-        assert.match(
-          stderr,
-          /--allow-private-address/,
-        );
+    await withRecursiveLookupServer({}, async ({ rootUrl, requestedPaths }) => {
+      const { result: exitCode, stderr } = await captureStderr(() =>
+        runLookupAndCaptureExitCode(
+          createLookupRunCommand({
+            urls: [rootUrl.href],
+            recurse: "replyTarget",
+            recurseDepth: 20,
+            allowPrivateAddress: false,
+            output: testFile,
+          }),
+        ),
+      );
+      assert.equal(exitCode, 1);
+      assert.deepEqual(requestedPaths, ["/notes/1"]);
+      assert.match(stderr, /--allow-private-address/);
 
-        const content = await readFile(testFile, "utf8");
-        assert.deepEqual(extractIdsFromRawOutput(content), [rootUrl.href]);
-      },
-    );
+      const content = await readFile(testFile, "utf8");
+      assert.deepEqual(extractIdsFromRawOutput(content), [rootUrl.href]);
+    });
   } finally {
     await rm(testDir, { recursive: true });
   }
@@ -1737,7 +1716,7 @@ test("runLookup - keeps recursive private contexts blocked", async () => {
               allowPrivateAddress: true,
               output: testFile,
             }),
-          )
+          ),
         );
         assert.equal(exitCode, 1);
         assert.deepEqual(requestedPaths, ["/notes/1", "/notes/0"]);
@@ -1767,15 +1746,17 @@ test("runLookup - suppresses private context failures in either presentation ord
         { replyContextPath: "/contexts/reply" },
         async ({ rootUrl, requestedPaths }) => {
           const { result: exitCode, stderr } = await captureStderr(() =>
-            runLookupAndCaptureExitCode(createLookupRunCommand({
-              urls: [rootUrl.href],
-              recurse: "replyTarget",
-              recurseDepth: 20,
-              allowPrivateAddress: true,
-              suppressErrors: true,
-              reverse,
-              output: testFile,
-            }))
+            runLookupAndCaptureExitCode(
+              createLookupRunCommand({
+                urls: [rootUrl.href],
+                recurse: "replyTarget",
+                recurseDepth: 20,
+                allowPrivateAddress: true,
+                suppressErrors: true,
+                reverse,
+                output: testFile,
+              }),
+            ),
           );
           assert.equal(exitCode, 0);
           assert.deepEqual(requestedPaths, ["/notes/1", "/notes/0"]);
@@ -2065,70 +2046,67 @@ test("runLookup - writes separators between adjacent traversed items", async () 
   }
 });
 
-test(
-  "runLookup - writes separators between adjacent traversed items in reverse mode",
-  async () => {
-    const testDir = getTestOutputDir("runlookup_traverse_separator_reverse");
-    const testFile = `${testDir}/out.jsonl`;
-    const separator = "<SEP>";
-    await mkdir(testDir, { recursive: true });
-    try {
-      const collectionA = new Collection({
-        id: new URL("https://example.com/collections/a"),
-      });
-      const collectionB = new Collection({
-        id: new URL("https://example.com/collections/b"),
-      });
-      const a1 = new Note({
-        id: new URL("https://example.com/items/a1"),
-        content: "a1",
-      });
-      const a2 = new Note({
-        id: new URL("https://example.com/items/a2"),
-        content: "a2",
-      });
-      const b1 = new Note({
-        id: new URL("https://example.com/items/b1"),
-        content: "b1",
-      });
-      const exitCode = await runLookupAndCaptureExitCode(
-        createLookupRunCommand({
-          urls: ["collection-a", "collection-b"],
-          traverse: true,
-          reverse: true,
-          separator,
-          output: testFile,
-        }),
-        {
-          lookupObject: (url) => {
-            const key = typeof url === "string" ? url : url.href;
-            if (key === "collection-a") return Promise.resolve(collectionA);
-            if (key === "collection-b") return Promise.resolve(collectionB);
-            return Promise.resolve(null);
-          },
-          async *traverseCollection(collection) {
-            if (collection === collectionA) {
-              yield a1;
-              yield a2;
-            } else if (collection === collectionB) {
-              yield b1;
-            }
-          },
+test("runLookup - writes separators between adjacent traversed items in reverse mode", async () => {
+  const testDir = getTestOutputDir("runlookup_traverse_separator_reverse");
+  const testFile = `${testDir}/out.jsonl`;
+  const separator = "<SEP>";
+  await mkdir(testDir, { recursive: true });
+  try {
+    const collectionA = new Collection({
+      id: new URL("https://example.com/collections/a"),
+    });
+    const collectionB = new Collection({
+      id: new URL("https://example.com/collections/b"),
+    });
+    const a1 = new Note({
+      id: new URL("https://example.com/items/a1"),
+      content: "a1",
+    });
+    const a2 = new Note({
+      id: new URL("https://example.com/items/a2"),
+      content: "a2",
+    });
+    const b1 = new Note({
+      id: new URL("https://example.com/items/b1"),
+      content: "b1",
+    });
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: ["collection-a", "collection-b"],
+        traverse: true,
+        reverse: true,
+        separator,
+        output: testFile,
+      }),
+      {
+        lookupObject: (url) => {
+          const key = typeof url === "string" ? url : url.href;
+          if (key === "collection-a") return Promise.resolve(collectionA);
+          if (key === "collection-b") return Promise.resolve(collectionB);
+          return Promise.resolve(null);
         },
-      );
-      assert.equal(exitCode, 0);
-      const content = await readFile(testFile, "utf8");
-      assert.deepEqual(extractIdsFromRawOutput(content), [
-        "https://example.com/items/a2",
-        "https://example.com/items/a1",
-        "https://example.com/items/b1",
-      ]);
-      assert.equal(content.split(`${separator}\n`).length - 1, 2);
-    } finally {
-      await rm(testDir, { recursive: true });
-    }
-  },
-);
+        async *traverseCollection(collection) {
+          if (collection === collectionA) {
+            yield a1;
+            yield a2;
+          } else if (collection === collectionB) {
+            yield b1;
+          }
+        },
+      },
+    );
+    assert.equal(exitCode, 0);
+    const content = await readFile(testFile, "utf8");
+    assert.deepEqual(extractIdsFromRawOutput(content), [
+      "https://example.com/items/a2",
+      "https://example.com/items/a1",
+      "https://example.com/items/b1",
+    ]);
+    assert.equal(content.split(`${separator}\n`).length - 1, 2);
+  } finally {
+    await rm(testDir, { recursive: true });
+  }
+});
 
 test("runLookup - emits root object on recurse reverse failure", async () => {
   const testDir = getTestOutputDir("runlookup_recurse_reverse_partial_failure");
@@ -2172,7 +2150,7 @@ test("runLookup - emits root object on recurse reverse failure", async () => {
 
 test("runLookup - times out a stalled request with --timeout", async () => {
   let release: () => void = () => {};
-  const released = new Promise<void>((resolve) => release = resolve);
+  const released = new Promise<void>((resolve) => (release = resolve));
   const server = serve({
     port: 0,
     hostname: "127.0.0.1",
@@ -2189,7 +2167,7 @@ test("runLookup - times out a stalled request with --timeout", async () => {
     const { result: exitCode, stderr } = await captureStderr(() =>
       runLookupAndCaptureExitCode(
         createLookupRunCommand({ urls: [url], timeout: 0.2 }),
-      )
+      ),
     );
     assert.equal(exitCode, 1);
     assert.match(stderr, /Request timed out after 0\.2 seconds/);

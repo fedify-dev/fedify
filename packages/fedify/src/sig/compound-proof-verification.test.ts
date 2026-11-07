@@ -3,12 +3,8 @@ import { CryptographicKey, Multikey, Person } from "@fedify/vocab";
 import { encodeMultibase, exportDidKey, parseIri } from "@fedify/vocab-runtime";
 import { assert, assertEquals } from "@std/assert";
 import serialize from "json-canon";
-import vector from "../../test-vectors/fep-8b32/map-local-create-note.json" with {
-  type: "json",
-};
-import conflictVector from "../../test-vectors/fep-8b32/map-local-context-conflict.json" with {
-  type: "json",
-};
+import vector from "../../test-vectors/fep-8b32/map-local-create-note.json" with { type: "json" };
+import conflictVector from "../../test-vectors/fep-8b32/map-local-context-conflict.json" with { type: "json" };
 import {
   ed25519PrivateKey,
   ed25519PublicKey,
@@ -137,7 +133,7 @@ test("verifyCompoundProofDocuments() verifies the recorded maps independently", 
     );
     assertEquals(
       result.documents.map((document) =>
-        document.verified ? document.key.id?.href : null
+        document.verified ? document.key.id?.href : null,
       ),
       [
         fixture.keys.inner.verificationMethod,
@@ -273,10 +269,7 @@ test("verifyCompoundProofDocuments() preserves the received document context", a
     "https://www.w3.org/ns/activitystreams",
     "https://w3id.org/security/data-integrity/v1",
   ];
-  const documentContext = [
-    ...proofContext,
-    { ex: "https://example.com/ns#" },
-  ];
+  const documentContext = [...proofContext, { ex: "https://example.com/ns#" }];
   const secured = await secureRawDocument(
     {
       "@context": documentContext,
@@ -341,22 +334,32 @@ test("verifyCompoundProofDocuments() contains malformed contexts per map", async
   malformed.proof = {
     "@context": [],
     "@type": ["https://w3id.org/security#DataIntegrityProof"],
-    "https://w3id.org/security#cryptosuite": [{
-      "@value": "eddsa-jcs-2022",
-    }],
-    "https://w3id.org/security#verificationMethod": [{
-      "@id": vector.keys.outer.verificationMethod,
-    }],
-    "https://w3id.org/security#proofPurpose": [{
-      "@id": "https://w3id.org/security#assertionMethod",
-    }],
-    "http://purl.org/dc/terms/created": [{
-      "@value": "2023-02-24T23:36:38Z",
-      "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
-    }],
-    "https://w3id.org/security#proofValue": [{
-      "@value": asRecord(valid.proof).proofValue,
-    }],
+    "https://w3id.org/security#cryptosuite": [
+      {
+        "@value": "eddsa-jcs-2022",
+      },
+    ],
+    "https://w3id.org/security#verificationMethod": [
+      {
+        "@id": vector.keys.outer.verificationMethod,
+      },
+    ],
+    "https://w3id.org/security#proofPurpose": [
+      {
+        "@id": "https://w3id.org/security#assertionMethod",
+      },
+    ],
+    "http://purl.org/dc/terms/created": [
+      {
+        "@value": "2023-02-24T23:36:38Z",
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+      },
+    ],
+    "https://w3id.org/security#proofValue": [
+      {
+        "@value": asRecord(valid.proof).proofValue,
+      },
+    ],
   };
 
   const result = await verifyCompoundProofDocuments(
@@ -513,15 +516,17 @@ test("verifyCompoundPortableObjectProofs() finds unsigned portable maps in array
       "@context": "https://www.w3.org/ns/activitystreams",
       id: "https://social.example/activities/1",
       type: "Create",
-      attachment: [{
-        "@context": [
-          "https://www.w3.org/ns/activitystreams",
-          "https://w3id.org/security/data-integrity/v1",
-        ],
-        id: vector.documents.innerUnsecuredDocument.id,
-        type: "Note",
-        content: "Unsigned portable attachment",
-      }],
+      attachment: [
+        {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/data-integrity/v1",
+          ],
+          id: vector.documents.innerUnsecuredDocument.id,
+          type: "Note",
+          content: "Unsigned portable attachment",
+        },
+      ],
     },
     limits,
     options,
@@ -626,10 +631,10 @@ test("verifyPortableObjectProofPolicy() binds policy to the verified proof", asy
 
   const key = await verifyMapLocalProof(secured, options);
   assert(key != null);
-  assertEquals(
-    await verifyPortableObjectProofPolicy(secured, key, options),
-    { verified: false, reason: { type: "invalidProof", proofIndex: 0 } },
-  );
+  assertEquals(await verifyPortableObjectProofPolicy(secured, key, options), {
+    verified: false,
+    reason: { type: "invalidProof", proofIndex: 0 },
+  });
 });
 
 test("verifyCompoundPortableObjectProofs() reports the policy-validated ID", async () => {
@@ -665,11 +670,10 @@ test("verifyCompoundPortableObjectProofs() reports the policy-validated ID", asy
 // FEP-ef61 compatible identifiers
 
 const compatibleDid = await exportDidKey(ed25519PublicKey.publicKey);
-const compatibleVerificationMethod = `${compatibleDid}#${
-  compatibleDid.slice("did:key:".length)
-}`;
-const compatibleActorId =
-  `https://gw.example/.well-known/apgateway/${compatibleDid}/actor`;
+const compatibleVerificationMethod = `${compatibleDid}#${compatibleDid.slice(
+  "did:key:".length,
+)}`;
+const compatibleActorId = `https://gw.example/.well-known/apgateway/${compatibleDid}/actor`;
 const compatibleContext = [
   "https://www.w3.org/ns/activitystreams",
   "https://w3id.org/security/data-integrity/v1",
@@ -690,7 +694,7 @@ async function compatibleActor(
   keyBase: string = compatibleActorId,
 ): Promise<Record<string, unknown>> {
   const actorId = parseIri(id);
-  const json = await new Person({
+  const json = (await new Person({
     id: actorId,
     inbox: new URL(`${keyBase}/inbox`),
     outbox: new URL(`${keyBase}/outbox`),
@@ -710,7 +714,7 @@ async function compatibleActor(
   }).toJsonLd({
     format: "compact",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   return json;
 }
 
@@ -794,7 +798,10 @@ test("verifyCompoundPortableObjectProofs() exempts keys embedded in portable act
   );
   assert(result.status === "ok");
   assert(result.verified);
-  assertEquals(result.portableObjects.map((o) => o.path), [""]);
+  assertEquals(
+    result.portableObjects.map((o) => o.path),
+    [""],
+  );
   // A parent context may carry a "@set" container term without making the
   // keys ambiguous:
   const actorWithSetTerm = await compatibleActor();
@@ -802,7 +809,7 @@ test("verifyCompoundPortableObjectProofs() exempts keys embedded in portable act
     await signCompatible({
       ...actorWithSetTerm,
       "@context": [
-        ...actorWithSetTerm["@context"] as unknown[],
+        ...(actorWithSetTerm["@context"] as unknown[]),
         {
           tags: {
             "@id": "https://example.com/tags",
@@ -816,13 +823,14 @@ test("verifyCompoundPortableObjectProofs() exempts keys embedded in portable act
   );
   assert(result.status === "ok");
   assert(result.verified);
-  assertEquals(result.portableObjects.map((o) => o.path), [""]);
+  assertEquals(
+    result.portableObjects.map((o) => o.path),
+    [""],
+  );
   // An ap: actor with gateway keys at compatible identifiers, as Fedify's
   // own portable actors have:
   result = await verifyCompoundPortableObjectProofs(
-    await signCompatible(
-      await compatibleActor(`ap://${compatibleDid}/actor`),
-    ),
+    await signCompatible(await compatibleActor(`ap://${compatibleDid}/actor`)),
     limits,
     options,
   );
@@ -880,15 +888,12 @@ test("verifyCompoundPortableObjectProofs() exempts only keys of the parent itsel
     },
     "a parent context with a keyword alias": {
       ...actor,
-      "@context": [
-        ...actor["@context"] as unknown[],
-        { kind: "@type" },
-      ],
+      "@context": [...(actor["@context"] as unknown[]), { kind: "@type" }],
     },
     "a parent context with a list container": {
       ...actor,
       "@context": [
-        ...actor["@context"] as unknown[],
+        ...(actor["@context"] as unknown[]),
         {
           tags: {
             "@id": "https://example.com/tags",
@@ -981,7 +986,11 @@ test("verifyCompoundPortableObjectProofs() exempts keys at ap: URIs embedded in 
     );
     assert(result.status === "ok", name);
     assert(result.verified, name);
-    assertEquals(result.portableObjects.map((o) => o.path), [""], name);
+    assertEquals(
+      result.portableObjects.map((o) => o.path),
+      [""],
+      name,
+    );
   }
   // Keys identified by @id rather than id:
   const apActor = withKeyIds(actor, apActorId, { id: apActorId });
@@ -1000,14 +1009,17 @@ test("verifyCompoundPortableObjectProofs() exempts keys at ap: URIs embedded in 
   );
   assert(withAtIds.status === "ok");
   assert(withAtIds.verified);
-  assertEquals(withAtIds.portableObjects.map((o) => o.path), [""]);
+  assertEquals(
+    withAtIds.portableObjects.map((o) => o.path),
+    [""],
+  );
   // A context that defines an ap term does not turn ap: URIs into compact
   // IRIs:
   const withApTerm = await verifyCompoundPortableObjectProofs(
     await signCompatible({
       ...withKeyIds(actor, apActorId, { id: apActorId }),
       "@context": [
-        ...actor["@context"] as unknown[],
+        ...(actor["@context"] as unknown[]),
         { ap: "https://ap.example/" },
       ],
     }),
@@ -1016,7 +1028,10 @@ test("verifyCompoundPortableObjectProofs() exempts keys at ap: URIs embedded in 
   );
   assert(withApTerm.status === "ok");
   assert(withApTerm.verified);
-  assertEquals(withApTerm.portableObjects.map((o) => o.path), [""]);
+  assertEquals(
+    withApTerm.portableObjects.map((o) => o.path),
+    [""],
+  );
   // Embedded in a signed Update, as an FEP-ae97 client publishes one after
   // registering its actor:
   const update = await signCompatible({
@@ -1035,7 +1050,10 @@ test("verifyCompoundPortableObjectProofs() exempts keys at ap: URIs embedded in 
   );
   assert(result.status === "ok");
   assert(result.verified);
-  assertEquals(result.portableObjects.map((o) => o.path), ["/object", ""]);
+  assertEquals(
+    result.portableObjects.map((o) => o.path),
+    ["/object", ""],
+  );
 });
 
 test("verifyCompoundPortableObjectProofs() exempts only ap: keys of the parent itself", async () => {
@@ -1050,12 +1068,10 @@ test("verifyCompoundPortableObjectProofs() exempts only ap: keys of the parent i
     "a key without a fragment": apActorId,
     "a key with an empty fragment": `${apActorId}#`,
     "a key with dot segments": `ap://${compatibleDid}/x/../actor#main-key`,
-    "a key with encoded dot segments":
-      `ap://${compatibleDid}/x/%2E%2E/actor#main-key`,
+    "a key with encoded dot segments": `ap://${compatibleDid}/x/%2E%2E/actor#main-key`,
     "a key with an encoded slash": `${apActorId}%2F#main-key`,
     "a key with an encoded fragment delimiter": `${apActorId}%23main-key`,
-    "a compatible key with dot segments":
-      `https://gw.example/.well-known/apgateway/${compatibleDid}/x/../actor#main-key`,
+    "a compatible key with dot segments": `https://gw.example/.well-known/apgateway/${compatibleDid}/x/../actor#main-key`,
   };
   const cases: Record<string, Record<string, unknown>> = {};
   for (const [name, id] of Object.entries(keyIds)) {
@@ -1068,8 +1084,9 @@ test("verifyCompoundPortableObjectProofs() exempts only ap: keys of the parent i
     },
     "a key controlled by another actor": {
       ...actor,
-      assertionMethod: (actor.assertionMethod as Record<string, unknown>[])
-        .map((key) => ({ ...key, controller: `ap://${otherDid}/actor` })),
+      assertionMethod: (actor.assertionMethod as Record<string, unknown>[]).map(
+        (key) => ({ ...key, controller: `ap://${otherDid}/actor` }),
+      ),
     },
     "a key with extra content": {
       ...actor,
@@ -1187,7 +1204,10 @@ test("verifyCompoundPortableObjectProofs() leaves keys at DID URLs alone", async
   );
   assert(result.status === "ok");
   assert(result.verified);
-  assertEquals(result.portableObjects.map((o) => o.path), [""]);
+  assertEquals(
+    result.portableObjects.map((o) => o.path),
+    [""],
+  );
 });
 
 test("compound proof observation does not throw for malformed subject IDs", async () => {
@@ -1216,11 +1236,12 @@ test("compound proof observation does not throw for malformed subject IDs", asyn
 
 test("compound portable policy rejects actor gateways before key work", async () => {
   const { verificationObservation } = await import("./verification.ts");
-  for (
-    const gateways of [undefined, [], ["https://gw.example/path"], [
-      "https://gw.example",
-    ]]
-  ) {
+  for (const gateways of [
+    undefined,
+    [],
+    ["https://gw.example/path"],
+    ["https://gw.example"],
+  ]) {
     const inner = await secureRawDocument(
       {
         "@context": [
@@ -1266,15 +1287,19 @@ test("compound portable policy rejects actor gateways before key work", async ()
       reads.sort(),
       (valid
         ? [
-          vector.keys.inner.verificationMethod,
-          vector.keys.outer.verificationMethod,
-        ]
-        : [vector.keys.outer.verificationMethod]).sort(),
+            vector.keys.inner.verificationMethod,
+            vector.keys.outer.verificationMethod,
+          ]
+        : [vector.keys.outer.verificationMethod]
+      ).sort(),
     );
-    assertEquals(result.proofs.map((p) => [p.path, p.verified]), [[
-      "/object",
-      valid,
-    ], ["", true]]);
+    assertEquals(
+      result.proofs.map((p) => [p.path, p.verified]),
+      [
+        ["/object", valid],
+        ["", true],
+      ],
+    );
     assertEquals(result.snapshot, outer);
     assert(Object.isFrozen(result.snapshot));
     assert(Object.isFrozen(result.proofs));
@@ -1290,8 +1315,8 @@ test("compound portable policy rejects actor gateways before key work", async ()
         verified: false,
         reason: { type: "invalidProof" },
       });
-      const attempt = evidence.attempts.find((a) =>
-        a.subject.pointer === "/object"
+      const attempt = evidence.attempts.find(
+        (a) => a.subject.pointer === "/object",
       );
       assert(attempt?.status === "rejected");
       assertEquals(attempt.reason, {
@@ -1408,10 +1433,13 @@ test("compound portable policy skips doomed proofs without pruning parents", asy
     assertEquals(result.verified, false);
     assertEquals(reads, [vector.keys.outer.verificationMethod]);
     assertEquals(loads, 0);
-    assertEquals(result.proofs.map((p) => [p.path, p.verified]), [[
-      "/attachment/0",
-      false,
-    ], ["", true]]);
+    assertEquals(
+      result.proofs.map((p) => [p.path, p.verified]),
+      [
+        ["/attachment/0", false],
+        ["", true],
+      ],
+    );
     const [rejected] = result.portableObjects;
     assert(!rejected.verified);
     assertEquals(rejected.reason.type, candidate.reason);

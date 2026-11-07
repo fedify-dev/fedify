@@ -45,24 +45,25 @@ async function request(
     },
     onBeforeResponse: (event, payload) => beforeResponse?.(event, payload),
   });
-  fedifyPlugin(
-    {
-      h3App: app,
-      hooks: {
-        hook(name: string, callback: unknown) {
-          if (name === "beforeResponse") {
-            beforeResponse = callback as BeforeResponse;
-          }
-          if (name === "render:before") renderBefore = callback as RenderBefore;
-        },
+  fedifyPlugin({
+    h3App: app,
+    hooks: {
+      hook(name: string, callback: unknown) {
+        if (name === "beforeResponse") {
+          beforeResponse = callback as BeforeResponse;
+        }
+        if (name === "render:before") renderBefore = callback as RenderBefore;
       },
-    } as Parameters<typeof fedifyPlugin>[0],
-  );
+    },
+  } as Parameters<typeof fedifyPlugin>[0]);
   const federation = {
-    fetch: (_request: Request, options: {
-      onNotAcceptable: () => Response;
-      onNotFound: () => Response;
-    }) =>
+    fetch: (
+      _request: Request,
+      options: {
+        onNotAcceptable: () => Response;
+        onNotFound: () => Response;
+      },
+    ) =>
       Promise.resolve(
         deferred ? options.onNotAcceptable() : options.onNotFound(),
       ),
@@ -125,7 +126,7 @@ async function request(
     };
   } finally {
     await new Promise<void>((resolve, reject) =>
-      server.close((error) => error ? reject(error) : resolve())
+      server.close((error) => (error ? reject(error) : resolve())),
     );
   }
 }
@@ -146,9 +147,9 @@ for (const kind of ["miss", "renderer-error", "renderer-response"] as const) {
       equal(response.headers.getSetCookie().length, 3);
       for (const cookie of ["session=active", "a=", "b="]) {
         ok(
-          response.headers.getSetCookie().some((value) =>
-            value.startsWith(cookie)
-          ),
+          response.headers
+            .getSetCookie()
+            .some((value) => value.startsWith(cookie)),
         );
       }
     }
@@ -156,14 +157,12 @@ for (const kind of ["miss", "renderer-error", "renderer-response"] as const) {
     equal(errors, 0);
   });
 }
-for (
-  const kind of [
-    "route-error",
-    "route-response",
-    "success",
-    "server-error",
-  ] as const
-) {
+for (const kind of [
+  "route-error",
+  "route-response",
+  "success",
+  "server-error",
+] as const) {
   test(`Nuxt preserves application ${kind}`, async () => {
     const { response, errors } = await request(kind);
     equal(

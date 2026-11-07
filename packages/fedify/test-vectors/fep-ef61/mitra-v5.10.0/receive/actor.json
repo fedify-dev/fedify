@@ -27,10 +27,7 @@
       "type": "Multikey"
     }
   ],
-  "gateways": [
-    "http://127.0.0.1:18497",
-    "http://localhost:18498"
-  ],
+  "gateways": ["http://127.0.0.1:18497", "http://localhost:18498"],
   "id": "ap+ef61://did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor",
   "inbox": "ap+ef61://did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor/inbox",
   "name": "Fedify live portable client",

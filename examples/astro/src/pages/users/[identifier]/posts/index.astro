@@ -17,7 +17,7 @@ if (!actor) {
   return Astro.redirect("/");
 }
 
-const user = await actor.toJsonLd() as {
+const user = (await actor.toJsonLd()) as {
   icon: { url: string };
   name: string;
   preferredUsername: string;
@@ -67,7 +67,7 @@ const host = new URL(user.url).host;
 const allPosts = postStore.getAll();
 const posts = await Promise.all(
   allPosts.map(async (p) => {
-    const jsonLd = await p.toJsonLd() as {
+    const jsonLd = (await p.toJsonLd()) as {
       published?: string;
       content: string;
       url: string;
@@ -89,7 +89,9 @@ const posts = await Promise.all(
       </div>
       <div class="user-info">
         <h1 class="user-name">{user.name}</h1>
-        <p class="user-handle">@{user.preferredUsername}@{host}</p>
+        <p class="user-handle">
+          @{user.preferredUsername}@{host}
+        </p>
         {user.summary && <p class="user-bio">{user.summary}</p>}
       </div>
     </div>
@@ -104,7 +106,9 @@ const posts = await Promise.all(
         ></textarea>
       </label>
     </div>
-    <button type="submit" class="post-button">Post</button>
+    <button type="submit" class="post-button">
+      Post
+    </button>
   </form>
 
   <div class="posts-container">

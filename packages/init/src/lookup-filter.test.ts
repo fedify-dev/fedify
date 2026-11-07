@@ -16,15 +16,21 @@ test("parseLookupCase() parses the last four path segments", () => {
 
 test("matchesLookupCasePattern() supports wildcards", () => {
   deepStrictEqual(
-    matchesLookupCasePattern(["solidstart", "deno", "postgres", "redis"])(
-      ["solidstart", "deno", "*", "*"],
-    ),
+    matchesLookupCasePattern(["solidstart", "deno", "postgres", "redis"])([
+      "solidstart",
+      "deno",
+      "*",
+      "*",
+    ]),
     true,
   );
   deepStrictEqual(
-    matchesLookupCasePattern(["solidstart", "npm", "postgres", "redis"])(
-      ["solidstart", "deno", "*", "*"],
-    ),
+    matchesLookupCasePattern(["solidstart", "npm", "postgres", "redis"])([
+      "solidstart",
+      "deno",
+      "*",
+      "*",
+    ]),
     false,
   );
 });
@@ -37,11 +43,8 @@ test("isTestable() excludes banned lookup cases only", () => {
     join("/tmp", "hyd", "hono", "deno", "denokv", "denokv"),
   ];
 
-  deepStrictEqual(
-    dirs.filter(isTestable),
-    [
-      join("/tmp", "hyd", "solidstart", "npm", "postgres", "redis"),
-      join("/tmp", "hyd", "hono", "deno", "denokv", "denokv"),
-    ],
-  );
+  deepStrictEqual(dirs.filter(isTestable), [
+    join("/tmp", "hyd", "solidstart", "npm", "postgres", "redis"),
+    join("/tmp", "hyd", "hono", "deno", "denokv", "denokv"),
+  ]);
 });

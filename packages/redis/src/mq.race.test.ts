@@ -36,10 +36,7 @@ class MockRedis extends EventEmitter {
    * Simulates Redis SUBSCRIBE command.
    * Captures callback for later execution (simulates async event loop behavior).
    */
-  subscribe(
-    _channel: RedisKey,
-    callback?: Callback<number>,
-  ): Promise<number> {
+  subscribe(_channel: RedisKey, callback?: Callback<number>): Promise<number> {
     this.#subscribed = true;
     if (callback) {
       this.#subscribeCallback = () => callback(null, 1);
@@ -199,11 +196,7 @@ test("Deterministic: Race condition with callback approach", async () => {
 
   // Assert: message was LOST
   strictEqual(listenersAtPublish, 0, "No listeners when publish() was called");
-  strictEqual(
-    receivedMessages.length,
-    0,
-    "Message lost due to race condition",
-  );
+  strictEqual(receivedMessages.length, 0, "Message lost due to race condition");
 
   mockSubRedis.disconnect();
 });

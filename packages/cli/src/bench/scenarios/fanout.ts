@@ -66,10 +66,7 @@ export const fanoutRunner: ScenarioRunner = {
         const baseline = await fetchServerSnapshot(context.target, fetchImpl);
         const started = Date.now();
         const response = await fetchImpl(
-          new URL(
-            "/.well-known/fedify/bench/trigger",
-            context.target,
-          ),
+          new URL("/.well-known/fedify/bench/trigger", context.target),
           {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -95,8 +92,8 @@ export const fanoutRunner: ScenarioRunner = {
           baseline,
           clock,
           signal: context.signal,
-          timeoutMs: context.scenario.queueDrainTimeoutMs ??
-            DEFAULT_DRAIN_TIMEOUT_MS,
+          timeoutMs:
+            context.scenario.queueDrainTimeoutMs ?? DEFAULT_DRAIN_TIMEOUT_MS,
         });
         if (drain == null) {
           return {
@@ -145,8 +142,8 @@ export const fanoutRunner: ScenarioRunner = {
         includeHistogram: true,
       });
       const server = addQueueDrain(measurement.server, drainHistogram);
-      const deliveryThroughputPerSec = delivered /
-        (Math.max(measuredWindowMs(context.scenario), 1) / 1000);
+      const deliveryThroughputPerSec =
+        delivered / (Math.max(measuredWindowMs(context.scenario), 1) / 1000);
       return {
         ...measurement,
         deliveryThroughputPerSec,
@@ -204,13 +201,12 @@ export async function spawnSinkServer(options: {
   readonly close: () => Promise<void>;
 }> {
   const sinkBase = resolveSinkBase("benchmark sink", options.sinkBase);
-  const advertised = options.advertiseHost == null
-    ? null
-    : resolveAdvertiseHost(options.advertiseHost);
-  const behaviors = Array.from(
-    { length: options.followers },
-    (_, i) =>
-      parseSinkBehavior(options.rawBehaviors?.[i] ?? options.rawBehavior),
+  const advertised =
+    options.advertiseHost == null
+      ? null
+      : resolveAdvertiseHost(options.advertiseHost);
+  const behaviors = Array.from({ length: options.followers }, (_, i) =>
+    parseSinkBehavior(options.rawBehaviors?.[i] ?? options.rawBehavior),
   );
   const server = serve({
     port: sinkBase?.port ?? 0,
@@ -221,12 +217,12 @@ export async function spawnSinkServer(options: {
         new URL(request.url).pathname,
       );
       if (match != null) {
-        const behavior = behaviors[Number(match[1])] ??
-          parseSinkBehavior(options.rawBehavior);
+        const behavior =
+          behaviors[Number(match[1])] ?? parseSinkBehavior(options.rawBehavior);
         await request.arrayBuffer().catch(() => {});
         if (behavior.latencyMs > 0) {
           await new Promise((resolve) =>
-            setTimeout(resolve, behavior.latencyMs)
+            setTimeout(resolve, behavior.latencyMs),
           );
         }
         return new Response("accepted", { status: behavior.status });
@@ -236,7 +232,8 @@ export async function spawnSinkServer(options: {
   });
   await server.ready();
   const bound = new URL(server.url!);
-  const base = sinkBase?.base ??
+  const base =
+    sinkBase?.base ??
     (advertised == null
       ? bound
       : new URL(`http://${advertised.urlHost}:${bound.port}/`));
@@ -299,9 +296,10 @@ export function resolveSinkBase(
   };
 }
 
-function parseSinkBehavior(
-  raw: unknown,
-): { latencyMs: number; status: number } {
+function parseSinkBehavior(raw: unknown): {
+  latencyMs: number;
+  status: number;
+} {
   if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
     return { latencyMs: 0, status: 202 };
   }
@@ -318,10 +316,13 @@ function parseSinkBehavior(
   }
   return {
     latencyMs,
-    status: typeof status === "number" && Number.isInteger(status) &&
-        status >= 100 && status <= 599
-      ? status
-      : 202,
+    status:
+      typeof status === "number" &&
+      Number.isInteger(status) &&
+      status >= 100 &&
+      status <= 599
+        ? status
+        : 202,
   };
 }
 

@@ -126,7 +126,8 @@ export class MysqlKvStore implements KvStore {
   async #expire(): Promise<void> {
     if (this.#expireCleanupRate <= 0) return;
     if (
-      this.#expireCleanupRate < 1 && Math.random() >= this.#expireCleanupRate
+      this.#expireCleanupRate < 1 &&
+      Math.random() >= this.#expireCleanupRate
     ) {
       return;
     }
@@ -247,9 +248,8 @@ export class MysqlKvStore implements KvStore {
       );
 
       const row = rows[0];
-      const currentValue = !row || row.is_expired
-        ? undefined
-        : (row as RowDataPacket).value;
+      const currentValue =
+        !row || row.is_expired ? undefined : (row as RowDataPacket).value;
 
       if (!isEqual(currentValue, expectedValue)) {
         await conn.rollback();
@@ -377,9 +377,7 @@ export class MysqlKvStore implements KvStore {
    * @since 2.1.0
    */
   async drop(): Promise<void> {
-    await this.#pool.query(
-      `DROP TABLE IF EXISTS \`${this.#tableName}\``,
-    );
+    await this.#pool.query(`DROP TABLE IF EXISTS \`${this.#tableName}\``);
     this.#initialized = false;
   }
 }

@@ -35,7 +35,8 @@ export async function handleNodeInfo<TContextData>(
   const json = nodeInfoToJson(nodeInfo);
   return new Response(JSON.stringify(json), {
     headers: {
-      "Content-Type": "application/json;" +
+      "Content-Type":
+        "application/json;" +
         ' profile="http://nodeinfo.diaspora.software/ns/schema/2.1#"',
     },
   });
@@ -57,7 +58,8 @@ export function handleNodeInfoJrd<TContextData>(
     links.push({
       rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
       href: context.getNodeInfoUri().href,
-      type: "application/json;" +
+      type:
+        "application/json;" +
         ' profile="http://nodeinfo.diaspora.software/ns/schema/2.1#"',
     });
   } catch (e) {

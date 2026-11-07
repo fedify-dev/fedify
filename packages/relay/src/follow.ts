@@ -18,16 +18,18 @@ export async function validateFollowActivity(
   if (follow.id == null || follow.objectId == null) return null;
 
   const parsed = ctx.parseUri(follow.objectId);
-  const isPublicFollow = follow.objectId.href ===
-    "https://www.w3.org/ns/activitystreams#Public";
+  const isPublicFollow =
+    follow.objectId.href === "https://www.w3.org/ns/activitystreams#Public";
   if (!isPublicFollow && parsed?.type !== "actor") return null;
 
   const follower = await follow.getActor(ctx);
   if (
-    follower == null || follower.id == null ||
+    follower == null ||
+    follower.id == null ||
     follower.preferredUsername == null ||
     follower.inboxId == null
-  ) return null;
+  )
+    return null;
 
   return follower;
 }

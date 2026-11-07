@@ -44,10 +44,7 @@ export function fillRouteOptions(
     );
     const mismatched = [...unknown, ...missing];
     if (mismatched.length > 0) {
-      throw new RouteTemplateOptionsNotMatchedError(
-        pattern.path,
-        mismatched,
-      );
+      throw new RouteTemplateOptionsNotMatchedError(pattern.path, mismatched);
     }
   }
 
@@ -58,9 +55,7 @@ export function fillRouteOptions(
 
     const hasExplode = specs.some((spec) => spec.explode);
     const hasPrefix = specs.some((spec) => spec.prefix != null);
-    const hasPlain = specs.some(
-      (spec) => !spec.explode && spec.prefix == null,
-    );
+    const hasPlain = specs.some((spec) => !spec.explode && spec.prefix == null);
 
     const multiple = override?.multiple;
     if (
@@ -73,11 +68,7 @@ export function fillRouteOptions(
 
     variables[name] = {
       nullable: fillNullable(override?.nullable),
-      multiple: fillMultiple(
-        multiple,
-        hasExplode,
-        hasPrefix,
-      ),
+      multiple: fillMultiple(multiple, hasExplode, hasPrefix),
       duplicable: fillDuplicable(
         override?.duplicable,
         pattern.path,

@@ -23,13 +23,15 @@ const KNOWN_SAFE_CONTEXT_URLS: ReadonlySet<string> = getKnownSafeContextUrls();
 const MAX_TRAVERSAL_DEPTH = 64;
 
 function isJsonLdListObject(value: unknown): boolean {
-  return typeof value === "object" && value != null &&
-    Object.hasOwn(value, "@list");
+  return (
+    typeof value === "object" && value != null && Object.hasOwn(value, "@list")
+  );
 }
 
 function isJsonLdValueObject(value: unknown): boolean {
-  return typeof value === "object" && value != null &&
-    Object.hasOwn(value, "@value");
+  return (
+    typeof value === "object" && value != null && Object.hasOwn(value, "@value")
+  );
 }
 
 function* getContextObjects(
@@ -57,9 +59,12 @@ function* getContextObjects(
 }
 
 function isActivityStreamsAttachmentTerm(value: unknown): boolean {
-  return typeof value === "object" && value != null &&
+  return (
+    typeof value === "object" &&
+    value != null &&
     (value as Record<string, unknown>)["@id"] === "as:attachment" &&
-    (value as Record<string, unknown>)["@type"] === "@id";
+    (value as Record<string, unknown>)["@type"] === "@id"
+  );
 }
 
 /** @internal */
@@ -102,9 +107,7 @@ function wrapScalarAttachments(
   if (depth >= MAX_TRAVERSAL_DEPTH) return jsonLd;
   // A nested self-contained secured document is signed as it stands; its
   // bytes belong to its own proof, not to this document's wire format.
-  if (
-    preserveSecured && depth > 0 && isSelfContainedSecuredDocument(jsonLd)
-  ) {
+  if (preserveSecured && depth > 0 && isSelfContainedSecuredDocument(jsonLd)) {
     return jsonLd;
   }
 
@@ -131,11 +134,12 @@ function wrapScalarAttachments(
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
     const value = record[key];
-    const next = key === "@context" ||
-        (key === "@value" && isJsonLdValueObject(jsonLd))
-      ? value
-      : wrapScalarAttachments(value, preserveSecured, depth + 1);
-    const shouldWrap = ATTACHMENT_FIELDS.has(key) &&
+    const next =
+      key === "@context" || (key === "@value" && isJsonLdValueObject(jsonLd))
+        ? value
+        : wrapScalarAttachments(value, preserveSecured, depth + 1);
+    const shouldWrap =
+      ATTACHMENT_FIELDS.has(key) &&
       next != null &&
       !Array.isArray(next) &&
       !isJsonLdListObject(next);
@@ -181,7 +185,8 @@ function exceedsTraversalDepth(value: unknown, depth: number = 0): boolean {
   const record = value as Record<string, unknown>;
   for (const key of Object.keys(record)) {
     if (
-      key === "@context" || (key === "@value" && isJsonLdValueObject(value))
+      key === "@context" ||
+      (key === "@value" && isJsonLdValueObject(value))
     ) {
       continue;
     }
@@ -195,11 +200,12 @@ function hasKnownSafeContext(jsonLd: unknown): boolean {
   const record = jsonLd as Record<string, unknown>;
   if (!Object.hasOwn(record, "@context")) return false;
   const context = record["@context"];
-  const entries = typeof context === "string"
-    ? [context]
-    : Array.isArray(context)
-    ? context
-    : null;
+  const entries =
+    typeof context === "string"
+      ? [context]
+      : Array.isArray(context)
+        ? context
+        : null;
   if (entries == null || entries.length < 1) return false;
   let hasActivityStreamsContext = false;
   for (const entry of entries) {
@@ -220,23 +226,26 @@ function getLogSafeJsonLdMetadata(jsonLd: unknown): Record<string, unknown> {
   const record = jsonLd as Record<string, unknown>;
   const context = record["@context"];
   return {
-    id: typeof record.id === "string"
-      ? record.id
-      : typeof record["@id"] === "string"
-      ? record["@id"]
-      : undefined,
-    type: typeof record.type === "string"
-      ? record.type
-      : typeof record["@type"] === "string"
-      ? record["@type"]
-      : undefined,
-    context: typeof context === "string"
-      ? context
-      : Array.isArray(context)
-      ? context.filter((entry) => typeof entry === "string").slice(0, 4)
-      : context == null
-      ? undefined
-      : "[inline context]",
+    id:
+      typeof record.id === "string"
+        ? record.id
+        : typeof record["@id"] === "string"
+          ? record["@id"]
+          : undefined,
+    type:
+      typeof record.type === "string"
+        ? record.type
+        : typeof record["@type"] === "string"
+          ? record["@type"]
+          : undefined,
+    context:
+      typeof context === "string"
+        ? context
+        : Array.isArray(context)
+          ? context.filter((entry) => typeof entry === "string").slice(0, 4)
+          : context == null
+            ? undefined
+            : "[inline context]",
   };
 }
 

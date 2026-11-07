@@ -75,11 +75,11 @@ export class NetlifyMessageQueueSendError extends Error {
     readonly orderingSequence?: number;
     readonly cause?: unknown;
   }) {
-    const ordering = options.orderingKey == null ||
-        options.orderingSequence == null
-      ? ""
-      : `; ordering key ${options.orderingKey}, sequence ` +
-        options.orderingSequence;
+    const ordering =
+      options.orderingKey == null || options.orderingSequence == null
+        ? ""
+        : `; ordering key ${options.orderingKey}, sequence ` +
+          options.orderingSequence;
     super(
       `Failed to send Netlify Async Workloads event ${
         options.eventId ?? "without an acknowledgement"
@@ -193,20 +193,20 @@ function validateOrderingState(value: unknown): OrderingState {
     throw new TypeError("Invalid Netlify queue ordering state.");
   }
   const nextSequence = "nextSequence" in value ? value.nextSequence : undefined;
-  const completedSequence = "completedSequence" in value
-    ? value.completedSequence
-    : undefined;
-  const cancelledSequences = "cancelledSequences" in value
-    ? value.cancelledSequences
-    : undefined;
+  const completedSequence =
+    "completedSequence" in value ? value.completedSequence : undefined;
+  const cancelledSequences =
+    "cancelledSequences" in value ? value.cancelledSequences : undefined;
   if (
     typeof nextSequence !== "number" ||
-    !Number.isSafeInteger(nextSequence) || nextSequence < 1 ||
+    !Number.isSafeInteger(nextSequence) ||
+    nextSequence < 1 ||
     typeof completedSequence !== "number" ||
-    !Number.isSafeInteger(completedSequence) || completedSequence < 0 ||
+    !Number.isSafeInteger(completedSequence) ||
+    completedSequence < 0 ||
     !Array.isArray(cancelledSequences) ||
-    !cancelledSequences.every((sequence) =>
-      Number.isSafeInteger(sequence) && sequence > 0
+    !cancelledSequences.every(
+      (sequence) => Number.isSafeInteger(sequence) && sequence > 0,
     )
   ) {
     throw new TypeError("Invalid Netlify queue ordering state.");
@@ -234,10 +234,13 @@ async function reserveOrderingSequence(
   queue: NetlifyMessageQueue,
   orderingKey: string,
 ): Promise<number> {
-  return await updateOrderingState(queue, orderingKey, (state) => [{
-    ...state,
-    nextSequence: state.nextSequence + 1,
-  }, state.nextSequence]);
+  return await updateOrderingState(queue, orderingKey, (state) => [
+    {
+      ...state,
+      nextSequence: state.nextSequence + 1,
+    },
+    state.nextSequence,
+  ]);
 }
 
 async function cancelOrderingSequence(
@@ -345,9 +348,10 @@ export class NetlifyMessageQueue implements MessageQueue {
       throw new RangeError("delay must be a non-negative finite duration.");
     }
     const orderingKey = options?.orderingKey;
-    const orderingSequence = orderingKey == null
-      ? undefined
-      : await reserveOrderingSequence(this, orderingKey);
+    const orderingSequence =
+      orderingKey == null
+        ? undefined
+        : await reserveOrderingSequence(this, orderingKey);
     let result;
     try {
       result = await this.#client.send(this.eventName, {

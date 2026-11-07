@@ -4,9 +4,5 @@ import {
   createMismatchRuleEslint,
 } from "../lib/mismatch.ts";
 
-export const deno = createMismatchRuleDeno(
-  properties.featured,
-);
-export const eslint = createMismatchRuleEslint(
-  properties.featured,
-);
+export const deno = createMismatchRuleDeno(properties.featured);
+export const eslint = createMismatchRuleEslint(properties.featured);

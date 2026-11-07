@@ -36,10 +36,14 @@ federation.setActorDispatcher(
 `;
 
 runTests(ruleName, {
-  ...createDirectActorPropertyRequiredRuleTests("url", {
-    singular: PROFILE_URL,
-    plural: `[${PROFILE_URL}]`,
-  }, config),
+  ...createDirectActorPropertyRequiredRuleTests(
+    "url",
+    {
+      singular: PROFILE_URL,
+      plural: `[${PROFILE_URL}]`,
+    },
+    config,
+  ),
   ...createRequiredEdgeCaseTests("url", config),
 
   // ✅ Good - a bare return means no actor was found
@@ -161,9 +165,7 @@ runTests(ruleName, {
   // ❌ Bad - an explicitly undefined URL is not a profile URL
   "undefined url": [
     lintTest({
-      code: conciseBody(
-        `new Person({ url: undefined, name: "John Doe" })`,
-      ),
+      code: conciseBody(`new Person({ url: undefined, name: "John Doe" })`),
       rule,
       ruleName,
       expectedError,
@@ -174,9 +176,7 @@ runTests(ruleName, {
   // ❌ Bad - an explicitly undefined plural URL is not a profile URL
   "undefined urls": [
     lintTest({
-      code: conciseBody(
-        `new Person({ urls: undefined, name: "John Doe" })`,
-      ),
+      code: conciseBody(`new Person({ urls: undefined, name: "John Doe" })`),
       rule,
       ruleName,
       expectedError,
@@ -257,9 +257,7 @@ runTests(ruleName, {
   // ❌ Bad - TypeScript assertions do not hide an empty urls array
   "empty urls array with TypeScript assertion": [
     lintTest({
-      code: conciseBody(
-        `new Person({ urls: [] as URL[], name: "John Doe" })`,
-      ),
+      code: conciseBody(`new Person({ urls: [] as URL[], name: "John Doe" })`),
       rule,
       ruleName,
       expectedError,
@@ -364,9 +362,7 @@ test("actor-profile-url-required: preferredUsername diagnostic is unchanged", ()
 
 test("actor-profile-url-required: preset severities", () => {
   deepStrictEqual(
-    eslintPlugin.configs.recommended.rules[
-      `@fedify/lint/${ruleName}`
-    ],
+    eslintPlugin.configs.recommended.rules[`@fedify/lint/${ruleName}`],
     "warn",
   );
   deepStrictEqual(

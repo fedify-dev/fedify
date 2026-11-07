@@ -27,18 +27,12 @@ export class MockKvStore implements KvStore {
   get<T = unknown>(key: KvKey): Promise<T | undefined> {
     return Promise.resolve(this.#values[JSON.stringify(key)] as T | undefined);
   }
-  set(
-    key: KvKey,
-    value: unknown,
-    _options?: KvStoreSetOptions,
-  ): Promise<void> {
+  set(key: KvKey, value: unknown, _options?: KvStoreSetOptions): Promise<void> {
     this.#values[JSON.stringify(key)] = value;
     return Promise.resolve();
   }
   async delete(_: KvKey): Promise<void> {}
-  cas(
-    ..._: [KvKey, unknown, unknown]
-  ): Promise<boolean> {
+  cas(..._: [KvKey, unknown, unknown]): Promise<boolean> {
     return Promise.resolve(false);
   }
   async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
@@ -112,13 +106,16 @@ export interface KvCacheParameters {
  * @param parameters The parameters for the cache.
  * @returns The decorated document loader which is cache-enabled.
  */
-export function kvCache(
-  { loader, kv, prefix, rules, meterProvider, kind }: KvCacheParameters,
-): DocumentLoader {
+export function kvCache({
+  loader,
+  kv,
+  prefix,
+  rules,
+  meterProvider,
+  kind,
+}: KvCacheParameters): DocumentLoader {
   const keyPrefix = prefix ?? ["_fedify", "remoteDocument"];
-  rules ??= [
-    [new URLPattern({}), Temporal.Duration.from({ minutes: 5 })],
-  ];
+  rules ??= [[new URLPattern({}), Temporal.Duration.from({ minutes: 5 })]];
   for (const [p, duration] of rules) {
     if (Temporal.Duration.compare(duration, { days: 30 }) > 0) {
       throw new TypeError(
@@ -131,10 +128,7 @@ export function kvCache(
   }
   const lookupKind: DocumentFetchKind = kind ?? "object";
 
-  function emitCacheMetric(
-    url: string,
-    result: "hit" | "miss",
-  ): void {
+  function emitCacheMetric(url: string, result: "hit" | "miss"): void {
     if (meterProvider == null) return;
     let remoteUrl: URL | undefined;
     try {

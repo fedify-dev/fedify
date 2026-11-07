@@ -102,12 +102,10 @@ test("parseHashlinkGatewayRequest()", async (t) => {
 
   await t.step("accepts slashes in a base64 digest", () => {
     assert(ffBase64.includes("/"));
-    for (
-      const hashlink of [
-        `hl:${ffBase64}`,
-        `hl:${ffBase64.replaceAll("/", "%2F")}`,
-      ]
-    ) {
+    for (const hashlink of [
+      `hl:${ffBase64}`,
+      `hl:${ffBase64.replaceAll("/", "%2F")}`,
+    ]) {
       const media = assertMedia(mediaUrl(hashlink));
       assertEquals(media.digestMultibase, ffBase64);
       assertEquals(media.digest, ffDigest);
@@ -139,18 +137,16 @@ test("parseHashlinkGatewayRequest()", async (t) => {
 
   await t.step("ignores other URLs", async () => {
     const did = await exportDidKey(ed25519PublicKey.publicKey);
-    for (
-      const url of [
-        "https://example.com/.well-known/apgateway",
-        "https://example.com/.well-known/apgateway/",
-        `https://example.com/.well-known/apgateway/${did}/notes/1`,
-        `https://example.com/.WELL-KNOWN/apgateway/hl:${mediaDigest}`,
-        `https://example.com/.well-known/apgateway-media/hl:${mediaDigest}`,
-        `https://example.com/hl:${mediaDigest}`,
-        `https://example.com/.well-known/apgateway/x/hl:${mediaDigest}`,
-        `https://example.com/.well-known/apgateway/hlx${mediaDigest}`,
-      ]
-    ) {
+    for (const url of [
+      "https://example.com/.well-known/apgateway",
+      "https://example.com/.well-known/apgateway/",
+      `https://example.com/.well-known/apgateway/${did}/notes/1`,
+      `https://example.com/.WELL-KNOWN/apgateway/hl:${mediaDigest}`,
+      `https://example.com/.well-known/apgateway-media/hl:${mediaDigest}`,
+      `https://example.com/hl:${mediaDigest}`,
+      `https://example.com/.well-known/apgateway/x/hl:${mediaDigest}`,
+      `https://example.com/.well-known/apgateway/hlx${mediaDigest}`,
+    ]) {
       assertStrictEquals(parse(url), null, url);
     }
   });
@@ -168,20 +164,18 @@ test("parseHashlinkGatewayRequest()", async (t) => {
         new Uint8Array([0x12, 0x10, ...new Uint8Array(16)]),
       ),
     );
-    for (
-      const hashlink of [
-        "hl:",
-        "hl:z",
-        "hl:zInvalid0OIl",
-        `hl:${sha512}`,
-        `hl:${short}`,
-        `hl:${mediaDigest}:zCwPSdabLuj3jue1qYujzunnKwpL4myKdyeqySyFhnzZ8qdfW3bb6W8dVdRu`,
-        `hl:${mediaDigest}/`,
-        `hl:${mediaDigest}/extra`,
-        `hl:${mediaDigest}%E0%A4%A`,
-        `hl:${mediaDigest}%0A`,
-      ]
-    ) {
+    for (const hashlink of [
+      "hl:",
+      "hl:z",
+      "hl:zInvalid0OIl",
+      `hl:${sha512}`,
+      `hl:${short}`,
+      `hl:${mediaDigest}:zCwPSdabLuj3jue1qYujzunnKwpL4myKdyeqySyFhnzZ8qdfW3bb6W8dVdRu`,
+      `hl:${mediaDigest}/`,
+      `hl:${mediaDigest}/extra`,
+      `hl:${mediaDigest}%E0%A4%A`,
+      `hl:${mediaDigest}%0A`,
+    ]) {
       assertMalformed(mediaUrl(hashlink));
     }
   });
@@ -220,12 +214,15 @@ test("Federation.fetch() serves hashlink media", async (t) => {
     let dispatched: Response | undefined;
     federation.setHashlinkMediaDispatcher(() => {
       // A body that never ends, so reading it through would hang:
-      const body = new ReadableStream<Uint8Array>({
-        pull(controller) {
-          pulled++;
-          controller.enqueue(mediaBytes.subarray(0, 4));
+      const body = new ReadableStream<Uint8Array>(
+        {
+          pull(controller) {
+            pulled++;
+            controller.enqueue(mediaBytes.subarray(0, 4));
+          },
         },
-      }, { highWaterMark: 0 });
+        { highWaterMark: 0 },
+      );
       dispatched = new Response(body, {
         status: 206,
         statusText: "Partial Content",
@@ -265,8 +262,8 @@ test("Federation.fetch() serves hashlink media", async (t) => {
 
   await t.step("does not touch the Vary header", async () => {
     const federation = createTestFederation();
-    federation.setHashlinkMediaDispatcher(() =>
-      new Response(mediaBytes, { headers: { Vary: "Accept-Encoding" } })
+    federation.setHashlinkMediaDispatcher(
+      () => new Response(mediaBytes, { headers: { Vary: "Accept-Encoding" } }),
     );
     const response = await federation.fetch(
       new Request(mediaUrl(`hl:${mediaDigest}`), {
@@ -280,7 +277,7 @@ test("Federation.fetch() serves hashlink media", async (t) => {
   await t.step("sends responses with immutable headers", async () => {
     const federation = createTestFederation();
     federation.setHashlinkMediaDispatcher(() =>
-      Response.redirect("https://cdn.example/media.png", 302)
+      Response.redirect("https://cdn.example/media.png", 302),
     );
     const response = await federation.fetch(
       new Request(mediaUrl(`hl:${mediaDigest}`), {
@@ -321,17 +318,14 @@ test("Federation.fetch() serves hashlink media", async (t) => {
       called = true;
       return new Response(mediaBytes);
     });
-    for (
-      const hashlink of [
-        "hl:zInvalid",
-        `hl:${mediaDigest}/`,
-        `hl:${mediaDigest}:z123`,
-      ]
-    ) {
-      const response = await federation.fetch(
-        new Request(mediaUrl(hashlink)),
-        { contextData: undefined },
-      );
+    for (const hashlink of [
+      "hl:zInvalid",
+      `hl:${mediaDigest}/`,
+      `hl:${mediaDigest}:z123`,
+    ]) {
+      const response = await federation.fetch(new Request(mediaUrl(hashlink)), {
+        contextData: undefined,
+      });
       assertEquals(response.status, 400, hashlink);
       assertEquals(
         response.headers.get("Content-Type"),
@@ -476,9 +470,10 @@ test("Federation.fetch() serves hashlink media", async (t) => {
     });
     const counts = recorder.getMeasurements("fedify.http.server.request.count");
     assertEquals(counts.length, 2);
-    for (
-      const [count, status] of [[counts[0], 200], [counts[1], 400]] as const
-    ) {
+    for (const [count, status] of [
+      [counts[0], 200],
+      [counts[1], 400],
+    ] as const) {
       assertEquals(count.attributes["fedify.endpoint"], "hashlink_media");
       assertEquals(count.attributes["http.response.status_code"], status);
       assertEquals(
@@ -574,13 +569,11 @@ test("Federation.fetch() routes hashlink media apart from other routes", async (
       mediaCalled = true;
       return new Response(mediaBytes);
     });
-    for (
-      const url of [
-        `https://example.com/hl:${mediaDigest}`,
-        "https://example.com/.well-known/apgateway",
-        `https://example.com/.well-known/apgateway-media/hl:${mediaDigest}`,
-      ]
-    ) {
+    for (const url of [
+      `https://example.com/hl:${mediaDigest}`,
+      "https://example.com/.well-known/apgateway",
+      `https://example.com/.well-known/apgateway-media/hl:${mediaDigest}`,
+    ]) {
       const response = await federation.fetch(new Request(url), {
         contextData: undefined,
       });

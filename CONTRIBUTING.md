@@ -107,12 +107,12 @@ Development environment
 -----------------------
 
 Fedify is a TypeScript monorepo.  Node.js runs dependency installation, code
-generation, builds, type checking, maintenance scripts, test harnesses, and
-linting.  Formatting and the local CLI still use Deno.  Supported packages
-are tested on Deno, Node.js, and Bun.  [mise] installs the required tool
-versions and runs repository tasks.  Install mise before bootstrapping; it
-provisions Node.js and the tools declared in *mise.toml*, so Node.js needs no
-separate installation.
+generation, builds, the default type check, linting, Oxfmt formatting,
+maintenance scripts, and test harnesses. The local CLI task still uses Deno.
+Supported packages are tested on Deno, Node.js, and Bun.  [mise] installs the
+required tool versions and runs repository tasks.  Install mise before
+bootstrapping; it provisions Node.js and the tools declared in *mise.toml*, so
+Node.js needs no separate installation.
 
 Run these commands after cloning the repository:
 
@@ -135,8 +135,9 @@ Install or refresh the pre-commit hook explicitly with
 
 To bootstrap without installing Deno, set `MISE_DISABLE_TOOLS=deno` before
 running `mise install` (for example, `$env:MISE_DISABLE_TOOLS = "deno"` in
-PowerShell).  Deno is still needed for the current formatting and Deno
-compatibility tasks; linting runs on Oxlint and does not need Deno.
+PowerShell).  Deno is still needed for Deno compatibility tasks and the local
+CLI task. Formatting, linting, and the default type check run on Node.js
+without Deno.
 
 Run development workflows through mise.  Do not call `npm` or `pnpm` directly
 for repository tasks.  Start by inspecting the available commands:
@@ -153,13 +154,15 @@ mise run check
 mise run test:deno
 ~~~~
 
-The recommended editor is [Visual Studio Code] with the [Deno extension], but
-any editor with Deno support will work.  The editor's Deno language server
+The recommended editor is [Visual Studio Code] with the [Oxc extension] and
+[Deno extension].  Other editors can use Oxfmt for formatting and Deno's
+language server for type diagnostics.  The editor's Deno language server
 checks code the way `mise run check:types:deno` does, which can differ from
 the default type check described in “Type checking” below.
 
 [mise]: https://mise.jdx.dev/
 [Visual Studio Code]: https://code.visualstudio.com/
+[Oxc extension]: https://marketplace.visualstudio.com/items?itemName=oxc.oxc-vscode
 [Deno extension]: https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno
 
 ### Repository layout
@@ -178,7 +181,8 @@ duplicate that inventory in contribution guides.
 ### Generated code and builds
 
 Vocabulary code is regenerated automatically before mise tasks when its YAML
-inputs or `@fedify/vocab-tools` change.  Run the code generator directly when
+schemas, generator or package metadata, Oxfmt configuration, or pnpm catalog
+changes.  Run the code generator directly when
 you need to refresh generated files for an editor or language server:
 
 ~~~~ bash
@@ -213,11 +217,11 @@ initializer source.  Scripts needing other transformations must choose an
 explicit runner rather than relying on Deno resolution.
 
 The vocabulary generator imports `@fedify/vocab-tools` source by relative
-path so it can run before any package has been built.  It uses the pinned
-dprint TypeScript plugin with Deno's preset only for generated vocabulary
-code, preserving the current format until the formatter migration.  Keep the
-plugin version in *packages/vocab/package.json* and the root *deno.json* in
-sync with the formatter embedded in the Deno version in *mise.toml*.
+path so it can run before any package has been built.  It formats generated
+code with the pinned Oxfmt version and the root *.oxfmtrc.json* settings.
+Changes to those settings, the root manifests, or the pnpm catalog trigger
+regeneration.  Edit vocabulary schemas and run `mise run codegen`
+rather than editing the generated file.
 
 Deno compatibility work has explicit preparation and validation commands:
 
@@ -238,6 +242,28 @@ Deno task, since that option omits task dependencies. The existing Deno
 `compile` tasks still generate vocabulary, but no longer cache or type-check it
 as a side effect.
 
+### Formatting
+
+Format code and configuration with Oxfmt, and Markdown with Hongdown and Sacho:
+
+~~~~ bash
+mise run fmt
+mise run check:fmt
+~~~~
+
+These formatting tasks run without Deno.  Oxfmt uses the root
+*.oxfmtrc.json* and applies the repository's file exclusions.  Hongdown owns
+repository Markdown, while Sacho owns changelog fragments and the generated
+unreleased changelog.  The generated vocabulary is checked explicitly because
+Git ignores it; `mise run codegen` formats it.
+
+The VS Code and Zed settings use the local Oxfmt installation for formatting
+and keep Deno's language server for type diagnostics.  They do not sort imports
+on save.  See [*FORMATTING.md*][formatting] for formatting ownership and the
+reviewed migration differences.
+
+[formatting]: FORMATTING.md
+
 ### Linting
 
 Linting uses [Oxlint] and the root *.oxlintrc.json*.  Run it with:
@@ -250,9 +276,8 @@ mise run check-each fedify
 The configuration mirrors the rule set that the repository previously used
 with `deno lint`; [linting.md] documents the mapping and the accepted gaps.
 Name rules explicitly in `oxlint-disable` comments and add a short reason when
-the suppression is not obvious.  The editor setup keeps the Deno language
-server for formatting and type diagnostics but disables `deno.lint`, so Oxlint
-is the only lint source.
+the suppression is not obvious.  The editor settings disable `deno.lint`, so
+Oxlint is the only lint source.
 
 [Oxlint]: https://oxc.rs/docs/guide/usage/linter/
 [linting.md]: LINTING.md

@@ -67,8 +67,12 @@ export class ResponseBodyPump {
     );
     clearTimeout(this.#timer);
     if (performance.now() >= this.#expiresAt) this.#expire();
-    else {this.#timer = setTimeout(() =>
-        this.#expire(), this.#expiresAt - performance.now());}
+    else {
+      this.#timer = setTimeout(
+        () => this.#expire(),
+        this.#expiresAt - performance.now(),
+      );
+    }
   }
 
   /** Stop pulling and release ownership without awaiting arbitrary cancellation. */

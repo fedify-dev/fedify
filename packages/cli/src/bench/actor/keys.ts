@@ -22,9 +22,11 @@ export interface ActorKeys {
 
 /** Whether a set of standards needs an RSA key pair. */
 export function needsRsa(standards: readonly SignatureStandard[]): boolean {
-  return standards.some((s) =>
-    s === "draft-cavage-http-signatures-12" || s === "rfc9421" ||
-    s === "ld-signatures"
+  return standards.some(
+    (s) =>
+      s === "draft-cavage-http-signatures-12" ||
+      s === "rfc9421" ||
+      s === "ld-signatures",
   );
 }
 

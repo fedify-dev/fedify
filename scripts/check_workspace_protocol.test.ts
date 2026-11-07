@@ -34,9 +34,10 @@ it("skips codegen locks while still yielding real package manifests", async () =
       return readDir(path);
     });
     const entries = await Array.fromAsync(walkPackageManifests(root));
-    deepStrictEqual(entries.map((entry) => entry.path), [
-      join(parent, "package.json"),
-    ]);
+    deepStrictEqual(
+      entries.map((entry) => entry.path),
+      [join(parent, "package.json")],
+    );
   });
 });
 
@@ -51,9 +52,10 @@ it("continues checking manifests after codegen releases its lock", async () => {
       }
       const entries = await Array.fromAsync(readDir(path));
       // Visit the disappearing lock before the real manifest deterministically.
-      entries.sort((a, b) =>
-        Number(b.name === ".vocab-codegen.lock") -
-        Number(a.name === ".vocab-codegen.lock")
+      entries.sort(
+        (a, b) =>
+          Number(b.name === ".vocab-codegen.lock") -
+          Number(a.name === ".vocab-codegen.lock"),
       );
       for (const entry of entries) {
         if (entry.name === ".vocab-codegen.lock") {
@@ -65,9 +67,10 @@ it("continues checking manifests after codegen releases its lock", async () => {
     });
     const entries = await Array.fromAsync(walkPackageManifests(root));
     deepStrictEqual(released, true);
-    deepStrictEqual(entries.map((entry) => entry.path), [
-      join(parent, "package.json"),
-    ]);
+    deepStrictEqual(
+      entries.map((entry) => entry.path),
+      [join(parent, "package.json")],
+    );
   });
 });
 
@@ -80,8 +83,9 @@ it("excludes dependency and Git directories without following directory links", 
     }
     await symlink(root, join(parent, "loop"), "junction");
     const entries = await Array.fromAsync(walkPackageManifests(root));
-    deepStrictEqual(entries.map((entry) => entry.path), [
-      join(parent, "package.json"),
-    ]);
+    deepStrictEqual(
+      entries.map((entry) => entry.path),
+      [join(parent, "package.json")],
+    );
   });
 });

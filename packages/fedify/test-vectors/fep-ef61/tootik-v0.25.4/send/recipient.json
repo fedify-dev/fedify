@@ -51,9 +51,7 @@
       "name": "RFC-9421 signatures using the ml-dsa-44 algorithm"
     }
   ],
-  "gateways": [
-    "https://tootik.example"
-  ],
+  "gateways": ["https://tootik.example"],
   "proof": {
     "@context": [
       "https://www.w3.org/ns/activitystreams",

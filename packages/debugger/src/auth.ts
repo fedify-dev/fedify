@@ -25,29 +25,29 @@ import { timingSafeEqual } from "node:crypto";
  */
 export type FederationDebuggerAuth =
   | {
-    readonly type: "password";
-    authenticate(password: string): boolean | Promise<boolean>;
-  }
+      readonly type: "password";
+      authenticate(password: string): boolean | Promise<boolean>;
+    }
   | {
-    readonly type: "password";
-    readonly password: string;
-  }
+      readonly type: "password";
+      readonly password: string;
+    }
   | {
-    readonly type: "usernamePassword";
-    authenticate(
-      username: string,
-      password: string,
-    ): boolean | Promise<boolean>;
-  }
+      readonly type: "usernamePassword";
+      authenticate(
+        username: string,
+        password: string,
+      ): boolean | Promise<boolean>;
+    }
   | {
-    readonly type: "usernamePassword";
-    readonly username: string;
-    readonly password: string;
-  }
+      readonly type: "usernamePassword";
+      readonly username: string;
+      readonly password: string;
+    }
   | {
-    readonly type: "request";
-    authenticate(request: Request): boolean | Promise<boolean>;
-  };
+      readonly type: "request";
+      authenticate(request: Request): boolean | Promise<boolean>;
+    };
 
 export const SESSION_COOKIE_NAME = "__fedify_debug_session";
 const SESSION_TOKEN = "authenticated";

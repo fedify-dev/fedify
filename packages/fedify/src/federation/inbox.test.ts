@@ -28,13 +28,11 @@ test("actorsHaveSameOrigin()", () => {
     true,
   );
 
-  for (
-    const actor of [
-      "http://remote.example/actor",
-      "https://sub.remote.example/actor",
-      "https://remote.example:8443/actor",
-    ]
-  ) {
+  for (const actor of [
+    "http://remote.example/actor",
+    "https://sub.remote.example/actor",
+    "https://remote.example:8443/actor",
+  ]) {
     assertFalse(
       actorsHaveSameOrigin(
         new Create({
@@ -69,12 +67,10 @@ test("actorsHaveSameOrigin() compares portable IDs by their DIDs", () => {
   const did = "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2";
   const otherDid = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
   const activityId = parseIri(`ap+ef61://${did}/activities/1`);
-  for (
-    const actor of [
-      `ap+ef61://${did}/actor`,
-      `https://gw.example/.well-known/apgateway/${did}/actor`,
-    ]
-  ) {
+  for (const actor of [
+    `ap+ef61://${did}/actor`,
+    `https://gw.example/.well-known/apgateway/${did}/actor`,
+  ]) {
     assertEquals(
       actorsHaveSameOrigin(
         new Create({ id: activityId, actor: parseIri(actor) }),
@@ -82,13 +78,11 @@ test("actorsHaveSameOrigin() compares portable IDs by their DIDs", () => {
       true,
     );
   }
-  for (
-    const actor of [
-      `ap+ef61://${otherDid}/actor`,
-      `https://gw.example/.well-known/apgateway/${otherDid}/actor`,
-      "https://gw.example/actor",
-    ]
-  ) {
+  for (const actor of [
+    `ap+ef61://${otherDid}/actor`,
+    `https://gw.example/.well-known/apgateway/${otherDid}/actor`,
+    "https://gw.example/actor",
+  ]) {
     assertFalse(
       actorsHaveSameOrigin(
         new Create({ id: activityId, actor: parseIri(actor) }),
@@ -114,15 +108,17 @@ test("ActivityListenerSet", () => {
   const listenOffer = () => {};
   listeners.add(Offer, listenOffer);
   assertEquals(listeners.dispatch(activity), null);
-  assertEquals(
-    listeners.dispatchWithClass(offer),
-    { class: Offer, listener: listenOffer, options: {} },
-  );
+  assertEquals(listeners.dispatchWithClass(offer), {
+    class: Offer,
+    listener: listenOffer,
+    options: {},
+  });
   assertEquals(listeners.dispatch(offer), listenOffer);
-  assertEquals(
-    listeners.dispatchWithClass(invite),
-    { class: Offer, listener: listenOffer, options: {} },
-  );
+  assertEquals(listeners.dispatchWithClass(invite), {
+    class: Offer,
+    listener: listenOffer,
+    options: {},
+  });
   assertEquals(listeners.dispatch(invite), listenOffer);
   assertEquals(listeners.dispatch(create), null);
   assertEquals(listeners.dispatch(update), null);
@@ -131,49 +127,57 @@ test("ActivityListenerSet", () => {
   listeners.add(Create, listenCreate);
   assertEquals(listeners.dispatch(activity), null);
   assertEquals(listeners.dispatch(offer), listenOffer);
-  assertEquals(
-    listeners.dispatchWithClass(offer),
-    { class: Offer, listener: listenOffer, options: {} },
-  );
+  assertEquals(listeners.dispatchWithClass(offer), {
+    class: Offer,
+    listener: listenOffer,
+    options: {},
+  });
   assertEquals(listeners.dispatch(invite), listenOffer);
-  assertEquals(
-    listeners.dispatchWithClass(invite),
-    { class: Offer, listener: listenOffer, options: {} },
-  );
+  assertEquals(listeners.dispatchWithClass(invite), {
+    class: Offer,
+    listener: listenOffer,
+    options: {},
+  });
   assertEquals(listeners.dispatch(create), listenCreate);
-  assertEquals(
-    listeners.dispatchWithClass(create),
-    { class: Create, listener: listenCreate, options: {} },
-  );
+  assertEquals(listeners.dispatchWithClass(create), {
+    class: Create,
+    listener: listenCreate,
+    options: {},
+  });
   assertEquals(listeners.dispatch(update), null);
 
   const listenActivity = () => {};
   listeners.add(Activity, listenActivity);
   assertEquals(listeners.dispatch(activity), listenActivity);
-  assertEquals(
-    listeners.dispatchWithClass(activity),
-    { class: Activity, listener: listenActivity, options: {} },
-  );
+  assertEquals(listeners.dispatchWithClass(activity), {
+    class: Activity,
+    listener: listenActivity,
+    options: {},
+  });
   assertEquals(listeners.dispatch(offer), listenOffer);
-  assertEquals(
-    listeners.dispatchWithClass(offer),
-    { class: Offer, listener: listenOffer, options: {} },
-  );
+  assertEquals(listeners.dispatchWithClass(offer), {
+    class: Offer,
+    listener: listenOffer,
+    options: {},
+  });
   assertEquals(listeners.dispatch(invite), listenOffer);
-  assertEquals(
-    listeners.dispatchWithClass(invite),
-    { class: Offer, listener: listenOffer, options: {} },
-  );
+  assertEquals(listeners.dispatchWithClass(invite), {
+    class: Offer,
+    listener: listenOffer,
+    options: {},
+  });
   assertEquals(listeners.dispatch(create), listenCreate);
-  assertEquals(
-    listeners.dispatchWithClass(create),
-    { class: Create, listener: listenCreate, options: {} },
-  );
+  assertEquals(listeners.dispatchWithClass(create), {
+    class: Create,
+    listener: listenCreate,
+    options: {},
+  });
   assertEquals(listeners.dispatch(update), listenActivity);
-  assertEquals(
-    listeners.dispatchWithClass(update),
-    { class: Activity, listener: listenActivity, options: {} },
-  );
+  assertEquals(listeners.dispatchWithClass(update), {
+    class: Activity,
+    listener: listenActivity,
+    options: {},
+  });
 
   assertThrows(
     () => listeners.add(Activity, listenActivity),

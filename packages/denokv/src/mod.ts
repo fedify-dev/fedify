@@ -40,7 +40,8 @@ const STORE_DEPRECATION_MESSAGE =
   "The `DenoKvStore` class from `@fedify/denokv` is deprecated and will be " +
   "removed in Fedify 3.0.0.  Use `SqliteKvStore` from `@fedify/sqlite` for " +
   "local or single-node deployments, or `PostgresKvStore`, `RedisKvStore`, " +
-  "`MysqlKvStore`, or `WorkersKvStore` for production.  " + DEPRECATION_MESSAGE;
+  "`MysqlKvStore`, or `WorkersKvStore` for production.  " +
+  DEPRECATION_MESSAGE;
 
 const QUEUE_DEPRECATION_MESSAGE =
   "The `DenoKvMessageQueue` class from `@fedify/denokv` is deprecated and " +
@@ -82,7 +83,7 @@ export class DenoKvStore implements KvStore {
    */
   async get<T = unknown>(key: KvKey): Promise<T | undefined> {
     const entry = await this.#kv.get<T>(key);
-    return entry.versionstamp == null ? undefined : entry.value as T;
+    return entry.versionstamp == null ? undefined : (entry.value as T);
   }
 
   /**
@@ -96,9 +97,11 @@ export class DenoKvStore implements KvStore {
     await this.#kv.set(
       key,
       value,
-      options?.ttl == null ? undefined : {
-        expireIn: options.ttl.total("millisecond"),
-      },
+      options?.ttl == null
+        ? undefined
+        : {
+            expireIn: options.ttl.total("millisecond"),
+          },
     );
   }
 
@@ -122,14 +125,17 @@ export class DenoKvStore implements KvStore {
       const entry = await this.#kv.get(key);
       const value = entry.versionstamp == null ? undefined : entry.value;
       if (!isEqual(value, expectedValue)) return false;
-      const result = await this.#kv.atomic()
+      const result = await this.#kv
+        .atomic()
         .check(entry)
         .set(
           key,
           newValue,
-          options?.ttl == null ? undefined : {
-            expireIn: options.ttl.total("millisecond"),
-          },
+          options?.ttl == null
+            ? undefined
+            : {
+                expireIn: options.ttl.total("millisecond"),
+              },
         )
         .commit();
       if (result.ok) return true;
@@ -233,8 +239,9 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
   constructor(kv: Deno.Kv, options: DenoKvMessageQueueOptions = {}) {
     logger.warn(QUEUE_DEPRECATION_MESSAGE);
     this.#kv = kv;
-    this.#orderingLockPrefix = options.orderingLockPrefix ??
-      ["__fedify_ordering_lock__"];
+    this.#orderingLockPrefix = options.orderingLockPrefix ?? [
+      "__fedify_ordering_lock__",
+    ];
   }
 
   #getOrderingLockKey(orderingKey: string): Deno.KvKey {
@@ -252,9 +259,11 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
     };
     await this.#kv.enqueue(
       wrapped,
-      options?.delay == null ? undefined : {
-        delay: Math.max(options.delay.total("millisecond"), 0),
-      },
+      options?.delay == null
+        ? undefined
+        : {
+            delay: Math.max(options.delay.total("millisecond"), 0),
+          },
     );
   }
 
@@ -263,22 +272,27 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
     handler: (message: any) => void | Promise<void>,
     options: MessageQueueListenOptions = {},
   ): Promise<void> {
-    options.signal?.addEventListener("abort", () => {
-      try {
-        this.#kv.close();
-      } catch (e) {
-        if (!(e instanceof Deno.errors.BadResource)) throw e;
-      }
-    }, { once: true });
+    options.signal?.addEventListener(
+      "abort",
+      () => {
+        try {
+          this.#kv.close();
+        } catch (e) {
+          if (!(e instanceof Deno.errors.BadResource)) throw e;
+        }
+      },
+      { once: true },
+    );
     const wrappedHandler = async (
       rawMessage: WrappedMessage | unknown,
     ): Promise<void> => {
       // Handle both wrapped and unwrapped messages for backwards compatibility
       const wrapped = rawMessage as WrappedMessage;
       const orderingKey = wrapped.__fedify_ordering_key__;
-      const message = "__fedify_payload__" in wrapped
-        ? wrapped.__fedify_payload__
-        : rawMessage;
+      const message =
+        "__fedify_payload__" in wrapped
+          ? wrapped.__fedify_payload__
+          : rawMessage;
       // If this ordering key is currently being processed, wait for it
       if (orderingKey != null) {
         const lockKey = this.#getOrderingLockKey(orderingKey);
@@ -288,7 +302,8 @@ export class DenoKvMessageQueue implements MessageQueue, Disposable {
           const existing = await this.#kv.get(lockKey);
           if (existing.value == null) {
             // Try to acquire the lock using atomic check
-            const lockResult = await this.#kv.atomic()
+            const lockResult = await this.#kv
+              .atomic()
               .check(existing)
               .set(lockKey, true, { expireIn: 60000 }) // 60 second TTL
               .commit();

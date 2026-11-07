@@ -30,7 +30,8 @@ export function allOf<T>(
 }
 
 export const anyOf =
-  <T>(...predicates: ((value: T) => boolean)[]) => (value: T): boolean =>
+  <T>(...predicates: ((value: T) => boolean)[]) =>
+  (value: T): boolean =>
     predicates.some((predicate) => predicate(value));
 
 export const isNode = (obj: unknown): obj is Node =>
@@ -40,23 +41,17 @@ export const isNode = (obj: unknown): obj is Node =>
  * Checks if a node is of a specific type.
  */
 export const isNodeType =
-  <T extends string>(type: T) => (node: Node): node is { "type": T } & Node =>
-    pipe(
-      node,
-      prop("type"),
-      eq<string, string>(type),
-    ) as boolean;
+  <T extends string>(type: T) =>
+  (node: Node): node is { "type": T } & Node =>
+    pipe(node, prop("type"), eq<string, string>(type)) as boolean;
 
 /**
  * Checks if a node is of a specific name.
  */
 export const isNodeName =
-  <T extends string>(name: T) => <N>(node: N): node is N & { "name": T } =>
-    pipe(
-      node as { "name": string },
-      prop("name"),
-      eq(name),
-    ) as boolean;
+  <T extends string>(name: T) =>
+  <N>(node: N): node is N & { "name": T } =>
+    pipe(node as { "name": string }, prop("name"), eq(name)) as boolean;
 
 /**
  * Checks if a node's callee is a MemberExpression.
@@ -81,7 +76,9 @@ export const hasIdentifierProperty = (
  */
 export const hasMethodName =
   <T extends string>(methodName: T) =>
-  (node: CallExpression): node is CallExpression & {
+  (
+    node: CallExpression,
+  ): node is CallExpression & {
     callee: { property: { name: T } };
   } =>
     "callee" in node &&
@@ -94,17 +91,21 @@ export const hasMethodName =
  */
 export const hasMinArguments =
   (min: number) =>
-  <T extends CallExpression>(node: T): node is Extract<T, {
-    arguments: { length: number };
-  }> => node.arguments.length >= min;
+  <T extends CallExpression>(
+    node: T,
+  ): node is Extract<
+    T,
+    {
+      arguments: { length: number };
+    }
+  > =>
+    node.arguments.length >= min;
 
 /**
  * Checks if an expression is a function (arrow or regular).
  */
 export const isFunction = (
-  expr:
-    | Expression
-    | SpreadElement,
+  expr: Expression | SpreadElement,
 ): expr is FunctionNode =>
   anyOf(
     isNodeType("ArrowFunctionExpression"),
@@ -138,5 +139,7 @@ export const hasProp =
 /**
  * Checks if a function has at least n parameters.
  */
-export const hasMinParams = (min: number) => (fn: FunctionNode): boolean =>
-  fn.params.length >= min;
+export const hasMinParams =
+  (min: number) =>
+  (fn: FunctionNode): boolean =>
+    fn.params.length >= min;

@@ -81,16 +81,19 @@ export function followersOnlyBookmarks(): Bookmark[] {
 export function taggedBookmarks(tag: string): Bookmark[] {
   const normalizedTag = normalizeTag(tag);
   return sortBookmarks(
-    bookmarks.filter((bookmark) =>
-      bookmark.visibility === "public" &&
-      bookmark.tags.some((itemTag) => normalizeTag(itemTag) === normalizedTag)
+    bookmarks.filter(
+      (bookmark) =>
+        bookmark.visibility === "public" &&
+        bookmark.tags.some(
+          (itemTag) => normalizeTag(itemTag) === normalizedTag,
+        ),
     ),
   );
 }
 
 function sortBookmarks(items: Bookmark[]): Bookmark[] {
   return items.toSorted((a, b) =>
-    Temporal.Instant.compare(b.savedAt, a.savedAt)
+    Temporal.Instant.compare(b.savedAt, a.savedAt),
   );
 }
 

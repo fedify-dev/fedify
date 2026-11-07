@@ -34,17 +34,13 @@
   ],
   "overrides": [
     {
-      "files": [
-        "packages/cli/**"
-      ],
+      "files": ["packages/cli/**"],
       "rules": {
         "eslint/no-console": "off"
       }
     },
     {
-      "files": [
-        "examples/fresh/**"
-      ],
+      "files": ["examples/fresh/**"],
       "rules": {
         "react/no-danger": "error",
         "react/no-danger-with-children": "error",

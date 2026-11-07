@@ -17,10 +17,13 @@ const nextDescription: WebFrameworkDescription = {
   init: async ({ packageManager: pm, skipInstall }) => ({
     command: getNextInitCommand(pm, skipInstall),
     cleanupFiles: pm === "deno" ? [] : ["eslint.config.mjs"],
-    cleanupPackageJson: pm === "deno" ? {} : {
-      scripts: ["lint"],
-      devDependencies: ["eslint", "eslint-config-next"],
-    },
+    cleanupPackageJson:
+      pm === "deno"
+        ? {}
+        : {
+            scripts: ["lint"],
+            devDependencies: ["eslint", "eslint-config-next"],
+          },
     dependencies: {
       "@fedify/next": PACKAGE_VERSION,
       ...(pm === "deno" ? defaultDenoDependencies : {}),
@@ -65,7 +68,7 @@ const createNextAppCommand = (pm: PackageManager): string[] =>
   pm === "deno"
     ? ["deno", "-Ar", "npm:create-next-app@latest"]
     : pm === "bun"
-    ? ["bun", "create", "next-app"]
-    : pm === "npm"
-    ? ["npx", "create-next-app"]
-    : [pm, "dlx", "create-next-app"];
+      ? ["bun", "create", "next-app"]
+      : pm === "npm"
+        ? ["npx", "create-next-app"]
+        : [pm, "dlx", "create-next-app"];

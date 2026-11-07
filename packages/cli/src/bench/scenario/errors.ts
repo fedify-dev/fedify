@@ -46,14 +46,12 @@ function formatMessage(
   return `Invalid ${where}:\n${lines.join("\n")}`;
 }
 
-function dedupe(
-  problems: readonly RawValidationError[],
-): RawValidationError[] {
+function dedupe(problems: readonly RawValidationError[]): RawValidationError[] {
   const seen = new Set<string>();
   const result: RawValidationError[] = [];
   // Prefer the most specific (deepest) instance locations first.
-  const sorted = [...problems].sort((a, b) =>
-    depth(b.instanceLocation) - depth(a.instanceLocation)
+  const sorted = [...problems].sort(
+    (a, b) => depth(b.instanceLocation) - depth(a.instanceLocation),
   );
   for (const problem of sorted) {
     const key = JSON.stringify([problem.instanceLocation, problem.error]);

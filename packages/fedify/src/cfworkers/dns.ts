@@ -17,10 +17,7 @@ const publicHosts = new Set([
 ]);
 
 export default {
-  lookup(
-    hostname: string,
-    options: { all: true },
-  ): Promise<LookupAddress[]> {
+  lookup(hostname: string, options: { all: true }): Promise<LookupAddress[]> {
     if (!options.all || !publicHosts.has(hostname)) {
       return Promise.reject(new Error(`No DNS fixture for ${hostname}`));
     }

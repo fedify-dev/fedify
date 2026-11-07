@@ -159,8 +159,11 @@ export function parseCompilerOutput(
 export function isOwnDiagnostic(diagnostic: Diagnostic): boolean {
   if (diagnostic.file == null) return true;
   const segments = diagnostic.file.split("/");
-  return !segments.includes("node_modules") && !segments.includes("dist") &&
-    !diagnostic.file.startsWith("../");
+  return (
+    !segments.includes("node_modules") &&
+    !segments.includes("dist") &&
+    !diagnostic.file.startsWith("../")
+  );
 }
 
 /** The directory, under node_modules, that holds the generated consumers. */
@@ -191,21 +194,24 @@ export const KNOWN_DECLARATION_PROBLEMS: readonly KnownDeclarationProblem[] = [
     file: `${DECLARATION_CONSUMERS}/nestjs/cjs/index.cts`,
     code: "TS2307",
     message: /Cannot find module '@fedify\/nestjs'/,
-    reason: "packages/nestjs/package.json maps require.types to " +
+    reason:
+      "packages/nestjs/package.json maps require.types to " +
       "dist/index.d.ts, which the build does not emit.",
   },
   {
     file: "packages/fedify/dist/runtime/mod.d.cts",
     code: "TS2304",
     message: /Cannot find name '__(?:reExport|exportAll)'/,
-    reason: "The CommonJS declarations of @fedify/fedify/runtime export " +
+    reason:
+      "The CommonJS declarations of @fedify/fedify/runtime export " +
       "rolldown's runtime helpers, which they do not declare.",
   },
   {
     file: "packages/vocab-runtime/dist/jsonld.d.*ts",
     code: "TS7016",
     message: /declaration file for module 'jsonld'/,
-    reason: "@fedify/vocab-runtime/jsonld's declarations import the jsonld " +
+    reason:
+      "@fedify/vocab-runtime/jsonld's declarations import the jsonld " +
       "package, which has no type declarations.",
   },
 ];
@@ -213,8 +219,10 @@ export const KNOWN_DECLARATION_PROBLEMS: readonly KnownDeclarationProblem[] = [
 /** Whether an exports target, or any nested condition, has a condition. */
 function hasCondition(target: unknown, condition: string): boolean {
   if (target == null || typeof target !== "object") return false;
-  return condition in target ||
-    Object.values(target).some((value) => hasCondition(value, condition));
+  return (
+    condition in target ||
+    Object.values(target).some((value) => hasCondition(value, condition))
+  );
 }
 
 /** A published package's exports to import from consumers. */
@@ -254,8 +262,10 @@ export function isDeclarationDiagnostic(
 ): boolean {
   const { file } = diagnostic;
   if (file == null) return true;
-  return file.startsWith(`${DECLARATION_CONSUMERS}/`) ||
-    firstPartyDirs.some((dir) => file.startsWith(`${dir}/dist/`));
+  return (
+    file.startsWith(`${DECLARATION_CONSUMERS}/`) ||
+    firstPartyDirs.some((dir) => file.startsWith(`${dir}/dist/`))
+  );
 }
 
 function diagnosticCode(diagnostic: Diagnostic): string | undefined {
@@ -270,11 +280,12 @@ export function classifyDeclarationDiagnostics(
   const errors: Diagnostic[] = [];
   const matched = new Set<KnownDeclarationProblem>();
   for (const diagnostic of diagnostics) {
-    const problem = known.find((entry) =>
-      diagnostic.file != null &&
-      globToRegExp(entry.file).test(diagnostic.file) &&
-      diagnosticCode(diagnostic) === entry.code &&
-      entry.message.test(diagnostic.text)
+    const problem = known.find(
+      (entry) =>
+        diagnostic.file != null &&
+        globToRegExp(entry.file).test(diagnostic.file) &&
+        diagnosticCode(diagnostic) === entry.code &&
+        entry.message.test(diagnostic.text),
     );
     if (problem == null) errors.push(diagnostic);
     else matched.add(problem);
@@ -312,11 +323,13 @@ export function writeDeclarationConsumers(
       const file = format === "esm" ? "index.mts" : "index.cts";
       writeFileSync(
         join(dir, file),
-        specifiers.map((specifier, i) =>
-          format === "esm"
-            ? `import * as m${i} from "${specifier}";\nexport { m${i} };\n`
-            : `import m${i} = require("${specifier}");\nexport { m${i} };\n`
-        ).join(""),
+        specifiers
+          .map((specifier, i) =>
+            format === "esm"
+              ? `import * as m${i} from "${specifier}";\nexport { m${i} };\n`
+              : `import m${i} = require("${specifier}");\nexport { m${i} };\n`,
+          )
+          .join(""),
       );
       writeFileSync(
         join(dir, "tsconfig.json"),
@@ -361,21 +374,26 @@ export async function checkProject(
   project: string,
   buildInfo?: string,
 ): Promise<ProjectResult> {
-  const result = await commandOutput(process.execPath, [
-    tsc,
-    "--project",
-    join(root, project),
-    "--noEmit",
-    "--pretty",
-    "false",
-    "--skipLibCheck",
-    "false",
-    "--listFiles",
-    ...(buildInfo == null
-      ? []
-      : ["--incremental", "--tsBuildInfoFile", buildInfo]),
-  ], { cwd: root });
-  const output = new TextDecoder().decode(result.stdout) +
+  const result = await commandOutput(
+    process.execPath,
+    [
+      tsc,
+      "--project",
+      join(root, project),
+      "--noEmit",
+      "--pretty",
+      "false",
+      "--skipLibCheck",
+      "false",
+      "--listFiles",
+      ...(buildInfo == null
+        ? []
+        : ["--incremental", "--tsBuildInfoFile", buildInfo]),
+    ],
+    { cwd: root },
+  );
+  const output =
+    new TextDecoder().decode(result.stdout) +
     new TextDecoder().decode(result.stderr);
   const parsed = parseCompilerOutput(output, root);
   const errors = parsed.diagnostics.filter(isOwnDiagnostic);
@@ -403,7 +421,7 @@ export function discoverProjects(
     listFiles(dir)
       .filter((name) => /^tsconfig\.check(?:\.[\w-]+)?\.json$/.test(name))
       .sort()
-      .map((name) => `${dir}/${name}`)
+      .map((name) => `${dir}/${name}`),
   );
 }
 
@@ -420,8 +438,8 @@ export async function listRepositoryFiles(): Promise<string[]> {
   const files = new TextDecoder().decode(result.stdout).split("\0");
   // The index still lists files deleted or moved without staging.
   return [...new Set(files)]
-    .filter((file) =>
-      typeScriptExtension.test(file) && existsSync(join(root, file))
+    .filter(
+      (file) => typeScriptExtension.test(file) && existsSync(join(root, file)),
     )
     .sort();
 }
@@ -452,7 +470,7 @@ export function findCoverageProblems(input: CoverageInput): string[] {
   const owners = new Map<string, string[]>();
   for (const [project, files] of input.projects) {
     for (const file of files) {
-      owners.set(file, [...owners.get(file) ?? [], project]);
+      owners.set(file, [...(owners.get(file) ?? []), project]);
     }
   }
   for (const project of input.denoTypedProjects) {
@@ -466,7 +484,7 @@ export function findCoverageProblems(input: CoverageInput): string[] {
   const usedOwnership = new Set<Ownership>();
   for (const file of input.requiredFiles) {
     const ownership = input.ownership.find((entry) =>
-      globToRegExp(entry.path).test(file)
+      globToRegExp(entry.path).test(file),
     );
     if (ownership != null) {
       usedOwnership.add(ownership);
@@ -518,14 +536,17 @@ function isInTypePosition(node: ts.Node): boolean {
       return false;
     }
     if (
-      ts.isTypeNode(current) || ts.isInterfaceDeclaration(current) ||
+      ts.isTypeNode(current) ||
+      ts.isInterfaceDeclaration(current) ||
       ts.isTypeAliasDeclaration(current)
     ) {
       return true;
     }
     if (
-      ts.isStatement(current) || ts.isExpression(current) &&
-        !ts.isIdentifier(current) && !ts.isPropertyAccessExpression(current)
+      ts.isStatement(current) ||
+      (ts.isExpression(current) &&
+        !ts.isIdentifier(current) &&
+        !ts.isPropertyAccessExpression(current))
     ) {
       return false;
     }
@@ -534,9 +555,11 @@ function isInTypePosition(node: ts.Node): boolean {
 }
 
 function isDenoString(node: ts.Node | undefined): boolean {
-  return node != null &&
+  return (
+    node != null &&
     (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
-    node.text === "Deno";
+    node.text === "Deno"
+  );
 }
 
 /**
@@ -565,7 +588,9 @@ export function findDenoAccesses(fileName: string, source: string): string[] {
   };
   const visit = (node: ts.Node): void => {
     if (
-      ts.isIdentifier(node) && node.text === "Deno" && !isInTypePosition(node)
+      ts.isIdentifier(node) &&
+      node.text === "Deno" &&
+      !isInTypePosition(node)
     ) {
       report(node.parent);
     } else if (
@@ -574,13 +599,12 @@ export function findDenoAccesses(fileName: string, source: string): string[] {
     ) {
       report(node);
     } else if (
-      ts.isComputedPropertyName(node) && isDenoString(node.expression) &&
+      ts.isComputedPropertyName(node) &&
+      isDenoString(node.expression) &&
       !isInTypePosition(node)
     ) {
       report(node.parent);
-    } else if (
-      ts.isBindingElement(node) && isDenoString(node.propertyName)
-    ) {
+    } else if (ts.isBindingElement(node) && isDenoString(node.propertyName)) {
       report(node);
     }
     ts.forEachChild(node, visit);
@@ -594,10 +618,9 @@ export function readProjectTypes(project: string): readonly string[] {
   const path = join(root, project);
   const config = ts.readConfigFile(path, ts.sys.readFile);
   if (config.error != null) {
-    throw new Error(ts.flattenDiagnosticMessageText(
-      config.error.messageText,
-      "\n",
-    ));
+    throw new Error(
+      ts.flattenDiagnosticMessageText(config.error.messageText, "\n"),
+    );
   }
   const parsed = ts.parseJsonConfigFileContent(
     config.config,
@@ -647,15 +670,20 @@ function createDenoCheckInputTest(): (file: string) => boolean {
     patterns.some((pattern) => {
       const normalized = pattern.replace(/^\.\//, "").replace(/\/$/, "");
       if (normalized.startsWith("!")) return false;
-      return path === normalized || path.startsWith(`${normalized}/`) ||
-        globToRegExp(normalized).test(path);
+      return (
+        path === normalized ||
+        path.startsWith(`${normalized}/`) ||
+        globToRegExp(normalized).test(path)
+      );
     });
   return (file) => {
     if (DENO_EXTRA_ENTRY_POINTS.includes(file)) return true;
     if (excluded(file, rootConfig.exclude ?? [])) return false;
     const member = members.find(({ dir }) => file.startsWith(`${dir}/`));
-    return member != null &&
-      !excluded(file.slice(member.dir.length + 1), member.exclude);
+    return (
+      member != null &&
+      !excluded(file.slice(member.dir.length + 1), member.exclude)
+    );
   };
 }
 
@@ -715,19 +743,19 @@ async function main(args: readonly string[]): Promise<number> {
     for (const error of result.errors) console.error(error.text);
   }
   const allFiles = await listRepositoryFiles();
-  const requiredFiles = allFiles.filter((file) =>
-    matchesAny(file, COVERED_PATHS) &&
-    (!selected || packageDirs.some((dir) => file.startsWith(`${dir}/`)))
+  const requiredFiles = allFiles.filter(
+    (file) =>
+      matchesAny(file, COVERED_PATHS) &&
+      (!selected || packageDirs.some((dir) => file.startsWith(`${dir}/`))),
   );
   const problems: string[] = [
     ...findCoverageProblems({
       requiredFiles,
-      projects: new Map(results.map((result) => [
-        result.project,
-        result.files,
-      ])),
+      projects: new Map(
+        results.map((result) => [result.project, result.files]),
+      ),
       denoTypedProjects: projects.filter((project) =>
-        readProjectTypes(project).includes("deno")
+        readProjectTypes(project).includes("deno"),
       ),
       ownership: OWNERSHIP,
       packageDirs,
@@ -740,10 +768,10 @@ async function main(args: readonly string[]): Promise<number> {
     ...guardDenoAccesses(results),
   ];
   problems.push(
-    ...await checkDeclarations(packageDirs, workspacePackages, {
+    ...(await checkDeclarations(packageDirs, workspacePackages, {
       concurrency,
       reportStale: !selected,
-    }),
+    })),
   );
   if (problems.length > 0) {
     failed = true;
@@ -763,8 +791,9 @@ async function checkDeclarations(
     const manifest = JSON.parse(
       readFileSync(join(root, dir, "package.json"), "utf8"),
     );
-    return listDeclarationEntries(dir.slice("packages/".length), manifest) ??
-      [];
+    return (
+      listDeclarationEntries(dir.slice("packages/".length), manifest) ?? []
+    );
   });
   const consumers = writeDeclarationConsumers(entries);
   const problems: string[] = [];
@@ -775,7 +804,7 @@ async function checkDeclarations(
     async (project) => {
       const result = await checkProject(project, buildInfoFile(project));
       const diagnostics = result.diagnostics.filter((diagnostic) =>
-        isDeclarationDiagnostic(diagnostic, firstPartyDirs)
+        isDeclarationDiagnostic(diagnostic, firstPartyDirs),
       );
       const classified = classifyDeclarationDiagnostics(
         diagnostics,
@@ -795,9 +824,9 @@ async function checkDeclarations(
     for (const problem of result.matched) matched.add(problem);
     if (result.errors.length < 1) continue;
     problems.push(
-      `${result.project}:\n${
-        result.errors.map((error) => error.text).join("\n")
-      }`,
+      `${result.project}:\n${result.errors
+        .map((error) => error.text)
+        .join("\n")}`,
     );
   }
   if (options.reportStale) {

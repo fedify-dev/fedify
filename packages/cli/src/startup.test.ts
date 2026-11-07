@@ -11,14 +11,12 @@ const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 async function runCommand(
   command: string,
   args: string[],
-): Promise<
-  {
-    code: number | null;
-    signal: NodeJS.Signals | null;
-    stdout: string;
-    stderr: string;
-  }
-> {
+): Promise<{
+  code: number | null;
+  signal: NodeJS.Signals | null;
+  stdout: string;
+  stderr: string;
+}> {
   return await new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       cwd: packageDir,
@@ -46,17 +44,21 @@ function getNodeCommand(): string {
     : process.execPath;
 }
 
-test("CLI build keeps the init command bridge", {
-  skip: "Deno" in globalThis,
-}, async () => {
-  const entrypoint = resolve(packageDir, "dist/mod.js");
-  const commandBridge = resolve(packageDir, "dist/commands.js");
-  await access(entrypoint);
-  await access(commandBridge);
+test(
+  "CLI build keeps the init command bridge",
+  {
+    skip: "Deno" in globalThis,
+  },
+  async () => {
+    const entrypoint = resolve(packageDir, "dist/mod.js");
+    const commandBridge = resolve(packageDir, "dist/commands.js");
+    await access(entrypoint);
+    await access(commandBridge);
 
-  const bridgeSource = await readFile(commandBridge, "utf8");
-  match(bridgeSource, /@fedify\/init/);
-});
+    const bridgeSource = await readFile(commandBridge, "utf8");
+    match(bridgeSource, /@fedify\/init/);
+  },
+);
 
 test("CLI starts successfully with --help", { timeout: 60_000 }, async () => {
   const result = await runCommand(getNodeCommand(), [

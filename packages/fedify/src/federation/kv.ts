@@ -115,7 +115,8 @@ export class MemoryKvStore implements KvStore {
     if (entry == null) return Promise.resolve(undefined);
     const [value, expiration] = entry;
     if (
-      expiration != null && Temporal.Now.instant().until(expiration).sign < 0
+      expiration != null &&
+      Temporal.Now.instant().until(expiration).sign < 0
     ) {
       delete this.#values[encodedKey];
       return Promise.resolve(undefined);
@@ -128,9 +129,12 @@ export class MemoryKvStore implements KvStore {
    */
   set(key: KvKey, value: unknown, options?: KvStoreSetOptions): Promise<void> {
     const encodedKey = this.#encodeKey(key);
-    const expiration = options?.ttl == null
-      ? null
-      : Temporal.Now.instant().add(options.ttl.round({ largestUnit: "hour" }));
+    const expiration =
+      options?.ttl == null
+        ? null
+        : Temporal.Now.instant().add(
+            options.ttl.round({ largestUnit: "hour" }),
+          );
     this.#values[encodedKey] = [value, expiration];
     return Promise.resolve();
   }
@@ -171,9 +175,12 @@ export class MemoryKvStore implements KvStore {
       }
     }
     if (!isEqual(currentValue, expectedValue)) return Promise.resolve(false);
-    const expiration = options?.ttl == null
-      ? null
-      : Temporal.Now.instant().add(options.ttl.round({ largestUnit: "hour" }));
+    const expiration =
+      options?.ttl == null
+        ? null
+        : Temporal.Now.instant().add(
+            options.ttl.round({ largestUnit: "hour" }),
+          );
     this.#values[encodedKey] = [newValue, expiration];
     return Promise.resolve(true);
   }

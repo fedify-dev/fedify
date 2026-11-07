@@ -53,24 +53,36 @@ test("attachKeyOwnerEvidence() refuses evidence about other actors", () => {
   const otherActorId = parseIri(`ap://${did}/actors/bob`);
   // The key claims another owner than the key ID's actor:
   assertFalse(
-    attachKeyOwnerEvidence(createKey(otherActorId), {
-      ...document,
-      "@id": otherActorId.href,
-    }, expires),
+    attachKeyOwnerEvidence(
+      createKey(otherActorId),
+      {
+        ...document,
+        "@id": otherActorId.href,
+      },
+      expires,
+    ),
   );
   // The document is about another actor than the key's owner:
   assertFalse(
-    attachKeyOwnerEvidence(createKey(), {
-      ...document,
-      "@id": `ap://${did}/actors/bob`,
-    }, expires),
+    attachKeyOwnerEvidence(
+      createKey(),
+      {
+        ...document,
+        "@id": `ap://${did}/actors/bob`,
+      },
+      expires,
+    ),
   );
   // The document's ID would identify another actor once parsed:
   assertFalse(
-    attachKeyOwnerEvidence(createKey(), {
-      ...document,
-      "@id": `ap://${did}/x/../actors/alice`,
-    }, expires),
+    attachKeyOwnerEvidence(
+      createKey(),
+      {
+        ...document,
+        "@id": `ap://${did}/x/../actors/alice`,
+      },
+      expires,
+    ),
   );
   assertFalse(attachKeyOwnerEvidence(createKey(), {}, expires));
   assertFalse(attachKeyOwnerEvidence(createKey(), [document], expires));
@@ -96,8 +108,7 @@ test("getVerifiedKeyOwnerEvidence() ignores keys changed since", () => {
   const moved = createKey();
   attachKeyOwnerEvidence(moved, document, expires);
   promoteKeyOwnerEvidence(moved);
-  moved.ownerId!.href =
-    `https://other.example/.well-known/apgateway/${did}/actors/alice`;
+  moved.ownerId!.href = `https://other.example/.well-known/apgateway/${did}/actors/alice`;
   assertEquals(getVerifiedKeyOwnerEvidence(moved), undefined);
   // Nor is a clone the key that was verified:
   const verified = createKey();

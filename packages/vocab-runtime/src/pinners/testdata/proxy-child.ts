@@ -66,7 +66,7 @@ const https = await fetchPinned(
 );
 // Without proxy: false, so that it shows the proxy is in effect:
 const control = await attempt(() =>
-  fetch(`http://127.0.0.1:${httpPort}/control`, { redirect: "manual" })
+  fetch(`http://127.0.0.1:${httpPort}/control`, { redirect: "manual" }),
 );
 
 const output = JSON.stringify({
@@ -77,6 +77,6 @@ const output = JSON.stringify({
   warnings: warnings.map((record) => record.rawMessage),
 });
 await new Promise<void>((resolve) =>
-  process.stdout.write(`${output}\n`, () => resolve())
+  process.stdout.write(`${output}\n`, () => resolve()),
 );
 process.exit(0);

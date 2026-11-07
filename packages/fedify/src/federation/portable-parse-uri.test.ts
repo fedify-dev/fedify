@@ -8,10 +8,10 @@ import { MemoryKvStore } from "./kv.ts";
 import { createFederation } from "./middleware.ts";
 
 const did = await exportDidKey(ed25519PublicKey.publicKey);
-const otherKeyPair = await crypto.subtle.generateKey("Ed25519", true, [
+const otherKeyPair = (await crypto.subtle.generateKey("Ed25519", true, [
   "sign",
   "verify",
-]) as CryptoKeyPair;
+])) as CryptoKeyPair;
 const otherDid = await exportDidKey(otherKeyPair.publicKey);
 const encodedDid = encodeURIComponent(did);
 
@@ -32,14 +32,10 @@ function createTestFederation() {
       calls.push(`portableActorId:${identifier}`);
       return null;
     });
-  federation.setObjectDispatcher(
-    Note,
-    "/users/{identifier}/notes/{id}",
-    () => {
-      calls.push("object");
-      return null;
-    },
-  );
+  federation.setObjectDispatcher(Note, "/users/{identifier}/notes/{id}", () => {
+    calls.push("object");
+    return null;
+  });
   federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
   federation.setOutboxDispatcher("/users/{identifier}/outbox", () => null);
   federation.setFollowingDispatcher(
@@ -52,10 +48,7 @@ function createTestFederation() {
   );
   federation.setLikedDispatcher("/users/{identifier}/liked", () => null);
   federation.setFeaturedDispatcher("/users/{identifier}/featured", () => null);
-  federation.setFeaturedTagsDispatcher(
-    "/users/{identifier}/tags",
-    () => null,
-  );
+  federation.setFeaturedTagsDispatcher("/users/{identifier}/tags", () => null);
   federation
     .setCollectionDispatcher(
       "bookmarks",
@@ -95,14 +88,12 @@ function parsePortable(ctx: Context<void>, uri: URL): ParseUriResult | null {
 
 test("Context.parseUri() does not recognize portable IDs by default", () => {
   const { ctx } = createTestFederation();
-  for (
-    const uri of [
-      portableId("/users/alice"),
-      parseIri(`ap://${did}/users/alice`),
-      compatibleId("/users/alice"),
-      compatibleId("/users/alice", "https://gateway.example"),
-    ]
-  ) {
+  for (const uri of [
+    portableId("/users/alice"),
+    parseIri(`ap://${did}/users/alice`),
+    compatibleId("/users/alice"),
+    compatibleId("/users/alice", "https://gateway.example"),
+  ]) {
     assertEquals(ctx.parseUri(uri), null, uri.href);
     assertEquals(ctx.parseUri(uri, {}), null, uri.href);
     assertEquals(ctx.parseUri(uri, { portable: false }), null, uri.href);
@@ -111,24 +102,22 @@ test("Context.parseUri() does not recognize portable IDs by default", () => {
 
 test("Context.parseUri() keeps the results of ordinary URIs", () => {
   const { ctx } = createTestFederation();
-  for (
-    const path of [
-      "/users/alice",
-      "/bot",
-      "/users/alice/notes/123",
-      "/inbox",
-      "/users/alice/inbox",
-      "/users/alice/outbox",
-      "/users/alice/following",
-      "/users/alice/followers",
-      "/users/alice/liked",
-      "/users/alice/featured",
-      "/users/alice/tags",
-      "/users/alice/bookmarks",
-      "/users/alice/pins",
-      "/nowhere",
-    ]
-  ) {
+  for (const path of [
+    "/users/alice",
+    "/bot",
+    "/users/alice/notes/123",
+    "/inbox",
+    "/users/alice/inbox",
+    "/users/alice/outbox",
+    "/users/alice/following",
+    "/users/alice/followers",
+    "/users/alice/liked",
+    "/users/alice/featured",
+    "/users/alice/tags",
+    "/users/alice/bookmarks",
+    "/users/alice/pins",
+    "/nowhere",
+  ]) {
     const uri = new URL(path, ORIGIN);
     const result = ctx.parseUri(uri);
     assertEquals(parsePortable(ctx, uri), result, path);
@@ -168,14 +157,8 @@ test("Context.parseUri() recognizes portable IDs", () => {
       { type: "followers", identifier, authority: did },
     ],
     ["/users/alice/liked", { type: "liked", identifier, authority: did }],
-    [
-      "/users/alice/featured",
-      { type: "featured", identifier, authority: did },
-    ],
-    [
-      "/users/alice/tags",
-      { type: "featuredTags", identifier, authority: did },
-    ],
+    ["/users/alice/featured", { type: "featured", identifier, authority: did }],
+    ["/users/alice/tags", { type: "featuredTags", identifier, authority: did }],
     [
       "/users/alice/bookmarks",
       {
@@ -200,17 +183,15 @@ test("Context.parseUri() recognizes portable IDs", () => {
     ],
   ];
   for (const [path, expected] of cases) {
-    for (
-      const uri of [
-        portableId(path),
-        parseIri(`ap://${did}${path}`),
-        new URL(`ap+ef61://${encodedDid}${path}`),
-        new URL(`ap://${encodedDid}${path}`),
-        compatibleId(path),
-        compatibleId(path, "https://gateway.example"),
-        compatibleId(path, "http://localhost:8000"),
-      ]
-    ) {
+    for (const uri of [
+      portableId(path),
+      parseIri(`ap://${did}${path}`),
+      new URL(`ap+ef61://${encodedDid}${path}`),
+      new URL(`ap://${encodedDid}${path}`),
+      compatibleId(path),
+      compatibleId(path, "https://gateway.example"),
+      compatibleId(path, "http://localhost:8000"),
+    ]) {
       assertEquals(parsePortable(ctx, uri), expected, uri.href);
     }
   }
@@ -251,10 +232,11 @@ test("Context.parseUri() round-trips the portable ID helpers", () => {
 
 test("Context.parseUri() returns any DID for the caller to check", () => {
   const { ctx } = createTestFederation();
-  assertEquals(
-    parsePortable(ctx, portableId("/users/alice", otherDid)),
-    { type: "actor", identifier: "alice", authority: otherDid },
-  );
+  assertEquals(parsePortable(ctx, portableId("/users/alice", otherDid)), {
+    type: "actor",
+    identifier: "alice",
+    authority: otherDid,
+  });
   assertEquals(
     parsePortable(
       ctx,
@@ -278,9 +260,7 @@ test("Context.parseUri() returns any DID for the caller to check", () => {
   assertEquals(
     parsePortable(
       ctx,
-      new URL(
-        `ap://DID%3Akey%3A${did.slice("did:key:".length)}/users/alice`,
-      ),
+      new URL(`ap://DID%3Akey%3A${did.slice("did:key:".length)}/users/alice`),
     ),
     { type: "actor", identifier: "alice", authority: did },
   );
@@ -294,14 +274,12 @@ test("Context.parseUri() ignores the query and fragment of portable IDs", () => 
     authority: did,
   };
   const hint = "@gateway=https%3A%2F%2Fgateway.example";
-  for (
-    const uri of [
-      parseIri(`ap://${did}/users/alice?${hint}`),
-      portableId("/users/alice#main-key"),
-      new URL(`${compatibleId("/users/alice").href}?${hint}`),
-      new URL(`${compatibleId("/users/alice").href}#main-key`),
-    ]
-  ) {
+  for (const uri of [
+    parseIri(`ap://${did}/users/alice?${hint}`),
+    portableId("/users/alice#main-key"),
+    new URL(`${compatibleId("/users/alice").href}?${hint}`),
+    new URL(`${compatibleId("/users/alice").href}#main-key`),
+  ]) {
     assertEquals(parsePortable(ctx, uri), expected, uri.href);
   }
 });
@@ -310,9 +288,10 @@ test("Context.parseUri() routes portable paths like ordinary ones", () => {
   const { ctx } = createTestFederation();
   for (const path of ["/users/alice/", "/users/alice/notes/", "/users"]) {
     const ordinary = ctx.parseUri(new URL(path, ORIGIN));
-    const expected = ordinary == null
-      ? null
-      : { ...ordinary, authority: did } as ParseUriResult;
+    const expected =
+      ordinary == null
+        ? null
+        : ({ ...ordinary, authority: did } as ParseUriResult);
     assertEquals(parsePortable(ctx, portableId(path)), expected, path);
     assertEquals(parsePortable(ctx, compatibleId(path)), expected, path);
   }
@@ -320,23 +299,21 @@ test("Context.parseUri() routes portable paths like ordinary ones", () => {
 
 test("Context.parseUri() does not recognize unroutable portable IDs", () => {
   const { ctx } = createTestFederation();
-  for (
-    const uri of [
-      // No dispatcher matches:
-      portableId("/nowhere"),
-      compatibleId("/nowhere"),
-      // The gateway endpoint serves no shared inbox:
-      portableId("/inbox"),
-      compatibleId("/inbox"),
-      compatibleId("/inbox", "https://gateway.example"),
-      // Not a portable object's compatible identifier:
-      new URL(`${ORIGIN}/.well-known/apgateway`),
-      new URL(`${ORIGIN}/.well-known/apgateway/users/alice`),
-      new URL(
-        `${ORIGIN}/.well-known/apgateway/hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n`,
-      ),
-    ]
-  ) {
+  for (const uri of [
+    // No dispatcher matches:
+    portableId("/nowhere"),
+    compatibleId("/nowhere"),
+    // The gateway endpoint serves no shared inbox:
+    portableId("/inbox"),
+    compatibleId("/inbox"),
+    compatibleId("/inbox", "https://gateway.example"),
+    // Not a portable object's compatible identifier:
+    new URL(`${ORIGIN}/.well-known/apgateway`),
+    new URL(`${ORIGIN}/.well-known/apgateway/users/alice`),
+    new URL(
+      `${ORIGIN}/.well-known/apgateway/hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n`,
+    ),
+  ]) {
     assertEquals(parsePortable(ctx, uri), null, uri.href);
   }
 });
@@ -346,25 +323,23 @@ test("Context.parseUri() does not recognize malformed portable IDs", () => {
   const multibase = did.slice("did:key:".length);
   // A did:key DID encoded in base64url:
   const base64UrlDid = `did:key:u${multibase.slice(1)}`;
-  for (
-    const uri of [
-      new URL(`ap+ef61://${encodeURIComponent(base64UrlDid)}/users/alice`),
-      compatibleId("/users/alice", ORIGIN, base64UrlDid),
-      new URL("ap+ef61://did%3Akey/users/alice"),
-      new URL("ap+ef61://example.com/users/alice"),
-      compatibleId("/users/alice", ORIGIN, "did:"),
-      compatibleId("/users/alice", "https://gateway.example", "did:key"),
-      // Invalid percent-encoding in the path:
-      new URL(`ap+ef61://${encodedDid}/users/%ZZ`),
-      new URL(`${compatibleId("/users/").href}%ZZ`),
-      // Credentials:
-      new URL(`ap+ef61://user:pass@${encodedDid}/users/alice`),
-      new URL(
-        `https://user:pass@gateway.example/.well-known/apgateway/${did}` +
-          "/users/alice",
-      ),
-    ]
-  ) {
+  for (const uri of [
+    new URL(`ap+ef61://${encodeURIComponent(base64UrlDid)}/users/alice`),
+    compatibleId("/users/alice", ORIGIN, base64UrlDid),
+    new URL("ap+ef61://did%3Akey/users/alice"),
+    new URL("ap+ef61://example.com/users/alice"),
+    compatibleId("/users/alice", ORIGIN, "did:"),
+    compatibleId("/users/alice", "https://gateway.example", "did:key"),
+    // Invalid percent-encoding in the path:
+    new URL(`ap+ef61://${encodedDid}/users/%ZZ`),
+    new URL(`${compatibleId("/users/").href}%ZZ`),
+    // Credentials:
+    new URL(`ap+ef61://user:pass@${encodedDid}/users/alice`),
+    new URL(
+      `https://user:pass@gateway.example/.well-known/apgateway/${did}` +
+        "/users/alice",
+    ),
+  ]) {
     assertEquals(parsePortable(ctx, uri), null, uri.href);
   }
 });
@@ -393,10 +368,7 @@ test("Context.parseUri() prefers the application's routes", () => {
   // a portable ID:
   assertEquals(parsePortable(ctx, compatibleId("/users/alice")), null);
   assertEquals(
-    parsePortable(
-      ctx,
-      compatibleId("/users/alice", "https://gateway.example"),
-    ),
+    parsePortable(ctx, compatibleId("/users/alice", "https://gateway.example")),
     { type: "actor", identifier: "alice", authority: did },
   );
   const note = parsePortable(ctx, compatibleId("/users/alice/notes/1"));
@@ -404,10 +376,11 @@ test("Context.parseUri() prefers the application's routes", () => {
   assertEquals(note.values, { did, identifier: "alice", id: "1" });
   assertFalse("authority" in note);
   // Portable IDs are still recognized:
-  assertEquals(
-    parsePortable(ctx, portableId("/users/alice")),
-    { type: "actor", identifier: "alice", authority: did },
-  );
+  assertEquals(parsePortable(ctx, portableId("/users/alice")), {
+    type: "actor",
+    identifier: "alice",
+    authority: did,
+  });
 });
 
 test("RequestContext.parseUri() recognizes portable IDs", () => {

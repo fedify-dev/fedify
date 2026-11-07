@@ -11,7 +11,7 @@ export async function main(action: typeof runTestInit = runTestInit) {
     help: "both",
   });
   try {
-    process.exitCode = await action(result) ? 0 : 1;
+    process.exitCode = (await action(result)) ? 0 : 1;
   } catch (error) {
     if (!(error instanceof TestInterruptedError)) throw error;
     process.exitCode = error.exitCode;

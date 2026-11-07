@@ -28,10 +28,7 @@ test("handleWebFinger()", async (t) => {
         return new URL(`${url.origin}/users/${identifier}`);
       },
       async getActor(handle): Promise<Actor | null> {
-        const actor = await actorDispatcher(
-          context,
-          handle,
-        );
+        const actor = await actorDispatcher(context, handle);
         return actor instanceof Tombstone ? null : actor;
       },
       parseUri(uri) {
@@ -61,11 +58,12 @@ test("handleWebFinger()", async (t) => {
     return new Person({
       id: actorUri,
       name: identifier === "someone" ? "Someone" : "Someone 2",
-      preferredUsername: identifier === "someone"
-        ? null
-        : identifier === "someone2"
-        ? "bar"
-        : null,
+      preferredUsername:
+        identifier === "someone"
+          ? null
+          : identifier === "someone2"
+            ? "bar"
+            : null,
       icon: new Image({
         url: new URL(`${actorUri.origin}/icon.jpg`),
         mediaType: "image/jpeg",
@@ -128,9 +126,7 @@ test("handleWebFinger()", async (t) => {
 
   const expected = {
     subject: "acct:someone@example.com",
-    aliases: [
-      "https://example.com/users/someone",
-    ],
+    aliases: ["https://example.com/users/someone"],
     links: [
       {
         href: "https://example.com/users/someone",
@@ -172,9 +168,7 @@ test("handleWebFinger()", async (t) => {
 
   const expected2 = {
     subject: "https://example.com/users/someone2",
-    aliases: [
-      "acct:bar@example.com",
-    ],
+    aliases: ["acct:bar@example.com"],
     links: [
       {
         href: "https://example.com/users/someone2",
@@ -306,10 +300,10 @@ test("handleWebFinger()", async (t) => {
     return username === "foo"
       ? "someone"
       : username === "bar"
-      ? "someone2"
-      : username === "qux"
-      ? "someone2"
-      : null;
+        ? "someone2"
+        : username === "qux"
+          ? "someone2"
+          : null;
   };
 
   await t.step("handle mapper", async () => {
@@ -551,10 +545,7 @@ test("handleWebFinger()", async (t) => {
     assertEquals(response.status, 200);
     assertEquals(await response.json(), {
       ...expected2,
-      aliases: [
-        "acct:bar@handle.example.com",
-        "acct:bar@example.com",
-      ],
+      aliases: ["acct:bar@handle.example.com", "acct:bar@example.com"],
       subject: "https://example.com/users/someone2",
     });
   });
@@ -828,10 +819,7 @@ test("handleWebFinger() records webfinger.handle counter and duration", async (t
       assertEquals(response.status, 200);
 
       const counter = recorder.getMeasurement("webfinger.handle");
-      assertEquals(
-        counter?.attributes["webfinger.handle.result"],
-        "not_found",
-      );
+      assertEquals(counter?.attributes["webfinger.handle.result"], "not_found");
       assertEquals(counter?.attributes["http.response.status_code"], 200);
     },
   );
@@ -946,8 +934,7 @@ test("handleWebFinger() for FEP-ef61 portable actors", async (t) => {
   await t.step("acct: on a secondary gateway", async () => {
     const response = await query("acct:secondary@example.com");
     assertEquals(response.status, 200);
-    const primaryCompatibleId =
-      `https://primary.example/.well-known/apgateway/${did}/actor`;
+    const primaryCompatibleId = `https://primary.example/.well-known/apgateway/${did}/actor`;
     assertEquals(await response.json(), {
       subject: "acct:alice@primary.example",
       aliases: [primaryCompatibleId, "acct:secondary@example.com"],

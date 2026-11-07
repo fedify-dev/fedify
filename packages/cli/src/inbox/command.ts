@@ -24,8 +24,7 @@ export const inboxOptions = merge(
     follow: bindConfig(
       multiple(
         option("-f", "--follow", string({ metavar: "URI" }), {
-          description:
-            message`Follow the given actor. The argument can be either an actor URI (including an FEP-ef61 portable ID) or a handle. Can be specified multiple times.`,
+          description: message`Follow the given actor. The argument can be either an actor URI (including an FEP-ef61 portable ID) or a handle. Can be specified multiple times.`,
         }),
       ),
       {
@@ -44,8 +43,7 @@ be specified multiple times.`,
     acceptFollow: bindConfig(
       multiple(
         option("-a", "--accept-follow", string({ metavar: "URI" }), {
-          description:
-            message`Accept follow requests from the given actor. The argument can be either an actor URI (including an FEP-ef61 portable ID) or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be accepted.`,
+          description: message`Accept follow requests from the given actor. The argument can be either an actor URI (including an FEP-ef61 portable ID) or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be accepted.`,
         }),
       ),
       {
@@ -72,20 +70,14 @@ be specified multiple times.`,
       {
         context: configContext,
         key: (config) =>
-          config.inbox?.actorSummary ??
-            DEFAULT_EPHEMERAL_INBOX_SUMMARY,
+          config.inbox?.actorSummary ?? DEFAULT_EPHEMERAL_INBOX_SUMMARY,
         default: DEFAULT_EPHEMERAL_INBOX_SUMMARY,
       },
     ),
     authorizedFetch: bindConfig(
-      option(
-        "-A",
-        "--authorized-fetch",
-        {
-          description:
-            message`Enable authorized fetch mode. Incoming requests without valid HTTP signatures will be rejected with 401 Unauthorized.`,
-        },
-      ),
+      option("-A", "--authorized-fetch", {
+        description: message`Enable authorized fetch mode. Incoming requests without valid HTTP signatures will be rejected with 401 Unauthorized.`,
+      }),
       {
         context: configContext,
         key: (config) => config.inbox?.authorizedFetch ?? false,
@@ -98,12 +90,7 @@ be specified multiple times.`,
 
 export const inboxMetadata = {
   brief: message`Run an ephemeral ActivityPub inbox server.`,
-  description:
-    message`Spins up an ephemeral server that serves the ActivityPub inbox with a one-time actor, through a short-lived public DNS with HTTPS. You can monitor the incoming activities in real-time.`,
+  description: message`Spins up an ephemeral server that serves the ActivityPub inbox with a one-time actor, through a short-lived public DNS with HTTPS. You can monitor the incoming activities in real-time.`,
 };
 
-export const inboxCommand = command(
-  "inbox",
-  inboxOptions,
-  inboxMetadata,
-);
+export const inboxCommand = command("inbox", inboxOptions, inboxMetadata);

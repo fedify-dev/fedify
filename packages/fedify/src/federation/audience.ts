@@ -6,13 +6,7 @@ const AS_NAMESPACE = "https://www.w3.org/ns/activitystreams#";
 /**
  * The addressing properties that determine the audience of an object.
  */
-const ADDRESSING_PROPERTIES = [
-  "to",
-  "cc",
-  "bto",
-  "bcc",
-  "audience",
-] as const;
+const ADDRESSING_PROPERTIES = ["to", "cc", "bto", "bcc", "audience"] as const;
 
 /**
  * The IDs that Fedify treats as the public collection.  Besides the full IRI,
@@ -43,8 +37,11 @@ export function isPubliclyAddressedNode(
     if (!Array.isArray(values)) continue;
     for (const value of values) {
       if (
-        typeof value === "object" && value != null && "@id" in value &&
-        typeof value["@id"] === "string" && PUBLIC_IDS.has(value["@id"])
+        typeof value === "object" &&
+        value != null &&
+        "@id" in value &&
+        typeof value["@id"] === "string" &&
+        PUBLIC_IDS.has(value["@id"])
       ) {
         return true;
       }

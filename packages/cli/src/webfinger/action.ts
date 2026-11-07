@@ -61,25 +61,21 @@ export interface PortableWebFingerResult {
   readonly actorId: URL;
 }
 
-export default async function runWebFinger(
-  {
-    resources,
-    userAgent,
-    allowPrivateAddresses,
-    maxRedirection,
-    gateways,
-  }: WebFingerCommand,
-) {
-  await Array.fromAsync(
-    resources,
-    (resource) =>
-      lookupWithSpinner({
-        resource,
-        userAgent,
-        allowPrivateAddresses,
-        maxRedirection,
-        gateways,
-      }),
+export default async function runWebFinger({
+  resources,
+  userAgent,
+  allowPrivateAddresses,
+  maxRedirection,
+  gateways,
+}: WebFingerCommand) {
+  await Array.fromAsync(resources, (resource) =>
+    lookupWithSpinner({
+      resource,
+      userAgent,
+      allowPrivateAddresses,
+      maxRedirection,
+      gateways,
+    }),
   );
 }
 
@@ -101,10 +97,11 @@ export async function lookupSingleWebFinger(
     ...getLookupWebFingerOptions(options),
     withDiagnostics: true,
   });
-  return outcome.resource ?? (
-    outcome.result === "not_found"
+  return (
+    outcome.resource ??
+    (outcome.result === "not_found"
       ? new NotFoundError(options.resource).throw()
-      : new WebFingerLookupError(options.resource, outcome.result).throw()
+      : new WebFingerLookupError(options.resource, outcome.result).throw())
   );
 }
 
@@ -180,11 +177,11 @@ export async function lookupPortableWebFinger(
     ...getLookupWebFingerOptions(options),
     withDiagnostics: true,
   });
-  const descriptor = outcome.resource ?? (
-    outcome.result === "not_found"
+  const descriptor =
+    outcome.resource ??
+    (outcome.result === "not_found"
       ? new NotFoundError(address).throw()
-      : new WebFingerLookupError(address, outcome.result).throw()
-  );
+      : new WebFingerLookupError(address, outcome.result).throw());
   return { descriptor, address, actorId: actor.id };
 }
 
@@ -200,17 +197,20 @@ export function linksToActor(
   descriptor: ResourceDescriptor,
   actorId: URL,
 ): boolean {
-  const link = descriptor.links?.find((l) =>
-    l.rel === "self" && l.href != null &&
-    (l.type === "application/activity+json" ||
-      l.type?.match(
+  const link = descriptor.links?.find(
+    (l) =>
+      l.rel === "self" &&
+      l.href != null &&
+      (l.type === "application/activity+json" ||
+        l.type?.match(
           /application\/ld\+json;\s*profile="https:\/\/www.w3.org\/ns\/activitystreams"/,
-        ) != null)
+        ) != null),
   );
   if (link?.href == null) return false;
   const key = getIriKey(link.href);
-  return key != null && isPortableReference(link.href) &&
-    key === getIriKey(actorId);
+  return (
+    key != null && isPortableReference(link.href) && key === getIriKey(actorId)
+  );
 }
 
 async function lookupWithSpinner(options: LookupSingleWebFingerOptions) {
@@ -221,14 +221,11 @@ async function lookupWithSpinner(options: LookupSingleWebFingerOptions) {
   }).start();
   try {
     if (isPortableReference(resource)) {
-      const { descriptor, address, actorId } = await lookupPortableWebFinger(
-        options,
-      );
+      const { descriptor, address, actorId } =
+        await lookupPortableWebFinger(options);
       if (linksToActor(descriptor, actorId)) {
         spinner.succeed(
-          formatMessage(
-            message`WebFinger found for ${resource} (${address}):`,
-          ),
+          formatMessage(message`WebFinger found for ${resource} (${address}):`),
         );
       } else {
         spinner.fail(
@@ -244,9 +241,7 @@ async function lookupWithSpinner(options: LookupSingleWebFingerOptions) {
       return;
     }
     const result = await lookupSingleWebFinger(options);
-    spinner.succeed(
-      formatMessage(message`WebFinger found for ${resource}:`),
-    );
+    spinner.succeed(formatMessage(message`WebFinger found for ${resource}:`));
     print([{ type: "text", text: formatObject(result) }]);
   } catch (error) {
     spinner.fail(formatMessage(getErrorMessage(resource, error)));

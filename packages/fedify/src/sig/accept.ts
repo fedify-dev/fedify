@@ -141,9 +141,7 @@ export interface AcceptSignatureMember {
  *          malformed or empty.
  * @since 2.1.0
  */
-export function parseAcceptSignature(
-  header: string,
-): AcceptSignatureMember[] {
+export function parseAcceptSignature(header: string): AcceptSignatureMember[] {
   try {
     return parseEachSignature(decodeDict(header));
   } catch {
@@ -174,9 +172,9 @@ const parseEachSignature = (dict: Dictionary): AcceptSignatureMember[] =>
       parameters: compactParams(item),
     }));
 
-const compactParams = (
-  item: { params: AcceptSignatureParameters },
-): AcceptSignatureParameters => {
+const compactParams = (item: {
+  params: AcceptSignatureParameters;
+}): AcceptSignatureParameters => {
   const { keyid, alg, created, expires, nonce, tag } = item.params ?? {};
   return compactObject({
     keyid: stringOrUndefined(keyid),
@@ -190,9 +188,8 @@ const compactParams = (
 
 const stringOrUndefined = (v: unknown): string | undefined =>
   typeof v === "string" ? v : undefined;
-const trueOrUndefined = (
-  v: unknown,
-): true | undefined => (v === true ? true : undefined);
+const trueOrUndefined = (v: unknown): true | undefined =>
+  v === true ? true : undefined;
 
 /**
  * Serializes an array of {@link AcceptSignatureMember} objects into an
@@ -207,14 +204,12 @@ const trueOrUndefined = (
 export function formatAcceptSignature(
   members: AcceptSignatureMember[],
 ): string {
-  const items = members.map((member) =>
-    [
-      member.label,
-      new Item(
-        compToItems(member),
-        compactParameters(member),
-      ),
-    ] as const
+  const items = members.map(
+    (member) =>
+      [
+        member.label,
+        new Item(compToItems(member), compactParameters(member)),
+      ] as const,
   );
   return encodeDict(Object.fromEntries(items));
 }
@@ -312,9 +307,7 @@ export function fulfillAcceptSignature(
     return null;
   }
   // Check key ID compatibility
-  if (
-    entry.parameters.keyid != null && entry.parameters.keyid !== localKeyId
-  ) {
+  if (entry.parameters.keyid != null && entry.parameters.keyid !== localKeyId) {
     return null;
   }
   return {

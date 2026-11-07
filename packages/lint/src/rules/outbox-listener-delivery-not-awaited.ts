@@ -74,7 +74,7 @@ const get = (node: Node | null | undefined, key: string): unknown =>
   node == null ? undefined : (node as unknown as Record<string, unknown>)[key];
 
 const asNode = (value: unknown): Node | null =>
-  isNode(value) ? value as Node : null;
+  isNode(value) ? (value as Node) : null;
 
 const parentOf = (node: Node): Node | null => asNode(get(node, "parent"));
 
@@ -135,9 +135,13 @@ function visitAll(
 
 /** Collects the calls in `node` that run in the same function, not in one nested in it. */
 function collectCalls(node: unknown, out: CallExpression[]): void {
-  visitAll(node, (n) => {
-    if (n.type === "CallExpression") out.push(n as CallExpression);
-  }, false);
+  visitAll(
+    node,
+    (n) => {
+      if (n.type === "CallExpression") out.push(n as CallExpression);
+    },
+    false,
+  );
 }
 
 function enclosingFunction(node: Node): FunctionLikeNode | null {
@@ -154,11 +158,12 @@ function deliveryAliasesOf(pattern: Node, out: Set<string>): void {
   for (const prop of get(pattern, "properties") as Node[]) {
     if (prop.type !== "Property") continue;
     const key = asNode(get(prop, "key"));
-    const keyName = key?.type === "Identifier"
-      ? key.name
-      : key?.type === "Literal" && typeof key.value === "string"
-      ? key.value
-      : null;
+    const keyName =
+      key?.type === "Identifier"
+        ? key.name
+        : key?.type === "Literal" && typeof key.value === "string"
+          ? key.value
+          : null;
     if (keyName == null || !DELIVERY_METHOD_NAMES.has(keyName)) continue;
     const value = asNode(get(prop, "value"));
     if (value?.type === "Identifier") out.add(value.name);
@@ -189,36 +194,44 @@ function findDeliveryTargets(
   const contextParam = unwrapContextParam(
     listener.params[0] as Node | undefined,
   );
-  const contextName = contextParam?.type === "Identifier"
-    ? contextParam.name
-    : null;
+  const contextName =
+    contextParam?.type === "Identifier" ? contextParam.name : null;
   if (contextParam != null) deliveryAliasesOf(contextParam, aliases);
 
   if (contextName != null) {
     for (const scope of scopes) {
       for (const statement of scope.statements) {
-        visitAll(statement, (node) => {
-          if (node.type !== "VariableDeclarator") return;
-          const id = asNode(get(node, "id"));
-          const init = asNode(get(node, "init"));
-          if (id == null || init == null) return;
-          const source = unwrap(init);
-          if (source.type === "Identifier" && source.name === contextName) {
-            deliveryAliasesOf(id, aliases);
-            return;
-          }
-          if (id.type !== "Identifier" || source.type !== "MemberExpression") {
-            return;
-          }
-          const object = unwrap(asNode(get(source, "object")) ?? source);
-          const name = memberName(source);
-          if (
-            object.type === "Identifier" && object.name === contextName &&
-            name != null && DELIVERY_METHOD_NAMES.has(name)
-          ) {
-            aliases.add(id.name);
-          }
-        }, false);
+        visitAll(
+          statement,
+          (node) => {
+            if (node.type !== "VariableDeclarator") return;
+            const id = asNode(get(node, "id"));
+            const init = asNode(get(node, "init"));
+            if (id == null || init == null) return;
+            const source = unwrap(init);
+            if (source.type === "Identifier" && source.name === contextName) {
+              deliveryAliasesOf(id, aliases);
+              return;
+            }
+            if (
+              id.type !== "Identifier" ||
+              source.type !== "MemberExpression"
+            ) {
+              return;
+            }
+            const object = unwrap(asNode(get(source, "object")) ?? source);
+            const name = memberName(source);
+            if (
+              object.type === "Identifier" &&
+              object.name === contextName &&
+              name != null &&
+              DELIVERY_METHOD_NAMES.has(name)
+            ) {
+              aliases.add(id.name);
+            }
+          },
+          false,
+        );
       }
     }
   }
@@ -352,7 +365,8 @@ function fateOf(
 
       case "LogicalExpression":
         if (
-          get(parent, "operator") === "&&" && get(parent, "left") === current
+          get(parent, "operator") === "&&" &&
+          get(parent, "left") === current
         ) {
           return DROPPED;
         }
@@ -400,8 +414,10 @@ function fateOf(
         const call = parentOf(parent);
         const name = memberName(parent);
         if (
-          currentShape === "promise" && call?.type === "CallExpression" &&
-          get(call, "callee") === parent && name != null &&
+          currentShape === "promise" &&
+          call?.type === "CallExpression" &&
+          get(call, "callee") === parent &&
+          name != null &&
           PROMISE_CHAIN_METHODS.has(name)
         ) {
           current = call;
@@ -415,12 +431,15 @@ function fateOf(
         const callee = unwrap(asNode(get(parent, "callee")) ?? parent);
         const name = memberName(callee);
         if (name === "waitUntil") return HANDLED;
-        const object = callee.type === "MemberExpression"
-          ? unwrap(asNode(get(callee, "object")) ?? callee)
-          : null;
+        const object =
+          callee.type === "MemberExpression"
+            ? unwrap(asNode(get(callee, "object")) ?? callee)
+            : null;
         if (
-          object?.type === "Identifier" && object.name === "Promise" &&
-          name != null && PROMISE_COMBINATORS.has(name)
+          object?.type === "Identifier" &&
+          object.name === "Promise" &&
+          name != null &&
+          PROMISE_COMBINATORS.has(name)
         ) {
           current = parent;
           currentShape = "promise";
@@ -480,8 +499,9 @@ function checkListener(
       const name = memberName(callee);
       if (name == null || !DELIVERY_METHOD_NAMES.has(name)) return false;
       const object = unwrap(asNode(get(callee, "object")) ?? callee);
-      return object.type === "Identifier" &&
-        object.name === targets.contextName;
+      return (
+        object.type === "Identifier" && object.name === targets.contextName
+      );
     }
     return callee.type === "Identifier" && targets.aliases.has(callee.name);
   };
@@ -523,7 +543,8 @@ function checkListener(
     for (const [index, scope] of scopes.entries()) {
       for (const call of callsByScope[index]) {
         if (
-          carriesDelivery(call, scope) && noteCarrying(fateOf(call, analysis))
+          carriesDelivery(call, scope) &&
+          noteCarrying(fateOf(call, analysis))
         ) {
           changed = true;
         }
@@ -553,7 +574,8 @@ function checkListener(
   // callback that returns the delivery was already judged above.
   for (const [fn, kind] of carrying) {
     if (
-      kind === "awaited" && returnedOutcome(fn, analysis).fate === "dropped"
+      kind === "awaited" &&
+      returnedOutcome(fn, analysis).fate === "dropped"
     ) {
       flag(fn);
     }
@@ -576,13 +598,14 @@ function checkListener(
 }
 
 function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
-  buildReport: Context extends Deno.lint.RuleContext ? {
-      message: string;
-    }
+  buildReport: Context extends Deno.lint.RuleContext
+    ? {
+        message: string;
+      }
     : {
-      messageId: string;
-      data: { message: string };
-    },
+        messageId: string;
+        data: { message: string };
+      },
 ) {
   return (context: Context) =>
     createOutboxListenerVisitor((listener) =>
@@ -591,7 +614,7 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
           node,
           ...buildReport,
         });
-      })
+      }),
     );
 }
 

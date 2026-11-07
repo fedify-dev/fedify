@@ -9,14 +9,15 @@ import { throwUnlessNotExists } from "../lib.ts";
 import type { InitCommandData, WebFrameworkInitializer } from "../types.ts";
 import { formatJson } from "../utils.ts";
 
-export async function cleanupScaffoldedFiles(
-  { dir, initializer }: InitCommandData,
-): Promise<void> {
+export async function cleanupScaffoldedFiles({
+  dir,
+  initializer,
+}: InitCommandData): Promise<void> {
   await Promise.all(
     (initializer.cleanupFiles ?? [])
       .filter((path) => path.trim() !== "")
       .map((path) =>
-        rm(resolveCleanupPath(dir, path), { force: true, recursive: true })
+        rm(resolveCleanupPath(dir, path), { force: true, recursive: true }),
       ),
   );
   await cleanupPackageJson(dir, initializer.cleanupPackageJson);

@@ -16,13 +16,11 @@ test("Workers client exit status", async (t) => {
     [["ignored step"], 0, "1 passed, 0 failed, 0 skipped"],
     [[], 1, "2 passed, 9 failed, 1 skipped"],
     ...["throw", "step", "nested"].flatMap((kind) =>
-      [0, 1, 2].map((
-        i,
-      ): [string[], number, string] => [
+      [0, 1, 2].map((i): [string[], number, string] => [
         [`${kind} ${i}`],
         1,
         "0 passed, 1 failed, 0 skipped",
-      ])
+      ]),
     ),
   ];
   for (const [filters, status, summary] of cases) {
@@ -33,17 +31,16 @@ test("Workers client exit status", async (t) => {
       };
       delete env.NODE_TEST_CONTEXT;
       delete env.NODE_OPTIONS;
-      const result = spawnSync(process.execPath, [
-        "--import=tsx",
-        client,
-        "--selftest",
-        ...filters,
-      ], {
-        cwd: fileURLToPath(new URL("..", import.meta.url)),
-        env,
-        encoding: "utf8",
-        timeout: 30_000,
-      });
+      const result = spawnSync(
+        process.execPath,
+        ["--import=tsx", client, "--selftest", ...filters],
+        {
+          cwd: fileURLToPath(new URL("..", import.meta.url)),
+          env,
+          encoding: "utf8",
+          timeout: 30_000,
+        },
+      );
       if (result.error) throw result.error;
       const output = result.stdout + result.stderr;
       strictEqual(result.signal, null, output);

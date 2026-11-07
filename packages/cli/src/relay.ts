@@ -15,13 +15,12 @@ import { colors, matchesActor } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "relay"]);
 
-type RelayCommand =
-  & InferValue<typeof import("./relay/command.ts").relayCommand>
-  & GlobalOptions;
+type RelayCommand = InferValue<
+  typeof import("./relay/command.ts").relayCommand
+> &
+  GlobalOptions;
 
-export async function runRelay(
-  command: RelayCommand,
-): Promise<void> {
+export async function runRelay(command: RelayCommand): Promise<void> {
   if (command.debug) {
     await configureLogging();
   }
@@ -57,32 +56,30 @@ export async function runRelay(
     rejectFollows.push(...(command.rejectFollow ?? []));
   }
 
-  server = await spawnTemporaryServer(async (request) => {
-    return await relay.fetch(request);
-  }, {
-    noTunnel: !command.tunnel,
-    port: command.port,
-    ...(command.tunnel && { service: command.tunnelService }),
-  });
-
-  relay = createRelay(
-    command.protocol as RelayType,
+  server = await spawnTemporaryServer(
+    async (request) => {
+      return await relay.fetch(request);
+    },
     {
-      origin: server?.url.origin,
-      name: command.name,
-      kv: kv,
-      subscriptionHandler: async (_ctx, actor) => {
-        const isInAcceptList = await matchesActor(actor, acceptFollows);
-        const isInRejectList = await matchesActor(actor, rejectFollows);
-
-        return isInAcceptList && !isInRejectList;
-      },
+      noTunnel: !command.tunnel,
+      port: command.port,
+      ...(command.tunnel && { service: command.tunnelService }),
     },
   );
 
-  spinner.succeed(
-    `Relay server is running: ${colors.green(server.url.href)}`,
-  );
+  relay = createRelay(command.protocol as RelayType, {
+    origin: server?.url.origin,
+    name: command.name,
+    kv: kv,
+    subscriptionHandler: async (_ctx, actor) => {
+      const isInAcceptList = await matchesActor(actor, acceptFollows);
+      const isInRejectList = await matchesActor(actor, rejectFollows);
+
+      return isInAcceptList && !isInRejectList;
+    },
+  });
+
+  spinner.succeed(`Relay server is running: ${colors.green(server.url.href)}`);
 
   await printRelayInfo(relay, {
     protocol: command.protocol,

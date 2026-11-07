@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
 
   let target: APObject | null = null;
   try {
-    target = await ctx.lookupObject(targetUri) as APObject | null;
+    target = (await ctx.lookupObject(targetUri)) as APObject | null;
   } catch {
     return sendRedirect(event, "/", 303);
   }

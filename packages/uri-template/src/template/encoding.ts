@@ -7,9 +7,7 @@ const hexDigits = "0123456789ABCDEF";
  *
  * Used by parsers and encoders when recognizing pct-encoded triplets.
  */
-export const isHexDigit: (char: string) => boolean = (
-  char: string,
-): boolean =>
+export const isHexDigit: (char: string) => boolean = (char: string): boolean =>
   some(
     between(0x30, 0x39),
     between(0x41, 0x46),
@@ -19,10 +17,10 @@ export const isHexDigit: (char: string) => boolean = (
 /**
  * Returns whether `value[index]` starts a complete pct-encoded triplet.
  */
-export const isPctEncodedAt: (
+export const isPctEncodedAt: (value: string, index: number) => boolean = (
   value: string,
   index: number,
-) => boolean = (value: string, index: number): boolean =>
+): boolean =>
   value[index] === "%" &&
   index + 2 < value.length &&
   isHexDigit(value[index + 1]) &&
@@ -68,29 +66,28 @@ export function readCodePoint(
  */
 export const encodeValue: (
   allowReserved: boolean,
-) => (value: string) => string = (
-  allowReserved: boolean,
-): (value: string) => string =>
-(value: string): string => {
-  let encoded = "";
-  for (let index = 0; index < value.length;) {
-    if (allowReserved && isPctEncodedAt(value, index)) {
-      encoded += value.slice(index, index + 3);
-      index += 3;
-      continue;
-    }
+) => (value: string) => string =
+  (allowReserved: boolean): ((value: string) => string) =>
+  (value: string): string => {
+    let encoded = "";
+    for (let index = 0; index < value.length;) {
+      if (allowReserved && isPctEncodedAt(value, index)) {
+        encoded += value.slice(index, index + 3);
+        index += 3;
+        continue;
+      }
 
-    const { char, size } = readCodePoint(value, index);
-    encoded += some(
+      const { char, size } = readCodePoint(value, index);
+      encoded += some(
         isUnreserved,
         (char: string): boolean => allowReserved && isReserved(char),
       )(char)
-      ? char
-      : percentEncode(char);
-    index += size;
-  }
-  return encoded;
-};
+        ? char
+        : percentEncode(char);
+      index += size;
+    }
+    return encoded;
+  };
 
 /**
  * Percent-encodes a variable name or associative key for named expansions.
@@ -139,11 +136,7 @@ const isDigit: (char: string) => boolean = (char: string): boolean =>
   between(0x30, 0x39)(char.charCodeAt(0));
 
 const isUnreserved: (char: string) => boolean = (char: string): boolean =>
-  some(
-    isAlpha,
-    isDigit,
-    (char: string) => "-._~".includes(char),
-  )(char);
+  some(isAlpha, isDigit, (char: string) => "-._~".includes(char))(char);
 
 const isReserved: (char: string) => boolean = (char: string): boolean =>
   ":/?#[]@!$&'()*+,;=".includes(char);
@@ -151,9 +144,9 @@ const isReserved: (char: string) => boolean = (char: string): boolean =>
 const isLiteralChar: (char: string) => boolean = (char: string): boolean =>
   isLiteralCodePoint(char.codePointAt(0));
 
-const isLiteralCodePoint: (
+const isLiteralCodePoint: (code: number | undefined) => boolean = (
   code: number | undefined,
-) => boolean = (code: number | undefined): boolean =>
+): boolean =>
   code != null &&
   some(
     eq(0x21),
@@ -196,19 +189,18 @@ const percentEncode: (char: string) => string = (char: string): string =>
     .map((byte) => `%${hexDigits[byte >> 4]}${hexDigits[byte & 0x0f]}`)
     .join("");
 
-const between: (
-  min: number,
-  max: number,
-) => (num: number) => boolean =
-  (min: number, max: number): (num: number) => boolean =>
-  (num: number): boolean => min <= num && num <= max;
+const between: (min: number, max: number) => (num: number) => boolean =
+  (min: number, max: number): ((num: number) => boolean) =>
+  (num: number): boolean =>
+    min <= num && num <= max;
 
 const eq: <T>(a: T) => (b: T) => boolean =
-  <T>(a: T): (b: T) => boolean => (b: T): boolean => a === b;
+  <T>(a: T): ((b: T) => boolean) =>
+  (b: T): boolean =>
+    a === b;
 
-const some: <T>(
-  ...preds: ((arg: T) => boolean)[]
-) => (arg: T) => boolean =
-  <T>(...preds: ((arg: T) => boolean)[]): (arg: T) => boolean =>
-  (arg: T): boolean => preds.some((pred) => pred(arg));
+const some: <T>(...preds: ((arg: T) => boolean)[]) => (arg: T) => boolean =
+  <T>(...preds: ((arg: T) => boolean)[]): ((arg: T) => boolean) =>
+  (arg: T): boolean =>
+    preds.some((pred) => pred(arg));
 // cspell: ignore preds

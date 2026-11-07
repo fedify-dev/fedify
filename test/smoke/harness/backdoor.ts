@@ -27,14 +27,14 @@ async function parseRecipient(
   // Try WebFinger resolution first—this discovers the correct actor URI
   // regardless of server software (Mastodon, Sharkey, etc.)
   try {
-    const wfUrl = `${scheme}://${domain}/.well-known/webfinger?resource=${
-      encodeURIComponent(`acct:${handle}`)
-    }`;
+    const wfUrl = `${scheme}://${domain}/.well-known/webfinger?resource=${encodeURIComponent(
+      `acct:${handle}`,
+    )}`;
     const wfRes = await fetch(wfUrl, {
       headers: { Accept: "application/jrd+json" },
     });
     if (wfRes.ok) {
-      const wf = await wfRes.json() as {
+      const wf = (await wfRes.json()) as {
         links?: { rel: string; type?: string; href?: string }[];
       };
       const self = wf.links?.find(
@@ -47,7 +47,7 @@ async function parseRecipient(
           headers: { Accept: "application/activity+json" },
         });
         if (actorRes.ok) {
-          const actor = await actorRes.json() as { inbox?: string };
+          const actor = (await actorRes.json()) as { inbox?: string };
           if (actor.inbox) {
             const result = { inboxId: new URL(actor.inbox), actorId };
             recipientCache.set(handle, result);
@@ -125,12 +125,9 @@ export async function handleBackdoor(
     });
 
     try {
-      await ctx.sendActivity(
-        { identifier: "testuser" },
-        recipient,
-        activity,
-        { immediate: true },
-      );
+      await ctx.sendActivity({ identifier: "testuser" }, recipient, activity, {
+        immediate: true,
+      });
     } catch (e) {
       return json({ error: `Failed to send: ${e}` }, 500);
     }
@@ -151,20 +148,15 @@ export async function handleBackdoor(
     const recipient = { id: actorId, inboxId };
 
     const follow = new Follow({
-      id: new URL(
-        `${ctx.canonicalOrigin}/activities/${crypto.randomUUID()}`,
-      ),
+      id: new URL(`${ctx.canonicalOrigin}/activities/${crypto.randomUUID()}`),
       actor: ctx.getActorUri("testuser"),
       object: actorId,
     });
 
     try {
-      await ctx.sendActivity(
-        { identifier: "testuser" },
-        recipient,
-        follow,
-        { immediate: true },
-      );
+      await ctx.sendActivity({ identifier: "testuser" }, recipient, follow, {
+        immediate: true,
+      });
     } catch (e) {
       return json({ error: `Failed to send: ${e}` }, 500);
     }
@@ -185,9 +177,7 @@ export async function handleBackdoor(
     const recipient = { id: actorId, inboxId };
 
     const undo = new Undo({
-      id: new URL(
-        `${ctx.canonicalOrigin}/activities/${crypto.randomUUID()}`,
-      ),
+      id: new URL(`${ctx.canonicalOrigin}/activities/${crypto.randomUUID()}`),
       actor: ctx.getActorUri("testuser"),
       object: new Follow({
         actor: ctx.getActorUri("testuser"),
@@ -196,12 +186,9 @@ export async function handleBackdoor(
     });
 
     try {
-      await ctx.sendActivity(
-        { identifier: "testuser" },
-        recipient,
-        undo,
-        { immediate: true },
-      );
+      await ctx.sendActivity({ identifier: "testuser" }, recipient, undo, {
+        immediate: true,
+      });
     } catch (e) {
       return json({ error: `Failed to send: ${e}` }, 500);
     }

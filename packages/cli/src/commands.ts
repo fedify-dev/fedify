@@ -30,32 +30,32 @@ type CliCommandHandler<TValue extends object> = (
   value: TValue & GlobalOptions,
 ) => unknown | Promise<unknown>;
 
-export type CliStaticCommand<TValue extends object> =
-  & Omit<StaticCommand<"sync", TValue>, "handler">
-  & {
-    readonly handler: (value: never) => unknown | Promise<unknown>;
-    readonly run: CliCommandHandler<TValue>;
-  };
+export type CliStaticCommand<TValue extends object> = Omit<
+  StaticCommand<"sync", TValue>,
+  "handler"
+> & {
+  readonly handler: (value: never) => unknown | Promise<unknown>;
+  readonly run: CliCommandHandler<TValue>;
+};
 
-export type AnyCliStaticCommand =
-  & Omit<StaticCommand<"sync", never>, "handler" | "parser">
-  & {
-    readonly parser: Parser<"sync", unknown, unknown>;
-    readonly handler: (value: never) => unknown | Promise<unknown>;
-    readonly run: (value: never) => unknown | Promise<unknown>;
-  };
+export type AnyCliStaticCommand = Omit<
+  StaticCommand<"sync", never>,
+  "handler" | "parser"
+> & {
+  readonly parser: Parser<"sync", unknown, unknown>;
+  readonly handler: (value: never) => unknown | Promise<unknown>;
+  readonly run: (value: never) => unknown | Promise<unknown>;
+};
 
 export type CliCommandValue<TCommand extends AnyCliStaticCommand> =
   TCommand extends CliStaticCommand<infer TValue> ? TValue : never;
 
-function defineCliCommand<const TValue extends object>(
-  command: {
-    readonly path: CommandPath;
-    readonly parser: Parser<"sync", TValue, unknown>;
-    readonly metadata?: CommandMetadata;
-    readonly run: CliCommandHandler<NoInfer<TValue>>;
-  },
-): CliStaticCommand<TValue> {
+function defineCliCommand<const TValue extends object>(command: {
+  readonly path: CommandPath;
+  readonly parser: Parser<"sync", TValue, unknown>;
+  readonly metadata?: CommandMetadata;
+  readonly run: CliCommandHandler<NoInfer<TValue>>;
+}): CliStaticCommand<TValue> {
   const { run, ...definition } = command;
   return {
     ...defineCommand({
@@ -66,10 +66,7 @@ function defineCliCommand<const TValue extends object>(
   };
 }
 
-const initParser = merge(
-  initOptions,
-  object({ command: constant("init") }),
-);
+const initParser = merge(initOptions, object({ command: constant("init") }));
 
 const initMetadata = {
   brief: message`Initialize a new Fedify project directory.`,
@@ -77,11 +74,12 @@ const initMetadata = {
 
 By default, it initializes the current directory.  You can specify a different directory as an argument.
 
-Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${
-    optionNames(["-p", "--package-manager"])
-  }, ${optionNames(["-k", "--kv-store"])}, and ${
-    optionNames(["-m", "--message-queue"])
-  }), it will prompt you to select the options interactively.`,
+Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${optionNames(
+    ["-p", "--package-manager"],
+  )}, ${optionNames(["-k", "--kv-store"])}, and ${optionNames([
+    "-m",
+    "--message-queue",
+  ])}), it will prompt you to select the options interactively.`,
 };
 
 export const generatingCommands = [
@@ -96,9 +94,8 @@ export const generatingCommands = [
     parser: generateVocabOptions,
     metadata: generateVocabMetadata,
     run: async (value) => {
-      const { default: runGenerateVocab } = await import(
-        "./generate-vocab/action.ts"
-      );
+      const { default: runGenerateVocab } =
+        await import("./generate-vocab/action.ts");
       return await runGenerateVocab(value);
     },
   }),
@@ -173,4 +170,4 @@ export const cliCommands = [
   ...networkCommands,
 ] as const satisfies readonly AnyCliStaticCommand[];
 
-export type CliCommand = typeof cliCommands[number];
+export type CliCommand = (typeof cliCommands)[number];

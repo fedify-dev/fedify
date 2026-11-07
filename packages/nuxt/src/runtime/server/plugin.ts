@@ -37,28 +37,30 @@ interface MinimalNitroApp {
 type NitroAppPlugin = (nitroApp: MinimalNitroApp) => void;
 
 function shouldConvert(event: H3Event, status: number): boolean {
-  return !event.handled && resolveDeferredNotAcceptable(
-        event.context[DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY] === true,
-        status,
-        event.context.matchedRoute != null &&
-          event.context[RENDERER_CONTEXT_KEY] !== true,
-      ) != null;
+  return (
+    !event.handled &&
+    resolveDeferredNotAcceptable(
+      event.context[DEFERRED_NOT_ACCEPTABLE_CONTEXT_KEY] === true,
+      status,
+      event.context.matchedRoute != null &&
+        event.context[RENDERER_CONTEXT_KEY] !== true,
+    ) != null
+  );
 }
 
 function setNotAcceptable(event: H3Event): void {
-  for (
-    const name of [
-      "content-length",
-      "content-encoding",
-      "content-range",
-      "content-digest",
-      "digest",
-      "etag",
-      "last-modified",
-      "content-language",
-      "content-location",
-    ]
-  ) removeResponseHeader(event, name);
+  for (const name of [
+    "content-length",
+    "content-encoding",
+    "content-range",
+    "content-digest",
+    "digest",
+    "etag",
+    "last-modified",
+    "content-language",
+    "content-location",
+  ])
+    removeResponseHeader(event, name);
   const existing = getResponseHeader(event, "vary");
   const vary = Array.isArray(existing)
     ? existing.join(", ")
@@ -95,9 +97,8 @@ const fedifyPlugin: NitroAppPlugin = (nitroApp) => {
   }
   nitroApp.hooks.hook("beforeResponse", (event, payload) => {
     const body = payload.body;
-    const status = body instanceof Response
-      ? body.status
-      : getResponseStatus(event);
+    const status =
+      body instanceof Response ? body.status : getResponseStatus(event);
     if (!shouldConvert(event, status)) return;
     if (body instanceof Response) {
       for (const [name, headerValue] of body.headers) {

@@ -87,7 +87,7 @@ test("createContextSnapshot() memoizes failures for a delivery", async () => {
 
 test("createContextSnapshot() records the normalization overrides", async () => {
   const snapshot = createContextSnapshot(() =>
-    Promise.reject(new Error("The caller's loader must not be asked."))
+    Promise.reject(new Error("The caller's loader must not be asked.")),
   );
   const loader = snapshot.loader("normalization");
   await loader("https://w3id.org/security/v1");
@@ -133,31 +133,37 @@ test("serializeContextSnapshot() stores only exactly bundled responses by hash",
 });
 
 test("deserializeContextSnapshot() rejects tampered or unknown entries", async () => {
-  const [entry] = await serializeContextSnapshot([{
-    policy: "standard",
-    url: CUSTOM,
-    response: { contextUrl: null, documentUrl: CUSTOM, document: { a: 1 } },
-  }]);
+  const [entry] = await serializeContextSnapshot([
+    {
+      policy: "standard",
+      url: CUSTOM,
+      response: { contextUrl: null, documentUrl: CUSTOM, document: { a: 1 } },
+    },
+  ]);
   await assertRejects(
     () =>
-      deserializeContextSnapshot([{
-        ...entry,
-        response: {
-          contextUrl: null,
-          documentUrl: CUSTOM,
-          document: { a: 2 },
+      deserializeContextSnapshot([
+        {
+          ...entry,
+          response: {
+            contextUrl: null,
+            documentUrl: CUSTOM,
+            document: { a: 2 },
+          },
         },
-      }]),
+      ]),
     ContextSnapshotMissError,
   );
   await assertRejects(
     () =>
-      deserializeContextSnapshot([{
-        policy: "standard",
-        url: CUSTOM,
-        sha256: entry.sha256,
-        bundled: true,
-      }]),
+      deserializeContextSnapshot([
+        {
+          policy: "standard",
+          url: CUSTOM,
+          sha256: entry.sha256,
+          bundled: true,
+        },
+      ]),
     ContextSnapshotMissError,
   );
   await assertRejects(
@@ -171,18 +177,28 @@ test("deserializeContextSnapshot() rejects tampered or unknown entries", async (
 });
 
 test("createSnapshotOnlyLoader() serves only the snapshot", async () => {
-  const loader = createSnapshotOnlyLoader([{
-    policy: "standard",
-    url: CUSTOM,
-    response: { contextUrl: null, documentUrl: CUSTOM, document: { a: 1 } },
-  }], "standard");
+  const loader = createSnapshotOnlyLoader(
+    [
+      {
+        policy: "standard",
+        url: CUSTOM,
+        response: { contextUrl: null, documentUrl: CUSTOM, document: { a: 1 } },
+      },
+    ],
+    "standard",
+  );
   assertEquals((await loader(CUSTOM)).document, { a: 1 });
   await assertRejects(() => loader(AS), ContextSnapshotMissError);
-  const normalization = createSnapshotOnlyLoader([{
-    policy: "standard",
-    url: CUSTOM,
-    response: { contextUrl: null, documentUrl: CUSTOM, document: { a: 1 } },
-  }], "normalization");
+  const normalization = createSnapshotOnlyLoader(
+    [
+      {
+        policy: "standard",
+        url: CUSTOM,
+        response: { contextUrl: null, documentUrl: CUSTOM, document: { a: 1 } },
+      },
+    ],
+    "normalization",
+  );
   await assertRejects(() => normalization(CUSTOM), ContextSnapshotMissError);
 });
 
@@ -210,15 +226,13 @@ test("getActorPresence() counts every declared actor value", async () => {
   assertEquals(getActorPresence(await expand()), "absent");
   assertEquals(getActorPresence(await expand([])), "absent");
   assertEquals(getActorPresence(await expand({ "@list": [] })), "absent");
-  for (
-    const actor of [
-      "https://example.com/users/alice",
-      { type: "Person", name: "Anonymous" },
-      { name: "Anonymous" },
-      { id: "_:b0" },
-      { "@list": [{ name: "Anonymous" }] },
-    ]
-  ) {
+  for (const actor of [
+    "https://example.com/users/alice",
+    { type: "Person", name: "Anonymous" },
+    { name: "Anonymous" },
+    { id: "_:b0" },
+    { "@list": [{ name: "Anonymous" }] },
+  ]) {
     assertEquals(getActorPresence(await expand(actor)), "present");
   }
   assertEquals(getActorPresence([]), "present");
@@ -263,9 +277,12 @@ test("restoreVerifiedActivityView() replays the authenticated interpretation", a
   // A view whose digest does not match is never replayed:
   await assertRejects(
     () =>
-      restoreVerifiedActivityView({ ...queued, expandedDigest: "0" }, {
-        activity: document,
-      }),
+      restoreVerifiedActivityView(
+        { ...queued, expandedDigest: "0" },
+        {
+          activity: document,
+        },
+      ),
     ContextSnapshotMissError,
   );
   // Nor one whose document changed:
@@ -301,8 +318,8 @@ test("restoreVerifiedActivityView() survives changes to unused bundled terms", a
     document,
     baseUrl: null,
   });
-  const mastodon = view.contexts.find((entry) =>
-    entry.url === "http://joinmastodon.org/ns"
+  const mastodon = view.contexts.find(
+    (entry) => entry.url === "http://joinmastodon.org/ns",
   );
   assert(mastodon != null && "bundled" in mastodon);
   // A newer version of Fedify bundles a context that differs from the one
@@ -310,7 +327,7 @@ test("restoreVerifiedActivityView() survives changes to unused bundled terms", a
   const queued = {
     ...view,
     contexts: view.contexts.map((entry) =>
-      entry === mastodon ? { ...entry, sha256: "0".repeat(64) } : entry
+      entry === mastodon ? { ...entry, sha256: "0".repeat(64) } : entry,
     ),
   };
   const restored = await restoreVerifiedActivityView(queued, {
@@ -338,10 +355,7 @@ test("buildVerifiedActivityView() keeps only the contexts it uses", async () => 
   });
   assertEquals(
     view.contexts.map((entry) => entry.url).sort(),
-    [
-      CUSTOM,
-      AS,
-    ].sort(),
+    [CUSTOM, AS].sort(),
   );
 });
 
@@ -371,8 +385,8 @@ test("createContextSnapshot() keeps contexts out of jsonld.js's shared cache", a
       { policy: "standard", source: "activity", document, baseUrl: null },
     );
     assert(
-      view.contexts.some((entry) =>
-        entry.url === "https://remote.example/contexts/static"
+      view.contexts.some(
+        (entry) => entry.url === "https://remote.example/contexts/static",
       ),
     );
   }
@@ -384,17 +398,15 @@ test("buildVerifiedActivityView() tells contexts it could not record", async () 
   const preloaded = getDocumentLoader();
   // Some other code expands a document with a loader that tags a context
   // "static", so jsonld.js keeps it in a cache shared across operations:
-  await expandDocument(
-    { "@context": cached, "y": "z" },
-    (url, options) =>
-      url === cached
-        ? Promise.resolve({
+  await expandDocument({ "@context": cached, "y": "z" }, (url, options) =>
+    url === cached
+      ? Promise.resolve({
           contextUrl: null,
           documentUrl: url,
           document: { "@context": { y: "https://example.com/y" } },
           tag: "static",
         } as Awaited<ReturnType<DocumentLoader>>)
-        : preloaded(url, options),
+      : preloaded(url, options),
   );
   const build = (document: unknown) =>
     buildVerifiedActivityView(createContextSnapshot(preloaded), {
@@ -413,11 +425,13 @@ test("buildVerifiedActivityView() tells contexts it could not record", async () 
   assertEquals(replayable, false);
   assertFalse(view.contexts.some((entry) => entry.url === cached));
   assertEquals(
-    (await build({
-      "@context": AS,
-      id: "https://example.com/activities/plain",
-      type: "Create",
-    })).replayable,
+    (
+      await build({
+        "@context": AS,
+        id: "https://example.com/activities/plain",
+        type: "Create",
+      })
+    ).replayable,
     true,
   );
 });
@@ -426,17 +440,15 @@ test("buildVerifiedActivityView() tells contexts linked from a context", async (
   const cached = "https://remote.example/contexts/linked-shared-cache";
   const linking = "https://remote.example/contexts/linking";
   const preloaded = getDocumentLoader();
-  await expandDocument(
-    { "@context": cached, "w": "z" },
-    (url, options) =>
-      url === cached
-        ? Promise.resolve({
+  await expandDocument({ "@context": cached, "w": "z" }, (url, options) =>
+    url === cached
+      ? Promise.resolve({
           contextUrl: null,
           documentUrl: url,
           document: { "@context": { w: "https://example.com/w" } },
           tag: "static",
         } as Awaited<ReturnType<DocumentLoader>>)
-        : preloaded(url, options),
+      : preloaded(url, options),
   );
   // The snapshot serves a context whose Link header names the cached one,
   // which jsonld.js appends to it and takes from its shared cache:
@@ -444,11 +456,11 @@ test("buildVerifiedActivityView() tells contexts linked from a context", async (
     createContextSnapshot((url, options) =>
       url === linking
         ? Promise.resolve({
-          contextUrl: cached,
-          documentUrl: url,
-          document: { "@context": { v: "https://example.com/v" } },
-        })
-        : preloaded(url, options)
+            contextUrl: cached,
+            documentUrl: url,
+            document: { "@context": { v: "https://example.com/v" } },
+          })
+        : preloaded(url, options),
     ),
     {
       policy: "standard",

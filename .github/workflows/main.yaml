@@ -24,6 +24,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       MISE_DISABLE_TOOLS: deno
+      # Oxfmt's Node-API cleanup fix is in Node 24.13.1 and later.
+      # Keep Linux package tests and other bootstrap targets on Node 22.
+      MISE_NODE_VERSION: ${{ matrix.os == 'windows-latest' && '24.22.0' || '22' }}
     steps:
     - uses: actions/checkout@v6
     - uses: jdx/mise-action@v4
@@ -35,6 +38,15 @@ jobs:
     # The harness then runs mise install with its normal postinstall hook.
     - run: mise --no-hooks exec --no-deps node -- node scripts/test_bootstrap.mjs
     - run: mise run test:tooling:no-deno
+    - name: Check repeated formatter worker teardown on Windows
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        for ($attempt = 1; $attempt -le 20; $attempt++) {
+          Write-Host "Formatter process $attempt/20"
+          mise exec -- node --experimental-transform-types --test scripts/formatting.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        }
 
   test:
     runs-on: ubuntu-latest

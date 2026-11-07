@@ -24,14 +24,12 @@ async function expand(
 
 test("isPubliclyAddressedNode()", async (t) => {
   for (const property of ["to", "cc", "bto", "bcc", "audience"]) {
-    for (
-      const value of [
-        PUBLIC_COLLECTION.href,
-        "as:Public",
-        "Public",
-        ["https://example.com/person", "as:Public"],
-      ]
-    ) {
+    for (const value of [
+      PUBLIC_COLLECTION.href,
+      "as:Public",
+      "Public",
+      ["https://example.com/person", "as:Public"],
+    ]) {
       await t.step(`${JSON.stringify(value)} in ${property}`, async () => {
         assertEquals(
           isPubliclyAddressedNode(await expand({ [property]: value })),
@@ -74,12 +72,10 @@ test("isPubliclyAddressedNode()", async (t) => {
   });
 
   await t.step("Public that the context maps elsewhere", async () => {
-    for (
-      const [context, to] of [
-        [{ as: "https://example.com/ns#" }, "as:Public"],
-        [{ "@base": "https://example.com/" }, "Public"],
-      ] as const
-    ) {
+    for (const [context, to] of [
+      [{ as: "https://example.com/ns#" }, "as:Public"],
+      [{ "@base": "https://example.com/" }, "Public"],
+    ] as const) {
       const [node] = await jsonld.expand(
         {
           "@context": ["https://www.w3.org/ns/activitystreams", context],
@@ -134,10 +130,7 @@ test("isInAudience()", async (t) => {
   });
 
   await t.step("no actor", async () => {
-    assertEquals(
-      await isInAudience(new Note({ to: person.id }), null),
-      false,
-    );
+    assertEquals(await isInAudience(new Note({ to: person.id }), null), false);
     assertEquals(await isInAudience(new Note({}), null), false);
   });
 
@@ -166,14 +159,12 @@ test("isInAudience()", async (t) => {
   });
 
   await t.step("portable IDs are compared canonically", async () => {
-    for (
-      const addressee of [
-        portableId,
-        parseIri(`ap://${did}/actor`),
-        parseIri(`ap+ef61://${did.replaceAll(":", "%3A")}/actor`),
-        toCompatibleEf61Id(portableId, "https://example.com"),
-      ]
-    ) {
+    for (const addressee of [
+      portableId,
+      parseIri(`ap://${did}/actor`),
+      parseIri(`ap+ef61://${did.replaceAll(":", "%3A")}/actor`),
+      toCompatibleEf61Id(portableId, "https://example.com"),
+    ]) {
       assertEquals(
         await isInAudience(new Note({ to: addressee }), portable),
         true,

@@ -5,18 +5,12 @@
   "exports": {
     ".": "./src/mod.ts"
   },
-  "exclude": [
-    "dist",
-    "node_modules"
-  ],
+  "exclude": ["dist", "node_modules"],
   "publish": {
-    "exclude": [
-      "**/*.test.ts",
-      "tsdown.config.ts"
-    ]
+    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
   },
   "tasks": {
-    "check": "deno fmt --check && deno check src/*.ts",
+    "check": "deno check src/*.ts",
     "test": "deno test --allow-net --allow-env"
   }
 }

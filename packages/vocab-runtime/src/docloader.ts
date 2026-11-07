@@ -211,10 +211,10 @@ async function bufferErrorResponse(
     body = await readBoundedBytes(response, MAX_ERROR_BODY_SIZE, url);
   } catch (error) {
     if (signal?.aborted) throw error;
-    logger.debug(
-      "Failed to read the error response body from {url}: {error}",
-      { url, error },
-    );
+    logger.debug("Failed to read the error response body from {url}: {error}", {
+      url,
+      error,
+    });
     return createResponseMetadata(response);
   }
   return new Response(body, {
@@ -260,10 +260,10 @@ export async function getRemoteDocument(
  */
 function cancelResponseBody(response: Response, url: string): void {
   response.body?.cancel().catch((error) => {
-    logger.debug(
-      "Failed to cancel the response body from {url}: {error}",
-      { url, error },
-    );
+    logger.debug("Failed to cancel the response body from {url}: {error}", {
+      url,
+      error,
+    });
   });
 }
 
@@ -297,23 +297,17 @@ async function parseRemoteDocument(
   const docUrl = new URL(documentUrl);
   if (!response.ok) {
     if (options?.suppressError) {
-      logger.warn(
-        "Failed to fetch document: {status} {url} {headers}",
-        {
-          status: response.status,
-          url: documentUrl,
-          headers: Object.fromEntries(response.headers.entries()),
-        },
-      );
+      logger.warn("Failed to fetch document: {status} {url} {headers}", {
+        status: response.status,
+        url: documentUrl,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
     } else {
-      logger.error(
-        "Failed to fetch document: {status} {url} {headers}",
-        {
-          status: response.status,
-          url: documentUrl,
-          headers: Object.fromEntries(response.headers.entries()),
-        },
-      );
+      logger.error("Failed to fetch document: {status} {url} {headers}", {
+        status: response.status,
+        url: documentUrl,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
     }
 
     throw new FetchError(
@@ -323,7 +317,8 @@ async function parseRemoteDocument(
     );
   }
   const contentType = response.headers.get("Content-Type");
-  const jsonLd = contentType == null ||
+  const jsonLd =
+    contentType == null ||
     contentType === "application/activity+json" ||
     contentType.startsWith("application/activity+json;") ||
     contentType === "application/ld+json" ||
@@ -360,10 +355,10 @@ async function parseRemoteDocument(
             params.type.startsWith("application/ld+json;")) &&
           altUri.href !== docUrl.href
         ) {
-          logger.debug(
-            "Found alternate document: {alternateUrl} from {url}",
-            { alternateUrl: altUri.href, url: documentUrl },
-          );
+          logger.debug("Found alternate document: {alternateUrl} from {url}", {
+            alternateUrl: altUri.href,
+            url: documentUrl,
+          });
           cancelResponseBody(response, documentUrl);
           return { alternate: altUri.href };
         }
@@ -373,7 +368,8 @@ async function parseRemoteDocument(
   let document: unknown;
   if (
     !jsonLd &&
-    (contentType === "text/html" || contentType?.startsWith("text/html;") ||
+    (contentType === "text/html" ||
+      contentType?.startsWith("text/html;") ||
       contentType === "application/xhtml+xml" ||
       contentType?.startsWith("application/xhtml+xml;"))
   ) {
@@ -416,17 +412,18 @@ async function parseRemoteDocument(
       }
 
       if (
-        attribs.rel === "alternate" && "type" in attribs && (
-          attribs.type === "application/activity+json" ||
+        attribs.rel === "alternate" &&
+        "type" in attribs &&
+        (attribs.type === "application/activity+json" ||
           attribs.type === "application/ld+json" ||
-          attribs.type.startsWith("application/ld+json;")
-        ) && "href" in attribs &&
+          attribs.type.startsWith("application/ld+json;")) &&
+        "href" in attribs &&
         new URL(attribs.href, docUrl).href !== docUrl.href
       ) {
-        logger.debug(
-          "Found alternate document: {alternateUrl} from {url}",
-          { alternateUrl: attribs.href, url: documentUrl },
-        );
+        logger.debug("Found alternate document: {alternateUrl} from {url}", {
+          alternateUrl: attribs.href,
+          url: documentUrl,
+        });
         return { alternate: new URL(attribs.href, docUrl).href };
       }
     }
@@ -446,14 +443,11 @@ async function parseRemoteDocument(
       await readBoundedText(response, MAX_BODY_SIZE, documentUrl),
     );
   }
-  logger.debug(
-    "Fetched document: {status} {url} {headers}",
-    {
-      status: response.status,
-      url: documentUrl,
-      headers: Object.fromEntries(response.headers.entries()),
-    },
-  );
+  logger.debug("Fetched document: {status} {url} {headers}", {
+    status: response.status,
+    url: documentUrl,
+    headers: Object.fromEntries(response.headers.entries()),
+  });
   return { document: { contextUrl, document, documentUrl } };
 }
 
@@ -471,7 +465,9 @@ export function resolveDocumentLoaderTimeout(
   if (timeout === undefined) return DEFAULT_TIMEOUT;
   if (timeout === null) return null;
   if (
-    typeof timeout !== "number" || !Number.isFinite(timeout) || timeout <= 0
+    typeof timeout !== "number" ||
+    !Number.isFinite(timeout) ||
+    timeout <= 0
   ) {
     throw new RangeError(
       `The document loader timeout must be a positive finite number of ` +
@@ -644,11 +640,12 @@ export function createDocumentLoader(
     options?: DocumentLoaderOptions,
   ): Promise<PublicFetchSession> {
     try {
-      const session = deps.openHop != null
-        ? await deps.openHop(url)
-        : allowPrivateAddress
-        ? await openDirectFetch(url)
-        : await openPublicFetch(url, { signal: options?.signal });
+      const session =
+        deps.openHop != null
+          ? await deps.openHop(url)
+          : allowPrivateAddress
+            ? await openDirectFetch(url)
+            : await openPublicFetch(url, { signal: options?.signal });
       if (options?.signal?.aborted) {
         await session.close();
         options.signal.throwIfAborted();
@@ -689,7 +686,8 @@ export function createDocumentLoader(
 
       // Follow redirects manually to get the final URL:
       if (
-        response.status >= 300 && response.status < 400 &&
+        response.status >= 300 &&
+        response.status < 400 &&
         response.headers.has("Location")
       ) {
         const location = response.headers.get("Location")!;

@@ -10,8 +10,9 @@ import type { DepsConfig, ResolvedConfig } from "tsdown";
 // @js-temporal/polyfill or a global Temporal at runtime.
 
 export function isTemporalPolyfillDependency(id: string): boolean {
-  return /^temporal-polyfill(\/.*)?$/.test(id) ||
-    /^temporal-utils(\/.*)?$/.test(id);
+  return (
+    /^temporal-polyfill(\/.*)?$/.test(id) || /^temporal-utils(\/.*)?$/.test(id)
+  );
 }
 
 export function temporalPolyfillCjsDeps(
@@ -19,10 +20,10 @@ export function temporalPolyfillCjsDeps(
 ): ResolvedConfig["deps"] {
   // tsdown's nested format type currently expects resolved deps, even though
   // user config deps are accepted at runtime.
-  return ({
+  return {
     ...deps,
     alwaysBundle: isTemporalPolyfillDependency,
-  } as unknown) as ResolvedConfig["deps"];
+  } as unknown as ResolvedConfig["deps"];
 }
 
 export const temporalPolyfillImportPlugin = {
@@ -48,10 +49,9 @@ export function temporalPolyfillEsmBanner(extraJs?: string): {
   dts: string;
 } {
   return {
-    js: [
-      `import { Temporal } from "temporal-polyfill";`,
-      extraJs,
-    ].filter((line) => line != null && line !== "").join("\n"),
+    js: [`import { Temporal } from "temporal-polyfill";`, extraJs]
+      .filter((line) => line != null && line !== "")
+      .join("\n"),
     dts: `/// <reference lib="esnext.temporal" />`,
   };
 }

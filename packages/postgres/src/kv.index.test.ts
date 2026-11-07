@@ -42,9 +42,9 @@ function database(options: postgres.Options<Record<string, never>> = {}) {
       return result;
     },
   });
-  const tableName = `fedify_kv_index_${
-    crypto.randomUUID().replaceAll("-", "")
-  }`;
+  const tableName = `fedify_kv_index_${crypto
+    .randomUUID()
+    .replaceAll("-", "")}`;
   return {
     sql,
     observed,
@@ -126,8 +126,9 @@ test(
       await sql`DROP INDEX ${sql(name)}`;
       await manualIndex(sql, tableName, true);
       statements.length = 0;
-      await new PostgresKvStore(sql, { tableName: `public.${tableName}` })
-        .initialize();
+      await new PostgresKvStore(sql, {
+        tableName: `public.${tableName}`,
+      }).initialize();
       assert.equal((await indexes(sql, tableName)).length, 1);
       assert(!statements.some((q) => /LOCK TABLE|CREATE INDEX/.test(q)));
     } finally {
@@ -164,9 +165,9 @@ test(
       assert.equal(await migrated.get(["permanent"]), 2);
       await migrated.delete(["missing"]);
       await db.complete();
-      const [{ count }] = await sql`SELECT count(*)::int AS count FROM ${
-        sql(tableName)
-      }`;
+      const [{ count }] = await sql`SELECT count(*)::int AS count FROM ${sql(
+        tableName,
+      )}`;
       assert.equal(count, 1);
       assert.equal((await indexes(sql, tableName)).length, 1);
     } finally {
@@ -176,70 +177,77 @@ test(
   },
 );
 
-test("PostgresKvStore indexed keys track old writers and all TTL transitions", {
-  skip,
-}, async () => {
-  if (!dbUrl) return;
-  const db = database();
-  const { sql, tableName } = db;
-  const store = new PostgresKvStore(db.observed, { tableName });
-  try {
-    await store.initialize();
-    // Start and drain housekeeping before inserting expired rows.  Subsequent
-    // operations use #1314's cooldown, so tests exercise logical expiry too.
-    await store.delete(["missing"]);
-    await db.complete();
-    await sql`INSERT INTO ${sql(tableName)} (key, value, created, ttl)
+test(
+  "PostgresKvStore indexed keys track old writers and all TTL transitions",
+  {
+    skip,
+  },
+  async () => {
+    if (!dbUrl) return;
+    const db = database();
+    const { sql, tableName } = db;
+    const store = new PostgresKvStore(db.observed, { tableName });
+    try {
+      await store.initialize();
+      // Start and drain housekeeping before inserting expired rows.  Subsequent
+      // operations use #1314's cooldown, so tests exercise logical expiry too.
+      await store.delete(["missing"]);
+      await db.complete();
+      await sql`INSERT INTO ${sql(tableName)} (key, value, created, ttl)
       VALUES (ARRAY['key'], '"old"', '2000-01-01', INTERVAL '1 day')`;
-    assert.equal(await store.cas(["key"], "old", "wrong"), false);
-    assert.equal(
-      await store.cas(["key"], undefined, "new", {
-        ttl: Temporal.Duration.from({ hours: 1 }),
-      }),
-      true,
-    );
-    assert.equal(await store.get(["key"]), "new");
-    await store.set(["key"], "permanent");
-    assert.equal(
-      await store.cas(["key"], "permanent", "zero", {
-        ttl: Temporal.Duration.from({ seconds: 0 }),
-      }),
-      true,
-    );
-    assert.equal(await store.get(["key"]), undefined);
-    assert.equal(await store.cas(["key"], undefined, "again"), true);
-    // Old applications still write only these four columns.
-    await sql`UPDATE ${sql(tableName)} SET created = '2000-01-01',
+      assert.equal(await store.cas(["key"], "old", "wrong"), false);
+      assert.equal(
+        await store.cas(["key"], undefined, "new", {
+          ttl: Temporal.Duration.from({ hours: 1 }),
+        }),
+        true,
+      );
+      assert.equal(await store.get(["key"]), "new");
+      await store.set(["key"], "permanent");
+      assert.equal(
+        await store.cas(["key"], "permanent", "zero", {
+          ttl: Temporal.Duration.from({ seconds: 0 }),
+        }),
+        true,
+      );
+      assert.equal(await store.get(["key"]), undefined);
+      assert.equal(await store.cas(["key"], undefined, "again"), true);
+      // Old applications still write only these four columns.
+      await sql`UPDATE ${sql(tableName)} SET created = '2000-01-01',
       ttl = INTERVAL '1 day' WHERE key = ARRAY['key']`;
-    assert.equal(await store.get(["key"]), undefined);
-    assert.deepEqual(await Array.fromAsync(store.list()), []);
-    const cleaner = new PostgresKvStore(db.observed, {
-      tableName,
-      initialized: true,
-    });
-    await cleaner.delete(["missing"]);
-    await db.complete();
-    const [{ count }] = await sql`SELECT count(*)::int AS count FROM ${
-      sql(tableName)
-    }`;
-    assert.equal(count, 0);
-    await sql`INSERT INTO ${sql(tableName)} VALUES
+      assert.equal(await store.get(["key"]), undefined);
+      assert.deepEqual(await Array.fromAsync(store.list()), []);
+      const cleaner = new PostgresKvStore(db.observed, {
+        tableName,
+        initialized: true,
+      });
+      await cleaner.delete(["missing"]);
+      await db.complete();
+      const [{ count }] = await sql`SELECT count(*)::int AS count FROM ${sql(
+        tableName,
+      )}`;
+      assert.equal(count, 0);
+      await sql`INSERT INTO ${sql(tableName)} VALUES
       (ARRAY['key'], '"negative"', statement_timestamp(), INTERVAL '-1 second')`;
-    assert.equal(await store.get(["key"]), undefined);
-    await store.set(["key"], "live", {
-      ttl: Temporal.Duration.from({ days: 30 }),
-    });
-    assert.equal(await store.get(["key"]), "live");
-    await sql`INSERT INTO ${
-      sql(tableName)
-    } VALUES (ARRAY['null-created'], '1', NULL, INTERVAL '1 day')`;
-    assert.equal(await store.get(["null-created"]), undefined);
-    assert.equal(await store.cas(["null-created"], undefined, "wrong"), false);
-  } finally {
-    await store.drop();
-    await sql.end();
-  }
-});
+      assert.equal(await store.get(["key"]), undefined);
+      await store.set(["key"], "live", {
+        ttl: Temporal.Duration.from({ days: 30 }),
+      });
+      assert.equal(await store.get(["key"]), "live");
+      await sql`INSERT INTO ${sql(
+        tableName,
+      )} VALUES (ARRAY['null-created'], '1', NULL, INTERVAL '1 day')`;
+      assert.equal(await store.get(["null-created"]), undefined);
+      assert.equal(
+        await store.cas(["null-created"], undefined, "wrong"),
+        false,
+      );
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
 
 for (const planMode of ["force_custom_plan", "force_generic_plan"]) {
   test(
@@ -284,17 +292,19 @@ for (const planMode of ["force_custom_plan", "force_generic_plan"]) {
           const nodes: Record<string, unknown>[] = [];
           const visit = (node: Record<string, unknown>) => {
             nodes.push(node);
-            for (
-              const child of (node.Plans ?? []) as Record<string, unknown>[]
-            ) {
+            for (const child of (node.Plans ?? []) as Record<
+              string,
+              unknown
+            >[]) {
               visit(child);
             }
           };
           visit(plan);
           assert(
-            nodes.some((n) =>
-              /Index|Bitmap/.test(String(n["Node Type"])) &&
-              String(n["Index Cond"]).includes("timezone('UTC'")
+            nodes.some(
+              (n) =>
+                /Index|Bitmap/.test(String(n["Node Type"])) &&
+                String(n["Index Cond"]).includes("timezone('UTC'"),
             ),
             JSON.stringify(plan),
           );
@@ -308,9 +318,8 @@ for (const planMode of ["force_custom_plan", "force_generic_plan"]) {
           );
           const deleted = nodes.find((n) => n["CTE Name"] === "deleted");
           assert.equal(deleted?.["Actual Rows"], expired);
-          const [{ count }] = await sql`SELECT count(*)::int AS count FROM ${
-            sql(tableName)
-          }`;
+          const [{ count }] =
+            await sql`SELECT count(*)::int AS count FROM ${sql(tableName)}`;
           assert.equal(count, 80000);
         }
       } finally {
@@ -321,13 +330,11 @@ for (const planMode of ["force_custom_plan", "force_generic_plan"]) {
   );
 }
 
-for (
-  const base of [
-    { created: "2026-03-07 12:00-05", ttl: "1 day", live: false },
-    { created: "2026-10-31 12:00-04", ttl: "1 day", live: true },
-    { created: "2026-02-28 23:30-05", ttl: "1 month", live: false },
-  ]
-) {
+for (const base of [
+  { created: "2026-03-07 12:00-05", ttl: "1 day", live: false },
+  { created: "2026-10-31 12:00-04", ttl: "1 day", live: true },
+  { created: "2026-02-28 23:30-05", ttl: "1 month", live: false },
+]) {
   test(
     `PostgresKvStore retains session-calendar TTL semantics (${base.created})`,
     { skip },
@@ -346,8 +353,8 @@ for (
           ${base.ttl}::interval + make_interval(secs => extract(epoch FROM (
             statement_timestamp() - (${base.created}::timestamptz + ${base.ttl}::interval)
           ))::double precision) + ${
-          base.live ? "30 minutes" : "-30 minutes"
-        }::interval`;
+            base.live ? "30 minutes" : "-30 minutes"
+          }::interval`;
         const [{ live, candidate }] = await sql`
         SELECT created + ttl > statement_timestamp() AS live,
           timezone('UTC', timezone('UTC', created) + ttl) < statement_timestamp() AS candidate
@@ -357,9 +364,9 @@ for (
         assert.equal(candidate, base.live);
         await store.delete(["missing"]);
         await db.complete();
-        const [{ count }] = await sql`SELECT count(*)::int AS count FROM ${
-          sql(tableName)
-        }`;
+        const [{ count }] = await sql`SELECT count(*)::int AS count FROM ${sql(
+          tableName,
+        )}`;
         assert.equal(
           count,
           1,
@@ -420,33 +427,40 @@ test(
   },
 );
 
-test("PostgresKvStore optional index failures preserve usable legacy storage", {
-  skip,
-}, async () => {
-  if (!dbUrl) return;
-  const db = database();
-  const { sql, tableName } = db;
-  const store = new PostgresKvStore(db.observed, { tableName });
-  try {
-    await legacyTable(sql, tableName);
-    const [{ name }] = await sql`
+test(
+  "PostgresKvStore optional index failures preserve usable legacy storage",
+  {
+    skip,
+  },
+  async () => {
+    if (!dbUrl) return;
+    const db = database();
+    const { sql, tableName } = db;
+    const store = new PostgresKvStore(db.observed, { tableName });
+    try {
+      await legacyTable(sql, tableName);
+      const [{ name }] = await sql`
       SELECT 'idx_fedify_kv_expiry_' || substr(md5(format('%I.%I',
         n.nspname, c.relname)), 1, 16) AS name
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE c.oid = ${tableName}::regclass
     `;
-    // A conflicting unrelated index must neither be accepted nor replaced.
-    await sql`CREATE INDEX ${sql(name)} ON ${sql(tableName)} (created)`;
-    await store.set(["key"], "works");
-    await db.complete();
-    assert.equal(await store.get(["key"]), "works");
-    assert.equal((await indexes(sql, tableName)).length, 1);
-    assert.match((await indexes(sql, tableName))[0].definition, /\(created\)/);
-  } finally {
-    await store.drop();
-    await sql.end();
-  }
-});
+      // A conflicting unrelated index must neither be accepted nor replaced.
+      await sql`CREATE INDEX ${sql(name)} ON ${sql(tableName)} (created)`;
+      await store.set(["key"], "works");
+      await db.complete();
+      assert.equal(await store.get(["key"]), "works");
+      assert.equal((await indexes(sql, tableName)).length, 1);
+      assert.match(
+        (await indexes(sql, tableName))[0].definition,
+        /\(created\)/,
+      );
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
 
 test("PostgresKvStore provisioning skips RLS", { skip }, async () => {
   if (!dbUrl) return;
@@ -476,9 +490,8 @@ test(
     try {
       await legacyTable(sql, tableName);
       await Promise.all(
-        Array.from(
-          { length: 6 },
-          () => new PostgresKvStore(sql, { tableName }).initialize(),
+        Array.from({ length: 6 }, () =>
+          new PostgresKvStore(sql, { tableName }).initialize(),
         ),
       );
       assert.equal((await indexes(sql, tableName)).length, 1);
@@ -489,77 +502,85 @@ test(
   },
 );
 
-test("PostgresKvStore indexed timestamp overflow rejects writes atomically", {
-  skip,
-}, async () => {
-  if (!dbUrl) return;
-  const { sql, tableName } = database();
-  const store = new PostgresKvStore(sql, { tableName });
-  try {
-    await store.set(["key"], "original");
-    const ttl = Temporal.Duration.from({ years: 300000 });
-    await assert.rejects(
-      store.set(["key"], "wrong", { ttl }),
-      /timestamp out of range/,
-    );
-    await assert.rejects(
-      store.cas(["key"], "original", "wrong", { ttl }),
-      /timestamp out of range/,
-    );
-    assert.equal(await store.get(["key"]), "original");
-  } finally {
-    await store.drop();
-    await sql.end();
-  }
-});
+test(
+  "PostgresKvStore indexed timestamp overflow rejects writes atomically",
+  {
+    skip,
+  },
+  async () => {
+    if (!dbUrl) return;
+    const { sql, tableName } = database();
+    const store = new PostgresKvStore(sql, { tableName });
+    try {
+      await store.set(["key"], "original");
+      const ttl = Temporal.Duration.from({ years: 300000 });
+      await assert.rejects(
+        store.set(["key"], "wrong", { ttl }),
+        /timestamp out of range/,
+      );
+      await assert.rejects(
+        store.cas(["key"], "original", "wrong", { ttl }),
+        /timestamp out of range/,
+      );
+      assert.equal(await store.get(["key"]), "original");
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
 
-test("PostgresKvStore rechecks emptiness after a concurrent writer commits", {
-  skip,
-}, async () => {
-  if (!dbUrl) return;
-  const locking = Promise.withResolvers<void>();
-  const { sql, tableName } = database({
-    connection: { default_transaction_isolation: "repeatable read" },
-    debug(_connection, query) {
-      if (query.startsWith("LOCK TABLE")) locking.resolve();
-    },
-  });
-  const store = new PostgresKvStore(sql, { tableName });
-  let initializing: Promise<void> | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    await legacyTable(sql, tableName);
-    await sql.begin(async (tx) => {
-      // The first emptiness probe cannot see this uncommitted row.  SHARE
-      // must wait for this writer, then the next probe must see its commit.
-      await tx`INSERT INTO ${tx(tableName)} VALUES
-        (ARRAY['concurrent'], '1', statement_timestamp(), NULL)`;
-      initializing = store.initialize();
-      await Promise.race([
-        locking.promise,
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(
-            () => reject(new Error("provisioning did not reach its lock")),
-            3000,
-          );
-        }),
-      ]);
-      clearTimeout(timer);
+test(
+  "PostgresKvStore rechecks emptiness after a concurrent writer commits",
+  {
+    skip,
+  },
+  async () => {
+    if (!dbUrl) return;
+    const locking = Promise.withResolvers<void>();
+    const { sql, tableName } = database({
+      connection: { default_transaction_isolation: "repeatable read" },
+      debug(_connection, query) {
+        if (query.startsWith("LOCK TABLE")) locking.resolve();
+      },
     });
-    await initializing;
-    assert.equal(
-      (await indexes(sql, tableName)).length,
-      0,
-      "a stale snapshot must not allow index creation on the populated table",
-    );
-    assert.equal(await store.get(["concurrent"]), 1);
-  } finally {
-    clearTimeout(timer);
-    await initializing;
-    await store.drop();
-    await sql.end();
-  }
-});
+    const store = new PostgresKvStore(sql, { tableName });
+    let initializing: Promise<void> | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await legacyTable(sql, tableName);
+      await sql.begin(async (tx) => {
+        // The first emptiness probe cannot see this uncommitted row.  SHARE
+        // must wait for this writer, then the next probe must see its commit.
+        await tx`INSERT INTO ${tx(tableName)} VALUES
+        (ARRAY['concurrent'], '1', statement_timestamp(), NULL)`;
+        initializing = store.initialize();
+        await Promise.race([
+          locking.promise,
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error("provisioning did not reach its lock")),
+              3000,
+            );
+          }),
+        ]);
+        clearTimeout(timer);
+      });
+      await initializing;
+      assert.equal(
+        (await indexes(sql, tableName)).length,
+        0,
+        "a stale snapshot must not allow index creation on the populated table",
+      );
+      assert.equal(await store.get(["concurrent"]), 1);
+    } finally {
+      clearTimeout(timer);
+      await initializing;
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
 
 for (const layout of ["partitioned", "inherited"] as const) {
   test(
@@ -576,9 +597,9 @@ for (const layout of ["partitioned", "inherited"] as const) {
           await sql`CREATE TABLE ${sql(tableName)} (
           key text[], value jsonb NOT NULL, created timestamptz, ttl interval
         ) PARTITION BY RANGE (created)`;
-          await sql`CREATE TABLE ${sql(child)} PARTITION OF ${
-            sql(tableName)
-          } DEFAULT`;
+          await sql`CREATE TABLE ${sql(child)} PARTITION OF ${sql(
+            tableName,
+          )} DEFAULT`;
         } else {
           await legacyTable(sql, tableName);
           await sql`CREATE TABLE ${sql(child)} () INHERITS (${sql(tableName)})`;
@@ -600,9 +621,9 @@ for (const layout of ["partitioned", "inherited"] as const) {
         (ARRAY['expired'], '1', '2000-01-01', INTERVAL '1 day')`;
         await store.delete(["missing"]);
         await db.complete();
-        const [{ count }] = await sql`SELECT count(*)::int AS count FROM ${
-          sql(tableName)
-        }`;
+        const [{ count }] = await sql`SELECT count(*)::int AS count FROM ${sql(
+          tableName,
+        )}`;
         assert.equal(count, 0);
       } finally {
         await sql`DROP TABLE IF EXISTS ${sql(tableName)} CASCADE`;
@@ -628,9 +649,9 @@ test(
       await legacyTable(sql, tableName);
       await sql`CREATE ROLE ${sql(role)}`;
       await sql`GRANT USAGE, CREATE ON SCHEMA ${sql(schema)} TO ${sql(role)}`;
-      await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ${sql(tableName)} TO ${
-        sql(role)
-      }`;
+      await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ${sql(tableName)} TO ${sql(
+        role,
+      )}`;
       client = postgres(dbUrl, { connection: { role } });
       const store = new PostgresKvStore(client, { tableName });
       await store.set(["key"], "value");
@@ -656,9 +677,9 @@ for (const shape of ["unique", "multi-key"] as const) {
       if (!dbUrl) return;
       const db = database({ max: 1 });
       const { sql, tableName } = db;
-      const existing = `existing_expiry_${
-        crypto.randomUUID().replaceAll("-", "")
-      }`;
+      const existing = `existing_expiry_${crypto
+        .randomUUID()
+        .replaceAll("-", "")}`;
       const store = new PostgresKvStore(db.observed, { tableName });
       try {
         await legacyTable(sql, tableName);
@@ -701,14 +722,13 @@ for (const shape of ["unique", "multi-key"] as const) {
           const nodes: Record<string, unknown>[] = [];
           const visit = (node: Record<string, unknown>) => {
             nodes.push(node);
-            for (
-              const child of (node.Plans ?? []) as Record<string, unknown>[]
-            ) visit(child);
+            for (const child of (node.Plans ?? []) as Record<string, unknown>[])
+              visit(child);
           };
           visit(plan);
           assert(
             nodes.some((node) =>
-              String(node["Index Cond"]).includes("timezone('UTC'")
+              String(node["Index Cond"]).includes("timezone('UTC'"),
             ),
             JSON.stringify(plan),
           );

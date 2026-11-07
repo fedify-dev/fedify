@@ -5,34 +5,19 @@
   "exports": {
     ".": "./src/mod.ts"
   },
-  "exclude": [
-    "dist/",
-    "node_modules/"
-  ],
+  "exclude": ["dist/", "node_modules/"],
   "publish": {
-    "exclude": [
-      "**/*.test.ts",
-      "tsdown.config.ts"
-    ]
+    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
   },
   "tasks": {
     "codegen": "deno task -f @fedify/vocab compile",
     "check": {
-      "command": "deno fmt --check && deno check src/**/*.ts",
-      "dependencies": [
-        "codegen"
-      ]
+      "command": "deno check src/**/*.ts",
+      "dependencies": ["codegen"]
     },
     "test": {
       "command": "deno test --allow-env",
-      "dependencies": [
-        "codegen"
-      ]
+      "dependencies": ["codegen"]
     }
-  },
-  "fmt": {
-    "exclude": [
-      "src/init/templates/**"
-    ]
   }
 }

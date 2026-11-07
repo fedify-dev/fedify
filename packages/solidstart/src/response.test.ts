@@ -6,14 +6,12 @@ import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { Socket } from "node:net";
 import { interceptNotAcceptable, notAcceptableHeaders } from "./response.ts";
 
-for (
-  const signature of [
-    "empty",
-    "callback",
-    "chunk-callback",
-    "encoding",
-  ] as const
-) {
+for (const signature of [
+  "empty",
+  "callback",
+  "chunk-callback",
+  "encoding",
+] as const) {
   test(`buffered 404 interception preserves end ${signature}`, async () => {
     let cleaned = 0;
     let called = 0;
@@ -47,7 +45,7 @@ for (
       } else response.end("old body", "ascii", callback);
     });
     await new Promise<void>((resolve) =>
-      server.listen(0, "127.0.0.1", resolve)
+      server.listen(0, "127.0.0.1", resolve),
     );
     try {
       const address = server.address();
@@ -68,7 +66,7 @@ for (
       equal(called, signature === "empty" ? 0 : 1);
     } finally {
       await new Promise<void>((resolve, reject) =>
-        server.close((error) => error ? reject(error) : resolve())
+        server.close((error) => (error ? reject(error) : resolve())),
       );
     }
   });
@@ -86,7 +84,7 @@ test("interception passes committed headers and successful streams through", asy
       response.end("second");
     });
     await new Promise<void>((resolve) =>
-      server.listen(0, "127.0.0.1", resolve)
+      server.listen(0, "127.0.0.1", resolve),
     );
     try {
       const address = server.address();
@@ -100,7 +98,7 @@ test("interception passes committed headers and successful streams through", asy
       equal(result.headers.get("digest"), "SHA-256=original");
     } finally {
       await new Promise<void>((resolve, reject) =>
-        server.close((error) => error ? reject(error) : resolve())
+        server.close((error) => (error ? reject(error) : resolve())),
       );
     }
   }

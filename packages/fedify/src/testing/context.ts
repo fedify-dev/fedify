@@ -106,51 +106,71 @@ export function createContext<TContextData>(
     getLikedUri: getLikedUri ?? throwRouterError,
     getFeaturedUri: getFeaturedUri ?? throwRouterError,
     getFeaturedTagsUri: getFeaturedTagsUri ?? throwRouterError,
-    parseUri: parseUri ?? ((_uri) => {
-      throw new Error("Not implemented");
-    }),
-    getDocumentLoader: getDocumentLoader ?? ((_params) => {
-      throw new Error("Not implemented");
-    }),
+    parseUri:
+      parseUri ??
+      ((_uri) => {
+        throw new Error("Not implemented");
+      }),
+    getDocumentLoader:
+      getDocumentLoader ??
+      ((_params) => {
+        throw new Error("Not implemented");
+      }),
     getActorKeyPairs: getActorKeyPairs ?? ((_handle) => Promise.resolve([])),
-    lookupObject: lookupObject ?? ((uri, options = {}) => {
-      return globalLookupObject(uri, {
-        documentLoader: options.documentLoader ?? documentLoader ??
-          mockDocumentLoader,
-        contextLoader: options.contextLoader ?? contextLoader ??
-          mockDocumentLoader,
-        verifyPortableObject: options.verifyPortableObject ??
-          verifyPortableObject,
-      });
-    }),
-    traverseCollection: traverseCollection ?? ((collection, options = {}) => {
-      return globalTraverseCollection(collection, {
-        documentLoader: options.documentLoader ?? documentLoader ??
-          mockDocumentLoader,
-        contextLoader: options.contextLoader ?? contextLoader ??
-          mockDocumentLoader,
-        verifyPortableObject: options.verifyPortableObject ??
-          verifyPortableObject,
-      });
-    }),
-    lookupNodeInfo: lookupNodeInfo ?? ((_params) => {
-      throw new Error("Not implemented");
-    }),
-    lookupWebFinger: lookupWebFinger ?? ((resource, options = {}) => {
-      return globalLookupWebFinger(resource, options);
-    }),
-    sendActivity: sendActivity ?? ((_params) => {
-      throw new Error("Not implemented");
-    }),
-    routeActivity: routeActivity ?? ((_params) => {
-      throw new Error("Not implemented");
-    }),
-    enqueueTask: enqueueTask ?? ((_task, _data, _options) => {
-      throw new Error("Not implemented");
-    }),
-    enqueueTaskMany: enqueueTaskMany ?? ((_task, _payloads, _options) => {
-      throw new Error("Not implemented");
-    }),
+    lookupObject:
+      lookupObject ??
+      ((uri, options = {}) => {
+        return globalLookupObject(uri, {
+          documentLoader:
+            options.documentLoader ?? documentLoader ?? mockDocumentLoader,
+          contextLoader:
+            options.contextLoader ?? contextLoader ?? mockDocumentLoader,
+          verifyPortableObject:
+            options.verifyPortableObject ?? verifyPortableObject,
+        });
+      }),
+    traverseCollection:
+      traverseCollection ??
+      ((collection, options = {}) => {
+        return globalTraverseCollection(collection, {
+          documentLoader:
+            options.documentLoader ?? documentLoader ?? mockDocumentLoader,
+          contextLoader:
+            options.contextLoader ?? contextLoader ?? mockDocumentLoader,
+          verifyPortableObject:
+            options.verifyPortableObject ?? verifyPortableObject,
+        });
+      }),
+    lookupNodeInfo:
+      lookupNodeInfo ??
+      ((_params) => {
+        throw new Error("Not implemented");
+      }),
+    lookupWebFinger:
+      lookupWebFinger ??
+      ((resource, options = {}) => {
+        return globalLookupWebFinger(resource, options);
+      }),
+    sendActivity:
+      sendActivity ??
+      ((_params) => {
+        throw new Error("Not implemented");
+      }),
+    routeActivity:
+      routeActivity ??
+      ((_params) => {
+        throw new Error("Not implemented");
+      }),
+    enqueueTask:
+      enqueueTask ??
+      ((_task, _data, _options) => {
+        throw new Error("Not implemented");
+      }),
+    enqueueTaskMany:
+      enqueueTaskMany ??
+      ((_task, _payloads, _options) => {
+        throw new Error("Not implemented");
+      }),
   };
 }
 
@@ -171,19 +191,22 @@ export function createRequestContext<TContextData>(
     getObject: args.getObject ?? (() => Promise.resolve(null)),
     getSignedKey: args.getSignedKey ?? (() => Promise.resolve(null)),
     getSignedKeyOwner: args.getSignedKeyOwner ?? (() => Promise.resolve(null)),
-    isSignedByAudience: args.isSignedByAudience ??
+    isSignedByAudience:
+      args.isSignedByAudience ??
       (async (object, options) =>
-        await isInAudience(object, null) ||
-        await isInAudience(
+        (await isInAudience(object, null)) ||
+        (await isInAudience(
           object,
           args.getSignedKeyOwner == null
             ? null
             : await args.getSignedKeyOwner(options ?? {}),
           options,
-        )),
-    sendActivity: args.sendActivity ?? ((_params) => {
-      throw new Error("Not implemented");
-    }),
+        ))),
+    sendActivity:
+      args.sendActivity ??
+      ((_params) => {
+        throw new Error("Not implemented");
+      }),
   };
 }
 
@@ -200,7 +223,8 @@ export function createInboxContext<TContextData>(
     clone: args.clone ?? ((data) => createInboxContext({ ...args, data })),
     recipient: args.recipient ?? null,
     authentication: args.authentication ?? getEmptyAuthenticationEvidence(),
-    forwardActivity: args.forwardActivity ??
+    forwardActivity:
+      args.forwardActivity ??
       ((_forwarder, _recipients, _options) => {
         throw new Error("Not implemented");
       }),
@@ -215,7 +239,8 @@ export function createOutboxContext<TContextData>(
     federation: Federation<TContextData>;
   },
 ): OutboxContext<TContextData> {
-  const forwardActivity = args.forwardActivity ??
+  const forwardActivity =
+    args.forwardActivity ??
     (((_forwarder: unknown, _recipients: unknown, _options?: unknown) => {
       throw new Error("Not implemented");
     }) as OutboxContext<TContextData>["forwardActivity"]);

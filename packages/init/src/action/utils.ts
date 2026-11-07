@@ -7,32 +7,35 @@ import type { InitCommandData } from "../types.ts";
 export const isDry = ({ dryRun }: InitCommandData) => dryRun;
 
 /** Returns `true` if the current run skips dependency installation. */
-export const isSkipInstall = (
-  { skipInstall }: Pick<InitCommandData, "skipInstall">,
-) => skipInstall;
+export const isSkipInstall = ({
+  skipInstall,
+}: Pick<InitCommandData, "skipInstall">) => skipInstall;
 
 /** Returns `true` if the framework initializer has a precommand to execute. */
 export const hasCommand = (data: InitCommandData) => !!data.initializer.command;
 
 /** Returns `true` if the selected package manager is Deno. */
-export const isDeno = (
-  { packageManager }: Pick<InitCommandData, "packageManager">,
-) => packageManager === "deno";
+export const isDeno = ({
+  packageManager,
+}: Pick<InitCommandData, "packageManager">) => packageManager === "deno";
 
 /**
  * Returns `true` when the `@std/dotenv` dependency should be included:
  * the project uses Deno and has at least one environment variable to load.
  */
-export const needsDenoDotenv = (
-  { packageManager, env }: Pick<InitCommandData, "packageManager" | "env">,
-) => packageManager === "deno" && Object.keys(env).length > 0;
+export const needsDenoDotenv = ({
+  packageManager,
+  env,
+}: Pick<InitCommandData, "packageManager" | "env">) =>
+  packageManager === "deno" && Object.keys(env).length > 0;
 
 /**
  * Returns a function that prepends the project directory to a
  * `[filename, content]` tuple, resolving the filename into an absolute path.
  */
 export const joinDir =
-  (dir: string) => ([filename, content]: readonly [string, string | object]) =>
+  (dir: string) =>
+  ([filename, content]: readonly [string, string | object]) =>
     [joinPath(dir, ...filename.split("/")), content] as [
       string,
       string | object,
@@ -115,12 +118,12 @@ export const installDependencies = async (data: InitCommandData) => {
  * @param data - The initialization command data containing the initializer command and directory
  * @returns A promise that resolves when the precommand has been executed
  */
-export const runPrecommand = async (
-  { initializer: { command }, dir }: InitCommandData,
-) =>
-  await Array.fromAsync(
-    splitOnOperator(command!),
-    (cmd) => $`${cmd}`.cwd(dir).spawn(),
+export const runPrecommand = async ({
+  initializer: { command },
+  dir,
+}: InitCommandData) =>
+  await Array.fromAsync(splitOnOperator(command!), (cmd) =>
+    $`${cmd}`.cwd(dir).spawn(),
   );
 
 function* splitOnOperator(command: string[]): Generator<string[]> {

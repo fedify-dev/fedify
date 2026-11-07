@@ -141,9 +141,8 @@ export function defineConfig(
 
       // The queue is always started deliberately — by this package's service
       // provider, or by a separate worker — never lazily by Fedify.
-      manuallyStartQueue: queueContextData !== undefined
-        ? true
-        : config.manuallyStartQueue,
+      manuallyStartQueue:
+        queueContextData !== undefined ? true : config.manuallyStartQueue,
 
       /**
        * The cast is sound because `ContextDataFactoryOption` makes

@@ -24,15 +24,10 @@ function createMockResponse(): {
   response: EResponse;
   ended: Promise<void>;
   getBody(): string;
-  getHeader(
-    name: string,
-  ): string | number | readonly string[] | undefined;
+  getHeader(name: string): string | number | readonly string[] | undefined;
 } {
   let body = "";
-  const headers = new Map<
-    string,
-    string | number | readonly string[]
-  >();
+  const headers = new Map<string, string | number | readonly string[]>();
   let resolveEnded: () => void;
   const ended = new Promise<void>((resolve) => {
     resolveEnded = resolve;
@@ -43,10 +38,7 @@ function createMockResponse(): {
       response.statusCode = code;
       return response;
     },
-    setHeader(
-      name: string,
-      value: string | number | readonly string[],
-    ) {
+    setHeader(name: string, value: string | number | readonly string[]) {
       headers.set(name.toLowerCase(), value);
       return response;
     },
@@ -126,12 +118,12 @@ describe("integrateFederation()", () => {
     const req = createMockRequest();
     const { response, ended } = createMockResponse();
     let endedBeforeNext = false;
-    void ended.then(() => endedBeforeNext = true);
+    void ended.then(() => (endedBeforeNext = true));
 
     // The 406 fallback replaces Express's default 404 only after routing
     // finishes, which fallback.test.ts covers with a real application:
     await new Promise<void>((resolve) =>
-      middleware(req, response, () => resolve())
+      middleware(req, response, () => resolve()),
     );
     await Promise.resolve();
     assert.strictEqual(endedBeforeNext, false);
@@ -246,19 +238,23 @@ for (const failure of ["contextDataFactory", "federation.fetch"] as const) {
       },
     };
     const app = express();
-    app.use(integrateFederation(federation as never, () => {
-      requested.resolve();
-      return context.promise;
-    }));
-    app.use((
-      error: Error,
-      _req: express.Request,
-      res: express.Response,
-      _next: express.NextFunction,
-    ) => {
-      errors.push(error);
-      res.status(500).send(error.message);
-    });
+    app.use(
+      integrateFederation(federation as never, () => {
+        requested.resolve();
+        return context.promise;
+      }),
+    );
+    app.use(
+      (
+        error: Error,
+        _req: express.Request,
+        res: express.Response,
+        _next: express.NextFunction,
+      ) => {
+        errors.push(error);
+        res.status(500).send(error.message);
+      },
+    );
 
     await withServer(app, async (origin) => {
       const responsePromise = fetch(origin, {
@@ -295,25 +291,27 @@ for (const failure of ["contextDataFactory", "federation.fetch"] as const) {
         },
       };
       const app = express();
-      app.use(integrateFederation(
-        federation as never,
-        () =>
+      app.use(
+        integrateFederation(federation as never, () =>
           failure === "contextDataFactory"
             ? Promise.reject(reason)
             : Promise.resolve(undefined),
-      ));
+        ),
+      );
       app.use((_req: express.Request, res: express.Response) => {
         res.send("unexpected fallthrough");
       });
-      app.use((
-        error: Error,
-        _req: express.Request,
-        res: express.Response,
-        _next: express.NextFunction,
-      ) => {
-        errors.push(error);
-        res.status(500).send(error.message);
-      });
+      app.use(
+        (
+          error: Error,
+          _req: express.Request,
+          res: express.Response,
+          _next: express.NextFunction,
+        ) => {
+          errors.push(error);
+          res.status(500).send(error.message);
+        },
+      );
 
       await withServer(app, async (origin) => {
         const response = await fetch(origin, {
@@ -340,22 +338,21 @@ test("integrateFederation() forwards a rejection without a reason to error middl
     },
   };
   const app = express();
-  app.use(integrateFederation(
-    federation as never,
-    () => Promise.reject(),
-  ));
+  app.use(integrateFederation(federation as never, () => Promise.reject()));
   app.use((_req: express.Request, res: express.Response) => {
     res.status(200).send("unexpected fallthrough");
   });
-  app.use((
-    error: Error,
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction,
-  ) => {
-    errors.push(error);
-    res.status(500).send(error.message);
-  });
+  app.use(
+    (
+      error: Error,
+      _req: express.Request,
+      res: express.Response,
+      _next: express.NextFunction,
+    ) => {
+      errors.push(error);
+      res.status(500).send(error.message);
+    },
+  );
 
   await withServer(app, async (origin) => {
     const response = await fetch(origin, {
@@ -380,18 +377,22 @@ test("integrateFederation() leaves synchronous factory errors to Express", async
     },
   };
   const app = express();
-  app.use(integrateFederation(federation as never, () => {
-    throw error;
-  }));
-  app.use((
-    error: Error,
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction,
-  ) => {
-    errors.push(error);
-    res.status(500).send(error.message);
-  });
+  app.use(
+    integrateFederation(federation as never, () => {
+      throw error;
+    }),
+  );
+  app.use(
+    (
+      error: Error,
+      _req: express.Request,
+      res: express.Response,
+      _next: express.NextFunction,
+    ) => {
+      errors.push(error);
+      res.status(500).send(error.message);
+    },
+  );
 
   await withServer(app, async (origin) => {
     const response = await fetch(origin, {
@@ -417,19 +418,23 @@ test("integrateFederation() waits for successful asynchronous context data", asy
     },
   };
   const app = express();
-  app.use(integrateFederation(federation as never, () => {
-    requested.resolve();
-    return context.promise;
-  }));
-  app.use((
-    error: Error,
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction,
-  ) => {
-    errors.push(error);
-    res.status(500).send(error.message);
-  });
+  app.use(
+    integrateFederation(federation as never, () => {
+      requested.resolve();
+      return context.promise;
+    }),
+  );
+  app.use(
+    (
+      error: Error,
+      _req: express.Request,
+      res: express.Response,
+      _next: express.NextFunction,
+    ) => {
+      errors.push(error);
+      res.status(500).send(error.message);
+    },
+  );
 
   await withServer(app, async (origin) => {
     const responsePromise = fetch(origin, {

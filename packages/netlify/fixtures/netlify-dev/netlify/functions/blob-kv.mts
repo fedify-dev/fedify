@@ -9,9 +9,10 @@ interface BlobKvBody {
 }
 
 export default async function blobKv(request: Request): Promise<Response> {
-  const body = await request.json() as BlobKvBody;
+  const body = (await request.json()) as BlobKvBody;
   if (
-    typeof body.id !== "string" || body.id.length < 1 ||
+    typeof body.id !== "string" ||
+    body.id.length < 1 ||
     typeof body.action !== "string"
   ) {
     return new Response("Invalid payload.", { status: 400 });

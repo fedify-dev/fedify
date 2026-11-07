@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
 
   let target: APObject | null = null;
   try {
-    target = await ctx.lookupObject(targetUri) as APObject | null;
+    target = (await ctx.lookupObject(targetUri)) as APObject | null;
   } catch {
     return sendRedirect(event, "/", 303);
   }
@@ -30,10 +30,7 @@ export default defineEventHandler(async (event) => {
       { identifier },
       target,
       new Follow({
-        id: new URL(
-          `#follows/${target.id.href}`,
-          ctx.getActorUri(identifier),
-        ),
+        id: new URL(`#follows/${target.id.href}`, ctx.getActorUri(identifier)),
         actor: ctx.getActorUri(identifier),
         object: target.id,
       }),

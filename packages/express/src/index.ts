@@ -18,67 +18,73 @@ export function integrateFederation<TContextData>(
   contextDataFactory: ContextDataFactory<TContextData>,
 ): Middleware {
   return (req, res, next) => {
-    const body = req.method === "GET" || req.method === "HEAD"
-      ? undefined
-      : createRequestBody(req);
+    const body =
+      req.method === "GET" || req.method === "HEAD"
+        ? undefined
+        : createRequestBody(req);
     const request = fromERequest(req, body?.stream);
     const contextData = contextDataFactory(req);
-    const contextDataPromise = contextData instanceof Promise
-      ? contextData
-      : Promise.resolve(contextData);
+    const contextDataPromise =
+      contextData instanceof Promise
+        ? contextData
+        : Promise.resolve(contextData);
     let notFound = false;
     let notAcceptable = false;
-    contextDataPromise.then(async (contextData) => {
-      const response = await federation.fetch(request, {
-        contextData,
-        onNotFound: () => {
-          // If the `federation` object finds a request not responsible for it
-          // (i.e., not a federation-related request), it will call the `next`
-          // function provided by the Express framework to continue the request
-          // handling by the Express:
-          notFound = true;
-          body?.restore();
-          next();
-          return new Response("Not found", { status: 404 }); // unused
-        },
-        onNotAcceptable: () => {
-          // Similar to `onNotFound`, but slightly more tricky.
-          // When the `federation` object finds a request not acceptable
-          // type-wise (i.e., a user-agent doesn't want JSON-LD), it will call
-          // the `next` function provided by the Express framework to continue
-          // if the application can handle it, and otherwise return a 406 Not
-          // Acceptable response:
-          notAcceptable = true;
-          installNotAcceptableFallback(req, res);
-          body?.restore();
-          next();
-          return new Response("Not acceptable", {
-            status: 406,
-            headers: {
-              "Content-Type": "text/plain",
-              Vary: "Accept",
-            },
-          });
-        },
+    contextDataPromise
+      .then(async (contextData) => {
+        const response = await federation.fetch(request, {
+          contextData,
+          onNotFound: () => {
+            // If the `federation` object finds a request not responsible for it
+            // (i.e., not a federation-related request), it will call the `next`
+            // function provided by the Express framework to continue the request
+            // handling by the Express:
+            notFound = true;
+            body?.restore();
+            next();
+            return new Response("Not found", { status: 404 }); // unused
+          },
+          onNotAcceptable: () => {
+            // Similar to `onNotFound`, but slightly more tricky.
+            // When the `federation` object finds a request not acceptable
+            // type-wise (i.e., a user-agent doesn't want JSON-LD), it will call
+            // the `next` function provided by the Express framework to continue
+            // if the application can handle it, and otherwise return a 406 Not
+            // Acceptable response:
+            notAcceptable = true;
+            installNotAcceptableFallback(req, res);
+            body?.restore();
+            next();
+            return new Response("Not acceptable", {
+              status: 406,
+              headers: {
+                "Content-Type": "text/plain",
+                Vary: "Accept",
+              },
+            });
+          },
+        });
+        if (notFound || notAcceptable) return;
+        await setEResponse(res, response);
+        // Prevent the Express framework from sending the response again:
+        res.end();
+        res.status = () => res;
+        res.send = () => res;
+        res.end = () => res;
+        res.json = () => res;
+        res.removeHeader = () => res;
+        res.setHeader = () => res;
+      })
+      .catch((error) => {
+        // Once Fedify has handed the request to Express, do not call next again.
+        if (notFound || notAcceptable) throw error;
+        next(
+          error === "route" || error === "router"
+            ? new Error(error)
+            : error ||
+                new Error("The federation middleware promise was rejected."),
+        );
       });
-      if (notFound || notAcceptable) return;
-      await setEResponse(res, response);
-      // Prevent the Express framework from sending the response again:
-      res.end();
-      res.status = () => res;
-      res.send = () => res;
-      res.end = () => res;
-      res.json = () => res;
-      res.removeHeader = () => res;
-      res.setHeader = () => res;
-    }).catch((error) => {
-      // Once Fedify has handed the request to Express, do not call next again.
-      if (notFound || notAcceptable) throw error;
-      next(
-        error === "route" || error === "router" ? new Error(error) : error ||
-          new Error("The federation middleware promise was rejected."),
-      );
-    });
   };
 }
 
@@ -144,13 +150,11 @@ function createRequestBody(message: Readable): RequestBody {
           // Reading the exact buffered size, unlike read() without an argument,
           // never makes the stream emit "end", after which unshift() would
           // throw:
-          const chunk: Uint8Array | string | null = size > 0
-            ? message.read(size)
-            : null;
+          const chunk: Uint8Array | string | null =
+            size > 0 ? message.read(size) : null;
           if (chunk != null) {
-            const bytes = typeof chunk === "string"
-              ? Buffer.from(chunk)
-              : chunk;
+            const bytes =
+              typeof chunk === "string" ? Buffer.from(chunk) : chunk;
             consumed.push(bytes);
             controller.enqueue(bytes);
             return;
@@ -193,9 +197,11 @@ function createRequestBody(message: Readable): RequestBody {
  * `readableEnded` elsewhere.
  */
 function isEnded(message: Readable): boolean {
-  const state = (message as Readable & {
-    _readableState?: { ended?: boolean };
-  })._readableState;
+  const state = (
+    message as Readable & {
+      _readableState?: { ended?: boolean };
+    }
+  )._readableState;
   return state?.ended ?? message.readableEnded;
 }
 
@@ -266,10 +272,7 @@ function installNotAcceptableFallback(req: ERequest, res: EResponse): void {
   };
   res.send = wrappedSend;
   const wrapEnd = (end: typeof res.end): typeof res.end =>
-    function (
-      this: EResponse,
-      ...args: unknown[]
-    ) {
+    function (this: EResponse, ...args: unknown[]) {
       if (pending) {
         // Stop observing assignments before entering downstream wrappers. Their
         // saved end functions still delegate through our now-inactive wrappers.
@@ -282,8 +285,11 @@ function installNotAcceptableFallback(req: ERequest, res: EResponse): void {
         if (this.send === wrappedSend) this.send = send;
       }
       if (
-        !pending || applicationResponse || this.headersSent ||
-        this.statusCode !== 404 || !isDefaultNotFound(req, this, args[0])
+        !pending ||
+        applicationResponse ||
+        this.headersSent ||
+        this.statusCode !== 404 ||
+        !isDefaultNotFound(req, this, args[0])
       ) {
         pending = false;
         return end.apply(this, args as Parameters<typeof end>);
@@ -295,16 +301,15 @@ function installNotAcceptableFallback(req: ERequest, res: EResponse): void {
       const body = "Not acceptable";
       this.statusCode = 406;
       this.statusMessage = "Not Acceptable";
-      for (
-        const header of [
-          "Content-Encoding",
-          "Content-Language",
-          "Content-Range",
-          "ETag",
-          "Last-Modified",
-          "Transfer-Encoding",
-        ]
-      ) this.removeHeader(header);
+      for (const header of [
+        "Content-Encoding",
+        "Content-Language",
+        "Content-Range",
+        "ETag",
+        "Last-Modified",
+        "Transfer-Encoding",
+      ])
+        this.removeHeader(header);
       this.setHeader("Content-Type", "text/plain; charset=utf-8");
       this.setHeader("Content-Length", Buffer.byteLength(body));
       this.vary("Accept");
@@ -343,7 +348,8 @@ function isDefaultNotFound(
     res.getHeader("Content-Security-Policy") !== "default-src 'none'" ||
     res.getHeader("X-Content-Type-Options") !== "nosniff" ||
     res.getHeader("Content-Type") !== "text/html; charset=utf-8"
-  ) return false;
+  )
+    return false;
   // Match the whole default page, preserving custom HTML with similar
   // markup. HEAD omits the page, so only its expected length is available.
   const path = (req.originalUrl ?? req.url).split("?")[0];
@@ -368,11 +374,12 @@ function isDefaultNotFound(
         "'": "&#39;",
       })[character]!,
   );
-  const page = '<!DOCTYPE html>\n<html lang="en">\n<head>\n' +
+  const page =
+    '<!DOCTYPE html>\n<html lang="en">\n<head>\n' +
     '<meta charset="utf-8">\n<title>Error</title>\n</head>\n<body>\n' +
     `<pre>${message}</pre>\n</body>\n</html>\n`;
   return req.method === "HEAD"
     ? chunk == null &&
-      Number(res.getHeader("Content-Length")) === Buffer.byteLength(page)
+        Number(res.getHeader("Content-Length")) === Buffer.byteLength(page)
     : chunk === page;
 }

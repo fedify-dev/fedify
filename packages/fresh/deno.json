@@ -10,17 +10,12 @@
   "exports": {
     ".": "./src/mod.ts"
   },
-  "exclude": [
-    "dist",
-    "node_modules"
-  ],
+  "exclude": ["dist", "node_modules"],
   "publish": {
-    "exclude": [
-      "**/*.test.ts"
-    ]
+    "exclude": ["**/*.test.ts"]
   },
   "tasks": {
-    "check": "deno fmt --check && deno check src/*.ts",
+    "check": "deno check src/*.ts",
     "test": "deno test --allow-all src/mod.test.ts"
   }
 }

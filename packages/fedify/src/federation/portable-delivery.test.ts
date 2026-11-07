@@ -45,9 +45,12 @@ function portableActor(
     id: parseIri(options.id ?? `ap://${did}/actor`),
     inbox: parseIri(options.inbox ?? `ap://${did}/actor/inbox`),
     gateways: (options.gateways ?? []).map((g) => new URL(g)),
-    endpoints: options.sharedInbox == null ? null : new Endpoints({
-      sharedInbox: new URL(options.sharedInbox),
-    }),
+    endpoints:
+      options.sharedInbox == null
+        ? null
+        : new Endpoints({
+            sharedInbox: new URL(options.sharedInbox),
+          }),
   });
 }
 
@@ -74,7 +77,8 @@ test("extractInboxes() resolves portable inboxes", async (t) => {
   });
 
   await t.step("through @gateway hints of the inbox", () => {
-    const hints = "?@gateway=https%3A%2F%2Fhint1.example" +
+    const hints =
+      "?@gateway=https%3A%2F%2Fhint1.example" +
       "&@gateway=https%3A%2F%2Fhint2.example";
     const inboxes = extractInboxes({
       recipients: [portableActor({ inbox: `ap://${DID}/actor/inbox${hints}` })],
@@ -157,7 +161,10 @@ test("extractInboxes() resolves portable inboxes", async (t) => {
     const portable = portableActor({
       gateways: ["https://gw1.example", "https://gw2.example"],
     });
-    for (const recipients of [[compatible, portable], [portable, compatible]]) {
+    for (const recipients of [
+      [compatible, portable],
+      [portable, compatible],
+    ]) {
       const inboxes = extractInboxes({ recipients });
       deepStrictEqual(inboxes, {
         [inboxOn("https://gw1.example")]: {
@@ -181,7 +188,10 @@ test("extractInboxes() resolves portable inboxes", async (t) => {
     const portable = portableActor({
       gateways: ["https://gw1.example", "https://gw2.example"],
     });
-    for (const recipients of [[compatible, portable], [portable, compatible]]) {
+    for (const recipients of [
+      [compatible, portable],
+      [portable, compatible],
+    ]) {
       const inboxes = extractInboxes({ recipients });
       const keys = Object.keys(inboxes);
       strictEqual(keys.length, 1);
@@ -209,14 +219,12 @@ test("extractInboxes() resolves portable inboxes", async (t) => {
     });
     const gw1 = onGateway("https://gw1.example");
     const gw2 = onGateway("https://gw2.example");
-    for (
-      const recipients of [
-        [gw1, gw2, portable],
-        [gw2, gw1, portable],
-        [gw1, portable, gw2],
-        [portable, gw2, gw1],
-      ]
-    ) {
+    for (const recipients of [
+      [gw1, gw2, portable],
+      [gw2, gw1, portable],
+      [gw1, portable, gw2],
+      [portable, gw2, gw1],
+    ]) {
       const inboxes = extractInboxes({ recipients });
       const keys = Object.keys(inboxes);
       strictEqual(keys.length, 1);
@@ -241,7 +249,10 @@ test("extractInboxes() resolves portable inboxes", async (t) => {
       endpoints: { sharedInbox: new URL(inboxOn("https://gw1.example")) },
     };
     const portable = portableActor({ gateways: ["https://gw1.example"] });
-    for (const recipients of [[shared, portable], [portable, shared]]) {
+    for (const recipients of [
+      [shared, portable],
+      [portable, shared],
+    ]) {
       const inboxes = extractInboxes({ recipients, preferSharedInbox: true });
       strictEqual(inboxes[inboxOn("https://gw1.example")].sharedInbox, false);
       strictEqual(
@@ -312,9 +323,10 @@ interface Queued {
   options: Parameters<MessageQueue["enqueue"]>[1];
 }
 
-function createQueue(
-  options: Pick<MessageQueue, "nativeRetrial"> = {},
-): { queue: MessageQueue; queued: Queued[] } {
+function createQueue(options: Pick<MessageQueue, "nativeRetrial"> = {}): {
+  queue: MessageQueue;
+  queued: Queued[];
+} {
   const queued: Queued[] = [];
   const queue: MessageQueue = {
     nativeRetrial: options.nativeRetrial,
@@ -394,10 +406,10 @@ test("Context.sendActivity() to a portable inbox", async (t) => {
       { immediate: true },
     );
     // Double-knocking may repeat a failed request:
-    deepStrictEqual([...new Set(requests)], [
-      inboxOn("https://gw1.example"),
-      inboxOn("https://gw2.example"),
-    ]);
+    deepStrictEqual(
+      [...new Set(requests)],
+      [inboxOn("https://gw1.example"), inboxOn("https://gw2.example")],
+    );
   });
 
   await t.step("immediately, failing on every gateway", async () => {
@@ -421,7 +433,8 @@ test("Context.sendActivity() to a portable inbox", async (t) => {
           { immediate: true },
         ),
       (error) =>
-        error instanceof SendActivityError && error.statusCode === 404 &&
+        error instanceof SendActivityError &&
+        error.statusCode === 404 &&
         error.inbox.href === inboxOn("https://gw2.example"),
     );
   });
@@ -442,7 +455,7 @@ test("Context.sendActivity() to a portable inbox", async (t) => {
         portableActor({ gateways: ["http://127.0.0.1"] }),
         createActivity(),
         { immediate: true },
-      )
+      ),
     );
     strictEqual(requests, 0);
   });
@@ -480,27 +493,30 @@ test("Context.sendActivity() to a portable inbox", async (t) => {
     );
     strictEqual(queued.length, 2);
     const messages = queued.map((q) => q.message as OutboxMessage);
-    deepStrictEqual(messages.map((m) => m.inbox), [
-      inboxOn("https://gw1.example"),
-      inboxOn("https://gw1.example", OTHER_DID),
-    ]);
+    deepStrictEqual(
+      messages.map((m) => m.inbox),
+      [
+        inboxOn("https://gw1.example"),
+        inboxOn("https://gw1.example", OTHER_DID),
+      ],
+    );
     deepStrictEqual(messages[0].gatewayInboxes, [
       inboxOn("https://gw1.example"),
       inboxOn("https://gw2.example"),
     ]);
     strictEqual(messages[0].portableInbox, PORTABLE_INBOX);
     // Ordering keys tell portable inboxes apart by their DIDs:
-    deepStrictEqual(queued.map((q) => q.options?.orderingKey), [
-      `key\n${DID}`,
-      `key\n${OTHER_DID}`,
-    ]);
+    deepStrictEqual(
+      queued.map((q) => q.options?.orderingKey),
+      [`key\n${DID}`, `key\n${OTHER_DID}`],
+    );
     queued.length = 0;
     await federation.processQueuedTask(undefined, messages[0]);
     // Double-knocking may repeat a failed request:
-    deepStrictEqual([...new Set(requests)], [
-      inboxOn("https://gw1.example"),
-      inboxOn("https://gw2.example"),
-    ]);
+    deepStrictEqual(
+      [...new Set(requests)],
+      [inboxOn("https://gw1.example"), inboxOn("https://gw2.example")],
+    );
     strictEqual(queued.length, 0);
   });
 
@@ -551,9 +567,11 @@ test("Context.sendActivity() to a portable inbox", async (t) => {
 });
 
 test("portable fallback attempts retain one delivery across concrete gateway sends", async (t) => {
-  for (
-    const operation of ["send", "inbox-forward", "outbox-forward"] as const
-  ) {
+  for (const operation of [
+    "send",
+    "inbox-forward",
+    "outbox-forward",
+  ] as const) {
     for (const accepted of [true, false]) {
       await t.step(
         `${operation}: ${
@@ -570,7 +588,8 @@ test("portable fallback attempts retain one delivery across concrete gateway sen
           const reports: OutboundAttemptReport[] = [];
           const deliveries: OutboundDeliveryEvent[] = [];
           const submitted: unknown[] = [];
-          fetchMock.mockGlobal()
+          fetchMock
+            .mockGlobal()
             .post("begin:https://gw1.example/", (call) => {
               submitted.push(JSON.parse(String(call.options.body)));
               return 503;
@@ -602,28 +621,36 @@ test("portable fallback attempts retain one delivery across concrete gateway sen
             const target = portableActor({
               gateways: ["https://gw1.example", "https://gw2.example"],
             });
-            const pending = operation === "send"
-              ? ctx.sendActivity(sender, target, createActivity(), {
-                immediate: true,
-              })
-              : (operation === "inbox-forward"
-                ? ctx.toInboxContext(null, raw, raw.id, Create.typeId.href)
-                : ctx.toOutboxContext("alice", raw, raw.id, Create.typeId.href))
-                .forwardActivity(sender, target, {
-                  immediate: true,
-                  skipIfUnsigned: false,
-                });
+            const pending =
+              operation === "send"
+                ? ctx.sendActivity(sender, target, createActivity(), {
+                    immediate: true,
+                  })
+                : (operation === "inbox-forward"
+                    ? ctx.toInboxContext(null, raw, raw.id, Create.typeId.href)
+                    : ctx.toOutboxContext(
+                        "alice",
+                        raw,
+                        raw.id,
+                        Create.typeId.href,
+                      )
+                  ).forwardActivity(sender, target, {
+                    immediate: true,
+                    skipIfUnsigned: false,
+                  });
             if (accepted) await pending;
-            else {await rejects(pending, (error: unknown) =>
-                error instanceof SendActivityError &&
-                error.statusCode === 502);}
+            else {
+              await rejects(
+                pending,
+                (error: unknown) =>
+                  error instanceof SendActivityError &&
+                  error.statusCode === 502,
+              );
+            }
             strictEqual(reports.length, 2);
             deepStrictEqual(
               reports.map((report) => report.inboxUrl),
-              [
-                inboxOn("https://gw1.example"),
-                inboxOn("https://gw2.example"),
-              ],
+              [inboxOn("https://gw1.example"), inboxOn("https://gw2.example")],
             );
             notStrictEqual(reports[0].attemptId, reports[1].attemptId);
             strictEqual(reports[0].deliveryId, reports[1].deliveryId);
@@ -720,11 +747,14 @@ test("InboxContext.forwardActivity() to a portable inbox", async (t) => {
       immediate: true,
       skipIfUnsigned: false,
     });
-    deepStrictEqual([...new Set(requests)], [
-      inboxOn("https://gw1.example"),
-      inboxOn("https://gw2.example"),
-    ]);
-    deepStrictEqual(events.map((event) => event.stage), ["planned", "handoff"]);
+    deepStrictEqual(
+      [...new Set(requests)],
+      [inboxOn("https://gw1.example"), inboxOn("https://gw2.example")],
+    );
+    deepStrictEqual(
+      events.map((event) => event.stage),
+      ["planned", "handoff"],
+    );
     strictEqual(events[0].deliveryId, events[1].deliveryId);
     for (const event of events) {
       strictEqual(event.destinationInbox, inboxOn("https://gw1.example"));
@@ -764,7 +794,10 @@ test("InboxContext.forwardActivity() to a portable inbox", async (t) => {
       inboxOn("https://gw2.example"),
     ]);
     strictEqual(queued[0].options?.orderingKey, `key\n${DID}`);
-    deepStrictEqual(events.map((event) => event.stage), ["planned", "handoff"]);
+    deepStrictEqual(
+      events.map((event) => event.stage),
+      ["planned", "handoff"],
+    );
     strictEqual(events[0].deliveryId, events[1].deliveryId);
     for (const event of events) {
       strictEqual(event.destinationInbox, inboxOn("https://gw1.example"));
@@ -815,8 +848,9 @@ test("processQueuedTask() with portable inbox gateways", async (t) => {
   }
 
   function setup(
-    options: Partial<ConstructorParameters<typeof FederationImpl<void>>[0]> =
-      {},
+    options: Partial<
+      ConstructorParameters<typeof FederationImpl<void>>[0]
+    > = {},
     queueOptions: Pick<MessageQueue, "nativeRetrial"> = {},
   ) {
     const { queue, queued } = createQueue(queueOptions);
@@ -917,10 +951,12 @@ test("processQueuedTask() with portable inbox gateways", async (t) => {
       createMessage(["https://gw1.example", "https://gw2.example"]),
     );
     strictEqual(queued.length, 0);
-    deepStrictEqual(permanentFailures, [{
-      inbox: new URL(inboxOn("https://gw2.example")),
-      statusCode: 404,
-    }]);
+    deepStrictEqual(permanentFailures, [
+      {
+        inbox: new URL(inboxOn("https://gw2.example")),
+        statusCode: 404,
+      },
+    ]);
   });
 
   await t.step("respects custom permanent failure statuses", async () => {
@@ -1003,7 +1039,8 @@ test("processQueuedTask() with portable inbox gateways", async (t) => {
       undefined,
       createMessage(["https://gw1.example", "https://gw2.example"], {
         circuitHeld: true,
-        circuitHeldSince: Temporal.Now.instant().subtract({ hours: 1 })
+        circuitHeldSince: Temporal.Now.instant()
+          .subtract({ hours: 1 })
           .toString(),
         gatewayNotBefore: {
           [inboxOn("https://gw1.example")]: later,
@@ -1034,10 +1071,10 @@ test("processQueuedTask() with portable inbox gateways", async (t) => {
     strictEqual(queued.length, 1);
     const retry = queued[0].message as OutboxMessage;
     strictEqual(retry.attempt, 1);
-    deepStrictEqual(
-      Object.keys(retry.gatewayNotBefore ?? {}),
-      [inboxOn("https://gw1.example"), inboxOn("https://gw2.example")],
-    );
+    deepStrictEqual(Object.keys(retry.gatewayNotBefore ?? {}), [
+      inboxOn("https://gw1.example"),
+      inboxOn("https://gw2.example"),
+    ]);
     strictEqual(Math.round(queued[0].options!.delay!.total("second")), 60);
   });
 
@@ -1058,10 +1095,9 @@ test("processQueuedTask() with portable inbox gateways", async (t) => {
     );
     strictEqual(queued.length, 1);
     const retry = queued[0].message as OutboxMessage;
-    deepStrictEqual(
-      Object.keys(retry.gatewayNotBefore ?? {}),
-      [inboxOn("https://gw1.example")],
-    );
+    deepStrictEqual(Object.keys(retry.gatewayNotBefore ?? {}), [
+      inboxOn("https://gw1.example"),
+    ]);
     strictEqual(Math.round(queued[0].options!.delay!.total("second")), 30);
   });
 
@@ -1092,9 +1128,11 @@ test("processQueuedTask() with portable inbox gateways", async (t) => {
       undefined,
       createMessage(["https://gw1.example", "https://gw2.example"], {
         gatewayNotBefore: {
-          [inboxOn("https://gw1.example")]: Temporal.Now.instant().add({
-            hours: 1,
-          }).toString(),
+          [inboxOn("https://gw1.example")]: Temporal.Now.instant()
+            .add({
+              hours: 1,
+            })
+            .toString(),
         },
       }),
     );
@@ -1212,7 +1250,8 @@ test("processQueuedTask() with portable inbox gateways", async (t) => {
       undefined,
       createMessage(["https://gw1.example", "https://gw2.example"], {
         circuitHeld: true,
-        circuitHeldSince: Temporal.Now.instant().subtract({ hours: 2 })
+        circuitHeldSince: Temporal.Now.instant()
+          .subtract({ hours: 2 })
           .toString(),
       }),
     );

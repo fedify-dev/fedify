@@ -26,19 +26,12 @@
     "pkijs": "npm:pkijs@^3.2.5",
     "undici": "npm:undici@^7.30.1"
   },
-  "exclude": [
-    "dist",
-    "node_modules"
-  ],
+  "exclude": ["dist", "node_modules"],
   "publish": {
-    "exclude": [
-      "**/*.test.ts",
-      "src/**/testdata/",
-      "tsdown.config.ts"
-    ]
+    "exclude": ["**/*.test.ts", "src/**/testdata/", "tsdown.config.ts"]
   },
   "tasks": {
-    "check": "deno fmt --check && deno check src/*.ts",
+    "check": "deno check src/*.ts",
     "test": "deno test --allow-net --allow-env=LOG"
   }
 }

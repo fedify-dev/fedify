@@ -30,16 +30,16 @@ const logger = getLogger(["fedify", "examples", "rfc-9421-test", "inbound"]);
 const challengeEnabled = Deno.env.get("CHALLENGE_ENABLED") !== "0";
 const challengeNonce = Deno.env.get("CHALLENGE_NONCE") === "1";
 const nonceTtl = parseInt(Deno.env.get("NONCE_TTL") ?? "300", 10);
-const firstKnock =
-  (Deno.env.get("FIRST_KNOCK") ?? "rfc9421") as HttpMessageSignaturesSpec;
+const firstKnock = (Deno.env.get("FIRST_KNOCK") ??
+  "rfc9421") as HttpMessageSignaturesSpec;
 const port = parseInt(Deno.env.get("PORT") ?? "8000", 10);
 
 const inboxChallengePolicy: InboxChallengePolicy | undefined = challengeEnabled
   ? {
-    enabled: true,
-    requestNonce: challengeNonce,
-    nonceTtlSeconds: nonceTtl,
-  }
+      enabled: true,
+      requestNonce: challengeNonce,
+      nonceTtlSeconds: nonceTtl,
+    }
   : undefined;
 
 logger.info(

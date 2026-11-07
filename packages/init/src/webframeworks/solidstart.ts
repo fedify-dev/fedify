@@ -31,11 +31,10 @@ const solidstartDescription: WebFrameworkDescription = {
       ignorePatterns: [".solid/**", ".vinxi/**"],
     },
     files: {
-      "app.config.ts": (await readTemplate("solidstart/app.config.ts"))
-        .replace(
-          /\/\* preset \*\//,
-          pm === "deno" ? "deno-server" : "node-server",
-        ),
+      "app.config.ts": (await readTemplate("solidstart/app.config.ts")).replace(
+        /\/\* preset \*\//,
+        pm === "deno" ? "deno-server" : "node-server",
+      ),
       "src/app.tsx": await readTemplate("solidstart/src/app.tsx"),
       "src/entry-client.tsx": await readTemplate(
         "solidstart/src/entry-client.tsx",
@@ -50,18 +49,21 @@ const solidstartDescription: WebFrameworkDescription = {
         "solidstart/src/middleware/index.ts",
       ),
     },
-    compilerOptions: pm === "deno" ? undefined : {
-      target: "ESNext",
-      module: "ESNext",
-      moduleResolution: "Bundler",
-      allowSyntheticDefaultImports: true,
-      esModuleInterop: true,
-      jsx: "preserve",
-      jsxImportSource: "solid-js",
-      strict: true,
-      noEmit: true,
-      skipLibCheck: true,
-    },
+    compilerOptions:
+      pm === "deno"
+        ? undefined
+        : {
+            target: "ESNext",
+            module: "ESNext",
+            moduleResolution: "Bundler",
+            allowSyntheticDefaultImports: true,
+            esModuleInterop: true,
+            jsx: "preserve",
+            jsxImportSource: "solid-js",
+            strict: true,
+            noEmit: true,
+            skipLibCheck: true,
+          },
     tasks: TASKS[pmToRt(pm)],
     instruction: getInstruction(pm, 3000),
   }),
@@ -72,30 +74,29 @@ export default solidstartDescription;
 const getDependencies = (pm: string): Record<string, string> =>
   pm === "deno"
     ? {
-      ...defaultDenoDependencies,
-      "@solidjs/router": `npm:@solidjs/router@${deps["npm:@solidjs/router"]}`,
-      "@solidjs/start": NPM_SOLIDSTART,
-      ...DENO_SOLIDSTART,
-      "solid-js": `npm:solid-js@${deps["npm:solid-js"]}`,
-      vinxi: `npm:vinxi@${deps["npm:vinxi"]}`,
-      "@fedify/solidstart": PACKAGE_VERSION,
-    }
+        ...defaultDenoDependencies,
+        "@solidjs/router": `npm:@solidjs/router@${deps["npm:@solidjs/router"]}`,
+        "@solidjs/start": NPM_SOLIDSTART,
+        ...DENO_SOLIDSTART,
+        "solid-js": `npm:solid-js@${deps["npm:solid-js"]}`,
+        vinxi: `npm:vinxi@${deps["npm:vinxi"]}`,
+        "@fedify/solidstart": PACKAGE_VERSION,
+      }
     : {
-      "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
-      "@solidjs/router": deps["npm:@solidjs/router"],
-      "@solidjs/start": deps["npm:@solidjs/start"],
-      "solid-js": deps["npm:solid-js"],
-      vinxi: deps["npm:vinxi"],
-      "@fedify/solidstart": PACKAGE_VERSION,
-    };
+        "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+        "@solidjs/router": deps["npm:@solidjs/router"],
+        "@solidjs/start": deps["npm:@solidjs/start"],
+        "solid-js": deps["npm:solid-js"],
+        vinxi: deps["npm:vinxi"],
+        "@fedify/solidstart": PACKAGE_VERSION,
+      };
 
-const DENO_SOLIDSTART = Object.fromEntries([
-  "client",
-  "config",
-  "middleware",
-  "router",
-  "server",
-].map((pkg) => [`@solidjs/start/${pkg}`, `${NPM_SOLIDSTART}/${pkg}`]));
+const DENO_SOLIDSTART = Object.fromEntries(
+  ["client", "config", "middleware", "router", "server"].map((pkg) => [
+    `@solidjs/start/${pkg}`,
+    `${NPM_SOLIDSTART}/${pkg}`,
+  ]),
+);
 
 const TASKS = {
   deno: {

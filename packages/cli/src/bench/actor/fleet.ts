@@ -36,8 +36,8 @@ function httpStandardOf(
   // The JSON Schema already requires exactly one HTTP request scheme per group;
   // enforce it here too so this function honors its own contract even if called
   // with unvalidated input, rather than silently picking the first of several.
-  const http = standards.filter((s) =>
-    s === "draft-cavage-http-signatures-12" || s === "rfc9421"
+  const http = standards.filter(
+    (s) => s === "draft-cavage-http-signatures-12" || s === "rfc9421",
   );
   if (http.length === 0) {
     throw new TypeError(
@@ -64,9 +64,14 @@ function httpStandardOf(
 export async function buildFleet(
   groups: readonly ActorGroup[],
 ): Promise<FleetMember[]> {
-  const effective: readonly ActorGroup[] = groups.length > 0 ? groups : [{
-    signatureStandards: ["draft-cavage-http-signatures-12"],
-  }];
+  const effective: readonly ActorGroup[] =
+    groups.length > 0
+      ? groups
+      : [
+          {
+            signatureStandards: ["draft-cavage-http-signatures-12"],
+          },
+        ];
   const members: FleetMember[] = [];
   let index = 0;
   for (const group of effective) {

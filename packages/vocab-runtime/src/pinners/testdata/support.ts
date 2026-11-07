@@ -46,8 +46,10 @@ export const ipv6 = (address: string): ResolvedAddress => ({
  * its lookup failed with.
  */
 export function isAddressRejection(error: unknown): boolean {
-  return error instanceof UrlError ||
-    error instanceof TypeError && error.cause instanceof UrlError;
+  return (
+    error instanceof UrlError ||
+    (error instanceof TypeError && error.cause instanceof UrlError)
+  );
 }
 
 export interface ReceivedRequest {
@@ -62,7 +64,7 @@ function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let body = "";
     req.setEncoding("utf8");
-    req.on("data", (chunk: string) => body += chunk);
+    req.on("data", (chunk: string) => (body += chunk));
     req.on("end", () => resolve(body));
     req.on("error", reject);
   });
@@ -191,9 +193,9 @@ export async function startCountingServer() {
  *                              tunnel for the response of the request
  *                              (e.g., Bun 1.3.14).
  */
-export async function startRecordingProxy(
-  { refuseTunnels = false }: { readonly refuseTunnels?: boolean } = {},
-) {
+export async function startRecordingProxy({
+  refuseTunnels = false,
+}: { readonly refuseTunnels?: boolean } = {}) {
   const targets: string[] = [];
   const server = createTcpServer((socket) => {
     let head = "";

@@ -42,7 +42,7 @@ const modes = [
   "inbox-forward",
   "outbox-forward",
 ] as const;
-type Mode = typeof modes[number];
+type Mode = (typeof modes)[number];
 function entry(
   federation: Federation<void>,
   mode: Mode,
@@ -102,12 +102,10 @@ function entry(
 }
 
 test("dispatch ID validation precedes send and forward side effects", async (t) => {
-  for (
-    const { mode, observed } of [
-      { mode: "send" as const, observed: false },
-      ...modes.map((mode) => ({ mode, observed: true })),
-    ]
-  ) {
+  for (const { mode, observed } of [
+    { mode: "send" as const, observed: false },
+    ...modes.map((mode) => ({ mode, observed: true })),
+  ]) {
     await t.step(
       `${mode}: ${observed ? "observed" : "unobserved"}`,
       async () => {
@@ -125,13 +123,15 @@ test("dispatch ID validation precedes send and forward side effects", async (t) 
           manuallyStartQueue: true,
           queue: { outbox: queue, fanout: queue },
         });
-        federation.setActorDispatcher("/users/{identifier}", () => {
-          sideEffects++;
-          return new Person({});
-        }).setKeyPairsDispatcher(() => {
-          sideEffects++;
-          return [];
-        });
+        federation
+          .setActorDispatcher("/users/{identifier}", () => {
+            sideEffects++;
+            return new Person({});
+          })
+          .setKeyPairsDispatcher(() => {
+            sideEffects++;
+            return [];
+          });
         const { context, invoke } = entry(federation, mode, {
           identifier: "alice",
         });
@@ -173,10 +173,10 @@ test("dispatch ID validation precedes send and forward side effects", async (t) 
           strictEqual(sideEffects, 0);
           strictEqual(deliveries, 0);
           if (observed) {
-            deepStrictEqual(events.slice(start).map((event) => event.stage), [
-              "started",
-              "preparation-finished",
-            ]);
+            deepStrictEqual(
+              events.slice(start).map((event) => event.stage),
+              ["started", "preparation-finished"],
+            );
             const finished = events.at(-1)!;
             ok(
               finished.stage === "preparation-finished" &&
@@ -236,9 +236,12 @@ test("dispatch IDs correlate send and forward entries without deduplication or c
       const starts = broadcasts.filter((event) => event.stage === "started");
       strictEqual(starts.length, 3);
       strictEqual(new Set(starts.map((event) => event.broadcastId)).size, 3);
-      deepStrictEqual(starts.map((event) => event.activity), [{}, {}, {}]);
-      const finishes = broadcasts.filter((event) =>
-        event.stage === "preparation-finished"
+      deepStrictEqual(
+        starts.map((event) => event.activity),
+        [{}, {}, {}],
+      );
+      const finishes = broadcasts.filter(
+        (event) => event.stage === "preparation-finished",
       );
       strictEqual(finishes.length, 3);
       for (const event of finishes) {
@@ -308,15 +311,19 @@ test("dispatch ID byte limits and queue fallback preserve exact values", async (
   await reset();
   await configure({
     sinks: { buffer: (record) => records.push(record) },
-    loggers: [{
-      category: ["test", "dispatch"],
-      sinks: ["buffer"],
-      lowestLevel: "info",
-    }, {
-      category: ["fedify", "federation", "queue"],
-      sinks: ["buffer"],
-      lowestLevel: "warning",
-    }, { category: ["logtape", "meta"], sinks: [] }],
+    loggers: [
+      {
+        category: ["test", "dispatch"],
+        sinks: ["buffer"],
+        lowestLevel: "info",
+      },
+      {
+        category: ["fedify", "federation", "queue"],
+        sinks: ["buffer"],
+        lowestLevel: "warning",
+      },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
     contextLocalStorage: new AsyncLocalStorage(),
   });
   const consumer = createFederation<void>({
@@ -368,9 +375,10 @@ test("dispatch ID byte limits and queue fallback preserve exact values", async (
       );
     }
     ok(fetchMock.callHistory.calls().length >= malformed.length);
-    const warnings = records.filter((record) =>
-      record.rawMessage ===
-        "Ignoring invalid provenance in queue message {messageId}: {error}"
+    const warnings = records.filter(
+      (record) =>
+        record.rawMessage ===
+        "Ignoring invalid provenance in queue message {messageId}: {error}",
     );
     strictEqual(warnings.length, malformed.length);
     for (const warning of warnings) {
@@ -389,8 +397,8 @@ test("dispatch ID byte limits and queue fallback preserve exact values", async (
           ),
       );
     }
-    const logs = records.filter((record) =>
-      record.rawMessage === "original dispatch"
+    const logs = records.filter(
+      (record) => record.rawMessage === "original dispatch",
     );
     deepStrictEqual(
       logs.map((record) => record.properties.dispatchId),
@@ -425,7 +433,8 @@ test("malformed queued provenance does not poison a retry", async () => {
     outboxRetryPolicy: () => Temporal.Duration.from({ milliseconds: 1 }),
     queue: { outbox: queue },
   });
-  await federation.createContext(new URL("https://example.com"), undefined)
+  await federation
+    .createContext(new URL("https://example.com"), undefined)
     .sendActivity(sender, target, activity, { fanout: "skip" });
   const original = messages[0];
   ok(original.type === "outbox");

@@ -4,9 +4,5 @@ import {
   createRequiredRuleEslint,
 } from "../lib/required.ts";
 
-export const deno = createRequiredRuleDeno(
-  properties.publicKey,
-);
-export const eslint = createRequiredRuleEslint(
-  properties.publicKey,
-);
+export const deno = createRequiredRuleDeno(properties.publicKey);
+export const eslint = createRequiredRuleEslint(properties.publicKey);

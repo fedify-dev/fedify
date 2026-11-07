@@ -2,14 +2,8 @@
   {
     "name": "default trailing slash behavior",
     "routeDefinitions": [
-      [
-        "/users/{name}",
-        "user"
-      ],
-      [
-        "/users/{name}/posts/{postId}",
-        "post"
-      ]
+      ["/users/{name}", "user"],
+      ["/users/{name}/posts/{postId}", "post"]
     ],
     "cases": [
       {
@@ -53,14 +47,8 @@
       "trailingSlashInsensitive": true
     },
     "routeDefinitions": [
-      [
-        "/users/{name}",
-        "user"
-      ],
-      [
-        "/users/{name}/posts/{postId}/",
-        "post"
-      ]
+      ["/users/{name}", "user"],
+      ["/users/{name}/posts/{postId}/", "post"]
     ],
     "cases": [
       {
@@ -113,12 +101,7 @@
   },
   {
     "name": "leading path expansion templates",
-    "routeDefinitions": [
-      [
-        "{/identifier}/inbox",
-        "inbox"
-      ]
-    ],
+    "routeDefinitions": [["{/identifier}/inbox", "inbox"]],
     "cases": [
       {
         "name": "matches expanded leading path segment",
@@ -136,14 +119,8 @@
   {
     "name": "literal route priority",
     "routeDefinitions": [
-      [
-        "/users/{name}",
-        "user"
-      ],
-      [
-        "/users/settings",
-        "settings"
-      ]
+      ["/users/{name}", "user"],
+      ["/users/settings", "settings"]
     ],
     "cases": [
       {
@@ -160,18 +137,9 @@
   {
     "name": "template matching symmetry",
     "routeDefinitions": [
-      [
-        "/users/{name}",
-        "user"
-      ],
-      [
-        "/files/{+path}",
-        "file"
-      ],
-      [
-        "/actors{/identifier}",
-        "actor"
-      ]
+      ["/users/{name}", "user"],
+      ["/files/{+path}", "file"],
+      ["/actors{/identifier}", "actor"]
     ],
     "cases": [
       {
@@ -250,18 +218,9 @@
   {
     "name": "pct-encoded variable names",
     "routeDefinitions": [
-      [
-        "/encoded-query{?%41,%42}",
-        "encodedQuery"
-      ],
-      [
-        "/matrix{;abc%20def}",
-        "matrix"
-      ],
-      [
-        "/continuation?fixed=true{&abc%20def}",
-        "continuation"
-      ]
+      ["/encoded-query{?%41,%42}", "encodedQuery"],
+      ["/matrix{;abc%20def}", "matrix"],
+      ["/continuation?fixed=true{&abc%20def}", "continuation"]
     ],
     "cases": [
       {

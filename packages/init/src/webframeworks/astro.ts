@@ -43,30 +43,31 @@ const astroDescription: WebFrameworkDescription = {
     // bare imports from node_modules rather than Deno's JSR import map, so
     // keep Vite-loaded dependencies on npm even though @fedify/astro is also
     // published on JSR.
-    const dependencies: Record<string, string> = pm === "deno"
-      ? {
-        ...defaultDenoDependencies,
-        "@fedify/fedify": `npm:@fedify/fedify@${PACKAGE_VERSION}`,
-        "@fedify/vocab": `npm:@fedify/vocab@${PACKAGE_VERSION}`,
-        "@logtape/logtape": `npm:@logtape/logtape@${deps["@logtape/logtape"]}`,
-        astro: `npm:astro@${deps["npm:astro"]}`,
-        "@deno/astro-adapter": `npm:@deno/astro-adapter@${
-          deps["npm:@deno/astro-adapter"]
-        }`,
-        "@fedify/astro": `npm:@fedify/astro@${PACKAGE_VERSION}`,
-      }
-      : pm === "bun"
-      ? {
-        "@astrojs/node": deps["npm:@astrojs/node"],
-        "@fedify/astro": PACKAGE_VERSION,
-        astro: deps["npm:astro"],
-      }
-      : {
-        "@astrojs/node": deps["npm:@astrojs/node"],
-        "@fedify/astro": PACKAGE_VERSION,
-        "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
-        astro: deps["npm:astro"],
-      };
+    const dependencies: Record<string, string> =
+      pm === "deno"
+        ? {
+            ...defaultDenoDependencies,
+            "@fedify/fedify": `npm:@fedify/fedify@${PACKAGE_VERSION}`,
+            "@fedify/vocab": `npm:@fedify/vocab@${PACKAGE_VERSION}`,
+            "@logtape/logtape": `npm:@logtape/logtape@${deps["@logtape/logtape"]}`,
+            astro: `npm:astro@${deps["npm:astro"]}`,
+            "@deno/astro-adapter": `npm:@deno/astro-adapter@${
+              deps["npm:@deno/astro-adapter"]
+            }`,
+            "@fedify/astro": `npm:@fedify/astro@${PACKAGE_VERSION}`,
+          }
+        : pm === "bun"
+          ? {
+              "@astrojs/node": deps["npm:@astrojs/node"],
+              "@fedify/astro": PACKAGE_VERSION,
+              astro: deps["npm:astro"],
+            }
+          : {
+              "@astrojs/node": deps["npm:@astrojs/node"],
+              "@fedify/astro": PACKAGE_VERSION,
+              "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+              astro: deps["npm:astro"],
+            };
 
     return {
       command: Array.from(getAstroInitCommand(pm)),
@@ -75,9 +76,9 @@ const astroDescription: WebFrameworkDescription = {
         ...(pm === "deno" ? {} : astroNodeBunDevDependencies),
         ...(pm !== "deno"
           ? {
-            typescript: deps["npm:typescript"],
-            "@types/node": deps["npm:@types/node@22"],
-          }
+              typescript: deps["npm:typescript"],
+              "@types/node": deps["npm:@types/node@22"],
+            }
           : {}),
         ...getTestDependencies(pm),
       },
@@ -105,9 +106,7 @@ export default astroDescription;
  * Also removes the default `astro.config.mjs` so it can be replaced
  * by a template.
  */
-function* getAstroInitCommand(
-  pm: PackageManager,
-): Generator<string> {
+function* getAstroInitCommand(pm: PackageManager): Generator<string> {
   if (pm !== "deno" && pm !== "bun") {
     yield "node";
     yield "-e";

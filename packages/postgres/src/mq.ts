@@ -26,35 +26,34 @@ function withTimeout(
   let timer: ReturnType<typeof setTimeout>;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(
-      () =>
-        reject(
-          new Error(`Message handler timed out after ${timeoutMs}ms`),
-        ),
+      () => reject(new Error(`Message handler timed out after ${timeoutMs}ms`)),
       timeoutMs,
     );
   });
   return Promise.race([resolved, timeoutPromise]).finally(() =>
-    clearTimeout(timer!)
+    clearTimeout(timer!),
   );
 }
 
 function isInitializationRaceError(error: unknown): boolean {
-  return error instanceof postgres.PostgresError &&
-    (
-      // When concurrent CREATE TABLE IF NOT EXISTS statements race, PostgreSQL
-      // may still raise duplicate-type errors for the table's implicit row type.
-      error.constraint_name === "pg_type_typname_nsp_index" ||
+  return (
+    error instanceof postgres.PostgresError &&
+    // When concurrent CREATE TABLE IF NOT EXISTS statements race, PostgreSQL
+    // may still raise duplicate-type errors for the table's implicit row type.
+    (error.constraint_name === "pg_type_typname_nsp_index" ||
       // Concurrent CREATE INDEX IF NOT EXISTS can race on pg_class metadata.
       error.constraint_name === "pg_class_relname_nsp_index" ||
       error.code === "42P07" || // duplicate_table
-      error.code === "42710" // duplicate_object
-    );
+      error.code === "42710") // duplicate_object
+  );
 }
 
 function isConnectionDestroyedError(error: unknown): boolean {
   if (typeof error !== "object" || error == null) return false;
-  return ("code" in error && error.code === "CONNECTION_DESTROYED") ||
-    ("errno" in error && error.errno === "CONNECTION_DESTROYED");
+  return (
+    ("code" in error && error.code === "CONNECTION_DESTROYED") ||
+    ("errno" in error && error.errno === "CONNECTION_DESTROYED")
+  );
 }
 
 function getCreatedIndexName(tableName: string): string {
@@ -275,8 +274,7 @@ export class PostgresMessageQueue implements MessageQueue {
 
         // Step 1: Try to process messages without ordering key first.
         // These don't need advisory locks.
-        for (
-          const row of await this.#sql`
+        for (const row of await this.#sql`
           WITH candidate AS (
             SELECT id, ordering_key
             FROM ${this.#sql(this.#tableName)}
@@ -289,8 +287,7 @@ export class PostgresMessageQueue implements MessageQueue {
           DELETE FROM ${this.#sql(this.#tableName)}
           WHERE id IN (SELECT id FROM candidate)
           RETURNING message, ordering_key;
-        `
-        ) {
+        `) {
           if (signal?.aborted) return;
           await withTimeout(handler(row.message), this.#handlerTimeoutMs);
           processed = true;
@@ -322,12 +319,12 @@ export class PostgresMessageQueue implements MessageQueue {
             WHERE created + delay < CURRENT_TIMESTAMP
               AND ordering_key IS NOT NULL
               ${
-            attemptedOrderingKeys.size > 0
-              ? this.#sql`AND ordering_key NOT IN ${
-                this.#sql([...attemptedOrderingKeys])
-              }`
-              : this.#sql``
-          }
+                attemptedOrderingKeys.size > 0
+                  ? this.#sql`AND ordering_key NOT IN ${this.#sql([
+                      ...attemptedOrderingKeys,
+                    ])}`
+                  : this.#sql``
+              }
             ORDER BY created
             LIMIT 1
           `;
@@ -434,10 +431,10 @@ export class PostgresMessageQueue implements MessageQueue {
             timeouts.add(timeout);
           }
         } catch (error) {
-          logger.error(
-            "Error parsing NOTIFY payload {delay}: {error}",
-            { delay, error },
-          );
+          logger.error("Error parsing NOTIFY payload {delay}: {error}", {
+            delay,
+            error,
+          });
           await safeSerializedPoll("notify-fallback");
         }
       },
@@ -527,9 +524,9 @@ export class PostgresMessageQueue implements MessageQueue {
       ADD COLUMN IF NOT EXISTS ordering_key text;
     `;
         await this.#sql`
-      CREATE INDEX IF NOT EXISTS ${
-          this.#sql(getCreatedIndexName(this.#tableName))
-        }
+      CREATE INDEX IF NOT EXISTS ${this.#sql(
+        getCreatedIndexName(this.#tableName),
+      )}
       ON ${this.#sql(this.#tableName)} (created);
     `;
         break;

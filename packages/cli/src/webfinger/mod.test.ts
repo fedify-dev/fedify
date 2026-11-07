@@ -16,50 +16,45 @@ import {
 
 const COMMAND = "webfinger";
 const USER_AGENT = "MyUserAgent/1.0";
-const RESOURCES = [
-  "@hongminhee@hackers.pub",
-  "@fedify@hollo.social",
-];
+const RESOURCES = ["@hongminhee@hackers.pub", "@fedify@hollo.social"];
 const ALIASES = [
   "https://hackers.pub/ap/actors/019382d3-63d7-7cf7-86e8-91e2551c306c",
   "https://hollo.social/@fedify",
 ];
 
-for (
-  const { name, args, config, allowed } of [
-    { name: "short flag", args: ["-p"], config: {}, allowed: true },
-    {
-      name: "long flag",
-      args: ["--allow-private-address"],
-      config: {},
-      allowed: true,
-    },
-    {
-      name: "configuration opt-in",
-      args: [],
-      config: { webfinger: { allowPrivateAddress: true } },
-      allowed: true,
-    },
-    { name: "default rejection", args: [], config: {}, allowed: false },
-    {
-      name: "configuration opt-out",
-      args: [],
-      config: { webfinger: { allowPrivateAddress: false } },
-      allowed: false,
-    },
-    {
-      name: "flag overrides configuration opt-out",
-      args: ["-p"],
-      config: { webfinger: { allowPrivateAddress: false } },
-      allowed: true,
-    },
-  ] satisfies {
-    name: string;
-    args: string[];
-    config: Config;
-    allowed: boolean;
-  }[]
-) {
+for (const { name, args, config, allowed } of [
+  { name: "short flag", args: ["-p"], config: {}, allowed: true },
+  {
+    name: "long flag",
+    args: ["--allow-private-address"],
+    config: {},
+    allowed: true,
+  },
+  {
+    name: "configuration opt-in",
+    args: [],
+    config: { webfinger: { allowPrivateAddress: true } },
+    allowed: true,
+  },
+  { name: "default rejection", args: [], config: {}, allowed: false },
+  {
+    name: "configuration opt-out",
+    args: [],
+    config: { webfinger: { allowPrivateAddress: false } },
+    allowed: false,
+  },
+  {
+    name: "flag overrides configuration opt-out",
+    args: ["-p"],
+    config: { webfinger: { allowPrivateAddress: false } },
+    allowed: true,
+  },
+] satisfies {
+  name: string;
+  args: string[];
+  config: Config;
+  allowed: boolean;
+}[]) {
   test(`runWebFinger private address - ${name}`, async () => {
     const resource = "http://127.0.0.1/users/alice";
     const descriptor = { subject: resource, aliases: [resource] };
@@ -98,11 +93,14 @@ for (
     assert.deepEqual(
       requests,
       allowed
-        ? [{
-          url: "http://127.0.0.1/.well-known/webfinger?resource=" +
-            encodeURIComponent(resource),
-          userAgent: USER_AGENT,
-        }]
+        ? [
+            {
+              url:
+                "http://127.0.0.1/.well-known/webfinger?resource=" +
+                encodeURIComponent(resource),
+              userAgent: USER_AGENT,
+            },
+          ]
         : [],
     );
     if (allowed) {
@@ -166,10 +164,11 @@ test("Test webFingerCommand - wrong option", () => {
 
 test("Test webFingerCommand - invalid option value fails", () => {
   const argsWithResourcesOnly = [COMMAND, ...RESOURCES];
-  const result = parse(
-    webFingerCommand,
-    [...argsWithResourcesOnly, "--max-redirection", "-10"],
-  );
+  const result = parse(webFingerCommand, [
+    ...argsWithResourcesOnly,
+    "--max-redirection",
+    "-10",
+  ]);
   assert.ok(!result.success);
 });
 
@@ -209,9 +208,7 @@ test("Test lookupSingleWebFinger", async (): Promise<void> => {
   };
 
   // Correct async fetch mock returning Promise<Response>
-  globalThis.fetch = (async (
-    input: RequestInfo | URL,
-  ): Promise<Response> => {
+  globalThis.fetch = (async (input: RequestInfo | URL): Promise<Response> => {
     await Promise.resolve();
 
     const url = String(input);
@@ -248,34 +245,31 @@ test("Test lookupSingleWebFinger", async (): Promise<void> => {
 // FIX FOR ISSUE #897 – DIFFERENTIATE WHY A WEBFINGER LOOKUP FAILED
 // ----------------------------------------------------------------------
 
-for (
-  const { name, response, expectedResult, expectedText } of [
-    {
-      name: "404 is still reported as not found",
-      response: () => new Response(null, { status: 404 }),
-      expectedResult: null,
-      expectedText: 'Resource not found: "acct:alice@example.com"',
-    },
-    {
-      name: "a server error is distinguished from not found",
-      response: () => new Response(null, { status: 500 }),
-      expectedResult: "error",
-      expectedText: "the server returned an unexpected error",
-    },
-    {
-      name: "a malformed response is distinguished from not found",
-      response: () => new Response("not json", { status: 200 }),
-      expectedResult: "invalid",
-      expectedText:
-        "the server returned a response Fedify could not understand",
-    },
-  ] satisfies {
-    name: string;
-    response: () => Response;
-    expectedResult: "error" | "invalid" | null;
-    expectedText: string;
-  }[]
-) {
+for (const { name, response, expectedResult, expectedText } of [
+  {
+    name: "404 is still reported as not found",
+    response: () => new Response(null, { status: 404 }),
+    expectedResult: null,
+    expectedText: 'Resource not found: "acct:alice@example.com"',
+  },
+  {
+    name: "a server error is distinguished from not found",
+    response: () => new Response(null, { status: 500 }),
+    expectedResult: "error",
+    expectedText: "the server returned an unexpected error",
+  },
+  {
+    name: "a malformed response is distinguished from not found",
+    response: () => new Response("not json", { status: 200 }),
+    expectedResult: "invalid",
+    expectedText: "the server returned a response Fedify could not understand",
+  },
+] satisfies {
+  name: string;
+  response: () => Response;
+  expectedResult: "error" | "invalid" | null;
+  expectedText: string;
+}[]) {
   test(`Test lookupSingleWebFinger - ${name}`, async () => {
     const resource = "acct:alice@example.com";
     const originalFetch = globalThis.fetch;
@@ -308,9 +302,8 @@ test("Test lookupSingleWebFinger - a network failure is distinguished from not f
   // Mocked lookups skip DNS by passing allowPrivateAddresses, same as the
   // upstream fix for issue #1273 (0bece1f8e): a real DNS lookup for a public
   // hostname should not be part of a unit test.
-  globalThis.fetch =
-    ((_input, _init) =>
-      Promise.reject(new TypeError("network down"))) as typeof fetch;
+  globalThis.fetch = ((_input, _init) =>
+    Promise.reject(new TypeError("network down"))) as typeof fetch;
   try {
     await assert.rejects(
       () => lookupSingleWebFinger({ resource, allowPrivateAddresses: true }),

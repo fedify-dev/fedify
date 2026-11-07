@@ -57,11 +57,10 @@ test("validateCryptoKey()", async () => {
   validateCryptoKey(pkcs1v15.publicKey, "public");
   validateCryptoKey(pkcs1v15.publicKey);
 
-  const ed25519 = await crypto.subtle.generateKey(
-    "Ed25519",
-    true,
-    ["sign", "verify"],
-  ) as CryptoKeyPair;
+  const ed25519 = (await crypto.subtle.generateKey("Ed25519", true, [
+    "sign",
+    "verify",
+  ])) as CryptoKeyPair;
   validateCryptoKey(ed25519.privateKey, "private");
   validateCryptoKey(ed25519.privateKey);
   validateCryptoKey(ed25519.publicKey, "public");
@@ -121,32 +120,26 @@ test("validateCryptoKey()", async () => {
 
 test("generateCryptoKeyPair()", async () => {
   const rsaKeyPair = await generateCryptoKeyPair();
-  assertEquals(
-    rsaKeyPair.privateKey.algorithm as unknown,
-    {
-      name: "RSASSA-PKCS1-v1_5",
-      hash: {
-        name: "SHA-256",
-      },
-      modulusLength: 4096,
-      publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+  assertEquals(rsaKeyPair.privateKey.algorithm as unknown, {
+    name: "RSASSA-PKCS1-v1_5",
+    hash: {
+      name: "SHA-256",
     },
-  );
+    modulusLength: 4096,
+    publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+  });
   validateCryptoKey(rsaKeyPair.privateKey, "private");
   validateCryptoKey(rsaKeyPair.publicKey, "public");
 
   const rsaKeyPair2 = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
-  assertEquals(
-    rsaKeyPair2.privateKey.algorithm as unknown,
-    {
-      name: "RSASSA-PKCS1-v1_5",
-      hash: {
-        name: "SHA-256",
-      },
-      modulusLength: 4096,
-      publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+  assertEquals(rsaKeyPair2.privateKey.algorithm as unknown, {
+    name: "RSASSA-PKCS1-v1_5",
+    hash: {
+      name: "SHA-256",
     },
-  );
+    modulusLength: 4096,
+    publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+  });
   validateCryptoKey(rsaKeyPair2.privateKey, "private");
   validateCryptoKey(rsaKeyPair2.publicKey, "public");
 
@@ -161,7 +154,8 @@ const rsaPublicJwk: JsonWebKey = {
   kty: "RSA",
   // cSpell: disable
   e: "AQAB",
-  n: "oRmBtnxbdFutoRd1GLGwwGTrsqlRRWUe11hHQaoRLGf5LwQ0tIc6I9q-dynliw-2kxYsL" +
+  n:
+    "oRmBtnxbdFutoRd1GLGwwGTrsqlRRWUe11hHQaoRLGf5LwQ0tIc6I9q-dynliw-2kxYsL" +
     "n9SH2je6HcTYOolgW7F_cOWXZQN04b-OiYcU1ConAhLjmn4k1uKawJ614y0ScPNd8PQ-Cl" +
     "jsnlPxbq9ofaCMe2BV3B6y09aCuGFJ0nxn1_ubjmIBIWWFTAznoz1J9BhJDGyt3IO3ABy3" +
     "f9zDVlR32L_n5VIkXnxkjUKdzMAOzYb62kuKOp1iznRTPrV71SNtivJMwSh_LVgBrmZjtI" +
@@ -175,30 +169,37 @@ const rsaPrivateJwk: JsonWebKey = {
   alg: "RS256",
   kty: "RSA",
   // cSpell: disable
-  d: "f-Pa2L7Sb4YUSa1wlSEC-0li35uQ3DFRkY0QTG2xYnpMFGoXWTV9D1epGrqU8pePzias" +
+  d:
+    "f-Pa2L7Sb4YUSa1wlSEC-0li35uQ3DFRkY0QTG2xYnpMFGoXWTV9D1epGrqU8pePzias" +
     "_mCvFiZPx2Y4aRiYm68P2Mu7hCBz9XfWPN1iYTXIFM51BOLVpk3mjdsTICkgOusJI0m9j" +
     "DR3ZAjwLj14K6qhYvd0VbECmoItLjQoW64Sc9iDgD3CvGoTqv71oTfW70cy-Ve1xQ9CTh" +
     "AmMOTKe6rYCUTA8tMZcPszifZ4iOasOjgvRxyel86LqGNtyslY8k86gQlMtFpR3VeZV_8" +
     "otAWZn0mDc4vVU8HUO-DzYiIFdAcVxfPJh6tx7snCTsdzze_98OEAK4EWYBn7vsGFeQ",
-  dp: "lrXReSkZQXSmSxQ1TimV5kMt96gSu4_r-OGIabVmoG5irhjMyN08Jjc3qK9oZS3uNM-Lx" +
+  dp:
+    "lrXReSkZQXSmSxQ1TimV5kMt96gSu4_r-OGIabVmoG5irhjMyN08Jjc3qK9oZS3uNM-Lx" +
     "AOg4OdzefjsF9IMfZJl6wuLd85g_l4BHSaEk5zC8l3QugX1IU9XZ7wDxXUrutMoNtZXDt" +
     "dbveAMtHNZlIu-qmEBDWzkqJiz2WpW-AE",
-  dq: "TCLoYcX0ywuNA9DSU6v94KmBh1e_IELEFVbJb5vvLKlAK-ycMK0rfzC1co9Hhkski1Lsk" +
+  dq:
+    "TCLoYcX0ywuNA9DSU6v94KmBh1e_IELEFVbJb5vvLKlAK-ycMK0rfzC1co9Hhkski1Lsk" +
     "TnxnoqwZ5oF-7X10eZvy3Te_FHSl0IsTar8ST2-MRtGh2UjTdvP_nnygj4GcXvKfngjPE" +
     "fthDzVfVMeR38oDhDxMFD5AaY_v9aMH_U",
   e: "AQAB",
-  n: "oRmBtnxbdFutoRd1GLGwwGTrsqlRRWUe11hHQaoRLGf5LwQ0tIc6I9q-dynliw-2kxYs" +
+  n:
+    "oRmBtnxbdFutoRd1GLGwwGTrsqlRRWUe11hHQaoRLGf5LwQ0tIc6I9q-dynliw-2kxYs" +
     "Ln9SH2je6HcTYOolgW7F_cOWXZQN04b-OiYcU1ConAhLjmn4k1uKawJ614y0ScPNd8PQ-" +
     "CljsnlPxbq9ofaCMe2BV3B6y09aCuGFJ0nxn1_ubjmIBIWWFTAznoz1J9BhJDGyt3IO3A" +
     "By3f9zDVlR32L_n5VIkXnxkjUKdzMAOzYb62kuKOp1iznRTPrV71SNtivJMwSh_LVgBrm" +
     "ZjtIn_oim-KyX_fdLU3tQ7VClyqmJzyAjccOH6Qj6nFTPh-vX07gqN8IlLT2uye4waw",
-  p: "xuDd7tE_47NWwvDTpB403X13EPA3768MlNpl_v_BGiuP-1uvWUnsOVZB0F3HXSVg1sBV" +
+  p:
+    "xuDd7tE_47NWwvDTpB403X13EPA3768MlNpl_v_BGiuP-1uvWUnsOVZB0F3HXSVg1sBV" +
     "Ntec46v7OU0P693gvYUhouTmSQpayY_VFqMklprWgs7cfneqbeDzv3C4Fw5waY-vjoIND" +
     "sE1jYELUnl5cVjXXyxuGFG-IaLJKmHmHX0",
-  q: "z17X2t9zO6WcMp6W04gXdKmniJlxekOrOmWnrX9AwaM8NYCLN3y23r59nqNP9aUAWG1eo" +
+  q:
+    "z17X2t9zO6WcMp6W04gXdKmniJlxekOrOmWnrX9AwaM8NYCLN3y23r59nqNP9aUAWG1eo" +
     "GFmav2rYQitWhz_VsEu2pQUsfsYKZYHchu5p_jCYwuM3rIg7aCbhtGv_tBoWAf1NvKMhtp" +
     "2es0ZaHZCzKDGSOkIYDOB-ZDmNigWigc",
-  qi: "KC6gWhVM_x7iQgl-gEoSh_iM1Jf314ZLJKAAz1DsTHMi5yuCkCMmmY7h6jlkAJVngK3KI" +
+  qi:
+    "KC6gWhVM_x7iQgl-gEoSh_iM1Jf314ZLJKAAz1DsTHMi5yuCkCMmmY7h6jlkAJVngK3KI" +
     "f5LPoAeUoGJ26E1kocbRU_nZBftMDVXHCYICz8qMQXR5euN_5SeJnu_VWXH-CY83MKhPY" +
     "AorWSZ1-G9gh-C16LlRMzJwoE6h5QNeNo",
   // cSpell: enable
@@ -317,11 +318,7 @@ test("fetchKey()", async () => {
     "https://example.com/person2#key3": rsaPublicKey3,
   });
   assertEquals(
-    await fetchKey(
-      "https://example.com/person2#key4",
-      Multikey,
-      options,
-    ),
+    await fetchKey("https://example.com/person2#key4", Multikey, options),
     { key: ed25519Multikey, cached: false },
   );
   assertEquals(cache, {
@@ -333,11 +330,7 @@ test("fetchKey()", async () => {
     "https://example.com/person2#key4": ed25519Multikey,
   });
   assertEquals(
-    await fetchKey(
-      "https://example.com/person2#key4",
-      Multikey,
-      options,
-    ),
+    await fetchKey("https://example.com/person2#key4", Multikey, options),
     { key: ed25519Multikey, cached: true },
   );
   assertEquals(
@@ -357,16 +350,19 @@ test("fetchKey()", async () => {
     {
       key: new CryptographicKey({
         id: new URL("https://example.com/users/handle#main-key"),
-        publicKey: await importJwk({
-          kty: "RSA",
-          alg: "RS256",
-          // cSpell: disable
-          n: "oRmBtnxbdFutoRd1GLGwwGTrsqlRRWUe11hHQaoRLGf5LwQ0tIc6I9q-dynliw-2kxYsLn9SH2je6HcTYOolgW7F_cOWXZQN04b-OiYcU1ConAhLjmn4k1uKawJ614y0ScPNd8PQ-CljsnlPxbq9ofaCMe2BV3B6y09aCuGFJ0nxn1_ubjmIBIWWFTAznoz1J9BhJDGyt3IO3ABy3f9zDVlR32L_n5VIkXnxkjUKdzMAOzYb62kuKOp1iznRTPrV71SNtivJMwSh_LVgBrmZjtIn_oim-KyX_fdLU3tQ7VClyqmJzyAjccOH6Qj6nFTPh-vX07gqN8IlLT2uye4waw",
-          e: "AQAB",
-          // cSpell: enable
-          key_ops: ["verify"],
-          ext: true,
-        }, "public"),
+        publicKey: await importJwk(
+          {
+            kty: "RSA",
+            alg: "RS256",
+            // cSpell: disable
+            n: "oRmBtnxbdFutoRd1GLGwwGTrsqlRRWUe11hHQaoRLGf5LwQ0tIc6I9q-dynliw-2kxYsLn9SH2je6HcTYOolgW7F_cOWXZQN04b-OiYcU1ConAhLjmn4k1uKawJ614y0ScPNd8PQ-CljsnlPxbq9ofaCMe2BV3B6y09aCuGFJ0nxn1_ubjmIBIWWFTAznoz1J9BhJDGyt3IO3ABy3f9zDVlR32L_n5VIkXnxkjUKdzMAOzYb62kuKOp1iznRTPrV71SNtivJMwSh_LVgBrmZjtIn_oim-KyX_fdLU3tQ7VClyqmJzyAjccOH6Qj6nFTPh-vX07gqN8IlLT2uye4waw",
+            e: "AQAB",
+            // cSpell: enable
+            key_ops: ["verify"],
+            ext: true,
+          },
+          "public",
+        ),
       }) as CryptographicKey & {
         publicKey: CryptoKey;
       },
@@ -429,23 +425,19 @@ test("fetchKeyDetailed()", async () => {
 
 test("fetchKeyDetailed() returns detailed fetch errors", async () => {
   const goneKeyId = new URL("https://example.com/gone-key");
-  const goneResult = await fetchKeyDetailed(
-    goneKeyId,
-    CryptographicKey,
-    {
-      documentLoader(url) {
-        if (url === goneKeyId.href) {
-          throw new FetchError(
-            goneKeyId,
-            `HTTP 410: ${goneKeyId.href}`,
-            new Response(null, { status: 410 }),
-          );
-        }
-        return mockDocumentLoader(url);
-      },
-      contextLoader: mockDocumentLoader,
+  const goneResult = await fetchKeyDetailed(goneKeyId, CryptographicKey, {
+    documentLoader(url) {
+      if (url === goneKeyId.href) {
+        throw new FetchError(
+          goneKeyId,
+          `HTTP 410: ${goneKeyId.href}`,
+          new Response(null, { status: 410 }),
+        );
+      }
+      return mockDocumentLoader(url);
     },
-  );
+    contextLoader: mockDocumentLoader,
+  });
   assertEquals(goneResult.key, null);
   assertEquals(goneResult.cached, false);
   const goneError = goneResult.fetchError;
@@ -729,15 +721,11 @@ test("fetchKey() records activitypub.key.lookup with hit on cached key", async (
 
 test("fetchKey() records activitypub.key.lookup with fetched on cache miss", async () => {
   const [meterProvider, recorder] = createTestMeterProvider();
-  const result = await fetchKey(
-    "https://example.com/key",
-    CryptographicKey,
-    {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
-      meterProvider,
-    },
-  );
+  const result = await fetchKey("https://example.com/key", CryptographicKey, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    meterProvider,
+  });
   assertEquals(result.cached, false);
 
   const counter = recorder.getMeasurement("activitypub.key.lookup");
@@ -774,10 +762,7 @@ test("fetchKey() records not_found and status code on HTTP 404", async () => {
   assertEquals(counter?.attributes["activitypub.lookup.result"], "not_found");
   assertEquals(counter?.attributes["http.response.status_code"], 404);
   assertEquals(counter?.attributes["activitypub.cache.enabled"], false);
-  assertEquals(
-    counter?.attributes["activitypub.remote.host"],
-    "example.com",
-  );
+  assertEquals(counter?.attributes["activitypub.remote.host"], "example.com");
 });
 
 test("fetchKey() records network_error on TypeError from the document loader", async () => {
@@ -827,34 +812,28 @@ test("fetchKeyDetailed() records activitypub.key.lookup with the same taxonomy",
 
 test("fetchKey() works when meterProvider is omitted", async () => {
   // Sanity: omitting meterProvider keeps fetchKey functional.
-  const result = await fetchKey(
-    "https://example.com/key",
-    CryptographicKey,
-    {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
-    },
-  );
+  const result = await fetchKey("https://example.com/key", CryptographicKey, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
   assertEquals(result.cached, false);
 });
 
 test("fetchKey() rejects standalone keys with a mismatched id", async () => {
-  for (
-    const { keyId, standaloneKey, fetch } of [
-      {
-        keyId: "https://example.com/key",
-        standaloneKey: rsaPublicKey1,
-        fetch: (keyId: string, options: FetchKeyOptions) =>
-          fetchKey(keyId, CryptographicKey, options),
-      },
-      {
-        keyId: "https://example.com/multikey",
-        standaloneKey: ed25519Multikey,
-        fetch: (keyId: string, options: FetchKeyOptions) =>
-          fetchKey(keyId, Multikey, options),
-      },
-    ]
-  ) {
+  for (const { keyId, standaloneKey, fetch } of [
+    {
+      keyId: "https://example.com/key",
+      standaloneKey: rsaPublicKey1,
+      fetch: (keyId: string, options: FetchKeyOptions) =>
+        fetchKey(keyId, CryptographicKey, options),
+    },
+    {
+      keyId: "https://example.com/multikey",
+      standaloneKey: ed25519Multikey,
+      fetch: (keyId: string, options: FetchKeyOptions) =>
+        fetchKey(keyId, Multikey, options),
+    },
+  ]) {
     const cache: Record<string, CryptographicKey | Multikey | null> = {};
     const options: FetchKeyOptions = {
       async documentLoader(resource) {
@@ -866,7 +845,7 @@ test("fetchKey() rejects standalone keys with a mismatched id", async () => {
             contextUrl: null,
             documentUrl: resource,
             document: {
-              ...document as Record<string, unknown>,
+              ...(document as Record<string, unknown>),
               id: "https://example.com/different-key",
             },
           };
@@ -963,21 +942,22 @@ for (const cls of [CryptographicKey, Multikey]) {
     test(`fetchKey() handles JSON-LD context failures in ${cls.name} ${location} documents`, async (t) => {
       const actorId = new URL("https://example.com/context-actor");
       const keyId = new URL(`${actorId.href}#key`);
-      const key = cls === CryptographicKey
-        ? rsaPublicKey1.clone({ id: keyId, owner: actorId })
-        : ed25519Multikey.clone({ id: keyId, controller: actorId });
+      const key =
+        cls === CryptographicKey
+          ? rsaPublicKey1.clone({ id: keyId, owner: actorId })
+          : ed25519Multikey.clone({ id: keyId, controller: actorId });
       const actor = new Person({
         id: actorId,
         ...(key instanceof CryptographicKey
           ? { publicKeys: [key] }
           : { assertionMethods: [key] }),
       });
-      const actorDocument = await actor.toJsonLd({
+      const actorDocument = (await actor.toJsonLd({
         contextLoader: mockDocumentLoader,
-      }) as Record<string, unknown>;
-      const keyDocument = await key.toJsonLd({
+      })) as Record<string, unknown>;
+      const keyDocument = (await key.toJsonLd({
         contextLoader: mockDocumentLoader,
-      }) as Record<string, unknown>;
+      })) as Record<string, unknown>;
       const contextUrl = `https://example.com/context/${cls.name}/${location}`;
       const transportErrors = [
         new TypeError("fetch failed"),
@@ -1019,10 +999,10 @@ for (const cls of [CryptographicKey, Multikey]) {
         | { kind: "url"; wrapped: boolean }
         | { kind: "wrapped"; error: Error }
         | {
-          kind: "transport" | "programming";
-          error: unknown;
-          fallback?: boolean;
-        }
+            kind: "transport" | "programming";
+            error: unknown;
+            fallback?: boolean;
+          }
       )[] = [
         { kind: "inline" },
         { kind: "url", wrapped: false },
@@ -1041,27 +1021,28 @@ for (const cls of [CryptographicKey, Multikey]) {
         })),
         ...(location === "key"
           ? [
-            {
-              kind: "transport" as const,
-              error: new TypeError("fetch failed"),
-              fallback: true,
-            },
-            {
-              kind: "programming" as const,
-              error: new ReferenceError("fallback bug"),
-              fallback: true,
-            },
-          ]
+              {
+                kind: "transport" as const,
+                error: new TypeError("fetch failed"),
+                fallback: true,
+              },
+              {
+                kind: "programming" as const,
+                error: new ReferenceError("fallback bug"),
+                fallback: true,
+              },
+            ]
           : []),
       ];
       for (const scenario of cases) {
-        const description = "error" in scenario
-          ? scenario.error instanceof Error
-            ? `${scenario.error.name}: ${scenario.error.message}`
-            : String(scenario.error)
-          : "document" in scenario
-          ? JSON.stringify(scenario.document)
-          : "invalid type mapping";
+        const description =
+          "error" in scenario
+            ? scenario.error instanceof Error
+              ? `${scenario.error.name}: ${scenario.error.message}`
+              : String(scenario.error)
+            : "document" in scenario
+              ? JSON.stringify(scenario.document)
+              : "invalid type mapping";
         await t.step(
           `${scenario.kind}: ${description}${
             "fallback" in scenario ? " (fallback)" : ""
@@ -1077,9 +1058,7 @@ for (const cls of [CryptographicKey, Multikey]) {
             let contextLoads = 0;
             const options: FetchKeyOptions & {
               keyCache: KeyCache & {
-                getFetchError(): Promise<
-                  FetchKeyErrorResult | undefined
-                >;
+                getFetchError(): Promise<FetchKeyErrorResult | undefined>;
                 setFetchError(
                   id: URL,
                   error: FetchKeyErrorResult | null,
@@ -1098,16 +1077,17 @@ for (const cls of [CryptographicKey, Multikey]) {
                   (location === "key" && resource === keyId.href) ||
                   (location === "owner" && resource === actorId.href)
                 ) {
-                  const context = scenario.kind === "inline"
-                    ? {
-                      broken: {
-                        "@id": "https://example.com/ns#broken",
-                        "@type": "not-an-absolute-iri",
-                      },
-                    }
-                    : scenario.kind === "url"
-                    ? "http://["
-                    : contextUrl;
+                  const context =
+                    scenario.kind === "inline"
+                      ? {
+                          broken: {
+                            "@id": "https://example.com/ns#broken",
+                            "@type": "not-an-absolute-iri",
+                          },
+                        }
+                      : scenario.kind === "url"
+                        ? "http://["
+                        : contextUrl;
                   document["@context"] = [document["@context"], context].flat();
                 }
                 return Promise.resolve({
@@ -1119,13 +1099,15 @@ for (const cls of [CryptographicKey, Multikey]) {
               async contextLoader(resource) {
                 if (scenario.kind === "url" && resource === "http://[") {
                   const loader = getDocumentLoader();
-                  return await (scenario.wrapped
-                    ? wrapContextLoaderForJsonLd(loader)
-                    : loader)(resource);
+                  return await (
+                    scenario.wrapped
+                      ? wrapContextLoaderForJsonLd(loader)
+                      : loader
+                  )(resource);
                 }
                 if (scenario.kind === "wrapped" && resource === contextUrl) {
                   return await wrapContextLoaderForJsonLd(() =>
-                    Promise.reject(scenario.error)
+                    Promise.reject(scenario.error),
                   )(resource);
                 }
                 if (resource !== contextUrl) {
@@ -1133,15 +1115,18 @@ for (const cls of [CryptographicKey, Multikey]) {
                 }
                 contextLoads++;
                 if (
-                  !recovered && "error" in scenario &&
+                  !recovered &&
+                  "error" in scenario &&
                   (!("fallback" in scenario) || contextLoads > 1)
-                ) throw scenario.error;
+                )
+                  throw scenario.error;
                 return {
                   contextUrl: null,
                   documentUrl: resource,
-                  document: !recovered && "document" in scenario
-                    ? scenario.document
-                    : { "@context": {} },
+                  document:
+                    !recovered && "document" in scenario
+                      ? scenario.document
+                      : { "@context": {} },
                 };
               },
               keyCache: {
@@ -1151,10 +1136,7 @@ for (const cls of [CryptographicKey, Multikey]) {
                   return Promise.resolve();
                 },
                 getFetchError: () => Promise.resolve(fetchError),
-                setFetchError(
-                  _id: URL,
-                  error: FetchKeyErrorResult | null,
-                ) {
+                setFetchError(_id: URL, error: FetchKeyErrorResult | null) {
                   fetchError = error ?? undefined;
                   return Promise.resolve();
                 },
@@ -1171,7 +1153,7 @@ for (const cls of [CryptographicKey, Multikey]) {
                     keyId,
                     cls,
                     options,
-                  )
+                  ),
                 ),
                 scenario.error,
               );
@@ -1184,17 +1166,19 @@ for (const cls of [CryptographicKey, Multikey]) {
               const duration = recorder.getMeasurement(
                 "activitypub.key.lookup.duration",
               );
-              const status = scenario.error instanceof FetchError
-                ? scenario.error.response?.status
-                : undefined;
-              const expected = status != null
-                ? "error"
-                : scenario.error instanceof TypeError ||
-                    scenario.error instanceof FetchError ||
-                    (scenario.error instanceof Error &&
-                      scenario.error.name === "AbortError")
-                ? "network_error"
-                : "error";
+              const status =
+                scenario.error instanceof FetchError
+                  ? scenario.error.response?.status
+                  : undefined;
+              const expected =
+                status != null
+                  ? "error"
+                  : scenario.error instanceof TypeError ||
+                      scenario.error instanceof FetchError ||
+                      (scenario.error instanceof Error &&
+                        scenario.error.name === "AbortError")
+                    ? "network_error"
+                    : "error";
               assertEquals(
                 counter?.attributes["activitypub.lookup.result"],
                 expected,
@@ -1285,9 +1269,9 @@ test("fetchKey() rejects a key whose owner does not link back", async () => {
   // impersonated actor below lists the attacker's key.
   // See GHSA-q9f8-5hc7-898f.
   const keyId = "https://attacker.example/key";
-  const keyDocument = await rsaPublicKey1.toJsonLd({
+  const keyDocument = (await rsaPublicKey1.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const serveKeyOwnedBy = (owner: string): FetchKeyOptions => ({
     documentLoader(resource) {
       if (resource === keyId) {
@@ -1323,9 +1307,9 @@ test("fetchKey() rejects a key whose owner does not link back", async () => {
 
 test("fetchKey() rejects a Multikey whose controller does not link back", async () => {
   const keyId = "https://attacker.example/multikey";
-  const keyDocument = await ed25519Multikey.toJsonLd({
+  const keyDocument = (await ed25519Multikey.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const options: FetchKeyOptions = {
     documentLoader(resource) {
       if (resource === keyId) {
@@ -1358,9 +1342,9 @@ test("fetchKey() rejects an actor document from another origin", async () => {
   // speak for it.  See GHSA-q9f8-5hc7-898f.
   const keyId = "https://attacker.example/key";
   const impersonated = "https://example.com/person";
-  const { publicKeyPem } = await rsaPublicKey1.toJsonLd({
+  const { publicKeyPem } = (await rsaPublicKey1.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as { publicKeyPem: string };
+  })) as { publicKeyPem: string };
   const options: FetchKeyOptions = {
     documentLoader(resource) {
       if (resource === keyId) {
@@ -1400,9 +1384,9 @@ test("fetchKey() rejects a key that disowns the actor document holding it", asyn
   // origin, but the key inside it points its `owner` at somebody else.
   const actorId = "https://attacker.example/actor";
   const keyId = `${actorId}#main-key`;
-  const { publicKeyPem } = await rsaPublicKey1.toJsonLd({
+  const { publicKeyPem } = (await rsaPublicKey1.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as { publicKeyPem: string };
+  })) as { publicKeyPem: string };
   const options: FetchKeyOptions = {
     documentLoader(resource) {
       if (resource === keyId || resource === actorId) {
@@ -1455,9 +1439,9 @@ test("fetchKey() records the owner its actor document establishes", async () => 
 
 test("fetchKey() accepts a key document that leaves its id implicit", async () => {
   const keyId = "https://example.com/key";
-  const keyDocument = await rsaPublicKey1.toJsonLd({
+  const keyDocument = (await rsaPublicKey1.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   delete keyDocument.id;
   const options: FetchKeyOptions = {
     documentLoader(resource) {
@@ -1483,9 +1467,9 @@ test("fetchKey() accepts a key document that leaves its id implicit", async () =
 test("fetchKey() records the controller an actor document establishes", async () => {
   const actorId = "https://example.com/multikey-actor";
   const keyId = `${actorId}#assertion`;
-  const { publicKeyMultibase } = await ed25519Multikey.toJsonLd({
+  const { publicKeyMultibase } = (await ed25519Multikey.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as { publicKeyMultibase: string };
+  })) as { publicKeyMultibase: string };
   const options: FetchKeyOptions = {
     documentLoader(resource) {
       if (resource === actorId || resource === keyId) {
@@ -1528,9 +1512,9 @@ test("fetchKey() rejects a key whose owner redirects to another actor", async ()
   const keyId = "https://evil.example/keys/1";
   const victim = "https://victim.example/users/alice";
   const mallory = "https://evil.example/users/mallory";
-  const { publicKeyPem } = await rsaPublicKey3.toJsonLd({
+  const { publicKeyPem } = (await rsaPublicKey3.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as { publicKeyPem: string };
+  })) as { publicKeyPem: string };
   const cache: Record<string, CryptographicKey | Multikey | null> = {};
   const options: FetchKeyOptions = {
     documentLoader(resource) {
@@ -1591,9 +1575,9 @@ test("fetchKey() rejects a key whose owner resolves to another actor on the same
   const keyId = "https://victim.example/keys/bob";
   const victim = "https://victim.example/users/alice";
   const bob = "https://victim.example/users/bob";
-  const { publicKeyPem } = await rsaPublicKey3.toJsonLd({
+  const { publicKeyPem } = (await rsaPublicKey3.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as { publicKeyPem: string };
+  })) as { publicKeyPem: string };
   const options: FetchKeyOptions = {
     documentLoader(resource) {
       if (resource === keyId) {
@@ -1641,9 +1625,9 @@ test("fetchKey() rejects a Multikey whose controller redirects to another actor"
   const keyId = "https://evil.example/keys/ed25519";
   const victim = "https://victim.example/users/alice";
   const mallory = "https://evil.example/users/mallory";
-  const multikeyDocument = await ed25519Multikey.toJsonLd({
+  const multikeyDocument = (await ed25519Multikey.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const options: FetchKeyOptions = {
     documentLoader(resource) {
       if (resource === keyId) {
@@ -1688,9 +1672,9 @@ test("fetchKey() accepts an owner whose document URL differs from its id", async
   // was requested, not where the bytes came from.
   const keyId = "https://victim.example/keys/alice";
   const alice = "https://victim.example/users/alice";
-  const { publicKeyPem } = await rsaPublicKey3.toJsonLd({
+  const { publicKeyPem } = (await rsaPublicKey3.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as { publicKeyPem: string };
+  })) as { publicKeyPem: string };
   const options: FetchKeyOptions = {
     documentLoader(resource) {
       if (resource === keyId) {
@@ -1741,9 +1725,9 @@ test("fetchKey() rejects an owner reached through a normalization redirect", asy
   const keyId = "https://victim.example/keys/alice";
   const canonical = "https://victim.example/users/alice";
   const nonCanonical = "https://victim.example/users/Alice";
-  const { publicKeyPem } = await rsaPublicKey3.toJsonLd({
+  const { publicKeyPem } = (await rsaPublicKey3.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as { publicKeyPem: string };
+  })) as { publicKeyPem: string };
   const options: FetchKeyOptions = {
     documentLoader(resource) {
       if (resource === keyId) {

@@ -163,11 +163,12 @@ export async function writeObjectToStream(
   contextLoader: DocumentLoader,
   stream?: NodeJS.WritableStream,
 ): Promise<void> {
-  const localStream: WriteStream | NodeJS.WritableStream = stream ??
-    (outputPath ? createWriteStream(outputPath) : process.stdout);
-  const localFileStream = stream == null && outputPath != null
-    ? localStream as WriteStream
-    : undefined;
+  const localStream: WriteStream | NodeJS.WritableStream =
+    stream ?? (outputPath ? createWriteStream(outputPath) : process.stdout);
+  const localFileStream =
+    stream == null && outputPath != null
+      ? (localStream as WriteStream)
+      : undefined;
 
   let content;
   let json = true;
@@ -267,8 +268,12 @@ export function toDocumentLoaderTimeout(
  * @returns `true` if the document loader timed out.
  */
 export function isDocumentLoaderTimeoutError(error: unknown): boolean {
-  return error instanceof FetchError && error.response == null &&
-    error.cause instanceof Error && error.cause.name === "TimeoutError";
+  return (
+    error instanceof FetchError &&
+    error.response == null &&
+    error.cause instanceof Error &&
+    error.cause.name === "TimeoutError"
+  );
 }
 
 /**
@@ -305,9 +310,10 @@ function handleTimeoutError(
     } seconds${urlText}.`,
   );
   printError(
-    message`Try increasing the timeout with ${
-      optionNames(["-T", "--timeout"])
-    } option or check network connectivity.`,
+    message`Try increasing the timeout with ${optionNames([
+      "-T",
+      "--timeout",
+    ])} option or check network connectivity.`,
   );
 }
 
@@ -315,9 +321,10 @@ function isPrivateAddressError(error: unknown): boolean {
   const errorMessage = describeError(error);
   const lowerMessage = errorMessage.toLowerCase();
   if (error instanceof UrlError) {
-    return error.reason === "disallowed" && (
-      lowerMessage.includes("invalid or private address") ||
-      lowerMessage.includes("localhost is not allowed")
+    return (
+      error.reason === "disallowed" &&
+      (lowerMessage.includes("invalid or private address") ||
+        lowerMessage.includes("localhost is not allowed"))
     );
   }
   return (
@@ -328,9 +335,7 @@ function isPrivateAddressError(error: unknown): boolean {
   );
 }
 
-export function getPrivateUrlCandidate(
-  candidate: unknown,
-): URL | null {
+export function getPrivateUrlCandidate(candidate: unknown): URL | null {
   // This helper is only for post-failure hinting. It intentionally does a
   // cheap hostname/IP check so we can recognize obvious private targets
   // without re-running the full document-loader validation path.
@@ -341,9 +346,10 @@ export function getPrivateUrlCandidate(
     const hostname = url.hostname;
     if (hostname === "localhost") return url;
 
-    const normalized = hostname.startsWith("[") && hostname.endsWith("]")
-      ? hostname.slice(1, -1)
-      : hostname;
+    const normalized =
+      hostname.startsWith("[") && hostname.endsWith("]")
+        ? hostname.slice(1, -1)
+        : hostname;
     const ipVersion = isIP(normalized);
     if (ipVersion === 4) {
       return isValidPublicIPv4Address(normalized) ? null : url;
@@ -387,7 +393,8 @@ function getPrivateContextUrl(error: unknown): URL | null {
     details?: { url?: unknown };
     url?: unknown;
   };
-  const structuredUrl = getPrivateUrlCandidate(structuredError.details?.url) ??
+  const structuredUrl =
+    getPrivateUrlCandidate(structuredError.details?.url) ??
     getPrivateUrlCandidate(structuredError.url);
   if (structuredUrl != null) return structuredUrl;
 
@@ -398,21 +405,23 @@ function getPrivateContextUrl(error: unknown): URL | null {
 
 function printRecursivePrivateAddressHint(): void {
   printError(
-    message`The recursive target appears to be private or localhost.  Try with ${
-      optionNames(["-p", "--allow-private-address"])
-    }, or use ${
-      optionNames(["-S", "--suppress-errors"])
-    } to skip blocked steps.`,
+    message`The recursive target appears to be private or localhost.  Try with ${optionNames(
+      ["-p", "--allow-private-address"],
+    )}, or use ${optionNames([
+      "-S",
+      "--suppress-errors",
+    ])} to skip blocked steps.`,
   );
 }
 
 function printRecursivePrivateContextHint(privateContextUrl: URL): void {
   printError(
-    message`Recursive JSON-LD context URL ${
-      messageUrl(privateContextUrl)
-    } is always blocked, even with ${
-      optionNames(["-p", "--allow-private-address"])
-    }.  Use ${optionNames(["-S", "--suppress-errors"])} to skip blocked steps.`,
+    message`Recursive JSON-LD context URL ${messageUrl(
+      privateContextUrl,
+    )} is always blocked, even with ${optionNames([
+      "-p",
+      "--allow-private-address",
+    ])}.  Use ${optionNames(["-S", "--suppress-errors"])} to skip blocked steps.`,
   );
 }
 
@@ -460,9 +469,9 @@ function printLookupFailureHint(
       return;
     case "private-address":
       printError(
-        message`The URL appears to be private or localhost.  Try with ${
-          optionNames(["-p", "--allow-private-address"])
-        }.`,
+        message`The URL appears to be private or localhost.  Try with ${optionNames(
+          ["-p", "--allow-private-address"],
+        )}.`,
       );
       return;
     case "recursive-private-address":
@@ -470,9 +479,10 @@ function printLookupFailureHint(
       return;
     case "authorized-fetch":
       printError(
-        message`It may be a private object.  Try with ${
-          optionNames(["-a", "--authorized-fetch"])
-        }.`,
+        message`It may be a private object.  Try with ${optionNames([
+          "-a",
+          "--authorized-fetch",
+        ])}.`,
       );
   }
 }
@@ -538,20 +548,21 @@ export function classifyRecursiveLookupFailure(
   const wrapped = error instanceof RecursiveLookupError ? error : undefined;
   const failure = wrapped?.failure;
   const recordedTimeout = failure?.error instanceof TimeoutError;
-  const presentation = wrapped != null &&
-      (wrapped.cause == null || recordedTimeout)
-    ? "target"
-    : "generic";
-  const underlyingError = presentation === "target"
-    ? failure?.error
-    : wrapped?.cause ?? error;
+  const presentation =
+    wrapped != null && (wrapped.cause == null || recordedTimeout)
+      ? "target"
+      : "generic";
+  const underlyingError =
+    presentation === "target" ? failure?.error : (wrapped?.cause ?? error);
   const timeout = underlyingError instanceof TimeoutError || recordedTimeout;
-  const privateContextUrl = presentation === "generic" ||
-      failure?.source === "context"
-    ? getPrivateContextUrl(underlyingError)
-    : null;
-  const blockedTarget = presentation === "target" &&
-    !options.allowPrivateAddress && wrapped != null &&
+  const privateContextUrl =
+    presentation === "generic" || failure?.source === "context"
+      ? getPrivateContextUrl(underlyingError)
+      : null;
+  const blockedTarget =
+    presentation === "target" &&
+    !options.allowPrivateAddress &&
+    wrapped != null &&
     isPrivateAddressTarget(wrapped.target);
 
   let hint: RecursiveLookupFailure["hint"] = { type: "none" };
@@ -575,27 +586,28 @@ export function classifyRecursiveLookupFailure(
       const legacyHint = getLookupFailureHint(underlyingError, {
         recursive: true,
       });
-      hint = legacyHint === "authorized-fetch"
-        ? { type: options.authorizedFetch ? "suppress-errors" : legacyHint }
-        : { type: legacyHint === "dns" ? "dns" : "private-address" };
+      hint =
+        legacyHint === "authorized-fetch"
+          ? { type: options.authorizedFetch ? "suppress-errors" : legacyHint }
+          : { type: legacyHint === "dns" ? "dns" : "private-address" };
     }
   }
 
   const kind: RecursiveLookupFailure["kind"] = timeout
     ? "timeout"
     : privateContextUrl != null
-    ? "context"
-    // FetchError messages include their URL; "localhost" in that URL is
-    // not evidence that the loader blocked the address.
-    : blockedTarget ||
-        !(underlyingError instanceof FetchError) &&
-          isPrivateAddressError(underlyingError)
-    ? "private-address"
-    : failure?.source === "context"
-    ? "context"
-    : presentation === "target" && failure == null
-    ? "not-found"
-    : "fetch-or-parse";
+      ? "context"
+      : // FetchError messages include their URL; "localhost" in that URL is
+        // not evidence that the loader blocked the address.
+        blockedTarget ||
+          (!(underlyingError instanceof FetchError) &&
+            isPrivateAddressError(underlyingError))
+        ? "private-address"
+        : failure?.source === "context"
+          ? "context"
+          : presentation === "target" && failure == null
+            ? "not-found"
+            : "fetch-or-parse";
   return {
     target: wrapped?.target,
     kind,
@@ -643,16 +655,18 @@ export function printRecursiveLookupFailure(
       return;
     case "authorized-fetch":
       printError(
-        message`It may be a private object.  Try with ${
-          optionNames(["-a", "--authorized-fetch"])
-        }.`,
+        message`It may be a private object.  Try with ${optionNames([
+          "-a",
+          "--authorized-fetch",
+        ])}.`,
       );
       return;
     case "suppress-errors":
       printError(
-        message`Use the ${
-          optionNames(["-S", "--suppress-errors"])
-        } option to suppress partial errors.`,
+        message`Use the ${optionNames([
+          "-S",
+          "--suppress-errors",
+        ])} option to suppress partial errors.`,
       );
       return;
     case "diagnostic":
@@ -801,9 +815,8 @@ export async function runLookup(
 
   // The gateways given with --gateway, used for the objects given on
   // the command line (and for linked objects without location hints):
-  const gatewayOptions = command.gateways.length > 0
-    ? { gateways: command.gateways }
-    : {};
+  const gatewayOptions =
+    command.gateways.length > 0 ? { gateways: command.gateways } : {};
 
   if (command.urls.length < 1) {
     printError(message`At least one URL or actor handle must be provided.`);
@@ -820,10 +833,10 @@ export async function runLookup(
       command.recurse != null
         ? "object chain"
         : command.traverse
-        ? "collection"
-        : command.urls.length > 1
-        ? "objects"
-        : "object"
+          ? "collection"
+          : command.urls.length > 1
+            ? "objects"
+            : "object"
     }...`,
     discardStdin: false,
   }).start();
@@ -863,9 +876,8 @@ export async function runLookup(
 
   let authLoader: DocumentLoader | undefined = undefined;
   let initialAuthLoader: DocumentLoader | undefined = undefined;
-  let authIdentity:
-    | { keyId: URL; privateKey: CryptoKey }
-    | undefined = undefined;
+  let authIdentity: { keyId: URL; privateKey: CryptoKey } | undefined =
+    undefined;
   let outputStream: WriteStream | undefined;
   let outputStreamError: Error | undefined;
   const getOutputStream = (): WriteStream | undefined => {
@@ -906,83 +918,74 @@ export async function runLookup(
   };
 
   if (command.authorizedFetch) {
-    const firstKnock = command.firstKnock ??
-      "draft-cavage-http-signatures-12";
+    const firstKnock = command.firstKnock ?? "draft-cavage-http-signatures-12";
     spinner.text = "Generating a one-time key pair...";
     const key = await generateCryptoKeyPair();
     spinner.text = "Spinning up a temporary ActivityPub server...";
-    server = await spawnTemporaryServer((req) => {
-      const serverUrl = server?.url ?? new URL("http://localhost/");
-      if (new URL(req.url).pathname == "/.well-known/webfinger") {
-        const jrd: ResourceDescriptor = {
-          subject: `acct:${serverUrl.hostname}@${serverUrl.hostname}`,
-          aliases: [serverUrl.href],
-          links: [
-            {
-              rel: "self",
-              href: serverUrl.href,
-              type: "application/activity+json",
-            },
-          ],
-        };
-        return new Response(JSON.stringify(jrd), {
-          headers: { "Content-Type": "application/jrd+json" },
-        });
-      }
-      return respondWithObject(
-        new Application({
-          id: serverUrl,
-          preferredUsername: serverUrl?.hostname,
-          publicKey: new CryptographicKey({
-            id: new URL("#main-key", serverUrl),
-            owner: serverUrl,
-            publicKey: key.publicKey,
+    server = await spawnTemporaryServer(
+      (req) => {
+        const serverUrl = server?.url ?? new URL("http://localhost/");
+        if (new URL(req.url).pathname == "/.well-known/webfinger") {
+          const jrd: ResourceDescriptor = {
+            subject: `acct:${serverUrl.hostname}@${serverUrl.hostname}`,
+            aliases: [serverUrl.href],
+            links: [
+              {
+                rel: "self",
+                href: serverUrl.href,
+                type: "application/activity+json",
+              },
+            ],
+          };
+          return new Response(JSON.stringify(jrd), {
+            headers: { "Content-Type": "application/jrd+json" },
+          });
+        }
+        return respondWithObject(
+          new Application({
+            id: serverUrl,
+            preferredUsername: serverUrl?.hostname,
+            publicKey: new CryptographicKey({
+              id: new URL("#main-key", serverUrl),
+              owner: serverUrl,
+              publicKey: key.publicKey,
+            }),
+            manuallyApprovesFollowers: true,
+            inbox: new URL("/inbox", serverUrl),
+            outbox: new URL("/outbox", serverUrl),
           }),
-          manuallyApprovesFollowers: true,
-          inbox: new URL("/inbox", serverUrl),
-          outbox: new URL("/outbox", serverUrl),
-        }),
-        { contextLoader },
-      );
-    }, { service: command.tunnelService });
+          { contextLoader },
+        );
+      },
+      { service: command.tunnelService },
+    );
     authIdentity = {
       keyId: new URL("#main-key", server.url),
       privateKey: key.privateKey,
     };
-    const baseAuthLoader = getAuthenticatedDocumentLoader(
-      authIdentity,
-      {
-        allowPrivateAddress: command.allowPrivateAddress,
-        userAgent: command.userAgent,
-        timeout: toDocumentLoaderTimeout(command.timeout),
-        specDeterminer: {
-          determineSpec() {
-            return firstKnock;
-          },
-          rememberSpec() {
-          },
+    const baseAuthLoader = getAuthenticatedDocumentLoader(authIdentity, {
+      allowPrivateAddress: command.allowPrivateAddress,
+      userAgent: command.userAgent,
+      timeout: toDocumentLoaderTimeout(command.timeout),
+      specDeterminer: {
+        determineSpec() {
+          return firstKnock;
         },
+        rememberSpec() {},
       },
-    );
-    authLoader = wrapDocumentLoaderWithTimeout(
-      baseAuthLoader,
-      command.timeout,
-    );
-    const initialBaseAuthLoader = getAuthenticatedDocumentLoader(
-      authIdentity,
-      {
-        allowPrivateAddress: true,
-        userAgent: command.userAgent,
-        timeout: toDocumentLoaderTimeout(command.timeout),
-        specDeterminer: {
-          determineSpec() {
-            return firstKnock;
-          },
-          rememberSpec() {
-          },
+    });
+    authLoader = wrapDocumentLoaderWithTimeout(baseAuthLoader, command.timeout);
+    const initialBaseAuthLoader = getAuthenticatedDocumentLoader(authIdentity, {
+      allowPrivateAddress: true,
+      userAgent: command.userAgent,
+      timeout: toDocumentLoaderTimeout(command.timeout),
+      specDeterminer: {
+        determineSpec() {
+          return firstKnock;
         },
+        rememberSpec() {},
       },
-    );
+    });
     initialAuthLoader = wrapDocumentLoaderWithTimeout(
       initialBaseAuthLoader,
       command.timeout,
@@ -993,17 +996,17 @@ export async function runLookup(
     command.recurse != null
       ? "object chain"
       : command.traverse
-      ? "collection"
-      : command.urls.length > 1
-      ? "objects"
-      : "object"
+        ? "collection"
+        : command.urls.length > 1
+          ? "objects"
+          : "object"
   }...`;
 
   if (command.recurse != null) {
-    const initialLookupDocumentLoader: DocumentLoader = initialAuthLoader ??
-      initialDocumentLoader;
-    const recursiveLookupDocumentLoader: DocumentLoader = authLoader ??
-      documentLoader;
+    const initialLookupDocumentLoader: DocumentLoader =
+      initialAuthLoader ?? initialDocumentLoader;
+    const recursiveLookupDocumentLoader: DocumentLoader =
+      authLoader ?? documentLoader;
     // `-p/--allow-private-address` only changes the follow-up object fetches
     // that recurse explicitly performs. JSON-LD context loads stay on the
     // strict loader so a remote object cannot implicitly expand the trust
@@ -1270,18 +1273,16 @@ export async function runLookup(
       );
       try {
         if (command.reverse) {
-          const {
-            items: traversedItems,
-            error: traversalError,
-          } = await collectAsyncItems(
-            effectiveDeps.traverseCollection(collection, {
-              documentLoader: diagnostics.documentLoader,
-              contextLoader: diagnostics.contextLoader,
-              verifyPortableObject: diagnostics.verifyPortableObject,
-              suppressError: command.suppressErrors,
-              ...gatewayOptions,
-            }),
-          );
+          const { items: traversedItems, error: traversalError } =
+            await collectAsyncItems(
+              effectiveDeps.traverseCollection(collection, {
+                documentLoader: diagnostics.documentLoader,
+                contextLoader: diagnostics.contextLoader,
+                verifyPortableObject: diagnostics.verifyPortableObject,
+                suppressError: command.suppressErrors,
+                ...gatewayOptions,
+              }),
+            );
           for (let index = traversedItems.length - 1; index >= 0; index--) {
             const item = traversedItems[index];
             try {
@@ -1319,15 +1320,16 @@ export async function runLookup(
             throw traversalError;
           }
         } else {
-          for await (
-            const item of effectiveDeps.traverseCollection(collection, {
+          for await (const item of effectiveDeps.traverseCollection(
+            collection,
+            {
               documentLoader: diagnostics.documentLoader,
               contextLoader: diagnostics.contextLoader,
               verifyPortableObject: diagnostics.verifyPortableObject,
               suppressError: command.suppressErrors,
               ...gatewayOptions,
-            })
-          ) {
+            },
+          )) {
             try {
               if (totalItems > 0) {
                 await writeSeparator(command.separator, getOutputStream());
@@ -1369,11 +1371,12 @@ export async function runLookup(
         const failure = diagnostics.getContextFailure() ??
           diagnostics.getObjectFailure() ??
           diagnostics.getPortableFailure() ?? {
-          error,
-          source: "other" as const,
-        };
+            error,
+            source: "other" as const,
+          };
         if (
-          error instanceof TimeoutError || failure.error instanceof TimeoutError
+          error instanceof TimeoutError ||
+          failure.error instanceof TimeoutError
         ) {
           handleTimeoutError(spinner, command.timeout, url);
         } else {
@@ -1389,7 +1392,8 @@ export async function runLookup(
             );
             printError(message`${text(diagnostic.message)}`);
             if (
-              !diagnostic.suggestsAuthorizedFetch && !command.suppressErrors
+              !diagnostic.suggestsAuthorizedFetch &&
+              !command.suppressErrors
             ) {
               printError(
                 message`Use the -S/--suppress-errors option to suppress partial errors.`,
@@ -1415,7 +1419,7 @@ export async function runLookup(
         verifierDocumentLoader: authLoader ?? documentLoader,
         userAgent: command.userAgent,
         ...gatewayOptions,
-      })
+      }),
     ),
   );
 

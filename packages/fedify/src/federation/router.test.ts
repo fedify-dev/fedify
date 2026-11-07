@@ -35,10 +35,7 @@ test("Router.add()", () => {
   assertEquals(router.add("/users/{name}", "user"), new Set(["name"]));
   assertEquals(
     router.add("/users/{name}/posts/{postId}", "post"),
-    new Set([
-      "name",
-      "postId",
-    ]),
+    new Set(["name", "postId"]),
   );
   assertThrows(() => router.add("foo", "name"), RouterError);
 });

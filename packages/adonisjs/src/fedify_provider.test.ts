@@ -115,7 +115,10 @@ async function announceServerStarted(app: ApplicationService): Promise<void> {
  */
 function settledOrPending(promise: Promise<unknown>): Promise<string> {
   return Promise.race([
-    promise.then(() => "settled", () => "settled"),
+    promise.then(
+      () => "settled",
+      () => "settled",
+    ),
     new Promise<string>((resolve) => setTimeout(() => resolve("pending"), 50)),
   ]);
 }
@@ -505,9 +508,10 @@ describe("the LogTape bridge", () => {
   /**
    * Boots a provider with the logging bridge on, against its own logger.
    */
-  async function bootWithLogging(): Promise<
-    { provider: FedifyProvider; messages: string[] }
-  > {
+  async function bootWithLogging(): Promise<{
+    provider: FedifyProvider;
+    messages: string[];
+  }> {
     const app = await createGlobalApp({ fedify: { logging: true } });
     const { logger, messages } = createLogger();
     // The container's `logger` is the manager, of which the bridge only ever

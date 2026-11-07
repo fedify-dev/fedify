@@ -251,12 +251,17 @@ export function nodeInfoToJson(nodeInfo: NodeInfo): JsonValue {
       homepage: nodeInfo.software.homepage?.href,
     },
     protocols: [...nodeInfo.protocols],
-    services: nodeInfo.services == null ? { inbound: [], outbound: [] } : {
-      inbound: nodeInfo.services.inbound ? [...nodeInfo.services.inbound] : [],
-      outbound: nodeInfo.services.outbound
-        ? [...nodeInfo.services.outbound]
-        : [],
-    },
+    services:
+      nodeInfo.services == null
+        ? { inbound: [], outbound: [] }
+        : {
+            inbound: nodeInfo.services.inbound
+              ? [...nodeInfo.services.inbound]
+              : [],
+            outbound: nodeInfo.services.outbound
+              ? [...nodeInfo.services.outbound]
+              : [],
+          },
     openRegistrations: nodeInfo.openRegistrations ?? false,
     usage: {
       users: nodeInfo.usage.users,

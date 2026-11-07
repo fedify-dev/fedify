@@ -12,8 +12,10 @@ import { type Codec, JsonCodec } from "./codec.ts";
 const logger = getLogger(["fedify", "redis", "mq"]);
 
 function isRedisClosedError(error: unknown): boolean {
-  return error instanceof Error &&
-    /connection is (already )?closed/i.test(error.message);
+  return (
+    error instanceof Error &&
+    /connection is (already )?closed/i.test(error.message)
+  );
 }
 
 async function quitRedisGracefully(redis: Redis | Cluster): Promise<void> {
@@ -163,9 +165,8 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     const now = Temporal.Now.instant().epochMilliseconds;
-    const baseTs = options?.delay == null
-      ? now
-      : now + options.delay.total("millisecond");
+    const baseTs =
+      options?.delay == null ? now : now + options.delay.total("millisecond");
     const ts = this.#getMonotonicTimestamp(baseTs);
     const encodedMessage = this.#codec.encode([
       crypto.randomUUID(),
@@ -182,9 +183,8 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
   ): Promise<void> {
     if (messages.length === 0) return;
     const now = Temporal.Now.instant().epochMilliseconds;
-    const baseTs = options?.delay == null
-      ? now
-      : now + options.delay.total("millisecond");
+    const baseTs =
+      options?.delay == null ? now : now + options.delay.total("millisecond");
     // Use multi to batch multiple ZADD commands:
     const multi = this.#redis.multi();
     for (const message of messages) {
@@ -204,7 +204,7 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
 
   async getDepth(): Promise<MessageQueueDepth> {
     const now = Temporal.Now.instant().epochMilliseconds;
-    const [queuedCount, readyCount] = await this.#redis.eval(
+    const [queuedCount, readyCount] = (await this.#redis.eval(
       `
         return {
           redis.call("ZCARD", KEYS[1]),
@@ -214,7 +214,7 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
       1,
       this.#queueKey,
       now,
-    ) as [number, number];
+    )) as [number, number];
     const queued = Number(queuedCount);
     const ready = Number(readyCount);
     return {
@@ -239,7 +239,7 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
       this.#lockKey,
       this.#workerId,
       "EX",
-      Math.floor(this.#pollIntervalMs / 1000 * 2),
+      Math.floor((this.#pollIntervalMs / 1000) * 2),
       "NX",
     );
     if (result == null) {
@@ -254,10 +254,9 @@ export class RedisMessageQueue implements MessageQueue, Disposable {
       0,
       Temporal.Now.instant().epochMilliseconds,
     );
-    logger.debug(
-      "Found {messages} messages to process.",
-      { messages: messages.length },
-    );
+    logger.debug("Found {messages} messages to process.", {
+      messages: messages.length,
+    });
     try {
       if (messages.length < 1) return;
       // Find a message whose ordering key is not currently being processed

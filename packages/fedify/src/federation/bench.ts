@@ -116,10 +116,7 @@ export interface BenchmarkDataPoint {
   /** The OpenTelemetry data point end time. */
   readonly endTime: readonly [number, number];
   /** The data point value or histogram payload. */
-  readonly value:
-    | number
-    | Histogram
-    | ExponentialHistogram;
+  readonly value: number | Histogram | ExponentialHistogram;
 }
 
 /**
@@ -252,7 +249,10 @@ export interface BenchmarkTriggerOptions {
 }
 
 class BenchmarkTriggerError extends Error {
-  constructor(message: string, readonly status = 400) {
+  constructor(
+    message: string,
+    readonly status = 400,
+  ) {
     super(message);
   }
 }
@@ -279,36 +279,42 @@ async function parseRecipients<TContextData>(
   if (!Array.isArray(value)) {
     throw new BenchmarkTriggerError("recipients must be an array.");
   }
-  return await Promise.all(value.map(async (item) => {
-    let object: VocabObject;
-    try {
-      object = await VocabObject.fromJsonLd(item, {
-        documentLoader: context.documentLoader,
-        contextLoader: context.contextLoader,
-      });
-    } catch (error) {
-      throw new BenchmarkTriggerError(
-        `Invalid ActivityPub recipient: ${error}`,
-      );
-    }
-    if (!isRecipient(object)) {
-      throw new BenchmarkTriggerError(
-        "each recipient must be an ActivityPub actor.",
-      );
-    }
-    const recipient: Recipient = object;
-    if (recipient.id == null || recipient.inboxId == null) {
-      throw new BenchmarkTriggerError(
-        "each recipient must have id and inbox properties.",
-      );
-    }
-    return recipient;
-  }));
+  return await Promise.all(
+    value.map(async (item) => {
+      let object: VocabObject;
+      try {
+        object = await VocabObject.fromJsonLd(item, {
+          documentLoader: context.documentLoader,
+          contextLoader: context.contextLoader,
+        });
+      } catch (error) {
+        throw new BenchmarkTriggerError(
+          `Invalid ActivityPub recipient: ${error}`,
+        );
+      }
+      if (!isRecipient(object)) {
+        throw new BenchmarkTriggerError(
+          "each recipient must be an ActivityPub actor.",
+        );
+      }
+      const recipient: Recipient = object;
+      if (recipient.id == null || recipient.inboxId == null) {
+        throw new BenchmarkTriggerError(
+          "each recipient must have id and inbox properties.",
+        );
+      }
+      return recipient;
+    }),
+  );
 }
 
 function isRecipient(value: unknown): value is Recipient {
-  return value != null && typeof value === "object" && "id" in value &&
-    "inboxId" in value;
+  return (
+    value != null &&
+    typeof value === "object" &&
+    "id" in value &&
+    "inboxId" in value
+  );
 }
 
 async function parseActivity<TContextData>(

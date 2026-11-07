@@ -40,23 +40,21 @@ for (const { name, fileName, schema } of PUBLISHED_SCHEMAS) {
     for (const ref of collectRefs(schema)) {
       if (!ref.startsWith("#/$defs/")) continue;
       const defName = ref.slice("#/$defs/".length);
-      assert.ok(
-        Object.hasOwn(defs, defName),
-        `dangling $ref ${ref}`,
-      );
+      assert.ok(Object.hasOwn(defs, defName), `dangling $ref ${ref}`);
     }
     // Constructing the validator dereferences the schema; it must not throw.
-    assert.doesNotThrow(() =>
-      new Validator(schema as unknown as Schema, "2020-12")
+    assert.doesNotThrow(
+      () => new Validator(schema as unknown as Schema, "2020-12"),
     );
   });
 }
 
 // Guard 2: example-fixture validation.
 const validators = new Map(
-  PUBLISHED_SCHEMAS.map((
-    s,
-  ) => [s.name, new Validator(s.schema as unknown as Schema, "2020-12")]),
+  PUBLISHED_SCHEMAS.map((s) => [
+    s.name,
+    new Validator(s.schema as unknown as Schema, "2020-12"),
+  ]),
 );
 
 interface FixtureGroup {
@@ -82,20 +80,17 @@ for (const group of FIXTURE_GROUPS) {
   const validator = validators.get(group.schema)!;
   for (const file of fixtureFiles(group.dir)) {
     const label = `${group.dir}/${file.split("/").pop()}`;
-    test(
-      `schema guard - fixture ${label} is ${group.valid ? "valid" : "invalid"}`,
-      () => {
-        const value = parseSuiteText(readFileSync(file, "utf-8"));
-        const result = validator.validate(value);
-        assert.strictEqual(
-          result.valid,
-          group.valid,
-          group.valid
-            ? `expected valid, got: ${JSON.stringify(result.errors)}`
-            : "expected invalid",
-        );
-      },
-    );
+    test(`schema guard - fixture ${label} is ${group.valid ? "valid" : "invalid"}`, () => {
+      const value = parseSuiteText(readFileSync(file, "utf-8"));
+      const result = validator.validate(value);
+      assert.strictEqual(
+        result.valid,
+        group.valid,
+        group.valid
+          ? `expected valid, got: ${JSON.stringify(result.errors)}`
+          : "expected invalid",
+      );
+    });
   }
 }
 

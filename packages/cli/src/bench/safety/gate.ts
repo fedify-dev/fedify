@@ -87,7 +87,8 @@ export function assertUnsafeOverrideAllowed(
   context: UnsafeOverrideContext,
 ): void {
   if (
-    context.tier !== "public" || context.benchmarkMode ||
+    context.tier !== "public" ||
+    context.benchmarkMode ||
     !context.allowUnsafe
   ) {
     return;
@@ -166,8 +167,7 @@ export function assertInboxDestinationAllowed(
 ): void {
   const sameOrigin = url.origin === context.targetOrigin;
   const tier = sameOrigin ? context.targetTier : context.destinationTier;
-  const inheritsTargetGate = sameOrigin &&
-    context.targetBenchmarkMode;
+  const inheritsTargetGate = sameOrigin && context.targetBenchmarkMode;
   if (tier === "public" && !inheritsTargetGate && !context.allowUnsafe) {
     throw new UnsafeTargetError(
       `Refusing to send benchmark load to ${url.href}: it is a public inbox ` +

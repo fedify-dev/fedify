@@ -31,7 +31,7 @@ export class SqliteStatement implements SqliteStatementAdapter {
   constructor(private readonly stmt: StatementSync) {}
 
   run(...params: unknown[]): { changes: number; lastInsertRowid: number } {
-    const result = this.stmt.run(...params as SQLInputValue[]);
+    const result = this.stmt.run(...(params as SQLInputValue[]));
     return {
       changes: Number(result.changes),
       lastInsertRowid: Number(result.lastInsertRowid),
@@ -39,10 +39,10 @@ export class SqliteStatement implements SqliteStatementAdapter {
   }
 
   get(...params: unknown[]): unknown | undefined {
-    return this.stmt.get(...params as SQLInputValue[]);
+    return this.stmt.get(...(params as SQLInputValue[]));
   }
 
   all(...params: unknown[]): unknown[] {
-    return this.stmt.all(...params as SQLInputValue[]);
+    return this.stmt.all(...(params as SQLInputValue[]));
   }
 }

@@ -34,12 +34,13 @@ function webfingerUrl(target: URL, recipient: string): URL {
 export const webfingerRunner: ScenarioRunner = {
   async run(context: RunContext) {
     const fetchImpl = context.fetch ?? fetch;
-    const urls =
-      (context.scenario.recipients.length > 0
+    const urls = (
+      context.scenario.recipients.length > 0
         ? context.scenario.recipients
-        // Fall back to the target's full URL (a valid URL), not its schemeless
-        // host, which convertUrlIfHandle could not parse.
-        : [context.target.href]).map((r) => webfingerUrl(context.target, r));
+        : // Fall back to the target's full URL (a valid URL), not its schemeless
+          // host, which convertUrlIfHandle could not parse.
+          [context.target.href]
+    ).map((r) => webfingerUrl(context.target, r));
     let index = 0;
     const rawSend = () =>
       sendRequest(
@@ -74,9 +75,10 @@ export const webfingerRunner: ScenarioRunner = {
     // Only report server metrics when both ends of the window were captured; a
     // missing baseline cannot be diffed (and falling back to the cumulative
     // snapshot would silently reintroduce warm-up and earlier-scenario load).
-    const server = baselineTaken && baseline != null && end != null
-      ? snapshotToMetrics(diffSnapshots(baseline, end))
-      : null;
+    const server =
+      baselineTaken && baseline != null && end != null
+        ? snapshotToMetrics(diffSnapshots(baseline, end))
+        : null;
     return { ...measurement, server };
   },
 };

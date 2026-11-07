@@ -80,14 +80,16 @@ function parseMediaType(
   const params: { [param: string]: string | undefined } = Object.create(null);
   let q = 1;
   if (parameters) {
-    const kvps = parameters.split(";").map((p) => p.trim()).map(
-      splitKeyValuePair,
-    );
+    const kvps = parameters
+      .split(";")
+      .map((p) => p.trim())
+      .map(splitKeyValuePair);
 
     for (const [key, val] of kvps) {
-      const value = val && val[0] === `"` && val[val.length - 1] === `"`
-        ? val.slice(1, val.length - 1)
-        : val;
+      const value =
+        val && val[0] === `"` && val[val.length - 1] === `"`
+          ? val.slice(1, val.length - 1)
+          : val;
 
       if (key === "q" && value) {
         q = parseFloat(value);
@@ -120,15 +122,10 @@ function getFullType(spec: MediaTypeSpecificity) {
   return `${spec.type}/${spec.subtype}`;
 }
 
-export function preferredMediaTypes(
-  accept?: string | null,
-): string[] {
-  const accepts = parseAccept(accept === undefined ? "*/*" : accept ?? "");
+export function preferredMediaTypes(accept?: string | null): string[] {
+  const accepts = parseAccept(accept === undefined ? "*/*" : (accept ?? ""));
 
-  return accepts
-    .filter(isQuality)
-    .sort(compareSpecs)
-    .map(getFullType);
+  return accepts.filter(isQuality).sort(compareSpecs).map(getFullType);
 }
 
 // cSpell: ignore Schlueter kvps
@@ -140,7 +137,9 @@ export function acceptsJsonLd(request: Request): boolean {
   if (types[0] === "text/html" || types[0] === "application/xhtml+xml") {
     return false;
   }
-  return types.includes("application/activity+json") ||
+  return (
+    types.includes("application/activity+json") ||
     types.includes("application/ld+json") ||
-    types.includes("application/json");
+    types.includes("application/json")
+  );
 }

@@ -30,11 +30,9 @@ const allowPrivateAddresses = bindConfig(
 );
 
 const maxRedirection = bindConfig(
-  option(
-    "--max-redirection",
-    integer({ min: 0 }),
-    { description: message`Maximum number of redirections to follow.` },
-  ),
+  option("--max-redirection", integer({ min: 0 }), {
+    description: message`Maximum number of redirections to follow.`,
+  }),
   {
     context: configContext,
     key: (config) => config.webfinger?.maxRedirection ?? 5,

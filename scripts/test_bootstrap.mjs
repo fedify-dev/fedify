@@ -18,16 +18,14 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-for (
-  const path of [
-    "node_modules",
-    "packages/vocab/src/vocab.ts",
-    ...((await readdir(join(root, "packages"))).flatMap((name) => [
-      `packages/${name}/dist`,
-      `packages/${name}/dist-tests`,
-    ])),
-  ]
-) {
+for (const path of [
+  "node_modules",
+  "packages/vocab/src/vocab.ts",
+  ...(await readdir(join(root, "packages"))).flatMap((name) => [
+    `packages/${name}/dist`,
+    `packages/${name}/dist-tests`,
+  ]),
+]) {
   await assert.rejects(access(join(root, path)), { code: "ENOENT" }, path);
 }
 // The existing tool-install hook writes .git/hooks by literal path.
@@ -88,14 +86,18 @@ try {
     await realpath(join(root, "packages/fedify/node_modules/@fedify/vocab")),
     await realpath(join(root, "packages/vocab")),
   );
-  run("mise", [
-    "exec",
-    "--",
-    "node",
-    "--input-type=module",
-    "-e",
-    'await import("@fedify/vocab"); await import("@fedify/vocab-runtime");',
-  ], join(root, "packages/fedify"));
+  run(
+    "mise",
+    [
+      "exec",
+      "--",
+      "node",
+      "--input-type=module",
+      "-e",
+      'await import("@fedify/vocab"); await import("@fedify/vocab-runtime");',
+    ],
+    join(root, "packages/fedify"),
+  );
   await assert.rejects(access(log), { code: "ENOENT" });
   assert.deepEqual(await readdir(cache), []);
   console.log("Fresh bootstrap passed without Deno or a Deno cache.");

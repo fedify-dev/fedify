@@ -38,10 +38,9 @@ async function spawnActorTarget() {
     })
     .mapHandle((_ctx, username) => (username === "alice" ? "alice" : null))
     .setKeyPairsDispatcher(async () => await keyPairs);
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox").on(
-    Create,
-    () => {},
-  );
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .on(Create, () => {});
 
   let actorGets = 0;
   const server = serve({
@@ -67,13 +66,15 @@ test("actorRunner - fetches actor documents", async () => {
     const suite: Suite = {
       version: 1,
       target: target.url.href,
-      scenarios: [{
-        name: "actor",
-        type: "actor",
-        recipient: new URL("/users/alice", target.url).href,
-        load: { concurrency: 2 },
-        duration: "80ms",
-      }],
+      scenarios: [
+        {
+          name: "actor",
+          type: "actor",
+          recipient: new URL("/users/alice", target.url).href,
+          load: { concurrency: 2 },
+          duration: "80ms",
+        },
+      ],
     };
     const scenario = normalizeSuite(suite).scenarios[0];
     const measurement = await actorRunner.run({
@@ -98,22 +99,26 @@ test("actorRunner - signs authenticated actor fetches", async () => {
   let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
   try {
     fleet = await spawnSyntheticServer(
-      await buildFleet([{
-        count: 1,
-        signatureStandards: ["draft-cavage-http-signatures-12"],
-      }]),
+      await buildFleet([
+        {
+          count: 1,
+          signatureStandards: ["draft-cavage-http-signatures-12"],
+        },
+      ]),
     );
     const suite: Suite = {
       version: 1,
       target: target.url.href,
-      scenarios: [{
-        name: "actor-auth",
-        type: "actor",
-        recipient: new URL("/users/alice", target.url).href,
-        authenticated: true,
-        load: { concurrency: 1 },
-        duration: "80ms",
-      }],
+      scenarios: [
+        {
+          name: "actor-auth",
+          type: "actor",
+          recipient: new URL("/users/alice", target.url).href,
+          authenticated: true,
+          load: { concurrency: 1 },
+          duration: "80ms",
+        },
+      ],
     };
     const scenario = normalizeSuite(suite).scenarios[0];
     const measurement = await actorRunner.run({
@@ -141,11 +146,13 @@ test("actorRunner.validate - rejects non-http actor recipient URLs", () => {
     const scenario = normalizeSuite({
       version: 1,
       target: "http://target.test/",
-      scenarios: [{
-        name: "actor",
-        type: "actor",
-        recipient,
-      }],
+      scenarios: [
+        {
+          name: "actor",
+          type: "actor",
+          recipient,
+        },
+      ],
     }).scenarios[0];
 
     assert.throws(

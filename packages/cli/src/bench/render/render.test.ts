@@ -40,18 +40,22 @@ test("renderReport - shows actuals in the metric's natural unit", () => {
   // A unitless assertion still renders successRate as a percentage.
   const r: BenchReport = {
     ...report,
-    scenarios: [{
-      ...report.scenarios[0],
-      expectations: [{
-        metric: "successRate",
-        op: "gte",
-        threshold: 0.99,
-        unit: null,
-        actual: 0.994,
-        severity: "fail",
-        pass: true,
-      }],
-    }],
+    scenarios: [
+      {
+        ...report.scenarios[0],
+        expectations: [
+          {
+            metric: "successRate",
+            op: "gte",
+            threshold: 0.99,
+            unit: null,
+            actual: 0.994,
+            severity: "fail",
+            pass: true,
+          },
+        ],
+      },
+    ],
   };
   const text = renderReport(r, "text");
   assert.match(text, /successRate >= 99%\s+\(actual 99\.4%\)/);
@@ -63,10 +67,12 @@ test("renderReport - shows queue depth even without drain latency", () => {
   const base = report.scenarios[0];
   const r: BenchReport = {
     ...report,
-    scenarios: [{
-      ...base,
-      server: { ...(base.server ?? {}), queue: { depthMax: 42 } },
-    }],
+    scenarios: [
+      {
+        ...base,
+        server: { ...(base.server ?? {}), queue: { depthMax: 42 } },
+      },
+    ],
   };
   const text = renderReport(r, "text");
   assert.match(text, /Server queue depth max: 42/);
@@ -78,10 +84,12 @@ test("renderReport - shows delivery throughput when present", () => {
   const base = report.scenarios[0];
   const r: BenchReport = {
     ...report,
-    scenarios: [{
-      ...base,
-      deliveryThroughputPerSec: 123,
-    }],
+    scenarios: [
+      {
+        ...base,
+        deliveryThroughputPerSec: 123,
+      },
+    ],
   };
   const json = JSON.parse(renderReport(r, "json"));
   assert.strictEqual(json.scenarios[0].deliveryThroughputPerSec, 123);
@@ -97,10 +105,12 @@ test("renderReport - empty drain latency falls back to the depth line", () => {
   const base = report.scenarios[0];
   const r: BenchReport = {
     ...report,
-    scenarios: [{
-      ...base,
-      server: { ...(base.server ?? {}), queue: { drainMs: {}, depthMax: 0 } },
-    }],
+    scenarios: [
+      {
+        ...base,
+        server: { ...(base.server ?? {}), queue: { drainMs: {}, depthMax: 0 } },
+      },
+    ],
   };
   const text = renderReport(r, "text");
   assert.doesNotMatch(text, /Server queue drain/);

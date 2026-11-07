@@ -28,9 +28,10 @@ function isNonEmptyString(value: unknown): value is string {
 
 function hasDataIntegrityProofType(value: unknown): boolean {
   const types = Array.isArray(value) ? value : [value];
-  return types.some((type) =>
-    type === "DataIntegrityProof" ||
-    type === "https://w3id.org/security#DataIntegrityProof"
+  return types.some(
+    (type) =>
+      type === "DataIntegrityProof" ||
+      type === "https://w3id.org/security#DataIntegrityProof",
   );
 }
 
@@ -54,10 +55,12 @@ export function isSelfContainedSecuredDocument(value: unknown): boolean {
   if (!Object.hasOwn(value, "proof")) return false;
   const proof = value.proof;
   if (!isJsonMap(proof)) return false;
-  return hasDataIntegrityProofType(proof.type) &&
+  return (
+    hasDataIntegrityProofType(proof.type) &&
     isNonEmptyString(proof.cryptosuite) &&
     isNonEmptyString(proof.created) &&
     isNonEmptyString(proof.verificationMethod) &&
     isNonEmptyString(proof.proofPurpose) &&
-    isNonEmptyString(proof.proofValue);
+    isNonEmptyString(proof.proofValue)
+  );
 }

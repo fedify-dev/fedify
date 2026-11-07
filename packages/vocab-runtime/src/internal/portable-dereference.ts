@@ -240,10 +240,10 @@ export function parseCompatibleEf61Reference(
     return { id, gateway: new URL(url.origin) };
   } catch (error) {
     if (error instanceof TypeError) {
-      logger.debug(
-        "Invalid FEP-ef61 compatible identifier {url}: {error}",
-        { url: typeof url === "string" ? url : url.href, error },
-      );
+      logger.debug("Invalid FEP-ef61 compatible identifier {url}: {error}", {
+        url: typeof url === "string" ? url : url.href,
+        error,
+      });
       return null;
     }
     throw error;
@@ -295,8 +295,11 @@ export function mustDereferencePortableObject(
   if (!isPortableMode(parent, options)) return false;
   if (isCompatibleEf61Iri(id)) return true;
   if (!isPortableIri(id)) return false;
-  return ownerId == null || !isPortableIri(ownerId) ||
-    !haveSameFe34Origin(ownerId, id);
+  return (
+    ownerId == null ||
+    !isPortableIri(ownerId) ||
+    !haveSameFe34Origin(ownerId, id)
+  );
 }
 
 const PORTABLE_IRI_PATTERN = /^ap(?:\+ef61)?:/i;
@@ -344,7 +347,7 @@ export function getPortableResponseClaim(
       // make the parsed IRI identify another portable object:
       if (
         canonicalizePortableUri(documentUrl) !==
-          canonicalizePortableUri(formatIri(id))
+        canonicalizePortableUri(formatIri(id))
       ) {
         return null;
       }
@@ -390,7 +393,8 @@ export function markUnverifiedPortableClaim(
 ): void {
   const objectId = getObjectId(object);
   if (
-    isPortableIri(reference) || isCompatibleEf61Iri(reference) ||
+    isPortableIri(reference) ||
+    isCompatibleEf61Iri(reference) ||
     PORTABLE_IRI_PATTERN.test(documentUrl) ||
     isCompatibleEf61Iri(documentUrl) ||
     (objectId != null &&
@@ -436,7 +440,8 @@ export function rejectMalformedCompatibleReference(
     readonly suppressError?: boolean;
   },
 ): null {
-  const message = "Refusing to dereference {url}, because it is a malformed " +
+  const message =
+    "Refusing to dereference {url}, because it is a malformed " +
     "FEP-ef61 compatible identifier, which cannot be verified as a portable " +
     "object.";
   if (options.crossOrigin === "throw" && !options.suppressError) {
@@ -533,18 +538,17 @@ export function getPortableGatewayCandidates(
       if (parsed == null) {
         throw new TypeError(
           "FEP-ef61 gateways must be HTTP(S) origins with no credentials, " +
-            "path, query, or fragment: " + String(gateway),
+            "path, query, or fragment: " +
+            String(gateway),
         );
       }
       add(parsed);
     }
     return candidates;
   }
-  for (
-    const hint of new URLSearchParams(url.search).getAll(
-      GATEWAY_HINT_PARAMETER,
-    )
-  ) {
+  for (const hint of new URLSearchParams(url.search).getAll(
+    GATEWAY_HINT_PARAMETER,
+  )) {
     if (candidates.length >= MAX_GATEWAY_HINTS) break;
     const parsed = parseGatewayOrigin(hint);
     if (parsed == null) {
@@ -589,16 +593,16 @@ export function getReferrerGateways(
   let current: object | undefined = object;
   while (current != null && !visited.has(current)) {
     visited.add(current);
-    const gateways: unknown = "gateways" in current
-      ? current.gateways
-      : undefined;
+    const gateways: unknown =
+      "gateways" in current ? current.gateways : undefined;
     if (Array.isArray(gateways) && gateways.length > 0) {
       const id = getObjectId(current);
-      const portableId = id == null
-        ? null
-        : isPortableIri(id)
-        ? id
-        : getCompatibleEf61Target(id);
+      const portableId =
+        id == null
+          ? null
+          : isPortableIri(id)
+            ? id
+            : getCompatibleEf61Target(id);
       if (portableId == null || !haveSameFe34Origin(portableId, url)) {
         return undefined;
       }
@@ -864,10 +868,12 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
   const lookupUrl = formatIri(url);
   const { span } = options;
   // Invalid gateways are a programming error, so they are never suppressed:
-  const explicitGateways = options.gateways == null
-    ? undefined
-    : getPortableGatewayCandidates(url, options.gateways);
-  const inferredGateways = options.inferredGateways ??
+  const explicitGateways =
+    options.gateways == null
+      ? undefined
+      : getPortableGatewayCandidates(url, options.gateways);
+  const inferredGateways =
+    options.inferredGateways ??
     (explicitGateways == null ? getPortableGatewayCandidates(url) : []);
   const gateways = [...inferredGateways];
   for (const gateway of explicitGateways ?? []) {
@@ -888,7 +894,9 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
   if (verify == null) {
     return fail(
       new TypeError(
-        "Dereferencing the portable object " + lookupUrl + " requires the " +
+        "Dereferencing the portable object " +
+          lookupUrl +
+          " requires the " +
           "verifyPortableObject option, e.g., verifyPortableObject() from " +
           "@fedify/fedify.  Passing a Fedify Context as the options gives " +
           "it, and objects parsed with the option use it by default.",
@@ -936,19 +944,22 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
   );
   const attempts: Attempt[] = [];
   const { signal } = options;
-  const gatewayHints = explicitGateways == null && inferredGateways.length > 0
-    ? inferredGateways
-    : undefined;
+  const gatewayHints =
+    explicitGateways == null && inferredGateways.length > 0
+      ? inferredGateways
+      : undefined;
   const referrer = buildReferrerChain(options.referrer);
   try {
     for (const { url: requestUrl, gateway, response } of requestUrls) {
       signal?.throwIfAborted();
       let remoteDocument: RemoteDocument;
       try {
-        remoteDocument = response ?? await options.documentLoader(
-          requestUrl,
-          { signal, suppressError: options.suppressError },
-        );
+        remoteDocument =
+          response ??
+          (await options.documentLoader(requestUrl, {
+            signal,
+            suppressError: options.suppressError,
+          }));
       } catch (error) {
         signal?.throwIfAborted();
         logger.debug("Failed to fetch {url} from {requestUrl}: {error}", {
@@ -1004,13 +1015,13 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
         }
         signal?.throwIfAborted();
         if (
-          !await acceptCandidate(options.observer, {
+          !(await acceptCandidate(options.observer, {
             document,
             documentUrl: remoteDocument.documentUrl,
             baseUrl: url,
             contextLoader,
             object,
-          })
+          }))
         ) {
           attempts.push({ type: "rejected", source: requestUrl });
           continue;
@@ -1033,7 +1044,8 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
         if (error instanceof PortableObjectRejection) {
           logger.warn(
             "Rejected the portable object {url} served from {requestUrl}, " +
-              "because " + error.message,
+              "because " +
+              error.message,
             { ...error.values, url: lookupUrl, requestUrl },
           );
           options.observer?.failed?.({
@@ -1061,9 +1073,13 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
   }
   const rejected = attempts.filter((a) => a.type === "rejected");
   if (rejected.length > 0) {
-    const message = "No gateway returned a valid portable object for " +
-      lookupUrl + "; refusing to return the object.  Objects retrieved " +
-      "from: " + rejected.map((a) => a.source).join(", ") + ".";
+    const message =
+      "No gateway returned a valid portable object for " +
+      lookupUrl +
+      "; refusing to return the object.  Objects retrieved " +
+      "from: " +
+      rejected.map((a) => a.source).join(", ") +
+      ".";
     if (options.suppressError || options.crossOrigin !== "throw") {
       span?.setStatus({ code: SpanStatusCode.ERROR, message });
       logger.warn(message);
@@ -1071,13 +1087,18 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
     }
     throw new PortableObjectRejectedError(message);
   }
-  const errors = attempts.flatMap((a) => a.type === "error" ? [a.error] : []);
+  const errors = attempts.flatMap((a) => (a.type === "error" ? [a.error] : []));
   return fail(
-    errors.length === 1 ? errors[0] : new AggregateError(
-      errors,
-      "Failed to dereference " + lookupUrl + " through any of its " +
-        "gateways: " + requestUrls.map((r) => r.url).join(", "),
-    ),
+    errors.length === 1
+      ? errors[0]
+      : new AggregateError(
+          errors,
+          "Failed to dereference " +
+            lookupUrl +
+            " through any of its " +
+            "gateways: " +
+            requestUrls.map((r) => r.url).join(", "),
+        ),
   );
 }
 
@@ -1087,7 +1108,9 @@ async function checkPortableObjectId(
   contextLoader: DocumentLoader,
 ): Promise<void> {
   if (
-    document == null || typeof document !== "object" || Array.isArray(document)
+    document == null ||
+    typeof document !== "object" ||
+    Array.isArray(document)
   ) {
     throw new PortableObjectRejection("it is not a single JSON object");
   }

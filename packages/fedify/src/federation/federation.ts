@@ -179,8 +179,7 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
-    path:
-      `${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}`,
+    path: `${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}`,
     dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
   ): ObjectCallbackSetters<TContextData, TObject, TParam>;
 
@@ -201,8 +200,7 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
-    path:
-      `${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}`,
+    path: `${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}`,
     dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
   ): ObjectCallbackSetters<TContextData, TObject, TParam>;
 
@@ -223,8 +221,7 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
-    path:
-      `${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}`,
+    path: `${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}`,
     dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
   ): ObjectCallbackSetters<TContextData, TObject, TParam>;
 
@@ -245,9 +242,7 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<TParam>}${string}`,
+    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<TParam>}${string}`,
     dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
   ): ObjectCallbackSetters<TContextData, TObject, TParam>;
 
@@ -268,9 +263,7 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
+    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<TParam>}${string}`,
     dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
   ): ObjectCallbackSetters<TContextData, TObject, TParam>;
 
@@ -654,13 +647,7 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
   setCollectionDispatcher<TObject extends Object, TParam extends string>(
     name: string | symbol,
     itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
+    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<TParam>}${string}`,
     dispatcher: CustomCollectionDispatcher<
       TObject,
       TParam,
@@ -690,9 +677,7 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
   setCollectionDispatcher<TObject extends Object, TParam extends string>(
     name: string | symbol,
     itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
+    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<TParam>}${string}`,
     dispatcher: CustomCollectionDispatcher<
       TObject,
       TParam,
@@ -749,15 +734,10 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    *             The path must have one or more variables.
    * @param dispatcher A collection dispatcher callback to register.
    */
-  setOrderedCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
+  setOrderedCollectionDispatcher<TObject extends Object, TParam extends string>(
     name: string | symbol,
     itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<TParam>}${string}`,
+    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<TParam>}${string}`,
     dispatcher: CustomCollectionDispatcher<
       TObject,
       TParam,
@@ -784,15 +764,10 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    *             The path must have one or more variables.
    * @param dispatcher A collection dispatcher callback to register.
    */
-  setOrderedCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
+  setOrderedCollectionDispatcher<TObject extends Object, TParam extends string>(
     name: string | symbol,
     itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
+    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<TParam>}${string}`,
     dispatcher: CustomCollectionDispatcher<
       TObject,
       TParam,
@@ -819,10 +794,7 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    *             The path must have one or more variables.
    * @param dispatcher A collection dispatcher callback to register.
    */
-  setOrderedCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
+  setOrderedCollectionDispatcher<TObject extends Object, TParam extends string>(
     name: string | symbol,
     itemType: ConstructorWithTypeId<TObject>,
     path: `${string}${Rfc6570Expression<TParam>}${string}`,
@@ -940,8 +912,9 @@ export interface Federation<TContextData> extends Federatable<TContextData> {
  * @template TContextData The context data to pass to the {@link Context}.
  * @since 1.6.0
  */
-export interface FederationBuilder<TContextData>
-  extends Federatable<TContextData> {
+export interface FederationBuilder<
+  TContextData,
+> extends Federatable<TContextData> {
   /**
    * Builds the federation object.
    * @param options Parameters for initializing the federation object.
@@ -1909,15 +1882,8 @@ export interface CustomCollectionCallbackSetters<
    * @returns The setters object so that settings can be chained.
    */
   setCounter(
-    counter: CustomCollectionCounter<
-      TParam,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    TContext,
-    TContextData
-  >;
+    counter: CustomCollectionCounter<TParam, TContextData>,
+  ): CustomCollectionCallbackSetters<TParam, TContext, TContextData>;
 
   /**
    * Sets the first cursor for the custom collection.
@@ -1925,16 +1891,8 @@ export interface CustomCollectionCallbackSetters<
    * @returns The setters object so that settings can be chained.
    */
   setFirstCursor(
-    cursor: CustomCollectionCursor<
-      TParam,
-      TContext,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    TContext,
-    TContextData
-  >;
+    cursor: CustomCollectionCursor<TParam, TContext, TContextData>,
+  ): CustomCollectionCallbackSetters<TParam, TContext, TContextData>;
 
   /**
    * Sets the last cursor for the custom collection.
@@ -1942,16 +1900,8 @@ export interface CustomCollectionCallbackSetters<
    * @returns The setters object so that settings can be chained.
    */
   setLastCursor(
-    cursor: CustomCollectionCursor<
-      TParam,
-      TContext,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    TContext,
-    TContextData
-  >;
+    cursor: CustomCollectionCursor<TParam, TContext, TContextData>,
+  ): CustomCollectionCallbackSetters<TParam, TContext, TContextData>;
 
   /**
    * Specifies the conditions under which requests are authorized.
@@ -1961,11 +1911,7 @@ export interface CustomCollectionCallbackSetters<
    */
   authorize(
     predicate: ObjectAuthorizePredicate<TContextData, string>,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    TContext,
-    TContextData
-  >;
+  ): CustomCollectionCallbackSetters<TParam, TContext, TContextData>;
 
   /**
    * Maps the custom collection to the actor that owns it, so that it is also
@@ -1983,11 +1929,7 @@ export interface CustomCollectionCallbackSetters<
    */
   mapPortableOwner(
     mapper: PortableCollectionOwnerMapper<TContextData, TParam>,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    TContext,
-    TContextData
-  >;
+  ): CustomCollectionCallbackSetters<TParam, TContext, TContextData>;
 }
 
 /**

@@ -319,10 +319,7 @@ export async function lookupObject(
   options: LookupObjectOptions = {},
 ): Promise<Object | null> {
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
-  const tracer = tracerProvider.getTracer(
-    metadata.name,
-    metadata.version,
-  );
+  const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   return await tracer.startActiveSpan(
     "activitypub.lookup_object",
     async (span) => {
@@ -384,7 +381,8 @@ async function lookupObjectInternal(
   identifier: string | URL,
   options: LookupObjectOptions = {},
 ): Promise<Object | null> {
-  const documentLoader = options.documentLoader ??
+  const documentLoader =
+    options.documentLoader ??
     getDocumentLoader({ userAgent: options.userAgent });
   const portable: PortableLookup = {
     options,
@@ -403,7 +401,8 @@ async function lookupObjectInternal(
     if (
       options.verifyPortableObject != null &&
       parseCompatibleEf61Reference(identifier) === null
-    ) return null;
+    )
+      return null;
     identifier = toAcctUrl(identifier) ?? parseIri(identifier);
   }
   if (isPortableIri(identifier)) {
@@ -421,11 +420,9 @@ async function lookupObjectInternal(
     const compatible = getCompatibleCandidate(identifier.href, options);
     if (compatible !== undefined) {
       if (compatible == null) return null;
-      return await lookupPortableObject(
-        portable,
-        compatible.id,
-        [compatible.gateway],
-      );
+      return await lookupPortableObject(portable, compatible.id, [
+        compatible.gateway,
+      ]);
     }
     try {
       remoteDoc = await documentLoader(identifier.href, {
@@ -444,7 +441,8 @@ async function lookupObjectInternal(
       userAgent: options.userAgent,
       tracerProvider: options.tracerProvider,
       meterProvider: options.meterProvider,
-      allowPrivateAddress: "allowPrivateAddress" in options &&
+      allowPrivateAddress:
+        "allowPrivateAddress" in options &&
         options.allowPrivateAddress === true,
       signal: options.signal,
     });
@@ -452,11 +450,14 @@ async function lookupObjectInternal(
     const webFingerGateway = getWebFingerGateway(identifier);
     for (const l of jrd.links) {
       if (
-        l.type !== "application/activity+json" &&
+        (l.type !== "application/activity+json" &&
           !l.type?.match(
             /application\/ld\+json;\s*profile="https:\/\/www.w3.org\/ns\/activitystreams"/,
-          ) || l.rel !== "self" || l.href == null
-      ) continue;
+          )) ||
+        l.rel !== "self" ||
+        l.href == null
+      )
+        continue;
       if (PORTABLE_IRI_PATTERN.test(l.href)) {
         // FEP-ef61 says the WebFinger host is the actor's first gateway, so
         // ask it first, and then the location hints in the link:
@@ -486,11 +487,9 @@ async function lookupObjectInternal(
       const compatible = getCompatibleCandidate(l.href, options);
       if (compatible !== undefined) {
         if (compatible == null) continue;
-        const object = await lookupPortableObject(
-          portable,
-          compatible.id,
-          [compatible.gateway],
-        );
+        const object = await lookupPortableObject(portable, compatible.id, [
+          compatible.gateway,
+        ]);
         if (object != null) return object;
         if (options.signal?.aborted) return null;
         continue;
@@ -513,9 +512,9 @@ async function lookupObjectInternal(
     options.verifyPortableObject == null && options[lookupObserver] == null
       ? null
       : createSnapshotContextLoader(
-        options.contextLoader ??
-          getDocumentLoader({ userAgent: options.userAgent }),
-      );
+          options.contextLoader ??
+            getDocumentLoader({ userAgent: options.userAgent }),
+        );
   try {
     let object: Object;
     let documentUrl: URL;
@@ -531,10 +530,10 @@ async function lookupObjectInternal(
     } catch (error) {
       options[lookupObserver]?.failed?.({ operation: "parse", error });
       if (error instanceof TypeError) {
-        logger.debug(
-          "Failed to parse JSON-LD document: {error}\n{document}",
-          { ...remoteDoc, error },
-        );
+        logger.debug("Failed to parse JSON-LD document: {error}\n{document}", {
+          ...remoteDoc,
+          error,
+        });
         return null;
       }
       throw error;
@@ -588,14 +587,16 @@ async function lookupObjectInternal(
       return null;
     }
     if (
-      !await acceptCandidate(options[lookupObserver], {
+      !(await acceptCandidate(options[lookupObserver], {
         document: remoteDoc.document,
         documentUrl: remoteDoc.documentUrl,
         baseUrl: documentUrl,
-        contextLoader: snapshot?.loader ?? options.contextLoader ??
+        contextLoader:
+          snapshot?.loader ??
+          options.contextLoader ??
           getDocumentLoader({ userAgent: options.userAgent }),
         object,
-      })
+      }))
     ) {
       return null;
     }
@@ -623,10 +624,10 @@ function getExplicitGateways(
   id: URL,
 ): URL[] | undefined {
   if (lookup.options.gateways == null) return undefined;
-  return lookup.explicitGateways ??= getPortableGatewayCandidates(
+  return (lookup.explicitGateways ??= getPortableGatewayCandidates(
     id,
     lookup.options.gateways,
-  );
+  ));
 }
 
 /**
@@ -639,7 +640,7 @@ function parsePortableCandidate(iri: string): URL | null {
     const parsed = parseIri(iri);
     if (
       canonicalizePortableUri(iri) !==
-        canonicalizePortableUri(formatIri(parsed))
+      canonicalizePortableUri(formatIri(parsed))
     ) {
       logger.debug(
         "Refusing to look up the portable IRI {iri}, as its path cannot be " +
@@ -686,7 +687,8 @@ function getWebFingerGateway(identifier: URL): URL | undefined {
     if (host == null) return undefined;
     url = new URL(`https://${host}/`);
   } else if (
-    identifier.protocol === "http:" || identifier.protocol === "https:"
+    identifier.protocol === "http:" ||
+    identifier.protocol === "https:"
   ) {
     url = new URL(identifier.origin);
   } else {
@@ -718,7 +720,8 @@ async function lookupPortableObject(
     return null;
   }
   const canonicalId = canonicalizePortableUri(iri);
-  const inferred = inferredGateways ??
+  const inferred =
+    inferredGateways ??
     (explicitGateways == null ? getPortableGatewayCandidates(id) : []);
   const candidates = [...inferred];
   for (const gateway of explicitGateways ?? []) {
@@ -751,17 +754,12 @@ async function lookupPortableObject(
   if (selected.length < 1) return null;
   lookup.remaining -= selected.length;
   const selectedInferred = selected.filter((candidate) =>
-    inferred.some((gateway) => gateway.href === candidate.href)
+    inferred.some((gateway) => gateway.href === candidate.href),
   );
   const selectedExplicit = explicitGateways?.filter((gateway) =>
-    selected.some((candidate) => candidate.href === gateway.href)
+    selected.some((candidate) => candidate.href === gateway.href),
   );
-  return await dereference(
-    lookup,
-    id,
-    selectedInferred,
-    selectedExplicit,
-  );
+  return await dereference(lookup, id, selectedInferred, selectedExplicit);
 }
 
 async function dereference(
@@ -775,7 +773,9 @@ async function dereference(
   try {
     return await dereferencePortableIri(id, {
       documentLoader,
-      contextLoader: extra.contextLoader ?? options.contextLoader ??
+      contextLoader:
+        extra.contextLoader ??
+        options.contextLoader ??
         getDocumentLoader({ userAgent: options.userAgent }),
       tracerProvider,
       // Preserve where the gateways came from for the verifier:
@@ -797,10 +797,10 @@ async function dereference(
     });
   } catch (error) {
     if (error instanceof PortableObjectRejectedError) throw error;
-    logger.debug(
-      "Failed to look up the portable object {iri}:\n{error}",
-      { iri: formatIri(id), error },
-    );
+    logger.debug("Failed to look up the portable object {iri}:\n{error}", {
+      iri: formatIri(id),
+      error,
+    });
     return null;
   }
 }
@@ -898,8 +898,9 @@ export async function* traverseCollection(
   collection: Collection,
   options: TraverseCollectionOptions = {},
 ): AsyncIterable<Object | Link> {
-  const interval = Temporal.Duration.from(options.interval ?? { seconds: 0 })
-    .total("millisecond");
+  const interval = Temporal.Duration.from(
+    options.interval ?? { seconds: 0 },
+  ).total("millisecond");
   let page = await collection.getFirst(options);
   if (page == null) {
     for await (const item of collection.getItems(options)) {

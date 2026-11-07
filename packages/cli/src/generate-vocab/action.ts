@@ -5,9 +5,10 @@ import { stat } from "node:fs/promises";
 import process from "node:process";
 import type { GenerateVocabCommand } from "./command.ts";
 
-export default async function runGenerateVocab(
-  { schemaDir, generatedPath }: GenerateVocabCommand,
-) {
+export default async function runGenerateVocab({
+  schemaDir,
+  generatedPath,
+}: GenerateVocabCommand) {
   if (!(await stat(schemaDir)).isDirectory()) {
     printError(message`${schemaDir} is not a directory.`);
     process.exit(1);

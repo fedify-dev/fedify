@@ -30,7 +30,7 @@ const nuxtDescription: WebFrameworkDescription = {
     format: {
       ignorePatterns: [".output/**"],
     },
-    env: testMode ? { HOST: "127.0.0.1" } : {} as Record<string, string>,
+    env: testMode ? { HOST: "127.0.0.1" } : ({} as Record<string, string>),
     files: {
       "nuxt.config.ts": await readTemplate("nuxt/nuxt.config.ts"),
       "server/plugins/logging.ts": await readTemplate(
@@ -71,17 +71,17 @@ const getNuxtInitCommand = (pm: PackageManager): string[] =>
   pm === "bun"
     ? ["bunx", "nuxi"]
     : pm === "deno"
-    ? ["deno", "-A", "npm:nuxi@latest"]
-    : pm === "npm"
-    ? ["npx", "nuxi"]
-    : [pm, "dlx", "nuxi"];
+      ? ["deno", "-A", "npm:nuxi@latest"]
+      : pm === "npm"
+        ? ["npx", "nuxi"]
+        : [pm, "dlx", "nuxi"];
 
 const getDeps = (pm: PackageManager): Record<string, string> =>
   pm !== "deno"
     ? {
-      "@fedify/nuxt": PACKAGE_VERSION,
-    }
+        "@fedify/nuxt": PACKAGE_VERSION,
+      }
     : {
-      ...defaultDenoDependencies,
-      "@fedify/nuxt": PACKAGE_VERSION,
-    };
+        ...defaultDenoDependencies,
+        "@fedify/nuxt": PACKAGE_VERSION,
+      };

@@ -48,16 +48,14 @@ async function withProject(run: (root: string) => Promise<void>) {
       join(root, "node_modules"),
       "junction",
     );
-    for (
-      const name of [
-        "check_versions.ts",
-        "check_fixture_usage.ts",
-        "check_workspace_protocol.ts",
-        "generate_packages_table.ts",
-        "tooling_main.ts",
-        "tooling_fs.ts",
-      ]
-    ) {
+    for (const name of [
+      "check_versions.ts",
+      "check_fixture_usage.ts",
+      "check_workspace_protocol.ts",
+      "generate_packages_table.ts",
+      "tooling_main.ts",
+      "tooling_fs.ts",
+    ]) {
       await copyFile(join(scriptsDir, name), join(root, "scripts", name));
     }
     await run(root);
@@ -70,15 +68,15 @@ function runScript(root: string, script: string, args: string[] = []) {
   return new Promise<{ code: number | null; stdout: string; stderr: string }>(
     (resolve, reject) => {
       const node = "deno" in process.versions ? "node" : process.execPath;
-      const child = spawn(node, [
-        "--experimental-strip-types",
-        join(root, "scripts", script),
-        ...args,
-      ], { cwd: root, stdio: ["ignore", "pipe", "pipe"] });
+      const child = spawn(
+        node,
+        ["--experimental-strip-types", join(root, "scripts", script), ...args],
+        { cwd: root, stdio: ["ignore", "pipe", "pipe"] },
+      );
       let stdout = "";
       let stderr = "";
-      child.stdout.setEncoding("utf8").on("data", (chunk) => stdout += chunk);
-      child.stderr.setEncoding("utf8").on("data", (chunk) => stderr += chunk);
+      child.stdout.setEncoding("utf8").on("data", (chunk) => (stdout += chunk));
+      child.stderr.setEncoding("utf8").on("data", (chunk) => (stderr += chunk));
       child.once("error", reject);
       child.once("close", (code) => resolve({ code, stdout, stderr }));
     },
@@ -148,23 +146,27 @@ test("scanner CLI runs through a symlinked directory", async () => {
   });
 });
 
-test("scanner CLI runs through a symlinked entry file", {
-  skip: process.platform === "win32",
-}, async () => {
-  await withProject(async (root) => {
-    await writeFile(
-      join(root, "packages", "fedify", "src", "violation.ts"),
-      'import "@fedify/fixture";',
-    );
-    await symlink(
-      join(root, "scripts", "check_fixture_usage.ts"),
-      join(root, "scripts", "linked.ts"),
-    );
-    const result = await runScript(root, "linked.ts");
-    deepStrictEqual(result.code, 1);
-    match(result.stderr, /violation\.ts/);
-  });
-});
+test(
+  "scanner CLI runs through a symlinked entry file",
+  {
+    skip: process.platform === "win32",
+  },
+  async () => {
+    await withProject(async (root) => {
+      await writeFile(
+        join(root, "packages", "fedify", "src", "violation.ts"),
+        'import "@fedify/fixture";',
+      );
+      await symlink(
+        join(root, "scripts", "check_fixture_usage.ts"),
+        join(root, "scripts", "linked.ts"),
+      );
+      const result = await runScript(root, "linked.ts");
+      deepStrictEqual(result.code, 1);
+      match(result.stderr, /violation\.ts/);
+    });
+  },
+);
 
 test("package table CLI keeps table and link formats separate", async () => {
   await withProject(async (root) => {
@@ -186,10 +188,12 @@ test("package table CLI keeps table and link formats separate", async () => {
     );
     doesNotMatch(links.stdout, /\| Package/);
     deepStrictEqual(
-      (await runScript(root, "generate_packages_table.ts", [
-        "--format=invalid",
-        "1.0.0",
-      ])).code,
+      (
+        await runScript(root, "generate_packages_table.ts", [
+          "--format=invalid",
+          "1.0.0",
+        ])
+      ).code,
       1,
     );
     deepStrictEqual(

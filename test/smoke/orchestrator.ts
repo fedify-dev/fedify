@@ -31,10 +31,7 @@ const POLL_TIMEOUT_MS = 90_000;
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function poll<T>(
-  label: string,
-  fn: () => Promise<T | null>,
-): Promise<T> {
+async function poll<T>(label: string, fn: () => Promise<T | null>): Promise<T> {
   const deadline = Date.now() + POLL_TIMEOUT_MS;
   let lastError: unknown = null;
   while (Date.now() < deadline) {
@@ -46,9 +43,8 @@ async function poll<T>(
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }
-  const suffix = lastError instanceof Error
-    ? ` (last error: ${lastError.message})`
-    : "";
+  const suffix =
+    lastError instanceof Error ? ` (last error: ${lastError.message})` : "";
   throw new Error(`Timed out waiting for: ${label}${suffix}`);
 }
 
@@ -66,7 +62,7 @@ async function snapshotInboxIds(): Promise<Set<string>> {
     const body = await res.text();
     throw new Error(`Harness inbox fetch failed → ${res.status}: ${body}`);
   }
-  const items = await res.json() as InboxItem[];
+  const items = (await res.json()) as InboxItem[];
   return new Set(items.map((a) => a.id));
 }
 
@@ -81,11 +77,11 @@ function pollHarnessInbox(
         `Harness inbox poll failed → ${res.status}: ${await res.text()}`,
       );
     }
-    const items = await res.json() as InboxItem[];
-    return items.find((a) =>
-      a.type === activityType &&
-      (!filter || filter(a))
-    ) ?? null;
+    const items = (await res.json()) as InboxItem[];
+    return (
+      items.find((a) => a.type === activityType && (!filter || filter(a))) ??
+      null
+    );
   });
 }
 
@@ -160,13 +156,13 @@ async function lookupFedifyAccount(): Promise<string> {
     // Fall back to /api/v1/accounts/lookup (exact match, supported by Sharkey)
     // if search returns 404.
     try {
-      const results = await serverGet(
-        `/api/v1/accounts/search?q=${
-          encodeURIComponent(`@${handle}`)
-        }&resolve=true&limit=5`,
-      ) as RemoteAccount[];
-      const match = results?.find((a) =>
-        a.acct === handle || a.acct === `@${handle}`
+      const results = (await serverGet(
+        `/api/v1/accounts/search?q=${encodeURIComponent(
+          `@${handle}`,
+        )}&resolve=true&limit=5`,
+      )) as RemoteAccount[];
+      const match = results?.find(
+        (a) => a.acct === handle || a.acct === `@${handle}`,
       );
       if (match) return match;
     } catch {
@@ -175,9 +171,9 @@ async function lookupFedifyAccount(): Promise<string> {
     }
 
     try {
-      const account = await serverGet(
+      const account = (await serverGet(
         `/api/v1/accounts/lookup?acct=${encodeURIComponent(handle)}`,
-      ) as RemoteAccount;
+      )) as RemoteAccount;
       if (account?.id) return account;
     } catch {
       // lookup also failed
@@ -195,7 +191,7 @@ async function lookupFedifyAccount(): Promise<string> {
         body: JSON.stringify({ username: user, host }),
       });
       if (res.ok) {
-        const data = await res.json() as { id?: string };
+        const data = (await res.json()) as { id?: string };
         if (data?.id) return { id: data.id, acct: handle };
       }
     } catch {
@@ -213,9 +209,9 @@ async function assertNotFollowing(
   accountId: string,
   direction: "following" | "followed_by",
 ): Promise<void> {
-  const rels = await serverGet(
+  const rels = (await serverGet(
     `/api/v1/accounts/relationships?id[]=${accountId}`,
-  ) as Relationship[];
+  )) as Relationship[];
   const rel = rels.find((r) => r.id === accountId);
   if (rel && rel[direction]) {
     throw new Error(
@@ -228,9 +224,9 @@ async function ensureNotFollowing(
   accountId: string,
   direction: "following" | "followed_by",
 ): Promise<void> {
-  const rels = await serverGet(
+  const rels = (await serverGet(
     `/api/v1/accounts/relationships?id[]=${accountId}`,
-  ) as Relationship[];
+  )) as Relationship[];
   const rel = rels.find((r) => r.id === accountId);
   if (rel?.[direction]) {
     if (direction === "following") {
@@ -243,9 +239,9 @@ async function ensureNotFollowing(
     }
     // Wait for the relationship to actually clear
     await poll(`${direction} cleared`, async () => {
-      const updated = await serverGet(
+      const updated = (await serverGet(
         `/api/v1/accounts/relationships?id[]=${accountId}`,
-      ) as Relationship[];
+      )) as Relationship[];
       const r = updated.find((r) => r.id === accountId);
       return r && !r[direction] ? r : null;
     });
@@ -270,9 +266,9 @@ async function testFollowMastodonToFedify(): Promise<void> {
   // Check both following=true AND requested=false: the latter only
   // flips once the Accept activity has actually been received.
   await poll("follow accepted", async () => {
-    const rels = await serverGet(
+    const rels = (await serverGet(
       `/api/v1/accounts/relationships?id[]=${accountId}`,
-    ) as Relationship[];
+    )) as Relationship[];
     const rel = rels.find((r) => r.id === accountId);
     return rel?.following && !rel?.requested ? rel : null;
   });
@@ -294,9 +290,9 @@ async function testFollowFedifyToMastodon(): Promise<void> {
   });
 
   await poll("followed_by on Mastodon", async () => {
-    const rels = await serverGet(
+    const rels = (await serverGet(
       `/api/v1/accounts/relationships?id[]=${accountId}`,
-    ) as Relationship[];
+    )) as Relationship[];
     const rel = rels.find((r) => r.id === accountId);
     return rel?.followed_by ? rel : null;
   });
@@ -320,9 +316,9 @@ async function testCreateNote(): Promise<void> {
   type Status = { id: string; content: string };
 
   await poll("note on Mastodon timeline", async () => {
-    const statuses = await serverGet(
+    const statuses = (await serverGet(
       "/api/v1/timelines/home?limit=20",
-    ) as Status[];
+    )) as Status[];
     return statuses.find((s) => s.content.includes(content)) ?? null;
   });
 }
@@ -342,11 +338,10 @@ async function testReply(): Promise<void> {
     account: { acct: string };
   };
   const parent = await poll("find Fedify note to reply to", async () => {
-    const statuses = await serverGet(
+    const statuses = (await serverGet(
       "/api/v1/timelines/home?limit=20",
-    ) as Status[];
-    return statuses.find((s) => s.account.acct.includes(HARNESS_HOST)) ??
-      null;
+    )) as Status[];
+    return statuses.find((s) => s.account.acct.includes(HARNESS_HOST)) ?? null;
   });
 
   const token = `smoke-reply-${crypto.randomUUID()}`;
@@ -392,9 +387,9 @@ async function testUnfollowMastodonFromFedify(): Promise<void> {
 
   // Primary assertion: the server-side relationship must show following=false.
   await poll("unfollow confirmed", async () => {
-    const rels = await serverGet(
+    const rels = (await serverGet(
       `/api/v1/accounts/relationships?id[]=${accountId}`,
-    ) as Relationship[];
+    )) as Relationship[];
     const rel = rels.find((r) => r.id === accountId);
     return rel && !rel.following ? rel : null;
   });
@@ -417,9 +412,9 @@ async function testUnfollowFedifyFromMastodon(): Promise<void> {
   });
 
   await poll("unfollow confirmed on Mastodon", async () => {
-    const rels = await serverGet(
+    const rels = (await serverGet(
       `/api/v1/accounts/relationships?id[]=${accountId}`,
-    ) as Relationship[];
+    )) as Relationship[];
     const rel = rels.find((r) => r.id === accountId);
     return rel && !rel.followed_by ? rel : null;
   });

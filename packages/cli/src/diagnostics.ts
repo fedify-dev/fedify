@@ -56,69 +56,73 @@ export function createLookupDiagnostics(
   let portableFailure: LookupFailure | undefined;
   // The loader failures during the ongoing verification, if any:
   let verificationFailures: LookupFailure[] | undefined;
-  const wrap = (
-    loader: DocumentLoader,
-    source: "object" | "context",
-    record: (failure: LookupFailure | undefined) => void,
-  ): DocumentLoader =>
-  async (url, options) => {
-    try {
-      const document = await loader(url, options);
-      record(undefined);
-      // A failure that the verifier recovered from is not why it failed:
-      if (verificationFailures != null) verificationFailures.length = 0;
-      return document;
-    } catch (error) {
-      const failure = { error, source };
-      record(failure);
-      verificationFailures?.push(failure);
-      throw error;
-    }
-  };
+  const wrap =
+    (
+      loader: DocumentLoader,
+      source: "object" | "context",
+      record: (failure: LookupFailure | undefined) => void,
+    ): DocumentLoader =>
+    async (url, options) => {
+      try {
+        const document = await loader(url, options);
+        record(undefined);
+        // A failure that the verifier recovered from is not why it failed:
+        if (verificationFailures != null) verificationFailures.length = 0;
+        return document;
+      } catch (error) {
+        const failure = { error, source };
+        record(failure);
+        verificationFailures?.push(failure);
+        throw error;
+      }
+    };
   const recordObjectFailure = (failure: LookupFailure | undefined) =>
-    objectFailure = failure;
+    (objectFailure = failure);
   const wrappedContextLoader = wrap(
     contextLoader,
     "context",
-    (e) => contextFailure = e,
+    (e) => (contextFailure = e),
   );
-  const verifyPortableObject = verifierDocumentLoader == null
-    ? undefined
-    : createPortableObjectVerifier(
-      wrap(verifierDocumentLoader, "object", recordObjectFailure),
-      wrappedContextLoader,
-    );
+  const verifyPortableObject =
+    verifierDocumentLoader == null
+      ? undefined
+      : createPortableObjectVerifier(
+          wrap(verifierDocumentLoader, "object", recordObjectFailure),
+          wrappedContextLoader,
+        );
   const verify: CliPortableObjectVerifier | undefined =
-    verifyPortableObject == null ? undefined : async (document, options) => {
-      const id = getDocumentId(document);
-      const failures: LookupFailure[] = [];
-      verificationFailures = failures;
-      try {
-        const result = await verifyPortableObject(document, options);
-        if (result.verified) {
-          portableFailure = undefined;
-        } else if (
-          result.reason.type === "collectionOwnerUnavailable" &&
-          failures.length > 0
-        ) {
-          // Report why the owner could not be retrieved, e.g., a timeout:
-          portableFailure = failures[failures.length - 1];
-        } else {
-          portableFailure = {
-            error: undefined,
-            source: "portable",
-            id,
-            reason: result.reason,
-          };
-        }
-        return result;
-      } catch (error) {
-        portableFailure = { error, source: "portable", id };
-        throw error;
-      } finally {
-        verificationFailures = undefined;
-      }
-    };
+    verifyPortableObject == null
+      ? undefined
+      : async (document, options) => {
+          const id = getDocumentId(document);
+          const failures: LookupFailure[] = [];
+          verificationFailures = failures;
+          try {
+            const result = await verifyPortableObject(document, options);
+            if (result.verified) {
+              portableFailure = undefined;
+            } else if (
+              result.reason.type === "collectionOwnerUnavailable" &&
+              failures.length > 0
+            ) {
+              // Report why the owner could not be retrieved, e.g., a timeout:
+              portableFailure = failures[failures.length - 1];
+            } else {
+              portableFailure = {
+                error: undefined,
+                source: "portable",
+                id,
+                reason: result.reason,
+              };
+            }
+            return result;
+          } catch (error) {
+            portableFailure = { error, source: "portable", id };
+            throw error;
+          } finally {
+            verificationFailures = undefined;
+          }
+        };
   return {
     documentLoader: wrap(documentLoader, "object", recordObjectFailure),
     contextLoader: wrappedContextLoader,
@@ -196,15 +200,16 @@ export async function lookupWithDiagnostics(
     if (object != null) return Object.freeze({ object });
     return Object.freeze({
       object,
-      failure: diagnostics.getPortableFailure() ??
+      failure:
+        diagnostics.getPortableFailure() ??
         diagnostics.getObjectFailure() ??
         diagnostics.getContextFailure() ??
         (verifierDocumentLoader != null && isPortableReference(identifier)
           ? {
-            error: undefined,
-            source: "portable" as const,
-            id: formatIdentifier(identifier),
-          }
+              error: undefined,
+              source: "portable" as const,
+              id: formatIdentifier(identifier),
+            }
           : undefined),
     });
   } catch (error) {
@@ -214,9 +219,9 @@ export async function lookupWithDiagnostics(
       failure: diagnostics.getContextFailure() ??
         diagnostics.getObjectFailure() ??
         diagnostics.getPortableFailure() ?? {
-        error,
-        source: "other" as const,
-      },
+          error,
+          source: "other" as const,
+        },
     });
   }
 }
@@ -268,18 +273,21 @@ function describePortableFailure(failure: LookupFailure): string {
     return `Invalid portable ID: ${id}.`;
   }
   if (failure.problem === "no-gateway") {
-    return `The portable ID ${id} has no @gateway location hints.  ` +
-      "Use the --gateway option to look it up.";
+    return (
+      `The portable ID ${id} has no @gateway location hints.  ` +
+      "Use the --gateway option to look it up."
+    );
   }
   if (failure.reason != null) {
-    const reason = PORTABLE_REJECTION_REASONS[failure.reason.type] ??
-      failure.reason.type;
+    const reason =
+      PORTABLE_REJECTION_REASONS[failure.reason.type] ?? failure.reason.type;
     return `Rejected the portable object ${id}, as ${reason}.`;
   }
   if (failure.error != null) {
-    const error = failure.error instanceof Error
-      ? failure.error.message
-      : String(failure.error);
+    const error =
+      failure.error instanceof Error
+        ? failure.error.message
+        : String(failure.error);
     return `Failed to verify the portable object ${id}: ${error}`;
   }
   return `No gateway returned a valid portable object for ${id}.`;
@@ -310,15 +318,19 @@ export function describeLookupFailure(
   const error = failure?.error;
   // FetchError has no status field. Match only the loader's exact format,
   // using the raw URL twice rather than its potentially normalized URL.href.
-  const http = error instanceof FetchError
-    ? /^(.+): HTTP (\d{3}): \1$/s.exec(error.message)
-    : null;
+  const http =
+    error instanceof FetchError
+      ? /^(.+): HTTP (\d{3}): \1$/s.exec(error.message)
+      : null;
   if (http != null) {
     const status = Number(http[2]);
-    const suggestsAuthorizedFetch = failure?.source === "object" &&
-      !authorizedFetch && [401, 403, 404].includes(status);
+    const suggestsAuthorizedFetch =
+      failure?.source === "object" &&
+      !authorizedFetch &&
+      [401, 403, 404].includes(status);
     return {
-      message: escapeControlCharacters(`HTTP ${status} from ${http[1]}.`) +
+      message:
+        escapeControlCharacters(`HTTP ${status} from ${http[1]}.`) +
         (suggestsAuthorizedFetch
           ? "  It may be a private object.  Try with -a/--authorized-fetch."
           : ""),
@@ -332,11 +344,13 @@ export function describeLookupFailure(
     seen.add(cause);
     causes.push(cause);
     if (
-      cause instanceof UrlError && cause.reason === "dns" ||
-      cause instanceof TypeError &&
-        /dns error|failed to lookup address information/i.test(cause.message) ||
-      "code" in cause &&
-        (cause.code === "ENOTFOUND" || cause.code === "EAI_AGAIN")
+      (cause instanceof UrlError && cause.reason === "dns") ||
+      (cause instanceof TypeError &&
+        /dns error|failed to lookup address information/i.test(
+          cause.message,
+        )) ||
+      ("code" in cause &&
+        (cause.code === "ENOTFOUND" || cause.code === "EAI_AGAIN"))
     ) {
       return {
         message:
@@ -351,8 +365,8 @@ export function describeLookupFailure(
       causes.length > 0
         ? causes.map((e) => e.message).join(": ")
         : error == null
-        ? "Could not fetch or parse the object.  Check the URL or actor handle."
-        : String(error),
+          ? "Could not fetch or parse the object.  Check the URL or actor handle."
+          : String(error),
     ),
     suggestsAuthorizedFetch: false,
   };

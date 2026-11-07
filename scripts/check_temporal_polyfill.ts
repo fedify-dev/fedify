@@ -89,7 +89,7 @@ async function exists(path: string): Promise<boolean> {
 async function findTypeScriptCompiler(): Promise<string> {
   const typescriptDir = join(root, "node_modules", "typescript");
   const tsc = join(typescriptDir, "bin", "tsc");
-  if (!await exists(tsc)) {
+  if (!(await exists(tsc))) {
     throw new Error(
       `Could not find the TypeScript compiler at ${tsc}.  ${depsHint}`,
     );
@@ -97,7 +97,7 @@ async function findTypeScriptCompiler(): Promise<string> {
   // TypeScript 6 is the first release that ships the esnext.temporal lib the
   // generated declarations reference; older compilers bury that fact under
   // hundreds of unrelated errors.
-  if (!await exists(join(typescriptDir, "lib", "lib.esnext.temporal.d.ts"))) {
+  if (!(await exists(join(typescriptDir, "lib", "lib.esnext.temporal.d.ts")))) {
     throw new Error(
       `The TypeScript compiler at ${tsc} does not provide the ` +
         `esnext.temporal lib; TypeScript 6 or later is required.  ${depsHint}`,
@@ -107,7 +107,7 @@ async function findTypeScriptCompiler(): Promise<string> {
 }
 
 const nodeTypesDir = join(root, "node_modules", "@types", "node");
-if (!await exists(join(nodeTypesDir, "package.json"))) {
+if (!(await exists(join(nodeTypesDir, "package.json")))) {
   throw new Error(
     `Could not find @types/node at ${nodeTypesDir}.  ${depsHint}`,
   );
@@ -193,24 +193,22 @@ async function prepareTypeConsumerProject(
   );
   await writeFile(
     join(dir, "tsconfig.json"),
-    `${
-      JSON.stringify(
-        {
-          compilerOptions: {
-            target: "ES2022",
-            strict: true,
-            noEmit: true,
-            skipLibCheck: false,
-            lib: ["ESNext", "ESNext.Temporal", "DOM"],
-            types: ["node"],
-            ...compilerOptions,
-          },
-          include: [sourceFile],
+    `${JSON.stringify(
+      {
+        compilerOptions: {
+          target: "ES2022",
+          strict: true,
+          noEmit: true,
+          skipLibCheck: false,
+          lib: ["ESNext", "ESNext.Temporal", "DOM"],
+          types: ["node"],
+          ...compilerOptions,
         },
-        null,
-        2,
-      )
-    }\n`,
+        include: [sourceFile],
+      },
+      null,
+      2,
+    )}\n`,
   );
   await writeFile(
     join(dir, sourceFile),
@@ -286,8 +284,8 @@ async function checkTypeConsumerProject(
       });
       let stdout = "";
       let stderr = "";
-      child.stdout.setEncoding("utf8").on("data", (chunk) => stdout += chunk);
-      child.stderr.setEncoding("utf8").on("data", (chunk) => stderr += chunk);
+      child.stdout.setEncoding("utf8").on("data", (chunk) => (stdout += chunk));
+      child.stderr.setEncoding("utf8").on("data", (chunk) => (stderr += chunk));
       child.once("error", reject);
       child.once("close", (code) => resolve({ code, stdout, stderr }));
     });

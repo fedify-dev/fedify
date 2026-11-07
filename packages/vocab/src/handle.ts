@@ -44,9 +44,7 @@ export interface FediverseHandle {
  *          if the input is valid; otherwise `null`.
  * @since 1.8.0
  */
-export function parseFediverseHandle(
-  handle: string,
-): FediverseHandle | null {
+export function parseFediverseHandle(handle: string): FediverseHandle | null {
   const match = handleRegexp.exec(handle);
   if (match) {
     return {

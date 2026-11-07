@@ -98,11 +98,11 @@ export interface ActivitySpec {
 export type ObjectSource =
   | ScalarOrList<string>
   | {
-    readonly seed: ScalarOrList<string>;
-    readonly collection?: ScalarOrList<string>;
-    readonly limit?: number;
-    readonly type?: ScalarOrList<string>;
-  };
+      readonly seed: ScalarOrList<string>;
+      readonly collection?: ScalarOrList<string>;
+      readonly limit?: number;
+      readonly type?: ScalarOrList<string>;
+    };
 
 /** One weighted entry in a `mixed` scenario. */
 export interface MixEntry {

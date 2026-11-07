@@ -34,14 +34,15 @@ export function getDocumentLoaderCachePrefix(
   ];
 }
 
-export async function getDocumentLoader(
-  { userAgent, allowPrivateAddress = false, timeout }: DocumentLoaderOptions =
-    {},
-): Promise<DocumentLoader> {
+export async function getDocumentLoader({
+  userAgent,
+  allowPrivateAddress = false,
+  timeout,
+}: DocumentLoaderOptions = {}): Promise<DocumentLoader> {
   const cacheKey = `${userAgent ?? ""}:${allowPrivateAddress}:${timeout ?? ""}`;
   if (documentLoaders[cacheKey]) return documentLoaders[cacheKey];
   const kv = await getKvStore();
-  return documentLoaders[cacheKey] = kvCache({
+  return (documentLoaders[cacheKey] = kvCache({
     kv,
     prefix: getDocumentLoaderCachePrefix(userAgent, allowPrivateAddress),
     rules: [
@@ -84,7 +85,7 @@ export async function getDocumentLoader(
       userAgent,
       timeout,
     }),
-  });
+  }));
 }
 
 export function getContextLoader(

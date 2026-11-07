@@ -58,14 +58,17 @@ function classifyKeyJsonLdError(
   }
   if (seen.has(error)) throw error;
   seen.add(error);
-  const details = (error as Error & {
-    details?: { code?: unknown; cause?: unknown; url?: unknown };
-  }).details;
+  const details = (
+    error as Error & {
+      details?: { code?: unknown; cause?: unknown; url?: unknown };
+    }
+  ).details;
   if (typeof details?.code !== "string") return null;
   if (
     details.code !== "loading remote context failed" ||
     (!("cause" in details) && !("cause" in error))
-  ) return "invalid";
+  )
+    return "invalid";
 
   // jsonld wraps both loader errors and JSON.parse failures in InvalidUrl.
   // A bad context body is invalid data; a failed fetch is a lookup failure.
@@ -77,7 +80,8 @@ function classifyKeyJsonLdError(
   if (
     cause instanceof Error &&
     ["AbortError", "TimeoutError", "NetworkError"].includes(cause.name)
-  ) return "fetch";
+  )
+    return "fetch";
   if (cause instanceof TypeError) {
     // The context loader can reject a malformed URL before any fetch occurs.
     // Match the same URL errors as the LD-signature context-loading boundary.
@@ -93,16 +97,17 @@ function classifyKeyJsonLdError(
       // wrapContextLoaderForJsonLd(), keep that a fetch failure rather than
       // attributing it to malformed remote data.
       return typeof details.url === "string" &&
-          /^[A-Za-z][A-Za-z0-9+.-]*:/.test(details.url) &&
-          !URL.canParse(details.url)
+        /^[A-Za-z][A-Za-z0-9+.-]*:/.test(details.url) &&
+        !URL.canParse(details.url)
         ? "invalid"
         : "fetch";
     }
     const networkCause = cause.cause as { code?: unknown } | undefined;
-    const code = (cause as TypeError & { code?: unknown }).code ??
-      networkCause?.code;
+    const code =
+      (cause as TypeError & { code?: unknown }).code ?? networkCause?.code;
     if (
-      typeof code === "string" && [
+      (typeof code === "string" &&
+        [
           "ECONNREFUSED",
           "ECONNRESET",
           "ECONNABORTED",
@@ -115,10 +120,12 @@ function classifyKeyJsonLdError(
           "UND_ERR_HEADERS_TIMEOUT",
           "UND_ERR_BODY_TIMEOUT",
           "UND_ERR_SOCKET",
-        ].includes(code) ||
-      /^(fetch failed|Failed to fetch|error sending request|error reading a body from connection|Unable to connect|ConnectionRefused|Network connection lost|The socket connection was closed unexpectedly)/
-        .test(cause.message)
-    ) return "fetch";
+        ].includes(code)) ||
+      /^(fetch failed|Failed to fetch|error sending request|error reading a body from connection|Unable to connect|ConnectionRefused|Network connection lost|The socket connection was closed unexpectedly)/.test(
+        cause.message,
+      )
+    )
+      return "fetch";
   }
   // Keep the original error and stack for application/loader programming bugs.
   throw cause;
@@ -135,13 +142,16 @@ function contextFetchError(error: unknown): KeyContextFetchError {
   const seen = new Set<unknown>();
   while (error instanceof Error && !seen.has(error)) {
     seen.add(error);
-    const details = (error as Error & {
-      details?: { code?: unknown; cause?: unknown };
-    }).details;
+    const details = (
+      error as Error & {
+        details?: { code?: unknown; cause?: unknown };
+      }
+    ).details;
     if (
       !error.name.startsWith("jsonld.") ||
       details?.code !== "loading remote context failed"
-    ) break;
+    )
+      break;
     error = "cause" in details ? details.cause : error.cause;
   }
   return new KeyContextFetchError(error);
@@ -216,11 +226,10 @@ export function generateCryptoKeyPair(
       ["sign", "verify"],
     );
   } else if (algorithm === "Ed25519") {
-    return crypto.subtle.generateKey(
-      "Ed25519",
-      true,
-      ["sign", "verify"],
-    ) as Promise<CryptoKeyPair>;
+    return crypto.subtle.generateKey("Ed25519", true, [
+      "sign",
+      "verify",
+    ]) as Promise<CryptoKeyPair>;
   }
   throw new TypeError("Unsupported algorithm: " + algorithm);
 }
@@ -464,10 +473,10 @@ async function fetchActorDocumentInternal(
     // that a loader reporting nothing useful falls back to that URL.
     documentUrl = new URL(remoteDocument.documentUrl ?? "", actorId);
   } catch (error) {
-    logger.debug(
-      "Failed to fetch the actor {actorId}: {error}",
-      { actorId: actorId.href, error },
-    );
+    logger.debug("Failed to fetch the actor {actorId}: {error}", {
+      actorId: actorId.href,
+      error,
+    });
     // While a key is being fetched, an owner that cannot be fetched is
     // reported as a failure to fetch the key, so that a temporary outage of
     // the owner's server is not mistaken for a key nobody owns:
@@ -570,9 +579,8 @@ async function verifyKeyOwnershipInternal(
   const logger = getLogger(["fedify", "sig", "key"]);
   const keyId = key.id;
   if (keyId == null) return null;
-  const claimedOwnerId = key instanceof CryptographicKey
-    ? key.ownerId
-    : key.controllerId;
+  const claimedOwnerId =
+    key instanceof CryptographicKey ? key.ownerId : key.controllerId;
   if (claimedOwnerId == null) return null;
   const owner = await fetchActorDocumentInternal(
     claimedOwnerId,
@@ -589,9 +597,10 @@ async function verifyKeyOwnershipInternal(
   }
   // Both directions have to agree: the key points at the owner, and the
   // owner's own document lists the key.
-  const linkedKeyIds = key instanceof CryptographicKey
-    ? owner.publicKeyIds
-    : owner.assertionMethodIds;
+  const linkedKeyIds =
+    key instanceof CryptographicKey
+      ? owner.publicKeyIds
+      : owner.assertionMethodIds;
   for (const linkedKeyId of linkedKeyIds) {
     if (linkedKeyId.href === keyId.href) return owner;
   }
@@ -611,7 +620,7 @@ export interface FetchKeyResult<T extends CryptographicKey | Multikey> {
   /**
    * The fetched (or cached) key.
    */
-  readonly key: T & { publicKey: CryptoKey } | null;
+  readonly key: (T & { publicKey: CryptoKey }) | null;
 
   /**
    * Whether the key is fetched from the cache.
@@ -625,19 +634,20 @@ export interface FetchKeyResult<T extends CryptographicKey | Multikey> {
  */
 export type FetchKeyErrorResult =
   | {
-    readonly status: number;
-    readonly response: Response;
-  }
+      readonly status: number;
+      readonly response: Response;
+    }
   | {
-    readonly error: Error;
-  };
+      readonly error: Error;
+    };
 
 /**
  * The result of {@link fetchKeyDetailed}.
  * @since 2.1.0
  */
-export interface FetchKeyDetailedResult<T extends CryptographicKey | Multikey>
-  extends FetchKeyResult<T> {
+export interface FetchKeyDetailedResult<
+  T extends CryptographicKey | Multikey,
+> extends FetchKeyResult<T> {
   /**
    * The error that occurred while fetching the key, if fetching failed before
    * a document could be parsed.
@@ -733,10 +743,7 @@ export interface CompatibleKeyCache {
  */
 export interface FetchErrorMetadataCache extends KeyCache {
   getFetchError?(keyId: URL): Promise<FetchKeyErrorResult | undefined>;
-  setFetchError?(
-    keyId: URL,
-    error: FetchKeyErrorResult | null,
-  ): Promise<void>;
+  setFetchError?(keyId: URL, error: FetchKeyErrorResult | null): Promise<void>;
   /**
    * Returns a namespace, separate from the shared one and from those of
    * the other purposes, for keys at [FEP-ef61] compatible identifiers looked
@@ -873,10 +880,8 @@ export function fetchKey<T extends CryptographicKey | Multikey>(
   options: FetchKeyOptions = {},
 ): Promise<FetchKeyResult<T>> {
   keyId = typeof keyId === "string" ? parseKeyIdOrThrow(keyId) : keyId;
-  return withFetchKeySpan(
-    keyId,
-    options.tracerProvider,
-    () => fetchKeyInternal(keyId, cls, options),
+  return withFetchKeySpan(keyId, options.tracerProvider, () =>
+    fetchKeyInternal(keyId, cls, options),
   );
 }
 
@@ -910,52 +915,39 @@ export async function fetchKeyDetailed<T extends CryptographicKey | Multikey>(
   options: FetchKeyOptions = {},
 ): Promise<FetchKeyDetailedResult<T>> {
   const cacheKey = typeof keyId === "string" ? parseKeyIdOrThrow(keyId) : keyId;
-  return await withFetchKeySpan(
-    cacheKey,
-    options.tracerProvider,
-    async () => {
-      return await fetchKeyWithResult<T, FetchKeyDetailedResult<T>>(
-        cacheKey,
-        cls,
-        options,
-        async (cacheKey, keyId, keyCache, logger) => {
-          const fetchError = await keyCache?.getFetchError?.(cacheKey);
-          if (fetchError != null) {
-            logger.debug(
-              "Entry {keyId} found in cache with preserved fetch failure " +
-                "details.",
-              { keyId },
-            );
-            return {
-              key: null,
-              cached: true,
-              fetchError,
-            };
-          }
+  return await withFetchKeySpan(cacheKey, options.tracerProvider, async () => {
+    return await fetchKeyWithResult<T, FetchKeyDetailedResult<T>>(
+      cacheKey,
+      cls,
+      options,
+      async (cacheKey, keyId, keyCache, logger) => {
+        const fetchError = await keyCache?.getFetchError?.(cacheKey);
+        if (fetchError != null) {
           logger.debug(
-            "Entry {keyId} found in cache, but no fetch failure details " +
-              "are available.",
+            "Entry {keyId} found in cache with preserved fetch failure " +
+              "details.",
             { keyId },
           );
-          return { key: null, cached: true };
-        },
-        async (error, cacheKey, keyId, keyCache, logger) => {
-          logger.debug("Failed to fetch key {keyId}.", { keyId, error });
-          await keyCache?.set(cacheKey, null);
-          if (error instanceof FetchError && error.response != null) {
-            const fetchError = {
-              status: error.response.status,
-              response: error.response.clone(),
-            } satisfies FetchKeyErrorResult;
-            await keyCache?.setFetchError?.(cacheKey, fetchError);
-            return {
-              key: null,
-              cached: false,
-              fetchError,
-            };
-          }
+          return {
+            key: null,
+            cached: true,
+            fetchError,
+          };
+        }
+        logger.debug(
+          "Entry {keyId} found in cache, but no fetch failure details " +
+            "are available.",
+          { keyId },
+        );
+        return { key: null, cached: true };
+      },
+      async (error, cacheKey, keyId, keyCache, logger) => {
+        logger.debug("Failed to fetch key {keyId}.", { keyId, error });
+        await keyCache?.set(cacheKey, null);
+        if (error instanceof FetchError && error.response != null) {
           const fetchError = {
-            error: error instanceof Error ? error : new Error(String(error)),
+            status: error.response.status,
+            response: error.response.clone(),
           } satisfies FetchKeyErrorResult;
           await keyCache?.setFetchError?.(cacheKey, fetchError);
           return {
@@ -963,10 +955,19 @@ export async function fetchKeyDetailed<T extends CryptographicKey | Multikey>(
             cached: false,
             fetchError,
           };
-        },
-      );
-    },
-  );
+        }
+        const fetchError = {
+          error: error instanceof Error ? error : new Error(String(error)),
+        } satisfies FetchKeyErrorResult;
+        await keyCache?.setFetchError?.(cacheKey, fetchError);
+        return {
+          key: null,
+          cached: false,
+          fetchError,
+        };
+      },
+    );
+  });
 }
 
 async function getCachedFetchKey<T extends CryptographicKey | Multikey>(
@@ -981,10 +982,9 @@ async function getCachedFetchKey<T extends CryptographicKey | Multikey>(
   const hit = checkCachedKeyHit(cachedKey, keyId, cls, logger);
   if (hit != null) return hit;
   if (cachedKey === null) {
-    logger.debug(
-      "Entry {keyId} found in cache, but it is unavailable.",
-      { keyId },
-    );
+    logger.debug("Entry {keyId} found in cache, but it is unavailable.", {
+      keyId,
+    });
     return { key: null, cached: true };
   }
   return null;
@@ -1033,10 +1033,9 @@ async function getCachedCompatibleKey<T extends CryptographicKey | Multikey>(
   const entry = await scopedCache.getEntry(cacheKey);
   if (entry === undefined) return null;
   if (entry === null) {
-    logger.debug(
-      "Entry {keyId} found in cache, but it is unavailable.",
-      { keyId },
-    );
+    logger.debug("Entry {keyId} found in cache, but it is unavailable.", {
+      keyId,
+    });
     return { key: null, cached: true };
   }
   const hit = checkCachedKeyHit(entry.key, keyId, cls, logger);
@@ -1129,9 +1128,11 @@ async function isCachedDidKeyValid(
   verificationMethod: DidKeyVerificationMethod,
 ): Promise<boolean> {
   try {
-    return key.id?.href === verificationMethod.id.href &&
+    return (
+      key.id?.href === verificationMethod.id.href &&
       key.controllerId?.href === verificationMethod.controller.href &&
-      await doRawKeysMatch(key.publicKey, verificationMethod.publicKey);
+      (await doRawKeysMatch(key.publicKey, verificationMethod.publicKey))
+    );
   } catch {
     return false;
   }
@@ -1145,8 +1146,7 @@ async function resolveDidKey<T extends CryptographicKey | Multikey>(
 ): Promise<FetchKeyResult<T> | null> {
   if (!isDidKeyUrl(cacheKey)) return null;
   const keyId = cacheKey.href;
-  const clsIsMultikey = cls ===
-    (Multikey as unknown as FetchableKeyClass<T>);
+  const clsIsMultikey = cls === (Multikey as unknown as FetchableKeyClass<T>);
   if (!clsIsMultikey) {
     logger.debug(
       "Failed to resolve did:key {keyId}; did:key verification methods " +
@@ -1169,7 +1169,7 @@ async function resolveDidKey<T extends CryptographicKey | Multikey>(
   const hit = checkCachedKeyHit(cachedKey, keyId, cls, logger);
   if (
     hit?.key instanceof Multikey &&
-    await isCachedDidKeyValid(hit.key, verificationMethod)
+    (await isCachedDidKeyValid(hit.key, verificationMethod))
   ) {
     return hit;
   }
@@ -1214,10 +1214,11 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     const failure = classifyKeyJsonLdError(e);
     if (failure === "fetch") throw contextFetchError(e);
     if (failure != null) {
-      logger.debug(
-        "Failed to decode key {keyId}: {error}",
-        { keyId, failure, error: e },
-      );
+      logger.debug("Failed to decode key {keyId}: {error}", {
+        keyId,
+        failure,
+        error: e,
+      });
       await keyCache?.set(cacheKey, null);
       await clearFetchErrorMetadata(cacheKey, keyCache);
       return { key: null, cached: false };
@@ -1233,10 +1234,11 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
       const failure = classifyKeyJsonLdError(e);
       if (failure === "fetch") throw contextFetchError(e);
       if (failure != null || e instanceof TypeError) {
-        logger.debug(
-          "Failed to decode key {keyId}: {error}",
-          { keyId, failure: failure ?? "invalid", error: e },
-        );
+        logger.debug("Failed to decode key {keyId}: {error}", {
+          keyId,
+          failure: failure ?? "invalid",
+          error: e,
+        });
         await keyCache?.set(cacheKey, null);
         await clearFetchErrorMetadata(cacheKey, keyCache);
         return { key: null, cached: false };
@@ -1303,9 +1305,10 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     // A standalone key document may leave its id implicit.  The URL it was
     // fetched from is then the only id it has, and the ownership check below
     // needs an id to look for in the owner's document.
-    key = object.id == null
-      ? (object as CryptographicKey).clone({ id: cacheKey }) as T
-      : object;
+    key =
+      object.id == null
+        ? ((object as CryptographicKey).clone({ id: cacheKey }) as T)
+        : object;
   } else if (isActor(object)) {
     // A host may only speak for actor ids on its own origin.  Without this
     // check, anyone serving a key document could dress it up as somebody
@@ -1313,7 +1316,8 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     // A portable actor belongs to no web origin at all; only its DID speaks
     // for it, through the gateway key path above:
     if (
-      object.id == null || isPortableId(object.id) ||
+      object.id == null ||
+      isPortableId(object.id) ||
       object.id.origin !== documentUrl.origin
     ) {
       logger.debug(
@@ -1326,20 +1330,21 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     }
     ownerDocument = object;
     // Treat malformed remote actor keys as missing keys.
-    // @ts-ignore: cls is either CryptographicKey or Multikey
-    const keys = cls === CryptographicKey
-      ? object.getPublicKeys({
-        documentLoader,
-        contextLoader,
-        suppressError: true,
-        tracerProvider,
-      })
-      : object.getAssertionMethods({
-        documentLoader,
-        contextLoader,
-        suppressError: true,
-        tracerProvider,
-      });
+    const keys =
+      // @ts-ignore: cls is either CryptographicKey or Multikey
+      cls === CryptographicKey
+        ? object.getPublicKeys({
+            documentLoader,
+            contextLoader,
+            suppressError: true,
+            tracerProvider,
+          })
+        : object.getAssertionMethods({
+            documentLoader,
+            contextLoader,
+            suppressError: true,
+            tracerProvider,
+          });
     let length = 0;
     let lastKey: T | null = null;
     try {
@@ -1374,19 +1379,17 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
       return { key: null, cached: false };
     }
   } else {
-    logger.debug(
-      "Failed to verify; key {keyId} returned an invalid object.",
-      { keyId },
-    );
+    logger.debug("Failed to verify; key {keyId} returned an invalid object.", {
+      keyId,
+    });
     await keyCache?.set(cacheKey, null);
     await clearFetchErrorMetadata(cacheKey, keyCache);
     return { key: null, cached: false };
   }
   if (key.publicKey == null) {
-    logger.debug(
-      "Failed to verify; key {keyId} has no publicKeyPem field.",
-      { keyId },
-    );
+    logger.debug("Failed to verify; key {keyId} has no publicKeyPem field.", {
+      keyId,
+    });
     await keyCache?.set(cacheKey, null);
     await clearFetchErrorMetadata(cacheKey, keyCache);
     return { key: null, cached: false };
@@ -1396,9 +1399,10 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
   // the very host that served the key, so by itself it says nothing about the
   // actor it names; leaving it unchecked let anyone impersonate any actor.
   // See GHSA-q9f8-5hc7-898f.
-  const claimedOwnerId = key instanceof CryptographicKey
-    ? key.ownerId
-    : (key as Multikey).controllerId;
+  const claimedOwnerId =
+    key instanceof CryptographicKey
+      ? key.ownerId
+      : (key as Multikey).controllerId;
   // One case settles itself without a second document: the caller has bound
   // the key id already (see `FetchKeyOptions.keyIdBoundByCaller`) and the key
   // names that id's own DID as its owner.  A `did:…#fragment` belongs to the
@@ -1406,7 +1410,9 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
   // belongs to that actor—the identifier that led here is the owner—so the
   // claim adds nothing to dereference.  A key naming anyone else falls
   // through to the ordinary check, where it has to stand on its own.
-  const ownedByItsOwnKeyId = keyIdBoundByCaller && claimedOwnerId != null &&
+  const ownedByItsOwnKeyId =
+    keyIdBoundByCaller &&
+    claimedOwnerId != null &&
     claimedOwnerId.href === stripFragment(cacheKey)?.href;
   if (!ownedByItsOwnKeyId) {
     if (claimedOwnerId != null && isPortableId(claimedOwnerId)) {
@@ -1426,9 +1432,10 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
       // The key came out of an actor's own document and names no owner of its
       // own, so that one fetch settled the question.  Record the answer on the
       // key, so that callers—and the key cache—never have to take it up again.
-      key = key instanceof CryptographicKey
-        ? key.clone({ owner: ownerDocument.id! }) as T
-        : (key as Multikey).clone({ controller: ownerDocument.id! }) as T;
+      key =
+        key instanceof CryptographicKey
+          ? (key.clone({ owner: ownerDocument.id! }) as T)
+          : ((key as Multikey).clone({ controller: ownerDocument.id! }) as T);
     } else if (
       claimedOwnerId != null &&
       claimedOwnerId.href !== ownerDocument?.id?.href
@@ -1438,11 +1445,15 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
       // proves nothing, since one origin may serve documents for parties that
       // do not speak for each other.  Either way the named actor has to be
       // resolved and has to link back to the key.
-      const owner = await verifyKeyOwnershipInternal(key, {
-        documentLoader,
-        contextLoader,
-        tracerProvider,
-      }, true);
+      const owner = await verifyKeyOwnershipInternal(
+        key,
+        {
+          documentLoader,
+          contextLoader,
+          tracerProvider,
+        },
+        true,
+      );
       if (owner == null) {
         logger.debug(
           "Failed to verify; the owner {claimedOwnerId} that key {keyId} " +
@@ -1473,9 +1484,8 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
  * again.
  */
 function claimsPortableOwner(key: CryptographicKey | Multikey | null): boolean {
-  const ownerId = key instanceof CryptographicKey
-    ? key.ownerId
-    : key?.controllerId;
+  const ownerId =
+    key instanceof CryptographicKey ? key.ownerId : key?.controllerId;
   return ownerId != null && isPortableId(ownerId);
 }
 
@@ -1535,11 +1545,8 @@ async function fetchKeyWithResult<
     const didKey = await resolveDidKey(cacheKey, cls, keyCache, logger);
     if (didKey != null) {
       outcome = {
-        result: didKey.key == null
-          ? "invalid"
-          : didKey.cached
-          ? "hit"
-          : "fetched",
+        result:
+          didKey.key == null ? "invalid" : didKey.cached ? "hit" : "fetched",
       };
       return didKey as TResult;
     }
@@ -1568,10 +1575,9 @@ async function fetchKeyWithResult<
     let document: unknown;
     let documentUrl: URL = cacheKey;
     try {
-      const remoteDocument =
-        await (options.documentLoader ?? getDocumentLoader())(
-          keyId,
-        );
+      const remoteDocument = await (
+        options.documentLoader ?? getDocumentLoader()
+      )(keyId);
       document = remoteDocument.document;
       documentUrl = new URL(remoteDocument.documentUrl ?? "", cacheKey);
     } catch (error) {
@@ -1694,11 +1700,10 @@ async function fetchCompatibleKey<
   // The shared namespace only has fetch failures of compatible key IDs.  A key
   // found there was cached by an older version that did not tell purposes
   // apart, and is fetched again:
-  if (await sharedCache?.get(cacheKey) === null) {
-    logger.debug(
-      "Entry {keyId} found in cache, but it could not be fetched.",
-      { keyId },
-    );
+  if ((await sharedCache?.get(cacheKey)) === null) {
+    logger.debug("Entry {keyId} found in cache, but it could not be fetched.", {
+      keyId,
+    });
     return {
       result: await onCachedUnavailable(cacheKey, keyId, sharedCache, logger),
       outcome: { result: "hit" },
@@ -1708,8 +1713,9 @@ async function fetchCompatibleKey<
   let document: unknown;
   let documentUrl: URL;
   try {
-    const remoteDocument =
-      await (options.documentLoader ?? getDocumentLoader())(keyId);
+    const remoteDocument = await (
+      options.documentLoader ?? getDocumentLoader()
+    )(keyId);
     document = remoteDocument.document;
     documentUrl = new URL(remoteDocument.documentUrl ?? "", cacheKey);
   } catch (error) {
@@ -1814,11 +1820,10 @@ async function fetchPortableActorKey<
   }
   // The shared namespace only has fetch failures of portable key IDs.  A key
   // found there was not cached by this function, and is resolved again:
-  if (await sharedCache?.get(cacheKey) === null) {
-    logger.debug(
-      "Entry {keyId} found in cache, but it could not be fetched.",
-      { keyId },
-    );
+  if ((await sharedCache?.get(cacheKey)) === null) {
+    logger.debug("Entry {keyId} found in cache, but it could not be fetched.", {
+      keyId,
+    });
     return {
       result: await onCachedUnavailable(cacheKey, keyId, sharedCache, logger),
       outcome: { result: "hit" },
@@ -1900,21 +1905,24 @@ async function fetchKeyInternal<T extends CryptographicKey | Multikey>(
       if (check != null) {
         let result: FetchKeyErrorResult;
         try {
-          result = error instanceof FetchError && error.response != null
-            ? {
-              status: error.response.status,
-              response: error.response.clone(),
-            }
-            : {
-              error: error instanceof Error ? error : new Error(String(error)),
-            };
+          result =
+            error instanceof FetchError && error.response != null
+              ? {
+                  status: error.response.status,
+                  response: error.response.clone(),
+                }
+              : {
+                  error:
+                    error instanceof Error ? error : new Error(String(error)),
+                };
         } catch {
           // A custom loader can provide a response whose body is already used.
           // Collecting evidence must preserve the original verification result.
           result = {
-            error: error instanceof Error
-              ? error
-              : new Error("Unknown verification error"),
+            error:
+              error instanceof Error
+                ? error
+                : new Error("Unknown verification error"),
           };
         }
         check.reason = {

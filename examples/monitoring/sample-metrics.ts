@@ -14,38 +14,31 @@ const httpRequestDuration = meter.createHistogram(
   "fedify.http.server.request.duration",
   { unit: "ms" },
 );
-const queueTaskEnqueued = meter.createCounter(
-  "fedify.queue.task.enqueued",
-  { unit: "{task}" },
-);
-const queueTaskStarted = meter.createCounter(
-  "fedify.queue.task.started",
-  { unit: "{task}" },
-);
-const queueTaskCompleted = meter.createCounter(
-  "fedify.queue.task.completed",
-  { unit: "{task}" },
-);
-const queueTaskFailed = meter.createCounter(
-  "fedify.queue.task.failed",
-  { unit: "{task}" },
-);
-const queueTaskDuration = meter.createHistogram(
-  "fedify.queue.task.duration",
-  { unit: "ms" },
-);
+const queueTaskEnqueued = meter.createCounter("fedify.queue.task.enqueued", {
+  unit: "{task}",
+});
+const queueTaskStarted = meter.createCounter("fedify.queue.task.started", {
+  unit: "{task}",
+});
+const queueTaskCompleted = meter.createCounter("fedify.queue.task.completed", {
+  unit: "{task}",
+});
+const queueTaskFailed = meter.createCounter("fedify.queue.task.failed", {
+  unit: "{task}",
+});
+const queueTaskDuration = meter.createHistogram("fedify.queue.task.duration", {
+  unit: "ms",
+});
 const queueTaskInFlight = meter.createUpDownCounter(
   "fedify.queue.task.in_flight",
   { unit: "{task}" },
 );
-const queueDepth = meter.createObservableGauge(
-  "fedify.queue.depth",
-  { unit: "{message}" },
-);
-const deliverySent = meter.createCounter(
-  "activitypub.delivery.sent",
-  { unit: "{attempt}" },
-);
+const queueDepth = meter.createObservableGauge("fedify.queue.depth", {
+  unit: "{message}",
+});
+const deliverySent = meter.createCounter("activitypub.delivery.sent", {
+  unit: "{attempt}",
+});
 const deliveryPermanentFailure = meter.createCounter(
   "activitypub.delivery.permanent_failure",
   { unit: "{failure}" },
@@ -54,18 +47,16 @@ const deliveryDuration = meter.createHistogram(
   "activitypub.delivery.duration",
   { unit: "ms" },
 );
-const inboxActivity = meter.createCounter(
-  "activitypub.inbox.activity",
-  { unit: "{activity}" },
-);
+const inboxActivity = meter.createCounter("activitypub.inbox.activity", {
+  unit: "{activity}",
+});
 const inboxProcessingDuration = meter.createHistogram(
   "activitypub.inbox.processing_duration",
   { unit: "ms" },
 );
-const outboxActivity = meter.createCounter(
-  "activitypub.outbox.activity",
-  { unit: "{activity}" },
-);
+const outboxActivity = meter.createCounter("activitypub.outbox.activity", {
+  unit: "{activity}",
+});
 const fanoutRecipients = meter.createHistogram(
   "activitypub.fanout.recipients",
   { unit: "{recipient}" },
@@ -86,58 +77,48 @@ const signatureKeyFetchDuration = meter.createHistogram(
   "activitypub.signature.key_fetch.duration",
   { unit: "ms" },
 );
-const keyLookup = meter.createCounter(
-  "activitypub.key.lookup",
-  { unit: "{lookup}" },
-);
+const keyLookup = meter.createCounter("activitypub.key.lookup", {
+  unit: "{lookup}",
+});
 const keyLookupDuration = meter.createHistogram(
   "activitypub.key.lookup.duration",
   { unit: "ms" },
 );
-const documentFetch = meter.createCounter(
-  "activitypub.document.fetch",
-  { unit: "{fetch}" },
-);
+const documentFetch = meter.createCounter("activitypub.document.fetch", {
+  unit: "{fetch}",
+});
 const documentFetchDuration = meter.createHistogram(
   "activitypub.document.fetch.duration",
   { unit: "ms" },
 );
-const objectLookup = meter.createCounter(
-  "activitypub.object.lookup",
-  { unit: "{lookup}" },
-);
-const actorDiscovery = meter.createCounter(
-  "activitypub.actor.discovery",
-  { unit: "{discovery}" },
-);
+const objectLookup = meter.createCounter("activitypub.object.lookup", {
+  unit: "{lookup}",
+});
+const actorDiscovery = meter.createCounter("activitypub.actor.discovery", {
+  unit: "{discovery}",
+});
 const actorDiscoveryDuration = meter.createHistogram(
   "activitypub.actor.discovery.duration",
   { unit: "ms" },
 );
-const webFingerLookup = meter.createCounter(
-  "webfinger.lookup",
-  { unit: "{lookup}" },
-);
+const webFingerLookup = meter.createCounter("webfinger.lookup", {
+  unit: "{lookup}",
+});
 const webFingerLookupDuration = meter.createHistogram(
   "webfinger.lookup.duration",
   { unit: "ms" },
 );
-const webFingerHandle = meter.createCounter(
-  "webfinger.handle",
-  { unit: "{request}" },
-);
+const webFingerHandle = meter.createCounter("webfinger.handle", {
+  unit: "{request}",
+});
 const webFingerHandleDuration = meter.createHistogram(
   "webfinger.handle.duration",
   { unit: "ms" },
 );
-const processMemoryUsage = meter.createObservableGauge(
-  "process.memory.usage",
-  { unit: "By" },
-);
-const processCpuTime = meter.createCounter(
-  "process.cpu.time",
-  { unit: "s" },
-);
+const processMemoryUsage = meter.createObservableGauge("process.memory.usage", {
+  unit: "By",
+});
+const processCpuTime = meter.createCounter("process.cpu.time", { unit: "s" });
 
 type QueueRole = "inbox" | "outbox" | "fanout";
 type QueueState = "queued" | "ready" | "delayed";
@@ -152,15 +133,12 @@ const inFlightValues = new Map<QueueRole, number>(
 queueDepth.addCallback((observableResult) => {
   for (const role of queueRoles) {
     for (const state of queueStates) {
-      observableResult.observe(
-        queueDepthValues.get(`${role}:${state}`) ?? 0,
-        {
-          "fedify.queue.role": role,
-          "fedify.queue.backend": "InProcessMessageQueue",
-          "fedify.queue.depth.state": state,
-          "fedify.federation.instance_id": "sample",
-        },
-      );
+      observableResult.observe(queueDepthValues.get(`${role}:${state}`) ?? 0, {
+        "fedify.queue.role": role,
+        "fedify.queue.backend": "InProcessMessageQueue",
+        "fedify.queue.depth.state": state,
+        "fedify.federation.instance_id": "sample",
+      });
     }
   }
 });
@@ -168,14 +146,12 @@ queueDepth.addCallback((observableResult) => {
 processMemoryUsage.addCallback((observableResult) => {
   const usage = Deno.memoryUsage();
   observableResult.observe(usage.rss, { "process.memory.type": "rss" });
-  observableResult.observe(
-    usage.heapUsed,
-    { "process.memory.type": "heap_used" },
-  );
-  observableResult.observe(
-    usage.heapTotal,
-    { "process.memory.type": "heap_total" },
-  );
+  observableResult.observe(usage.heapUsed, {
+    "process.memory.type": "heap_used",
+  });
+  observableResult.observe(usage.heapTotal, {
+    "process.memory.type": "heap_total",
+  });
 });
 
 let tick = 0;
@@ -224,9 +200,8 @@ function recordHttpMetrics(): void {
     },
   ];
   for (const request of requests) {
-    const statusCode = tick % 31 === 0 && request.endpoint === "inbox"
-      ? 500
-      : 200;
+    const statusCode =
+      tick % 31 === 0 && request.endpoint === "inbox" ? 500 : 200;
     const attrs = {
       "http.request.method": request.method,
       "fedify.endpoint": request.endpoint,
@@ -335,9 +310,8 @@ function recordSignatureAndLookupMetrics(): void {
   });
   signatureKeyFetchDuration.record(18 + wave(0, 7, 5), {
     "activitypub.signature.kind": "http",
-    "activitypub.signature.key_fetch.result": tick % 5 === 0
-      ? "fetched"
-      : "hit",
+    "activitypub.signature.key_fetch.result":
+      tick % 5 === 0 ? "fetched" : "hit",
   });
   if (tick % 37 === 0) {
     signatureVerificationFailure.add(1, {

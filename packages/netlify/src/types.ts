@@ -16,31 +16,27 @@ export interface NetlifyBlobsStore {
       readonly consistency?: "eventual" | "strong";
       readonly type: "json";
     },
-  ): Promise<
-    {
-      readonly data: unknown;
-      readonly etag?: string;
-      readonly metadata: Record<string, unknown>;
-    } | null
-  >;
+  ): Promise<{
+    readonly data: unknown;
+    readonly etag?: string;
+    readonly metadata: Record<string, unknown>;
+  } | null>;
 
   setJSON(
     key: string,
     data: unknown,
-    options?:
-      & {
-        readonly metadata?: Record<string, unknown>;
-      }
-      & (
-        | {
+    options?: {
+      readonly metadata?: Record<string, unknown>;
+    } & (
+      | {
           readonly onlyIfNew?: boolean;
           readonly onlyIfMatch?: never;
         }
-        | {
+      | {
           readonly onlyIfMatch?: string;
           readonly onlyIfNew?: never;
         }
-      ),
+    ),
   ): Promise<{
     readonly etag?: string;
     readonly modified: boolean;

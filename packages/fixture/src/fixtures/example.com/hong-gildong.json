@@ -1,8 +1,6 @@
 {
   "@id": "https://example.com/hong-gildong",
-  "@type": [
-    "https://www.w3.org/ns/activitystreams#Person"
-  ],
+  "@type": ["https://www.w3.org/ns/activitystreams#Person"],
   "https://www.w3.org/ns/activitystreams#name": [
     {
       "@value": "Hong Gildong"

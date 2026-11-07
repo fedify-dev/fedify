@@ -13,30 +13,14 @@ import { assert, assertEquals } from "@std/assert";
 import { encodeHex } from "byte-encodings/hex";
 import { createFederation } from "../federation/middleware.ts";
 import { MemoryKvStore } from "../federation/kv.ts";
-import actor from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/actor.json" with {
-  type: "json",
-};
-import captured from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/request.json" with {
-  type: "json",
-};
-import metadata from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/metadata.json" with {
-  type: "json",
-};
-import rawBodies from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/raw-bodies.json" with {
-  type: "json",
-};
-import liveResponse from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/response.json" with {
-  type: "json",
-};
-import liveListener from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/listener.json" with {
-  type: "json",
-};
-import liveVerification from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/verification.json" with {
-  type: "json",
-};
-import actorResponse from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/actor-response.json" with {
-  type: "json",
-};
+import actor from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/actor.json" with { type: "json" };
+import captured from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/request.json" with { type: "json" };
+import metadata from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/metadata.json" with { type: "json" };
+import rawBodies from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/raw-bodies.json" with { type: "json" };
+import liveResponse from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/response.json" with { type: "json" };
+import liveListener from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/listener.json" with { type: "json" };
+import liveVerification from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/verification.json" with { type: "json" };
+import actorResponse from "../../test-vectors/fep-ef61/mitra-v5.10.0/receive/actor-response.json" with { type: "json" };
 import { verifyRequestDetailed } from "./http.ts";
 import { doesActorOwnKey } from "./owner.ts";
 import { verifyPortableObjectProof } from "./proof.ts";
@@ -120,18 +104,19 @@ async function deliver(requestBody: string) {
     // HTTP time validation is tested separately at the capture time.
     signatureTimeWindow: false,
   });
-  federation.setActorDispatcher(
-    "/users/{identifier}",
-    (ctx, identifier) =>
+  federation
+    .setActorDispatcher("/users/{identifier}", (ctx, identifier) =>
       identifier === "alice"
         ? new Person({
-          id: ctx.getActorUri(identifier),
-          inbox: ctx.getInboxUri(identifier),
-        })
+            id: ctx.getActorUri(identifier),
+            inbox: ctx.getInboxUri(identifier),
+          })
         : null,
-  ).setKeyPairsDispatcher(() => []);
+    )
+    .setKeyPairsDispatcher(() => []);
   const received: Create[] = [];
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .on(Create, (_ctx, create) => {
       received.push(create);
     });
@@ -143,14 +128,8 @@ async function deliver(requestBody: string) {
 
 test("Mitra v5.10.0 forwarded client-proved Create verifies its proof and HTTP signature", async () => {
   const actorBody = rawBodies.actorBody;
-  assertEquals(
-    await sha256(body),
-    metadata.sha256.requestBody,
-  );
-  assertEquals(
-    await sha256(actorBody),
-    metadata.sha256.actorBody,
-  );
+  assertEquals(await sha256(body), metadata.sha256.requestBody);
+  assertEquals(await sha256(actorBody), metadata.sha256.actorBody);
   assertEquals(JSON.parse(actorBody), actor);
   assertEquals(actorResponse.status, 200);
   assertEquals(actorResponse.url, metadata.httpKeyId);
@@ -237,10 +216,12 @@ test("Mitra v5.10.0 forwarded client-proved Create rejects signed header and pat
     false,
   );
   assertEquals(
-    (await verifyRequestDetailed(
-      request(body, `${captured.url}/tampered`),
-      options,
-    )).verified,
+    (
+      await verifyRequestDetailed(
+        request(body, `${captured.url}/tampered`),
+        options,
+      )
+    ).verified,
     false,
   );
 });
@@ -253,10 +234,12 @@ test("Mitra v5.10.0 forwarded client-proved Create rejects a tampered actor proo
     false,
   );
   assertEquals(
-    (await verifyRequestDetailed(request(), {
-      ...options,
-      documentLoader: loader(tampered),
-    })).verified,
+    (
+      await verifyRequestDetailed(request(), {
+        ...options,
+        documentLoader: loader(tampered),
+      })
+    ).verified,
     false,
   );
 });

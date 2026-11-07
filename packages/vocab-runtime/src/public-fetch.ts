@@ -18,9 +18,9 @@ import {
 // Deno's ambient types.  It is only accessed after checking that it exists.
 declare const Deno: {
   readonly permissions: {
-    query(
-      descriptor: { readonly name: "net" },
-    ): Promise<{ readonly state: string }>;
+    query(descriptor: {
+      readonly name: "net";
+    }): Promise<{ readonly state: string }>;
   };
 };
 
@@ -145,7 +145,7 @@ export function createPublicFetch(
     let addresses: readonly ResolvedAddress[];
     if (family !== 0) {
       addresses = [{ address: hostname, family }];
-    } else if (lookup === lookupAllAddresses && !await canResolve()) {
+    } else if (lookup === lookupAllAddresses && !(await canResolve())) {
       // Without the `net` permission on Deno, the hostname cannot be resolved,
       // but fetch() cannot connect to it either:
       return createSession(parsed, globalFetch);
@@ -253,10 +253,10 @@ export function openDirectFetch(
  */
 function cancelResponseBody(response: Response, url: URL): void {
   response.body?.cancel().catch((error) => {
-    logger.debug(
-      "Failed to cancel a response body from {url}: {error}",
-      { url: url.href, error },
-    );
+    logger.debug("Failed to cancel a response body from {url}: {error}", {
+      url: url.href,
+      error,
+    });
   });
 }
 
@@ -305,10 +305,9 @@ function createSession(
     for (const response of tracked) {
       if (response.body == null || response.bodyUsed) continue;
       if (response.body.locked) {
-        logger.debug(
-          "Cannot cancel a locked response body from {url}.",
-          { url: url.href },
-        );
+        logger.debug("Cannot cancel a locked response body from {url}.", {
+          url: url.href,
+        });
         continue;
       }
       cancelResponseBody(response, url);

@@ -11,9 +11,9 @@ class PostStore {
   #timeline: URL[] = [];
   constructor() {}
   #append(posts: Note[]) {
-    for (
-      const p of posts.filter((p) => p.id && !this.#map.has(p.id.toString()))
-    ) {
+    for (const p of posts.filter(
+      (p) => p.id && !this.#map.has(p.id.toString()),
+    )) {
       this.#map.set(p.id!.toString(), p);
       this.#timeline.push(p.id!);
     }
@@ -24,7 +24,8 @@ class PostStore {
   }
   get = this.#get.bind(this);
   #getAll() {
-    return this.#timeline.toReversed()
+    return this.#timeline
+      .toReversed()
       .map((id) => id.toString())
       .map((id) => this.#map.get(id)!)
       .filter((p) => p);

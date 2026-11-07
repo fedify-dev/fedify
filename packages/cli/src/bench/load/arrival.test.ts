@@ -19,19 +19,23 @@ test("scheduleArrivals - constant spacing equals 1/rate", () => {
 
 test("scheduleArrivals - empty for non-positive rate or duration", () => {
   assert.deepEqual(
-    [...scheduleArrivals({
-      ratePerSec: 0,
-      durationMs: 100,
-      arrival: "constant",
-    })],
+    [
+      ...scheduleArrivals({
+        ratePerSec: 0,
+        durationMs: 100,
+        arrival: "constant",
+      }),
+    ],
     [],
   );
   assert.deepEqual(
-    [...scheduleArrivals({
-      ratePerSec: 100,
-      durationMs: 0,
-      arrival: "constant",
-    })],
+    [
+      ...scheduleArrivals({
+        ratePerSec: 100,
+        durationMs: 0,
+        arrival: "constant",
+      }),
+    ],
     [],
   );
 });
@@ -54,11 +58,13 @@ test("scheduleArrivals - poisson mean spacing approximates 1/rate", () => {
 });
 
 test("scheduleArrivals - poisson is reproducible for a given seed", () => {
-  const make = () => [...scheduleArrivals({
-    ratePerSec: 50,
-    durationMs: 1000,
-    arrival: "poisson",
-    rng: createSeededRng(7),
-  })];
+  const make = () => [
+    ...scheduleArrivals({
+      ratePerSec: 50,
+      durationMs: 1000,
+      arrival: "poisson",
+      rng: createSeededRng(7),
+    }),
+  ];
   assert.deepEqual(make(), make());
 });

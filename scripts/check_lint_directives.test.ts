@@ -35,11 +35,13 @@ describe("findProblemsInText()", () => {
   it("rejects a bare disable directive", () => {
     deepStrictEqual(
       findProblemsInText("example.ts", "// oxlint-disable\n", knownRules),
-      [{
-        file: "example.ts",
-        line: 1,
-        message: "bare oxlint-disable must name at least one rule",
-      }],
+      [
+        {
+          file: "example.ts",
+          line: 1,
+          message: "bare oxlint-disable must name at least one rule",
+        },
+      ],
     );
   });
 
@@ -50,11 +52,13 @@ describe("findProblemsInText()", () => {
         "// oxlint-disable-next-line no-such-rule\n",
         knownRules,
       ),
-      [{
-        file: "example.ts",
-        line: 1,
-        message: "unknown Oxlint rule in directive: no-such-rule",
-      }],
+      [
+        {
+          file: "example.ts",
+          line: 1,
+          message: "unknown Oxlint rule in directive: no-such-rule",
+        },
+      ],
     );
   });
 
@@ -98,11 +102,13 @@ describe("findProblemsInText()", () => {
         "const value = 1; // oxlint-disable\n",
         knownRules,
       ),
-      [{
-        file: "example.ts",
-        line: 1,
-        message: "bare oxlint-disable must name at least one rule",
-      }],
+      [
+        {
+          file: "example.ts",
+          line: 1,
+          message: "bare oxlint-disable must name at least one rule",
+        },
+      ],
     );
   });
 
@@ -113,11 +119,13 @@ describe("findProblemsInText()", () => {
         "const value = 1;// oxlint-disable\n",
         knownRules,
       ),
-      [{
-        file: "example.ts",
-        line: 1,
-        message: "bare oxlint-disable must name at least one rule",
-      }],
+      [
+        {
+          file: "example.ts",
+          line: 1,
+          message: "bare oxlint-disable must name at least one rule",
+        },
+      ],
     );
   });
 
@@ -128,11 +136,13 @@ describe("findProblemsInText()", () => {
         'const value = "x"// oxlint-disable\n',
         knownRules,
       ),
-      [{
-        file: "example.ts",
-        line: 1,
-        message: "bare oxlint-disable must name at least one rule",
-      }],
+      [
+        {
+          file: "example.ts",
+          line: 1,
+          message: "bare oxlint-disable must name at least one rule",
+        },
+      ],
     );
   });
 
@@ -165,11 +175,13 @@ describe("findProblemsInText()", () => {
         "export const text = `x`;\n// oxlint-disable\n",
         knownRules,
       ),
-      [{
-        file: "example.ts",
-        line: 2,
-        message: "bare oxlint-disable must name at least one rule",
-      }],
+      [
+        {
+          file: "example.ts",
+          line: 2,
+          message: "bare oxlint-disable must name at least one rule",
+        },
+      ],
     );
   });
 
@@ -191,11 +203,13 @@ describe("findProblemsInText()", () => {
         "export function f() {\n  // oxlint-disable\n}\n",
         knownRules,
       ),
-      [{
-        file: "example.ts",
-        line: 2,
-        message: "bare oxlint-disable must name at least one rule",
-      }],
+      [
+        {
+          file: "example.ts",
+          line: 2,
+          message: "bare oxlint-disable must name at least one rule",
+        },
+      ],
     );
   });
 
@@ -217,11 +231,13 @@ describe("findProblemsInText()", () => {
         "/* eslint-disable */\nexport const value: any = 1;\n",
         knownRules,
       ),
-      [{
-        file: "example.ts",
-        line: 1,
-        message: "bare eslint-disable must name at least one rule",
-      }],
+      [
+        {
+          file: "example.ts",
+          line: 1,
+          message: "bare eslint-disable must name at least one rule",
+        },
+      ],
     );
   });
 
@@ -232,11 +248,13 @@ describe("findProblemsInText()", () => {
         "/* oxlint-disable */\nconst value = 1;\n",
         knownRules,
       ),
-      [{
-        file: "example.ts",
-        line: 1,
-        message: "bare oxlint-disable must name at least one rule",
-      }],
+      [
+        {
+          file: "example.ts",
+          line: 1,
+          message: "bare oxlint-disable must name at least one rule",
+        },
+      ],
     );
   });
 });
@@ -260,14 +278,13 @@ describe("checkLintDirectives()", () => {
         JSON.stringify({ rules: { "typescript/no-explicit-any": "error" } }),
       );
       writeFileSync(join(root, "café.ts"), "// oxlint-disable\n");
-      deepStrictEqual(
-        checkLintDirectives(root, join(root, ".oxlintrc.json")),
-        [{
+      deepStrictEqual(checkLintDirectives(root, join(root, ".oxlintrc.json")), [
+        {
           file: "café.ts",
           line: 1,
           message: "bare oxlint-disable must name at least one rule",
-        }],
-      );
+        },
+      ]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -311,22 +328,18 @@ describe("checkLintDirectives()", () => {
         JSON.stringify({ rules: { "typescript/no-explicit-any": "error" } }),
       );
       mkdirSync(join(root, "packages/vocab/src"), { recursive: true });
-      writeFileSync(
-        join(root, "packages/vocab/src/.gitignore"),
-        "vocab.ts\n",
-      );
+      writeFileSync(join(root, "packages/vocab/src/.gitignore"), "vocab.ts\n");
       writeFileSync(
         join(root, "packages/vocab/src/vocab.ts"),
         "// oxlint-disable\n",
       );
-      deepStrictEqual(
-        checkLintDirectives(root, join(root, ".oxlintrc.json")),
-        [{
+      deepStrictEqual(checkLintDirectives(root, join(root, ".oxlintrc.json")), [
+        {
           file: "packages/vocab/src/vocab.ts",
           line: 1,
           message: "bare oxlint-disable must name at least one rule",
-        }],
-      );
+        },
+      ]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -344,14 +357,13 @@ describe("checkLintDirectives()", () => {
         JSON.stringify({ rules: { "typescript/no-explicit-any": "error" } }),
       );
       writeFileSync(join(root, "new-file.ts"), "// oxlint-disable\n");
-      deepStrictEqual(
-        checkLintDirectives(root, join(root, ".oxlintrc.json")),
-        [{
+      deepStrictEqual(checkLintDirectives(root, join(root, ".oxlintrc.json")), [
+        {
           file: "new-file.ts",
           line: 1,
           message: "bare oxlint-disable must name at least one rule",
-        }],
-      );
+        },
+      ]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

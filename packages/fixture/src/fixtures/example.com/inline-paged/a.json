@@ -2,7 +2,5 @@
   "@context": "https://www.w3.org/ns/activitystreams",
   "type": "CollectionPage",
   "partOf": "https://example.com/inline-paged-collection",
-  "items": [
-    { "type": "Note", "content": "Inline second note" }
-  ]
+  "items": [{ "type": "Note", "content": "Inline second note" }]
 }

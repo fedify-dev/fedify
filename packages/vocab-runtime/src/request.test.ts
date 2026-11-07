@@ -204,19 +204,19 @@ test("isTransientFetchError() classifies aggregate errors by their members", () 
     new FetchError(url, "HTTP 503", new Response(null, { status: 503 }));
   deepStrictEqual(
     isTransientFetchError(
-      new AggregateError([
-        notFound("https://a.example/"),
-        notFound("https://b.example/"),
-      ], "fetch errors"),
+      new AggregateError(
+        [notFound("https://a.example/"), notFound("https://b.example/")],
+        "fetch errors",
+      ),
     ),
     false,
   );
   deepStrictEqual(
     isTransientFetchError(
-      new AggregateError([
-        notFound("https://a.example/"),
-        unavailable("https://b.example/"),
-      ], "fetch errors"),
+      new AggregateError(
+        [notFound("https://a.example/"), unavailable("https://b.example/")],
+        "fetch errors",
+      ),
     ),
     true,
   );

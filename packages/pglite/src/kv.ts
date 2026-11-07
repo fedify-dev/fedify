@@ -15,9 +15,9 @@ function quoteIdentifier(identifier: string): string {
   const parts = identifier.split(".");
   if (parts.includes("")) {
     throw new TypeError(
-      `Invalid table name for the key–value store: ${
-        JSON.stringify(identifier)
-      }`,
+      `Invalid table name for the key–value store: ${JSON.stringify(
+        identifier,
+      )}`,
     );
   }
   return parts.map((part) => `"${part.replaceAll('"', '""')}"`).join(".");
@@ -87,10 +87,7 @@ export class PgliteKvStore implements KvStore {
    * @param pg The caller-owned PGlite instance to use.
    * @param options The options for the key–value store.
    */
-  constructor(
-    pg: PGliteInterface,
-    options: PgliteKvStoreOptions = {},
-  ) {
+  constructor(pg: PGliteInterface, options: PgliteKvStoreOptions = {}) {
     this.#pg = pg;
     this.#tableName = options.tableName ?? "fedify_kv_v2";
     this.#quotedTableName = quoteIdentifier(this.#tableName);
@@ -124,9 +121,10 @@ export class PgliteKvStore implements KvStore {
     options?: KvStoreSetOptions,
   ): Promise<void> {
     await this.initialize();
-    const ttl = options?.ttl == null
-      ? null
-      : Temporal.Duration.from(options.ttl).toString();
+    const ttl =
+      options?.ttl == null
+        ? null
+        : Temporal.Duration.from(options.ttl).toString();
     await this.#pg.query(
       `
       INSERT INTO ${this.#quotedTableName} (key, value, ttl)
@@ -162,12 +160,13 @@ export class PgliteKvStore implements KvStore {
     options?: KvStoreSetOptions,
   ): Promise<boolean> {
     await this.initialize();
-    const ttl = options?.ttl == null
-      ? null
-      : Temporal.Duration.from(options.ttl).toString();
+    const ttl =
+      options?.ttl == null
+        ? null
+        : Temporal.Duration.from(options.ttl).toString();
 
     if (expectedValue === undefined && newValue === undefined) {
-      const matched = await this.get(key) === undefined;
+      const matched = (await this.get(key)) === undefined;
       await this.#expire();
       return matched;
     }
@@ -221,12 +220,7 @@ export class PgliteKvStore implements KvStore {
           AND value = $2::text::jsonb
         RETURNING key;
       `,
-        [
-          key,
-          serializeJson(expectedValue),
-          serializeJson(newValue),
-          ttl,
-        ],
+        [key, serializeJson(expectedValue), serializeJson(newValue), ttl],
       );
       rowCount = result.rows.length;
     }
@@ -239,15 +233,16 @@ export class PgliteKvStore implements KvStore {
   async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
     await this.initialize();
 
-    const result = prefix == null || prefix.length === 0
-      ? await this.#pg.query<{ key: KvKey; value: unknown }>(`
+    const result =
+      prefix == null || prefix.length === 0
+        ? await this.#pg.query<{ key: KvKey; value: unknown }>(`
         SELECT key, value
         FROM ${this.#quotedTableName}
         WHERE ttl IS NULL OR created + ttl > CURRENT_TIMESTAMP
         ORDER BY key;
       `)
-      : await this.#pg.query<{ key: KvKey; value: unknown }>(
-        `
+        : await this.#pg.query<{ key: KvKey; value: unknown }>(
+            `
         SELECT key, value
         FROM ${this.#quotedTableName}
         WHERE array_length(key, 1) >= $1
@@ -255,8 +250,8 @@ export class PgliteKvStore implements KvStore {
           AND (ttl IS NULL OR created + ttl > CURRENT_TIMESTAMP)
         ORDER BY key;
       `,
-        [prefix.length, prefix],
-      );
+            [prefix.length, prefix],
+          );
 
     for (const row of result.rows) yield row;
   }
@@ -297,9 +292,7 @@ export class PgliteKvStore implements KvStore {
    */
   async drop(): Promise<void> {
     await this.#pg.waitReady;
-    await this.#pg.query(
-      `DROP TABLE IF EXISTS ${this.#quotedTableName};`,
-    );
+    await this.#pg.query(`DROP TABLE IF EXISTS ${this.#quotedTableName};`);
     this.#initialized = false;
     this.#initializing = undefined;
   }

@@ -21,30 +21,29 @@ export class InboxObservation {
     "prepare";
   result:
     | Omit<
-      Extract<InboxRequestOutcome, { disposition: "rejected" }>,
-      "type" | "status"
-    >
+        Extract<InboxRequestOutcome, { disposition: "rejected" }>,
+        "type" | "status"
+      >
     | Omit<
-      Extract<InboxRequestOutcome, { disposition: "failed" }>,
-      "type" | "status"
-    >
+        Extract<InboxRequestOutcome, { disposition: "failed" }>,
+        "type" | "status"
+      >
     | {
-      disposition:
-        | "processed"
-        | "enqueued"
-        | "duplicate"
-        | "unhandled"
-        | "customResponse";
-    } = { disposition: "rejected", reason: "recipientNotFound" };
+        disposition:
+          | "processed"
+          | "enqueued"
+          | "duplicate"
+          | "unhandled"
+          | "customResponse";
+      } = { disposition: "rejected", reason: "recipientNotFound" };
   readonly verification: VerificationObservation = {
     attempts: [],
     subject: { id: null, pointer: "" },
     parsedObject: (object) => {
       if (object instanceof Activity) {
         this.activity = object;
-        this.verification.subject!.id = object.id == null
-          ? null
-          : new URL(object.id.href);
+        this.verification.subject!.id =
+          object.id == null ? null : new URL(object.id.href);
       }
     },
   };
@@ -132,11 +131,13 @@ export class InboxObservation {
         ? Object.freeze({ type: "aborted", reason: signal.reason })
         : Object.freeze({ type: "not-aborted" });
     const report: InboxRequestReport = {
-      ...(this.source == null ? {} : {
-        inboxRequestId: this.source.inboxRequestId,
-        requestId: this.source.requestId,
-        local: Object.freeze({ ...this.source.context }),
-      }),
+      ...(this.source == null
+        ? {}
+        : {
+            inboxRequestId: this.source.inboxRequestId,
+            requestId: this.source.requestId,
+            local: Object.freeze({ ...this.source.context }),
+          }),
       requestCancellation,
       inbox: this.inbox,
       payload: this.payload,

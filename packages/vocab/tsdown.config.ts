@@ -19,9 +19,7 @@ async function copyFileSafely(
 
 export default [
   defineConfig({
-    entry: [
-      "./src/mod.ts",
-    ],
+    entry: ["./src/mod.ts"],
     dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
     format: {
       esm: {
@@ -42,8 +40,9 @@ export default [
   }),
   defineConfig({
     outDir: "dist-tests",
-    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
-      .map((f) => f.replace(sep, "/")),
+    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`))).map((f) =>
+      f.replace(sep, "/"),
+    ),
     dts: false,
     deps: { neverBundle: [/^node:/, "@fedify/fixture"] },
     inputOptions: {

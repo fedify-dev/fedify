@@ -43,11 +43,12 @@ function fixture(t, representation = "symlink") {
     }
   }
   checkout();
-  const original = representation === "symlink"
-    ? readlinkSync(skill)
-    : representation === "file"
-    ? readFileSync(skill)
-    : undefined;
+  const original =
+    representation === "symlink"
+      ? readlinkSync(skill)
+      : representation === "file"
+        ? readFileSync(skill)
+        : undefined;
   return {
     cli,
     checkout,

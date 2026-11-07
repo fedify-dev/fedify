@@ -19,9 +19,10 @@ import { UrlError } from "./url.ts";
 // Deno's ambient types.  It is only accessed after checking that it exists.
 declare const Deno: {
   readonly permissions: {
-    query(
-      descriptor: { readonly name: "read"; readonly path: string | URL },
-    ): Promise<{ readonly state: string }>;
+    query(descriptor: {
+      readonly name: "read";
+      readonly path: string | URL;
+    }): Promise<{ readonly state: string }>;
   };
 };
 
@@ -33,8 +34,10 @@ interface PinnedCall {
 }
 
 function createRecordingPinner(
-  respond: (request: Request, index: number) => Response | Promise<Response> =
-    () => new Response("ok"),
+  respond: (
+    request: Request,
+    index: number,
+  ) => Response | Promise<Response> = () => new Response("ok"),
 ) {
   const calls: PinnedCall[] = [];
   const grants: PinGrant[] = [];
@@ -177,20 +180,13 @@ function cancelFailureLogs(
   records: readonly LogRecord[],
 ): [string, unknown, unknown][] {
   return records.flatMap((record) =>
-    record.rawMessage ===
-        "Failed to cancel a response body from {url}: {error}"
-      ? [[
-        record.level,
-        record.properties.url,
-        record.properties.error,
-      ]]
-      : []
+    record.rawMessage === "Failed to cancel a response body from {url}: {error}"
+      ? [[record.level, record.properties.url, record.properties.error]]
+      : [],
   );
 }
 
-async function withMockedGlobalFetch<T>(
-  fn: () => Promise<T>,
-): Promise<T> {
+async function withMockedGlobalFetch<T>(fn: () => Promise<T>): Promise<T> {
   fetchMock.mockGlobal();
   try {
     return await fn();
@@ -216,15 +212,13 @@ test("openPublicFetch() pins IP literal hostnames without lookups", async () => 
     pinner: () => Promise.resolve(recorder.pinner),
     lookup: failingLookup,
   });
-  for (
-    const [url, address] of [
-      ["https://8.8.8.8/", { address: "8.8.8.8", family: 4 }],
-      [
-        "https://[2001:4860:4860::8888]:8443/",
-        { address: "2001:4860:4860::8888", family: 6 },
-      ],
-    ] as const
-  ) {
+  for (const [url, address] of [
+    ["https://8.8.8.8/", { address: "8.8.8.8", family: 4 }],
+    [
+      "https://[2001:4860:4860::8888]:8443/",
+      { address: "2001:4860:4860::8888", family: 6 },
+    ],
+  ] as const) {
     const session = await openPublicFetch(url, { lookup });
     try {
       const response = await session.fetch(url);
@@ -249,10 +243,9 @@ test("openPublicFetch() pins the addresses the lookup returned", async () => {
     pinner: () => Promise.resolve(recorder.pinner),
     lookup: failingLookup,
   });
-  const session = await openPublicFetch(
-    "https://PINNED-HOST.invalid/object",
-    { lookup },
-  );
+  const session = await openPublicFetch("https://PINNED-HOST.invalid/object", {
+    lookup,
+  });
   try {
     deepStrictEqual(session.url.href, "https://pinned-host.invalid/object");
     // The URL is a copy:
@@ -264,15 +257,17 @@ test("openPublicFetch() pins the addresses the lookup returned", async () => {
     await session.close();
   }
   deepStrictEqual(hostnames, ["pinned-host.invalid"]);
-  deepStrictEqual(recorder.calls, [{
-    url: "https://pinned-host.invalid/object",
-    method: "GET",
-    redirect: "manual",
-    addresses: [
-      { address: "8.8.8.8", family: 4 },
-      { address: "2001:4860:4860::8888", family: 6 },
-    ],
-  }]);
+  deepStrictEqual(recorder.calls, [
+    {
+      url: "https://pinned-host.invalid/object",
+      method: "GET",
+      redirect: "manual",
+      addresses: [
+        { address: "8.8.8.8", family: 4 },
+        { address: "2001:4860:4860::8888", family: 6 },
+      ],
+    },
+  ]);
   deepStrictEqual(recorder.released, recorder.grants.slice(0, 1));
 });
 
@@ -412,14 +407,12 @@ test("openPublicFetch() resists DNS rebinding", async () => {
     lookup,
   });
   try {
-    for (
-      const input of [
-        "https://rebinding.invalid/a",
-        new URL("https://rebinding.invalid/b"),
-        new Request("https://rebinding.invalid/c", { method: "POST" }),
-        "https://rebinding.invalid/a",
-      ]
-    ) {
+    for (const input of [
+      "https://rebinding.invalid/a",
+      new URL("https://rebinding.invalid/b"),
+      new Request("https://rebinding.invalid/c", { method: "POST" }),
+      "https://rebinding.invalid/a",
+    ]) {
       const response = await session.fetch(input);
       await response.body?.cancel();
     }
@@ -434,22 +427,46 @@ test("openPublicFetch() resists DNS rebinding", async () => {
       addresses,
     ]),
     [
-      ["https://rebinding.invalid/a", "GET", [{
-        address: "8.8.8.8",
-        family: 4,
-      }]],
-      ["https://rebinding.invalid/b", "GET", [{
-        address: "8.8.8.8",
-        family: 4,
-      }]],
-      ["https://rebinding.invalid/c", "POST", [{
-        address: "8.8.8.8",
-        family: 4,
-      }]],
-      ["https://rebinding.invalid/a", "GET", [{
-        address: "8.8.8.8",
-        family: 4,
-      }]],
+      [
+        "https://rebinding.invalid/a",
+        "GET",
+        [
+          {
+            address: "8.8.8.8",
+            family: 4,
+          },
+        ],
+      ],
+      [
+        "https://rebinding.invalid/b",
+        "GET",
+        [
+          {
+            address: "8.8.8.8",
+            family: 4,
+          },
+        ],
+      ],
+      [
+        "https://rebinding.invalid/c",
+        "POST",
+        [
+          {
+            address: "8.8.8.8",
+            family: 4,
+          },
+        ],
+      ],
+      [
+        "https://rebinding.invalid/a",
+        "GET",
+        [
+          {
+            address: "8.8.8.8",
+            family: 4,
+          },
+        ],
+      ],
     ],
   );
   // All requests of the session share a single grant:
@@ -481,16 +498,14 @@ test("PublicFetchSession.fetch() rejects other origins", async () => {
     lookup,
   });
   try {
-    for (
-      const input of [
-        "http://pinned-host.invalid/a",
-        "https://pinned-host.invalid:8443/a",
-        "https://other-host.invalid/a",
-        "https://8.8.8.8/a",
-        new URL("https://other-host.invalid/a"),
-        new Request("https://other-host.invalid/a"),
-      ]
-    ) {
+    for (const input of [
+      "http://pinned-host.invalid/a",
+      "https://pinned-host.invalid:8443/a",
+      "https://other-host.invalid/a",
+      "https://8.8.8.8/a",
+      new URL("https://other-host.invalid/a"),
+      new Request("https://other-host.invalid/a"),
+    ]) {
       await rejects(() => session.fetch(input), TypeError, String(input));
     }
     deepStrictEqual(recorder.calls, []);
@@ -509,11 +524,12 @@ test("PublicFetchSession.fetch() rejects other origins", async () => {
 test("PublicFetchSession.fetch() never follows redirects", async (t) => {
   await t.step("pinned", async () => {
     const { lookup } = createRecordingLookup(publicAddresses);
-    const recorder = createRecordingPinner(() =>
-      new Response(null, {
-        status: 302,
-        headers: { Location: "https://pinned-host.invalid/target" },
-      })
+    const recorder = createRecordingPinner(
+      () =>
+        new Response(null, {
+          status: 302,
+          headers: { Location: "https://pinned-host.invalid/target" },
+        }),
     );
     const { openPublicFetch } = createPublicFetch({
       pinner: () => Promise.resolve(recorder.pinner),
@@ -524,16 +540,14 @@ test("PublicFetchSession.fetch() never follows redirects", async (t) => {
     });
     try {
       const url = "https://pinned-host.invalid/";
-      for (
-        const [input, init] of [
-          [url, undefined],
-          [url, { redirect: "follow" }],
-          [url, { redirect: "error" }],
-          [new Request(url), undefined],
-          [new Request(url, { redirect: "follow" }), undefined],
-          [new Request(url), { redirect: "follow" }],
-        ] as const
-      ) {
+      for (const [input, init] of [
+        [url, undefined],
+        [url, { redirect: "follow" }],
+        [url, { redirect: "error" }],
+        [new Request(url), undefined],
+        [new Request(url, { redirect: "follow" }), undefined],
+        [new Request(url), { redirect: "follow" }],
+      ] as const) {
         const response = await session.fetch(input, init);
         deepStrictEqual(response.status, 302);
       }
@@ -611,7 +625,7 @@ test("PublicFetchSession.close()", async () => {
   const recorder = createRecordingPinner((_, index) =>
     index < bodies.length
       ? new Response(bodies[index].stream)
-      : new Response(null, { status: 204 })
+      : new Response(null, { status: 204 }),
   );
   const { openPublicFetch } = createPublicFetch({
     pinner: () => Promise.resolve(recorder.pinner),
@@ -628,7 +642,10 @@ test("PublicFetchSession.close()", async () => {
   deepStrictEqual(empty.body, null);
 
   await session.close();
-  deepStrictEqual(bodies.map(({ state }) => state.cancelled), [0, 1, 0]);
+  deepStrictEqual(
+    bodies.map(({ state }) => state.cancelled),
+    [0, 1, 0],
+  );
   ok(unconsumed.bodyUsed);
   deepStrictEqual(recorder.released, [recorder.grants[0]]);
   throws(() => redeemPinGrant(recorder.grants[0], new URL(url)), TypeError);
@@ -638,7 +655,10 @@ test("PublicFetchSession.close()", async () => {
   // Idempotent:
   await session.close();
   deepStrictEqual(recorder.released.length, 1);
-  deepStrictEqual(bodies.map(({ state }) => state.cancelled), [0, 1, 0]);
+  deepStrictEqual(
+    bodies.map(({ state }) => state.cancelled),
+    [0, 1, 0],
+  );
   await reader.cancel();
 });
 
@@ -647,11 +667,11 @@ test("PublicFetchSession.close() logs cancel failures without throwing", async (
 
   function setUp(cancelErrors: readonly (Error | undefined)[]) {
     const bodies = cancelErrors.map((cancelError) =>
-      createTrackedBody({ cancelError })
+      createTrackedBody({ cancelError }),
     );
     const { lookup } = createRecordingLookup(publicAddresses);
-    const recorder = createRecordingPinner((_, index) =>
-      new Response(bodies[index].stream)
+    const recorder = createRecordingPinner(
+      (_, index) => new Response(bodies[index].stream),
     );
     const { openPublicFetch } = createPublicFetch({
       pinner: () => Promise.resolve(recorder.pinner),
@@ -684,7 +704,10 @@ test("PublicFetchSession.close() logs cancel failures without throwing", async (
       await session.fetch(url);
       await session.fetch(url);
       await session.close();
-      deepStrictEqual(bodies.map(({ state }) => state.cancelled), [1, 1]);
+      deepStrictEqual(
+        bodies.map(({ state }) => state.cancelled),
+        [1, 1],
+      );
       await assertClosed(session, recorder);
       await settleCancellations();
     });
@@ -705,7 +728,10 @@ test("PublicFetchSession.close() logs cancel failures without throwing", async (
       await session.fetch(url);
       await session.fetch(url);
       await session.close();
-      deepStrictEqual(bodies.map(({ state }) => state.cancelled), [1, 1]);
+      deepStrictEqual(
+        bodies.map(({ state }) => state.cancelled),
+        [1, 1],
+      );
       await assertClosed(session, recorder);
       await settleCancellations();
     });
@@ -718,7 +744,10 @@ test("PublicFetchSession.close() logs cancel failures without throwing", async (
     const { records } = await captureLogs(async () => {
       const session = await openPublicFetch(url, { lookup });
       const response = await session.fetch(url);
-      await rejects(() => response.body!.cancel(), (e) => e === error);
+      await rejects(
+        () => response.body!.cancel(),
+        (e) => e === error,
+      );
       // A body whose cancellation was attempted is disturbed, so close() does
       // not cancel it again:
       ok(response.bodyUsed);
@@ -735,7 +764,10 @@ test("PublicFetchSession.close() logs cancel failures without throwing", async (
     const { recorder, lookup, openPublicFetch } = setUp([]);
     recorder.failRelease(releaseError);
     const session = await openPublicFetch(url, { lookup });
-    await rejects(() => session.close(), (e) => e === releaseError);
+    await rejects(
+      () => session.close(),
+      (e) => e === releaseError,
+    );
     await assertClosed(session, recorder);
   });
 
@@ -748,7 +780,10 @@ test("PublicFetchSession.close() logs cancel failures without throwing", async (
       const session = await openPublicFetch(url, { lookup });
       await session.fetch(url);
       // Only the release error is thrown; the cancel error is only logged:
-      await rejects(() => session.close(), (e) => e === releaseError);
+      await rejects(
+        () => session.close(),
+        (e) => e === releaseError,
+      );
       deepStrictEqual(bodies[0].state.cancelled, 1);
       await assertClosed(session, recorder);
       await settleCancellations();
@@ -760,9 +795,7 @@ test("PublicFetchSession.close() logs cancel failures without throwing", async (
 test("PublicFetchSession.close() does not wait for body cancellation", async (t) => {
   const url = "https://pinned-host.invalid/";
 
-  async function assertCloseSettles(
-    respond: () => Response,
-  ): Promise<number> {
+  async function assertCloseSettles(respond: () => Response): Promise<number> {
     const { lookup } = createRecordingLookup(publicAddresses);
     const recorder = createRecordingPinner(respond);
     const { openPublicFetch } = createPublicFetch({
@@ -781,15 +814,16 @@ test("PublicFetchSession.close() does not wait for body cancellation", async (t)
 
   await t.step("never-settling cancel", async () => {
     const cancelled: unknown[] = [];
-    const calls = await assertCloseSettles(() =>
-      new Response(
-        new ReadableStream({
-          cancel(reason) {
-            cancelled.push(reason);
-            return new Promise<void>(() => {});
-          },
-        }),
-      )
+    const calls = await assertCloseSettles(
+      () =>
+        new Response(
+          new ReadableStream({
+            cancel(reason) {
+              cancelled.push(reason);
+              return new Promise<void>(() => {});
+            },
+          }),
+        ),
     );
     deepStrictEqual(calls, 1);
     deepStrictEqual(cancelled.length, 1);
@@ -852,13 +886,11 @@ test("PublicFetchSession.close() does not wait for body cancellation", async (t)
 test("PublicFetchSession.fetch() cancels responses arriving after close()", async (t) => {
   const url = "https://pinned-host.invalid/";
 
-  async function assertCancelledAfterClose(
-    response: Response,
-  ): Promise<void> {
+  async function assertCancelledAfterClose(response: Response): Promise<void> {
     let respond!: (response: Response) => void;
     const { lookup } = createRecordingLookup(publicAddresses);
-    const recorder = createRecordingPinner(() =>
-      new Promise<Response>((resolve) => respond = resolve)
+    const recorder = createRecordingPinner(
+      () => new Promise<Response>((resolve) => (respond = resolve)),
     );
     const { openPublicFetch } = createPublicFetch({
       pinner: () => Promise.resolve(recorder.pinner),
@@ -934,7 +966,10 @@ test("withPublicFetch()", async (t) => {
       { lookup },
     );
     deepStrictEqual(result, "body");
-    deepStrictEqual(bodies.map(({ state }) => state.cancelled), [0]);
+    deepStrictEqual(
+      bodies.map(({ state }) => state.cancelled),
+      [0],
+    );
     deepStrictEqual(recorder.released.length, 1);
   });
 
@@ -944,14 +979,21 @@ test("withPublicFetch()", async (t) => {
     let fetchInScope: PublicFetchSession["fetch"] | undefined;
     await rejects(
       () =>
-        withPublicFetch(url, async (fetch) => {
-          fetchInScope = fetch;
-          await fetch(url);
-          throw error;
-        }, { lookup }),
+        withPublicFetch(
+          url,
+          async (fetch) => {
+            fetchInScope = fetch;
+            await fetch(url);
+            throw error;
+          },
+          { lookup },
+        ),
       (e) => e === error,
     );
-    deepStrictEqual(bodies.map(({ state }) => state.cancelled), [1]);
+    deepStrictEqual(
+      bodies.map(({ state }) => state.cancelled),
+      [1],
+    );
     deepStrictEqual(recorder.released.length, 1);
     await rejects(() => fetchInScope!(url), TypeError);
   });
@@ -962,7 +1004,10 @@ test("withPublicFetch()", async (t) => {
       () => withPublicFetch(url, (fetch) => fetch(url), { lookup }),
       TypeError,
     );
-    deepStrictEqual(bodies.map(({ state }) => state.cancelled), [1]);
+    deepStrictEqual(
+      bodies.map(({ state }) => state.cancelled),
+      [1],
+    );
     deepStrictEqual(recorder.released.length, 1);
   });
 
@@ -971,12 +1016,16 @@ test("withPublicFetch()", async (t) => {
     let called = false;
     await rejects(
       () =>
-        withPublicFetch(url, () => {
-          called = true;
-          return Promise.resolve();
-        }, {
-          lookup: () => Promise.resolve([{ address: "10.0.0.1", family: 4 }]),
-        }),
+        withPublicFetch(
+          url,
+          () => {
+            called = true;
+            return Promise.resolve();
+          },
+          {
+            lookup: () => Promise.resolve([{ address: "10.0.0.1", family: 4 }]),
+          },
+        ),
       UrlError,
     );
     ok(!called);
@@ -1038,8 +1087,10 @@ function withNavigatorUserAgent<T>(
 }
 
 function isUnpinnedLog(record: LogRecord): boolean {
-  return typeof record.rawMessage === "string" &&
-    record.rawMessage.startsWith("Outbound {protocol} connections are not");
+  return (
+    typeof record.rawMessage === "string" &&
+    record.rawMessage.startsWith("Outbound {protocol} connections are not")
+  );
 }
 
 test("openPublicFetch() uses the global fetch() without a pinner", async () => {
@@ -1054,171 +1105,180 @@ test("openPublicFetch() uses the global fetch() without a pinner", async () => {
   // Simulates Cloudflare Workers so that the runtime and protocol pairs of
   // the debug log are not used by any other test in the process:
   const { records } = await captureLogs(() =>
-    withNavigatorUserAgent(
-      "Cloudflare-Workers",
-      () =>
-        withMockedGlobalFetch(async () => {
-          fetchMock.route("begin:https://unpinned-host.invalid/", "https");
-          fetchMock.route("begin:http://unpinned-host.invalid/", "http");
-          for (const protocol of ["https", "http", "https", "http", "https"]) {
-            const url =
-              `${protocol}://unpinned-host.invalid/${hostnames.length}`;
-            const session = await openPublicFetch(url, { lookup });
-            try {
-              const response = await session.fetch(url);
-              deepStrictEqual(await response.text(), protocol);
-            } finally {
-              await session.close();
-            }
+    withNavigatorUserAgent("Cloudflare-Workers", () =>
+      withMockedGlobalFetch(async () => {
+        fetchMock.route("begin:https://unpinned-host.invalid/", "https");
+        fetchMock.route("begin:http://unpinned-host.invalid/", "http");
+        for (const protocol of ["https", "http", "https", "http", "https"]) {
+          const url = `${protocol}://unpinned-host.invalid/${hostnames.length}`;
+          const session = await openPublicFetch(url, { lookup });
+          try {
+            const response = await session.fetch(url);
+            deepStrictEqual(await response.text(), protocol);
+          } finally {
+            await session.close();
           }
-          // The hostname is not replaced with the address, since there is no
-          // pinner to keep the Host header and the TLS server name:
-          deepStrictEqual(
-            fetchMock.callHistory.calls().map(({ url }) => url),
-            [
-              "https://unpinned-host.invalid/0",
-              "http://unpinned-host.invalid/1",
-              "https://unpinned-host.invalid/2",
-              "http://unpinned-host.invalid/3",
-              "https://unpinned-host.invalid/4",
-            ],
-          );
-          // Addresses are still validated:
-          await rejects(
-            () =>
-              openPublicFetch("https://unpinned-host.invalid/", {
-                lookup: () =>
-                  Promise.resolve([{ address: "127.0.0.1", family: 4 }]),
-              }),
-            UrlError,
-          );
-          deepStrictEqual(fetchMock.callHistory.calls().length, 5);
-        }),
-    )
+        }
+        // The hostname is not replaced with the address, since there is no
+        // pinner to keep the Host header and the TLS server name:
+        deepStrictEqual(
+          fetchMock.callHistory.calls().map(({ url }) => url),
+          [
+            "https://unpinned-host.invalid/0",
+            "http://unpinned-host.invalid/1",
+            "https://unpinned-host.invalid/2",
+            "http://unpinned-host.invalid/3",
+            "https://unpinned-host.invalid/4",
+          ],
+        );
+        // Addresses are still validated:
+        await rejects(
+          () =>
+            openPublicFetch("https://unpinned-host.invalid/", {
+              lookup: () =>
+                Promise.resolve([{ address: "127.0.0.1", family: 4 }]),
+            }),
+          UrlError,
+        );
+        deepStrictEqual(fetchMock.callHistory.calls().length, 5);
+      }),
+    ),
   );
   deepStrictEqual(unsupported.calls, []);
   deepStrictEqual(unsupported.released, []);
   // Logged once per runtime and protocol:
   deepStrictEqual(
-    records.filter(isUnpinnedLog).map((r) => [
-      r.level,
-      r.properties.runtime,
-      r.properties.protocol,
-    ]),
-    [["debug", "cfworkers", "https:"], ["debug", "cfworkers", "http:"]],
+    records
+      .filter(isUnpinnedLog)
+      .map((r) => [r.level, r.properties.runtime, r.properties.protocol]),
+    [
+      ["debug", "cfworkers", "https:"],
+      ["debug", "cfworkers", "http:"],
+    ],
   );
 });
 
-test("openPublicFetch() uses the global fetch() on Deno", {
-  ignore: !("Deno" in globalThis),
-}, async () => {
-  const { lookup, hostnames } = createRecordingLookup(publicAddresses);
-  await withMockedGlobalFetch(async () => {
-    fetchMock.route("https://deno-host.invalid/object", { body: "ok" });
-    for (let i = 0; i < 2; i++) {
+test(
+  "openPublicFetch() uses the global fetch() on Deno",
+  {
+    ignore: !("Deno" in globalThis),
+  },
+  async () => {
+    const { lookup, hostnames } = createRecordingLookup(publicAddresses);
+    await withMockedGlobalFetch(async () => {
+      fetchMock.route("https://deno-host.invalid/object", { body: "ok" });
+      for (let i = 0; i < 2; i++) {
+        const session = await openPublicFetch(
+          "https://deno-host.invalid/object",
+          { lookup },
+        );
+        try {
+          const response = await session.fetch(
+            "https://deno-host.invalid/object",
+            { redirect: "follow" },
+          );
+          deepStrictEqual(await response.text(), "ok");
+        } finally {
+          await session.close();
+        }
+      }
+      const calls = fetchMock.callHistory.calls();
+      deepStrictEqual(
+        calls.map(({ url, args }) => [url, (args[1] as RequestInit).redirect]),
+        [
+          ["https://deno-host.invalid/object", "manual"],
+          ["https://deno-host.invalid/object", "manual"],
+        ],
+      );
+    });
+    deepStrictEqual(hostnames, ["deno-host.invalid", "deno-host.invalid"]);
+    // The debug log is emitted only once per runtime and protocol in a module
+    // instance, and other tests may already have emitted it in this one, so it
+    // is checked in a worker, which has its own module instances.  Workers need
+    // the read permission for their modules, so this is skipped without it
+    // (e.g., `deno task test` of this package):
+    const workerUrl = new URL(
+      "./testdata/public-fetch-deno-worker.ts",
+      import.meta.url,
+    );
+    const permission = await Deno.permissions.query({
+      name: "read",
+      path: workerUrl,
+    });
+    if (permission.state !== "granted") return;
+    const worker = new Worker(workerUrl, { type: "module" });
+    try {
+      const result = await settlesWithin(
+        new Promise((resolve, reject) => {
+          worker.onmessage = (event) => resolve(event.data);
+          worker.onerror = (event) => {
+            event.preventDefault();
+            reject(new Error(event.message));
+          };
+        }),
+        10_000,
+      );
+      deepStrictEqual(result, {
+        calls: [
+          ["https://deno-host.invalid/1", "manual"],
+          ["https://deno-host.invalid/2", "manual"],
+          ["http://deno-host.invalid/3", "manual"],
+        ],
+        hostnames: [
+          "deno-host.invalid",
+          "deno-host.invalid",
+          "deno-host.invalid",
+        ],
+        bodies: ["ok", "ok", "ok"],
+        logs: [
+          ["debug", "deno", "https:"],
+          ["debug", "deno", "http:"],
+        ],
+      });
+    } finally {
+      worker.terminate();
+    }
+  },
+);
+
+test(
+  "openPublicFetch() pins connections on Node.js",
+  {
+    ignore: detectRuntime() !== "node",
+  },
+  async () => {
+    const { lookup, hostnames } = createRecordingLookup(publicAddresses);
+    await withMockedGlobalFetch(async () => {
+      fetchMock.route("https://node-host.invalid/object", { body: "ok" });
       const session = await openPublicFetch(
-        "https://deno-host.invalid/object",
+        "https://node-host.invalid/object",
         { lookup },
       );
       try {
         const response = await session.fetch(
-          "https://deno-host.invalid/object",
+          "https://node-host.invalid/object",
           { redirect: "follow" },
         );
         deepStrictEqual(await response.text(), "ok");
       } finally {
         await session.close();
       }
-    }
-    const calls = fetchMock.callHistory.calls();
-    deepStrictEqual(
-      calls.map(({ url, args }) => [url, (args[1] as RequestInit).redirect]),
-      [
-        ["https://deno-host.invalid/object", "manual"],
-        ["https://deno-host.invalid/object", "manual"],
-      ],
-    );
-  });
-  deepStrictEqual(hostnames, ["deno-host.invalid", "deno-host.invalid"]);
-  // The debug log is emitted only once per runtime and protocol in a module
-  // instance, and other tests may already have emitted it in this one, so it
-  // is checked in a worker, which has its own module instances.  Workers need
-  // the read permission for their modules, so this is skipped without it
-  // (e.g., `deno task test` of this package):
-  const workerUrl = new URL(
-    "./testdata/public-fetch-deno-worker.ts",
-    import.meta.url,
-  );
-  const permission = await Deno.permissions.query({
-    name: "read",
-    path: workerUrl,
-  });
-  if (permission.state !== "granted") return;
-  const worker = new Worker(workerUrl, { type: "module" });
-  try {
-    const result = await settlesWithin(
-      new Promise((resolve, reject) => {
-        worker.onmessage = (event) => resolve(event.data);
-        worker.onerror = (event) => {
-          event.preventDefault();
-          reject(new Error(event.message));
-        };
-      }),
-      10_000,
-    );
-    deepStrictEqual(result, {
-      calls: [
-        ["https://deno-host.invalid/1", "manual"],
-        ["https://deno-host.invalid/2", "manual"],
-        ["http://deno-host.invalid/3", "manual"],
-      ],
-      hostnames: [
-        "deno-host.invalid",
-        "deno-host.invalid",
-        "deno-host.invalid",
-      ],
-      bodies: ["ok", "ok", "ok"],
-      logs: [["debug", "deno", "https:"], ["debug", "deno", "http:"]],
-    });
-  } finally {
-    worker.terminate();
-  }
-});
-
-test("openPublicFetch() pins connections on Node.js", {
-  ignore: detectRuntime() !== "node",
-}, async () => {
-  const { lookup, hostnames } = createRecordingLookup(publicAddresses);
-  await withMockedGlobalFetch(async () => {
-    fetchMock.route("https://node-host.invalid/object", { body: "ok" });
-    const session = await openPublicFetch(
-      "https://node-host.invalid/object",
-      { lookup },
-    );
-    try {
-      const response = await session.fetch(
-        "https://node-host.invalid/object",
-        { redirect: "follow" },
+      // The request is sent with the pinner's undici agent as the dispatcher;
+      // fetch-mock replaces the global fetch(), so the agent is not used here:
+      const calls = fetchMock.callHistory.calls();
+      deepStrictEqual(calls.length, 1);
+      const init = calls[0].args[1] as RequestInit & { dispatcher?: unknown };
+      deepStrictEqual(calls[0].url, "https://node-host.invalid/object");
+      deepStrictEqual(init.redirect, "manual");
+      ok(
+        typeof (init.dispatcher as { dispatch?: unknown } | undefined)
+          ?.dispatch === "function",
+        String(init.dispatcher),
       );
-      deepStrictEqual(await response.text(), "ok");
-    } finally {
-      await session.close();
-    }
-    // The request is sent with the pinner's undici agent as the dispatcher;
-    // fetch-mock replaces the global fetch(), so the agent is not used here:
-    const calls = fetchMock.callHistory.calls();
-    deepStrictEqual(calls.length, 1);
-    const init = calls[0].args[1] as RequestInit & { dispatcher?: unknown };
-    deepStrictEqual(calls[0].url, "https://node-host.invalid/object");
-    deepStrictEqual(init.redirect, "manual");
-    ok(
-      typeof (init.dispatcher as { dispatch?: unknown } | undefined)
-        ?.dispatch === "function",
-      String(init.dispatcher),
-    );
-  });
-  deepStrictEqual(hostnames, ["node-host.invalid"]);
-});
+    });
+    deepStrictEqual(hostnames, ["node-host.invalid"]);
+  },
+);
 
 test("openPublicFetch() rejects fedify-test.internal", async (t) => {
   const url = "https://fedify-test.internal/";
@@ -1251,11 +1311,14 @@ test("openPublicFetch() rejects fedify-test.internal", async (t) => {
         // Both the runtime's openPublicFetch() and one with a recording
         // pinner have no exception for the hostname:
         for (const open of [openPublicFetch, recorded.openPublicFetch]) {
-          await rejects(() => open(url, { lookup }), (error) => {
-            ok(error instanceof UrlError, String(error));
-            deepStrictEqual(error.reason, reason);
-            return true;
-          });
+          await rejects(
+            () => open(url, { lookup }),
+            (error) => {
+              ok(error instanceof UrlError, String(error));
+              deepStrictEqual(error.reason, reason);
+              return true;
+            },
+          );
         }
         deepStrictEqual(fetchMock.callHistory.calls(), []);
       });

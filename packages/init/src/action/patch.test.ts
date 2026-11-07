@@ -17,7 +17,7 @@ test("assertNoGeneratedFileConflicts allows unrelated files", async () => {
     await writeFile(join(dir, "README.md"), "# Example\n");
 
     await assert.doesNotReject(() =>
-      assertNoGeneratedFileConflicts(createInitData(dir, true))
+      assertNoGeneratedFileConflicts(createInitData(dir, true)),
     );
   });
 });
@@ -63,7 +63,7 @@ test("assertNoGeneratedFileConflicts skips checks without allowNonEmpty", async 
     await writeFile(join(dir, "package.json"), "{}\n");
 
     await assert.doesNotReject(() =>
-      assertNoGeneratedFileConflicts(createInitData(dir, false))
+      assertNoGeneratedFileConflicts(createInitData(dir, false)),
     );
   });
 });
@@ -104,10 +104,7 @@ test("patchFiles writes the smoke-test script", async () => {
   });
 });
 
-function createInitData(
-  dir: string,
-  allowNonEmpty: boolean,
-): InitCommandData {
+function createInitData(dir: string, allowNonEmpty: boolean): InitCommandData {
   const data = {
     command: "init",
     projectName: "example",
@@ -149,9 +146,7 @@ function createInitData(
   return data;
 }
 
-async function withTempDir(
-  fn: (dir: string) => Promise<void>,
-): Promise<void> {
+async function withTempDir(fn: (dir: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "fedify-init-patch-"));
   try {
     await fn(dir);

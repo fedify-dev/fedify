@@ -10,10 +10,7 @@ async function withProject(run: (root: string, src: string) => Promise<void>) {
   const root = await mkdtemp(join(tmpdir(), "fedify-scanner-"));
   const src = join(root, "packages", "vocab", "src");
   await mkdir(src, { recursive: true });
-  await writeFile(
-    join(src, "violation.ts"),
-    'import "@fedify/fixture";',
-  );
+  await writeFile(join(src, "violation.ts"), 'import "@fedify/fixture";');
   try {
     await run(root, src);
   } finally {
@@ -65,11 +62,9 @@ it("continues after a directory disappears before descent", async () => {
     mock.method(fileSystem, "readDir", async function* (path: string | URL) {
       if (path === parent) {
         const entries = Array.fromAsync(readDir(path));
-        for (
-          const entry of (await entries).sort((a, b) =>
-            Number(b.name === "gone") - Number(a.name === "gone")
-          )
-        ) {
+        for (const entry of (await entries).sort(
+          (a, b) => Number(b.name === "gone") - Number(a.name === "gone"),
+        )) {
           if (entry.name === "gone") await rm(gone, { recursive: true });
           yield entry;
         }
@@ -91,11 +86,9 @@ it("continues after a temporary source file disappears before reading", async ()
     mock.method(fileSystem, "readDir", async function* (path: string | URL) {
       if (path === src) {
         const entries = await Array.fromAsync(readDir(path));
-        for (
-          const entry of entries.sort((a) =>
-            a.name === "vocab-temporary.ts" ? -1 : 1
-          )
-        ) {
+        for (const entry of entries.sort((a) =>
+          a.name === "vocab-temporary.ts" ? -1 : 1,
+        )) {
           if (entry.name === "vocab-temporary.ts") await rm(gone);
           yield entry;
         }

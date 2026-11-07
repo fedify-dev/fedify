@@ -92,10 +92,7 @@ test("benchCommand - compare mode", () => {
     assert.strictEqual(result.value.head, "HEAD");
     assert.strictEqual(result.value.file, FILE);
     assert.strictEqual(result.value.startCommand, "pnpm dev");
-    assert.strictEqual(
-      result.value.readyUrl,
-      "http://127.0.0.1:3000/health",
-    );
+    assert.strictEqual(result.value.readyUrl, "http://127.0.0.1:3000/health");
     assert.strictEqual(result.value.readyTimeout, "45s");
     assert.strictEqual(result.value.maxRegression, "15%");
     assert.strictEqual(result.value.format, "markdown");

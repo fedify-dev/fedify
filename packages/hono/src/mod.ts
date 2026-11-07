@@ -101,10 +101,11 @@ function integrateFetchOptions<THonoContext extends HonoContext>(
       // Even generic ALL middleware can return the same text as Hono's private
       // not-found handler. A fallback is safe only without downstream handlers.
       if (
-        matchedRoutes == null || routeIndex == null ||
+        matchedRoutes == null ||
+        routeIndex == null ||
         matchedRoutes.length > routeIndex + 1 ||
-        matchedRoutes.some((route) =>
-          route.method !== "ALL" || !route.path.endsWith("*")
+        matchedRoutes.some(
+          (route) => route.method !== "ALL" || !route.path.endsWith("*"),
         )
       ) {
         await next();
@@ -140,8 +141,11 @@ function integrateFetchOptions<THonoContext extends HonoContext>(
         // distinguished from an application-authored replacement.
         defaultNotFound = response === defaultResponse;
       };
-      const observing = res?.get != null && res.set != null &&
-        ownRes?.configurable !== false && text != null;
+      const observing =
+        res?.get != null &&
+        res.set != null &&
+        ownRes?.configurable !== false &&
+        text != null;
       if (observing) {
         context.text = wrappedText;
         Object.defineProperty(ctx, "res", {
@@ -165,22 +169,21 @@ function integrateFetchOptions<THonoContext extends HonoContext>(
       // Hono ignores middleware return values once downstream finalized ctx.
       // Its response setter also copies old headers onto the new response.
       ctx.res = new Response("Not acceptable", { status: 406 });
-      for (
-        const header of [
-          "Content-Encoding",
-          "Content-Language",
-          "Content-Range",
-          "ETag",
-          "Last-Modified",
-          "Transfer-Encoding",
-          "Content-Length",
-        ]
-      ) ctx.res.headers.delete(header);
+      for (const header of [
+        "Content-Encoding",
+        "Content-Language",
+        "Content-Range",
+        "ETag",
+        "Last-Modified",
+        "Transfer-Encoding",
+        "Content-Length",
+      ])
+        ctx.res.headers.delete(header);
       ctx.res.headers.set("Content-Type", "text/plain; charset=utf-8");
       const fields = vary?.split(",").map((field) => field.trim()) ?? [];
       if (
-        !fields.some((field) =>
-          field === "*" || field.toLowerCase() === "accept"
+        !fields.some(
+          (field) => field === "*" || field.toLowerCase() === "accept",
         )
       ) {
         fields.push("Accept");

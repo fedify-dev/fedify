@@ -188,69 +188,73 @@ export interface PropertyPreprocessorSchema {
   function: string;
 }
 
-export type PropertySchemaTyping = {
-  /**
-   * Whether the property value has `@type` field.  If `true`, the `range` must
-   * have only one element.
-   */
-  untyped?: false;
+export type PropertySchemaTyping =
+  | {
+      /**
+       * Whether the property value has `@type` field.  If `true`, the `range` must
+       * have only one element.
+       */
+      untyped?: false;
 
-  /**
-   * The qualified URIs of all possible types of the property values.
-   */
-  range: [TypeUri] | [TypeUri, ...TypeUri[]];
-} | {
-  /**
-   * Whether the property value has `@type` field.  If `true`, the `range` must
-   * have only one element.
-   */
-  untyped: true;
+      /**
+       * The qualified URIs of all possible types of the property values.
+       */
+      range: [TypeUri] | [TypeUri, ...TypeUri[]];
+    }
+  | {
+      /**
+       * Whether the property value has `@type` field.  If `true`, the `range` must
+       * have only one element.
+       */
+      untyped: true;
 
-  /**
-   * The qualified URIs of all possible types of the property values.
-   */
-  range: [TypeUri];
-};
+      /**
+       * The qualified URIs of all possible types of the property values.
+       */
+      range: [TypeUri];
+    };
 
 /**
  * The schema of a property.  It is used to generate property accessors of
  * a class.
  */
 export type PropertySchema =
-  | PropertySchemaBase & PropertySchemaTyping & {
-    /**
-     * Marks the property that it can have only one value.  Turning on this
-     * flag will generate only singular property accessors, so `pluralName`
-     * and `singularAccessor` should not be specified.
-     */
-    functional?: false;
+  | (PropertySchemaBase &
+      PropertySchemaTyping & {
+        /**
+         * Marks the property that it can have only one value.  Turning on this
+         * flag will generate only singular property accessors, so `pluralName`
+         * and `singularAccessor` should not be specified.
+         */
+        functional?: false;
 
-    /**
-     * The plural form of the property name.  It is used as the name of the
-     * generated property accessors.
-     */
-    pluralName: string;
+        /**
+         * The plural form of the property name.  It is used as the name of the
+         * generated property accessors.
+         */
+        pluralName: string;
 
-    /**
-     * Whether to generate singular property accessors.  Regardless of this
-     * flag, plural property accessors are generated (unless `functional` is
-     * turned on).
-     */
-    singularAccessor?: boolean;
+        /**
+         * Whether to generate singular property accessors.  Regardless of this
+         * flag, plural property accessors are generated (unless `functional` is
+         * turned on).
+         */
+        singularAccessor?: boolean;
 
-    /**
-     * The container type of the property values.  It can be unspecified.
-     */
-    container?: "graph" | "list";
-  }
-  | PropertySchemaBase & PropertySchemaTyping & {
-    /**
-     * Marks the property that it can have only one value.  Turning on this
-     * flag will generate only singular property accessors, so `pluralName`
-     * and `singularAccessor` should not be specified.
-     */
-    functional: true;
-  };
+        /**
+         * The container type of the property values.  It can be unspecified.
+         */
+        container?: "graph" | "list";
+      })
+  | (PropertySchemaBase &
+      PropertySchemaTyping & {
+        /**
+         * Marks the property that it can have only one value.  Turning on this
+         * flag will generate only singular property accessors, so `pluralName`
+         * and `singularAccessor` should not be specified.
+         */
+        functional: true;
+      });
 
 /**
  * A JSON-LD context, which is placed in the `@context` property of a JSON-LD
@@ -283,12 +287,13 @@ interface ContainerTermDefinition {
  */
 export function isNonFunctionalProperty(
   property: PropertySchema,
-): property is PropertySchemaBase & PropertySchemaTyping & {
-  functional?: false;
-  pluralName: string;
-  singularAccessor?: boolean;
-  container?: "graph" | "list";
-} {
+): property is PropertySchemaBase &
+  PropertySchemaTyping & {
+    functional?: false;
+    pluralName: string;
+    singularAccessor?: boolean;
+    container?: "graph" | "list";
+  } {
   return property.functional !== true;
 }
 
@@ -297,8 +302,9 @@ export function isNonFunctionalProperty(
  */
 export function hasSingularAccessor(property: PropertySchema): boolean {
   if (property.functional === true) return true;
-  return isNonFunctionalProperty(property) &&
-    property.singularAccessor === true;
+  return (
+    isNonFunctionalProperty(property) && property.singularAccessor === true
+  );
 }
 
 const XSD_STRING_URI = "http://www.w3.org/2001/XMLSchema#string";
@@ -316,9 +322,7 @@ const FEDIFY_VOCAB_ENTITY_TYPE_URI = "fedify:vocabEntityType";
  * @param types The loaded type schemas to validate.
  * @throws {TypeError} Thrown when an unsupported range combination is found.
  */
-export function validateTypeSchemas(
-  types: Record<string, TypeSchema>,
-): void {
+export function validateTypeSchemas(types: Record<string, TypeSchema>): void {
   for (const type of Object.values(types)) {
     for (const property of type.properties) {
       const hasString = property.range.includes(XSD_STRING_URI);
@@ -420,7 +424,8 @@ export async function loadSchemaFiles(
       schema = await loadSchema(path);
     } catch (e) {
       if (
-        e instanceof AggregateError && e.errors.length > 0 &&
+        e instanceof AggregateError &&
+        e.errors.length > 0 &&
         e.errors[0] instanceof SchemaError
       ) {
         errors.push(...e.errors);
@@ -434,6 +439,6 @@ export async function loadSchemaFiles(
     throw new AggregateError(errors, "Failed to load schema files");
   }
   const entries = Object.entries(result);
-  entries.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   return Object.fromEntries(entries);
 }

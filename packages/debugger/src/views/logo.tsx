@@ -26,10 +26,7 @@ export const FedifyLogo: FC<FedifyLogoProps> = ({ size = 24 }) => {
       aria-label="Fedify logo"
     >
       <defs>
-        <clipPath
-          clipPathUnits="userSpaceOnUse"
-          id="fedify-logo-clip"
-        >
+        <clipPath clipPathUnits="userSpaceOnUse" id="fedify-logo-clip">
           <ellipse
             style="fill: #000; stroke: #000; stroke-width: 3.02635; stroke-linejoin: miter; stroke-dasharray: none; stroke-dashoffset: 0; stroke-opacity: 1; paint-order: normal"
             cx="55.92646"
@@ -80,12 +77,7 @@ export const FedifyLogo: FC<FedifyLogoProps> = ({ size = 24 }) => {
             stroke-linecap="round"
             style="fill: none"
           />
-          <circle
-            cx="68.870796"
-            cy="42.8876"
-            r="2.0602801"
-            fill="#000000"
-          />
+          <circle cx="68.870796" cy="42.8876" r="2.0602801" fill="#000000" />
         </g>
         <g
           transform="matrix(0.08160718,0,0,0.08160718,76.994732,53.205469)"

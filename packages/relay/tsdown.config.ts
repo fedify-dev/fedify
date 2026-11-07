@@ -32,8 +32,9 @@ export default [
     },
   }),
   defineConfig({
-    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
-      .map((f) => f.replace(sep, "/")),
+    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`))).map((f) =>
+      f.replace(sep, "/"),
+    ),
     outExtensions({ format }) {
       return {
         js: format === "cjs" ? ".cjs" : ".js",

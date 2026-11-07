@@ -40,12 +40,11 @@ export const recurseProperties = [
   MISSKEY_QUOTE_IRI,
   FEDIBIRD_QUOTE_IRI,
 ] as const;
-export type RecurseProperty = typeof recurseProperties[number];
+export type RecurseProperty = (typeof recurseProperties)[number];
 
 const suppressErrorsOption = bindConfig(
   flag("-S", "--suppress-errors", {
-    description:
-      message`Suppress partial errors during traversal or recursion.`,
+    description: message`Suppress partial errors during traversal or recursion.`,
   }),
   {
     context: configContext,
@@ -79,7 +78,7 @@ export const authorizedFetchOption = withDefault(
       ),
       {
         context: configContext,
-        key: (config) => config.lookup?.authorizedFetch ? true : undefined,
+        key: (config) => (config.lookup?.authorizedFetch ? true : undefined),
       },
     ),
     firstKnock: bindConfig(
@@ -87,9 +86,10 @@ export const authorizedFetchOption = withDefault(
         "--first-knock",
         choice(["draft-cavage-http-signatures-12", "rfc9421"]),
         {
-          description: message`The first-knock spec for ${
-            optionNames(["-a", "--authorized-fetch"])
-          }. It is used for the double-knocking technique.`,
+          description: message`The first-knock spec for ${optionNames([
+            "-a",
+            "--authorized-fetch",
+          ])}. It is used for the double-knocking technique.`,
         },
       ),
       {
@@ -126,15 +126,11 @@ const lookupModeOption = withDefault(
         },
       ),
       recurseDepth: bindConfig(
-        option(
-          "--recurse-depth",
-          integer({ min: 1, metavar: "DEPTH" }),
-          {
-            description: message`Maximum recursion depth for ${
-              optionNames(["--recurse"])
-            }.`,
-          },
-        ),
+        option("--recurse-depth", integer({ min: 1, metavar: "DEPTH" }), {
+          description: message`Maximum recursion depth for ${optionNames([
+            "--recurse",
+          ])}.`,
+        }),
         {
           context: configContext,
           key: (config) => config.lookup?.recurseDepth,
@@ -146,8 +142,7 @@ const lookupModeOption = withDefault(
     object("Traverse options", {
       traverse: bindConfig(
         flag("-t", "--traverse", {
-          description:
-            message`Traverse the given collection(s) to fetch all items.`,
+          description: message`Traverse the given collection(s) to fetch all items.`,
         }),
         {
           context: configContext,
@@ -187,15 +182,9 @@ multiple times.`,
       allowPrivateAddress: allowPrivateAddressOption,
       timeout: optional(
         bindConfig(
-          option(
-            "-T",
-            "--timeout",
-            float({ min: 0, metavar: "SECONDS" }),
-            {
-              description:
-                message`Set timeout for network requests in seconds.`,
-            },
-          ),
+          option("-T", "--timeout", float({ min: 0, metavar: "SECONDS" }), {
+            description: message`Set timeout for network requests in seconds.`,
+          }),
           {
             context: configContext,
             key: (config) => config.lookup?.timeout,
@@ -215,8 +204,7 @@ multiple times.`,
   object("Output options", {
     reverse: bindConfig(
       flag("--reverse", {
-        description:
-          message`Reverse the output order of fetched objects or items.`,
+        description: message`Reverse the output order of fetched objects or items.`,
       }),
       {
         context: configContext,
@@ -255,8 +243,7 @@ multiple times.`,
     ),
     separator: bindConfig(
       option("-s", "--separator", string({ metavar: "SEPARATOR" }), {
-        description:
-          message`Specify the separator between adjacent output objects or collection items.`,
+        description: message`Specify the separator between adjacent output objects or collection items.`,
       }),
       {
         context: configContext,
@@ -264,16 +251,18 @@ multiple times.`,
         default: "----",
       },
     ),
-    output: optional(option(
-      "-o",
-      "--output",
-      path({
-        metavar: "OUTPUT_PATH",
-        type: "file",
-        allowCreate: true,
-      }),
-      { description: message`Specify the output file path.` },
-    )),
+    output: optional(
+      option(
+        "-o",
+        "--output",
+        path({
+          metavar: "OUTPUT_PATH",
+          type: "file",
+          allowCreate: true,
+        }),
+        { description: message`Specify the output file path.` },
+      ),
+    ),
   }),
 );
 
@@ -284,8 +273,4 @@ export const lookupMetadata = {
 The arguments can be either URLs or actor handles (e.g., ${"@username@domain"}), and they can be multiple.`,
 };
 
-export const lookupCommand = command(
-  "lookup",
-  lookupOptions,
-  lookupMetadata,
-);
+export const lookupCommand = command("lookup", lookupOptions, lookupMetadata);

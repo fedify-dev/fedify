@@ -70,16 +70,16 @@ test("isActorAuthenticated() compares portable actors canonically", () => {
   const byActor = evidence({ requestSigners: [actor(portable.href)] });
   assert(isActorAuthenticated(byActor, compatible));
   assert(isActorAuthenticated(byActor, otherGateway));
-  assertFalse(
-    isActorAuthenticated(byActor, parseIri(`ap://${DID}/other`)),
-  );
+  assertFalse(isActorAuthenticated(byActor, parseIri(`ap://${DID}/other`)));
   const byAuthority = evidence({
-    documentSigners: [{
-      kind: "portable-authority",
-      id: new URL(DID),
-      mechanism: "object-integrity-proofs",
-      keyId: new URL(`${DID}#${DID.slice(8)}`),
-    }],
+    documentSigners: [
+      {
+        kind: "portable-authority",
+        id: new URL(DID),
+        mechanism: "object-integrity-proofs",
+        keyId: new URL(`${DID}#${DID.slice(8)}`),
+      },
+    ],
   });
   assert(isActorAuthenticated(byAuthority, portable));
   assert(isActorAuthenticated(byAuthority, compatible));
@@ -101,18 +101,22 @@ test("isActorAuthenticated() compares portable actors canonically", () => {
 
 test("serializeAuthentication() round-trips through JSON", () => {
   const original = evidence({
-    requestSigners: [{
-      kind: "actor",
-      id: new URL("https://example.com/users/alice"),
-      mechanism: "http-signatures",
-      keyId: new URL("https://example.com/users/alice#main-key"),
-    }],
-    documentSigners: [{
-      kind: "portable-authority",
-      id: new URL(DID),
-      mechanism: "object-integrity-proofs",
-      keyId: null,
-    }],
+    requestSigners: [
+      {
+        kind: "actor",
+        id: new URL("https://example.com/users/alice"),
+        mechanism: "http-signatures",
+        keyId: new URL("https://example.com/users/alice#main-key"),
+      },
+    ],
+    documentSigners: [
+      {
+        kind: "portable-authority",
+        id: new URL(DID),
+        mechanism: "object-integrity-proofs",
+        keyId: null,
+      },
+    ],
   });
   const expanded = [{ "@id": "https://example.com/activities/1" }];
   const restored = deserializeAuthentication(
@@ -121,27 +125,27 @@ test("serializeAuthentication() round-trips through JSON", () => {
     null,
   );
   assertEquals(restored, { ...original, expandedActivity: expanded });
-  for (
-    const malformed of [
-      null,
-      {},
-      { ...serializeAuthentication(original), verified: "yes" },
-      { ...serializeAuthentication(original), documentSigners: null },
-      {
-        ...serializeAuthentication(original),
-        requestSigners: [{ kind: "server", id: "x", mechanism: "origin" }],
-      },
-      {
-        ...serializeAuthentication(original),
-        requestSigners: [{
+  for (const malformed of [
+    null,
+    {},
+    { ...serializeAuthentication(original), verified: "yes" },
+    { ...serializeAuthentication(original), documentSigners: null },
+    {
+      ...serializeAuthentication(original),
+      requestSigners: [{ kind: "server", id: "x", mechanism: "origin" }],
+    },
+    {
+      ...serializeAuthentication(original),
+      requestSigners: [
+        {
           kind: "actor",
           id: "not a url",
           mechanism: "httpSignatures",
           keyId: null,
-        }],
-      },
-    ]
-  ) {
+        },
+      ],
+    },
+  ]) {
     assertEquals(deserializeAuthentication(malformed, [], null), null);
   }
 });
@@ -150,29 +154,36 @@ test("authentication preserves the queued principal wire format", () => {
   // These are literal queued values, independently of the serializer.
   const queued = {
     verified: true,
-    requestSigners: [{
-      kind: "actor",
-      id: "https://example.com/users/alice",
-      mechanism: "httpSignatures",
-      keyId: "https://example.com/users/alice#main-key",
-    }, {
-      kind: "actor",
-      id: "https://example.com/users/alice",
-      mechanism: "linkedDataSignatures",
-      keyId: null,
-    }],
-    documentSigners: [{
-      kind: "portableAuthority",
-      id: DID,
-      mechanism: "objectIntegrityProofs",
-      keyId: `${DID}#${DID.slice(8)}`,
-    }],
-    originAuthenticated: [{
-      kind: "actor",
-      id: "https://example.com/users/alice",
-      mechanism: "origin",
-      keyId: null,
-    }],
+    requestSigners: [
+      {
+        kind: "actor",
+        id: "https://example.com/users/alice",
+        mechanism: "httpSignatures",
+        keyId: "https://example.com/users/alice#main-key",
+      },
+      {
+        kind: "actor",
+        id: "https://example.com/users/alice",
+        mechanism: "linkedDataSignatures",
+        keyId: null,
+      },
+    ],
+    documentSigners: [
+      {
+        kind: "portableAuthority",
+        id: DID,
+        mechanism: "objectIntegrityProofs",
+        keyId: `${DID}#${DID.slice(8)}`,
+      },
+    ],
+    originAuthenticated: [
+      {
+        kind: "actor",
+        id: "https://example.com/users/alice",
+        mechanism: "origin",
+        keyId: null,
+      },
+    ],
   } as const;
   const expanded = [{ "@id": "https://example.com/activities/1" }];
   const baseUrl = new URL("https://example.com/activities/1");
@@ -180,29 +191,36 @@ test("authentication preserves the queued principal wire format", () => {
   assert(restored != null);
   assertEquals(restored, {
     verified: true,
-    requestSigners: [{
-      kind: "actor",
-      id: new URL("https://example.com/users/alice"),
-      mechanism: "http-signatures",
-      keyId: new URL("https://example.com/users/alice#main-key"),
-    }, {
-      kind: "actor",
-      id: new URL("https://example.com/users/alice"),
-      mechanism: "linked-data-signatures",
-      keyId: null,
-    }],
-    documentSigners: [{
-      kind: "portable-authority",
-      id: new URL(DID),
-      mechanism: "object-integrity-proofs",
-      keyId: new URL(`${DID}#${DID.slice(8)}`),
-    }],
-    originAuthenticated: [{
-      kind: "actor",
-      id: new URL("https://example.com/users/alice"),
-      mechanism: "origin",
-      keyId: null,
-    }],
+    requestSigners: [
+      {
+        kind: "actor",
+        id: new URL("https://example.com/users/alice"),
+        mechanism: "http-signatures",
+        keyId: new URL("https://example.com/users/alice#main-key"),
+      },
+      {
+        kind: "actor",
+        id: new URL("https://example.com/users/alice"),
+        mechanism: "linked-data-signatures",
+        keyId: null,
+      },
+    ],
+    documentSigners: [
+      {
+        kind: "portable-authority",
+        id: new URL(DID),
+        mechanism: "object-integrity-proofs",
+        keyId: new URL(`${DID}#${DID.slice(8)}`),
+      },
+    ],
+    originAuthenticated: [
+      {
+        kind: "actor",
+        id: new URL("https://example.com/users/alice"),
+        mechanism: "origin",
+        keyId: null,
+      },
+    ],
     expandedActivity: expanded,
     baseUrl,
   });
@@ -222,15 +240,13 @@ test("authentication preserves the queued principal wire format", () => {
       null,
     );
   }
-  for (
-    const mechanism of [
-      "http-signatures",
-      "linked-data-signatures",
-      "object-integrity-proofs",
-      "toString",
-      "__proto__",
-    ]
-  ) {
+  for (const mechanism of [
+    "http-signatures",
+    "linked-data-signatures",
+    "object-integrity-proofs",
+    "toString",
+    "__proto__",
+  ]) {
     assertEquals(
       deserializeAuthentication(
         {

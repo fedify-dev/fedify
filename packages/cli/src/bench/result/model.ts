@@ -63,20 +63,20 @@ export interface PartialLatencyMs {
 /** The load model summary recorded in a scenario result. */
 export type LoadSummary =
   | {
-    readonly model: "open";
-    readonly ratePerSec: number;
-    readonly arrival: string;
-    readonly durationMs: number;
-    readonly warmupMs: number;
-    readonly maxInFlight?: number;
-  }
+      readonly model: "open";
+      readonly ratePerSec: number;
+      readonly arrival: string;
+      readonly durationMs: number;
+      readonly warmupMs: number;
+      readonly maxInFlight?: number;
+    }
   | {
-    readonly model: "closed";
-    readonly concurrency: number;
-    readonly durationMs: number;
-    readonly warmupMs: number;
-    readonly maxInFlight?: number;
-  };
+      readonly model: "closed";
+      readonly concurrency: number;
+      readonly durationMs: number;
+      readonly warmupMs: number;
+      readonly maxInFlight?: number;
+    };
 
 /** A request count summary. */
 export interface RequestSummary {

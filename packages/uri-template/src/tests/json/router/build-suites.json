@@ -2,14 +2,8 @@
   {
     "name": "default routes",
     "routeDefinitions": [
-      [
-        "/users/{name}",
-        "user"
-      ],
-      [
-        "/users/{name}/posts/{postId}",
-        "post"
-      ]
+      ["/users/{name}", "user"],
+      ["/users/{name}/posts/{postId}", "post"]
     ],
     "cases": [
       {
@@ -39,12 +33,7 @@
   },
   {
     "name": "leading path expansion templates",
-    "routeDefinitions": [
-      [
-        "{/identifier}/inbox",
-        "inbox"
-      ]
-    ],
+    "routeDefinitions": [["{/identifier}/inbox", "inbox"]],
     "cases": [
       {
         "name": "builds leading path expansion",
@@ -59,18 +48,9 @@
   {
     "name": "template matching symmetry",
     "routeDefinitions": [
-      [
-        "/users/{name}",
-        "user"
-      ],
-      [
-        "/files/{+path}",
-        "file"
-      ],
-      [
-        "/actors{/identifier}",
-        "actor"
-      ]
+      ["/users/{name}", "user"],
+      ["/files/{+path}", "file"],
+      ["/actors{/identifier}", "actor"]
     ],
     "cases": [
       {
@@ -126,22 +106,10 @@
   {
     "name": "pct-encoded query variable names",
     "routeDefinitions": [
-      [
-        "/encoded-query{?abc%20def}",
-        "encodedQuery"
-      ],
-      [
-        "/encoded-letters{?%41,%42}",
-        "encodedLetters"
-      ],
-      [
-        "/matrix{;abc%20def}",
-        "matrix"
-      ],
-      [
-        "/continuation?fixed=true{&abc%20def}",
-        "continuation"
-      ]
+      ["/encoded-query{?abc%20def}", "encodedQuery"],
+      ["/encoded-letters{?%41,%42}", "encodedLetters"],
+      ["/matrix{;abc%20def}", "matrix"],
+      ["/continuation?fixed=true{&abc%20def}", "continuation"]
     ],
     "cases": [
       {

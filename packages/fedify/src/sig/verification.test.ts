@@ -31,9 +31,10 @@ test("LDS evidence has no checks for absent or malformed signatures", async () =
   );
   for (const signature of [undefined, null, "invalid", [], {}]) {
     const evidence = observation();
-    const value = signature === undefined
-      ? json
-      : { ...json as Record<string, unknown>, signature };
+    const value =
+      signature === undefined
+        ? json
+        : { ...(json as Record<string, unknown>), signature };
     strictEqual(
       await verifyJsonLd(value, {
         ...loaders,
@@ -201,10 +202,10 @@ test("signature evidence preserves OIP stale keys when fresh verification fails"
     ed25519Multikey.id!,
     loaders,
   );
-  const pair = await crypto.subtle.generateKey("Ed25519", true, [
+  const pair = (await crypto.subtle.generateKey("Ed25519", true, [
     "sign",
     "verify",
-  ]) as CryptoKeyPair;
+  ])) as CryptoKeyPair;
   const stale = new Multikey({
     id: ed25519Multikey.id,
     controller: null,
@@ -240,7 +241,7 @@ test("OIP check preserves the literal declared key ID", async () => {
     ed25519Multikey.id!,
     loaders,
   );
-  const json = await signed.toJsonLd(loaders) as Record<string, unknown>;
+  const json = (await signed.toJsonLd(loaders)) as Record<string, unknown>;
   const proof = json.proof as Record<string, unknown>;
   const declaredKeyId = "https://EXAMPLE.com/person2#key4";
   proof.verificationMethod = declaredKeyId;
@@ -327,7 +328,7 @@ test("OIP check retains aliased declarations without extra context fetches", asy
     ed25519Multikey.id!,
     loaders,
   );
-  const json = await signed.toJsonLd(loaders) as Record<string, unknown>;
+  const json = (await signed.toJsonLd(loaders)) as Record<string, unknown>;
   const proof = json.proof as Record<string, unknown>;
   const context = {
     vm: {
@@ -336,8 +337,8 @@ test("OIP check retains aliased declarations without extra context fetches", asy
     },
   };
   const contextUrl = "https://example.com/custom-proof-context";
-  json["@context"] = [...json["@context"] as unknown[], contextUrl];
-  proof["@context"] = [...proof["@context"] as unknown[], contextUrl];
+  json["@context"] = [...(json["@context"] as unknown[]), contextUrl];
+  proof["@context"] = [...(proof["@context"] as unknown[]), contextUrl];
   const declaredKeyId = "https://EXAMPLE.com/person2#key4";
   proof.vm = declaredKeyId;
   delete proof.verificationMethod;
@@ -374,7 +375,7 @@ test("OIP check preserves compact node identifiers and their aliases", async () 
       ed25519Multikey.id!,
       loaders,
     );
-    const json = await signed.toJsonLd(loaders) as Record<string, unknown>;
+    const json = (await signed.toJsonLd(loaders)) as Record<string, unknown>;
     const proof = json.proof as Record<string, unknown>;
     const context = {
       rawId: "@id",
@@ -384,8 +385,8 @@ test("OIP check preserves compact node identifiers and their aliases", async () 
         "@context": { scopedId: "@id" },
       },
     };
-    json["@context"] = [...json["@context"] as unknown[], context];
-    proof["@context"] = [...proof["@context"] as unknown[], context];
+    json["@context"] = [...(json["@context"] as unknown[]), context];
+    proof["@context"] = [...(proof["@context"] as unknown[]), context];
     const declaredKeyId = "https://EXAMPLE.com/person2#key4";
     if (idProperty === "scopedId") {
       proof.vm = { [idProperty]: declaredKeyId };
@@ -409,7 +410,7 @@ test("signature evidence excludes keys loaded before canonicalization errors", a
     ed25519Multikey.id!,
     loaders,
   );
-  const json = await signed.toJsonLd(loaders) as Record<string, unknown>;
+  const json = (await signed.toJsonLd(loaders)) as Record<string, unknown>;
   json.extra = JSON.parse("1e400");
   const evidence = observation();
   let thrown = false;

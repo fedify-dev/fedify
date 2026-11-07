@@ -54,10 +54,7 @@ export function detectTerminalCapabilities(): TerminalType {
   return "none";
 }
 
-function serializeGrCommand(
-  cmd: KittyCommand,
-  payload?: string,
-): Uint8Array {
+function serializeGrCommand(cmd: KittyCommand, payload?: string): Uint8Array {
   const cmdString = Object.entries(cmd)
     .map(([k, v]) => `${k}=${v}`)
     .join(",");
@@ -113,9 +110,7 @@ export async function renderImageKitty(
   }
 }
 
-export async function renderImageITerm2(
-  imagePath: string,
-): Promise<void> {
+export async function renderImageITerm2(imagePath: string): Promise<void> {
   const imageData = await fs.readFile(imagePath);
   const base64Data = encodeBase64(imageData);
 
@@ -134,8 +129,10 @@ export async function downloadImage(url: string): Promise<string | null> {
       await validatePublicUrl(targetUrl);
       response = await fetch(targetUrl, { redirect: "manual" });
       if (
-        response.status === 301 || response.status === 302 ||
-        response.status === 303 || response.status === 307 ||
+        response.status === 301 ||
+        response.status === 302 ||
+        response.status === 303 ||
+        response.status === 307 ||
         response.status === 308
       ) {
         const location = response.headers.get("location");
@@ -158,21 +155,23 @@ export async function downloadImage(url: string): Promise<string | null> {
     const pathname = new URL(targetUrl).pathname;
     const lowerPathname = pathname.toLowerCase();
     if (
-      lowerPathname.includes("%2f") || lowerPathname.includes("%5c") ||
+      lowerPathname.includes("%2f") ||
+      lowerPathname.includes("%5c") ||
       lowerPathname.includes("..")
     ) {
       return null;
     }
-    const pathSegments = pathname.split("/").filter((segment) =>
-      segment !== ""
-    );
+    const pathSegments = pathname
+      .split("/")
+      .filter((segment) => segment !== "");
     const filename = pathSegments[pathSegments.length - 1] ?? "";
     const extension = filename.includes(".")
       ? path.extname(filename).slice(1)
       : getExtensionFromContentType(response.headers.get("content-type"));
     if (extension.length < 1) return null;
     if (
-      extension.includes("/") || extension.includes("\\") ||
+      extension.includes("/") ||
+      extension.includes("\\") ||
       extension.includes("..")
     ) {
       return null;
@@ -188,9 +187,7 @@ export async function downloadImage(url: string): Promise<string | null> {
   }
 }
 
-export async function renderImages(
-  imageUrls: URL[],
-): Promise<void> {
+export async function renderImages(imageUrls: URL[]): Promise<void> {
   const graphicsProtocol = detectTerminalCapabilities();
   for (const url of imageUrls) {
     const tempPath = await downloadImage(url.href);

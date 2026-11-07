@@ -50,14 +50,12 @@ test("portable URI parsing refuses dot segments before URL normalization", () =>
       throws(() => formatIri(iri), TypeError, iri);
     }
   }
-  for (
-    const iri of [
-      `${base}/a/.\t./b`,
-      `${base}/a/..\n/b`,
-      ` ${base}/a/../b`,
-      `${base}/a/.. `,
-    ]
-  ) {
+  for (const iri of [
+    `${base}/a/.\t./b`,
+    `${base}/a/..\n/b`,
+    ` ${base}/a/../b`,
+    `${base}/a/.. `,
+  ]) {
     throws(() => parseIri(iri), TypeError, iri);
   }
   for (const path of ["/a/.../b", "/a/.x/b", "/a/x.y/b", "/a/%252e/b"]) {
@@ -192,30 +190,42 @@ test("parseIri() rejects malformed portable DID authorities", () => {
 });
 
 test("haveSameIriOrigin() compares portable IRI authorities", () => {
-  ok(haveSameIriOrigin(
-    new URL("ftp://example.com/pub/1"),
-    new URL("ftp://example.com/pub/2"),
-  ));
-  ok(haveSameIriOrigin(
-    new URL("mailto:alice@example.com"),
-    new URL("mailto:alice@example.com"),
-  ));
-  ok(haveSameIriOrigin(
-    parseIri("ap://did:key:z6Mkabc/actor"),
-    parseIri("ap://did:key:z6Mkabc/outbox"),
-  ));
-  ok(haveSameIriOrigin(
-    new URL("ap://did%3Akey%3Az6Mkabc/actor"),
-    new URL("ap+ef61://did%3Akey%3Az6Mkabc/outbox"),
-  ));
-  ok(haveSameIriOrigin(
-    parseIri("ap://DID:key:z6Mkabc/actor"),
-    parseIri("ap://did:key:z6Mkabc/outbox"),
-  ));
-  ok(haveSameIriOrigin(
-    new URL("ap+ef61://DID%3Akey%3Az6Mkabc/actor"),
-    new URL("ap+ef61://did%3Akey%3Az6Mkabc/outbox"),
-  ));
+  ok(
+    haveSameIriOrigin(
+      new URL("ftp://example.com/pub/1"),
+      new URL("ftp://example.com/pub/2"),
+    ),
+  );
+  ok(
+    haveSameIriOrigin(
+      new URL("mailto:alice@example.com"),
+      new URL("mailto:alice@example.com"),
+    ),
+  );
+  ok(
+    haveSameIriOrigin(
+      parseIri("ap://did:key:z6Mkabc/actor"),
+      parseIri("ap://did:key:z6Mkabc/outbox"),
+    ),
+  );
+  ok(
+    haveSameIriOrigin(
+      new URL("ap://did%3Akey%3Az6Mkabc/actor"),
+      new URL("ap+ef61://did%3Akey%3Az6Mkabc/outbox"),
+    ),
+  );
+  ok(
+    haveSameIriOrigin(
+      parseIri("ap://DID:key:z6Mkabc/actor"),
+      parseIri("ap://did:key:z6Mkabc/outbox"),
+    ),
+  );
+  ok(
+    haveSameIriOrigin(
+      new URL("ap+ef61://DID%3Akey%3Az6Mkabc/actor"),
+      new URL("ap+ef61://did%3Akey%3Az6Mkabc/outbox"),
+    ),
+  );
   ok(
     !haveSameIriOrigin(
       parseIri("ap://did:key:z6Mkabc/actor"),
@@ -247,10 +257,7 @@ test("getFe34Origin() computes web and cryptographic origins", () => {
     getFe34Origin(new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor")),
     "did:key:z6Mkabc",
   );
-  deepStrictEqual(
-    getFe34Origin("did:key:z6Mkabc#z6Mkabc"),
-    "did:key:z6Mkabc",
-  );
+  deepStrictEqual(getFe34Origin("did:key:z6Mkabc#z6Mkabc"), "did:key:z6Mkabc");
   deepStrictEqual(
     getFe34Origin(new URL("did:key:z6Mkabc?service=activitypub#key")),
     "did:key:z6Mkabc",
@@ -259,10 +266,7 @@ test("getFe34Origin() computes web and cryptographic origins", () => {
     getFe34Origin("did:key:z6Mkabc/path/to/resource?service=activitypub#key"),
     "did:key:z6Mkabc",
   );
-  deepStrictEqual(
-    getFe34Origin("did:KEY:z6Mkabc#z6Mkabc"),
-    "did:key:z6Mkabc",
-  );
+  deepStrictEqual(getFe34Origin("did:KEY:z6Mkabc#z6Mkabc"), "did:key:z6Mkabc");
   deepStrictEqual(
     getFe34Origin("ap://did%3Aweb%3Afoo%2Dbar.example/actor"),
     "did:web:foo-bar.example",
@@ -274,25 +278,25 @@ test("getFe34Origin() computes web and cryptographic origins", () => {
 });
 
 test("getFe34Origin() rejects unsupported or malformed identifiers", () => {
-  for (
-    const iri of [
-      "mailto:alice@example.com",
-      "ap://not-a-did/actor",
-      "ap://did:key/actor",
-      "did:key",
-      "did:key:",
-      "did:",
-    ]
-  ) {
+  for (const iri of [
+    "mailto:alice@example.com",
+    "ap://not-a-did/actor",
+    "ap://did:key/actor",
+    "did:key",
+    "did:key:",
+    "did:",
+  ]) {
     throws(() => getFe34Origin(iri), TypeError);
   }
 });
 
 test("haveSameFe34Origin() compares web and cryptographic origins", () => {
-  ok(haveSameFe34Origin(
-    "https://example.com/users/alice",
-    "https://example.com/notes/1",
-  ));
+  ok(
+    haveSameFe34Origin(
+      "https://example.com/users/alice",
+      "https://example.com/notes/1",
+    ),
+  );
   ok(
     !haveSameFe34Origin(
       "https://example.com/users/alice",
@@ -305,26 +309,33 @@ test("haveSameFe34Origin() compares web and cryptographic origins", () => {
       "https://example.com:8443/users/alice",
     ),
   );
-  ok(haveSameFe34Origin(
-    "ap://did:key:z6Mkabc/actor",
-    "ap+ef61://did%3Akey%3Az6Mkabc/objects/1",
-  ));
-  ok(haveSameFe34Origin(
-    "ap+ef61://did:key:z6Mkabc/actor",
-    "did:key:z6Mkabc#z6Mkabc",
-  ));
-  ok(haveSameFe34Origin(
-    "ap://did:KEY:z6Mkabc/actor",
-    "did:key:z6Mkabc#z6Mkabc",
-  ));
-  ok(haveSameFe34Origin(
-    "ap://did%3Aweb%3Afoo%2Dbar.example/actor",
-    "ap://did:web:foo-bar.example/note",
-  ));
-  ok(haveSameFe34Origin(
-    "ap://did%3Aexample%3Aabc%252fdef/actor",
-    "did:example:abc%2Fdef#key",
-  ));
+  ok(
+    haveSameFe34Origin(
+      "ap://did:key:z6Mkabc/actor",
+      "ap+ef61://did%3Akey%3Az6Mkabc/objects/1",
+    ),
+  );
+  ok(
+    haveSameFe34Origin(
+      "ap+ef61://did:key:z6Mkabc/actor",
+      "did:key:z6Mkabc#z6Mkabc",
+    ),
+  );
+  ok(
+    haveSameFe34Origin("ap://did:KEY:z6Mkabc/actor", "did:key:z6Mkabc#z6Mkabc"),
+  );
+  ok(
+    haveSameFe34Origin(
+      "ap://did%3Aweb%3Afoo%2Dbar.example/actor",
+      "ap://did:web:foo-bar.example/note",
+    ),
+  );
+  ok(
+    haveSameFe34Origin(
+      "ap://did%3Aexample%3Aabc%252fdef/actor",
+      "did:example:abc%2Fdef#key",
+    ),
+  );
   ok(
     !haveSameFe34Origin(
       "ap+ef61://did:key:z6Mkabc/actor",
@@ -420,14 +431,18 @@ test("canonicalizePortableUri() normalizes authority pct-encoding casing", () =>
     canonicalizePortableUri("ap://did%3Akey%3Az6Mk%2Dabc/actor"),
     "ap+ef61://did:key:z6Mk-abc/actor",
   );
-  ok(arePortableUrisEqual(
-    "ap://did:example:abc%2fdef/actor",
-    "ap://did:example:abc%2Fdef/actor",
-  ));
-  ok(arePortableUrisEqual(
-    "ap://did%3Akey%3Az6Mk%2Dabc/actor",
-    "ap://did:key:z6Mk-abc/actor",
-  ));
+  ok(
+    arePortableUrisEqual(
+      "ap://did:example:abc%2fdef/actor",
+      "ap://did:example:abc%2Fdef/actor",
+    ),
+  );
+  ok(
+    arePortableUrisEqual(
+      "ap://did%3Akey%3Az6Mk%2Dabc/actor",
+      "ap://did:key:z6Mk-abc/actor",
+    ),
+  );
 });
 
 test("canonicalizePortableUri() normalizes path and fragment pct-encoding casing", () => {
@@ -443,14 +458,18 @@ test("canonicalizePortableUri() normalizes path and fragment pct-encoding casing
     canonicalizePortableUri("ap://did:key:z6Mkabc/actor%2Dprofile#part%7Etwo"),
     "ap+ef61://did:key:z6Mkabc/actor-profile#part~two",
   );
-  ok(arePortableUrisEqual(
-    "ap://did:key:z6Mkabc/actor%2fprofile#part%2ftwo",
-    "ap://did:key:z6Mkabc/actor%2Fprofile#part%2Ftwo",
-  ));
-  ok(arePortableUrisEqual(
-    "ap://did:key:z6Mkabc/actor%2Dprofile#part%7Etwo",
-    "ap://did:key:z6Mkabc/actor-profile#part~two",
-  ));
+  ok(
+    arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/actor%2fprofile#part%2ftwo",
+      "ap://did:key:z6Mkabc/actor%2Fprofile#part%2Ftwo",
+    ),
+  );
+  ok(
+    arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/actor%2Dprofile#part%7Etwo",
+      "ap://did:key:z6Mkabc/actor-profile#part~two",
+    ),
+  );
 });
 
 test("canonicalizePortableUri() encodes raw path and fragment characters", () => {
@@ -458,10 +477,12 @@ test("canonicalizePortableUri() encodes raw path and fragment characters", () =>
     canonicalizePortableUri("ap://did:key:z6Mkabc/\u00e9#\u00e9"),
     "ap+ef61://did:key:z6Mkabc/%C3%A9#%C3%A9",
   );
-  ok(arePortableUrisEqual(
-    "ap://did:key:z6Mkabc/\u00e9#\u00e9",
-    "ap://did:key:z6Mkabc/%C3%A9#%C3%A9",
-  ));
+  ok(
+    arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/\u00e9#\u00e9",
+      "ap://did:key:z6Mkabc/%C3%A9#%C3%A9",
+    ),
+  );
 });
 
 test("canonicalizePortableUri() normalizes DID scheme casing", () => {
@@ -535,14 +556,18 @@ test("canonicalizePortableUri() rejects invalid path and fragment pct-encoding",
 });
 
 test("arePortableUrisEqual() compares canonical portable URI forms", () => {
-  ok(arePortableUrisEqual(
-    "ap://did:key:z6Mkabc/actor",
-    "ap+ef61://did%3Akey%3Az6Mkabc/actor?gateways=https%3A%2F%2Fa.example",
-  ));
-  ok(arePortableUrisEqual(
-    "ap://DID:key:z6Mkabc/actor",
-    "ap://did:key:z6Mkabc/actor",
-  ));
+  ok(
+    arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/actor",
+      "ap+ef61://did%3Akey%3Az6Mkabc/actor?gateways=https%3A%2F%2Fa.example",
+    ),
+  );
+  ok(
+    arePortableUrisEqual(
+      "ap://DID:key:z6Mkabc/actor",
+      "ap://did:key:z6Mkabc/actor",
+    ),
+  );
   ok(
     !arePortableUrisEqual(
       "ap://did:key:z6Mkabc/actor",
@@ -564,10 +589,12 @@ test("arePortableUrisEqual() compares canonical portable URI forms", () => {
 });
 
 test("arePortableUrisEqual() handles non-portable URI strings", () => {
-  ok(arePortableUrisEqual(
-    "https://example.com/actor",
-    "https://example.com/actor",
-  ));
+  ok(
+    arePortableUrisEqual(
+      "https://example.com/actor",
+      "https://example.com/actor",
+    ),
+  );
   ok(
     !arePortableUrisEqual(
       "https://example.com/actor",
@@ -581,17 +608,9 @@ test("arePortableUrisEqual() handles non-portable URI strings", () => {
     ),
   );
   ok(arePortableUrisEqual("ap://not-a-did/actor", "ap://not-a-did/actor"));
+  ok(!arePortableUrisEqual("ap://not-a-did/actor", "ap://not-a-did/outbox"));
   ok(
-    !arePortableUrisEqual(
-      "ap://not-a-did/actor",
-      "ap://not-a-did/outbox",
-    ),
-  );
-  ok(
-    !arePortableUrisEqual(
-      "ap://not-a-did/actor",
-      "ap://did:key:z6Mkabc/actor",
-    ),
+    !arePortableUrisEqual("ap://not-a-did/actor", "ap://did:key:z6Mkabc/actor"),
   );
   ok(
     !arePortableUrisEqual(
@@ -619,14 +638,8 @@ test("formatIri() preserves DID authority pct-encoded delimiters", () => {
     parsed,
     new URL("ap+ef61://did%3Aexample%3Aabc%252Fdef/actor"),
   );
-  deepStrictEqual(
-    formatIri(parsed),
-    "ap+ef61://did:example:abc%2Fdef/actor",
-  );
-  deepStrictEqual(
-    parseIri(formatIri(parsed)),
-    parsed,
-  );
+  deepStrictEqual(formatIri(parsed), "ap+ef61://did:example:abc%2Fdef/actor");
+  deepStrictEqual(parseIri(formatIri(parsed)), parsed);
   deepStrictEqual(
     formatIri(new URL("ap+ef61://did%3Aexample%3Aabc%2Fdef/actor")),
     "ap+ef61://did:example:abc%2Fdef/actor",
@@ -682,36 +695,29 @@ test("parseIri() preserves encoded percent signs while decoding delimiters", () 
     parsed,
     new URL("ap+ef61://did%3Aweb%3Aexample.com%2500/u/1"),
   );
-  deepStrictEqual(
-    formatIri(parsed),
-    "ap+ef61://did:web:example.com%00/u/1",
-  );
+  deepStrictEqual(formatIri(parsed), "ap+ef61://did:web:example.com%00/u/1");
 });
 
 test("parseGatewayUrl() accepts only HTTP(S) base URIs", () => {
-  for (
-    const url of [
-      "https://server.example",
-      "https://server.example/",
-      "http://server.example/",
-    ]
-  ) {
+  for (const url of [
+    "https://server.example",
+    "https://server.example/",
+    "http://server.example/",
+  ]) {
     deepStrictEqual(parseGatewayUrl(url), new URL(url));
     ok(isGatewayUrl(new URL(url)));
   }
 
-  for (
-    const url of [
-      "ftp://server.example/",
-      "https://user:pass@server.example/",
-      "https://user@server.example/",
-      "https://server.example/path",
-      "https://server.example/?x=1",
-      "https://server.example/?",
-      "https://server.example/#fragment",
-      "https://server.example/#",
-    ]
-  ) {
+  for (const url of [
+    "ftp://server.example/",
+    "https://user:pass@server.example/",
+    "https://user@server.example/",
+    "https://server.example/path",
+    "https://server.example/?x=1",
+    "https://server.example/?",
+    "https://server.example/#fragment",
+    "https://server.example/#",
+  ]) {
     // Inboxes tell a malformed gateway from other errors by this prefix:
     throws(
       () => parseGatewayUrl(url),
@@ -861,33 +867,21 @@ test("fromCompatibleEf61Id() rejects malformed compatible identifiers", () => {
 
 test("fromCompatibleEf61Id() refuses raw paths changed by URL parsing", () => {
   const base = "https://server.example/.well-known/apgateway/did:key:z6MkAlice";
-  for (
-    const path of [
-      "/a/../b",
-      "/a/%2e%2E/b",
-      "/a/.\t./b",
-      "/a/.. ",
-    ]
-  ) {
+  for (const path of ["/a/../b", "/a/%2e%2E/b", "/a/.\t./b", "/a/.. "]) {
     throws(() => fromCompatibleEf61Id(base + path), TypeError, path);
     throws(() => parseIri(base + path), TypeError, path);
     throws(() => formatIri(base + path), TypeError, path);
   }
-  for (
-    const input of [
-      "https:/server.example/.well-known/apgateway/did:key:z6MkAlice/a/../b",
-      "https:server.example/.well-known/apgateway/did:key:z6MkAlice/a/../b",
-      "https:\\\\server.example\\.well-known\\apgateway\\did:key:z6MkAlice\\a\\..\\b",
-      ` ${base}/../../other`,
-    ]
-  ) {
+  for (const input of [
+    "https:/server.example/.well-known/apgateway/did:key:z6MkAlice/a/../b",
+    "https:server.example/.well-known/apgateway/did:key:z6MkAlice/a/../b",
+    "https:\\\\server.example\\.well-known\\apgateway\\did:key:z6MkAlice\\a\\..\\b",
+    ` ${base}/../../other`,
+  ]) {
     throws(() => parseIri(input), TypeError, input);
     throws(() => formatIri(input), TypeError, input);
   }
-  throws(
-    () => fromCompatibleEf61Id(` ${base}/actor`),
-    TypeError,
-  );
+  throws(() => fromCompatibleEf61Id(` ${base}/actor`), TypeError);
   throws(
     () =>
       fromCompatibleEf61Id(
@@ -1003,18 +997,12 @@ test("toCompatibleEf61Id() removes location hints from queries", () => {
       "ap://did:key:z6MkAlice/actor?@%67ateway=https%3A%2F%2Fa.example",
       `${base}/actor`,
     ],
-    [
-      "ap://did:key:z6MkAlice/actor?@gateway",
-      `${base}/actor`,
-    ],
+    ["ap://did:key:z6MkAlice/actor?@gateway", `${base}/actor`],
     [
       "ap://did:key:z6MkAlice/c?page=3&@gateway=https%3A%2F%2Fa.example&maxItems=20&page=4",
       `${base}/c?page=3&maxItems=20&page=4`,
     ],
-    [
-      "ap://did:key:z6MkAlice/c?a=1&&b=2#frag",
-      `${base}/c?a=1&&b=2#frag`,
-    ],
+    ["ap://did:key:z6MkAlice/c?a=1&&b=2#frag", `${base}/c?a=1&&b=2#frag`],
     ["ap://did:key:z6MkAlice/c?", `${base}/c?`],
     ["ap://did:key:z6MkAlice/c?x='y'", `${base}/c?x=%27y%27`],
     [
@@ -1149,9 +1137,11 @@ test("UrlError reason is independent of its cause", () => {
 });
 
 test("validatePublicUrl() classifies disallowed URLs", async () => {
-  for (
-    const url of ["ftp://example.com", "https://localhost", "https://127.0.0.1"]
-  ) {
+  for (const url of [
+    "ftp://example.com",
+    "https://localhost",
+    "https://127.0.0.1",
+  ]) {
     await rejects(() => validatePublicUrl(url), {
       name: "UrlError",
       reason: "disallowed",
@@ -1170,18 +1160,12 @@ test("validatePublicUrl()", async () => {
   await rejects(() => validatePublicUrl("https://localhost"), UrlError);
   await rejects(() => validatePublicUrl("https://127.0.0.1"), UrlError);
   await rejects(() => validatePublicUrl("https://[::1]"), UrlError);
-  await rejects(
-    () => validatePublicUrl("http://[::ffff:7f00:1]/"),
-    UrlError,
-  );
+  await rejects(() => validatePublicUrl("http://[::ffff:7f00:1]/"), UrlError);
   await rejects(
     () => validatePublicUrl("https://[64:ff9b::7f00:1]/"),
     UrlError,
   );
-  await rejects(
-    () => validatePublicUrl("https://[64:ff9b::a00:1]/"),
-    UrlError,
-  );
+  await rejects(() => validatePublicUrl("https://[64:ff9b::a00:1]/"), UrlError);
   await rejects(
     () => validatePublicUrl("https://[64:ff9b:1::a00:1]/"),
     UrlError,
@@ -1190,42 +1174,38 @@ test("validatePublicUrl()", async () => {
     () => validatePublicUrl("https://[64:ff9b:1::808:808]/"),
     UrlError,
   );
-  await rejects(
-    () => validatePublicUrl("https://[2001::]/"),
-    UrlError,
-  );
-  await rejects(
-    () => validatePublicUrl("https://[2002:a00:1::]/"),
-    UrlError,
-  );
-  for (
-    const url of [
-      "https://100.64.0.1",
-      "https://198.18.0.1",
-      "https://224.0.0.1",
-      "https://240.0.0.1",
-      "https://192.0.2.1",
-      "https://192.88.99.1",
-      "https://198.51.100.1",
-      "https://203.0.113.1",
-    ]
-  ) {
+  await rejects(() => validatePublicUrl("https://[2001::]/"), UrlError);
+  await rejects(() => validatePublicUrl("https://[2002:a00:1::]/"), UrlError);
+  for (const url of [
+    "https://100.64.0.1",
+    "https://198.18.0.1",
+    "https://224.0.0.1",
+    "https://240.0.0.1",
+    "https://192.0.2.1",
+    "https://192.88.99.1",
+    "https://198.51.100.1",
+    "https://203.0.113.1",
+  ]) {
     await rejects(() => validatePublicUrl(url), UrlError);
   }
   await validatePublicUrl("https://[2001:db8::1]");
   await validatePublicUrl("https://[64:ff9b::8.8.8.8]");
 });
 
-test("validatePublicUrl() keeps rejecting fedify-test.internal on Bun", {
-  skip: !("Bun" in globalThis),
-}, async () => {
-  // openPublicFetch() has no hostname exceptions, but validatePublicUrl()
-  // keeps its Bun-specific ones for compatibility:
-  await rejects(
-    () => validatePublicUrl("https://fedify-test.internal/"),
-    (error) => error instanceof UrlError && error.reason === "disallowed",
-  );
-});
+test(
+  "validatePublicUrl() keeps rejecting fedify-test.internal on Bun",
+  {
+    skip: !("Bun" in globalThis),
+  },
+  async () => {
+    // openPublicFetch() has no hostname exceptions, but validatePublicUrl()
+    // keeps its Bun-specific ones for compatibility:
+    await rejects(
+      () => validatePublicUrl("https://fedify-test.internal/"),
+      (error) => error instanceof UrlError && error.reason === "disallowed",
+    );
+  },
+);
 
 test("validateLookupAddresses() tolerates Cloudflare Workers CNAME entries", () => {
   validateLookupAddresses([
@@ -1333,18 +1313,17 @@ test("expandIPv6Address()", () => {
 });
 
 test("withGatewayHints() adds @gateway location hints", () => {
-  const expected = "ap+ef61://did:key:z6Mkabc/actor" +
+  const expected =
+    "ap+ef61://did:key:z6Mkabc/actor" +
     "?@gateway=https%3A%2F%2Fserver1.example" +
     "&@gateway=https%3A%2F%2Fserver2.example";
-  for (
-    const id of [
-      "ap://did:key:z6Mkabc/actor",
-      "ap+ef61://did:key:z6Mkabc/actor",
-      "ap://did%3Akey%3Az6Mkabc/actor",
-      parseIri("ap://did:key:z6Mkabc/actor"),
-      new URL("ap://did%3Akey%3Az6Mkabc/actor"),
-    ]
-  ) {
+  for (const id of [
+    "ap://did:key:z6Mkabc/actor",
+    "ap+ef61://did:key:z6Mkabc/actor",
+    "ap://did%3Akey%3Az6Mkabc/actor",
+    parseIri("ap://did:key:z6Mkabc/actor"),
+    new URL("ap://did%3Akey%3Az6Mkabc/actor"),
+  ]) {
     const hinted = withGatewayHints(id, [
       "https://server1.example",
       new URL("https://server2.example/"),
@@ -1394,8 +1373,9 @@ test("withGatewayHints() encodes and deduplicates gateway origins", () => {
     (_, i) => `https://server${i}.example`,
   );
   deepStrictEqual(
-    getGatewayHints(withGatewayHints("ap://did:key:z6Mkabc/actor", many))
-      .map((url) => url.origin),
+    getGatewayHints(withGatewayHints("ap://did:key:z6Mkabc/actor", many)).map(
+      (url) => url.origin,
+    ),
     many,
   );
 });
@@ -1413,17 +1393,15 @@ test("withGatewayHints() keeps other query parameters and fragments", () => {
   );
   strictEqual(
     formatIri(
-      withGatewayHints(
-        "ap://did:key:z6Mkabc/actor?x=%26%3D#main-key",
-        ["https://server.example"],
-      ),
+      withGatewayHints("ap://did:key:z6Mkabc/actor?x=%26%3D#main-key", [
+        "https://server.example",
+      ]),
     ),
     "ap+ef61://did:key:z6Mkabc/actor?x=%26%3D" +
       "&@gateway=https%3A%2F%2Fserver.example#main-key",
   );
   strictEqual(
-    withGatewayHints("ap://did:key:z6Mkabc/actor#", ["https://s.example"])
-      .href,
+    withGatewayHints("ap://did:key:z6Mkabc/actor#", ["https://s.example"]).href,
     "ap+ef61://did%3Akey%3Az6Mkabc/actor" +
       "?@gateway=https%3A%2F%2Fs.example#",
   );
@@ -1448,30 +1426,29 @@ test("withGatewayHints() replaces existing location hints", () => {
       `ap://did:key:z6Mkabc/actor?@gate${char}way=https%3A%2F%2Fevil.example`,
       ["https://new.example"],
     );
-    deepStrictEqual(getGatewayHints(hinted).map((url) => url.href), [
-      "https://new.example/",
-    ]);
+    deepStrictEqual(
+      getGatewayHints(hinted).map((url) => url.href),
+      ["https://new.example/"],
+    );
   }
 });
 
 test("withGatewayHints() with no gateways removes location hints", () => {
-  for (
-    const [input, expected] of [
-      [
-        "ap://did:key:z6Mkabc/actor?@gateway=https%3A%2F%2Fa.example",
-        "ap+ef61://did%3Akey%3Az6Mkabc/actor",
-      ],
-      [
-        "ap://did:key:z6Mkabc/actor?&@gateway=https%3A%2F%2Fa.example&&p=1&",
-        "ap+ef61://did%3Akey%3Az6Mkabc/actor?p=1",
-      ],
-      ["ap://did:key:z6Mkabc/actor?", "ap+ef61://did%3Akey%3Az6Mkabc/actor"],
-      [
-        "ap://did:key:z6Mkabc/actor?gateways=https%3A%2F%2Fa.example#k",
-        "ap+ef61://did%3Akey%3Az6Mkabc/actor#k",
-      ],
-    ]
-  ) {
+  for (const [input, expected] of [
+    [
+      "ap://did:key:z6Mkabc/actor?@gateway=https%3A%2F%2Fa.example",
+      "ap+ef61://did%3Akey%3Az6Mkabc/actor",
+    ],
+    [
+      "ap://did:key:z6Mkabc/actor?&@gateway=https%3A%2F%2Fa.example&&p=1&",
+      "ap+ef61://did%3Akey%3Az6Mkabc/actor?p=1",
+    ],
+    ["ap://did:key:z6Mkabc/actor?", "ap+ef61://did%3Akey%3Az6Mkabc/actor"],
+    [
+      "ap://did:key:z6Mkabc/actor?gateways=https%3A%2F%2Fa.example#k",
+      "ap+ef61://did%3Akey%3Az6Mkabc/actor#k",
+    ],
+  ]) {
     strictEqual(withGatewayHints(input, []).href, expected, input);
     strictEqual(withoutGatewayHints(input).href, expected, input);
   }
@@ -1484,19 +1461,17 @@ test("withGatewayHints() with no gateways removes location hints", () => {
 });
 
 test("withGatewayHints() rejects non-portable IDs", () => {
-  for (
-    const id of [
-      "https://server.example/.well-known/apgateway/did:key:z6Mkabc/actor",
-      "https://example.com/actor",
-      "did:key:z6Mkabc#z6Mkabc",
-      "ap://did:key:z6Mkabc",
-      "ap://example.com/actor",
-      "ap://did:key:z6Mkabc/actor%zz",
-      new URL("https://example.com/actor"),
-      new URL("ap://did%3Akey%3Az6Mkabc:8080/actor"),
-      new URL("ap://user@did%3Akey%3Az6Mkabc/actor"),
-    ]
-  ) {
+  for (const id of [
+    "https://server.example/.well-known/apgateway/did:key:z6Mkabc/actor",
+    "https://example.com/actor",
+    "did:key:z6Mkabc#z6Mkabc",
+    "ap://did:key:z6Mkabc",
+    "ap://example.com/actor",
+    "ap://did:key:z6Mkabc/actor%zz",
+    new URL("https://example.com/actor"),
+    new URL("ap://did%3Akey%3Az6Mkabc:8080/actor"),
+    new URL("ap://user@did%3Akey%3Az6Mkabc/actor"),
+  ]) {
     throws(
       () => withGatewayHints(id, ["https://server.example"]),
       TypeError,
@@ -1508,14 +1483,12 @@ test("withGatewayHints() rejects non-portable IDs", () => {
 });
 
 test("withGatewayHints() rejects paths that URLs cannot represent", () => {
-  for (
-    const id of [
-      "ap://did:key:z6Mkabc/a/../actor",
-      "ap://did:key:z6Mkabc/a/./actor",
-      "ap://did:key:z6Mkabc/a/%2e%2e/actor",
-      "ap://did:key:z6Mkabc/a/%2E/actor",
-    ]
-  ) {
+  for (const id of [
+    "ap://did:key:z6Mkabc/a/../actor",
+    "ap://did:key:z6Mkabc/a/./actor",
+    "ap://did:key:z6Mkabc/a/%2e%2e/actor",
+    "ap://did:key:z6Mkabc/a/%2E/actor",
+  ]) {
     throws(
       () => withGatewayHints(id, ["https://server.example"]),
       TypeError,
@@ -1531,19 +1504,17 @@ test("withGatewayHints() rejects paths that URLs cannot represent", () => {
 });
 
 test("withGatewayHints() rejects invalid gateways", () => {
-  for (
-    const gateway of [
-      "https://server.example/path",
-      "https://server.example/?",
-      "https://server.example/#",
-      "https://server.example/?q=1",
-      "https://user:pass@server.example",
-      "ftp://server.example",
-      "ap://did:key:z6Mkabc/actor",
-      "server.example",
-      new URL("https://server.example/path"),
-    ]
-  ) {
+  for (const gateway of [
+    "https://server.example/path",
+    "https://server.example/?",
+    "https://server.example/#",
+    "https://server.example/?q=1",
+    "https://user:pass@server.example",
+    "ftp://server.example",
+    "ap://did:key:z6Mkabc/actor",
+    "server.example",
+    new URL("https://server.example/path"),
+  ]) {
     throws(
       () => withGatewayHints("ap://did:key:z6Mkabc/actor", [gateway]),
       TypeError,
@@ -1581,8 +1552,9 @@ test("getGatewayHints() reads @gateway location hints", () => {
     "ap+ef61://did%3Akey%3Az6Mkabc/actor??@gateway=https%3A%2F%2Fa.example",
   );
   deepStrictEqual(
-    getGatewayHints(withGatewayHints(questioned, ["https://b.example"]))
-      .map((url) => url.href),
+    getGatewayHints(withGatewayHints(questioned, ["https://b.example"])).map(
+      (url) => url.href,
+    ),
     ["https://b.example/"],
   );
   deepStrictEqual(

@@ -115,11 +115,10 @@ export async function doesActorOwnKey(
           // the actor's signed document can tell; there is no falling back
           // to the checks below, which trust web origins:
           const owner = await getPortableActorKeyOwner(key, options);
-          const ownerId = owner?.id == null
-            ? null
-            : getCanonicalPortableId(owner.id);
-          const verified = ownerId != null &&
-            ownerId === getCanonicalPortableId(actorId);
+          const ownerId =
+            owner?.id == null ? null : getCanonicalPortableId(owner.id);
+          const verified =
+            ownerId != null && ownerId === getCanonicalPortableId(actorId);
           span.setAttribute("activitypub.key_ownership.verified", verified);
           span.setAttribute(
             "activitypub.key_ownership.method",
@@ -133,11 +132,10 @@ export async function doesActorOwnKey(
             // The key is a gateway key of a portable actor, whose owner only
             // the actor's signed document can tell; there is no falling back
             // to the checks below, which trust web origins.
-            const ownerId = owner?.id == null
-              ? null
-              : getCanonicalPortableId(owner.id);
-            const verified = ownerId != null &&
-              ownerId === getCanonicalPortableId(actorId);
+            const ownerId =
+              owner?.id == null ? null : getCanonicalPortableId(owner.id);
+            const verified =
+              ownerId != null && ownerId === getCanonicalPortableId(actorId);
             span.setAttribute("activitypub.key_ownership.verified", verified);
             span.setAttribute(
               "activitypub.key_ownership.method",
@@ -154,10 +152,7 @@ export async function doesActorOwnKey(
           const owner = await verifyKeyOwnership(key, options);
           if (owner?.id != null && owner.id.href === actorId.href) {
             span.setAttribute("activitypub.key_ownership.verified", true);
-            span.setAttribute(
-              "activitypub.key_ownership.method",
-              "key_owner",
-            );
+            span.setAttribute("activitypub.key_ownership.method", "key_owner");
             return true;
           }
         }
@@ -168,12 +163,9 @@ export async function doesActorOwnKey(
         // activity is written by whoever sent it, so the `publicKey` list
         // inside it authenticates nothing.
         const actor = await fetchActorDocument(actorId, options);
-        if (actor != null && await doesActorListKey(actor, key, options)) {
+        if (actor != null && (await doesActorListKey(actor, key, options))) {
           span.setAttribute("activitypub.key_ownership.verified", true);
-          span.setAttribute(
-            "activitypub.key_ownership.method",
-            "actor_fetch",
-          );
+          span.setAttribute("activitypub.key_ownership.method", "actor_fetch");
           return true;
         }
         logger.debug(
@@ -238,8 +230,14 @@ async function doesActorListKey(
  */
 async function isSamePublicKey(a: CryptoKey, b: CryptoKey): Promise<boolean> {
   const [x, y] = await Promise.all([exportJwk(a), exportJwk(b)]);
-  return x.kty === y.kty && x.crv === y.crv && x.n === y.n && x.e === y.e &&
-    x.x === y.x && x.y === y.y;
+  return (
+    x.kty === y.kty &&
+    x.crv === y.crv &&
+    x.n === y.n &&
+    x.e === y.e &&
+    x.x === y.x &&
+    x.y === y.y
+  );
 }
 
 /**
@@ -348,7 +346,8 @@ export async function getKeyOwner(
   // authoritative for the actor id it claims.  No host is for a portable
   // actor; only its DID-signed document can tell its gateway keys, above:
   if (
-    object.id == null || isPortableId(object.id) ||
+    object.id == null ||
+    isPortableId(object.id) ||
     object.id.origin !== documentUrl.origin
   ) {
     logger.debug(
@@ -394,7 +393,7 @@ async function getPortableGatewayKeyOwner(
   if (key instanceof CryptographicKey) {
     if (
       key.publicKey == null ||
-      !await isSameKeyMaterial(key.publicKey, resolution.key.publicKey)
+      !(await isSameKeyMaterial(key.publicKey, resolution.key.publicKey))
     ) {
       logger.debug(
         "The key {keyId} does not have the same key material as the gateway " +
@@ -429,7 +428,7 @@ async function getPortableActorKeyOwner(
   if (key instanceof CryptographicKey) {
     if (
       key.publicKey == null ||
-      !await isSameKeyMaterial(key.publicKey, resolution.key.publicKey)
+      !(await isSameKeyMaterial(key.publicKey, resolution.key.publicKey))
     ) {
       logger.debug(
         "The key {keyId} does not have the same key material as the key its " +

@@ -30,11 +30,13 @@ test("getRemoteDocument() forwards options to alternate documents", async () => 
   await reset();
   await configure({
     sinks: { capture: (record) => records.push(record) },
-    loggers: [{
-      category: ["fedify"],
-      lowestLevel: "debug",
-      sinks: ["capture"],
-    }],
+    loggers: [
+      {
+        category: ["fedify"],
+        lowestLevel: "debug",
+        sinks: ["capture"],
+      },
+    ],
   });
   try {
     for (const linkHeader of [true, false]) {
@@ -53,9 +55,8 @@ test("getRemoteDocument() forwards options to alternate documents", async () => 
               "Content-Type": "text/html",
               ...(linkHeader
                 ? {
-                  Link:
-                    `<${alternateUrl}>; rel="alternate"; type="application/activity+json"`,
-                }
+                    Link: `<${alternateUrl}>; rel="alternate"; type="application/activity+json"`,
+                  }
                 : {}),
             },
           },
@@ -84,9 +85,10 @@ test("getRemoteDocument() forwards options to alternate documents", async () => 
           FetchError,
         );
         deepStrictEqual(alternateRequests, 1);
-        const failures = records.filter((record) =>
-          record.rawMessage ===
-            "Failed to fetch document: {status} {url} {headers}"
+        const failures = records.filter(
+          (record) =>
+            record.rawMessage ===
+            "Failed to fetch document: {status} {url} {headers}",
         );
         deepStrictEqual(failures.length, 1);
         deepStrictEqual(failures[0].level, suppressError ? "warning" : "error");
@@ -143,9 +145,12 @@ test("new FetchError()", () => {
 });
 
 test("getDocumentLoader()", async (t) => {
-  const fetchDocumentLoader = createDocumentLoader({}, {
-    openHop: openUnpinnedHop,
-  });
+  const fetchDocumentLoader = createDocumentLoader(
+    {},
+    {
+      openHop: openUnpinnedHop,
+    },
+  );
 
   fetchMock.spyGlobal();
 
@@ -179,7 +184,8 @@ test("getDocumentLoader()", async (t) => {
     },
     headers: {
       "Content-Type": "application/activity+json",
-      Link: "<https://www.w3.org/ns/activitystreams>; " +
+      Link:
+        "<https://www.w3.org/ns/activitystreams>; " +
         'rel="http://www.w3.org/ns/json-ld#context"; ' +
         'type="application/ld+json"',
     },
@@ -188,7 +194,8 @@ test("getDocumentLoader()", async (t) => {
   fetchMock.get("https://example.com/link-obj", {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      Link: '<https://example.com/object>; rel="alternate"; ' +
+      Link:
+        '<https://example.com/object>; rel="alternate"; ' +
         'type="application/activity+json"',
     },
   });
@@ -196,8 +203,7 @@ test("getDocumentLoader()", async (t) => {
   fetchMock.get("https://example.com/link-obj-relative", {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      Link: '</object>; rel="alternate"; ' +
-        'type="application/activity+json"',
+      Link: '</object>; rel="alternate"; ' + 'type="application/activity+json"',
     },
   });
 
@@ -210,7 +216,8 @@ test("getDocumentLoader()", async (t) => {
     },
     headers: {
       "Content-Type": "application/activity+json",
-      Link: '<https://example.com/object>; rel="alternate"; ' +
+      Link:
+        '<https://example.com/object>; rel="alternate"; ' +
         'type="application/ld+json; profile="https://www.w3.org/ns/activitystreams""',
     },
   });
@@ -387,9 +394,7 @@ test("getDocumentLoader()", async (t) => {
             "HTML document has no ActivityPub alternate link",
           ),
         );
-        ok(
-          error.message.includes("Content-Type: text/html; charset=utf-8"),
-        );
+        ok(error.message.includes("Content-Type: text/html; charset=utf-8"));
         deepStrictEqual(
           error.url,
           new URL("https://example.com/html-no-alternate"),
@@ -515,19 +520,24 @@ test("getDocumentLoader()", async (t) => {
       "https://www.w3.org/ns/activitystreams",
       "http://joinmastodon.org/ns",
     ];
-    const expanded = await jsonld.expand({
-      "@context": context,
-      id: "https://social.example/users/alice",
-      type: "Person",
-      attributionDomains: ["blog.example"],
-    }, { documentLoader: fetchDocumentLoader });
-    deepStrictEqual(expanded, [{
-      "@id": "https://social.example/users/alice",
-      "@type": ["https://www.w3.org/ns/activitystreams#Person"],
-      "http://joinmastodon.org/ns#attributionDomains": [
-        { "@value": "blog.example" },
-      ],
-    }]);
+    const expanded = await jsonld.expand(
+      {
+        "@context": context,
+        id: "https://social.example/users/alice",
+        type: "Person",
+        attributionDomains: ["blog.example"],
+      },
+      { documentLoader: fetchDocumentLoader },
+    );
+    deepStrictEqual(expanded, [
+      {
+        "@id": "https://social.example/users/alice",
+        "@type": ["https://www.w3.org/ns/activitystreams#Person"],
+        "http://joinmastodon.org/ns#attributionDomains": [
+          { "@value": "blog.example" },
+        ],
+      },
+    ]);
     const compacted = await jsonld.compact(expanded, context, {
       documentLoader: fetchDocumentLoader,
     });
@@ -633,21 +643,30 @@ test("getDocumentLoader()", async (t) => {
       },
     });
     deepStrictEqual(
-      await jsonld.expand({
-        "@context": ["https://www.w3.org/ns/activitystreams", url],
-        type: "Person",
-        license: "https://creativecommons.org/licenses/by/4.0/",
-        preferredLicense: "https://creativecommons.org/licenses/by-nc/4.0/",
-      }, { documentLoader: fetchDocumentLoader }),
-      [{
-        "@type": ["https://www.w3.org/ns/activitystreams#Person"],
-        "http://purl.org/dc/terms/license": [{
-          "@id": "https://creativecommons.org/licenses/by/4.0/",
-        }],
-        "https://w3id.org/fep/6757#preferredLicense": [{
-          "@id": "https://creativecommons.org/licenses/by-nc/4.0/",
-        }],
-      }],
+      await jsonld.expand(
+        {
+          "@context": ["https://www.w3.org/ns/activitystreams", url],
+          type: "Person",
+          license: "https://creativecommons.org/licenses/by/4.0/",
+          preferredLicense: "https://creativecommons.org/licenses/by-nc/4.0/",
+        },
+        { documentLoader: fetchDocumentLoader },
+      ),
+      [
+        {
+          "@type": ["https://www.w3.org/ns/activitystreams#Person"],
+          "http://purl.org/dc/terms/license": [
+            {
+              "@id": "https://creativecommons.org/licenses/by/4.0/",
+            },
+          ],
+          "https://w3id.org/fep/6757#preferredLicense": [
+            {
+              "@id": "https://creativecommons.org/licenses/by-nc/4.0/",
+            },
+          ],
+        },
+      ],
     );
     deepStrictEqual(fetchMock.callHistory.calls(url).length, 0);
   });
@@ -692,39 +711,50 @@ test("getDocumentLoader()", async (t) => {
       },
     });
     deepStrictEqual(
-      await jsonld.expand({
-        "@context": ["https://www.w3.org/ns/activitystreams", url],
-        id: articleId,
-        type: "Article",
-        contentMap: { en: "Original", ko: "Translation" },
-        translations: [{
-          type: "Translation",
-          inLanguage: "ko",
-          translator: [translatorId],
-          translationOfWork: articleId,
-          sourceUpdated: "2026-09-01T00:00:00Z",
-          isBasedOn: revisionId,
-        }],
-      }, { documentLoader: fetchDocumentLoader }),
-      [{
-        "@id": articleId,
-        "@type": ["https://www.w3.org/ns/activitystreams#Article"],
-        "https://www.w3.org/ns/activitystreams#content": [
-          { "@language": "en", "@value": "Original" },
-          { "@language": "ko", "@value": "Translation" },
-        ],
-        "https://w3id.org/fep/22cd#translations": [{
-          "@type": ["https://w3id.org/fep/22cd#Translation"],
-          "https://schema.org/inLanguage": [{ "@value": "ko" }],
-          "https://schema.org/translator": [{ "@id": translatorId }],
-          "https://schema.org/translationOfWork": [{ "@id": articleId }],
-          "https://w3id.org/fep/22cd#sourceUpdated": [{
-            "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
-            "@value": "2026-09-01T00:00:00Z",
-          }],
-          "https://schema.org/isBasedOn": [{ "@id": revisionId }],
-        }],
-      }],
+      await jsonld.expand(
+        {
+          "@context": ["https://www.w3.org/ns/activitystreams", url],
+          id: articleId,
+          type: "Article",
+          contentMap: { en: "Original", ko: "Translation" },
+          translations: [
+            {
+              type: "Translation",
+              inLanguage: "ko",
+              translator: [translatorId],
+              translationOfWork: articleId,
+              sourceUpdated: "2026-09-01T00:00:00Z",
+              isBasedOn: revisionId,
+            },
+          ],
+        },
+        { documentLoader: fetchDocumentLoader },
+      ),
+      [
+        {
+          "@id": articleId,
+          "@type": ["https://www.w3.org/ns/activitystreams#Article"],
+          "https://www.w3.org/ns/activitystreams#content": [
+            { "@language": "en", "@value": "Original" },
+            { "@language": "ko", "@value": "Translation" },
+          ],
+          "https://w3id.org/fep/22cd#translations": [
+            {
+              "@type": ["https://w3id.org/fep/22cd#Translation"],
+              "https://schema.org/inLanguage": [{ "@value": "ko" }],
+              "https://schema.org/translator": [{ "@id": translatorId }],
+              "https://schema.org/translationOfWork": [{ "@id": articleId }],
+              "https://w3id.org/fep/22cd#sourceUpdated": [
+                {
+                  "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+                  "@value": "2026-09-01T00:00:00Z",
+                },
+              ],
+              "https://schema.org/isBasedOn": [{ "@id": revisionId }],
+            },
+          ],
+        },
+      ],
     );
     deepStrictEqual(fetchMock.callHistory.calls(url).length, 0);
     deepStrictEqual(
@@ -735,10 +765,7 @@ test("getDocumentLoader()", async (t) => {
   });
 
   await t.step("deny non-HTTP/HTTPS", async () => {
-    await rejects(
-      () => fetchDocumentLoader("ftp://localhost"),
-      UrlError,
-    );
+    await rejects(() => fetchDocumentLoader("ftp://localhost"), UrlError);
   });
 
   fetchMock.get("https://example.com/localhost-redirect", {
@@ -960,15 +987,18 @@ test("getDocumentLoader() bounds JSON, HTML, and alternate documents", async () 
   fetchMock.mockGlobal();
   let oversized = true;
   try {
-    fetchMock.get(url, () =>
-      new Response('{"name":"hello"}', {
-        headers: {
-          "Content-Type": "application/activity+json",
-          ...(oversized
-            ? { "Content-Length": String(16 * 1024 * 1024 + 1) }
-            : {}),
-        },
-      }));
+    fetchMock.get(
+      url,
+      () =>
+        new Response('{"name":"hello"}', {
+          headers: {
+            "Content-Type": "application/activity+json",
+            ...(oversized
+              ? { "Content-Length": String(16 * 1024 * 1024 + 1) }
+              : {}),
+          },
+        }),
+    );
     const loader = getDocumentLoader({
       allowPrivateAddress: true,
     });
@@ -987,13 +1017,16 @@ test("getDocumentLoader() bounds JSON, HTML, and alternate documents", async () 
       getDocumentLoader({ allowPrivateAddress: true })(`${url}/html`),
       FetchError,
     );
-    fetchMock.get(`${url}/alternate`, () =>
-      new Response("", {
-        headers: {
-          "Content-Type": "text/html",
-          Link: `<${url}>; rel="alternate"; type="application/activity+json"`,
-        },
-      }));
+    fetchMock.get(
+      `${url}/alternate`,
+      () =>
+        new Response("", {
+          headers: {
+            "Content-Type": "text/html",
+            Link: `<${url}>; rel="alternate"; type="application/activity+json"`,
+          },
+        }),
+    );
     await rejects(loader(`${url}/alternate`), FetchError);
     fetchMock.get(`${url}/redirect`, {
       status: 302,
@@ -1010,9 +1043,8 @@ test("getDocumentLoader() rejects oversized gzip responses from fetch", async ()
   const compressed = gzipSync(JSON.stringify(document));
   ok(compressed.byteLength < 64 * 1024);
   const server = createServer((request, response) => {
-    const body = request.url === "/small"
-      ? gzipSync('{"name":"hello"}')
-      : compressed;
+    const body =
+      request.url === "/small" ? gzipSync('{"name":"hello"}') : compressed;
     response.writeHead(200, {
       "Content-Type": "application/activity+json",
       "Content-Encoding": "gzip",
@@ -1035,14 +1067,16 @@ test("getDocumentLoader() rejects oversized gzip responses from fetch", async ()
       FetchError,
     );
     deepStrictEqual(
-      (await getDocumentLoader({
-        allowPrivateAddress: true,
-      })(new URL("/small", url).href)).document,
+      (
+        await getDocumentLoader({
+          allowPrivateAddress: true,
+        })(new URL("/small", url).href)
+      ).document,
       { name: "hello" },
     );
   } finally {
     await new Promise<void>((resolve, reject) => {
-      server.close((error) => error == null ? resolve() : reject(error));
+      server.close((error) => (error == null ? resolve() : reject(error)));
       server.closeAllConnections();
     });
   }
@@ -1052,24 +1086,23 @@ test("getRemoteDocument() bounds JSON by default", async () => {
   let canceled = false;
   let pulls = 0;
   const response = new Response(
-    new ReadableStream({
-      pull(controller) {
-        pulls++;
-        controller.enqueue(new Uint8Array(64 * 1024).fill(32));
+    new ReadableStream(
+      {
+        pull(controller) {
+          pulls++;
+          controller.enqueue(new Uint8Array(64 * 1024).fill(32));
+        },
+        cancel() {
+          canceled = true;
+        },
       },
-      cancel() {
-        canceled = true;
-      },
-    }, { highWaterMark: 0 }),
+      { highWaterMark: 0 },
+    ),
   );
   await rejects(
-    getRemoteDocument(
-      "https://example.com/document",
-      response,
-      () => {
-        throw new Error("Unexpected alternate document");
-      },
-    ),
+    getRemoteDocument("https://example.com/document", response, () => {
+      throw new Error("Unexpected alternate document");
+    }),
     FetchError,
   );
   deepStrictEqual(canceled, true);
@@ -1085,12 +1118,16 @@ test("getDocumentLoader() logs DNS failures as such", async (t) => {
           : Promise.resolve(result === "empty" ? [] : [PRIVATE_ADDRESS]);
       // The default loader rejects IP literals without resolving them, so
       // the "default" step checks that its logging matches the injected one:
-      const loader = result === "default"
-        ? getDocumentLoader()
-        : createDocumentLoader({}, {
-          openHop: (url) =>
-            unpinnedPublicFetch.openPublicFetch(url, { lookup }),
-        });
+      const loader =
+        result === "default"
+          ? getDocumentLoader()
+          : createDocumentLoader(
+              {},
+              {
+                openHop: (url) =>
+                  unpinnedPublicFetch.openPublicFetch(url, { lookup }),
+              },
+            );
       const records: LogRecord[] = [];
       await configure({
         sinks: {
@@ -1103,14 +1140,18 @@ test("getDocumentLoader() logs DNS failures as such", async (t) => {
         reset: true,
       });
       try {
-        const url = result === "default"
-          ? "https://10.0.0.1/object"
-          : "https://dns-failure.invalid/object";
+        const url =
+          result === "default"
+            ? "https://10.0.0.1/object"
+            : "https://dns-failure.invalid/object";
         let error: unknown;
-        await rejects(() => loader(url), (e) => {
-          error = e;
-          return true;
-        });
+        await rejects(
+          () => loader(url),
+          (e) => {
+            error = e;
+            return true;
+          },
+        );
         ok(error instanceof UrlError);
         const disallowed = result === "private" || result === "default";
         deepStrictEqual(error.reason, disallowed ? "disallowed" : "dns");
@@ -1171,15 +1212,13 @@ test("getDocumentLoader() bounds alternate document chains", async (t) => {
     }
   }
 
-  for (
-    const mode of [
-      "header",
-      "html",
-      "alternate-redirect",
-      "redirect-alternate",
-      "redirect-intermediate",
-    ]
-  ) {
+  for (const mode of [
+    "header",
+    "html",
+    "alternate-redirect",
+    "redirect-alternate",
+    "redirect-intermediate",
+  ]) {
     await t.step(`${mode}: cycle`, async () => {
       fetchMock.mockGlobal();
       let requests = 0;
@@ -1189,13 +1228,18 @@ test("getDocumentLoader() bounds alternate document chains", async (t) => {
         const index = Number(new URL(url).pathname.split("/").at(-1));
         const next = `${base}${
           mode === "redirect-intermediate"
-            ? (index === 0 ? 1 : index === 1 ? 2 : 1)
+            ? index === 0
+              ? 1
+              : index === 1
+                ? 2
+                : 1
             : 1 - index
         }`;
         if (
           (mode === "alternate-redirect" && index === 1) ||
           ((mode === "redirect-alternate" ||
-            mode === "redirect-intermediate") && index === 0)
+            mode === "redirect-intermediate") &&
+            index === 0)
         ) {
           return Response.redirect(next, 302);
         }
@@ -1267,17 +1311,17 @@ test("getDocumentLoader() bounds alternate document chains", async (t) => {
   function alternate(next: string, html: boolean): Response {
     return html
       ? new Response(
-        `<link rel="alternate" type="application/activity+json" href="${next}">`,
-        {
-          headers: { "Content-Type": "text/html" },
-        },
-      )
+          `<link rel="alternate" type="application/activity+json" href="${next}">`,
+          {
+            headers: { "Content-Type": "text/html" },
+          },
+        )
       : new Response("not JSON", {
-        headers: {
-          "Content-Type": "text/plain",
-          Link: `<${next}>; rel="alternate"; type="application/activity+json"`,
-        },
-      });
+          headers: {
+            "Content-Type": "text/plain",
+            Link: `<${next}>; rel="alternate"; type="application/activity+json"`,
+          },
+        });
   }
 });
 
@@ -1300,11 +1344,12 @@ test("getDocumentLoader() preserves cancellation across alternates", async (t) =
             ? `<link rel="alternate" type="application/activity+json" href="${next}">`
             : "not JSON",
           {
-            headers: html ? { "Content-Type": "text/html" } : {
-              "Content-Type": "text/plain",
-              Link:
-                `<${next}>; rel="alternate"; type="application/activity+json"`,
-            },
+            headers: html
+              ? { "Content-Type": "text/html" }
+              : {
+                  "Content-Type": "text/plain",
+                  Link: `<${next}>; rel="alternate"; type="application/activity+json"`,
+                },
           },
         );
       });
@@ -1356,7 +1401,7 @@ async function withServer<T>(
     return await callback(`http://127.0.0.1:${address.port}`);
   } finally {
     await new Promise<void>((resolve, reject) => {
-      server.close((error) => error == null ? resolve() : reject(error));
+      server.close((error) => (error == null ? resolve() : reject(error)));
       server.closeAllConnections();
     });
   }
@@ -1384,139 +1429,158 @@ test("resolveDocumentLoaderTimeout() validates timeouts", () => {
 });
 
 test("getDocumentLoader() times out a request without a response", async () => {
-  await withServer(() => {
-    // Never respond.
-  }, async (baseUrl) => {
-    const url = `${baseUrl}/hang`;
-    const loader = getDocumentLoader({
-      allowPrivateAddress: true,
-      timeout: 100,
-    });
-    await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
-  });
+  await withServer(
+    () => {
+      // Never respond.
+    },
+    async (baseUrl) => {
+      const url = `${baseUrl}/hang`;
+      const loader = getDocumentLoader({
+        allowPrivateAddress: true,
+        timeout: 100,
+      });
+      await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
+    },
+  );
 });
 
 test("getDocumentLoader() times out a stalled response body", async () => {
   for (const status of [200, 404]) {
-    await withServer((_, response) => {
-      response.writeHead(status, {
-        "Content-Type": "application/activity+json",
-      });
-      response.write('{"id":');
-      // Never finish the body.
-    }, async (baseUrl) => {
-      const url = `${baseUrl}/stalled`;
-      const loader = getDocumentLoader({
-        allowPrivateAddress: true,
-        timeout: 200,
-      });
-      await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
-    });
+    await withServer(
+      (_, response) => {
+        response.writeHead(status, {
+          "Content-Type": "application/activity+json",
+        });
+        response.write('{"id":');
+        // Never finish the body.
+      },
+      async (baseUrl) => {
+        const url = `${baseUrl}/stalled`;
+        const loader = getDocumentLoader({
+          allowPrivateAddress: true,
+          timeout: 200,
+        });
+        await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
+      },
+    );
   }
 });
 
 test("getDocumentLoader() shares the timeout across redirects", async () => {
   let requests = 0;
-  await withServer((request, response) => {
-    requests++;
-    const index = Number(request.url?.split("/").at(-1));
-    setTimeout(() => {
-      if (index >= 15) {
-        response.writeHead(200, {
-          "Content-Type": "application/activity+json",
-        });
-        response.end('{"done":true}');
-        return;
-      }
-      response.writeHead(302, { Location: `/redirect/${index + 1}` });
-      response.end();
-    }, 50);
-  }, async (baseUrl) => {
-    const url = `${baseUrl}/redirect/0`;
-    // Each hop is well within the timeout, but the whole chain is not:
-    const loader = getDocumentLoader({
-      allowPrivateAddress: true,
-      timeout: 300,
-    });
-    await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
-    ok(requests < 16, `requests: ${requests}`);
-    // Without a timeout, the chain completes:
-    const unbounded = getDocumentLoader({
-      allowPrivateAddress: true,
-      timeout: null,
-    });
-    deepStrictEqual((await unbounded(url)).document, { done: true });
-  });
+  await withServer(
+    (request, response) => {
+      requests++;
+      const index = Number(request.url?.split("/").at(-1));
+      setTimeout(() => {
+        if (index >= 15) {
+          response.writeHead(200, {
+            "Content-Type": "application/activity+json",
+          });
+          response.end('{"done":true}');
+          return;
+        }
+        response.writeHead(302, { Location: `/redirect/${index + 1}` });
+        response.end();
+      }, 50);
+    },
+    async (baseUrl) => {
+      const url = `${baseUrl}/redirect/0`;
+      // Each hop is well within the timeout, but the whole chain is not:
+      const loader = getDocumentLoader({
+        allowPrivateAddress: true,
+        timeout: 300,
+      });
+      await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
+      ok(requests < 16, `requests: ${requests}`);
+      // Without a timeout, the chain completes:
+      const unbounded = getDocumentLoader({
+        allowPrivateAddress: true,
+        timeout: null,
+      });
+      deepStrictEqual((await unbounded(url)).document, { done: true });
+    },
+  );
 });
 
 test("getDocumentLoader() shares the timeout across alternates", async (t) => {
   for (const html of [false, true]) {
     await t.step(html ? "HTML" : "Link header", async () => {
-      await withServer((request, response) => {
-        const index = Number(request.url?.split("/").at(-1));
-        setTimeout(() => {
-          if (index >= 15) {
-            response.writeHead(200, {
-              "Content-Type": "application/activity+json",
-            });
-            response.end('{"done":true}');
-            return;
-          }
-          const next = `/alternate/${index + 1}`;
-          response.writeHead(
-            200,
-            html ? { "Content-Type": "text/html" } : {
-              "Content-Type": "text/plain",
-              Link:
-                `<${next}>; rel="alternate"; type="application/activity+json"`,
-            },
-          );
-          response.end(
-            html
-              ? `<link rel="alternate" type="application/activity+json" href="${next}">`
-              : "not JSON",
-          );
-        }, 50);
-      }, async (baseUrl) => {
-        const url = `${baseUrl}/alternate/0`;
-        const loader = getDocumentLoader({
-          allowPrivateAddress: true,
-          timeout: 300,
-        });
-        await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
-      });
+      await withServer(
+        (request, response) => {
+          const index = Number(request.url?.split("/").at(-1));
+          setTimeout(() => {
+            if (index >= 15) {
+              response.writeHead(200, {
+                "Content-Type": "application/activity+json",
+              });
+              response.end('{"done":true}');
+              return;
+            }
+            const next = `/alternate/${index + 1}`;
+            response.writeHead(
+              200,
+              html
+                ? { "Content-Type": "text/html" }
+                : {
+                    "Content-Type": "text/plain",
+                    Link: `<${next}>; rel="alternate"; type="application/activity+json"`,
+                  },
+            );
+            response.end(
+              html
+                ? `<link rel="alternate" type="application/activity+json" href="${next}">`
+                : "not JSON",
+            );
+          }, 50);
+        },
+        async (baseUrl) => {
+          const url = `${baseUrl}/alternate/0`;
+          const loader = getDocumentLoader({
+            allowPrivateAddress: true,
+            timeout: 300,
+          });
+          await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
+        },
+      );
     });
   }
 });
 
 test("getDocumentLoader() lets the caller's signal abort a request", async () => {
-  await withServer(() => {
-    // Never respond.
-  }, async (baseUrl) => {
-    const url = `${baseUrl}/hang`;
-    for (const timeout of [undefined, 60_000, null]) {
-      const loader = getDocumentLoader({ allowPrivateAddress: true, timeout });
+  await withServer(
+    () => {
+      // Never respond.
+    },
+    async (baseUrl) => {
+      const url = `${baseUrl}/hang`;
+      for (const timeout of [undefined, 60_000, null]) {
+        const loader = getDocumentLoader({
+          allowPrivateAddress: true,
+          timeout,
+        });
+        const controller = new AbortController();
+        const reason = new Error("Canceled by the caller");
+        setTimeout(() => controller.abort(reason), 50);
+        await rejects(loader(url, { signal: controller.signal }), (e) => {
+          deepStrictEqual(e, reason);
+          return true;
+        });
+      }
+      // The caller's signal wins even if the timeout fires too:
+      const loader = getDocumentLoader({
+        allowPrivateAddress: true,
+        timeout: 50,
+      });
       const controller = new AbortController();
       const reason = new Error("Canceled by the caller");
-      setTimeout(() => controller.abort(reason), 50);
+      controller.abort(reason);
       await rejects(loader(url, { signal: controller.signal }), (e) => {
         deepStrictEqual(e, reason);
         return true;
       });
-    }
-    // The caller's signal wins even if the timeout fires too:
-    const loader = getDocumentLoader({
-      allowPrivateAddress: true,
-      timeout: 50,
-    });
-    const controller = new AbortController();
-    const reason = new Error("Canceled by the caller");
-    controller.abort(reason);
-    await rejects(loader(url, { signal: controller.signal }), (e) => {
-      deepStrictEqual(e, reason);
-      return true;
-    });
-  });
+    },
+  );
 });
 
 test("getDocumentLoader() bounds DNS lookups that ignore the timeout", async () => {
@@ -1528,18 +1592,21 @@ test("getDocumentLoader() bounds DNS lookups that ignore the timeout", async () 
     return Response.json({ id: url });
   });
   let resolveLookup: () => void = () => {};
-  const lookedUp = new Promise<void>((resolve) => resolveLookup = resolve);
+  const lookedUp = new Promise<void>((resolve) => (resolveLookup = resolve));
   const lookup = () =>
     new Promise<LookupAddress[]>((resolve) =>
       setTimeout(() => {
         resolve([{ address: "93.184.215.14", family: 4 }]);
         resolveLookup();
-      }, 200)
+      }, 200),
     );
   try {
-    const loader = createDocumentLoader({ timeout: 50 }, {
-      openHop: (url) => unpinnedPublicFetch.openPublicFetch(url, { lookup }),
-    });
+    const loader = createDocumentLoader(
+      { timeout: 50 },
+      {
+        openHop: (url) => unpinnedPublicFetch.openPublicFetch(url, { lookup }),
+      },
+    );
     await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
     // A late DNS answer must not start the request anymore:
     await lookedUp;
@@ -1564,10 +1631,10 @@ test("withDocumentLoaderTimeout() cleans up after each call", async () => {
     loader("https://example.com/a"),
     loader("https://example.com/b"),
   ]);
-  deepStrictEqual(results.map((r) => r.documentUrl), [
-    "https://example.com/a",
-    "https://example.com/b",
-  ]);
+  deepStrictEqual(
+    results.map((r) => r.documentUrl),
+    ["https://example.com/a", "https://example.com/b"],
+  );
   ok(signals[0] !== signals[1]);
   // The timers are cleared, so the signals are never aborted:
   await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1582,10 +1649,8 @@ test("getRemoteDocument() keeps error bodies byte for byte", async () => {
   const url = "https://example.com/error";
   let error: unknown;
   await rejects(
-    getRemoteDocument(
-      url,
-      new Response(bytes, { status: 404 }),
-      () => Promise.reject(new Error("unused")),
+    getRemoteDocument(url, new Response(bytes, { status: 404 }), () =>
+      Promise.reject(new Error("unused")),
     ),
     (e) => {
       error = e;
@@ -1600,20 +1665,16 @@ test("getRemoteDocument() keeps error bodies byte for byte", async () => {
 
 test("getRemoteDocument() keeps metadata of bodiless or large errors", async () => {
   const url = "https://example.com/error";
-  for (
-    const response of [
-      new Response(null, { status: 304, headers: { ETag: '"a"' } }),
-      new Response(new Uint8Array(1024 * 1024 + 1), {
-        status: 500,
-        headers: { ETag: '"a"' },
-      }),
-    ]
-  ) {
+  for (const response of [
+    new Response(null, { status: 304, headers: { ETag: '"a"' } }),
+    new Response(new Uint8Array(1024 * 1024 + 1), {
+      status: 500,
+      headers: { ETag: '"a"' },
+    }),
+  ]) {
     await rejects(
-      getRemoteDocument(
-        url,
-        response,
-        () => Promise.reject(new Error("unused")),
+      getRemoteDocument(url, response, () =>
+        Promise.reject(new Error("unused")),
       ),
       (e) => {
         ok(e instanceof FetchError);
@@ -1628,49 +1689,58 @@ test("getRemoteDocument() keeps metadata of bodiless or large errors", async () 
 });
 
 test("getDocumentLoader() reports statuses that Response cannot hold", async () => {
-  await withServer((_, response) => {
-    response.writeHead(999);
-    response.end("Request denied");
-  }, async (baseUrl) => {
-    const url = `${baseUrl}/denied`;
-    const loader = getDocumentLoader({ allowPrivateAddress: true });
-    let error: unknown;
-    await rejects(loader(url), (e) => {
-      error = e;
-      return true;
-    });
-    ok(error instanceof FetchError, String(error));
-    deepStrictEqual(error.response?.status, 999);
-    deepStrictEqual(await error.response.text(), "Request denied");
-  });
+  await withServer(
+    (_, response) => {
+      response.writeHead(999);
+      response.end("Request denied");
+    },
+    async (baseUrl) => {
+      const url = `${baseUrl}/denied`;
+      const loader = getDocumentLoader({ allowPrivateAddress: true });
+      let error: unknown;
+      await rejects(loader(url), (e) => {
+        error = e;
+        return true;
+      });
+      ok(error instanceof FetchError, String(error));
+      deepStrictEqual(error.response?.status, 999);
+      deepStrictEqual(await error.response.text(), "Request denied");
+    },
+  );
 });
 
 test("getDocumentLoader() times out a stalled body of such a status", async () => {
-  await withServer((_, response) => {
-    response.writeHead(999);
-    response.write("Request");
-    // Never finish the body.
-  }, async (baseUrl) => {
-    const url = `${baseUrl}/stalled-denied`;
-    const loader = getDocumentLoader({
-      allowPrivateAddress: true,
-      timeout: 200,
-    });
-    await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
-  });
+  await withServer(
+    (_, response) => {
+      response.writeHead(999);
+      response.write("Request");
+      // Never finish the body.
+    },
+    async (baseUrl) => {
+      const url = `${baseUrl}/stalled-denied`;
+      const loader = getDocumentLoader({
+        allowPrivateAddress: true,
+        timeout: 200,
+      });
+      await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
+    },
+  );
 });
 
 const unsupportedUrls = [
   "ftp://example.com/collection",
   "file:///collection",
-  `data:application/ld+json,${
-    encodeURIComponent(JSON.stringify({ id: "https://example.com/data" }))
-  }`,
+  `data:application/ld+json,${encodeURIComponent(
+    JSON.stringify({ id: "https://example.com/data" }),
+  )}`,
 ];
 
 function isCredentialUrlError(error: unknown): boolean {
-  return error instanceof UrlError && error.reason === "disallowed" &&
-    error.message === "URLs with credentials are not allowed";
+  return (
+    error instanceof UrlError &&
+    error.reason === "disallowed" &&
+    error.message === "URLs with credentials are not allowed"
+  );
 }
 
 test("getDocumentLoader() rejects URLs with credentials", async (t) => {
@@ -1695,8 +1765,7 @@ test("getDocumentLoader() rejects URLs with credentials", async (t) => {
               return new Response("", {
                 headers: {
                   "Content-Type": "text/plain",
-                  Link:
-                    `<${target}>; rel="alternate"; type="application/activity+json"`,
+                  Link: `<${target}>; rel="alternate"; type="application/activity+json"`,
                 },
               });
             },
@@ -1711,30 +1780,29 @@ test("getDocumentLoader() rejects URLs with credentials", async (t) => {
         },
       );
     }
-    for (
-      const url of [
-        "https://user@8.8.8.8/document",
-        "https://:pass@8.8.8.8/document",
-        "https://%75ser:p%40ss@8.8.8.8/document",
-        "http://user:pass@8.8.8.8/document",
-      ]
-    ) {
+    for (const url of [
+      "https://user@8.8.8.8/document",
+      "https://:pass@8.8.8.8/document",
+      "https://%75ser:p%40ss@8.8.8.8/document",
+      "http://user:pass@8.8.8.8/document",
+    ]) {
       await t.step(
         `${url}, allowPrivateAddress=${allowPrivateAddress}`,
         async () => {
-          await withFetchStub(() => Response.json({}), async (fetched) => {
-            await rejects(loader(url), isCredentialUrlError);
-            deepStrictEqual(fetched, []);
-          });
+          await withFetchStub(
+            () => Response.json({}),
+            async (fetched) => {
+              await rejects(loader(url), isCredentialUrlError);
+              deepStrictEqual(fetched, []);
+            },
+          );
         },
       );
     }
-    for (
-      const url of [
-        "https://:@8.8.8.8/document",
-        "https://8.8.8.8/@user?q=@pass",
-      ]
-    ) {
+    for (const url of [
+      "https://:@8.8.8.8/document",
+      "https://8.8.8.8/@user?q=@pass",
+    ]) {
       await t.step(
         `allows ${url}, allowPrivateAddress=${allowPrivateAddress}`,
         async () => {
@@ -1753,9 +1821,11 @@ test("getDocumentLoader() rejects URLs with credentials", async (t) => {
 });
 
 function isUnsupportedProtocolError(error: unknown, url: string): boolean {
-  return error instanceof UrlError &&
+  return (
+    error instanceof UrlError &&
     error.message === `Unsupported protocol: ${new URL(url).protocol}` &&
-    error.reason === "disallowed";
+    error.reason === "disallowed"
+  );
 }
 
 async function withFetchStub(
@@ -1780,57 +1850,59 @@ for (const url of unsupportedUrls) {
   const scheme = new URL(url).protocol;
 
   test(`getDocumentLoader() rejects ${scheme} URLs with private addresses allowed before fetching`, async () => {
-    await withFetchStub(() => Response.json({}), async (fetched) => {
-      await rejects(
-        getDocumentLoader({ allowPrivateAddress: true })(url),
-        (e) => isUnsupportedProtocolError(e, url),
-      );
-      deepStrictEqual(fetched, []);
-    });
+    await withFetchStub(
+      () => Response.json({}),
+      async (fetched) => {
+        await rejects(
+          getDocumentLoader({ allowPrivateAddress: true })(url),
+          (e) => isUnsupportedProtocolError(e, url),
+        );
+        deepStrictEqual(fetched, []);
+      },
+    );
   });
 
   test(`getDocumentLoader() rejects redirects to ${scheme} URLs with private addresses allowed`, async () => {
     const start = "https://example.com/redirect-to-unsupported";
-    await withFetchStub(() => Response.redirect(url, 302), async (fetched) => {
-      await rejects(
-        getDocumentLoader({ allowPrivateAddress: true })(start),
-        (e) => isUnsupportedProtocolError(e, url),
-      );
-      deepStrictEqual(fetched, [start]);
-    });
+    await withFetchStub(
+      () => Response.redirect(url, 302),
+      async (fetched) => {
+        await rejects(
+          getDocumentLoader({ allowPrivateAddress: true })(start),
+          (e) => isUnsupportedProtocolError(e, url),
+        );
+        deepStrictEqual(fetched, [start]);
+      },
+    );
   });
 
   for (const html of [false, true]) {
-    test(
-      `getDocumentLoader() rejects ${
-        html ? "HTML" : "Link header"
-      } alternates to ${scheme} URLs with private addresses allowed`,
-      async () => {
-        const start = "https://example.com/alternate-to-unsupported";
-        await withFetchStub(
-          () =>
-            html
-              ? new Response(
+    test(`getDocumentLoader() rejects ${
+      html ? "HTML" : "Link header"
+    } alternates to ${scheme} URLs with private addresses allowed`, async () => {
+      const start = "https://example.com/alternate-to-unsupported";
+      await withFetchStub(
+        () =>
+          html
+            ? new Response(
                 `<link rel="alternate" type="application/activity+json" href="${url}">`,
                 { headers: { "Content-Type": "text/html" } },
               )
-              : new Response("", {
+            : new Response("", {
                 headers: {
                   "Content-Type": "text/plain",
-                  Link:
-                    `<${url}>; rel="alternate"; type="application/activity+json"`,
+                  Link: `<${url}>; rel="alternate"; type="application/activity+json"`,
                 },
               }),
-          async (fetched) => {
-            await rejects(
-              getDocumentLoader({ allowPrivateAddress: true })(start),
-              (e) => isUnsupportedProtocolError(e, url),
-            );
-            deepStrictEqual(fetched, [start]);
-          },
-        );
-      },
-    );
+        async (fetched) => {
+          await rejects(
+            getDocumentLoader({ allowPrivateAddress: true })(start),
+            (e) => isUnsupportedProtocolError(e, url),
+          );
+          deepStrictEqual(fetched, [start]);
+        },
+      );
+    });
   }
 }
 
@@ -1889,24 +1961,27 @@ function createHopRecorder(
     } = responder(url);
     const state = { n, settled: false };
     let sent = false;
-    const stream = new ReadableStream<Uint8Array>({
-      pull(controller) {
-        if (!sent && body !== "") {
-          sent = true;
-          controller.enqueue(new TextEncoder().encode(body));
-          return;
-        }
-        controller.close();
-        state.settled = true;
-        events.push(`consumed #${n}`);
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          if (!sent && body !== "") {
+            sent = true;
+            controller.enqueue(new TextEncoder().encode(body));
+            return;
+          }
+          controller.close();
+          state.settled = true;
+          events.push(`consumed #${n}`);
+        },
+        cancel() {
+          state.settled = true;
+          events.push(`cancel #${n}`);
+          if (failCancel) throw new Error(`Failed to cancel #${n}`);
+          if (hangCancel) return new Promise<void>(() => {});
+        },
       },
-      cancel() {
-        state.settled = true;
-        events.push(`cancel #${n}`);
-        if (failCancel) throw new Error(`Failed to cancel #${n}`);
-        if (hangCancel) return new Promise<void>(() => {});
-      },
-    }, { highWaterMark: 0 });
+      { highWaterMark: 0 },
+    );
     const response = new Response(stream, { status, headers });
     if (responseUrl != null) {
       Object.defineProperty(response, "url", { value: responseUrl });
@@ -1950,15 +2025,20 @@ function createHopRecorder(
 
   function openHop(url: string): Promise<PublicFetchSession> {
     const origin = new URL(url).origin;
-    return Promise.resolve(record(url, {
-      url: new URL(url),
-      fetch(input) {
-        const target = input instanceof Request ? input.url : String(input);
-        ok(new URL(target).origin === origin, `${target} is not on ${origin}`);
-        return Promise.resolve(respond(target));
-      },
-      close: () => Promise.resolve(),
-    }));
+    return Promise.resolve(
+      record(url, {
+        url: new URL(url),
+        fetch(input) {
+          const target = input instanceof Request ? input.url : String(input);
+          ok(
+            new URL(target).origin === origin,
+            `${target} is not on ${origin}`,
+          );
+          return Promise.resolve(respond(target));
+        },
+        close: () => Promise.resolve(),
+      }),
+    );
   }
 
   return {
@@ -1983,7 +2063,7 @@ test("getDocumentLoader() closes a redirect hop before the next hop", async () =
   const recorder = createHopRecorder((url) =>
     url === "https://a.example/start"
       ? { status: 302, headers: { Location: "https://b.example/object" } }
-      : { body: JSON.stringify(lifecycleDocument) }
+      : { body: JSON.stringify(lifecycleDocument) },
   );
   const loader = createDocumentLoader({}, { openHop: recorder.openHop });
   deepStrictEqual(await loader("https://a.example/start"), {
@@ -2008,14 +2088,15 @@ test("getDocumentLoader() cancels the body before a Link header alternate", asyn
   const recorder = createHopRecorder((url) =>
     url === "https://a.example/start"
       ? {
-        headers: {
-          "Content-Type": "text/plain",
-          Link: '<https://b.example/object>; rel="alternate"; ' +
-            'type="application/activity+json"',
-        },
-        body: "not JSON",
-      }
-      : { body: JSON.stringify(lifecycleDocument) }
+          headers: {
+            "Content-Type": "text/plain",
+            Link:
+              '<https://b.example/object>; rel="alternate"; ' +
+              'type="application/activity+json"',
+          },
+          body: "not JSON",
+        }
+      : { body: JSON.stringify(lifecycleDocument) },
   );
   const loader = createDocumentLoader({}, { openHop: recorder.openHop });
   deepStrictEqual(
@@ -2039,11 +2120,12 @@ test("getDocumentLoader() reads the body before an HTML alternate", async () => 
   const recorder = createHopRecorder((url) =>
     url === "https://a.example/start"
       ? {
-        headers: { "Content-Type": "text/html" },
-        body: '<link rel="alternate" type="application/activity+json" ' +
-          'href="https://b.example/object">',
-      }
-      : { body: JSON.stringify(lifecycleDocument) }
+          headers: { "Content-Type": "text/html" },
+          body:
+            '<link rel="alternate" type="application/activity+json" ' +
+            'href="https://b.example/object">',
+        }
+      : { body: JSON.stringify(lifecycleDocument) },
   );
   const loader = createDocumentLoader({}, { openHop: recorder.openHop });
   deepStrictEqual(
@@ -2122,13 +2204,9 @@ function cancelFailureLogs(
 ): [string, unknown, string][] {
   return records.flatMap((record) =>
     record.rawMessage ===
-        "Failed to cancel the response body from {url}: {error}"
-      ? [[
-        record.level,
-        record.properties.url,
-        String(record.properties.error),
-      ]]
-      : []
+    "Failed to cancel the response body from {url}: {error}"
+      ? [[record.level, record.properties.url, String(record.properties.error)]]
+      : [],
   );
 }
 
@@ -2148,19 +2226,19 @@ test("getDocumentLoader() continues if an intermediate body fails to cancel", as
       const recorder = createHopRecorder((url) =>
         url === "https://a.example/start"
           ? {
-            ...(kind === "redirect"
-              ? {
-                status: 302,
-                headers: { Location: "https://b.example/object" },
-              }
-              : linkHeaderAlternate("https://b.example/object")),
-            failCancel: true,
-          }
-          : { body: JSON.stringify(lifecycleDocument) }
+              ...(kind === "redirect"
+                ? {
+                    status: 302,
+                    headers: { Location: "https://b.example/object" },
+                  }
+                : linkHeaderAlternate("https://b.example/object")),
+              failCancel: true,
+            }
+          : { body: JSON.stringify(lifecycleDocument) },
       );
       const loader = createDocumentLoader({}, { openHop: recorder.openHop });
       const { result, records } = await captureDocumentLoaderLogs(() =>
-        loader("https://a.example/start")
+        loader("https://a.example/start"),
       );
       deepStrictEqual(result, {
         contextUrl: null,
@@ -2179,11 +2257,9 @@ test("getDocumentLoader() continues if an intermediate body fails to cancel", as
       ]);
       recorder.assertInvariants();
       // The failure is only logged:
-      deepStrictEqual(cancelFailureLogs(records), [[
-        "debug",
-        "https://a.example/start",
-        "Error: Failed to cancel #1",
-      ]]);
+      deepStrictEqual(cancelFailureLogs(records), [
+        ["debug", "https://a.example/start", "Error: Failed to cancel #1"],
+      ]);
     });
   }
 });
@@ -2194,15 +2270,15 @@ test("getDocumentLoader() does not wait for intermediate bodies to be cancelled"
       const recorder = createHopRecorder((url) =>
         url === "https://a.example/start"
           ? {
-            ...(kind === "redirect"
-              ? {
-                status: 302,
-                headers: { Location: "https://b.example/object" },
-              }
-              : linkHeaderAlternate("https://b.example/object")),
-            hangCancel: true,
-          }
-          : { body: JSON.stringify(lifecycleDocument) }
+              ...(kind === "redirect"
+                ? {
+                    status: 302,
+                    headers: { Location: "https://b.example/object" },
+                  }
+                : linkHeaderAlternate("https://b.example/object")),
+              hangCancel: true,
+            }
+          : { body: JSON.stringify(lifecycleDocument) },
       );
       const loader = createDocumentLoader({}, { openHop: recorder.openHop });
       deepStrictEqual(
@@ -2246,10 +2322,13 @@ test("getDocumentLoader() does not wait for intermediate bodies to be cancelled"
       pinner: () => Promise.resolve(pinner),
       lookup: () => Promise.reject(new Error("Unexpected default lookup")),
     });
-    const loader = createDocumentLoader({}, {
-      openHop: (url) =>
-        publicFetch.openPublicFetch(url, { lookup: lookupTestAddresses }),
-    });
+    const loader = createDocumentLoader(
+      {},
+      {
+        openHop: (url) =>
+          publicFetch.openPublicFetch(url, { lookup: lookupTestAddresses }),
+      },
+    );
     await settlesWithin(
       rejects(loader("https://a.example/redirect"), UrlError),
     );
@@ -2280,7 +2359,8 @@ test("getDocumentLoader() completes with tee'd fetch-mock responses", async (t) 
   for (const [name, loader] of Object.entries(loaders)) {
     for (const body of ["string", "stream"] as const) {
       await t.step(`${name}: ${body} bodies`, async () => {
-        const make = (text: string) => body === "string" ? text : stream(text);
+        const make = (text: string) =>
+          body === "string" ? text : stream(text);
         fetchMock.mockGlobal();
         try {
           fetchMock.get(
@@ -2304,7 +2384,8 @@ test("getDocumentLoader() completes with tee'd fetch-mock responses", async (t) 
               new Response(make("not JSON"), {
                 headers: {
                   "Content-Type": "text/plain",
-                  Link: `<${url}/object>; rel="alternate"; ` +
+                  Link:
+                    `<${url}/object>; rel="alternate"; ` +
                     'type="application/activity+json"',
                 },
               }),
@@ -2366,18 +2447,21 @@ test("getDocumentLoader() resolves each hop once", async () => {
     pinner: () => Promise.resolve(pinner),
     lookup: () => Promise.reject(new Error("Unexpected default lookup")),
   });
-  const loader = createDocumentLoader({}, {
-    openHop: async (url) =>
-      recorder.record(
-        url,
-        await publicFetch.openPublicFetch(url, {
-          lookup(hostname) {
-            lookups.push(hostname);
-            return Promise.resolve([PUBLIC_ADDRESS]);
-          },
-        }),
-      ),
-  });
+  const loader = createDocumentLoader(
+    {},
+    {
+      openHop: async (url) =>
+        recorder.record(
+          url,
+          await publicFetch.openPublicFetch(url, {
+            lookup(hostname) {
+              lookups.push(hostname);
+              return Promise.resolve([PUBLIC_ADDRESS]);
+            },
+          }),
+        ),
+    },
+  );
   deepStrictEqual(await loader("https://a.example/start"), {
     contextUrl: null,
     documentUrl: "https://b.example/object",
@@ -2405,7 +2489,8 @@ test("getRemoteDocument() cancels the body before loading a Link header alternat
   const recorder = createHopRecorder(() => ({
     headers: {
       "Content-Type": "text/html",
-      Link: '<https://b.example/object>; rel="alternate"; ' +
+      Link:
+        '<https://b.example/object>; rel="alternate"; ' +
         'type="application/activity+json"',
     },
     body: "<html></html>",

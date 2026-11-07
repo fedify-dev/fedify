@@ -212,16 +212,21 @@ async function checkDashboardQueries(): Promise<void> {
 async function smokeChecks(): Promise<void> {
   let cleanupPromise: Promise<string> | undefined;
   const stopSmokeStack = (options: RunOptions = {}) => {
-    return cleanupPromise ??= run("Stop smoke stack", "docker", [
-      "compose",
-      "-p",
-      projectName,
-      "-f",
-      composeFile,
-      "down",
-      "--remove-orphans",
-      "--volumes",
-    ], { noThrow: true, cleanup: true, ...options });
+    return (cleanupPromise ??= run(
+      "Stop smoke stack",
+      "docker",
+      [
+        "compose",
+        "-p",
+        projectName,
+        "-f",
+        composeFile,
+        "down",
+        "--remove-orphans",
+        "--volumes",
+      ],
+      { noThrow: true, cleanup: true, ...options },
+    ));
   };
   await stopSmokeStack({ quiet: true });
   cleanupPromise = undefined;
@@ -256,26 +261,26 @@ async function smokeChecks(): Promise<void> {
       if (!isRecord(json) || !isRecord(json.data)) return false;
       const targets = json.data.activeTargets;
       if (!Array.isArray(targets)) return false;
-      return targets.some((target) =>
-        isRecord(target) &&
-        target.health === "up" &&
-        isRecord(target.labels) &&
-        target.labels.job === "otel-collector"
+      return targets.some(
+        (target) =>
+          isRecord(target) &&
+          target.health === "up" &&
+          isRecord(target.labels) &&
+          target.labels.job === "otel-collector",
       );
     });
-    await waitFor(
-      "Fedify sample metrics",
-      () => prometheusQuery("fedify_http_server_request_count_total"),
+    await waitFor("Fedify sample metrics", () =>
+      prometheusQuery("fedify_http_server_request_count_total"),
     );
     await checkDashboardQueries();
     await waitFor("Fedify dashboard provisioning", async () => {
       const json = await fetchJson(
         "http://localhost:3000/api/search?query=Fedify",
       );
-      return Array.isArray(json) &&
-        json.some((entry) =>
-          isRecord(entry) && entry.uid === "fedify-overview"
-        );
+      return (
+        Array.isArray(json) &&
+        json.some((entry) => isRecord(entry) && entry.uid === "fedify-overview")
+      );
     });
   } finally {
     try {

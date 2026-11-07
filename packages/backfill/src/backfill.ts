@@ -59,9 +59,7 @@ type ReplyTreeTraversal = {
  *
  * @since 2.3.0
  */
-export async function* backfill<
-  TObject extends APObject = APObject,
->(
+export async function* backfill<TObject extends APObject = APObject>(
   context: BackfillContext,
   note: TObject,
   options: BackfillOptions<TObject> = {},
@@ -169,9 +167,11 @@ function normalizeStrategies(
 function isContextStrategy(
   strategy: BackfillStrategy,
 ): strategy is Exclude<BackfillStrategy, "reply-tree"> {
-  return strategy === "context-objects" ||
+  return (
+    strategy === "context-objects" ||
     strategy === "context-activities" ||
-    strategy === "context-auto";
+    strategy === "context-auto"
+  );
 }
 
 function currentContextGroupHasAuto(
@@ -204,25 +204,21 @@ async function* getContextStrategyItems(
     skipLoaderErrors: true,
   });
   if (!isCollection(collection)) return;
-  for await (
-    const object of getCollectionItems(
-      context,
-      collection,
-      options,
-      budget,
-      seenIds,
-    )
-  ) {
+  for await (const object of getCollectionItems(
+    context,
+    collection,
+    options,
+    budget,
+    seenIds,
+  )) {
     for (const strategy of strategies) {
-      for await (
-        const item of getContextBackfillItems(
-          context,
-          object,
-          strategy,
-          options,
-          budget,
-        )
-      ) {
+      for await (const item of getContextBackfillItems(
+        context,
+        object,
+        strategy,
+        options,
+        budget,
+      )) {
         yield {
           object: item.object,
           strategy: item.strategy,
@@ -282,15 +278,13 @@ async function* getReplyTreeItems(
     readonly object: APObject;
     readonly depth: number;
   }> = [];
-  for await (
-    const item of getReplyAncestors(context, note, options, budget, {
-      depth: 1,
-      visitedObjectIds,
-      visitedObjects,
-      visitedCollectionIds,
-      visitedCollections,
-    })
-  ) {
+  for await (const item of getReplyAncestors(context, note, options, budget, {
+    depth: 1,
+    visitedObjectIds,
+    visitedObjects,
+    visitedCollectionIds,
+    visitedCollections,
+  })) {
     ancestors.push({ object: item.object, depth: item.depth });
     yield item;
   }
@@ -325,9 +319,12 @@ async function* getReplyAncestors(
   readonly depth: number;
 }> {
   if (traversal.depth > (options.maxDepth ?? DEFAULT_MAX_DEPTH)) return;
-  for await (
-    const target of getReplyTargets(context, object, options, budget)
-  ) {
+  for await (const target of getReplyTargets(
+    context,
+    object,
+    options,
+    budget,
+  )) {
     if (!isContextPostObject(target)) continue;
     if (!visitReplyTreeObject(target, traversal)) continue;
     yield {
@@ -360,10 +357,7 @@ async function* getReplyDescendants(
 }> {
   if (traversal.depth > (options.maxDepth ?? DEFAULT_MAX_DEPTH)) return;
   const repliesId = object.repliesId;
-  if (
-    repliesId != null &&
-    traversal.visitedCollectionIds.has(repliesId.href)
-  ) {
+  if (repliesId != null && traversal.visitedCollectionIds.has(repliesId.href)) {
     return;
   }
   const replies = await getRepliesCollection(context, object, options, budget);
@@ -371,15 +365,13 @@ async function* getReplyDescendants(
   const unvisited = visitReplyTreeCollection(replies, traversal);
   if (repliesId != null) traversal.visitedCollectionIds.add(repliesId.href);
   if (!unvisited) return;
-  for await (
-    const reply of getCollectionItems(
-      context,
-      replies,
-      options,
-      budget,
-      traversal.visitedObjectIds,
-    )
-  ) {
+  for await (const reply of getCollectionItems(
+    context,
+    replies,
+    options,
+    budget,
+    traversal.visitedObjectIds,
+  )) {
     if (!isContextPostObject(reply)) continue;
     if (!visitReplyTreeObject(reply, traversal)) continue;
     yield {
@@ -533,13 +525,9 @@ async function* getCollectionItems(
   };
   const pageOptions = {
     documentLoader: async (url: string) => {
-      const object = await loadObject(
-        context,
-        new URL(url),
-        options,
-        budget,
-        { throwOnBudgetExceeded: true },
-      );
+      const object = await loadObject(context, new URL(url), options, budget, {
+        throwOnBudgetExceeded: true,
+      });
       if (object == null) throw new Error(`Collection page not found: ${url}`);
       return {
         contextUrl: null,
@@ -564,16 +552,17 @@ async function* getCollectionItems(
 
     const page: CollectionPage | OrderedCollectionPage | null =
       current instanceof CollectionPage ||
-        current instanceof OrderedCollectionPage
+      current instanceof OrderedCollectionPage
         ? current
         : null;
     const pageId: URL | null = page == null ? current.firstId : page.nextId;
     if (pageId != null && visitedIds.has(pageId.href)) return;
     try {
       budget.signal?.throwIfAborted();
-      current = page == null
-        ? await current.getFirst(pageOptions)
-        : await page.getNext(pageOptions);
+      current =
+        page == null
+          ? await current.getFirst(pageOptions)
+          : await page.getNext(pageOptions);
     } catch (error) {
       if (error instanceof MaxRequestsExceeded) throw error;
       budget.signal?.throwIfAborted();
@@ -618,13 +607,9 @@ async function loadCollectionItemDocument(
   try {
     const iri = new URL(url);
     if (skipIds?.has(iri.href)) return skippedCollectionItemDocument(url);
-    object = await loadObject(
-      context,
-      iri,
-      options,
-      budget,
-      { throwOnBudgetExceeded: true },
-    );
+    object = await loadObject(context, iri, options, budget, {
+      throwOnBudgetExceeded: true,
+    });
   } catch (error) {
     if (error instanceof MaxRequestsExceeded) throw error;
     budget.signal?.throwIfAborted();
@@ -701,9 +686,10 @@ async function waitForInterval(
   budget: RequestBudget,
 ): Promise<void> {
   if (options.interval == null) return;
-  const duration = typeof options.interval === "function"
-    ? options.interval(budget.requestCount)
-    : options.interval;
+  const duration =
+    typeof options.interval === "function"
+      ? options.interval(budget.requestCount)
+      : options.interval;
   const milliseconds = durationToMilliseconds(duration);
   if (milliseconds <= 0) return;
   await new Promise<void>((resolve, reject) => {
@@ -752,19 +738,19 @@ type BackfillCollection =
   | CollectionPage
   | OrderedCollectionPage;
 
-function isCollection(
-  object: APObject | null,
-): object is BackfillCollection {
-  return object instanceof Collection ||
+function isCollection(object: APObject | null): object is BackfillCollection {
+  return (
+    object instanceof Collection ||
     object instanceof OrderedCollection ||
     object instanceof CollectionPage ||
-    object instanceof OrderedCollectionPage;
+    object instanceof OrderedCollectionPage
+  );
 }
 
-function isContextPostObject(
-  object: APObject | Link,
-): object is APObject {
-  return object instanceof APObject &&
+function isContextPostObject(object: APObject | Link): object is APObject {
+  return (
+    object instanceof APObject &&
     !(object instanceof Activity) &&
-    !isCollection(object);
+    !isCollection(object)
+  );
 }

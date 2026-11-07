@@ -51,8 +51,5 @@ export type TunnelService = keyof typeof TUNNEL_SERVICE_REGISTRY;
  * Available tunneling service names.
  */
 export const TUNNEL_SERVICE_NAMES = Object.freeze(
-  Object.keys(TUNNEL_SERVICE_REGISTRY) as [
-    TunnelService,
-    ...TunnelService[],
-  ],
+  Object.keys(TUNNEL_SERVICE_REGISTRY) as [TunnelService, ...TunnelService[]],
 );

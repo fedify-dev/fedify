@@ -32,6 +32,8 @@ export function convertUrlIfHandle(handleOrUrl: string): URL {
  * ```
  */
 export function convertHandleToUrl(handle: string): URL {
-  return toAcctUrl(handle) ?? // Convert the handle to a URL
-    new InvalidHandleError(handle).throw(); // or throw an error if invalid
+  return (
+    toAcctUrl(handle) ?? // Convert the handle to a URL
+    new InvalidHandleError(handle).throw()
+  ); // or throw an error if invalid
 }

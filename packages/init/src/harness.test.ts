@@ -98,9 +98,8 @@ test("generation and lookup failures propagate through the aggregate", async () 
     true,
   );
   equal(
-    await lookup(
-      [join("/tmp", "hono", "npm", "in-memory", "in-process")],
-      () => Promise.resolve(false),
+    await lookup([join("/tmp", "hono", "npm", "in-memory", "in-process")], () =>
+      Promise.resolve(false),
     ),
     false,
   );
@@ -110,26 +109,29 @@ test("initializer harness exits according to the aggregate result", async () => 
   const dir = await mkdtemp(join(tmpdir(), "fedify aggregate exit "));
   const fixture = join(dir, "runner.mjs");
   try {
-    for (const [result, expected] of [[true, 0], [false, 1]] as const) {
+    for (const [result, expected] of [
+      [true, 0],
+      [false, 1],
+    ] as const) {
       await writeFile(
         fixture,
         `
-        import { main } from ${
-          JSON.stringify(new URL("./test/mod.ts", import.meta.url).href)
-        };
+        import { main } from ${JSON.stringify(
+          new URL("./test/mod.ts", import.meta.url).href,
+        )};
         await main(async () => ${result});
         `,
       );
       const code = await new Promise<number>((resolve, reject) => {
-        execFile(nodeExecutable, [
-          "--experimental-transform-types",
-          fixture,
-          "test-init",
-        ], (error) => {
-          if (error == null) resolve(0);
-          else if (typeof error.code === "number") resolve(error.code);
-          else reject(error);
-        });
+        execFile(
+          nodeExecutable,
+          ["--experimental-transform-types", fixture, "test-init"],
+          (error) => {
+            if (error == null) resolve(0);
+            else if (typeof error.code === "number") resolve(error.code);
+            else reject(error);
+          },
+        );
       });
       equal(code, expected);
     }
@@ -215,11 +217,8 @@ test("server spawn and early exit failures reject without calling lookup", async
   const dir = await mkdtemp(join(tmpdir(), "fedify spawn "));
   try {
     await rejects(
-      serverClosure(
-        dir,
-        [join(dir, "missing executable")],
-        12345,
-        () => Promise.reject(new Error("lookup called")),
+      serverClosure(dir, [join(dir, "missing executable")], 12345, () =>
+        Promise.reject(new Error("lookup called")),
       ),
       /ENOENT/,
     );
@@ -249,14 +248,13 @@ test("server cancellation kills descendants and retains log output", async () =>
   const dir = await mkdtemp(join(tmpdir(), "fedify tree & spaces "));
   const { port, release } = await reservePort();
   const controller = new AbortController();
-  const childCode =
-    `require('node:http').createServer((q,s)=>s.end('ok')).listen(${port},()=>console.log('port ${port}')); process.on('SIGTERM',()=>{}); setInterval(()=>{},1000);`;
+  const childCode = `require('node:http').createServer((q,s)=>s.end('ok')).listen(${port},()=>console.log('port ${port}')); process.on('SIGTERM',()=>{}); setInterval(()=>{},1000);`;
   const script = join(dir, "server & launcher.cjs");
   await writeFile(
     script,
-    `require('node:child_process').spawn(process.execPath,['-e',${
-      JSON.stringify(childCode)
-    }],{stdio:'inherit'}); process.on('SIGTERM',()=>{}); setInterval(()=>{},1000);`,
+    `require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(
+      childCode,
+    )}],{stdio:'inherit'}); process.on('SIGTERM',()=>{}); setInterval(()=>{},1000);`,
   );
   try {
     await rejects(
@@ -345,10 +343,16 @@ windowsTest(
         shim,
         `@echo off\r\n"${nodeExecutable}" "${script}" %*\r\n`,
       );
-      await serverClosure(dir, [shim, argument], port, async () => {
-        await delay(10);
-        return true;
-      }, release);
+      await serverClosure(
+        dir,
+        [shim, argument],
+        port,
+        async () => {
+          await delay(10);
+          return true;
+        },
+        release,
+      );
       equal(
         (await readFile(join(dir, "out.txt"), "utf8")).includes(
           JSON.stringify([argument]),
@@ -372,9 +376,9 @@ test("explicit npm test cases avoid other runtimes while the public CLI checks t
     await writeFile(
       fixture,
       `
-      import { runtimes } from ${
-        JSON.stringify(new URL("./lib.ts", import.meta.url).href)
-      };
+      import { runtimes } from ${JSON.stringify(
+        new URL("./lib.ts", import.meta.url).href,
+      )};
       const log = ${JSON.stringify(log)};
       for (const name of ['deno', 'bun']) {
         const version = (name === 'deno' ? 'deno ' : '') + runtimes[name].minVersion;
@@ -383,9 +387,9 @@ test("explicit npm test cases avoid other runtimes while the public CLI checks t
           ', ' + JSON.stringify(name + '\\n') + '); console.log(' + JSON.stringify(version) + '); }, ' +
           (name === 'bun' ? 250 : 0) + ');'];
       }
-      await import(${
-        JSON.stringify(new URL("./test/execute.ts", import.meta.url).href)
-      });
+      await import(${JSON.stringify(
+        new URL("./test/execute.ts", import.meta.url).href,
+      )});
       `,
     );
     const args = [
@@ -421,7 +425,10 @@ test("explicit npm test cases avoid other runtimes while the public CLI checks t
 
 const posixTest = process.platform === "win32" ? test.skip : test;
 
-for (const [signal, exitCode] of [["SIGTERM", 143], ["SIGINT", 130]] as const) {
+for (const [signal, exitCode] of [
+  ["SIGTERM", 143],
+  ["SIGINT", 130],
+] as const) {
   for (const stage of ["server startup", "blocking lookup"] as const) {
     const blockingLookup = stage === "blocking lookup";
     posixTest(
@@ -440,7 +447,7 @@ for (const [signal, exitCode] of [["SIGTERM", 143], ["SIGINT", 130]] as const) {
         const lookupModule = new URL("./test/lookup.ts", import.meta.url).href;
         const mainModule = new URL("./test/mod.ts", import.meta.url).href;
         const apps = ["hono", "express"].map((framework) =>
-          join(dir, framework, "npm", "in-memory", "in-process")
+          join(dir, framework, "npm", "in-memory", "in-process"),
         );
         for (const [index, app] of apps.entries()) {
           await mkdir(join(app, "src"), { recursive: true });
@@ -453,14 +460,14 @@ for (const [signal, exitCode] of [["SIGTERM", 143], ["SIGINT", 130]] as const) {
             script,
             `
 const fs = require('node:fs');
-fs.writeFileSync(${
-              JSON.stringify(join(app, "server.pid"))
-            }, String(process.pid));
+fs.writeFileSync(${JSON.stringify(
+              join(app, "server.pid"),
+            )}, String(process.pid));
 ${
-              index === 1
-                ? `fs.writeFileSync(${JSON.stringify(nextStarted)}, 'started');`
-                : ""
-            }
+  index === 1
+    ? `fs.writeFileSync(${JSON.stringify(nextStarted)}, 'started');`
+    : ""
+}
 const server = require('node:http').createServer((request, response) => {
   response.writeHead(${blockingLookup ? 200 : 404}); response.end('ready');
 });
@@ -499,9 +506,9 @@ import { join } from 'node:path';
 const testLookup = async (dir) => {
   const { port, release } = await reservePort();
   return serverClosure(dir, ['node', join(dir, 'server.cjs')], port,
-    (port, signal) => sendLookup(port, ${
-            JSON.stringify(lookupCli)
-          }, signal), release);
+    (port, signal) => sendLookup(port, ${JSON.stringify(
+      lookupCli,
+    )}, signal), release);
 };
 const apps = ${JSON.stringify(apps)};
 await main(() => runTests(false, {
@@ -511,11 +518,11 @@ await main(() => runTests(false, {
 await writeFile(${JSON.stringify(completed)}, String(process.exitCode));
 `,
         );
-        const child = spawn(nodeExecutable, [
-          "--experimental-transform-types",
-          fixture,
-          "test-init",
-        ], { stdio: ["ignore", "pipe", "pipe"] });
+        const child = spawn(
+          nodeExecutable,
+          ["--experimental-transform-types", fixture, "test-init"],
+          { stdio: ["ignore", "pipe", "pipe"] },
+        );
         let stdout = "";
         let stderr = "";
         child.stdout!.on("data", (chunk) => {
@@ -524,14 +531,13 @@ await writeFile(${JSON.stringify(completed)}, String(process.exitCode));
         child.stderr!.on("data", (chunk) => {
           stderr += chunk.toString();
         });
-        const result = new Promise<
-          { code: number | null; signal: string | null }
-        >(
-          (resolve, reject) => {
-            child.once("error", reject);
-            child.once("close", (code, signal) => resolve({ code, signal }));
-          },
-        );
+        const result = new Promise<{
+          code: number | null;
+          signal: string | null;
+        }>((resolve, reject) => {
+          child.once("error", reject);
+          child.once("close", (code, signal) => resolve({ code, signal }));
+        });
         void result.catch(() => {});
         let lookupPid: number | undefined;
         let exitTimer: ReturnType<typeof setTimeout> | undefined;
@@ -559,12 +565,15 @@ await writeFile(${JSON.stringify(completed)}, String(process.exitCode));
           const exit = await Promise.race([
             result,
             new Promise<never>((_, reject) => {
-              exitTimer = setTimeout(() =>
-                reject(
-                  new Error(
-                    `Runner did not exit promptly after ${signal}: ${stdout}\n${stderr}`,
+              exitTimer = setTimeout(
+                () =>
+                  reject(
+                    new Error(
+                      `Runner did not exit promptly after ${signal}: ${stdout}\n${stderr}`,
+                    ),
                   ),
-                ), 5000);
+                5000,
+              );
             }),
           ]);
           equal(exit.code, exitCode, `${stdout}\n${stderr}`);
@@ -588,12 +597,10 @@ await writeFile(${JSON.stringify(completed)}, String(process.exitCode));
           clearTimeout(exitTimer);
           // On regression, the lookup child can keep the runner's pipes open.
           // Stop only fixture-owned PIDs before awaiting the runner's close.
-          for (
-            const pidFile of [
-              lookupPidFile,
-              ...apps.map((app) => join(app, "server.pid")),
-            ]
-          ) {
+          for (const pidFile of [
+            lookupPidFile,
+            ...apps.map((app) => join(app, "server.pid")),
+          ]) {
             await stopFixtureProcess(pidFile);
           }
           if (child.exitCode == null) child.kill("SIGKILL");

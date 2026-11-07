@@ -22,14 +22,15 @@ const federationOptions: FederationOptions<void> = {
 function createTestFederation(): Federation<void> {
   const federation = createFederation(federationOptions);
   federation
-    .setActorDispatcher(
-      "/users/{identifier}",
-      (_, identifier) => identifier === "john" ? new Person({}) : null,
+    .setActorDispatcher("/users/{identifier}", (_, identifier) =>
+      identifier === "john" ? new Person({}) : null,
     )
-    .setKeyPairsDispatcher(() => [{
-      privateKey: ed25519PrivateKey,
-      publicKey: ed25519PublicKey.publicKey!,
-    }]);
+    .setKeyPairsDispatcher(() => [
+      {
+        privateKey: ed25519PrivateKey,
+        publicKey: ed25519PublicKey.publicKey!,
+      },
+    ]);
   return federation;
 }
 

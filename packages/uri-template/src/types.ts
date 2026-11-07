@@ -64,10 +64,10 @@ export interface VarSpec {
 export type Token =
   | { readonly kind: "literal"; readonly text: string }
   | {
-    readonly kind: "expression";
-    readonly operator: Operator;
-    readonly vars: readonly VarSpec[];
-  };
+      readonly kind: "expression";
+      readonly operator: Operator;
+      readonly vars: readonly VarSpec[];
+    };
 
 /**
  * Options controlling URI Template parsing and expansion diagnostics.

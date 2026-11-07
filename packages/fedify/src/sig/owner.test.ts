@@ -38,10 +38,7 @@ test("getKeyOwner()", async () => {
     await lookupObject("https://example.com/users/handle", options),
   );
 
-  const owner2 = await getKeyOwner(
-    new URL("https://example.com/key"),
-    options,
-  );
+  const owner2 = await getKeyOwner(new URL("https://example.com/key"), options);
   assertEquals(
     owner2,
     await lookupObject("https://example.com/person", options),
@@ -131,34 +128,37 @@ test("doesActorOwnKey() rejects a key that only claims to be owned", async () =>
 });
 
 test("doesActorOwnKey() ignores an actor embedded in the activity", async () => {
-  const { publicKeyPem } = await rsaPublicKey1.toJsonLd({
+  const { publicKeyPem } = (await rsaPublicKey1.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as { publicKeyPem: string };
+  })) as { publicKeyPem: string };
   // The embedded actor shares its origin with the activity's own id, so the
   // vocabulary would hand it over without fetching anything—but it is the
   // sender who wrote it, and the `publicKey` list inside it therefore
   // authenticates nothing.
-  const activity = await Create.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/security/v1",
-    ],
-    id: "https://example.com/activity",
-    type: "Create",
-    actor: {
-      id: "https://example.com/person",
-      type: "Person",
-      publicKey: {
-        id: "https://attacker.example/key",
-        type: "CryptographicKey",
-        owner: "https://example.com/person",
-        publicKeyPem,
+  const activity = await Create.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/v1",
+      ],
+      id: "https://example.com/activity",
+      type: "Create",
+      actor: {
+        id: "https://example.com/person",
+        type: "Person",
+        publicKey: {
+          id: "https://attacker.example/key",
+          type: "CryptographicKey",
+          owner: "https://example.com/person",
+          publicKeyPem,
+        },
       },
     },
-  }, {
-    documentLoader: mockDocumentLoader,
-    contextLoader: mockDocumentLoader,
-  });
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
   assertEquals(activity.actorId, new URL("https://example.com/person"));
   const forgedKey = new CryptographicKey({
     id: new URL("https://attacker.example/key"),
@@ -173,9 +173,9 @@ test("doesActorOwnKey() ignores an actor embedded in the activity", async () => 
 
 test("getKeyOwner() rejects an actor document from another origin", async () => {
   const keyId = "https://attacker.example/key";
-  const { publicKeyPem } = await rsaPublicKey1.toJsonLd({
+  const { publicKeyPem } = (await rsaPublicKey1.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as { publicKeyPem: string };
+  })) as { publicKeyPem: string };
   // Dressing a key document up as somebody else's actor document must not
   // make that somebody the key's owner: only the host serving an actor id
   // can speak for it.  Reached through Context.getSignedKeyOwner(), this
@@ -194,9 +194,7 @@ test("getKeyOwner() rejects an actor document from another origin", async () => 
             ],
             id: "https://example.com/person",
             type: "Person",
-            publicKey: [
-              { id: keyId, type: "CryptographicKey", publicKeyPem },
-            ],
+            publicKey: [{ id: keyId, type: "CryptographicKey", publicKeyPem }],
           },
         });
       }
@@ -209,9 +207,9 @@ test("getKeyOwner() rejects an actor document from another origin", async () => 
 
 test("doesActorOwnKey() matches a key that leaves its id implicit", async () => {
   const actorId = "https://example.com/implicit-key-actor";
-  const { publicKeyPem } = await rsaPublicKey1.toJsonLd({
+  const { publicKeyPem } = (await rsaPublicKey1.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as { publicKeyPem: string };
+  })) as { publicKeyPem: string };
   const options = {
     documentLoader(resource: string) {
       if (resource === actorId) {
@@ -271,9 +269,9 @@ test("doesActorOwnKey() rejects an actor ID that redirects to the key's owner", 
   const keyId = "https://evil.example/keys/1";
   const victim = "https://victim.example/users/alice";
   const mallory = "https://evil.example/users/mallory";
-  const { publicKeyPem } = await rsaPublicKey1.toJsonLd({
+  const { publicKeyPem } = (await rsaPublicKey1.toJsonLd({
     contextLoader: mockDocumentLoader,
-  }) as { publicKeyPem: string };
+  })) as { publicKeyPem: string };
   const serveKeyOwnedBy = (owner: string) => ({
     documentLoader(resource: string) {
       if (resource === keyId) {

@@ -37,33 +37,33 @@ const SEC = "https://w3id.org/security#";
  */
 export type PortableGatewayKeyResolution =
   | {
-    /**
-     * The document at the key ID is not a portable actor, so the key is
-     * resolved as usual.
-     */
-    readonly type: "legacy";
-  }
+      /**
+       * The document at the key ID is not a portable actor, so the key is
+       * resolved as usual.
+       */
+      readonly type: "legacy";
+    }
   | {
-    /** The document is a portable actor, but it does not vouch for the key. */
-    readonly type: "rejected";
-    readonly reason: string;
-  }
+      /** The document is a portable actor, but it does not vouch for the key. */
+      readonly type: "rejected";
+      readonly reason: string;
+    }
   | {
-    /** The portable actor's signed document vouches for the key. */
-    readonly type: "verified";
-    readonly actor: Actor;
-    readonly key: CryptographicKey & { publicKey: CryptoKey };
-    /**
-     * The expanded root node of the actor's document whose proof was
-     * verified, from which {@link actor} was parsed.
-     */
-    readonly document: Record<string, unknown>;
-    /**
-     * When the proof of the actor's document expires, if it does.  The
-     * document does not vouch for the key after that.
-     */
-    readonly expires?: Temporal.Instant;
-  };
+      /** The portable actor's signed document vouches for the key. */
+      readonly type: "verified";
+      readonly actor: Actor;
+      readonly key: CryptographicKey & { publicKey: CryptoKey };
+      /**
+       * The expanded root node of the actor's document whose proof was
+       * verified, from which {@link actor} was parsed.
+       */
+      readonly document: Record<string, unknown>;
+      /**
+       * When the proof of the actor's document expires, if it does.  The
+       * document does not vouch for the key after that.
+       */
+      readonly expires?: Temporal.Instant;
+    };
 
 /**
  * Options for resolving a gateway key of a portable actor.
@@ -208,7 +208,7 @@ async function verifyPortableKeyDocument(
     }
     return key.publicKey == null
       ? null
-      : key as CryptographicKey & { publicKey: CryptoKey };
+      : (key as CryptographicKey & { publicKey: CryptoKey });
   };
   // The given actor was parsed with its own load of the document's contexts,
   // which a remote context can make differ from the expansion the proof
@@ -282,9 +282,9 @@ async function verifyPortableKeyDocument(
       const embedded = await parseEmbeddedPublicKey(publicKeyNodes[0]);
       if (
         embedded == null ||
-        !await isSamePublicKey(embedded.publicKey, publicKey) ||
-        embedded.ownerId != null &&
-          getCanonicalPortableId(embedded.ownerId) !== actorId
+        !(await isSamePublicKey(embedded.publicKey, publicKey)) ||
+        (embedded.ownerId != null &&
+          getCanonicalPortableId(embedded.ownerId) !== actorId)
       ) {
         return reject(
           "The key in the publicKey does not agree with the one in " +
@@ -316,8 +316,8 @@ async function verifyPortableKeyDocument(
     publicKey = embedded.publicKey;
   }
   if (isGatewayKey) {
-    const listed = actor.gateways.some((gateway) =>
-      isGatewayUrl(gateway) && gateway.origin === keyId.origin
+    const listed = actor.gateways.some(
+      (gateway) => isGatewayUrl(gateway) && gateway.origin === keyId.origin,
     );
     if (!listed) {
       return reject(
@@ -396,20 +396,20 @@ export async function fetchPortableGatewayKey(
 export type PortableActorKeyResolution =
   | Exclude<PortableGatewayKeyResolution, { readonly type: "legacy" }>
   | {
-    /**
-     * Whether the actor's document vouches for the key could not be
-     * determined, e.g., because no gateway could be reached.
-     */
-    readonly type: "unavailable";
-    readonly error: unknown;
-    /**
-     * Whether the failure can be cached as a failure to fetch the key, i.e.,
-     * every gateway failed to serve the actor's document at all.  A failure
-     * that is not cacheable comes with an error that has no HTTP status,
-     * since none of the statuses describes the lookup as a whole.
-     */
-    readonly cacheable: boolean;
-  };
+      /**
+       * Whether the actor's document vouches for the key could not be
+       * determined, e.g., because no gateway could be reached.
+       */
+      readonly type: "unavailable";
+      readonly error: unknown;
+      /**
+       * Whether the failure can be cached as a failure to fetch the key, i.e.,
+       * every gateway failed to serve the actor's document at all.  A failure
+       * that is not cacheable comes with an error that has no HTTP status,
+       * since none of the statuses describes the lookup as a whole.
+       */
+      readonly cacheable: boolean;
+    };
 
 /**
  * The maximum number of `@gateway` location hints followed for one `ap:` or
@@ -522,7 +522,8 @@ export async function resolvePortableActorKey(
 ): Promise<PortableActorKeyResolution> {
   const lookupTimeout = options.lookupTimeout ?? DEFAULT_KEY_ID_LOOKUP_TIMEOUT;
   if (
-    !Number.isFinite(lookupTimeout) || lookupTimeout < 0 ||
+    !Number.isFinite(lookupTimeout) ||
+    lookupTimeout < 0 ||
     lookupTimeout > MAX_TIMEOUT
   ) {
     throw new RangeError(
@@ -534,10 +535,10 @@ export async function resolvePortableActorKey(
   const contextLoader = options.contextLoader ?? getDocumentLoader();
   let formattedKeyId = keyId.href;
   const reject = (reason: string): PortableActorKeyResolution => {
-    logger.debug(
-      "Failed to verify key {keyId} of a portable actor: {reason}",
-      { keyId: formattedKeyId, reason },
-    );
+    logger.debug("Failed to verify key {keyId} of a portable actor: {reason}", {
+      keyId: formattedKeyId,
+      reason,
+    });
     return { type: "rejected", reason };
   };
   if (!isPortableUri(keyId) || getCanonicalPortableId(keyId) == null) {
@@ -637,25 +638,28 @@ export async function resolvePortableActorKey(
     clearTimeout(timer);
   }
   const rejections = attempts.flatMap((a) =>
-    a.type === "rejected" ? [a.reason] : []
+    a.type === "rejected" ? [a.reason] : [],
   );
   if (rejections.length === attempts.length) {
     return reject(rejections.join(" "));
   }
   const errors = attempts.flatMap((a) =>
-    a.type === "rejected" ? [] : [a.error]
+    a.type === "rejected" ? [] : [a.error],
   );
-  const aggregate = errors.length === 1 ? errors[0] : new AggregateError(
-    errors,
-    `Failed to fetch the actor of key ${formattedKeyId} from any of its ` +
-      `gateways: ${requestUrls.join(", ")}`,
-  );
+  const aggregate =
+    errors.length === 1
+      ? errors[0]
+      : new AggregateError(
+          errors,
+          `Failed to fetch the actor of key ${formattedKeyId} from any of its ` +
+            `gateways: ${requestUrls.join(", ")}`,
+        );
   if (attempts.every((a) => a.type === "retrievalFailed")) {
     const statuses = errors.map((error) =>
-      error instanceof FetchError ? error.response?.status : undefined
+      error instanceof FetchError ? error.response?.status : undefined,
     );
-    const homogeneous = statuses[0] != null &&
-      statuses.every((status) => status === statuses[0]);
+    const homogeneous =
+      statuses[0] != null && statuses.every((status) => status === statuses[0]);
     return {
       type: "unavailable",
       error: homogeneous ? errors[0] : aggregate,
@@ -709,16 +713,16 @@ async function attemptGateway(
     signal.throwIfAborted();
     resolution = isPortableActorDocument(object)
       ? await verifyPortableKeyDocument(
-        remoteDocument.document,
-        object,
-        keyId,
-        false,
-        options,
-      )
+          remoteDocument.document,
+          object,
+          keyId,
+          false,
+          options,
+        )
       : {
-        type: "rejected",
-        reason: "The document is not a portable actor.",
-      };
+          type: "rejected",
+          reason: "The document is not a portable actor.",
+        };
   } catch (error) {
     if (error instanceof TypeError && !signal.aborted) {
       resolution = {
@@ -735,9 +739,10 @@ async function attemptGateway(
     }
   }
   if (resolution.type === "verified") return resolution;
-  const reason = resolution.type === "rejected"
-    ? resolution.reason
-    : "The document is not a portable actor.";
+  const reason =
+    resolution.type === "rejected"
+      ? resolution.reason
+      : "The document is not a portable actor.";
   logger.debug(
     "The actor document served from {url} does not vouch for key {keyId}: " +
       "{reason}",
@@ -762,10 +767,10 @@ function withDeadline(
     const combined = combineSignals(signal, options?.signal);
     const promise = combined.signal.aborted
       ? Promise.reject(combined.signal.reason)
-      // A loader that throws synchronously rejects the promise instead:
-      : new Promise<RemoteDocument>((resolve) =>
-        resolve(loader(url, { ...options, signal: combined.signal }))
-      );
+      : // A loader that throws synchronously rejects the promise instead:
+        new Promise<RemoteDocument>((resolve) =>
+          resolve(loader(url, { ...options, signal: combined.signal })),
+        );
     return raceAbort(promise, combined.signal).finally(combined.dispose);
   };
 }

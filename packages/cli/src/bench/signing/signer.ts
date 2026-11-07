@@ -44,7 +44,8 @@ export async function signInboxDelivery(
 
   let activity = options.activity;
   if (
-    actor.standards.includes("fep8b32") && actor.keys.ed25519 != null &&
+    actor.standards.includes("fep8b32") &&
+    actor.keys.ed25519 != null &&
     actor.ed25519KeyId != null
   ) {
     activity = await signObject(
@@ -74,19 +75,14 @@ export async function signInboxDelivery(
     // sender re-applies this as a safety net if signing drops it.
     redirect: "manual",
   });
-  return await signRequest(
-    request,
-    actor.keys.rsa.privateKey,
-    actor.rsaKeyId,
-    {
-      spec: actor.httpStandard,
-      // Slice exactly the encoded view: passing `body.buffer` would include
-      // any trailing bytes were `body` ever a view into a larger buffer, and
-      // signRequest's `body` option is an ArrayBuffer (not a Uint8Array).
-      body: body.buffer.slice(
-        body.byteOffset,
-        body.byteOffset + body.byteLength,
-      ) as ArrayBuffer,
-    },
-  );
+  return await signRequest(request, actor.keys.rsa.privateKey, actor.rsaKeyId, {
+    spec: actor.httpStandard,
+    // Slice exactly the encoded view: passing `body.buffer` would include
+    // any trailing bytes were `body` ever a view into a larger buffer, and
+    // signRequest's `body` option is an ArrayBuffer (not a Uint8Array).
+    body: body.buffer.slice(
+      body.byteOffset,
+      body.byteOffset + body.byteLength,
+    ) as ArrayBuffer,
+  });
 }

@@ -44,10 +44,9 @@ if (cmd === "pre") {
     writeFileSync(sentinel, "");
   } else if (!stat.isDirectory()) {
     throw new Error(
-      `skills/fedify is neither a symlink nor a directory (got mode ${
-        stat.mode.toString(8)
-      }). ` +
-        "On Windows, check core.symlinks in git config.",
+      `skills/fedify is neither a symlink nor a directory (got mode ${stat.mode.toString(
+        8,
+      )}). ` + "On Windows, check core.symlinks in git config.",
     );
   }
 } else if (cmd === "post") {

@@ -78,7 +78,7 @@ export function getPortableLookupProblem(
     if (error instanceof TypeError) return "malformed";
     throw error;
   }
-  if (hints.length > 0 || gateways != null && gateways.length > 0) {
+  if (hints.length > 0 || (gateways != null && gateways.length > 0)) {
     return null;
   }
   return "no-gateway";

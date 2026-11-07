@@ -21,19 +21,17 @@ async function withServer(
   }
 }
 
-for (
-  const mode of [
-    "unhandled",
-    "pass",
-    "async-pass",
-    "html",
-    "async-html",
-    "not-found-html",
-    "not-found-json",
-    "not-found-end",
-    "error",
-  ]
-) {
+for (const mode of [
+  "unhandled",
+  "pass",
+  "async-pass",
+  "html",
+  "async-html",
+  "not-found-html",
+  "not-found-json",
+  "not-found-end",
+  "error",
+]) {
   test(
     "express preserves the application's response or falls back to 406: " +
       mode,
@@ -102,10 +100,10 @@ for (
           const expected = mode.startsWith("not-found")
             ? 404
             : mode.endsWith("html")
-            ? 200
-            : mode === "error"
-            ? 500
-            : 406;
+              ? 200
+              : mode === "error"
+                ? 500
+                : 406;
           assert.equal(response.status, expected);
           if (expected === 406) {
             assert.equal(response.statusText, "Not Acceptable");
@@ -125,10 +123,12 @@ for (
             if (method === "HEAD") assert.equal(body, "");
             else if (mode.endsWith("json")) {
               assert.deepEqual(JSON.parse(body), { error: "No such user" });
-            } else {assert.equal(
+            } else {
+              assert.equal(
                 body,
                 mode.endsWith("html") ? "<p>No such user</p>" : "No such user",
-              );}
+              );
+            }
           } else if (expected === 200) {
             assert.equal(body, method === "HEAD" ? "" : "<p>Alice</p>");
             assert.equal(
@@ -143,9 +143,10 @@ for (
           });
           assert.equal(missing.status, 404);
           assert.ok(
-            !missing.headers.get("Vary")?.split(",").some((field) =>
-              field.trim().toLowerCase() === "accept"
-            ),
+            !missing.headers
+              .get("Vary")
+              ?.split(",")
+              .some((field) => field.trim().toLowerCase() === "accept"),
           );
           await missing.text();
         }
@@ -185,12 +186,15 @@ test("express preserves a custom HTML 404 resembling its default page", async ()
       const body =
         `<!DOCTYPE html>\n<html><body><pre>Cannot ${req.method} ${req.path}</pre>` +
         "<p>No such user; try the directory.</p></body></html>\n";
-      res.status(404).set({
-        "Content-Type": "text/html; charset=utf-8",
-        "Content-Security-Policy": "default-src 'none'",
-        "X-Content-Type-Options": "nosniff",
-        "Content-Length": Buffer.byteLength(body),
-      }).end(body);
+      res
+        .status(404)
+        .set({
+          "Content-Type": "text/html; charset=utf-8",
+          "Content-Security-Policy": "default-src 'none'",
+          "X-Content-Type-Options": "nosniff",
+          "Content-Length": Buffer.byteLength(body),
+        })
+        .end(body);
     },
   );
   await withServer(app, async (origin) => {
@@ -234,9 +238,9 @@ for (const mode of ["unhandled", "application-404", "html"]) {
         app.get(
           "/users/:identifier",
           (_req: express.Request, res: express.Response) => {
-            res.status(mode === "application-404" ? 404 : 200).send(
-              "Application response",
-            );
+            res
+              .status(mode === "application-404" ? 404 : 200)
+              .send("Application response");
           },
         );
       }
@@ -256,14 +260,15 @@ for (const mode of ["unhandled", "application-404", "html"]) {
             method === "HEAD"
               ? ""
               : mode === "unhandled"
-              ? "Not acceptable"
-              : "Application response",
+                ? "Not acceptable"
+                : "Application response",
           );
           if (mode === "unhandled") {
             assert.ok(
-              response.headers.get("Vary")?.split(",").some((field) =>
-                field.trim().toLowerCase() === "accept"
-              ),
+              response.headers
+                .get("Vary")
+                ?.split(",")
+                .some((field) => field.trim().toLowerCase() === "accept"),
             );
             assert.equal(response.headers.get("Content-Length"), "14");
           }

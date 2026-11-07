@@ -17,8 +17,7 @@
         name="content"
         class="form-textarea"
         placeholder="What's up?"
-        rows="3"
-      ></textarea>
+        rows="3"></textarea>
     </label>
   </div>
   <button type="submit" class="post-button">Post</button>

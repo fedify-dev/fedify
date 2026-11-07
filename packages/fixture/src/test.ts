@@ -16,18 +16,18 @@ type DenoPermissionOptions =
   | "inherit"
   | "none"
   | {
-    readonly [
-      name in
-        | "env"
-        | "ffi"
-        | "import"
-        | "net"
-        | "read"
-        | "run"
-        | "sys"
-        | "write"
-    ]?: "inherit" | boolean | readonly (string | URL)[];
-  };
+      readonly [
+        name in
+          | "env"
+          | "ffi"
+          | "import"
+          | "net"
+          | "read"
+          | "run"
+          | "sys"
+          | "write"
+      ]?: "inherit" | boolean | readonly (string | URL)[];
+    };
 
 // Deno's global, declared structurally for the same reason.  It is only
 // accessed after checking that it exists.
@@ -75,10 +75,7 @@ type TestOptions = Omit<TestDefinition, "fn" | "name">;
 export const testDefinitions: TestDefinition[] = [];
 
 export function test(options: TestDefinition): void;
-export function test(
-  name: string,
-  fn: TestFunction,
-): void;
+export function test(name: string, fn: TestFunction): void;
 export function test(
   name: string,
   options: TestOptions,
@@ -89,11 +86,12 @@ export function test(
   options?: TestFunction | TestOptions,
   fn?: TestFunction,
 ): void {
-  const def: TestDefinition = typeof name === "string"
-    ? typeof options === "function"
-      ? { name, fn: options }
-      : { name, ...options, fn: fn! }
-    : name;
+  const def: TestDefinition =
+    typeof name === "string"
+      ? typeof options === "function"
+        ? { name, fn: options }
+        : { name, ...options, fn: fn! }
+      : name;
   testDefinitions.push(def);
   if ("Deno" in globalThis) {
     const func = def.fn;
@@ -108,7 +106,8 @@ export function test(
                 record.category.length > 1 &&
                 record.category[0] === "logtape" &&
                 record.category[1] === "meta"
-              ) return;
+              )
+                return;
               records.push(record);
             },
             console: getConsoleSink(),
@@ -135,17 +134,11 @@ export function test(
   } else if ("Bun" in globalThis) {
     let failed: unknown = undefined;
     function step(def: TestStepDefinition): Promise<boolean>;
-    function step(
-      name: string,
-      fn: TestFunction,
-    ): Promise<boolean>;
+    function step(name: string, fn: TestFunction): Promise<boolean>;
     function step(fn: TestFunction): Promise<boolean>;
     // oxlint-disable-next-line eslint/no-inner-declarations
     async function step(
-      defOrNameOrFn:
-        | TestStepDefinition
-        | string
-        | TestFunction,
+      defOrNameOrFn: TestStepDefinition | string | TestFunction,
       fn?: TestFunction,
     ): Promise<boolean> {
       let def: TestStepDefinition;
@@ -186,35 +179,21 @@ export function test(
   } else if (
     typeof process !== "undefined" &&
     process.release?.name === "node" &&
-    !("navigator" in globalThis &&
-      navigator.userAgent === "Cloudflare-Workers")
+    !("navigator" in globalThis && navigator.userAgent === "Cloudflare-Workers")
   ) {
     const { test: nodeTest } = createRequire(process.cwd() + "/")("node:test");
-    nodeTest(
-      def.name,
-      { skip: def.ignore },
-      async (t: NodeTestContext) => {
-        await def.fn(intoTestContext(def.name, t));
-      },
-    );
+    nodeTest(def.name, { skip: def.ignore }, async (t: NodeTestContext) => {
+      await def.fn(intoTestContext(def.name, t));
+    });
   }
 }
 
-function intoTestContext(
-  name: string,
-  ctx: NodeTestContext,
-): TestContext {
+function intoTestContext(name: string, ctx: NodeTestContext): TestContext {
   function step(def: TestStepDefinition): Promise<boolean>;
-  function step(
-    name: string,
-    fn: TestFunction,
-  ): Promise<boolean>;
+  function step(name: string, fn: TestFunction): Promise<boolean>;
   function step(fn: TestFunction): Promise<boolean>;
   async function step(
-    defOrNameOrFn:
-      | TestStepDefinition
-      | string
-      | TestFunction,
+    defOrNameOrFn: TestStepDefinition | string | TestFunction,
     fn?: TestFunction,
   ): Promise<boolean> {
     let def: TestStepDefinition;
@@ -226,18 +205,14 @@ function intoTestContext(
       def = defOrNameOrFn;
     }
     let failed = false;
-    await ctx.test(
-      def.name,
-      { skip: def.ignore },
-      async (ctx2) => {
-        try {
-          await def.fn(intoTestContext(def.name, ctx2));
-        } catch (e) {
-          failed = true;
-          throw e;
-        }
-      },
-    );
+    await ctx.test(def.name, { skip: def.ignore }, async (ctx2) => {
+      try {
+        await def.fn(intoTestContext(def.name, ctx2));
+      } catch (e) {
+        failed = true;
+        throw e;
+      }
+    });
     return !def.ignore && !failed;
   }
   const testCtx: TestContext = {

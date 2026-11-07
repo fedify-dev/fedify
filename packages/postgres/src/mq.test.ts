@@ -17,22 +17,18 @@ const Temporal = globalThis.Temporal ?? temporal.Temporal;
 const dbUrl = process.env.POSTGRES_URL;
 
 nodeTest("PostgresMessageQueue declares non-atomic batch enqueueing", () => {
-  const mq = new PostgresMessageQueue(
-    {} as unknown as postgres.Sql,
-  );
+  const mq = new PostgresMessageQueue({} as unknown as postgres.Sql);
   deepStrictEqual(mq.atomicEnqueueMany, false);
 });
 
 // Gate both attempts so concurrent callers cannot accidentally pass by running
 // separate initializations that happen to finish before the assertions.
-for (
-  const { phase, failAt, initialized } of [
-    { phase: "first DDL", failAt: 1, initialized: false },
-    { phase: "partial DDL", failAt: 2, initialized: false },
-    { phase: "JSON probe", failAt: 4, initialized: false },
-    { phase: "JSON probe without DDL", failAt: 1, initialized: true },
-  ]
-) {
+for (const { phase, failAt, initialized } of [
+  { phase: "first DDL", failAt: 1, initialized: false },
+  { phase: "partial DDL", failAt: 2, initialized: false },
+  { phase: "JSON probe", failAt: 4, initialized: false },
+  { phase: "JSON probe without DDL", failAt: 1, initialized: true },
+]) {
   test(`PostgresMessageQueue.initialize() retries after ${phase} failure`, async () => {
     const failure = Object.assign(new Error("statement timeout"), {
       code: "57014",
@@ -63,11 +59,12 @@ for (
     strictEqual(first, concurrent, "pending callers must share one promise");
     const outcomes = Promise.allSettled([first, concurrent]);
     await failureStarted.promise;
-    const expectedStatement = phase === "first DDL"
-      ? "CREATE TABLE"
-      : phase === "partial DDL"
-      ? "ALTER TABLE"
-      : "SELECT";
+    const expectedStatement =
+      phase === "first DDL"
+        ? "CREATE TABLE"
+        : phase === "partial DDL"
+          ? "ALTER TABLE"
+          : "SELECT";
     strictEqual(statements.at(-1)?.includes(expectedStatement), true);
     failedQuery.reject(failure);
     const rejected = await outcomes;
@@ -138,11 +135,7 @@ test("PostgresMessageQueue", { ignore: dbUrl == null }, () => {
   }
 
   return testMessageQueue(
-    () =>
-      new PostgresMessageQueue(
-        createSql(),
-        { tableName, channelName },
-      ),
+    () => new PostgresMessageQueue(createSql(), { tableName, channelName }),
     async ({ mq1, mq2, controller }) => {
       controller.abort();
       await mq1.drop();
@@ -187,78 +180,75 @@ test("PostgresMessageQueue.getDepth()", { ignore: dbUrl == null }, async () => {
 // deterministic, including aborts while LISTEN is still being established.
 for (const rejectCleanup of [false, true]) {
   for (const abortDuringSubscribe of [false, true]) {
-    test(
-      `PostgresMessageQueue waits for ${
-        rejectCleanup ? "failed" : "successful"
-      } UNLISTEN (${abortDuringSubscribe ? "during" : "after"} subscription)`,
-      async () => {
-        const subscribed = Promise.withResolvers<void>();
-        const subscription = Promise.withResolvers<void>();
-        const cleanupStarted = Promise.withResolvers<void>();
-        const cleanup = Promise.withResolvers<void>();
-        const controller = new AbortController();
-        let unlistenCalls = 0;
-        const sql = Object.assign(() => Promise.resolve([]), {
-          listen: async () => {
-            subscribed.resolve();
-            await subscription.promise;
-            return {
-              unlisten: () => {
-                unlistenCalls++;
-                cleanupStarted.resolve();
-                return cleanup.promise;
-              },
-            };
-          },
-        }) as unknown as postgres.Sql;
-        class InitializedQueue extends PostgresMessageQueue {
-          override initialize(): Promise<void> {
-            return Promise.resolve();
-          }
+    test(`PostgresMessageQueue waits for ${
+      rejectCleanup ? "failed" : "successful"
+    } UNLISTEN (${abortDuringSubscribe ? "during" : "after"} subscription)`, async () => {
+      const subscribed = Promise.withResolvers<void>();
+      const subscription = Promise.withResolvers<void>();
+      const cleanupStarted = Promise.withResolvers<void>();
+      const cleanup = Promise.withResolvers<void>();
+      const controller = new AbortController();
+      let unlistenCalls = 0;
+      const sql = Object.assign(() => Promise.resolve([]), {
+        listen: async () => {
+          subscribed.resolve();
+          await subscription.promise;
+          return {
+            unlisten: () => {
+              unlistenCalls++;
+              cleanupStarted.resolve();
+              return cleanup.promise;
+            },
+          };
+        },
+      }) as unknown as postgres.Sql;
+      class InitializedQueue extends PostgresMessageQueue {
+        override initialize(): Promise<void> {
+          return Promise.resolve();
         }
-        const mq = new InitializedQueue(sql);
-        let settled = false;
-        const listening = mq.listen(() => {}, { signal: controller.signal });
-        // Observe settlement before releasing cleanup, and catch unexpected
-        // rejections until the final assertion awaits listen() directly.
-        const outcome = listening.then(
-          () => {
-            settled = true;
-          },
-          (error: unknown) => {
-            settled = true;
-            return error;
-          },
-        );
-        await subscribed.promise;
-        if (abortDuringSubscribe) controller.abort();
-        subscription.resolve();
-        // Allow listen() to register its abort handler in the normal case.
+      }
+      const mq = new InitializedQueue(sql);
+      let settled = false;
+      const listening = mq.listen(() => {}, { signal: controller.signal });
+      // Observe settlement before releasing cleanup, and catch unexpected
+      // rejections until the final assertion awaits listen() directly.
+      const outcome = listening.then(
+        () => {
+          settled = true;
+        },
+        (error: unknown) => {
+          settled = true;
+          return error;
+        },
+      );
+      await subscribed.promise;
+      if (abortDuringSubscribe) controller.abort();
+      subscription.resolve();
+      // Allow listen() to register its abort handler in the normal case.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (!abortDuringSubscribe) controller.abort();
+      try {
+        await Promise.race([
+          cleanupStarted.promise,
+          new Promise<never>((_, reject) => {
+            const timer = setTimeout(
+              () => reject(new Error("UNLISTEN did not start")),
+              1000,
+            );
+            cleanupStarted.promise.then(() => clearTimeout(timer));
+          }),
+        ]);
         await new Promise((resolve) => setTimeout(resolve, 0));
-        if (!abortDuringSubscribe) controller.abort();
-        try {
-          await Promise.race([
-            cleanupStarted.promise,
-            new Promise<never>((_, reject) => {
-              const timer = setTimeout(
-                () => reject(new Error("UNLISTEN did not start")),
-                1000,
-              );
-              cleanupStarted.promise.then(() => clearTimeout(timer));
-            }),
-          ]);
-          await new Promise((resolve) => setTimeout(resolve, 0));
-          deepStrictEqual(settled, false, "listen() must wait for UNLISTEN");
-        } finally {
-          if (rejectCleanup) cleanup.reject(new Error("UNLISTEN failed"));
-          else cleanup.resolve();
-          await outcome;
-        }
-        deepStrictEqual(unlistenCalls, 1);
-        // Cleanup failures must be handled without rejecting listen().
-        await listening;
-      },
-    );
+        deepStrictEqual(settled, false, "listen() must wait for UNLISTEN");
+      } finally {
+        if (rejectCleanup) cleanup.reject(new Error("UNLISTEN failed"));
+        else cleanup.resolve();
+        await outcome;
+      }
+      deepStrictEqual(unlistenCalls, 1);
+      // Cleanup failures must be handled without rejecting listen().
+      await listening;
+    });
   }
 }
 
@@ -282,24 +272,27 @@ test("PostgresMessageQueue drains an active poll before UNLISTEN", async () => {
   const pollStarted = Promise.withResolvers<void>();
   const poll = Promise.withResolvers<never[]>();
   let unlistenCalls = 0;
-  const sql = Object.assign(() => {
-    pollStarted.resolve();
-    return poll.promise;
-  }, {
-    listen: (
-      _channel: string,
-      _handler: (payload: string) => Promise<void>,
-      onSubscribe: () => Promise<void>,
-    ) => {
-      void onSubscribe();
-      return Promise.resolve({
-        unlisten: () => {
-          unlistenCalls++;
-          return Promise.resolve();
-        },
-      });
+  const sql = Object.assign(
+    () => {
+      pollStarted.resolve();
+      return poll.promise;
     },
-  }) as unknown as postgres.Sql;
+    {
+      listen: (
+        _channel: string,
+        _handler: (payload: string) => Promise<void>,
+        onSubscribe: () => Promise<void>,
+      ) => {
+        void onSubscribe();
+        return Promise.resolve({
+          unlisten: () => {
+            unlistenCalls++;
+            return Promise.resolve();
+          },
+        });
+      },
+    },
+  ) as unknown as postgres.Sql;
   class InitializedQueue extends PostgresMessageQueue {
     override initialize(): Promise<void> {
       return Promise.resolve();
@@ -520,8 +513,8 @@ nodeTest(
     const tableName = getRandomKey("message");
     const channelName = getRandomKey("channel");
     const sqls = Array.from({ length: 12 }, () => postgres(dbUrl!));
-    const mqs = sqls.map((sql) =>
-      new PostgresMessageQueue(sql, { tableName, channelName })
+    const mqs = sqls.map(
+      (sql) => new PostgresMessageQueue(sql, { tableName, channelName }),
     );
 
     try {
@@ -896,10 +889,13 @@ nodeTest(
 
       const controller = new AbortController();
       const received: number[] = [];
-      const listening = mq.listen((message: number) => {
-        received.push(message);
-        if (received.length >= messageCount) controller.abort();
-      }, { signal: controller.signal });
+      const listening = mq.listen(
+        (message: number) => {
+          received.push(message);
+          if (received.length >= messageCount) controller.abort();
+        },
+        { signal: controller.signal },
+      );
 
       // Give LISTEN subscription a brief moment to become active.
       await new Promise((resolve) => {
@@ -1122,9 +1118,10 @@ nodeTest(
         WHERE schemaname = current_schema()
           AND tablename = ${tableName}
       `;
-      const hasCreatedIndex = rows.some((row) =>
-        row.indexname.startsWith("idx_fedify_mq_created_") &&
-        row.indexdef.includes("(created)")
+      const hasCreatedIndex = rows.some(
+        (row) =>
+          row.indexname.startsWith("idx_fedify_mq_created_") &&
+          row.indexdef.includes("(created)"),
       );
       deepStrictEqual(
         hasCreatedIndex,

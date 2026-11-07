@@ -24,11 +24,16 @@ async function compile(os: OS, arch: Arch, into: string): Promise<void> {
   if (!target) {
     throw new Error(`Unsupported os/arch: ${os}/${arch}`);
   }
-  await $`deno compile --allow-all --include=${
-    join("..", "init", "src", "templates")
-  } --node-modules-dir=none --target=${target} --output=${into} ${
-    join(dirname(import.meta.dirname!), "src", "mod.ts")
-  }`;
+  await $`deno compile --allow-all --include=${join(
+    "..",
+    "init",
+    "src",
+    "templates",
+  )} --node-modules-dir=none --target=${target} --output=${into} ${join(
+    dirname(import.meta.dirname!),
+    "src",
+    "mod.ts",
+  )}`;
 }
 
 async function pack(os: OS, arch: Arch): Promise<void> {

@@ -49,11 +49,11 @@ const compatibleActorId = (origin: string) =>
   `${origin}/.well-known/apgateway/${did}/actors/alice`;
 const gatewayKeyId = new URL(`${compatibleActorId(gateway)}#main-key`);
 
-const ed25519GatewayKeyPair = await crypto.subtle.generateKey(
+const ed25519GatewayKeyPair = (await crypto.subtle.generateKey(
   "Ed25519",
   true,
   ["sign", "verify"],
-) as CryptoKeyPair;
+)) as CryptoKeyPair;
 const rsaGatewayKeyPair: CryptoKeyPair = {
   privateKey: rsaPrivateKey2,
   publicKey: rsaPublicKey2.publicKey!,
@@ -149,11 +149,11 @@ function portableCreate(id = "1"): Create {
 }
 
 async function signedPortableCreate(id = "1"): Promise<Create> {
-  const json = await portableCreate(id).toJsonLd({
+  const json = (await portableCreate(id).toJsonLd({
     format: "compact",
     context: portableContext,
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   return await Create.fromJsonLd(await sign(json), {
     contextLoader: mockDocumentLoader,
     documentLoader: mockDocumentLoader,
@@ -188,21 +188,22 @@ async function capture(
 
 function signatureKeyId(request: Request): string | undefined {
   // Either an RFC 9421 Signature-Input or a draft-cavage Signature header:
-  return request.headers.get("Signature-Input")?.match(/keyid="([^"]+)"/)
-    ?.[1] ??
-    request.headers.get("Signature")?.match(/keyId="([^"]+)"/)?.[1];
+  return (
+    request.headers.get("Signature-Input")?.match(/keyid="([^"]+)"/)?.[1] ??
+    request.headers.get("Signature")?.match(/keyId="([^"]+)"/)?.[1]
+  );
 }
 
 test("Context.getActorKeyPairs() derives gateway keys for portable actors", async () => {
   const federation = createTestFederation((id) =>
-    id === "alice" ? actorId : null
+    id === "alice" ? actorId : null,
   );
   const ctx = federation.createContext(new URL(gateway));
   const keys = await ctx.getActorKeyPairs("alice");
-  assertEquals(keys.map((k) => k.keyId.href), [
-    gatewayKeyId.href,
-    `${compatibleActorId(gateway)}#key-2`,
-  ]);
+  assertEquals(
+    keys.map((k) => k.keyId.href),
+    [gatewayKeyId.href, `${compatibleActorId(gateway)}#key-2`],
+  );
   for (const key of keys) {
     assertEquals(key.cryptographicKey.id?.href, key.keyId.href);
     assertEquals(key.cryptographicKey.ownerId?.href, actorId.href);
@@ -212,16 +213,19 @@ test("Context.getActorKeyPairs() derives gateway keys for portable actors", asyn
   }
   // Actors that are not portable keep their keys as before:
   const ordinary = await ctx.getActorKeyPairs("bob");
-  assertEquals(ordinary.map((k) => [k.keyId.href, k.multikey.id?.href]), [
+  assertEquals(
+    ordinary.map((k) => [k.keyId.href, k.multikey.id?.href]),
     [
-      "https://example.com/users/bob#main-key",
-      "https://example.com/users/bob#multikey-1",
+      [
+        "https://example.com/users/bob#main-key",
+        "https://example.com/users/bob#multikey-1",
+      ],
+      [
+        "https://example.com/users/bob#key-2",
+        "https://example.com/users/bob#multikey-2",
+      ],
     ],
-    [
-      "https://example.com/users/bob#key-2",
-      "https://example.com/users/bob#multikey-2",
-    ],
-  ]);
+  );
   // The actor document published with the keys:
   const person = new Person({
     id: actorId,
@@ -229,15 +233,18 @@ test("Context.getActorKeyPairs() derives gateway keys for portable actors", asyn
     publicKey: keys[0].cryptographicKey,
     assertionMethods: keys.map((k) => k.multikey),
   });
-  const json = await person.toJsonLd({
+  const json = (await person.toJsonLd({
     format: "compact",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const assertionMethod = json.assertionMethod as Record<string, unknown>[];
-  assertEquals(assertionMethod.map((k) => [k.id, k.controller]), [
-    [gatewayKeyId.href, `ap+ef61://${did}/actors/alice`],
-    [`${compatibleActorId(gateway)}#key-2`, `ap+ef61://${did}/actors/alice`],
-  ]);
+  assertEquals(
+    assertionMethod.map((k) => [k.id, k.controller]),
+    [
+      [gatewayKeyId.href, `ap+ef61://${did}/actors/alice`],
+      [`${compatibleActorId(gateway)}#key-2`, `ap+ef61://${did}/actors/alice`],
+    ],
+  );
   assertEquals(
     (json.publicKey as Record<string, unknown>).id,
     gatewayKeyId.href,
@@ -256,15 +263,11 @@ test("Context.getActorKeyPairs() accepts compatible IDs as portable actor IDs", 
 });
 
 test("Context.getActorKeyPairs() propagates portable actor ID mapper errors", async () => {
-  for (
-    const id of [
-      new URL(`${actorId.href}#me`),
-      new URL("https://example.com/users/alice"),
-    ]
-  ) {
-    const ctx = createTestFederation(() => id).createContext(
-      new URL(gateway),
-    );
+  for (const id of [
+    new URL(`${actorId.href}#me`),
+    new URL("https://example.com/users/alice"),
+  ]) {
+    const ctx = createTestFederation(() => id).createContext(new URL(gateway));
     await assertRejects(() => ctx.getActorKeyPairs("alice"), TypeError);
   }
   const ctx = createTestFederation(() => {
@@ -290,7 +293,7 @@ test("Context.sendActivity() signs requests with gateway keys for portable actor
   const ctx = federation.createContext(new URL(gateway));
   const activity = await signedPortableCreate();
   const { bodies, requests } = await capture(() =>
-    ctx.sendActivity({ identifier: "alice" }, recipient, activity)
+    ctx.sendActivity({ identifier: "alice" }, recipient, activity),
   );
   assertEquals(bodies.length, 1);
   assertEquals(signatureKeyId(requests[0]), gatewayKeyId.href);
@@ -343,7 +346,7 @@ test("Context.sendActivity() refuses portable activities gateway keys would sign
       ],
       recipient,
       portableCreate(),
-    )
+    ),
   );
   assertEquals(
     (bodies[0].proof as Record<string, unknown>).verificationMethod,
@@ -367,7 +370,7 @@ test("Context.sendActivity() never signs documents with gateway keys", async () 
     object: new URL("https://example.com/notes/1"),
   });
   const { bodies, requests } = await capture(() =>
-    ctx.sendActivity(keys, recipient, activity)
+    ctx.sendActivity(keys, recipient, activity),
   );
   assertEquals(signatureKeyId(requests[0]), gatewayKeyId.href);
   assertEquals(bodies[0].proof, undefined);
@@ -390,7 +393,7 @@ test("Context.sendActivity() never signs documents with keys at ap: URIs", async
     object: new URL("https://example.com/notes/1"),
   });
   const { bodies } = await capture(() =>
-    ctx.sendActivity(keys, recipient, activity)
+    ctx.sendActivity(keys, recipient, activity),
   );
   assertEquals(bodies[0].proof, undefined);
   assertEquals(bodies[0].signature, undefined);
@@ -424,9 +427,10 @@ async function actorDocument(
   signed = true,
 ): Promise<Record<string, unknown>> {
   const federation = createTestFederation(() => id);
-  const keys = await federation.createContext(new URL(gateway))
+  const keys = await federation
+    .createContext(new URL(gateway))
     .getActorKeyPairs("alice");
-  const json = await new Person({
+  const json = (await new Person({
     id,
     inbox: parseIri(`${id.href}/inbox`),
     gateways: gateways.map((g) => new URL(g)),
@@ -435,9 +439,9 @@ async function actorDocument(
   }).toJsonLd({
     format: "compact",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   json["@context"] = [
-    ...json["@context"] as unknown[],
+    ...(json["@context"] as unknown[]),
     "https://w3id.org/security/data-integrity/v1",
   ];
   return signed ? await sign(json) : json;
@@ -473,7 +477,7 @@ async function deliver(
   } = {},
 ): Promise<{ status: number; dispatched: number }> {
   documentLoader ??= createLoader({
-    [compatibleActorId(gateway)]: actor ?? await actorDocument(gateways),
+    [compatibleActorId(gateway)]: actor ?? (await actorDocument(gateways)),
   });
   const unsigned = new Request("https://local.example/inbox", {
     method: "POST",
@@ -526,11 +530,11 @@ async function deliver(
 let lastResponseText = "";
 
 async function createJson(id: string): Promise<Record<string, unknown>> {
-  return await portableCreate(id).toJsonLd({
+  return (await portableCreate(id).toJsonLd({
     format: "compact",
     context: portableContext,
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
 }
 
 test("handleInbox() requires proofs of portable actors despite gateway signatures", async () => {
@@ -542,7 +546,7 @@ test("handleInbox() requires proofs of portable actors despite gateway signature
     dispatched: 0,
   });
   const tampered = {
-    ...await sign(await createJson("tampered")),
+    ...(await sign(await createJson("tampered"))),
     object: "https://remote.example/notes/2",
   };
   assertEquals(await deliver(tampered, [gateway]), {
@@ -566,7 +570,7 @@ const apKeyId = parseIri(
 );
 
 async function apActorDocument(): Promise<Record<string, unknown>> {
-  const json = await new Person({
+  const json = (await new Person({
     id: actorId,
     inbox: parseIri(`${actorId.href}/inbox`),
     gateways: [new URL(gateway)],
@@ -578,9 +582,9 @@ async function apActorDocument(): Promise<Record<string, unknown>> {
   }).toJsonLd({
     format: "compact",
     contextLoader: mockDocumentLoader,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   json["@context"] = [
-    ...json["@context"] as unknown[],
+    ...(json["@context"] as unknown[]),
     "https://w3id.org/security/data-integrity/v1",
   ];
   return await sign(json);
@@ -653,9 +657,11 @@ test("handleInbox() fetches an unreachable gateway key once", async () => {
   };
   const kv = new MemoryKvStore();
   for (let i = 0; i < 3; i++) {
-    const { status } = await deliver(await createJson(`unreachable-${i}`), [
-      gateway,
-    ], { kv, documentLoader });
+    const { status } = await deliver(
+      await createJson(`unreachable-${i}`),
+      [gateway],
+      { kv, documentLoader },
+    );
     assertEquals(status, 401);
   }
   assertEquals(fetched.length, 1);
@@ -668,10 +674,10 @@ test("handleInbox() does not need gateway signatures for portable actors", async
     await deliver(await sign(await createJson("signed")), [otherGateway]),
     { status: 202, dispatched: 1 },
   );
-  assertEquals(
-    await deliver(await createJson("unsigned"), [otherGateway]),
-    { status: 401, dispatched: 0 },
-  );
+  assertEquals(await deliver(await createJson("unsigned"), [otherGateway]), {
+    status: 401,
+    dispatched: 0,
+  });
 });
 
 test("handleInbox() does not take Linked Data Signatures for portable actors", async () => {
@@ -704,11 +710,10 @@ test("handleInbox() does not take Linked Data Signatures for portable actors", a
 
 // Compatible-ID actors and activities
 
-const otherKeyPair = await crypto.subtle.generateKey(
-  "Ed25519",
-  true,
-  ["sign", "verify"],
-) as CryptoKeyPair;
+const otherKeyPair = (await crypto.subtle.generateKey("Ed25519", true, [
+  "sign",
+  "verify",
+])) as CryptoKeyPair;
 const otherDid = await exportDidKey(otherKeyPair.publicKey);
 
 function compatibleCreateJson(
@@ -751,10 +756,10 @@ test("handleInbox() does not trust compatible-ID actors by web origin", async ()
 test("handleInbox() requires proofs of compatible-ID actors", async () => {
   // The gateway's HTTP signature is valid, but it does not authenticate
   // the activity of a compatible-ID actor either:
-  assertEquals(
-    await deliver(compatibleCreateJson("unsigned"), [gateway]),
-    { status: 401, dispatched: 0 },
-  );
+  assertEquals(await deliver(compatibleCreateJson("unsigned"), [gateway]), {
+    status: 401,
+    dispatched: 0,
+  });
   // A valid proof by the actor's DID authenticates it, with or without
   // HTTP signatures:
   assertEquals(
@@ -762,9 +767,11 @@ test("handleInbox() requires proofs of compatible-ID actors", async () => {
     { status: 202, dispatched: 1 },
   );
   assertEquals(
-    await deliver(await sign(compatibleCreateJson("unsigned-request")), [
-      gateway,
-    ], { httpSignature: false }),
+    await deliver(
+      await sign(compatibleCreateJson("unsigned-request")),
+      [gateway],
+      { httpSignature: false },
+    ),
     { status: 202, dispatched: 1 },
   );
 });
@@ -798,8 +805,7 @@ test("handleInbox() checks the DIDs of compatible activity IDs", async () => {
     await deliver(
       await sign({
         ...compatibleCreateJson("malformed"),
-        id:
-          `https://user@example.com/.well-known/apgateway/${did}/activities/2`,
+        id: `https://user@example.com/.well-known/apgateway/${did}/activities/2`,
       }),
       [gateway],
     ),
@@ -809,9 +815,10 @@ test("handleInbox() checks the DIDs of compatible activity IDs", async () => {
 
 // Reusing the actors that verified gateway keys and keys at ap: key IDs
 
-function countingLoader(
-  responses: Record<string, unknown>,
-): { documentLoader: DocumentLoader; fetched: () => number } {
+function countingLoader(responses: Record<string, unknown>): {
+  documentLoader: DocumentLoader;
+  fetched: () => number;
+} {
   const inner = createLoader(responses);
   let count = 0;
   return {
@@ -842,12 +849,10 @@ test("handleInbox() fetches the actor of a gateway key once", async () => {
   // The inbox only verifies HTTP Signatures when no proof authenticates
   // the activity, which a portable actor's activity cannot do without, so it
   // is rejected, but only after its gateway key is resolved:
-  for (
-    const [keyId, actor] of [
-      [gatewayKeyId, await actorDocument([gateway])],
-      [apKeyId, await apActorDocument()],
-    ] as const
-  ) {
+  for (const [keyId, actor] of [
+    [gatewayKeyId, await actorDocument([gateway])],
+    [apKeyId, await apActorDocument()],
+  ] as const) {
     const { documentLoader, fetched } = countingLoader({
       [compatibleActorId(gateway)]: actor,
     });
@@ -868,16 +873,14 @@ test("handleInbox() fetches the actor of a gateway key once", async () => {
 });
 
 test("RequestContext.getSignedKeyOwner() does not fetch the actor of a gateway key again", async () => {
-  for (
-    const [keyId, actor, gateways] of [
-      [
-        gatewayKeyId,
-        await actorDocument([gateway, otherGateway]),
-        [`${gateway}/`, `${otherGateway}/`],
-      ],
-      [apKeyId, await apActorDocument(), [`${gateway}/`]],
-    ] as const
-  ) {
+  for (const [keyId, actor, gateways] of [
+    [
+      gatewayKeyId,
+      await actorDocument([gateway, otherGateway]),
+      [`${gateway}/`, `${otherGateway}/`],
+    ],
+    [apKeyId, await apActorDocument(), [`${gateway}/`]],
+  ] as const) {
     const { documentLoader, fetched } = countingLoader({
       [compatibleActorId(gateway)]: actor,
     });
@@ -891,7 +894,10 @@ test("RequestContext.getSignedKeyOwner() does not fetch the actor of a gateway k
     assertEquals(fetched(), 1);
     const owner = await ctx.getSignedKeyOwner();
     assertEquals(owner?.id?.href, actorId.href);
-    assertEquals(owner?.gateways.map((g) => g.href), [...gateways]);
+    assertEquals(
+      owner?.gateways.map((g) => g.href),
+      [...gateways],
+    );
     assertEquals(fetched(), 1);
   }
 });
@@ -936,10 +942,7 @@ test("doesActorOwnKey() checks the actor of a verified gateway key without fetch
     id: parseIri(`ap+ef61://${otherDid}/activities/1`),
     actor: parseIri(`ap+ef61://${otherDid}/actors/alice`),
   });
-  assertEquals(
-    await doesActorOwnKey(otherActorCreate, key!, options),
-    false,
-  );
+  assertEquals(await doesActorOwnKey(otherActorCreate, key!, options), false);
   assertEquals(fetched(), 1);
 });
 
@@ -978,7 +981,7 @@ test("verifyRequest() does not vouch for the owners of keys that fail to verify 
     [compatibleActorId(gateway)]: await actorDocument([gateway]),
   });
   const cachedKeys: CryptographicKey[] = [];
-  const keyCache = new class extends KvKeyCache {
+  const keyCache = new (class extends KvKeyCache {
     override compatibleKeyScope(
       scope: CompatibleKeyScope,
     ): Required<CompatibleKeyCache> {
@@ -991,7 +994,7 @@ test("verifyRequest() does not vouch for the owners of keys that fail to verify 
         },
       };
     }
-  }(new MemoryKvStore(), ["pk"]);
+  })(new MemoryKvStore(), ["pk"]);
   // Signed with another key than the gateway's:
   const result = await verifyRequestDetailed(
     await signedRequest(gatewayKeyId, rsaPrivateKey3),
@@ -1022,9 +1025,8 @@ test("doesActorOwnKey() fully checks cached gateway keys cached without their ac
     "httpSignature",
     gatewayKeyId.href,
   ];
-  const { owner: _, ...entry } = await kv.get<Record<string, unknown>>(
-    entryKey,
-  ) ?? {};
+  const { owner: _, ...entry } =
+    (await kv.get<Record<string, unknown>>(entryKey)) ?? {};
   await kv.set(entryKey, entry);
   const key = await verifyRequest(await signedRequest(), options);
   assertEquals(fetched(), 1);

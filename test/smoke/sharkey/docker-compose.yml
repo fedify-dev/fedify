@@ -97,8 +97,8 @@ services:
       - sh
       - -c
       - |
-          cat /etc/ssl/certs/ca-certificates.crt /certs/ca.crt > /tmp/ca-bundle.crt
-          pnpm run migrateandstart
+        cat /etc/ssl/certs/ca-certificates.crt /certs/ca.crt > /tmp/ca-bundle.crt
+        pnpm run migrateandstart
     volumes:
       - ./default.yml:/sharkey/.config/default.yml:ro
       - ./.certs:/certs:ro

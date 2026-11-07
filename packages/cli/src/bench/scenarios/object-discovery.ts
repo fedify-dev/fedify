@@ -92,14 +92,12 @@ export async function objectUrlsFromSource(
     for (const collectionName of asList(source.collection ?? "outbox")) {
       const collectionUrl = propertyUrl(actor, collectionName, actorUrl);
       if (collectionUrl == null) continue;
-      for await (
-        const objectUrl of crawlCollection(collectionUrl, {
-          fetch: options.fetch,
-          assertReadDestinationAllowed: options.assertReadDestinationAllowed,
-          types,
-          limit: limit - urls.length,
-        })
-      ) {
+      for await (const objectUrl of crawlCollection(collectionUrl, {
+        fetch: options.fetch,
+        assertReadDestinationAllowed: options.assertReadDestinationAllowed,
+        types,
+        limit: limit - urls.length,
+      })) {
         urls.push(objectUrl);
         if (urls.length >= limit) return urls;
       }
@@ -118,8 +116,9 @@ async function actorUrlFromRecipient(
   url.searchParams.set("resource", identifier.href);
   const jrd = await fetchJson(url, options.fetch, WEBFINGER_ACCEPT);
   const links = Array.isArray(jrd.links) ? jrd.links : [];
-  const self = links.find((link) =>
-    isRecord(link) && link.rel === "self" && typeof link.href === "string"
+  const self = links.find(
+    (link) =>
+      isRecord(link) && link.rel === "self" && typeof link.href === "string",
   );
   if (!isRecord(self) || typeof self.href !== "string") {
     throw new Error(`WebFinger response for ${recipient} has no self link.`);
@@ -146,8 +145,8 @@ async function* crawlCollection(
     await options.assertReadDestinationAllowed?.(next);
     const page = await fetchJson(next, options.fetch);
     pages++;
-    const items = arrayProperty(page, "orderedItems") ??
-      arrayProperty(page, "items") ?? [];
+    const items =
+      arrayProperty(page, "orderedItems") ?? arrayProperty(page, "items") ?? [];
     for (const item of items) {
       const url = await objectUrl(item, {
         base: next,
@@ -212,10 +211,7 @@ async function objectUrl(
       continue;
     }
     if (!isRecord(candidate)) continue;
-    if (
-      options.types.size > 0 &&
-      !matchesType(candidate.type, options.types)
-    ) {
+    if (options.types.size > 0 && !matchesType(candidate.type, options.types)) {
       continue;
     }
     const url = propertyUrl(candidate, "id", options.base);
@@ -279,19 +275,18 @@ function objectCandidates(
   if (object == null) return [];
   if (Array.isArray(object)) {
     return object.flatMap((entry) =>
-      entry == null ? [] : objectCandidates(entry, depth + 1, seen)
+      entry == null ? [] : objectCandidates(entry, depth + 1, seen),
     );
   }
   return objectCandidates(object, depth + 1, seen);
 }
 
-function matchesType(
-  type: unknown,
-  expected: ReadonlySet<string>,
-): boolean {
+function matchesType(type: unknown, expected: ReadonlySet<string>): boolean {
   if (typeof type === "string") return expected.has(type);
-  return Array.isArray(type) &&
-    type.some((item) => typeof item === "string" && expected.has(item));
+  return (
+    Array.isArray(type) &&
+    type.some((item) => typeof item === "string" && expected.has(item))
+  );
 }
 
 function propertyUrl(

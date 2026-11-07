@@ -10,7 +10,8 @@ import process from "node:process";
  * Whether terminal color output is enabled.
  * `true` when stdout is a TTY and the `NO_COLOR` environment variable is not set.
  */
-export const colorEnabled: boolean = process.stdout.isTTY &&
+export const colorEnabled: boolean =
+  process.stdout.isTTY &&
   !("NO_COLOR" in process.env && process.env.NO_COLOR !== "");
 
 /** Chalk instance configured based on {@link colorEnabled}. */
@@ -29,9 +30,10 @@ export const isPromise = <T>(value: unknown): value is Promise<T> =>
  * The object that `set()` returns: the input with the computed property,
  * wrapped in a promise when the computed value is a promise.
  */
-type SetResult<K extends PropertyKey, T, S> = S extends Promise<infer U>
-  ? Promise<T & { [P in K]: Awaited<U> }>
-  : T & { [P in K]: S };
+type SetResult<K extends PropertyKey, T, S> =
+  S extends Promise<infer U>
+    ? Promise<T & { [P in K]: Awaited<U> }>
+    : T & { [P in K]: S };
 
 /**
  * Functional composition helper that adds a computed property to an object.
@@ -47,7 +49,7 @@ export function set<K extends PropertyKey, T extends object, S>(
   key: K,
   f: (value: T) => S,
 ): (obj: T) => SetResult<K, T, S> {
-  return ((obj) => {
+  return (obj) => {
     const result = f(obj);
     if (isPromise<S extends Promise<infer U> ? U : never>(result)) {
       return result.then((value) => ({ ...obj, [key]: value })) as SetResult<
@@ -56,8 +58,8 @@ export function set<K extends PropertyKey, T extends object, S>(
         S
       >;
     }
-    return ({ ...obj, [key]: result }) as SetResult<K, T, S>;
-  });
+    return { ...obj, [key]: result } as SetResult<K, T, S>;
+  };
 }
 
 /**
@@ -66,27 +68,32 @@ export function set<K extends PropertyKey, T extends object, S>(
  */
 export const merge =
   (source: Parameters<typeof toMerged>[1] = {}) =>
-  (target: Parameters<typeof toMerged>[0] = {}) => toMerged(target, source);
+  (target: Parameters<typeof toMerged>[0] = {}) =>
+    toMerged(target, source);
 
 /**
  * Curried `String.prototype.replace`. Returns a function that performs the
  * replacement on the given text.
  */
-export const replace = (
-  pattern: string | RegExp,
-  replacement: string | ((substring: string, ...args: unknown[]) => string),
-) =>
-(text: string): string => text.replace(pattern, replacement as string);
+export const replace =
+  (
+    pattern: string | RegExp,
+    replacement: string | ((substring: string, ...args: unknown[]) => string),
+  ) =>
+  (text: string): string =>
+    text.replace(pattern, replacement as string);
 
 /**
  * Curried `String.prototype.replaceAll`. Returns a function that replaces all
  * occurrences of the pattern in the given text.
  */
-export const replaceAll = (
-  pattern: string | RegExp,
-  replacement: string | ((substring: string, ...args: unknown[]) => string),
-) =>
-(text: string): string => text.replaceAll(pattern, replacement as string);
+export const replaceAll =
+  (
+    pattern: string | RegExp,
+    replacement: string | ((substring: string, ...args: unknown[]) => string),
+  ) =>
+  (text: string): string =>
+    text.replaceAll(pattern, replacement as string);
 
 /** Serializes a value to a pretty-printed JSON string with a trailing newline. */
 export const formatJson = (obj: unknown) =>
@@ -94,17 +101,16 @@ export const formatJson = (obj: unknown) =>
 
 const MAX_JSON_FORMAT_DEPTH = 100;
 
-const createJsonDepthGuard = (): (
+const createJsonDepthGuard = (): ((
   this: unknown,
   key: string,
   value: unknown,
-) => unknown => {
+) => unknown) => {
   const depths = new WeakMap<object, number>();
   return function (_key, value) {
     if (value !== null && typeof value === "object") {
-      const parentDepth = this !== null && typeof this === "object"
-        ? depths.get(this) ?? 0
-        : 0;
+      const parentDepth =
+        this !== null && typeof this === "object" ? (depths.get(this) ?? 0) : 0;
       const depth = parentDepth + 1;
       if (depth > MAX_JSON_FORMAT_DEPTH) {
         throw new RangeError("Maximum depth exceeded while formatting JSON.");
@@ -247,13 +253,15 @@ export const exit = (code: number) => process.exit(code);
  * Recursively extracts the item types from a tuple of iterables.
  * Used to infer the element type of the cartesian product.
  */
-export type ItersItems<T extends Iterable<unknown>[]> = T extends [] ? []
+export type ItersItems<T extends Iterable<unknown>[]> = T extends []
+  ? []
   : T extends [infer Head, ...infer Tail]
     ? Head extends Iterable<infer Item>
-      ? Tail extends Iterable<unknown>[] ? [Item, ...ItersItems<Tail>]
-      : [Item]
-    : never
-  : never;
+      ? Tail extends Iterable<unknown>[]
+        ? [Item, ...ItersItems<Tail>]
+        : [Item]
+      : never
+    : never;
 
 /**
  * Generates the cartesian product of multiple iterables.
@@ -277,8 +285,8 @@ export function* product<T extends Iterable<unknown>[]>(
 }
 
 /** Extracts the yielded type from a `Generator`. */
-export type GeneratedType<T extends Generator> = T extends
-  Generator<infer R, unknown, unknown> ? R : never;
+export type GeneratedType<T extends Generator> =
+  T extends Generator<infer R, unknown, unknown> ? R : never;
 
 type PrintMessage = (...args: Parameters<typeof message>) => void;
 

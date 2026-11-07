@@ -20,19 +20,17 @@ async function withServer(
   }
 }
 
-for (
-  const mode of [
-    "unhandled",
-    "pass",
-    "async-pass",
-    "html",
-    "async-html",
-    "not-found-html",
-    "not-found-json",
-    "not-found-end",
-    "error",
-  ]
-) {
+for (const mode of [
+  "unhandled",
+  "pass",
+  "async-pass",
+  "html",
+  "async-html",
+  "not-found-html",
+  "not-found-json",
+  "not-found-end",
+  "error",
+]) {
   test(
     "koa preserves the application's response or falls back to 406: " + mode,
     async () => {
@@ -60,8 +58,8 @@ for (
             ctx.body = mode.endsWith("json")
               ? { error: "No such user" }
               : mode.endsWith("html")
-              ? "<p>No such user</p>"
-              : "No such user";
+                ? "<p>No such user</p>"
+                : "No such user";
           } else if (mode.endsWith("html")) {
             ctx.type = "html";
             ctx.body = "<p>Alice</p>";
@@ -81,10 +79,10 @@ for (
           const expected = mode.startsWith("not-found")
             ? 404
             : mode.endsWith("html")
-            ? 200
-            : mode === "error"
-            ? 500
-            : 406;
+              ? 200
+              : mode === "error"
+                ? 500
+                : 406;
           assert.equal(response.status, expected);
           if (expected === 406) {
             assert.equal(response.statusText, "Not Acceptable");
@@ -104,10 +102,12 @@ for (
             if (method === "HEAD") assert.equal(body, "");
             else if (mode.endsWith("json")) {
               assert.deepEqual(JSON.parse(body), { error: "No such user" });
-            } else {assert.equal(
+            } else {
+              assert.equal(
                 body,
                 mode.endsWith("html") ? "<p>No such user</p>" : "No such user",
-              );}
+              );
+            }
           } else if (expected === 200) {
             assert.equal(body, method === "HEAD" ? "" : "<p>Alice</p>");
             assert.equal(
@@ -122,9 +122,10 @@ for (
           });
           assert.equal(missing.status, 404);
           assert.ok(
-            !missing.headers.get("Vary")?.split(",").some((field) =>
-              field.trim().toLowerCase() === "accept"
-            ),
+            !missing.headers
+              .get("Vary")
+              ?.split(",")
+              .some((field) => field.trim().toLowerCase() === "accept"),
           );
           await missing.text();
         }
@@ -156,8 +157,8 @@ for (const mode of ["empty", "message", "status"]) {
           mode === "empty" || method === "HEAD"
             ? ""
             : mode === "status"
-            ? "Not Found"
-            : "User removed",
+              ? "Not Found"
+              : "User removed",
         );
       }
     });

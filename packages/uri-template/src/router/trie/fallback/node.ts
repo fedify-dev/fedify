@@ -6,8 +6,9 @@ import { mergeRouteEntries, type RouteEntry } from "../priority.ts";
  * Precomputes merged candidates per node so path lookups only read the
  * deepest matching node's {@link candidates}.
  */
-export default class FallbackNode<TEntry extends RouteEntry>
-  extends Node<TEntry> {
+export default class FallbackNode<
+  TEntry extends RouteEntry,
+> extends Node<TEntry> {
   readonly #children = new Map<string, FallbackNode<TEntry>>();
   #candidates: readonly TEntry[] = [];
 

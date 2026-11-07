@@ -38,7 +38,8 @@ describe("[elysia] fedify() plugin", () => {
     const mockContextDataFactory = () => "Hello World";
 
     elysia.use(fedify(mockFederation as never, mockContextDataFactory));
-    const actual = await elysia.handle(new Request("http://localhost/"))
+    const actual = await elysia
+      .handle(new Request("http://localhost/"))
       .then((res) => res.text());
 
     assert.strictEqual(
@@ -85,13 +86,10 @@ describe("[elysia] fedify() plugin", () => {
   });
 
   test("fedify() falls through to Elysia routes when federation reports not-found via onNotFound", async () => {
-    const elysia = new Elysia().get(
-      "/hello-world",
-      ({ set, status }) => {
-        set.headers["X-Custom-Header"] = "custom-value";
-        return status(201, "Hello World");
-      },
-    );
+    const elysia = new Elysia().get("/hello-world", ({ set, status }) => {
+      set.headers["X-Custom-Header"] = "custom-value";
+      return status(201, "Hello World");
+    });
     const federationWithoutDispatcher = createFederation<void>({
       kv: new MemoryKvStore(),
     });
@@ -115,13 +113,10 @@ describe("[elysia] fedify() plugin", () => {
   });
 
   test("fedify() falls through to Elysia routes when federation declines the request via onNotAcceptable", async () => {
-    const elysia = new Elysia().get(
-      "/users/alice",
-      ({ set, status }) => {
-        set.headers["X-Custom-Header"] = "custom-value";
-        return status(200, "Hello Alice");
-      },
-    );
+    const elysia = new Elysia().get("/users/alice", ({ set, status }) => {
+      set.headers["X-Custom-Header"] = "custom-value";
+      return status(200, "Hello Alice");
+    });
     // Register the actor route so the request matches, but ask for text/html
     // so federation declines via onNotAcceptable instead of handling it.
     const federation = createFederation<void>({ kv: new MemoryKvStore() });

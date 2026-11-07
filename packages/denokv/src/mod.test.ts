@@ -24,10 +24,10 @@ Deno.test("DenoKvStore", async (t) => {
     await store.set(child, null);
     deepStrictEqual(await store.get(key), null);
     deepStrictEqual(await store.get(["missing"]), undefined);
-    deepStrictEqual(
-      await Array.fromAsync(store.list(key)),
-      [{ key, value: null }, { key: child, value: null }],
-    );
+    deepStrictEqual(await Array.fromAsync(store.list(key)), [
+      { key, value: null },
+      { key: child, value: null },
+    ]);
     deepStrictEqual(await store.cas(key, undefined, "wrong"), false);
     deepStrictEqual(await store.cas(key, null, "replaced"), true);
     deepStrictEqual(await store.get(key), "replaced");
@@ -66,10 +66,7 @@ Deno.test("DenoKvStore", async (t) => {
     }
 
     deepStrictEqual(entries.length, 3);
-    deepStrictEqual(
-      entries.find((e) => e.key[1] === "a")?.value,
-      "value-a",
-    );
+    deepStrictEqual(entries.find((e) => e.key[1] === "a")?.value, "value-a");
 
     // Cleanup
     await store.delete(["prefix", "a"]);
@@ -113,9 +110,9 @@ Deno.test("DenoKvStore", async (t) => {
       deepStrictEqual(entries.length, 3);
 
       // Count how many times the exact prefix key appears
-      const exactKeyCount =
-        entries.filter((e) => e.key.length === 1 && e.key[0] === "exact")
-          .length;
+      const exactKeyCount = entries.filter(
+        (e) => e.key.length === 1 && e.key[0] === "exact",
+      ).length;
       deepStrictEqual(
         exactKeyCount,
         1,

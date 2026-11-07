@@ -54,7 +54,8 @@ describe("parseCompilerOutput()", () => {
       diagnostics: [
         {
           file: "packages/a/src/mod.ts",
-          text: "packages/a/src/mod.ts(1,7): error TS2322: Type 'string' is " +
+          text:
+            "packages/a/src/mod.ts(1,7): error TS2322: Type 'string' is " +
             "not\n  assignable to type 'number'.",
         },
         { text: "error TS5083: Cannot read file 'missing.json'." },
@@ -78,17 +79,15 @@ describe("isOwnDiagnostic()", () => {
 describe("discoverProjects()", () => {
   it("finds check configurations and their variants only", () => {
     deepStrictEqual(
-      discoverProjects(
-        ["packages/a", "packages/b"],
-        (dir) =>
-          dir === "packages/a"
-            ? [
+      discoverProjects(["packages/a", "packages/b"], (dir) =>
+        dir === "packages/a"
+          ? [
               "tsconfig.json",
               "tsconfig.check.workers.json",
               "tsconfig.check.json",
               "tsconfig.check.json.bak",
             ]
-            : [],
+          : [],
       ),
       [
         "packages/a/tsconfig.check.json",
@@ -101,38 +100,34 @@ describe("discoverProjects()", () => {
 describe("findDenoAccesses()", () => {
   const accesses = (source: string) =>
     findDenoAccesses("rule.ts", source).map((access) =>
-      access.replace(/^rule\.ts:\d+:\d+: /, "")
+      access.replace(/^rule\.ts:\d+:\d+: /, ""),
     );
 
-  for (
-    const source of [
-      'Deno.env.get("HOME");',
-      'globalThis.Deno.env.get("HOME");',
-      'globalThis["Deno"].env.get("HOME");',
-      "const { Deno: runtime } = globalThis;",
-      'const { ["Deno"]: runtime } = globalThis;',
-      'const { "Deno": runtime } = globalThis;',
-      "const isDeno = typeof Deno !== 'undefined';",
-      "export class Missing extends Deno.errors.NotFound {}",
-    ]
-  ) {
+  for (const source of [
+    'Deno.env.get("HOME");',
+    'globalThis.Deno.env.get("HOME");',
+    'globalThis["Deno"].env.get("HOME");',
+    "const { Deno: runtime } = globalThis;",
+    'const { ["Deno"]: runtime } = globalThis;',
+    'const { "Deno": runtime } = globalThis;',
+    "const isDeno = typeof Deno !== 'undefined';",
+    "export class Missing extends Deno.errors.NotFound {}",
+  ]) {
     it(`rejects ${source}`, () => {
       equal(accesses(source).length, 1);
     });
   }
 
-  for (
-    const source of [
-      "export type Rule = Deno.lint.Rule;",
-      "const rule: Deno.lint.Rule = { create() { return {}; } };",
-      "type Run = typeof Deno.lint.runPlugin;",
-      "interface Env { Deno: unknown }",
-      "interface Plugin extends Deno.lint.Plugin {}",
-      "abstract class Rule implements Deno.lint.Rule { abstract create: never }",
-      'const isDeno = "Deno" in globalThis;',
-      'console.log("Deno");',
-    ]
-  ) {
+  for (const source of [
+    "export type Rule = Deno.lint.Rule;",
+    "const rule: Deno.lint.Rule = { create() { return {}; } };",
+    "type Run = typeof Deno.lint.runPlugin;",
+    "interface Env { Deno: unknown }",
+    "interface Plugin extends Deno.lint.Plugin {}",
+    "abstract class Rule implements Deno.lint.Rule { abstract create: never }",
+    'const isDeno = "Deno" in globalThis;',
+    'console.log("Deno");',
+  ]) {
     it(`allows ${source}`, () => {
       deepStrictEqual(accesses(source), []);
     });
@@ -151,11 +146,13 @@ describe("findCoverageProblems()", () => {
       ["tsconfig.check.json", ["scripts/tool.ts"]],
     ]),
     denoTypedProjects: [],
-    ownership: [{
-      path: "packages/deno-only/**",
-      owner: DENO_CHECK,
-      reason: "Deno-only.",
-    }],
+    ownership: [
+      {
+        path: "packages/deno-only/**",
+        owner: DENO_CHECK,
+        reason: "Deno-only.",
+      },
+    ],
     packageDirs: ["packages/a"],
     isDenoCheckInput: (file) => file.startsWith("packages/"),
     exists: () => false,
@@ -167,28 +164,34 @@ describe("findCoverageProblems()", () => {
   });
 
   it("reports a file outside every project", () => {
-    const problems = findCoverageProblems(input({
-      requiredFiles: [...input().requiredFiles, "scripts/new.mts"],
-    }));
+    const problems = findCoverageProblems(
+      input({
+        requiredFiles: [...input().requiredFiles, "scripts/new.mts"],
+      }),
+    );
     equal(problems.length, 1);
     match(problems[0], /^scripts\/new\.mts is not covered/);
   });
 
   it("does not count Deno workspace membership as coverage", () => {
     // packages/a stays a Deno workspace member, but its project is gone.
-    const problems = findCoverageProblems(input({
-      projects: new Map([["tsconfig.check.json", ["scripts/tool.ts"]]]),
-    }));
-    deepStrictEqual(problems.map((problem) => problem.split(" ")[0]), [
-      "packages/a/src/mod.ts",
-      "packages/a",
-    ]);
+    const problems = findCoverageProblems(
+      input({
+        projects: new Map([["tsconfig.check.json", ["scripts/tool.ts"]]]),
+      }),
+    );
+    deepStrictEqual(
+      problems.map((problem) => problem.split(" ")[0]),
+      ["packages/a/src/mod.ts", "packages/a"],
+    );
   });
 
   it("reports ownership by a Deno check that does not check the file", () => {
-    const problems = findCoverageProblems(input({
-      isDenoCheckInput: () => false,
-    }));
+    const problems = findCoverageProblems(
+      input({
+        isDenoCheckInput: () => false,
+      }),
+    );
     equal(problems.length, 1);
     match(problems[0], /is assigned to check:types:deno, which does not/);
   });
@@ -199,17 +202,21 @@ describe("findCoverageProblems()", () => {
       owner: DENO_CHECK,
       reason: "Removed.",
     };
-    const problems = findCoverageProblems(input({
-      ownership: [...input().ownership, stale],
-    }));
+    const problems = findCoverageProblems(
+      input({
+        ownership: [...input().ownership, stale],
+      }),
+    );
     equal(problems.length, 1);
     match(problems[0], /packages\/gone\/\*\* matches no file/);
   });
 
   it("reports Deno-typed projects without a runtime guard", () => {
-    const problems = findCoverageProblems(input({
-      denoTypedProjects: ["packages/a/tsconfig.check.json"],
-    }));
+    const problems = findCoverageProblems(
+      input({
+        denoTypedProjects: ["packages/a/tsconfig.check.json"],
+      }),
+    );
     equal(problems.length, 1);
     match(problems[0], /loads Deno's ambient types but is not listed/);
   });
@@ -235,8 +242,10 @@ describe("environment presets", () => {
       const fixture = relative(root, dir).split(sep).join("/");
       const result = await checkProject(`${fixture}/tsconfig.check.json`);
       return result.diagnostics
-        .filter((diagnostic) =>
-          diagnostic.file == null || diagnostic.file.startsWith(`${fixture}/`)
+        .filter(
+          (diagnostic) =>
+            diagnostic.file == null ||
+            diagnostic.file.startsWith(`${fixture}/`),
         )
         .map((diagnostic) => diagnostic.text);
     } finally {
@@ -334,38 +343,50 @@ describe("classifyDeclarationDiagnostics()", () => {
   };
 
   it("separates known problems from new errors", () => {
-    const result = classifyDeclarationDiagnostics([
-      {
-        file: "packages/a/dist/mod.d.cts",
-        text: "packages/a/dist/mod.d.cts(1,1): error TS7016: Could not " +
-          "find a declaration file for module 'untyped'.",
-      },
-      {
-        file: "packages/a/dist/mod.d.ts",
-        text: "packages/a/dist/mod.d.ts(2,1): error TS2304: Missing.",
-      },
-    ], [known]);
-    deepStrictEqual(result.errors.map((error) => error.file), [
-      "packages/a/dist/mod.d.ts",
-    ]);
+    const result = classifyDeclarationDiagnostics(
+      [
+        {
+          file: "packages/a/dist/mod.d.cts",
+          text:
+            "packages/a/dist/mod.d.cts(1,1): error TS7016: Could not " +
+            "find a declaration file for module 'untyped'.",
+        },
+        {
+          file: "packages/a/dist/mod.d.ts",
+          text: "packages/a/dist/mod.d.ts(2,1): error TS2304: Missing.",
+        },
+      ],
+      [known],
+    );
+    deepStrictEqual(
+      result.errors.map((error) => error.file),
+      ["packages/a/dist/mod.d.ts"],
+    );
     deepStrictEqual([...result.matched], [known]);
   });
 
   it("does not let a known problem hide another one in the same file", () => {
-    const result = classifyDeclarationDiagnostics([{
-      file: "packages/a/dist/mod.d.ts",
-      text: "packages/a/dist/mod.d.ts(3,1): error TS7016: Could not find a " +
-        "declaration file for module 'other'.",
-    }], [known]);
+    const result = classifyDeclarationDiagnostics(
+      [
+        {
+          file: "packages/a/dist/mod.d.ts",
+          text:
+            "packages/a/dist/mod.d.ts(3,1): error TS7016: Could not find a " +
+            "declaration file for module 'other'.",
+        },
+      ],
+      [known],
+    );
     equal(result.errors.length, 1);
     deepStrictEqual([...result.matched], []);
   });
 
   it("counts only first-party declarations and consumers", () => {
-    ok(isDeclarationDiagnostic(
-      { file: "packages/a/dist/mod.d.ts", text: "" },
-      ["packages/a"],
-    ));
+    ok(
+      isDeclarationDiagnostic({ file: "packages/a/dist/mod.d.ts", text: "" }, [
+        "packages/a",
+      ]),
+    );
     ok(
       !isDeclarationDiagnostic(
         { file: "node_modules/.pnpm/x/index.d.ts", text: "" },
@@ -407,7 +428,7 @@ describe("writeDeclarationConsumers()", () => {
       );
       const result = await checkProject(project);
       const errors = result.diagnostics.filter((diagnostic) =>
-        isDeclarationDiagnostic(diagnostic, [`${fixture}/packages/broken`])
+        isDeclarationDiagnostic(diagnostic, [`${fixture}/packages/broken`]),
       );
       equal(errors.length, 1);
       match(errors[0].text, /Cannot find name 'MissingPublicType'/);
@@ -427,7 +448,8 @@ describe("checkProject()", () => {
         join(dir, "tsconfig.check.json"),
         JSON.stringify({
           extends: relative(dir, join(root, "tsconfig.node.json"))
-            .split(sep).join("/"),
+            .split(sep)
+            .join("/"),
           include: ["*.ts"],
         }),
       );
@@ -462,7 +484,8 @@ describe("checkProject()", () => {
         "tsconfig.check.json",
         JSON.stringify({
           extends: relative(dir, join(root, "tsconfig.node.json"))
-            .split(sep).join("/"),
+            .split(sep)
+            .join("/"),
           include: ["src/*.ts"],
         }),
       );
@@ -496,9 +519,9 @@ describe("checkProject()", () => {
       const project = `${fixture}/tsconfig.check.json`;
       const buildInfo = join(dir, "check.tsbuildinfo");
       const own = (result: { diagnostics: readonly { text: string }[] }) =>
-        result.diagnostics.map((d) => d.text).filter((text) =>
-          text.startsWith(`${fixture}/src/`)
-        );
+        result.diagnostics
+          .map((d) => d.text)
+          .filter((text) => text.startsWith(`${fixture}/src/`));
       deepStrictEqual(own(await checkProject(project, buildInfo)), []);
       await write(
         "node_modules/dep-a/index.d.ts",
@@ -526,9 +549,10 @@ describe("buildInfoFile()", () => {
     ok(a !== b);
     ok(a.endsWith(".tsbuildinfo"));
     ok(
-      relative(root, a).split(sep).join("/").startsWith(
-        "node_modules/.cache/fedify-check-types/buildinfo/",
-      ),
+      relative(root, a)
+        .split(sep)
+        .join("/")
+        .startsWith("node_modules/.cache/fedify-check-types/buildinfo/"),
     );
   });
 });

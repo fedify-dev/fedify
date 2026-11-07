@@ -35,8 +35,9 @@ export interface RouterOptions extends _RouterOptions {}
  * @since 1.3.0
  * @deprecated Import `RouterRouteResult` from `@fedify/uri-template` instead.
  */
-export interface RouterRouteResult
-  extends _RouterRouteResult<Record<never, never>> {}
+export interface RouterRouteResult extends _RouterRouteResult<
+  Record<never, never>
+> {}
 
 /**
  * URL router and constructor based on URI Template

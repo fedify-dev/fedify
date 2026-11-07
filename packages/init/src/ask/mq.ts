@@ -13,28 +13,30 @@ import type { MessageQueue, PackageManager } from "../types.ts";
  * @returns A promise resolving to options with a guaranteed messageQueue
  */
 const fillMessageQueue: //
-  <
-    T extends {
-      messageQueue?: MessageQueue;
-      packageManager: PackageManager;
-      testMode: boolean;
-    },
-  >(options: T) => Promise<MqDefined<T>> //
- = (options) =>
+<
+  T extends {
+    messageQueue?: MessageQueue;
+    packageManager: PackageManager;
+    testMode: boolean;
+  },
+>(
+  options: T,
+) => Promise<MqDefined<T>> = (options) =>
+  //
   pipe(
     options,
     when(isMessageQueueEmpty, askMessageQueue) as <
       T extends { messageQueue?: MessageQueue; packageManager: PackageManager },
-    >(options: T) => MqDefined<T>,
-    unless(
-      isMqSupportsPm,
-      (opt: MqDefined<typeof options>) =>
-        pipe(
-          opt,
-          when(isTest, throwError(unmatchedWhileTesting)),
-          tap(noticeUnmatched),
-          fillMessageQueue,
-        ),
+    >(
+      options: T,
+    ) => MqDefined<T>,
+    unless(isMqSupportsPm, (opt: MqDefined<typeof options>) =>
+      pipe(
+        opt,
+        when(isTest, throwError(unmatchedWhileTesting)),
+        tap(noticeUnmatched),
+        fillMessageQueue,
+      ),
     ),
   ) as Promise<MqDefined<typeof options>>;
 
@@ -46,9 +48,7 @@ const isMessageQueueEmpty = <T extends { messageQueue?: MessageQueue }>(
   options: T,
 ): options is T & { messageQueue: undefined } => !options.messageQueue;
 
-const askMessageQueue = async <
-  T extends { packageManager: PackageManager },
->(
+const askMessageQueue = async <T extends { packageManager: PackageManager }>(
   data: T,
 ): Promise<Omit<T, "messageQueue"> & { messageQueue: MessageQueue }> => ({
   ...data,
@@ -60,14 +60,20 @@ const askMessageQueue = async <
 
 const unmatchedWhileTesting = <
   T extends { messageQueue: MessageQueue; packageManager: PackageManager },
->({ messageQueue: mq, packageManager: pm }: T) =>
+>({
+  messageQueue: mq,
+  packageManager: pm,
+}: T) =>
   new Error(
     `Message queue '${mq}' is not compatible with package manager '${pm}'`,
   );
 
 const noticeUnmatched = <
   T extends { messageQueue: MessageQueue; packageManager: PackageManager },
->({ messageQueue: mq, packageManager: pm }: T) => {
+>({
+  messageQueue: mq,
+  packageManager: pm,
+}: T) => {
   printErrorMessage`Error: Message queue '${mq}' is not compatible with package manager '${pm}'`;
 };
 
@@ -85,5 +91,7 @@ export const choiceMessageQueue =
 
 const isMqSupportsPm = <
   T extends { messageQueue: MessageQueue; packageManager: PackageManager },
->({ messageQueue, packageManager }: T) =>
-  messageQueues[messageQueue].packageManagers.includes(packageManager);
+>({
+  messageQueue,
+  packageManager,
+}: T) => messageQueues[messageQueue].packageManagers.includes(packageManager);

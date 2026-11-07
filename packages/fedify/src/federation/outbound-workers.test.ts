@@ -34,21 +34,28 @@ test("outbound body capture revocation on Workers", async () => {
   let cancelled = 0;
   let reader!: ReadableStreamDefaultReader<Uint8Array>;
   let signal!: AbortSignal;
-  const source = new ReadableStream<Uint8Array>({
-    pull() {},
-    cancel() {
-      cancelled++;
-      return new Promise<void>(() => {});
+  const source = new ReadableStream<Uint8Array>(
+    {
+      pull() {},
+      cancel() {
+        cancelled++;
+        return new Promise<void>(() => {});
+      },
     },
-  }, { highWaterMark: 0 });
-  const result = await captureResponseBody(new Response(source), {
-    maxBytes: 16,
-    timeoutMs: 10,
-  }, async (body, current) => {
-    signal = current;
-    reader = body.getReader();
-    await rejects(reader.read());
-  });
+    { highWaterMark: 0 },
+  );
+  const result = await captureResponseBody(
+    new Response(source),
+    {
+      maxBytes: 16,
+      timeoutMs: 10,
+    },
+    async (body, current) => {
+      signal = current;
+      reader = body.getReader();
+      await rejects(reader.read());
+    },
+  );
   deepStrictEqual(result, { type: "deadline", bytesExposed: 0 });
   ok(signal.aborted);
   strictEqual(cancelled, 1);
