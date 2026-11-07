@@ -2244,12 +2244,15 @@ function embeddedPropertyDocument(property: "attachment" | "object") {
   };
 }
 
-test("Note.getAttachments() keeps decoded values when the context loader fails", async () => {
+test("Note.getAttachments() reuses the contexts loaded while decoding", async () => {
   const note = await Note.fromJsonLd(embeddedPropertyDocument("attachment"));
-  const contextLoader = () =>
-    Promise.reject(new Error("Context loader failed"));
-  // Only the cached JSON-LD depends on the contexts, and the values are
-  // decoded already:
+  let calls = 0;
+  const contextLoader = () => {
+    calls++;
+    return Promise.reject(new Error("Context loader failed"));
+  };
+  // Matching the cached JSON-LD needs only the contexts that decoding loaded,
+  // so a loader that would fail is not called:
   for (const suppressError of [false, true]) {
     const attachments: (Object | Link | PropertyValue)[] = await Array
       .fromAsync(note.getAttachments({ contextLoader, suppressError }));
@@ -2259,19 +2262,24 @@ test("Note.getAttachments() keeps decoded values when the context loader fails",
       "Decoded image",
     ]);
   }
+  deepStrictEqual(calls, 0);
 });
 
-test("Activity.getObject() keeps decoded values when the context loader fails", async () => {
+test("Activity.getObject() reuses the contexts loaded while decoding", async () => {
   const activity = await Activity.fromJsonLd(
     embeddedPropertyDocument("object"),
   );
-  const contextLoader = () =>
-    Promise.reject(new Error("Context loader failed"));
+  let calls = 0;
+  const contextLoader = () => {
+    calls++;
+    return Promise.reject(new Error("Context loader failed"));
+  };
   for (const suppressError of [false, true]) {
     const object = await activity.getObject({ contextLoader, suppressError });
     assertInstanceOf(object, Image);
     deepStrictEqual(object.name, "Cached image");
   }
+  deepStrictEqual(calls, 0);
 });
 
 test("Activity.clone()", async () => {
