@@ -47,6 +47,28 @@ jobs:
           mise exec -- node --experimental-transform-types --test scripts/formatting.test.ts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
+    - name: Diagnose native formatter crashes on Windows
+      if: ${{ !cancelled() && runner.os == 'Windows' && failure() }}
+      run: mise exec -- node scripts/diagnose_formatting.mjs "${{ runner.temp }}/fedify-formatting-diagnosis"
+    - name: Read Windows native application errors
+      if: ${{ !cancelled() && runner.os == 'Windows' && failure() }}
+      shell: pwsh
+      run: |
+        $output = "$env:RUNNER_TEMP/fedify-formatting-diagnosis"
+        New-Item -ItemType Directory -Force $output | Out-Null
+        Get-WinEvent -FilterHashtable @{
+          LogName = 'Application'
+          Id = 1000
+          StartTime = (Get-Date).AddHours(-1)
+        } -ErrorAction SilentlyContinue | Format-List TimeCreated, Message |
+          Tee-Object -FilePath "$output/application-errors.txt"
+        exit 0
+    - uses: actions/upload-artifact@v7
+      if: ${{ !cancelled() && runner.os == 'Windows' && failure() }}
+      with:
+        name: windows-formatter-diagnosis
+        path: ${{ runner.temp }}/fedify-formatting-diagnosis
+        include-hidden-files: true
 
   test:
     runs-on: ubuntu-latest
