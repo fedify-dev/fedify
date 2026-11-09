@@ -155,10 +155,26 @@ export class ManualClockKvStore implements KvStore {
   }
 
   async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
-    const entries = await this.#serialize(async () => {
+    const iterator = await this.#serialize(async () => {
       await this.#evictAllExpired();
-      return await Array.fromAsync(this.#inner.list(prefix));
+      return this.#inner.list(prefix)[Symbol.asyncIterator]();
     });
-    yield* entries;
+    while (true) {
+      const step = await this.#serialize(() => iterator.next());
+      if (step.done) return;
+      let resumed = false;
+      try {
+        yield step.value;
+        resumed = true;
+      } finally {
+        // Consumer return()/throw() closes the iterator without holding the
+        // queue across a yield.  Backend next() failures propagate directly.
+        if (!resumed) {
+          await this.#serialize(async () => {
+            await iterator.return?.();
+          });
+        }
+      }
+    }
   }
 }

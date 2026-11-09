@@ -34,6 +34,159 @@ test("ManualClockKvStore serializes replacement writes and expiry reads", async 
   assertEquals(await entries, [{ key: ["key"], value: "new" }]);
 });
 
+test("ManualClockKvStore.list() yields entries before a later backend failure", async () => {
+  const prefix: KvKey = ["wanted"];
+  class FailingListStore extends MemoryKvStore {
+    override async *list(received?: KvKey): AsyncIterable<KvStoreListEntry> {
+      assertEquals(received, prefix);
+      assertEquals(await this.get(["expired"]), undefined);
+      yield { key: ["wanted", "first"], value: 1 };
+      throw new Error("later list failure");
+    }
+  }
+  const kv = new ManualClockKvStore(new FailingListStore());
+  await kv.set(["expired"], "old", {
+    ttl: Temporal.Duration.from({ minutes: 1 }),
+  });
+  kv.advance({ minutes: 1 });
+  const iterator = kv.list(prefix)[Symbol.asyncIterator]();
+  assertEquals(await iterator.next(), {
+    done: false,
+    value: { key: ["wanted", "first"], value: 1 },
+  });
+  await assertRejects(() => iterator.next(), Error, "later list failure");
+});
+
+test("ManualClockKvStore.list() streams lazily and closes on consumer exits", async () => {
+  let pulls = 0;
+  let closed = false;
+  class CountingListStore extends MemoryKvStore {
+    override async *list(): AsyncIterable<KvStoreListEntry> {
+      try {
+        pulls++;
+        yield { key: ["first"], value: 1 };
+        pulls++;
+        yield { key: ["second"], value: 2 };
+      } finally {
+        closed = true;
+      }
+    }
+  }
+  const kv = new ManualClockKvStore(new CountingListStore());
+  const entries = kv.list();
+  assertEquals(pulls, 0);
+  for await (const entry of entries) {
+    assertEquals(entry, { key: ["first"], value: 1 });
+    assertEquals(pulls, 1);
+    assertEquals(closed, false);
+    // Store operations must complete while the consumer suspends iteration.
+    await kv.set(["state"], "after");
+    assertEquals(await kv.get(["state"]), "after");
+    break;
+  }
+  assertEquals(pulls, 1);
+  assertEquals(closed, true);
+
+  closed = false;
+  const iterator = kv.list()[Symbol.asyncIterator]();
+  await iterator.next();
+  assertEquals(closed, false);
+  await assertRejects(
+    () => iterator.throw!(new Error("consumer failure")),
+    Error,
+    "consumer failure",
+  );
+  assertEquals(closed, true);
+});
+
+test("ManualClockKvStore.list() serializes next() with store writes", async () => {
+  const started = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const events: string[] = [];
+  class BlockingListStore extends MemoryKvStore {
+    override async *list(): AsyncIterable<KvStoreListEntry> {
+      events.push("next:start");
+      started.resolve();
+      await release.promise;
+      events.push("next:end");
+      yield { key: ["first"], value: 1 };
+    }
+    override async set(
+      key: KvKey,
+      value: unknown,
+      options?: KvStoreSetOptions,
+    ): Promise<void> {
+      events.push("set");
+      await super.set(key, value, options);
+    }
+  }
+  const kv = new ManualClockKvStore(new BlockingListStore());
+  const iterator = kv.list()[Symbol.asyncIterator]();
+  const next = iterator.next();
+  await started.promise;
+  const write = kv.set(["during-next"], "written");
+  // An unserialized write would run before the released next() continuation.
+  release.resolve();
+  await Promise.all([next, write]);
+  assertEquals(events, ["next:start", "next:end", "set"]);
+  await iterator.return?.();
+});
+
+test("ManualClockKvStore.list() serializes return() with store writes", async () => {
+  const started = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const events: string[] = [];
+  class ClosingListStore extends MemoryKvStore {
+    override list(): AsyncIterable<KvStoreListEntry> {
+      return {
+        [Symbol.asyncIterator]() {
+          let yielded = false;
+          return {
+            next(): Promise<IteratorResult<KvStoreListEntry>> {
+              if (yielded)
+                return Promise.resolve({ done: true, value: undefined });
+              yielded = true;
+              return Promise.resolve({
+                done: false,
+                value: { key: ["first"], value: 1 },
+              });
+            },
+            async return(): Promise<IteratorResult<KvStoreListEntry>> {
+              events.push("return:start");
+              started.resolve();
+              await release.promise;
+              events.push("return:end");
+              return { done: true, value: undefined };
+            },
+          };
+        },
+      };
+    }
+    override async set(
+      key: KvKey,
+      value: unknown,
+      options?: KvStoreSetOptions,
+    ): Promise<void> {
+      events.push("set");
+      await super.set(key, value, options);
+    }
+  }
+  const kv = new ManualClockKvStore(new ClosingListStore());
+  const iterator = kv.list()[Symbol.asyncIterator]();
+  await iterator.next();
+  const close = iterator.return!();
+  // A missing return() forward must fail instead of leaving this test waiting.
+  const forwarded = await Promise.race([
+    started.promise.then(() => true),
+    close.then(() => false),
+  ]);
+  assertEquals(forwarded, true);
+  const write = kv.set(["during-return"], "written");
+  release.resolve();
+  await Promise.all([close, write]);
+  assertEquals(events, ["return:start", "return:end", "set"]);
+});
+
 // `MemoryKvStore` treats an entry as absent at its expiration instant in
 // `get()`, `cas()`, and `list()` alike.  The virtual-clock decorator must use
 // the same boundary: live one nanosecond before expiry, absent at expiry.
