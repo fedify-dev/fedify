@@ -411,7 +411,13 @@ function getRawPropertyDescriptor(
   while (prototype != null) {
     const descriptor = rawPropertyDescriptors.get(prototype)?.get(iri);
     if (descriptor != null) {
-      return descriptor;
+      // A subclass can declare the property again without an alias that only
+      // a superclass declares, so the property's own IRI is looked up again
+      // to take the encoder of the most derived class:
+      return descriptor.canonicalIri === iri
+        ? descriptor
+        : (getRawPropertyDescriptor(object, descriptor.canonicalIri) ??
+          descriptor);
     }
     prototype = globalThis.Object.getPrototypeOf(prototype);
   }
