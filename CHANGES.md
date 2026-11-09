@@ -107,6 +107,17 @@ To be released.
 [#1353]: https://github.com/fedify-dev/fedify/pull/1353
 [#1359]: https://github.com/fedify-dev/fedify/pull/1359
 
+### @fedify/backfill
+
+ -  Added `contextSource: "history-first"` to backfill options to read the
+    seed's first `contextHistory` collection, falling back to `context` when
+    history is absent or unavailable. A valid empty history does not trigger
+    fallback, and later history references are not tried. Existing source
+    selection remains the default. [[#1250], [#1396] by Jiwon Kwon\]
+
+[#1250]: https://github.com/fedify-dev/fedify/issues/1250
+[#1396]: https://github.com/fedify-dev/fedify/pull/1396
+
 ### @fedify/cli
 
  -  Added SVG favicon support to `fedify nodeinfo`.  SVG icons are now
@@ -360,8 +371,8 @@ To be released.
 
  -  Added `contextHistory` and `contextHistories` to `Object` subclasses for
     referencing conversation activity histories as ordered collections, with
-    ID accessors and singular and plural dereferencing methods.  [[#1250] by
-    Jiwon Kwon\]
+    ID accessors and singular and plural dereferencing methods.
+    [[#1250], [#1396] by Jiwon Kwon\]
 
  -  Added `deepClone()` to vocabulary objects to copy nested objects before
     resolving their properties, keeping the source graph unchanged.  Replacement
@@ -429,7 +440,6 @@ To be released.
 [#1212]: https://github.com/fedify-dev/fedify/issues/1212
 [#1241]: https://github.com/fedify-dev/fedify/pull/1241
 [#1243]: https://github.com/fedify-dev/fedify/issues/1243
-[#1250]: https://github.com/fedify-dev/fedify/issues/1250
 [#1337]: https://github.com/fedify-dev/fedify/pull/1337
 
 ### @fedify/vocab-runtime
