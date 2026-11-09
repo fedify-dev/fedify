@@ -253,8 +253,10 @@ Serialization uses an inline `contextHistory` mapping with the property IRI
 `https://w3id.org/fep/171b/contextHistory` and `@type: @id`. Deserialization
 also accepts the published `https://w3id.org/fep/171b` context, which Fedify
 preloads so reading its definition does not require a network request.
-This vocabulary support does not change the source selection of
-[`@fedify/backfill`](./backfill.md).
+To use history for conversation backfill, opt in with
+[`contextSource: "history-first"`](./backfill.md#selecting-conversation-history).
+Backfill selects only the first history value; the vocabulary preserves all
+values.
 
 [FEP-171b]: https://w3id.org/fep/171b
 

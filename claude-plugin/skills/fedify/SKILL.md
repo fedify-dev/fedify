@@ -330,8 +330,18 @@ references through `contextHistory` or `contextHistories` constructor options
 `contextHistoryIds` without fetching; use `getContextHistory()` and
 `getContextHistories()` to resolve the first or all history collections.
 Output uses an inline context mapping, and the published FEP-171b context is
-preloaded for input. This vocabulary support does not enable history discovery
-in `@fedify/backfill` or replay conversation activities.
+preloaded for input. In `@fedify/backfill`, opt in with
+`contextSource: "history-first"` to read the seed's first history reference.
+Omitting the option keeps the existing `context` source. Absent or unavailable
+history (`null`, an ordinary loader error, or a non-collection result) falls
+back to the first `context` ID, using the remaining request budget. Once a
+valid history collection is resolved, it stays selected even if empty or no
+items can be yielded. Later history references are not tried, and sources are
+not merged. Portable history references are passed to the configured backfill
+loader for resolution and verification.
+Existing strategies control post extraction; later explicitly configured
+strategies can still run. This does not discover history on ancestors, unwrap
+`Add` activities, or replay updates and deletions.
 
 `clone()` is shallow: it copies property arrays but shares nested vocabulary
 objects and URLs.  In Fedify 2.5.0 and later, use synchronous `deepClone()` to

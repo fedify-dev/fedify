@@ -77,13 +77,15 @@ export interface BackfillOptions<
   /**
    * Selects the collection source for context-based strategies.
    *
-   * If omitted, uses the seed's `context`. Set to `"history-first"` to try
-   * the first `contextHistory` reference, falling back to `context` when
-   * history is absent or unavailable. Unavailable includes a lookup returning
-   * `null`, an ordinary loader error, or a non-collection result.
+   * If omitted, uses the seed's first `context` ID. Set to `"history-first"`
+   * to try the first `contextHistory` value, falling back to the first `context`
+   * ID when history is absent or unavailable. Unavailable includes a lookup
+   * returning `null`, an ordinary loader error, or a non-collection result.
    *
-   * A valid empty history does not trigger fallback. Later history references
-   * are not tried. Later explicitly configured strategies can still run.
+   * A resolved history collection remains selected even if empty or no
+   * supported objects can be yielded. Later history references are not tried,
+   * and history and context collections are not merged. Later explicitly
+   * configured strategies can still run.
    *
    * @since 2.5.0
    */
