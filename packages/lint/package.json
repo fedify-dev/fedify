@@ -52,6 +52,7 @@
     "!dist/**/*.test.d.{ts,cts,mts}",
     "!dist/**/*.test.*.map",
     "!dist/**/*.bench.{js,cjs,mjs,ts,cts,mts}",
+    "!dist/**/*.bench.d.{ts,cts,mts}",
     "!dist/**/*.bench.*.map",
     "!dist/**/*.snap",
     "!dist/**/__snapshots__/**",

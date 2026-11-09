@@ -15,14 +15,13 @@
     "exclude": [
       "**/*.test.ts",
       "**/*.bench.ts",
+      "**/*.bench.d.*",
       "**/__snapshots__/",
       "**/__fixtures__/",
       "**/fixtures/",
       "**/testdata/",
       "**/test/",
       "**/tests/",
-      "fixtures",
-      "test",
       "tsdown.config.ts"
     ]
   },
