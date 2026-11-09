@@ -206,48 +206,56 @@ test("MemoryKvStore rejects non-array batch containers", async () => {
 });
 
 test("MemoryKvStore atomic expiry and stale iterator reclamation", async () => {
-  const store = new MemoryKvStore();
-  const expired = { ttl: Temporal.Duration.from({ seconds: -1 }) };
-  await store.setMany([
-    { key: ["first"], value: "yield" },
-    { key: ["expired"], value: "old", options: expired },
-  ]);
-  const iterator = store.list()[Symbol.asyncIterator]();
-  strictEqual((await iterator.next()).value?.value, "yield");
-  strictEqual(await store.cas(["expired"], undefined, "committed"), true);
-  await iterator.next();
-  strictEqual(await store.get(["expired"]), "committed");
-  strictEqual(
-    await store.casMany([
-      {
-        key: ["zero"],
-        expectedValue: undefined,
-        newValue: "temporary",
-        options: { ttl: Temporal.Duration.from({ seconds: 0 }) },
-      },
-    ]),
-    true,
-  );
-  deepStrictEqual(await store.getMany([["zero"], ["zero"]]), [
-    undefined,
-    undefined,
-  ]);
-  await store.set(["expiry"], "old", {
-    ttl: Temporal.Duration.from({ milliseconds: 500 }),
-  });
-  strictEqual(
-    await store.casMany([
-      { key: ["expiry"], expectedValue: "old", newValue: "new" },
-      { key: ["missing"], expectedValue: true, newValue: true },
-    ]),
-    false,
-  );
-  strictEqual(await store.get(["expiry"]), "old");
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  strictEqual(await store.get(["expiry"]), undefined);
-  await store.set(["reset"], "old", expired);
-  strictEqual(await store.cas(["reset"], undefined, "persistent"), true);
-  strictEqual(await store.get(["reset"]), "persistent");
+  const originalNow = Temporal.Now.instant;
+  let now = Temporal.Instant.from("2026-01-01T00:00:00Z");
+  Temporal.Now.instant = () => now;
+  try {
+    const store = new MemoryKvStore();
+    const expired = { ttl: Temporal.Duration.from({ seconds: -1 }) };
+    await store.setMany([
+      { key: ["first"], value: "yield" },
+      { key: ["expired"], value: "old", options: expired },
+    ]);
+    const iterator = store.list()[Symbol.asyncIterator]();
+    strictEqual((await iterator.next()).value?.value, "yield");
+    strictEqual(await store.cas(["expired"], undefined, "committed"), true);
+    await iterator.next();
+    strictEqual(await store.get(["expired"]), "committed");
+    strictEqual(
+      await store.casMany([
+        {
+          key: ["zero"],
+          expectedValue: undefined,
+          newValue: "temporary",
+          options: { ttl: Temporal.Duration.from({ seconds: 0 }) },
+        },
+      ]),
+      true,
+    );
+    deepStrictEqual(await store.getMany([["zero"], ["zero"]]), [
+      undefined,
+      undefined,
+    ]);
+    const ttl = Temporal.Duration.from({ milliseconds: 500 });
+    await store.set(["expiry"], "old", { ttl });
+    strictEqual(
+      await store.casMany([
+        { key: ["expiry"], expectedValue: "old", newValue: "new" },
+        { key: ["missing"], expectedValue: true, newValue: true },
+      ]),
+      false,
+    );
+    strictEqual(await store.get(["expiry"]), "old");
+    now = now.add(ttl).subtract({ nanoseconds: 1 });
+    strictEqual(await store.get(["expiry"]), "old");
+    now = now.add({ nanoseconds: 1 });
+    strictEqual(await store.get(["expiry"]), undefined);
+    await store.set(["reset"], "old", expired);
+    strictEqual(await store.cas(["reset"], undefined, "persistent"), true);
+    strictEqual(await store.get(["reset"]), "persistent");
+  } finally {
+    Temporal.Now.instant = originalNow;
+  }
 });
 
 test("MemoryKvStore snapshots and CAS serialize competing calls", async () => {
