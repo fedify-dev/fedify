@@ -25,6 +25,21 @@ It's best suited for development and testing environments where data don't have
 to be shared across multiple nodes.  No setup is required, making it easy to
 get started.
 
+Since Fedify 2.5.0, `MemoryKvStore` implements `AtomicKvStore`.  Its atomic
+operations cover one `MemoryKvStore` instance in one process; they do not
+persist or coordinate state between instances.  It imposes no fixed batch-count
+limit; available memory and runtime resources still bound each call.
+
+Values are kept and returned by reference.  Treat values passed to `set()`,
+`setMany()`, `cas()`, and `casMany()`, and values returned by reads or `list()`,
+as immutable.  This also applies when you store the same object under several
+keys: mutating that object changes the value under every key without a store
+operation. `getMany()` captures the references at one point in time; it does
+not clone or freeze them.  Inputs must be passive data; accessors, proxies, or
+other behavior that reenters the store during preparation or comparison are
+outside its supported domain.  Persistent adapters serialize values and can
+support a different value domain, so test against your production adapter too.
+
 Best for
 :   Development and testing.
 
@@ -809,6 +824,150 @@ for ordinary reads and listings.
 [Netlify Functions]: https://docs.netlify.com/build/functions/overview/
 
 
+Atomic operations across keys
+-----------------------------
+
+*This API is available since Fedify 2.5.0.*
+
+Use `AtomicKvStore` when related values must be read or changed together.
+It extends `KvStore` with required `cas()`, `getMany()`, `setMany()`,
+`deleteMany()`, and `casMany()` methods.  These methods remain optional on
+ordinary `KvStore` implementations.
+
+Check an application-provided store with `isAtomicKvStore()` before using
+this capability.  The guard checks that all five methods are functions;
+it cannot verify their atomicity, durability, or supported key scope.
+For example, reserve a record and decrement its budget together:
+
+~~~~ typescript twoslash
+import { isAtomicKvStore, type KvStore } from "@fedify/fedify";
+
+async function reserve(store: KvStore, reservationId: string): Promise<boolean> {
+  if (!isAtomicKvStore(store)) {
+    throw new TypeError("This operation requires an AtomicKvStore");
+  }
+  const reservationKey = ["example", "reservation", reservationId] as const;
+  const budgetKey = ["example", "remaining-budget"] as const;
+  const [reservation, budget] = await store.getMany([
+    reservationKey,
+    budgetKey,
+  ]);
+  if (reservation !== undefined || typeof budget !== "number" || budget <= 0) {
+    return false;
+  }
+  return await store.casMany([
+    { key: reservationKey, expectedValue: undefined, newValue: true },
+    { key: budgetKey, expectedValue: budget, newValue: budget - 1 },
+  ]);
+}
+~~~~
+
+Initialize the budget separately.  If the conditional commit returns `false`,
+read again and re-evaluate the application's eligibility rule before retrying.
+Reusing an earlier decision with newly read values can admit work that no
+longer qualifies.
+
+### Operation semantics
+
+`getMany()` returns an array in input order from one consistent read point,
+including its logical expiry checks.  Duplicate read keys repeat the same
+snapshot value.  Missing or expired entries are `undefined`; stored `null`
+remains `null`.  The snapshot covers the requested keys, not key discovery
+through `list()`.
+
+`setMany()` replaces every supplied value in one unconditional operation.
+`deleteMany()` removes every supplied key in one operation.  `casMany()`
+compares all expectations against the same state before applying any change;
+one mismatch returns `false` and changes nothing, including existing TTLs.
+Single-key `cas()` follows the same comparison and value rules.
+
+In conditional operations, `expectedValue: undefined` means the key must be
+absent, and `newValue: undefined` means deletion.  Deletion removes the entry
+from `list()` too.  `set()` and `setMany()` reject `undefined` on an
+`AtomicKvStore`; use deletion methods instead.  These stronger rules do not
+change legacy ordinary stores: for example, SQLite and MySQL currently treat
+`set(key, undefined)` as a no-op.
+
+Each set or conditional entry can supply its own `options.ttl`:
+
+~~~~ typescript twoslash
+import type { AtomicKvStore } from "@fedify/fedify";
+declare const store: AtomicKvStore;
+// ---cut-before---
+await store.setMany([
+  { key: ["example", "budget"], value: 10 },
+  {
+    key: ["example", "temporary-label"],
+    value: "ready",
+    options: { ttl: Temporal.Duration.from({ minutes: 5 }) },
+  },
+]);
+await store.deleteMany([
+  ["example", "retired-label"],
+  ["example", "retired-budget"],
+]);
+~~~~
+
+A successful replacement without a TTL removes the previous TTL.  A logically
+expired key is absent even if the backend has not physically reclaimed it.  A
+deletion with a non-null `options.ttl` is invalid, including when another
+expectation would mismatch; empty options are valid.  `MemoryKvStore` preserves
+precision below one hour and treats zero or negative TTLs as immediately
+expired.  It rejects calendar durations that require a relative date.  Other
+adapters must document their duration support and expiry precision;
+`RedisKvStore`'s current single-key operations round up to whole seconds.
+
+Mutation batches reject duplicate keys before writing, including keys expressed
+by separate arrays with identical string components.  Empty reads return
+`[]`; empty writes and deletes do nothing; an empty `casMany()` returns `true`.
+Invalid input, unsupported scope, size limits, and backend failures are errors.
+`false` means only a proven comparison mismatch.  `MemoryKvStore` reports
+validation errors through rejected promises, including its single-key methods.
+Adapters must reject an unsupported atomic call rather than split it into
+smaller commits.
+
+Equality and supported values depend on the adapter, and must agree between
+`cas()` and `casMany()`.  `MemoryKvStore` uses structural comparison, with
+object member order ignored.  `RedisKvStore.cas()` compares encoded bytes, so
+its default JSON codec treats object member order as significant.  JSON-backed
+adapters cannot represent every JavaScript value that `MemoryKvStore` accepts.
+Follow the adapter's documented codec rules when preparing expected values.
+
+Each call is atomic within the adapter's documented backend scope.  Separate
+calls do not form a transaction, and atomic execution alone does not establish
+crash durability or exactly-once external effects.  To detect a value that
+changes and changes back (the ABA problem), include a non-reused version in
+the value.  A lost response can leave commit status unknown; use a version
+check or an operation receipt before repeating effects.
+
+### Current support
+
+Only `MemoryKvStore` currently implements the full `AtomicKvStore` contract.
+Existing single-key CAS support does not imply atomic multi-key support.
+The linked issues track separate adapter implementations:
+
+| Implementation              | `AtomicKvStore` | Status                                                               |
+| --------------------------- | --------------- | -------------------------------------------------------------------- |
+| `MemoryKvStore`             | Yes             | Development and testing only; one instance.                          |
+| `PostgresKvStore`           | No              | Planned in [#1364].                                                  |
+| `RedisKvStore`              | No              | Planned in [#1365].                                                  |
+| `PgliteKvStore`             | No              | Planned in [#1366].                                                  |
+| `SqliteKvStore`             | No              | Planned in [#1367].                                                  |
+| `MysqlKvStore`              | No              | Planned in [#1368].                                                  |
+| `DenoKvStore`               | No              | No atomic adapter child issue; deprecated since 2.5.0.               |
+| `NetlifyBlobsKvStore`       | No              | Single-key CAS only; no atomic adapter child issue.                  |
+| `WorkersKvStore`            | No              | No CAS; cannot implement this contract with Workers KV.              |
+| `WorkersD1KvStore`          | No              | Base adapter [PR #1360] supports single-key CAS; atomic follow-up is [#1379]. |
+
+[PR #1360]: https://github.com/fedify-dev/fedify/pull/1360
+[#1364]: https://github.com/fedify-dev/fedify/issues/1364
+[#1365]: https://github.com/fedify-dev/fedify/issues/1365
+[#1366]: https://github.com/fedify-dev/fedify/issues/1366
+[#1367]: https://github.com/fedify-dev/fedify/issues/1367
+[#1368]: https://github.com/fedify-dev/fedify/issues/1368
+[#1379]: https://github.com/fedify-dev/fedify/issues/1379
+
+
 Bounding how long cache entries live
 ------------------------------------
 
@@ -880,8 +1039,12 @@ prepends its own `keyPrefix`, and [`PostgresKvStore`] stores rows in its own
 Clearing these entries costs the remote requests described in the previous
 section: the caches are soft state that Fedify relearns on demand, but every
 cleared key has to be refetched before it can be used again, and that refetch
-fails while the peer is unavailable.  Prefer clearing them while your peers
-are reachable, and clear only the prefixes you actually need to reclaim.
+fails while the peer is unavailable.  Apply these cleanup procedures only to
+the cache prefixes.  Authoritative application state, such as budgets,
+reservations, or replay cutoffs, needs its own retention and recovery rules;
+it cannot be reconstructed by refetching a peer.  Prefer clearing them while
+your peers are reachable, and clear only the prefixes you actually need to
+reclaim.
 
 ### Clearing entries in `RedisKvStore`
 
@@ -964,8 +1127,10 @@ If the provided implementations don't meet your needs, you can create a custom
 ### Implement the `KvStore` interface
 
 Create a class that implements the `KvStore` interface.  The interface defines
-four methods: `~KvStore.get()`, `~KvStore.set()`, `~KvStore.delete()`, and
-`~KvStore.list()`, and optionally `~KvStore.cas()`.
+four required methods: `~KvStore.get()`, `~KvStore.set()`, `~KvStore.delete()`,
+and `~KvStore.list()`.  `cas()`, `getMany()`, `setMany()`, `deleteMany()`, and
+`casMany()` are optional.  Implement all five with the contract below when
+your store supports `AtomicKvStore`; ordinary stores need not implement them.
 
 ~~~~ typescript twoslash
 import type {
@@ -1185,71 +1350,6 @@ async delete(key: KvKey): Promise<void> {
 }
 ~~~~
 
-### Implement `~KvStore.cas()` method (optional)
-
-If your storage backend supports compare-and-swap (CAS) operations, you can
-implement the `~KvStore.cas()` method. This method allows you to atomically
-update a value only if it matches the expected value. This is useful for
-implementing optimistic concurrency control.
-
-~~~~ typescript twoslash
-import type { KvStore, KvKey, KvStoreSetOptions } from "@fedify/fedify";
-/**
- * A hypothetical storage interface.
- */
-interface HypotheticalStorage {
-  /**
-   * A hypothetical method to compare and swap a value by key.
-   * @param key The key to compare and swap.
-   * @param expectedValue The expected value to match.
-   * @param newValue The new value to set if the expected value matches.
-   * @returns True if the operation was successful, false otherwise.
-   */
-  compareAndSwap(
-    key: string,
-    expectedValue: unknown,
-    newValue: unknown
-  ): Promise<boolean>;
-}
-class MyCustomKvStore implements KvStore {
-  /**
-   * A hypothetical storage backend.
-   */
-  storage: HypotheticalStorage = {
-   async compareAndSwap(
-     key: string,
-     expectedValue: unknown,
-     newValue: unknown
-   ): Promise<boolean> { return false; }
-  };
-  private serializeKey(key: KvKey): string { return ""; }
-  async get<T = unknown>(key: KvKey): Promise<T | undefined> {
-    return undefined;
-  }
-  async set(
-    key: KvKey,
-    value: unknown,
-    options?: KvStoreSetOptions
-  ): Promise<void> { }
-  async delete(key: KvKey): Promise<void> { }
-  async *list(): AsyncIterable<{ key: KvKey; value: unknown }> { }
-// ---cut-before---
-async cas(
-  key: KvKey,
-  expectedValue: unknown,
-  newValue: unknown
-): Promise<boolean> {
-  const serializedKey = this.serializeKey(key);
-  return await this.storage.compareAndSwap(
-    serializedKey,
-    expectedValue,
-    newValue
-  );
-}
-// ---cut-after---
-}
-~~~~
-
 ### Implement `~KvStore.list()` method
 
 *This API is available since Fedify 1.10.0.*
@@ -1327,6 +1427,151 @@ a `~KvStoreListEntry.key` and a `~KvStoreListEntry.value`.
 >     have additional components after the prefix)
 >  -  Filter out expired entries if your storage backend supports TTL
 >  -  Handle pagination efficiently for large datasets
+
+### Implement the `AtomicKvStore` interface
+
+Implement all five atomic methods in addition to the ordinary store methods.
+Use the exported entry types for the batch signatures:
+
+~~~~ typescript twoslash
+import type {
+  AtomicKvStore,
+  KvKey,
+  KvStoreCasEntry,
+  KvStoreSetEntry,
+} from "@fedify/fedify";
+
+interface AtomicMethods {
+  getMany<T = unknown>(keys: readonly KvKey[]): Promise<(T | undefined)[]>;
+  setMany(entries: readonly KvStoreSetEntry[]): Promise<void>;
+  deleteMany(keys: readonly KvKey[]): Promise<void>;
+  casMany(entries: readonly KvStoreCasEntry[]): Promise<boolean>;
+  cas: AtomicKvStore["cas"];
+}
+~~~~
+
+Document the supported value domain, comparison, TTL precision, atomic key
+scope, batch limits, and durability for your adapter.  Apply the stronger
+`set(key, undefined)` rejection rule to single-key `set()` too.  Legacy optional
+CAS implementations can differ in deletion or TTL validation; audit them
+before claiming the full contract.
+
+Validate and encode the complete input before the first mutation.  Check
+structural duplicate keys and invalid deletion TTLs even if a conditional
+comparison would fail.  Runtime validation must reject unsupported inputs
+without partially changing earlier entries.
+
+#### Implement `~AtomicKvStore.cas()` method
+
+The `cas()` method atomically updates a value only if it matches the expected
+value.  It is required on `AtomicKvStore` and remains optional on `KvStore`.
+Use a backend conditional write or a transaction that protects both existing
+and absent keys against competing clients.  An unlocked read followed by a
+write is insufficient.
+
+The following example illustrates delegation of single-key CAS only.  The
+hypothetical backend must provide the comparison, logical expiry, deletion,
+and validation guarantees described above; the wrapper does not establish
+them.  Implement the other four methods before declaring `AtomicKvStore`.
+
+~~~~ typescript twoslash
+import type { KvStore, KvKey, KvStoreSetOptions } from "@fedify/fedify";
+/**
+ * A hypothetical storage interface.
+ */
+interface HypotheticalStorage {
+  /**
+   * A hypothetical method to compare and swap a value by key.
+   * @param key The key to compare and swap.
+   * @param expectedValue The expected value to match.
+   * @param newValue The new value to set if the expected value matches.
+   * @returns True if the operation was successful, false otherwise.
+   */
+  compareAndSwap(
+    key: string,
+    expectedValue: unknown,
+    newValue: unknown,
+    options?: KvStoreSetOptions
+  ): Promise<boolean>;
+}
+class MyCustomKvStore implements KvStore {
+  /**
+   * A hypothetical storage backend.
+   */
+  storage: HypotheticalStorage = {
+   async compareAndSwap(
+     key: string,
+     expectedValue: unknown,
+     newValue: unknown,
+     options?: KvStoreSetOptions
+   ): Promise<boolean> { return false; }
+  };
+  private serializeKey(key: KvKey): string { return ""; }
+  async get<T = unknown>(key: KvKey): Promise<T | undefined> {
+    return undefined;
+  }
+  async set(
+    key: KvKey,
+    value: unknown,
+    options?: KvStoreSetOptions
+  ): Promise<void> { }
+  async delete(key: KvKey): Promise<void> { }
+  async *list(): AsyncIterable<{ key: KvKey; value: unknown }> { }
+// ---cut-before---
+async cas(
+  key: KvKey,
+  expectedValue: unknown,
+  newValue: unknown,
+  options?: KvStoreSetOptions
+): Promise<boolean> {
+  const serializedKey = this.serializeKey(key);
+  return await this.storage.compareAndSwap(
+    serializedKey,
+    expectedValue,
+    newValue,
+    options
+  );
+}
+// ---cut-after---
+}
+~~~~
+
+#### Implement `~AtomicKvStore.getMany()` method
+
+Use a backend snapshot read that includes all requested keys and one expiry
+cutoff.  Preserve input order, duplicates, and missing entries when arranging
+the results.  Several ordinary reads, even inside a transaction, need the
+appropriate snapshot or isolation guarantees.  `Promise.all()` over `get()`
+calls does not establish a consistent snapshot.
+
+#### Implement `~AtomicKvStore.setMany()` and `~AtomicKvStore.deleteMany()` methods
+
+Run the complete mutation within one supported transaction or atomic backend
+operation.  Apply each entry's TTL with its replacement, and remove old TTLs
+when no new TTL is supplied.  Reject unsupported batches before any mutation;
+do not split calls to fit backend limits.  If a later statement fails, roll
+back all earlier writes or deletes.
+
+#### Implement `~AtomicKvStore.casMany()` method
+
+Protect the complete read set against competing clients, including absent and
+expired keys.  Compare all expected values against the same pre-mutation
+state, then apply all replacements and deletions together.  Do not batch
+independent `cas()` calls or recheck expectations after earlier writes have
+changed the state.  A conditional statement affecting zero rows need not be
+a backend error, so a transaction alone does not ensure every condition
+succeeded.
+
+Use backend concurrency controls with a documented isolation level and key
+scope.  A process-local mutex cannot coordinate other handles or processes.
+On a deadlock retry, roll back and re-evaluate the complete expected set.
+Return `false` only for a comparison mismatch; propagate backend errors.
+
+Run the [shared atomic conformance tests](./test.md), using independent
+clients sharing an isolated backend for persistent adapters.  Add
+backend-specific competing-client, rollback, expiry, and injected-failure
+tests; shared tests cannot establish crash durability or cover every backend
+failure mode.
 
 ### Use your custom `KvStore`
 

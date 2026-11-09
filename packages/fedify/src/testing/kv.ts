@@ -23,6 +23,18 @@ import { MemoryKvStore } from "../federation/kv.ts";
  */
 export class ManualClockKvStore implements KvStore {
   readonly #inner: KvStore;
+  #tail: Promise<void> = Promise.resolve();
+
+  // The wrapped store can commit before its promise settles.  Keep reads,
+  // writes, expiry eviction and metadata updates in the same serial order.
+  #serialize<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.#tail.then(operation);
+    this.#tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
   readonly #expirations: Map<string, Temporal.Instant> = new Map();
   #now: Temporal.Instant = Temporal.Instant.fromEpochMilliseconds(0);
 
@@ -43,17 +55,18 @@ export class ManualClockKvStore implements KvStore {
     this.#inner = inner;
     const innerCas = inner.cas;
     if (innerCas != null) {
-      this.cas = async (key, expectedValue, newValue, options) => {
-        await this.#evictIfExpired(key);
-        const swapped = await innerCas.call(
-          inner,
-          key,
-          expectedValue,
-          newValue,
-        );
-        if (swapped) this.#recordTtl(key, options);
-        return swapped;
-      };
+      this.cas = (key, expectedValue, newValue, options) =>
+        this.#serialize(async () => {
+          await this.#evictIfExpired(key);
+          const swapped = await innerCas.call(
+            inner,
+            key,
+            expectedValue,
+            newValue,
+          );
+          if (swapped) this.#recordTtl(key, options);
+          return swapped;
+        });
     }
   }
 
@@ -81,20 +94,20 @@ export class ManualClockKvStore implements KvStore {
 
   /**
    * Drops the entry if its TTL has elapsed.  Mirrors {@link MemoryKvStore},
-   * which treats an entry as live up to and including its expiration instant.
+   * which treats an entry as absent at its expiration instant.
    */
   async #evictIfExpired(key: KvKey): Promise<void> {
     const encodedKey = this.#encodeKey(key);
     const expiration = this.#expirations.get(encodedKey);
     if (expiration == null) return;
-    if (this.#now.until(expiration).sign >= 0) return;
+    if (this.#now.until(expiration).sign > 0) return;
     this.#expirations.delete(encodedKey);
     await this.#inner.delete(key);
   }
 
   async #evictAllExpired(): Promise<void> {
     for (const [encodedKey, expiration] of [...this.#expirations]) {
-      if (this.#now.until(expiration).sign >= 0) continue;
+      if (this.#now.until(expiration).sign > 0) continue;
       this.#expirations.delete(encodedKey);
       await this.#inner.delete(JSON.parse(encodedKey) as KvKey);
     }
@@ -112,29 +125,39 @@ export class ManualClockKvStore implements KvStore {
     );
   }
 
-  async get<T = unknown>(key: KvKey): Promise<T | undefined> {
-    await this.#evictIfExpired(key);
-    return await this.#inner.get<T>(key);
+  get<T = unknown>(key: KvKey): Promise<T | undefined> {
+    return this.#serialize(async () => {
+      await this.#evictIfExpired(key);
+      return await this.#inner.get<T>(key);
+    });
   }
 
-  async set(
-    key: KvKey,
-    value: unknown,
-    options?: KvStoreSetOptions,
-  ): Promise<void> {
-    this.#recordTtl(key, options);
-    // The TTL is deliberately withheld from the wrapped store so that only
-    // the virtual clock can expire the entry.
-    await this.#inner.set(key, value);
+  set(key: KvKey, value: unknown, options?: KvStoreSetOptions): Promise<void> {
+    return this.#serialize(async () => {
+      const expiration =
+        options?.ttl == null
+          ? undefined
+          : this.#now.add(options.ttl.round({ largestUnit: "hour" }));
+      // Only the virtual clock expires entries, and failed writes retain TTLs.
+      await this.#inner.set(key, value);
+      const encodedKey = this.#encodeKey(key);
+      if (expiration == null) this.#expirations.delete(encodedKey);
+      else this.#expirations.set(encodedKey, expiration);
+    });
   }
 
-  async delete(key: KvKey): Promise<void> {
-    this.#expirations.delete(this.#encodeKey(key));
-    await this.#inner.delete(key);
+  delete(key: KvKey): Promise<void> {
+    return this.#serialize(async () => {
+      this.#expirations.delete(this.#encodeKey(key));
+      await this.#inner.delete(key);
+    });
   }
 
   async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
-    await this.#evictAllExpired();
-    yield* this.#inner.list(prefix);
+    const entries = await this.#serialize(async () => {
+      await this.#evictAllExpired();
+      return await Array.fromAsync(this.#inner.list(prefix));
+    });
+    yield* entries;
   }
 }

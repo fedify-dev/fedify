@@ -427,6 +427,42 @@ balanced between reads and writes and needs strong consistency, and only
 not a D1 session, and create its table with a D1 migration and
 `initialized: true`, since the store is constructed per request.
 
+For application transitions across several keys, require `AtomicKvStore`
+from `@fedify/fedify` and narrow an existing `KvStore` with
+`isAtomicKvStore()`.  All five methods (`cas()`, `getMany()`, `setMany()`,
+`deleteMany()`, `casMany()`) are required on `AtomicKvStore` and optional on
+ordinary `KvStore`.  The guard checks method presence; it does not certify
+atomicity or durability.  `getMany()` returns an input-ordered snapshot;
+`casMany()` checks every expectation before committing all changes.  On
+`false`, reread and re-evaluate application eligibility before retrying.
+
+`expectedValue: undefined` means absence; `newValue: undefined` means deletion
+in CAS. Atomic stores reject `set(key, undefined)` and `setMany()` entries
+whose value is `undefined`.  They also reject TTLs on deletions and duplicate
+mutation keys before writing.  Missing or expired values are `undefined`;
+stored `null` remains `null`.  Per-entry TTL, equality, supported values,
+limits, and atomic key scope follow the adapter's documented contract.  Never
+emulate batches with separate calls, `Promise.all()`, or a process-local mutex
+for a shared backend.  Separate calls do not form a transaction; uncertain
+commit results need receipts or version checks, and ABA detection needs a
+non-reused version.
+
+Only `MemoryKvStore` currently implements the full atomic interface.  The
+persistent PostgreSQL, Redis, PGlite, SQLite, and MySQL extensions are tracked
+separately in issues #1364–#1368; Deno KV and Netlify Blobs have no atomic
+adapter child issue.  `WorkersKvStore` lacks CAS.  `WorkersD1KvStore` supports
+single-key CAS; its atomic extension is tracked in #1379.  Check the
+[atomic support matrix] and installed declarations before selecting a
+production adapter.
+
+`MemoryKvStore` is development-only and retains references, including
+references to the same object stored under several keys.  Keep stored and
+returned data immutable; its snapshots do not clone or freeze values.  Inputs
+must be passive data, without getters, proxies, or other behavior that reenters
+the store.  Production codecs can support different values and comparison
+rules. Cache cleanup examples apply only to cache prefixes; authoritative state
+such as budgets and replay cutoffs needs its own retention policy.
+
 For `PostgresKvStore`, existing populated tables and externally managed DDL
 (`initialized: true`) need the [expiry expression index] to accelerate cleanup.
 Run concurrent index creation outside a transaction, followed by `ANALYZE`.
@@ -446,6 +482,7 @@ index too.  Keep the original TTL columns and calendar semantics.
 
 See <https://fedify.dev/manual/kv.md> and <https://fedify.dev/manual/mq.md>.
 
+[atomic support matrix]: https://fedify.dev/manual/kv.md#current-support
 [expiry expression index]: https://fedify.dev/manual/kv.md#postgresql-expiry-index
 
 
