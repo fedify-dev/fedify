@@ -104,6 +104,68 @@ describe("history-first source selection", () => {
     deepStrictEqual(requests, [historyId.href, historyId.href]);
   });
 
+  test("compatible HTTPS history references reach the backfill loader without a vocabulary verifier", async () => {
+    const compatibleId = new URL(
+      "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/history",
+    );
+    const seed = await Note.fromJsonLd({
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/fep/171b",
+      ],
+      type: "Note",
+      id: "ap://did:key:z6Mkabc/posts/1",
+      contextHistory: compatibleId.href,
+      context: contextId.href,
+    });
+    const requests: string[] = [];
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          return Promise.resolve(
+            iri.href === compatibleId.href
+              ? new OrderedCollection({ items: [new Create({ object: item })] })
+              : new Collection({ items: [contextItem] }),
+          );
+        },
+      },
+      seed,
+      { contextSource: "history-first" },
+    );
+    deepStrictEqual(requests, [compatibleId.href]);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [item.id],
+    );
+  });
+
+  test("malformed compatible history identifiers fall back without being loaded", async () => {
+    const seed = new Note({
+      id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/posts/1"),
+      contextHistory: new URL(
+        "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/history?@gateway=https://other.example",
+      ),
+      contexts: [contextId],
+    });
+    const requests: string[] = [];
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          return Promise.resolve(new Collection({ items: [contextItem] }));
+        },
+      },
+      seed,
+      { contextSource: "history-first" },
+    );
+    deepStrictEqual(requests, [contextId.href]);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [contextItem.id],
+    );
+  });
+
   test("embedded portable history preserves the seed's verifier policy", async () => {
     const seed = await Note.fromJsonLd(
       {

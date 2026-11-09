@@ -8,6 +8,7 @@ import {
   OrderedCollection,
   OrderedCollectionPage,
 } from "@fedify/vocab";
+import { fromCompatibleEf61Id } from "@fedify/vocab-runtime";
 
 import type {
   BackfillContext,
@@ -287,11 +288,18 @@ async function getContextHistoryCollection(
       // before it calls documentLoader. Let the configured backfill loader
       // resolve and verify that reference instead.
       const reference = note.contextHistoryId;
-      if (
-        reference == null ||
-        (reference.protocol !== "ap:" && reference.protocol !== "ap+ef61:")
-      )
+      try {
+        if (
+          reference == null ||
+          (reference.protocol !== "ap:" &&
+            reference.protocol !== "ap+ef61:" &&
+            fromCompatibleEf61Id(reference) == null)
+        )
+          return null;
+      } catch {
+        // Malformed compatible identifiers are unavailable history.
         return null;
+      }
       historyId = reference;
     }
   }
