@@ -492,12 +492,17 @@ async function* generateProperty(
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
             try {
+              const decoded = v;
               v = await this.#${property.singularName}_fromJsonLd(doc, {
                 ...options,
                 // Keep the parent default for embedded objects.
                 verifyPortableObject: this._verifyPortableObject,
                 baseUrl: ${cachedPropertyBaseUrl},
               });
+              // The cached document lacks the parent's context, so the
+              // unknown properties retained from the whole document, including
+              // those of nested objects, win:
+              copyRawPropertiesDeep(decoded, v);
             } catch (error) {
               if (!options.suppressError) throw error;
               getLogger(["fedify", "vocab"]).debug(
@@ -673,12 +678,17 @@ async function* generateProperty(
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
               try {
+                const decoded = v;
                 v = await this.#${property.singularName}_fromJsonLd(obj, {
                   ...options,
                 // Keep the parent default for embedded objects.
                 verifyPortableObject: this._verifyPortableObject,
                   baseUrl: ${cachedPropertyBaseUrl},
                 });
+                // The cached document lacks the parent's context, so the
+                // unknown properties retained from the whole document, including
+                // those of nested objects, win:
+                copyRawPropertiesDeep(decoded, v);
               } catch (error) {
                 if (!options.suppressError) throw error;
                 getLogger(["fedify", "vocab"]).debug(

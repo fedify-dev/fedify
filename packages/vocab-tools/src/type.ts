@@ -629,7 +629,11 @@ export function getEncoder(
            format: undefined,
            context: undefined,
          })`
-      : `await ${variable}.toJsonLd(${optionsVariable})`;
+      : `await encodeNestedVocabularyValue(
+          ${optionsVariable},
+          ${variable},
+          () => ${variable}.toJsonLd(${optionsVariable}),
+        )`;
   }
   throw new Error(`Unknown type: ${typeUri}`);
 }
@@ -681,9 +685,16 @@ export function getDecoder(
     return scalarTypes[typeUri].decoder(variable, baseUrlVariable);
   }
   if (typeUri in types) {
+    // An embedded value is another object, which retains its own unknown
+    // properties even when it is decoded by a superclass of its parent:
     return `await ${types[typeUri].name}.fromJsonLd(
       ${variable},
-      { ...${optionsVariable}, baseUrl: ${baseUrlVariable} }
+      {
+        ...${optionsVariable},
+        baseUrl: ${baseUrlVariable},
+        // @ts-ignore: an internal option
+        _retainsRawProperties: true,
+      }
     )`;
   }
   throw new Error(`Unknown type: ${typeUri}`);
