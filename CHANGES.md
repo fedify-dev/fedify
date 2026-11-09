@@ -10,6 +10,13 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Added `AtomicKvStore`, `isAtomicKvStore()`, and optional multi-key methods
+    on `KvStore` for snapshot reads and all-or-nothing writes, deletions, and
+    compare-and-swap batches.  `MemoryKvStore` implements the atomic contract
+    for development and tests.  It now rejects storing `undefined` and TTLs on
+    CAS deletions, removes deleted entries from listings, and reports invalid
+    TTLs through rejected promises.  Use `delete()` or a CAS with
+    `newValue: undefined` to delete values.  [[#1361], [#1363], [#1395]]
  -  Added `InboxContext.authentication`, which tells inbox listeners who Fedify
     authenticated for an incoming activity independently of its declared
     `actor`: the signers of the HTTP request, the signers of the activity's
@@ -114,7 +121,10 @@ To be released.
 [#1328]: https://github.com/fedify-dev/fedify/pull/1328
 [#1353]: https://github.com/fedify-dev/fedify/pull/1353
 [#1359]: https://github.com/fedify-dev/fedify/pull/1359
+[#1361]: https://github.com/fedify-dev/fedify/issues/1361
+[#1363]: https://github.com/fedify-dev/fedify/issues/1363
 [#1382]: https://github.com/fedify-dev/fedify/issues/1382
+[#1395]: https://github.com/fedify-dev/fedify/pull/1395
 [#1396]: https://github.com/fedify-dev/fedify/pull/1396
 [#1415]: https://github.com/fedify-dev/fedify/pull/1415
 
