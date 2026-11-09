@@ -850,6 +850,14 @@ function snapshotCase(
   };
 }
 
-function sleep(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+async function sleep(milliseconds: number): Promise<void> {
+  const started = performance.now();
+  let remaining = milliseconds;
+  while (remaining > 0) {
+    // Integer timers can truncate fractional delays or invoke callbacks early.
+    await new Promise<void>((resolve) =>
+      setTimeout(resolve, Math.min(2_147_483_647, Math.ceil(remaining))),
+    );
+    remaining = milliseconds - (performance.now() - started);
+  }
 }

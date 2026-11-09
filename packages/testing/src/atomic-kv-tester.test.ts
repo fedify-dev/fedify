@@ -397,6 +397,102 @@ test("testAtomicKvStore() rejects an incorrect object-key-order claim", async ()
   );
 });
 
+test("testAtomicKvStore() waits through fractional truncation and early callbacks", async () => {
+  const maximum = 2_147_483_647;
+  for (const scenario of [
+    { short: 1_250_000, wait: 1_500_000, early: false, origin: 0 },
+    { short: 1_250_000, wait: 1_500_000, early: true, origin: 0 },
+    {
+      short: maximum * 1_000_000 - 500_000,
+      wait: maximum * 1_000_000,
+      early: true,
+      origin: 2 ** 53,
+    },
+  ]) {
+    const instantDescriptor = Object.getOwnPropertyDescriptor(
+      Temporal.Now,
+      "instant",
+    );
+    const performanceDescriptor = Object.getOwnPropertyDescriptor(
+      performance,
+      "now",
+    );
+    const timerDescriptor = Object.getOwnPropertyDescriptor(
+      globalThis,
+      "setTimeout",
+    );
+    let elapsed = 0n;
+    let early = scenario.early;
+    const delays: number[] = [];
+    try {
+      Object.defineProperty(Temporal.Now, "instant", {
+        configurable: instantDescriptor?.configurable ?? true,
+        value: () => Temporal.Instant.fromEpochNanoseconds(elapsed),
+      });
+      Object.defineProperty(performance, "now", {
+        configurable: performanceDescriptor?.configurable ?? true,
+        value: () => scenario.origin + Number(elapsed) / 1_000_000,
+      });
+      Object.defineProperty(globalThis, "setTimeout", {
+        configurable: timerDescriptor?.configurable ?? true,
+        value: (callback: () => void, delay: number) => {
+          ok(
+            delay > 0 && delay <= maximum,
+            "timer delays must stay within the valid range",
+          );
+          delays.push(delay);
+          // Match Node's integer truncation, with one optional early callback.
+          const advance = early ? 0 : Math.max(1, Math.trunc(delay));
+          early = false;
+          queueMicrotask(() => {
+            elapsed += BigInt(advance) * 1_000_000n;
+            callback();
+          });
+          return 0;
+        },
+      });
+      await testAtomicKvStore(() => pair(new MemoryKvStore()), {
+        ...memoryOptions,
+        ttl: {
+          short: Temporal.Duration.from({ nanoseconds: scenario.short }),
+          wait: Temporal.Duration.from({ nanoseconds: scenario.wait }),
+        },
+      });
+      ok(
+        elapsed >= BigInt(scenario.wait) * 2n,
+        "both expiry waits must complete",
+      );
+      ok(
+        delays.every(Number.isInteger),
+        "fractional timer delays must be rounded up",
+      );
+      if (scenario.early)
+        ok(delays.length >= 3, "early callbacks must be retried");
+    } finally {
+      for (const [target, name, descriptor] of [
+        [Temporal.Now, "instant", instantDescriptor],
+        [performance, "now", performanceDescriptor],
+        [globalThis, "setTimeout", timerDescriptor],
+      ] as const) {
+        if (descriptor == null) Reflect.deleteProperty(target, name);
+        else Object.defineProperty(target, name, descriptor);
+      }
+    }
+    deepStrictEqual(
+      Object.getOwnPropertyDescriptor(Temporal.Now, "instant"),
+      instantDescriptor,
+    );
+    deepStrictEqual(
+      Object.getOwnPropertyDescriptor(performance, "now"),
+      performanceDescriptor,
+    );
+    deepStrictEqual(
+      Object.getOwnPropertyDescriptor(globalThis, "setTimeout"),
+      timerDescriptor,
+    );
+  }
+});
+
 test("testAtomicKvStore() rejects invalid timing before creating clients", async () => {
   let created = false;
   await rejects(
