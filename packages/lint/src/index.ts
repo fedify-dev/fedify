@@ -39,8 +39,11 @@ import { eslint as mediaUploaderObjectUriRequired } from "./rules/media-uploader
 import { eslint as outboxListenerDeliveryNotAwaited } from "./rules/outbox-listener-delivery-not-awaited.ts";
 import { eslint as outboxListenerDeliveryRequired } from "./rules/outbox-listener-delivery-required.ts";
 
+import { eslint as rawPropertyIriInvalid } from "./rules/raw-property-iri-invalid.ts";
+
 const rules: Record<(typeof RULE_IDS)[keyof typeof RULE_IDS], Rule.RuleModule> =
   {
+    [RULE_IDS.rawPropertyIriInvalid]: rawPropertyIriInvalid,
     [RULE_IDS.actorIdMismatch]: actorIdMismatch,
     [RULE_IDS.actorIdRequired]: actorIdRequired,
     [RULE_IDS.actorFollowingPropertyRequired]: actorFollowingPropertyRequired,
