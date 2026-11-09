@@ -48,6 +48,9 @@ defaultContext:
   minimumQuantity: "vf:minimumQuantity"
   hasUnit: "om2:hasUnit"
   hasNumericalValue: "om2:hasNumericalValue"
+- contextHistory:
+    "@id": "https://w3id.org/fep/171b/contextHistory"
+    "@type": "@id"
 
 properties:
 - singularName: purpose

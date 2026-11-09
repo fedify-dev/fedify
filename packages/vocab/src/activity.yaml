@@ -16,6 +16,9 @@ defaultContext:
 - "https://w3id.org/security/v1"
 - "https://w3id.org/security/data-integrity/v1"
 - "https://gotosocial.org/ns"
+- contextHistory:
+    "@id": "https://w3id.org/fep/171b/contextHistory"
+    "@type": "@id"
 
 properties:
 - pluralName: actors

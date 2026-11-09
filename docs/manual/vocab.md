@@ -210,6 +210,55 @@ property.
 [FEP-044f]: https://w3id.org/fep/044f
 
 
+Conversation history references
+-------------------------------
+
+*This section is applicable since Fedify 2.5.0.*
+
+The `contextHistory` property from [FEP-171b] identifies an ordered collection
+of conversation activities. Unlike `context`, which can identify a collection
+of posts, history can include activities such as `Create`, `Update`, and
+`Delete`. All `Object` subclasses, including `Note` and `Article`, support
+history references:
+
+~~~~ typescript twoslash
+import { Note } from "@fedify/vocab";
+
+const note = new Note({
+  id: new URL("https://example.com/posts/1"),
+  contextHistories: [
+    new URL("https://example.com/conversations/1/history"),
+  ],
+});
+
+// Reading IDs does not fetch the referenced collections:
+console.log(note.contextHistoryId);
+console.log(note.contextHistoryIds);
+
+// These accessors resolve references to OrderedCollection objects:
+const history = await note.getContextHistory();
+for await (const collection of note.getContextHistories()) {
+  console.log(collection.id);
+}
+~~~~
+
+Use `contextHistory` in a constructor for a single reference or
+`contextHistories` for multiple references; do not supply both together.
+References can be URLs or embedded `OrderedCollection` objects. The singular
+getter resolves the first value; the plural getter iterates all values.
+Resolving a collection does not replay its activities or apply updates and
+deletions to posts.
+
+Serialization uses an inline `contextHistory` mapping with the property IRI
+`https://w3id.org/fep/171b/contextHistory` and `@type: @id`. Deserialization
+also accepts the published `https://w3id.org/fep/171b` context, which Fedify
+preloads so reading its definition does not require a network request.
+This vocabulary support does not change the source selection of
+[`@fedify/backfill`](./backfill.md).
+
+[FEP-171b]: https://w3id.org/fep/171b
+
+
 FEP-ef61 portable objects
 -------------------------
 

@@ -45,6 +45,9 @@ defaultContext:
   misskey: "https://misskey-hub.net/ns#"
   _misskey_followedMessage: "misskey:_misskey_followedMessage"
   isCat: "misskey:isCat"
+- contextHistory:
+    "@id": "https://w3id.org/fep/171b/contextHistory"
+    "@type": "@id"
 
 properties:
 - pluralName: preferredUsernames

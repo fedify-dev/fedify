@@ -24,4 +24,8 @@ defaultContext:
   toot: "http://joinmastodon.org/ns#"
   EmojiReact: "litepub:EmojiReact"
   Emoji: "toot:Emoji"
+- contextHistory:
+    "@id": "https://w3id.org/fep/171b/contextHistory"
+    "@type": "@id"
+
 properties: []

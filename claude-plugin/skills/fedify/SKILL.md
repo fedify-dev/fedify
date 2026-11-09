@@ -324,6 +324,15 @@ in-tree *src/webfinger*.
 
 `fromJsonLd()` and `toJsonLd()` are asynchronous; always `await` them.
 
+In Fedify 2.5.0 and later, `Object` subclasses support FEP-171b history
+references through `contextHistory` or `contextHistories` constructor options
+(`URL` or `OrderedCollection` values). Read `contextHistoryId` and
+`contextHistoryIds` without fetching; use `getContextHistory()` and
+`getContextHistories()` to resolve the first or all history collections.
+Output uses an inline context mapping, and the published FEP-171b context is
+preloaded for input. This vocabulary support does not enable history discovery
+in `@fedify/backfill` or replay conversation activities.
+
 `clone()` is shallow: it copies property arrays but shares nested vocabulary
 objects and URLs.  In Fedify 2.5.0 and later, use synchronous `deepClone()` to
 resolve nested properties without hydrating the source's objects.  Replacement

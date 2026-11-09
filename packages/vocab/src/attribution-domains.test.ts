@@ -61,10 +61,20 @@ test("attributionDomains round-trips through every actor type", async () => {
     ]);
 
     const context = json["@context"] as unknown[];
-    deepStrictEqual(record(context.at(-1))["attributionDomains"], {
-      "@id": "toot:attributionDomains",
-      "@container": "@set",
-    });
+    deepStrictEqual(
+      record(
+        context.find(
+          (entry) =>
+            typeof entry === "object" &&
+            entry !== null &&
+            "attributionDomains" in entry,
+        ),
+      )["attributionDomains"],
+      {
+        "@id": "toot:attributionDomains",
+        "@container": "@set",
+      },
+    );
 
     const parsed = await Actor.fromJsonLd(json);
     deepStrictEqual(parsed.id, id);
