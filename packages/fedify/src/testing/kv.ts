@@ -57,14 +57,27 @@ export class ManualClockKvStore implements KvStore {
     if (innerCas != null) {
       this.cas = (key, expectedValue, newValue, options) =>
         this.#serialize(async () => {
+          const ttl = options?.ttl;
+          if (newValue === undefined && ttl != null) {
+            throw new TypeError("A CAS deletion must not specify a TTL.");
+          }
+          const expiration =
+            ttl == null
+              ? undefined
+              : this.#now.add(ttl.round({ largestUnit: "hour" }));
           await this.#evictIfExpired(key);
+          // The virtual clock owns expiry, so no TTL reaches the inner store.
           const swapped = await innerCas.call(
             inner,
             key,
             expectedValue,
             newValue,
           );
-          if (swapped) this.#recordTtl(key, options);
+          if (swapped) {
+            const encodedKey = this.#encodeKey(key);
+            if (expiration == null) this.#expirations.delete(encodedKey);
+            else this.#expirations.set(encodedKey, expiration);
+          }
           return swapped;
         });
     }
@@ -111,18 +124,6 @@ export class ManualClockKvStore implements KvStore {
       this.#expirations.delete(encodedKey);
       await this.#inner.delete(JSON.parse(encodedKey) as KvKey);
     }
-  }
-
-  #recordTtl(key: KvKey, options?: KvStoreSetOptions): void {
-    const encodedKey = this.#encodeKey(key);
-    if (options?.ttl == null) {
-      this.#expirations.delete(encodedKey);
-      return;
-    }
-    this.#expirations.set(
-      encodedKey,
-      this.#now.add(options.ttl.round({ largestUnit: "hour" })),
-    );
   }
 
   get<T = unknown>(key: KvKey): Promise<T | undefined> {

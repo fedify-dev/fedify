@@ -123,6 +123,124 @@ test("ManualClockKvStore invalid set TTL preserves the old value and expiration"
   assertEquals(await kv.get(["k"]), undefined);
 });
 
+async function assertRejectedCasPreservesEntry(
+  expectedValue: unknown,
+  newValue: unknown,
+  ttl: Temporal.Duration,
+  errorType: typeof RangeError | typeof TypeError,
+  key: KvKey = ["k"],
+): Promise<void> {
+  const kv = new ManualClockKvStore();
+  const originalTtl = Temporal.Duration.from({ minutes: 10 });
+  await kv.set(["k"], "before", { ttl: originalTtl });
+  kv.advance(originalTtl.subtract({ nanoseconds: 1 }));
+
+  await assertRejects(
+    () => kv.cas!(key, expectedValue, newValue, { ttl }),
+    errorType,
+  );
+  assertEquals(await kv.get(["k"]), "before");
+  kv.advance({ nanoseconds: 1 });
+  assertEquals(await kv.get(["k"]), undefined);
+}
+
+test("ManualClockKvStore validates matching CAS TTL before mutation", () =>
+  assertRejectedCasPreservesEntry(
+    "before",
+    "after",
+    Temporal.Duration.from({ months: 1 }),
+    RangeError,
+  ));
+
+test("ManualClockKvStore validates mismatching CAS TTL before comparison", () =>
+  assertRejectedCasPreservesEntry(
+    "wrong",
+    "after",
+    Temporal.Duration.from({ months: 1 }),
+    RangeError,
+  ));
+
+test("ManualClockKvStore rejects TTL on matching CAS deletion", () =>
+  assertRejectedCasPreservesEntry(
+    "before",
+    undefined,
+    Temporal.Duration.from({ seconds: 1 }),
+    TypeError,
+  ));
+
+test("ManualClockKvStore rejects TTL on mismatching CAS deletion", () =>
+  assertRejectedCasPreservesEntry(
+    "wrong",
+    undefined,
+    Temporal.Duration.from({ seconds: 1 }),
+    TypeError,
+  ));
+
+test("ManualClockKvStore rejects TTL on absent CAS deletion", () =>
+  assertRejectedCasPreservesEntry(
+    undefined,
+    undefined,
+    Temporal.Duration.from({ seconds: 1 }),
+    TypeError,
+    ["missing"],
+  ));
+
+test("ManualClockKvStore failed CAS preserves the original expiration", async () => {
+  const kv = new ManualClockKvStore();
+  const originalTtl = Temporal.Duration.from({ minutes: 10 });
+  await kv.set(["k"], "before", { ttl: originalTtl });
+  assertEquals(
+    await kv.cas!(["k"], "wrong", "after", {
+      ttl: Temporal.Duration.from({ hours: 1 }),
+    }),
+    false,
+  );
+  assertEquals(await kv.cas!(["k"], "wrong", "after"), false);
+  kv.advance(originalTtl.subtract({ nanoseconds: 1 }));
+  assertEquals(await kv.get(["k"]), "before");
+  kv.advance({ nanoseconds: 1 });
+  assertEquals(await kv.get(["k"]), undefined);
+});
+
+test("ManualClockKvStore CAS backend errors preserve the original expiration", async () => {
+  class FailingCasStore extends MemoryKvStore {
+    override cas(..._args: Parameters<MemoryKvStore["cas"]>): Promise<boolean> {
+      return Promise.reject(new Error("backend CAS failure"));
+    }
+  }
+  const kv = new ManualClockKvStore(new FailingCasStore());
+  const originalTtl = Temporal.Duration.from({ minutes: 10 });
+  await kv.set(["k"], "before", { ttl: originalTtl });
+  await assertRejects(
+    () =>
+      kv.cas!(["k"], "before", "after", {
+        ttl: Temporal.Duration.from({ hours: 1 }),
+      }),
+    Error,
+    "backend CAS failure",
+  );
+  kv.advance(originalTtl.subtract({ nanoseconds: 1 }));
+  assertEquals(await kv.get(["k"]), "before");
+  kv.advance({ nanoseconds: 1 });
+  assertEquals(await kv.get(["k"]), undefined);
+});
+
+test("ManualClockKvStore withholds CAS TTL from the wrapped store", async () => {
+  const inner = new MemoryKvStore();
+  const kv = new ManualClockKvStore(inner);
+  await kv.set(["k"], "before");
+  assertEquals(
+    await kv.cas!(["k"], "before", "after", {
+      ttl: Temporal.Duration.from({ nanoseconds: 1 }),
+    }),
+    true,
+  );
+  assertEquals(await inner.get(["k"]), "after");
+  assertEquals(await kv.get(["k"]), "after");
+  kv.advance({ nanoseconds: 1 });
+  assertEquals(await kv.get(["k"]), undefined);
+});
+
 test("ManualClockKvStore.cas() without a TTL clears the expiration", async () => {
   // `MemoryKvStore.cas()` stores `null` for the expiration when no TTL is
   // given, so a successful swap makes a previously expiring entry permanent.
