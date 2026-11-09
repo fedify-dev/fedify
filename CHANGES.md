@@ -90,9 +90,12 @@ To be released.
  -  Fixed invalid JSON-LD when a collection page embeds a parsed item whose
     context redefines a protected parent term, such as `proof`.  Default
     serialization now isolates independent child contexts while preserving
-    their cached documents and extension meanings.  Resolving the parent
-    context uses `contextLoader`; URL references alongside isolated children
-    are represented as objects with `id` and their own context.
+    their cached documents and extension meanings.  The parent's `@context`
+    array gains property-scoped definitions, including for generated children
+    with matching contexts; context-aware consumers need JSON-LD 1.1 support.
+    Resolving the parent context uses `contextLoader`; URL references alongside
+    isolated children are represented as objects with `id` and their own
+    context.
     [[#1394], [#1397]]
  -  Fixed parsing of date-times without seconds, such as `2024-01-01T10:00Z`,
     `2024-01-01T10:00+09:00`, or `2024-01-01T10:00.5Z`, which Activity Streams
@@ -134,7 +137,9 @@ To be released.
  -  Fixed generated default encoders combining independent child documents
     with conflicting inherited JSON-LD contexts.  Child documents retain their
     original contexts and extension meanings, including in collections and
-    inherited properties.  Regenerate your vocabulary code to apply the fix.
+    inherited properties.  Generated parents gain property-scoped definitions
+    in their `@context` arrays even when child and parent contexts match.
+    Regenerate your vocabulary code to apply the fix.
     [[#1394], [#1397]]
  -  Fixed generated `xsd:dateTime` decoders failing on date-times without
     seconds, such as `2024-01-01T10:00Z` or `2024-01-01T10:00.5Z`.  Regenerate

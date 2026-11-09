@@ -6,5 +6,7 @@ links:
  -  Fixed generated default encoders combining independent child documents
     with conflicting inherited JSON-LD contexts.  Child documents retain their
     original contexts and extension meanings, including in collections and
-    inherited properties.  Regenerate your vocabulary code to apply the fix.
+    inherited properties.  Generated parents gain property-scoped definitions
+    in their `@context` arrays even when child and parent contexts match.
+    Regenerate your vocabulary code to apply the fix.
     [[#1394], [#1397]]
