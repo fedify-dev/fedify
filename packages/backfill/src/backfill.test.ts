@@ -104,6 +104,64 @@ describe("history-first source selection", () => {
     deepStrictEqual(requests, [historyId.href, historyId.href]);
   });
 
+  test("embedded portable history preserves the seed's verifier policy", async () => {
+    const seed = await Note.fromJsonLd(
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/fep/171b",
+        ],
+        type: "Note",
+        id: "https://example.com/posts/1",
+        contextHistory: {
+          type: "OrderedCollection",
+          id: "ap://did:key:z6Mkabc/history",
+          orderedItems: [{ type: "Note", id: item.id!.href }],
+        },
+      },
+      { verifyPortableObject: () => Promise.resolve({ verified: false }) },
+    );
+    const requests: string[] = [];
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          return Promise.resolve(null);
+        },
+      },
+      seed,
+      { contextSource: "history-first" },
+    );
+    deepStrictEqual(requests, [seed.contextHistoryId!.href]);
+    deepStrictEqual(results, []);
+  });
+
+  for (const activity of [false, true]) {
+    test(`embedded history ${activity ? "Create object" : "item"} hydration stays local to each backfill call`, async () => {
+      const postId = new URL("https://example.com/posts/referenced");
+      const history = new OrderedCollection({
+        items: activity ? [new Create({ object: postId })] : [postId],
+      });
+      const seed = new Note({ contextHistory: history });
+      const requests: string[] = [];
+      for (const content of ["First load", "Second load"]) {
+        const results = await collect(
+          {
+            documentLoader: (iri) => {
+              requests.push(iri.href);
+              return Promise.resolve(new Note({ id: postId, content }));
+            },
+          },
+          seed,
+          { contextSource: "history-first" },
+        );
+        strictEqual(results.length, 1);
+        strictEqual(results[0].object.content, content);
+      }
+      deepStrictEqual(requests, [postId.href, postId.href]);
+    });
+  }
+
   test("resolved history is traversed without serialization or context loading", async () => {
     let serializations = 0;
     let contextLoads = 0;

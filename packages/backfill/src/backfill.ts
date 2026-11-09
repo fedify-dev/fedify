@@ -269,10 +269,11 @@ async function getContextHistoryCollection(
   );
   let historyId: URL | undefined;
   try {
-    // Read embedded history on a copy. For a reference, stop the vocabulary
-    // accessor before fetching so the backfill loader can return objects
-    // directly, without a JSON-LD serialization and parsing round trip.
-    return await note.clone().getContextHistory({
+    // Preserve verifier defaults and isolate embedded history hydration from
+    // the supplied seed. For a reference, stop the vocabulary accessor before
+    // fetching so the backfill loader can return objects directly, without a
+    // JSON-LD serialization and parsing round trip.
+    return await note.deepClone().getContextHistory({
       crossOrigin: "trust",
       documentLoader: (url) => {
         historyId = new URL(url);
