@@ -51,6 +51,57 @@ test("testAtomicKvStore() supports scoped non-prefix-preserving keys and limit p
     rejections: limitProbes,
   }));
 
+test("testAtomicKvStore() accepts repeated keys in snapshot limit probes", async () => {
+  let probed = false;
+  class ObservedLimitStore extends LimitedMemoryKvStore {
+    override async getMany<T = unknown>(
+      keys: readonly KvKey[],
+    ): Promise<(T | undefined)[]> {
+      if (keys.length > 8) {
+        deepStrictEqual(
+          keys,
+          Array.from({ length: 9 }, () => keys[0]),
+        );
+        probed = true;
+      }
+      return await super.getMany<T>(keys);
+    }
+  }
+  await testAtomicKvStore(() => pair(new ObservedLimitStore()), {
+    ...memoryOptions,
+    rejections: (key) => ({
+      getMany: Array.from({ length: 9 }, () => key("repeated-read-limit")),
+    }),
+  });
+  strictEqual(probed, true);
+});
+
+test("testAtomicKvStore() rejects repeated keys in deletion limit probes", async () => {
+  let probed = false;
+  class ObservedDeleteStore extends MemoryKvStore {
+    override async deleteMany(keys: readonly KvKey[]): Promise<void> {
+      if (keys.some((key) => key.includes("repeated-delete-limit"))) {
+        probed = true;
+      }
+      await super.deleteMany(keys);
+    }
+  }
+  await rejects(
+    () =>
+      testAtomicKvStore(() => pair(new ObservedDeleteStore()), {
+        ...memoryOptions,
+        rejections: (key) => ({
+          deleteMany: [
+            key("repeated-delete-limit"),
+            key("repeated-delete-limit"),
+          ],
+        }),
+      }),
+    /limit\/scope probes must contain distinct structural keys/,
+  );
+  strictEqual(probed, false);
+});
+
 test("testAtomicKvStore() detects partial setMany before limit rejection", async () => {
   await rejects(
     () =>

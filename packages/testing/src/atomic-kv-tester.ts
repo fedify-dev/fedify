@@ -633,7 +633,7 @@ export default async function testAtomicKvStore(
         let invoke: () => Promise<unknown>;
         if (operation === "getMany" || operation === "deleteMany") {
           keys = probe as readonly KvKey[];
-          assertDistinctKeys(keys);
+          if (operation === "deleteMany") assertDistinctKeys(keys);
           for (const [index, probeKey] of keys.entries()) {
             await first.set(probeKey, {
               before: index,
