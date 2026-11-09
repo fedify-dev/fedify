@@ -1,6 +1,7 @@
 // Check the publisher's actual file lists, rather than duplicating its glob rules.
 // Run through mise after building; lifecycle hooks are skipped while packing.
 import { ok } from "node:assert/strict";
+import { checkExports } from "./package_exports.mjs";
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
@@ -41,33 +42,6 @@ function checkFiles(name, files) {
         !/\.(?:test|bench)\.(?:[cm]?[jt]s|d\.[cm]?ts)(?:\.map)?$/.test(file) &&
         !/\.snap$/.test(file),
       `${name}: repository test asset was packed: ${file}`,
-    );
-  }
-}
-function exportTargets(value) {
-  if (typeof value === "string")
-    return value.startsWith("./") ? [value.slice(2)] : [];
-  return value == null ? [] : Object.values(value).flatMap(exportTargets);
-}
-function checkExports(name, files, manifest, builtDirectory) {
-  for (const target of exportTargets(manifest.exports)) {
-    if (target.includes("*")) continue;
-    // This checks packing, not existing manifest/build mismatches such as
-    // Nest.js's CommonJS paths (also tracked by check_types.ts).
-    if (builtDirectory && !existsSync(join(builtDirectory, target))) {
-      console.warn(`${name}: export already missing from build: ${target}`);
-      continue;
-    }
-    ok(files.includes(target), `${name}: missing export ${target}`);
-  }
-  for (const target of Object.values(
-    typeof manifest.bin === "string"
-      ? { bin: manifest.bin }
-      : (manifest.bin ?? {}),
-  )) {
-    ok(
-      files.includes(target.replace(/^\.\//, "")),
-      `${name}: missing binary ${target}`,
     );
   }
 }
@@ -131,6 +105,7 @@ try {
       scratch,
       `${manifest.name.replace(/^@/, "").replaceAll("/", "-")}-${manifest.version}.tgz`,
     );
+    ok(existsSync(tarball), `${manifest.name}: tarball not found: ${tarball}`);
     const files = run("tar", ["-tzf", tarball])
       .trim()
       .split("\n")

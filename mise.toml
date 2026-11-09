@@ -339,7 +339,10 @@ run = "node scripts/test_pack.mjs"
 [tasks."test:package-files"]
 description = "Check JSR and npm packages exclude repository test assets"
 depends = ["build"]
-run = "node scripts/test_package_files.mjs"
+run = """
+node --test scripts/package_exports.test.mjs
+node scripts/test_package_files.mjs
+"""
 
 [tasks."test:testing:pack"]
 description = "Check @fedify/testing tarballs in isolated Node.js and Bun consumers"
@@ -526,7 +529,7 @@ mise run fmt
 
 [tasks."test:tooling"]
 description = "Test Node.js maintenance scripts and harness utilities"
-run = 'node --experimental-transform-types --test "scripts/*.test.ts" "examples/test-examples/*.test.ts" "packages/init/src/harness.test.ts"'
+run = 'node --experimental-transform-types --test "scripts/*.test.ts" "scripts/*.test.mjs" "examples/test-examples/*.test.ts" "packages/init/src/harness.test.ts"'
 
 [tasks."generate:packages-table"]
 description = "Generate package tables and links for release announcements"
