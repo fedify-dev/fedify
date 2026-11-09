@@ -54,11 +54,32 @@ describe("history-first source selection", () => {
         seed,
         { contextSource: "history-first" },
       );
-      deepStrictEqual(requests, [portableHistoryId]);
+      deepStrictEqual(requests, [seed.contextHistoryId!.href]);
       deepStrictEqual(
         results.map(({ id }) => id),
         [item.id],
       );
+    });
+
+    test(`embedded ${scheme} history is not fetched or replaced by context`, async () => {
+      const history = await OrderedCollection.fromJsonLd({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "OrderedCollection",
+        id: `${scheme}://did:key:z6Mkabc/history`,
+      });
+      const requests: string[] = [];
+      const results = await collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            return Promise.resolve(new Collection({ items: [contextItem] }));
+          },
+        },
+        new Note({ contextHistory: history, contexts: [contextId] }),
+        { contextSource: "history-first" },
+      );
+      deepStrictEqual(requests, []);
+      deepStrictEqual(results, []);
     });
   }
 

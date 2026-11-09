@@ -282,7 +282,16 @@ async function getContextHistoryCollection(
   } catch (error) {
     if (error !== unresolvedReference) {
       budget.signal?.throwIfAborted();
-      return null;
+      // Vocabulary dereferencing can require a portable-object verifier
+      // before it calls documentLoader. Let the configured backfill loader
+      // resolve and verify that reference instead.
+      const reference = note.contextHistoryId;
+      if (
+        reference == null ||
+        (reference.protocol !== "ap:" && reference.protocol !== "ap+ef61:")
+      )
+        return null;
+      historyId = reference;
     }
   }
   if (historyId == null) return null;
