@@ -56,6 +56,8 @@ try {
   ]);
   const jsrFiles = new Map();
   for (const line of dryRun.split("\n")) {
+    // The pinned Deno CLI prints each file URL followed by a size in parentheses.
+    // If that format changes, checkFiles() rejects the resulting empty lists.
     const match = line.match(/^\s+(file:\/\/.+) \([^()]+\)$/);
     if (!match) continue;
     const relative = fileURLToPath(match[1])
@@ -115,6 +117,12 @@ try {
     checkExports(manifest.name, files, manifest, cwd);
     if (directory === "init") {
       ok(files.includes("dist/templates/defaults/smoke.test.ts.tpl"));
+    }
+    if (directory === "cli") {
+      ok(
+        files.includes("dist/bench/mod.js"),
+        "CLI benchmark module was not packed",
+      );
     }
     if (directory === "vocab-tools") ok(files.includes("dist/schema.yaml"));
     console.log(`npm ${manifest.name}: ${files.length} files checked`);
