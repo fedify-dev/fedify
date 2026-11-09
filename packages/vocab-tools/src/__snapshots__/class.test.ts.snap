@@ -47,6 +47,144 @@ function isValidLanguageTag(language: string): boolean {
 }
 
 
+
+function hasJsonLdContext(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasJsonLdContext);
+  return value != null && typeof value === "object" &&
+    globalThis.Object.hasOwn(value, "@context");
+}
+
+function hasSupportedJsonLdScalars(value: unknown, idReferences: boolean): boolean {
+  if (Array.isArray(value)) {
+    return value.every(item => hasSupportedJsonLdScalars(item, idReferences));
+  }
+  return value === null || typeof value === "object" ||
+    (idReferences && typeof value === "string" && URL.canParse(value));
+}
+
+function equalJsonLdValues(left: unknown, right: unknown): boolean {
+  if (left === right) return true;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) && Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((item, index) => equalJsonLdValues(item, right[index]));
+  }
+  if (left === null || right === null || typeof left !== "object" ||
+      typeof right !== "object") return false;
+  const leftObject = left as Record<string, unknown>;
+  const rightObject = right as Record<string, unknown>;
+  const keys = globalThis.Object.keys(leftObject);
+  return keys.length === globalThis.Object.keys(rightObject).length &&
+    keys.every(key => globalThis.Object.hasOwn(rightObject, key) &&
+      equalJsonLdValues(leftObject[key], rightObject[key]));
+}
+
+async function isolateJsonLdSibling(
+  value: unknown,
+  term: string,
+  originalContext: unknown,
+  repairedContext: unknown,
+  contextLoader: DocumentLoader | undefined,
+): Promise<unknown> {
+  if (Array.isArray(value)) {
+    const result: unknown[] = [];
+    for (const item of value) {
+      result.push(await isolateJsonLdSibling(
+        item, term, originalContext, repairedContext, contextLoader,
+      ));
+    }
+    return result;
+  }
+  if (value === null) return value;
+  if (typeof value === "string") {
+    // These references were checked against the original term's @type:@id.
+    // Resolve compact IRIs and @base before removing their enclosing context.
+    const expanded = await jsonld.expand(
+      { "@context": originalContext, "@id": value },
+      { documentLoader: contextLoader, keepFreeFloatingNodes: true },
+    );
+    return { "@context": { id: "@id" }, id: expanded[0]["@id"] };
+  }
+  if (typeof value !== "object" ||
+      globalThis.Object.hasOwn(value, "@context")) return value;
+
+  // Comparing equal-shaped wrappers also preserves list and graph semantics.
+  // Keep already independent expanded sources exactly as received: adding a
+  // context to a signed source can invalidate its JSON canonicalization proof.
+  const original = await jsonld.expand(
+    { "@context": originalContext, [term]: value },
+    { documentLoader: contextLoader },
+  );
+  const repaired = await jsonld.expand(
+    { "@context": repairedContext, [term]: value },
+    { documentLoader: contextLoader },
+  );
+  return equalJsonLdValues(original, repaired)
+    ? value
+    : { ...value, "@context": originalContext };
+}
+
+async function isolateJsonLdContexts(
+  result: Record<string, unknown>,
+  terms: readonly string[],
+  contextLoader: DocumentLoader | undefined,
+): Promise<Record<string, unknown>> {
+  const candidates = terms.filter(term =>
+    globalThis.Object.hasOwn(result, term) && hasJsonLdContext(result[term])
+  );
+  if (candidates.length === 0) return result;
+
+  const originalContext = result["@context"];
+  const contexts = Array.isArray(originalContext)
+    ? originalContext
+    : [originalContext];
+  const activeContext = await jsonld.processContext(
+    await jsonld.processContext({}, null),
+    originalContext,
+    { documentLoader: contextLoader },
+  );
+  let definitions: Record<string, unknown> = {};
+  let siblings: Record<string, unknown> = {};
+  for (const term of candidates) {
+    const mapping = jsonld.getContextValue(activeContext, term) as
+      Record<string, unknown> | null;
+    if (mapping == null || mapping.protected === true || mapping.reverse === true ||
+        globalThis.Object.hasOwn(mapping, "@context") ||
+        mapping["@type"] === "@json" || typeof mapping["@id"] !== "string" ||
+        mapping["@id"].startsWith("@")) continue;
+
+    // A scalar scoped reset does not override protected definitions in the
+    // published expansion algorithm.  Check the entire property before making
+    // any changes; supported URL references receive their own local context.
+    if (!hasSupportedJsonLdScalars(result[term], mapping["@type"] === "@id")) {
+      continue;
+    }
+    const definition: Record<string, unknown> = {};
+    for (const keyword of [
+      "@id", "@type", "@container", "@language", "@direction", "@index",
+      "@nest", "@prefix",
+    ]) {
+      if (!globalThis.Object.hasOwn(mapping, keyword)) continue;
+      const value = mapping[keyword];
+      definition[keyword] = Array.isArray(value)
+        ? value.length === 1 && keyword === "@container" ? value[0] : [...value]
+        : value;
+    }
+    // The processor stores the semantic @prefix flag under an internal name.
+    if (mapping._prefix === true) definition["@prefix"] = true;
+    definition["@context"] = null;
+    const proposedDefinitions = { ...definitions, [term]: definition };
+    const repairedContext = [...contexts, proposedDefinitions];
+    const rewritten = await isolateJsonLdSibling(
+      result[term], term, originalContext, repairedContext, contextLoader,
+    );
+    definitions = proposedDefinitions;
+    siblings = { ...siblings, [term]: rewritten };
+  }
+  return globalThis.Object.keys(definitions).length === 0
+    ? result
+    : { ...result, ...siblings, "@context": [...contexts, definitions] };
+}
 /** Describes an object of any kind. The Object type serves as the base type for
  * most of the other kinds of objects defined in the Activity Vocabulary,
  * including other Core types such as {@link Activity},
@@ -8175,6 +8313,10 @@ get urls(): ((URL | Link))[] {
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     const result: Record<string, unknown> = {};
       // deno-lint-ignore no-unused-vars
       let compactItems: unknown[];
@@ -8839,7 +8981,11 @@ get urls(): ((URL | Link))[] {
       result["type"] = "Object";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1",{"fedibird":"http://fedibird.com/ns#","sensitive":"as:sensitive","emojiReactions":{"@id":"fedibird:emojiReactions","@type":"@id"}}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -11889,11 +12035,17 @@ proofs?: (DataIntegrityProof | URL)[];}
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -11902,7 +12054,11 @@ proofs?: (DataIntegrityProof | URL)[];}
       result["type"] = "Emoji";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams",{"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji"}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -12288,11 +12444,17 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -12327,7 +12489,11 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
       result["type"] = "ChatMessage";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1",{"toot":"http://joinmastodon.org/ns#","misskey":"https://misskey-hub.net/ns#","fedibird":"http://fedibird.com/ns#","Emoji":"toot:Emoji","ChatMessage":"http://litepub.social/ns#ChatMessage","quoteUrl":"as:quoteUrl","_misskey_quote":"misskey:_misskey_quote","quoteUri":"fedibird:quoteUri","emojiReactions":{"@id":"fedibird:emojiReactions","@type":"@id"}}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -16711,6 +16877,10 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     const result: Record<string, unknown> = {};
       // deno-lint-ignore no-unused-vars
       let compactItems: unknown[];
@@ -16756,7 +16926,11 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
       result["type"] = "PropertyValue";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams",{"schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value"}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        [],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -19539,6 +19713,10 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     const result: Record<string, unknown> = {};
       // deno-lint-ignore no-unused-vars
       let compactItems: unknown[];
@@ -19598,7 +19776,11 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
       result["type"] = "CryptographicKey";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = "https://w3id.org/security/v1";
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["owner"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -20464,6 +20646,10 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     const result: Record<string, unknown> = {};
       // deno-lint-ignore no-unused-vars
       let compactItems: unknown[];
@@ -20523,7 +20709,11 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
       result["type"] = "Multikey";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = "https://w3id.org/security/multikey/v1";
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["controller"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -26567,11 +26757,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -27031,7 +27227,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
       result["type"] = "Application";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["publicKey","assertionMethod","inbox","outbox","following","followers","liked","featured","featuredTags","streams","endpoints","movedTo","alsoKnownAs","service","attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -29722,11 +29922,17 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -29761,7 +29967,11 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
       result["type"] = "Article";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1",{"toot":"http://joinmastodon.org/ns#","misskey":"https://misskey-hub.net/ns#","fedibird":"http://fedibird.com/ns#","sensitive":"as:sensitive","Emoji":"toot:Emoji","Hashtag":"as:Hashtag","quoteUrl":"as:quoteUrl","_misskey_quote":"misskey:_misskey_quote","quoteUri":"fedibird:quoteUri","emojiReactions":{"@id":"fedibird:emojiReactions","@type":"@id"}}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -30256,11 +30466,17 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -30301,7 +30517,11 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
       result["type"] = "Document";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1"];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -30772,11 +30992,17 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -30785,7 +31011,11 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
       result["type"] = "Audio";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1"];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -34916,11 +35146,17 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -35189,7 +35425,11 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       result["type"] = "Collection";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1",{"toot":"http://joinmastodon.org/ns#","misskey":"https://misskey-hub.net/ns#","fedibird":"http://fedibird.com/ns#","ChatMessage":"http://litepub.social/ns#ChatMessage","sensitive":"as:sensitive","votersCount":"toot:votersCount","Emoji":"toot:Emoji","Hashtag":"as:Hashtag","quoteUrl":"as:quoteUrl","_misskey_quote":"misskey:_misskey_quote","quoteUri":"fedibird:quoteUri","emojiReactions":{"@id":"fedibird:emojiReactions","@type":"@id"}}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["current","first","last","items","likesOf","sharesOf","repliesOf","inboxOf","outboxOf","followersOf","followingOf","likedOf","attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -37258,11 +37498,17 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -37331,7 +37577,11 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       result["type"] = "CollectionPage";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1",{"toot":"http://joinmastodon.org/ns#","misskey":"https://misskey-hub.net/ns#","fedibird":"http://fedibird.com/ns#","ChatMessage":"http://litepub.social/ns#ChatMessage","sensitive":"as:sensitive","votersCount":"toot:votersCount","Emoji":"toot:Emoji","Hashtag":"as:Hashtag","quoteUrl":"as:quoteUrl","_misskey_quote":"misskey:_misskey_quote","quoteUri":"fedibird:quoteUri","emojiReactions":{"@id":"fedibird:emojiReactions","@type":"@id"}}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["partOf","next","prev","current","first","last","items","likesOf","sharesOf","repliesOf","inboxOf","outboxOf","followersOf","followingOf","likedOf","attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -39225,6 +39475,10 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     const result: Record<string, unknown> = {};
       // deno-lint-ignore no-unused-vars
       let compactItems: unknown[];
@@ -39328,7 +39582,11 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
       result["type"] = "as:Endpoints";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = "https://www.w3.org/ns/activitystreams";
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        [],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -40092,11 +40350,17 @@ proofs?: (DataIntegrityProof | URL)[];}
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -40105,7 +40369,11 @@ proofs?: (DataIntegrityProof | URL)[];}
       result["type"] = "Event";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1"];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -45656,11 +45924,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -46120,7 +46394,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
       result["type"] = "Group";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["publicKey","assertionMethod","inbox","outbox","following","followers","liked","featured","featuredTags","streams","endpoints","movedTo","alsoKnownAs","service","attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -48812,6 +49090,10 @@ get names(): ((string | LanguageString))[] {
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     const result: Record<string, unknown> = {};
       // deno-lint-ignore no-unused-vars
       let compactItems: unknown[];
@@ -48958,7 +49240,11 @@ get names(): ((string | LanguageString))[] {
       result["type"] = "Link";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = "https://www.w3.org/ns/activitystreams";
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["preview"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -49812,11 +50098,17 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -49825,7 +50117,11 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
       result["type"] = "Hashtag";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams",{"Hashtag":"as:Hashtag"}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["preview"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -50145,11 +50441,17 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -50158,7 +50460,11 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
       result["type"] = "Image";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = "https://www.w3.org/ns/activitystreams";
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -52510,11 +52816,17 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -52523,7 +52835,11 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
       result["type"] = "Mention";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = "https://www.w3.org/ns/activitystreams";
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["preview"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -53237,11 +53553,17 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -53276,7 +53598,11 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
       result["type"] = "Note";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1",{"toot":"http://joinmastodon.org/ns#","misskey":"https://misskey-hub.net/ns#","fedibird":"http://fedibird.com/ns#","sensitive":"as:sensitive","Emoji":"toot:Emoji","Hashtag":"as:Hashtag","quoteUrl":"as:quoteUrl","_misskey_quote":"misskey:_misskey_quote","quoteUri":"fedibird:quoteUri","emojiReactions":{"@id":"fedibird:emojiReactions","@type":"@id"}}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -53967,11 +54293,17 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       delete result["items"];
       // deno-lint-ignore no-unused-vars
@@ -54001,7 +54333,11 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       result["type"] = "OrderedCollection";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1",{"toot":"http://joinmastodon.org/ns#","misskey":"https://misskey-hub.net/ns#","fedibird":"http://fedibird.com/ns#","ChatMessage":"http://litepub.social/ns#ChatMessage","sensitive":"as:sensitive","votersCount":"toot:votersCount","Emoji":"toot:Emoji","Hashtag":"as:Hashtag","quoteUrl":"as:quoteUrl","_misskey_quote":"misskey:_misskey_quote","quoteUri":"fedibird:quoteUri","emojiReactions":{"@id":"fedibird:emojiReactions","@type":"@id"}}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["orderedItems","current","first","last","items","likesOf","sharesOf","repliesOf","inboxOf","outboxOf","followersOf","followingOf","likedOf","attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -54743,11 +55079,17 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       delete result["items"];
       // deno-lint-ignore no-unused-vars
@@ -54793,7 +55135,11 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       result["type"] = "OrderedCollectionPage";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1",{"toot":"http://joinmastodon.org/ns#","misskey":"https://misskey-hub.net/ns#","fedibird":"http://fedibird.com/ns#","ChatMessage":"http://litepub.social/ns#ChatMessage","sensitive":"as:sensitive","votersCount":"toot:votersCount","Emoji":"toot:Emoji","Hashtag":"as:Hashtag","quoteUrl":"as:quoteUrl","_misskey_quote":"misskey:_misskey_quote","quoteUri":"fedibird:quoteUri","emojiReactions":{"@id":"fedibird:emojiReactions","@type":"@id"}}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["orderedItems","partOf","next","prev","current","first","last","items","likesOf","sharesOf","repliesOf","inboxOf","outboxOf","followersOf","followingOf","likedOf","attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -59809,11 +60155,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -60273,7 +60625,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
       result["type"] = "Organization";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["publicKey","assertionMethod","inbox","outbox","following","followers","liked","featured","featuredTags","streams","endpoints","movedTo","alsoKnownAs","service","attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -62218,11 +62574,17 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -62231,7 +62593,11 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
       result["type"] = "Page";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1"];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -67097,11 +67463,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -67561,7 +67933,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
       result["type"] = "Person";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["publicKey","assertionMethod","inbox","outbox","following","followers","liked","featured","featuredTags","streams","endpoints","movedTo","alsoKnownAs","service","attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -69761,11 +70137,17 @@ proofs?: (DataIntegrityProof | URL)[];accuracy?: number | null;altitude?: number
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -69870,7 +70252,11 @@ proofs?: (DataIntegrityProof | URL)[];accuracy?: number | null;altitude?: number
       result["type"] = "Place";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1"];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -70852,11 +71238,17 @@ proofs?: (DataIntegrityProof | URL)[];describes?: Object | URL | null;}
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -70885,7 +71277,11 @@ proofs?: (DataIntegrityProof | URL)[];describes?: Object | URL | null;}
       result["type"] = "Profile";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1"];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["describes","attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -74461,11 +74857,17 @@ relationships?: (Object | URL)[];}
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -74534,7 +74936,11 @@ relationships?: (Object | URL)[];}
       result["type"] = "Relationship";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1"];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["subject","object","relationship","attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -79975,11 +80381,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -80439,7 +80851,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
       result["type"] = "Service";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["publicKey","assertionMethod","inbox","outbox","following","followers","liked","featured","featuredTags","streams","endpoints","movedTo","alsoKnownAs","service","attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -82567,6 +82983,10 @@ get contents(): ((string | LanguageString))[] {
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     const result: Record<string, unknown> = {};
       // deno-lint-ignore no-unused-vars
       let compactItems: unknown[];
@@ -82609,7 +83029,11 @@ get contents(): ((string | LanguageString))[] {
       result["type"] = "as:Source";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = "https://www.w3.org/ns/activitystreams";
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        [],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -83797,11 +84221,17 @@ proofs?: (DataIntegrityProof | URL)[];deleted?: Temporal.Instant | null;}
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -83826,7 +84256,11 @@ proofs?: (DataIntegrityProof | URL)[];deleted?: Temporal.Instant | null;}
       result["type"] = "Tombstone";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1"];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const
@@ -85252,11 +85686,17 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
     };
   
     if (options.format == null && this.isCompactable()) {
+      const fromSuperclass = "_fromSuperclass" in options &&
+        options._fromSuperclass === true;
+      options = { ...options };
+      if ("_fromSuperclass" in options) delete options._fromSuperclass;
     
       const result = await super.toJsonLd({
         ...options,
         format: undefined,
         context: undefined,
+        // @ts-ignore: an internal option
+        _fromSuperclass: true,
       }) as Record<string, unknown>;
       
       // deno-lint-ignore no-unused-vars
@@ -85265,7 +85705,11 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
       result["type"] = "Video";
       if (this.id != null) result["id"] = this.id.href;
       result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1"];
-      return result;
+      return fromSuperclass ? result : await isolateJsonLdContexts(
+        result,
+        ["attachment","attributedTo","audience","context","generator","icon","image","inReplyTo","location","preview","replies","shares","likes","emojiReactions","tag","url","to","bto","cc","bcc","source","proof"],
+        options.contextLoader,
+      );
     }
     
     // deno-lint-ignore no-unused-vars prefer-const

@@ -5,6 +5,7 @@ import {
   DataIntegrityProof,
   Multikey,
   Note,
+  OrderedCollectionPage,
   Place,
 } from "@fedify/vocab";
 import { decodeMultibase, importMultibaseKey } from "@fedify/vocab-runtime";
@@ -265,6 +266,38 @@ test("signObject()", async () => {
     TypeError,
     "Unsupported algorithm",
   );
+});
+
+test("collection serialization preserves cached object integrity proofs", async () => {
+  const options = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  const signed = await signObject(
+    fep8b32TestVectorActivity,
+    fep8b32TestVectorPrivateKey,
+    fep8b32TestVectorKeyId,
+    { ...options, created: Temporal.Instant.from("2023-02-24T23:36:38Z") },
+  );
+  const source = await signed.toJsonLd(options);
+  assertInstanceOf(await verifyObject(Create, source, options), Create);
+  const cached = await Create.fromJsonLd(source, options);
+  const json = await new OrderedCollectionPage({
+    id: new URL("https://server.example/outbox?page=1"),
+    items: [cached],
+  }).toJsonLd(
+    options,
+  ) as { orderedItems: unknown[] };
+  assertEquals(json.orderedItems[0], source);
+  assertEquals(await cached.toJsonLd(), source);
+  assertInstanceOf(
+    await verifyObject(Create, json.orderedItems[0], options),
+    Create,
+  );
+  const restored = await OrderedCollectionPage.fromJsonLd(json, options);
+  const items = await Array.fromAsync(restored.getItems(options));
+  assertEquals(items.length, 1);
+  assertEquals(await items[0].toJsonLd(), source);
 });
 
 test("signObject() migrates proofs from an older context", async () => {

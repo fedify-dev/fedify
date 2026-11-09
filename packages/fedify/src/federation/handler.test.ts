@@ -729,6 +729,14 @@ test("handleCollection()", async () => {
           "@type": "@id",
         },
       },
+      {
+        orderedItems: {
+          "@id": "https://www.w3.org/ns/activitystreams#items",
+          "@type": "@id",
+          "@container": "@list",
+          "@context": null,
+        },
+      },
     ],
     id: "https://example.com/users/someone",
     type: "OrderedCollection",
@@ -825,6 +833,14 @@ test("handleCollection()", async () => {
         emojiReactions: {
           "@id": "fedibird:emojiReactions",
           "@type": "@id",
+        },
+      },
+      {
+        orderedItems: {
+          "@id": "https://www.w3.org/ns/activitystreams#items",
+          "@type": "@id",
+          "@container": "@list",
+          "@context": null,
         },
       },
     ],
@@ -961,6 +977,14 @@ test("handleCollection()", async () => {
           "@type": "@id",
         },
       },
+      {
+        orderedItems: {
+          "@id": "https://www.w3.org/ns/activitystreams#items",
+          "@type": "@id",
+          "@container": "@list",
+          "@context": null,
+        },
+      },
     ],
     id: "https://example.com/users/someone?cursor=0",
     type: "OrderedCollectionPage",
@@ -1028,6 +1052,14 @@ test("handleCollection()", async () => {
         emojiReactions: {
           "@id": "fedibird:emojiReactions",
           "@type": "@id",
+        },
+      },
+      {
+        orderedItems: {
+          "@id": "https://www.w3.org/ns/activitystreams#items",
+          "@type": "@id",
+          "@container": "@list",
+          "@context": null,
         },
       },
     ],
@@ -3616,8 +3648,15 @@ test("handleCustomCollection()", async () => {
       },
     },
   ];
+  const ITEM_CONTEXT = [...CONTEXT, {
+    items: {
+      "@id": "https://www.w3.org/ns/activitystreams#items",
+      "@type": "@id",
+      "@context": null,
+    },
+  }];
   assertEquals(await response.json(), {
-    "@context": CONTEXT,
+    "@context": ITEM_CONTEXT,
     id: "https://example.com/",
     type: "Collection",
     items: [
@@ -3689,7 +3728,7 @@ test("handleCustomCollection()", async () => {
     "application/activity+json",
   );
   assertEquals(await response.json(), {
-    "@context": CONTEXT,
+    "@context": ITEM_CONTEXT,
     id: "https://example.com/",
     type: "Collection",
     items: [
@@ -3767,7 +3806,7 @@ test("handleCustomCollection()", async () => {
     "application/activity+json",
   );
   assertEquals(await response.json(), {
-    "@context": CONTEXT,
+    "@context": ITEM_CONTEXT,
     id: "https://example.com/?cursor=0",
     type: "CollectionPage",
     partOf: "https://example.com/",
@@ -3808,7 +3847,7 @@ test("handleCustomCollection()", async () => {
     "application/activity+json",
   );
   assertEquals(await response.json(), {
-    "@context": CONTEXT,
+    "@context": ITEM_CONTEXT,
     id: "https://example.com/?cursor=2",
     type: "CollectionPage",
     partOf: "https://example.com/",

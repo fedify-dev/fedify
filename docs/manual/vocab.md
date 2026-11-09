@@ -456,9 +456,20 @@ const create = new Create({});
 const jsonLd = await create.toJsonLd();
 ~~~~
 
-By default, the `toJsonLd()` method returns the JSON-LD document which is
-neither compacted nor expanded.  Instead, it processes the JSON-LD document
-without the proper JSON-LD processor for efficiency.
+By default, `toJsonLd()` preserves the cached document of a parsed object and
+uses the default context for a constructed object.  When a constructed object
+embeds a child with its own `@context`, it isolates that child's context on
+ordinary node-valued properties, including collection items.  This preserves
+the child's standalone meaning and cached document even if it defines a term
+the parent's context protects, such as `proof`.
+
+Isolation can resolve the parent's context through `contextLoader`.  A URL
+reference alongside an isolated child is represented as an object with `id`
+and its own context.  Custom `toJsonLd()` implementations should return
+standalone JSON-LD documents: a partial child context that relies on a previous
+parent does not carry that parent's definitions into a new parent.  Properties
+whose definitions are protected, already scoped, or literal JSON retain their
+existing serialization behavior.
 
 The `toJsonLd()` method takes some options to customize the JSON-LD document.
 For example, you can compact the JSON-LD document with a custom context.
