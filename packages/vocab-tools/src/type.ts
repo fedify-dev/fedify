@@ -628,11 +628,17 @@ export function getEncoder(
            ...(${optionsVariable}),
            format: undefined,
            context: undefined,
+           // @ts-ignore: an internal option
+           _embedding: true,
          })`
       : `await encodeNestedVocabularyValue(
           ${optionsVariable},
           ${variable},
-          () => ${variable}.toJsonLd(${optionsVariable}),
+          () => ${variable}.toJsonLd({
+            ...(${optionsVariable}),
+            // @ts-ignore: an internal option
+            _embedding: true,
+          }),
         )`;
   }
   throw new Error(`Unknown type: ${typeUri}`);
@@ -694,6 +700,8 @@ export function getDecoder(
         baseUrl: ${baseUrlVariable},
         // @ts-ignore: an internal option
         _retainsRawProperties: true,
+        // @ts-ignore: an internal option
+        _expanded: true,
       }
     )`;
   }

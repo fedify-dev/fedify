@@ -55,12 +55,15 @@ function* generatePreprocessorBlock(
           if (_result instanceof Error) throw _result;
           if (_result !== undefined) {
             _handled = _result as ${rangeTypeName};
+            retainPreprocessedRawProperties(_handled, v);
           }
         }
       `;
   }
   yield `
         if (_handled !== undefined) {
+          // The document does not describe what a preprocessor made of it:
+          skipReceivedJsonLd(_handled);
           ${variable}.push(_handled);
           continue;
         }
@@ -89,7 +92,17 @@ export async function* generateEncoder(
     contextLoader?: DocumentLoader,
     context?: string | Record<string, string> | (string | Record<string, string>)[],
   } = {}): Promise<unknown> {
-    if (options.format == null && this._cachedJsonLd != null) {
+    if (
+      options.format == null &&
+      this._cachedJsonLd != null &&
+      // A parent encoding its values anew does not embed the document this
+      // object was received in, which can rely on what was around it there:
+      !(
+        "_embedding" in options &&
+        options._embedding &&
+        embeddedReceivedJsonLd.has(this._cachedJsonLd)
+      )
+    ) {
       return this._cachedJsonLd;
     }
     if (options.format !== "compact" && options.context != null) {
@@ -463,6 +476,27 @@ export async function* generateDecoder(
     let values: Record<string, any[]> & { "@id"?: string };
     let expanded: unknown[];
     if (
+      "_expanded" in options &&
+      options._expanded &&
+      typeof json === "object" &&
+      !Array.isArray(json)
+    ) {
+      // An embedded value, which its parent has expanded already; expanding
+      // it again would make other nodes than the ones the received documents
+      // are known by.  This comes before _fromSubclass, which an embedded
+      // value inherits from a superclass decoding its parent:
+      // Expansion takes the first node out of a graph object that has nothing
+      // else, which an expanded value can still be:
+      const graph = globalThis.Object.keys(json).length === 1 &&
+          Array.isArray((json as { "@graph"?: unknown })["@graph"])
+        ? (json as { "@graph": unknown[] })["@graph"]
+        : undefined;
+      values =
+        // deno-lint-ignore no-explicit-any
+        (graph == null ? json : graph[0] ?? {}) as
+          (Record<string, any[]> & { "@id"?: string });
+      expanded = [values];
+    } else if (
       "_fromSubclass" in options &&
       options._fromSubclass &&
       typeof json === "object" &&
@@ -476,10 +510,15 @@ export async function* generateDecoder(
       values = {};
       expanded = [values];
     } else {
-      expanded = await jsonld.expand(json, {
-        documentLoader: options.contextLoader,
-        keepFreeFloatingNodes: true,
-      });
+      const received = await expandReceivedJsonLd(
+        json,
+        options.contextLoader ?? getDocumentLoader(),
+      );
+      expanded = received.expanded;
+      if (received.documents != null) {
+        options = { ...options, _receivedDocuments: received.documents } as
+          typeof options;
+      }
       values =
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
@@ -533,12 +572,16 @@ export async function* generateDecoder(
     `;
   } else {
     yield `
-    const superValues = structuredClone(values);
+    // A shallow copy, as the received documents of embedded objects are known
+    // by the expanded nodes they became:
+    const superValues = { ...values };
     delete superValues["@type"];
     const instance = await super.fromJsonLd(superValues, {
       ...options,
       // @ts-ignore: an internal option
       _fromSubclass: true,
+      // The values are the subclass's, not an embedded value:
+      _expanded: false,
       // The subclass retains the unknown properties, since only it knows all
       // properties of the object:
       _retainsRawProperties: false,
@@ -649,6 +692,7 @@ export async function* generateDecoder(
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
         shouldCacheJsonLd = false;
       }
+      keepReceivedJsonLd(decoded, v, options);
       ${variable}.push(decoded);
     `;
     yield `

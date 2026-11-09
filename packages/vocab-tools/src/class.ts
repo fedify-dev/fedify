@@ -54,6 +54,7 @@ const PORTABLE_DEREFERENCE_IMPORTS = [
   "warnUnverifiableEmbeddedObject",
 ].join(",\n    ");
 const RAW_PROPERTY_IMPORTS = [
+  "copyJsonValue",
   "createRawPropertyEncodingOptions",
   "encodeNestedVocabularyValue",
   "expandRawPropertyValue",

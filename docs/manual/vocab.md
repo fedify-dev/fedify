@@ -946,10 +946,7 @@ The `clone()` method accepts the same property values as the constructor.
 It makes a *shallow copy*: the clone has its own property arrays, but nested
 objects and URLs are shared with the source.  Hydrating a shared nested object
 through either instance changes that nested object for both when their accessors
-return the shared instance.  A parsed source can return a fresh object instead:
-if its cached JSON-LD contains an embedded object with its own `@context`, the
-accessor re-parses that object on each call.  Hydrating that returned object
-does not update the nested instance stored in the source or clone.
+return the shared instance.
 
 ### Deep copies
 

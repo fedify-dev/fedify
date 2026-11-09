@@ -31,13 +31,6 @@ async function* generateProperty(
   const override = emitOverride(type.uri, types, property);
   const trustOwner = type.trustEmbeddedObjects === false ? "null" : "this.id";
   const doc = `\n/** ${property.description.replaceAll("\n", "\n * ")}\n */\n`;
-  const cachedPropertyBaseUrl = `(options as { baseUrl?: URL }).baseUrl ??
-                this._baseUrl ??
-                (this.id != null &&
-                    (this.id.protocol === "http:" ||
-                      this.id.protocol === "https:")
-                  ? this.id
-                  : undefined)`;
   if (areAllScalarTypes(property.range, types)) {
     if (hasSingularAccessor(property)) {
       yield doc;
@@ -341,10 +334,10 @@ async function* generateProperty(
                 baseUrl,
               });
               if (_result instanceof Error) throw _result;
-              if (_result !== undefined) return _result as ${getTypeNames(
-                property.range,
-                types,
-              )};
+              if (_result !== undefined) {
+                retainPreprocessedRawProperties(_result, _pp_obj);
+                return _result as ${getTypeNames(property.range, types)};
+              }
             }
         `;
       }
@@ -472,49 +465,13 @@ async function* generateProperty(
           if (isUnverifiedPortableClaim(fetched)) return fetched;
           this.${await getFieldName(property.uri)}[0] = fetched;
           this.${await getFieldName(property.uri, "#_trust")}.add(0);
-          this._cachedJsonLd = undefined;
+          invalidateCachedJsonLd(this);
           recordPortableReferrer(this, fetched, ${JSON.stringify(
             property.uri,
           )});
           return fetched;
         }
       `;
-      if (property.compactName != null) {
-        yield `
-        if (
-          this._cachedJsonLd != null &&
-          typeof this._cachedJsonLd === "object" &&
-          "@context" in this._cachedJsonLd &&
-          ${JSON.stringify(property.compactName)} in this._cachedJsonLd
-        ) {
-          const prop = this._cachedJsonLd[
-            ${JSON.stringify(property.compactName)}];
-          const doc = Array.isArray(prop) ? prop[0] : prop;
-          if (doc != null && typeof doc === "object" && "@context" in doc) {
-            try {
-              const decoded = v;
-              v = await this.#${property.singularName}_fromJsonLd(doc, {
-                ...options,
-                // Keep the parent default for embedded objects.
-                verifyPortableObject: this._verifyPortableObject,
-                baseUrl: ${cachedPropertyBaseUrl},
-              });
-              // The cached document lacks the parent's context, so the
-              // unknown properties retained from the whole document, including
-              // those of nested objects, win:
-              copyRawPropertiesDeep(decoded, v);
-            } catch (error) {
-              if (!options.suppressError) throw error;
-              getLogger(["fedify", "vocab"]).debug(
-                "Failed to parse embedded value of {property}: {error}",
-                { property: ${JSON.stringify(property.uri)}, error },
-              );
-              return null;
-            }
-          }
-        }
-        `;
-      }
       yield `
         if (v?.id != null &&
             ((${
@@ -657,7 +614,7 @@ async function* generateProperty(
             }
             vs[i] = fetched;
             this.${await getFieldName(property.uri, "#_trust")}.add(i);
-            this._cachedJsonLd = undefined;
+            invalidateCachedJsonLd(this);
             recordPortableReferrer(this, fetched, ${JSON.stringify(
               property.uri,
             )});
@@ -665,44 +622,6 @@ async function* generateProperty(
             continue;
           }
       `;
-      if (property.compactName != null) {
-        yield `
-          if (
-            this._cachedJsonLd != null &&
-            typeof this._cachedJsonLd === "object" &&
-            "@context" in this._cachedJsonLd &&
-            ${JSON.stringify(property.compactName)} in this._cachedJsonLd
-          ) {
-            const prop = this._cachedJsonLd[
-              ${JSON.stringify(property.compactName)}];
-            const obj = Array.isArray(prop) ? prop[i] : prop;
-            if (obj != null && typeof obj === "object" && "@context" in obj) {
-              try {
-                const decoded = v;
-                v = await this.#${property.singularName}_fromJsonLd(obj, {
-                  ...options,
-                // Keep the parent default for embedded objects.
-                verifyPortableObject: this._verifyPortableObject,
-                  baseUrl: ${cachedPropertyBaseUrl},
-                });
-                // The cached document lacks the parent's context, so the
-                // unknown properties retained from the whole document, including
-                // those of nested objects, win:
-                copyRawPropertiesDeep(decoded, v);
-              } catch (error) {
-                if (!options.suppressError) throw error;
-                getLogger(["fedify", "vocab"]).debug(
-                  "Failed to parse embedded value of {property} at index {index}: {error}",
-                  { property: ${JSON.stringify(
-                    property.uri,
-                  )}, index: i, error },
-                );
-                continue;
-              }
-            }
-          }
-        `;
-      }
       yield `
           if (v?.id != null &&
               ((${

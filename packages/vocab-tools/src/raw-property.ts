@@ -66,7 +66,6 @@ type RawPropertyEncoder = (
 interface RawPropertyDescriptor {
   readonly canonicalIri: string;
   readonly encode: RawPropertyEncoder;
-  readonly values: (object: object) => readonly unknown[];
 }
 
 // Unknown properties retained while decoding, keyed by the decoded object:
@@ -86,7 +85,9 @@ function getRawPropertyDescriptor(
   let prototype: object | null = globalThis.Object.getPrototypeOf(object);
   while (prototype != null) {
     const descriptor = rawPropertyDescriptors.get(prototype)?.get(iri);
-    if (descriptor != null) return descriptor;
+    if (descriptor != null) {
+      return descriptor;
+    }
     prototype = globalThis.Object.getPrototypeOf(prototype);
   }
   return undefined;
@@ -98,98 +99,417 @@ function copyRawProperties(source: object, destination: object): void {
   else retainedRawProperties.set(destination, retained);
 }
 
-function isSameRawPropertyNode(source: unknown, destination: unknown): boolean {
-  if (
-    source == null || destination == null ||
-    typeof source !== "object" || typeof destination !== "object" ||
-    !(RAW_PROPERTY_PROTOCOL in source) || !(RAW_PROPERTY_PROTOCOL in destination)
-  ) {
-    return false;
-  }
-  const sourceId = (source as unknown as { id: URL | null }).id;
-  const destinationId = (destination as unknown as { id: URL | null }).id;
-  return sourceId?.href === destinationId?.href;
-}
+// Objects that were given the document they were received as, or whose values
+// changed after decoding, which that document no longer describes:
+const receivedJsonLd = new WeakSet<object>();
 
-function getRawPropertyDescriptors(object: object): Set<RawPropertyDescriptor> {
-  const descriptors = new Set<RawPropertyDescriptor>();
-  let prototype: object | null = globalThis.Object.getPrototypeOf(object);
+// Retains the unknown properties of the node a preprocessor made a value of,
+// such as an Image of a Link, by the class of that value, since the value was
+// not decoded from the node by that class:
+function retainPreprocessedRawProperties(value: unknown, node: unknown): void {
+  if (
+    value == null || typeof value !== "object" || node == null ||
+    typeof node !== "object" || globalThis.Array.isArray(node)
+  ) {
+    return;
+  }
+  const known = new Set<string>();
+  let prototype: object | null = globalThis.Object.getPrototypeOf(value);
   while (prototype != null) {
-    for (const descriptor of rawPropertyDescriptors.get(prototype)?.values() ?? []) {
-      descriptors.add(descriptor);
+    for (const iri of rawPropertyDescriptors.get(prototype)?.keys() ?? []) {
+      known.add(iri);
     }
     prototype = globalThis.Object.getPrototypeOf(prototype);
   }
-  return descriptors;
+  const retained = retainRawProperties(node as Record<string, unknown>, known);
+  if (retained != null) retainedRawProperties.set(value, retained);
 }
 
-// Merges the retained unknown properties of a decoded object into a copy that
-// was decoded again by a different class.  The classes classify properties
-// differently, so the copy keeps what it retained itself and gains the
-// original's values for the properties its own class does not know either:
-function mergeRawProperties(source: object, destination: object): void {
-  const retained = retainedRawProperties.get(source);
-  if (retained == null) return;
-  const merged: Record<string, readonly unknown[]> = {
-    ...retainedRawProperties.get(destination),
-  };
-  let changed = false;
-  for (const [iri, values] of globalThis.Object.entries(retained)) {
-    if (getRawPropertyDescriptor(destination, iri) != null) continue;
-    merged[iri] = values;
-    changed = true;
-  }
-  if (changed) {
-    retainedRawProperties.set(
-      destination,
-      globalThis.Object.freeze(merged) as RetainedRawProperties,
-    );
-  }
+function skipReceivedJsonLd(value: unknown): void {
+  if (value != null && typeof value === "object") receivedJsonLd.add(value);
 }
 
-// Copies the retained unknown properties of a decoded object and of the
-// objects nested in it to a copy of the same graph that was decoded again,
-// pairing nested objects by property and position.  Only objects with the same
-// id are paired.  When the decoding dropped some values of a property,
-// positions no longer correspond, so nested objects are paired by id alone.
-// When the copy was decoded by a different class, the retained properties are
-// merged rather than replaced, and only the properties both classes declare,
-// matched by their IRIs, are followed:
-function copyRawPropertiesDeep(
-  source: object,
-  destination: object,
-  visited: Set<object> = new Set(),
-): void {
-  if (visited.has(destination)) return;
-  visited.add(destination);
-  if (!isSameRawPropertyNode(source, destination)) return;
-  const sameClass = globalThis.Object.getPrototypeOf(source) ===
-    globalThis.Object.getPrototypeOf(destination);
-  if (sameClass) copyRawProperties(source, destination);
-  else mergeRawProperties(source, destination);
-  for (const descriptor of getRawPropertyDescriptors(destination)) {
-    // Sibling classes declare the same property with distinct descriptors, so
-    // each object is read through its own class's descriptor:
-    const sourceDescriptor = sameClass
-      ? descriptor
-      : getRawPropertyDescriptor(source, descriptor.canonicalIri);
-    if (sourceDescriptor == null) continue;
-    const sources = sourceDescriptor.values(source);
-    const destinations = descriptor.values(destination);
-    const aligned = sources.length === destinations.length;
-    for (let i = 0; i < destinations.length; i++) {
-      const destination = destinations[i];
-      const source = aligned
-        ? sources[i]
-        : (destination as { id?: URL | null } | null)?.id == null
-        ? undefined
-        : sources.find((s) => isSameRawPropertyNode(s, destination));
-      if (source !== destination && isSameRawPropertyNode(source, destination)) {
-        copyRawPropertiesDeep(source as object, destination as object, visited);
+function invalidateCachedJsonLd(object: object): void {
+  (object as unknown as { _cachedJsonLd?: unknown })._cachedJsonLd =
+    undefined;
+  receivedJsonLd.add(object);
+}
+
+// The received documents of embedded objects that have their own context,
+// keyed by the expanded nodes they became while the outermost object was
+// decoded:
+type ReceivedDocuments = WeakMap<object, object>;
+
+// Collects the embedded documents of a received document, at any depth: the
+// objects with their own context other than the outermost node, under keys
+// other than keywords, also inside arrays and @set, @list, and @graph.  Value
+// objects and graph objects never become embedded objects, and the marker
+// would change what they mean, so they are left out, as far as their keys
+// tell: an object with @graph and nothing but @context, @id, and @index is a
+// graph object.  One with other keys is marked, whatever they are aliases of,
+// as the comparison of the expansions catches a marker that made a node of a
+// graph object:
+function collectEmbeddedDocuments(root: object): object[] {
+  const outermost = globalThis.Array.isArray(root) ? root[0] : root;
+  const documents: object[] = [];
+  const pending: unknown[] = [root];
+  while (pending.length > 0) {
+    const value = pending.pop();
+    if (globalThis.Array.isArray(value)) {
+      // A loop, as spreading a long array into arguments overflows the stack:
+      for (const element of value) pending.push(element);
+      continue;
+    }
+    if (value == null || typeof value !== "object") continue;
+    if (
+      value !== outermost && "@context" in value && !("@value" in value) &&
+      (!("@graph" in value) ||
+        globalThis.Object.keys(value).some((key) =>
+          key !== "@context" && key !== "@graph" && key !== "@id" &&
+          key !== "@index"
+        )) &&
+      !("@set" in value) && !("@list" in value)
+    ) {
+      documents.push(value);
+    }
+    for (const [key, child] of globalThis.Object.entries(value)) {
+      if (
+        !key.startsWith("@") || key === "@set" || key === "@list" ||
+        key === "@graph"
+      ) {
+        pending.push(child);
       }
     }
   }
+  return documents;
 }
+
+// Copies a document without recursion, copying the replacements of the
+// objects in the map instead of the objects.  The replacements are copied in
+// turn, so that objects nested in them are replaced as well:
+function replaceInDocument(
+  document: object,
+  replacements: ReadonlyMap<object, object>,
+): unknown {
+  const root: unknown = globalThis.Array.isArray(document) ? [] : {};
+  const pending: [object, Record<string, unknown> | unknown[]][] = [
+    [replacements.get(document) ?? document, root as Record<string, unknown>],
+  ];
+  while (pending.length > 0) {
+    const [source, target] = pending.pop()!;
+    for (const [key, child] of globalThis.Object.entries(source)) {
+      let copy: unknown = child;
+      if (child != null && typeof child === "object") {
+        copy = globalThis.Array.isArray(child) ? [] : {};
+        pending.push([
+          replacements.get(child) ?? child,
+          copy as Record<string, unknown>,
+        ]);
+      }
+      if (globalThis.Array.isArray(target)) target.push(copy);
+      // An own __proto__ member, as JSON.parse() makes, would otherwise set
+      // the prototype of the copy instead:
+      else {
+        globalThis.Object.defineProperty(target, key, {
+          value: copy,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
+      }
+    }
+  }
+  return root;
+}
+
+// Tells whether two JSON values are the same, without recursion, as expanded
+// documents can nest values deeply.  The order of object keys does not
+// matter, while the order of array elements does:
+function isSameJsonValue(a: unknown, b: unknown): boolean {
+  const pending: [unknown, unknown][] = [[a, b]];
+  while (pending.length > 0) {
+    const [x, y] = pending.pop()!;
+    if (x === y) continue;
+    if (
+      x == null || y == null || typeof x !== "object" || typeof y !== "object"
+    ) {
+      return false;
+    }
+    if (globalThis.Array.isArray(x)) {
+      if (!globalThis.Array.isArray(y) || x.length !== y.length) return false;
+      for (let i = 0; i < x.length; i++) pending.push([x[i], y[i]]);
+      continue;
+    }
+    if (globalThis.Array.isArray(y)) return false;
+    const xKeys = globalThis.Object.keys(x);
+    if (xKeys.length !== globalThis.Object.keys(y).length) return false;
+    for (const key of xKeys) {
+      if (!globalThis.Object.hasOwn(y, key)) return false;
+      pending.push([
+        (x as Record<string, unknown>)[key],
+        (y as Record<string, unknown>)[key],
+      ]);
+    }
+  }
+  return true;
+}
+
+// Expands a received document, and tells which expanded node each embedded
+// document with its own context became.  Each such document gets a property
+// with a random IRI as its marker before the expansion, so that JSON-LD
+// processing itself, with every context as it applies, tells where each
+// document ends up; the markers are taken out of the expanded document right
+// after, and the decoders never see them.  If a document cannot take the
+// marker, e.g., as it is a value object under an alias of @value, the document
+// is expanded as it is, and no embedded object gets its received document:
+async function expandReceivedJsonLd(
+  json: unknown,
+  contextLoader: DocumentLoader,
+): Promise<{ expanded: unknown[]; documents?: ReceivedDocuments }> {
+  // Both expansions below take the contexts that one of them loaded, so that
+  // a context is not loaded twice, and cannot fail the second time:
+  const loads = new Map<string, Promise<RemoteDocument>>();
+  const sharedLoader: DocumentLoader = (url, loaderOptions) => {
+    let load = loads.get(url);
+    if (load == null) {
+      load = contextLoader(url, loaderOptions);
+      loads.set(url, load);
+      load.catch(() => loads.delete(url));
+    }
+    return load;
+  };
+  const options = { documentLoader: sharedLoader, keepFreeFloatingNodes: true };
+  // A document under an alias of @nest merges into the node around it, marker
+  // and all, so that node would be taken for the document; any context that
+  // mentions @nest, which few do, makes the document be expanded without
+  // markers.  Only contexts count, not, e.g., a content that reads @nest:
+  const mentionsNest = (value: unknown): boolean => {
+    // A loader can return a document as a JSON string, which jsonld.js parses;
+    // one that cannot be parsed counts as a mention, so that no marker is
+    // put in a document that this cannot tell about:
+    if (typeof value === "string") {
+      try {
+        value = globalThis.JSON.parse(value);
+      } catch {
+        return true;
+      }
+    }
+    // Without recursion, as a document can nest values deeply, e.g., under a
+    // term that its context maps to nothing.  An object met again on its own
+    // path, i.e., a cycle, counts as a mention, so that no marker is put in it
+    // and jsonld.js rejects the cycle as it would without markers; one shared
+    // by several paths is scanned once:
+    const pending: { item: unknown; exit?: object; context?: boolean }[] = [
+      { item: value },
+    ];
+    const onPath = new WeakSet<object>();
+    // An object can be reached both outside and inside a context, and only
+    // a scan inside one tells whether it mentions @nest:
+    const scannedInContext = new WeakSet<object>();
+    const scannedOutside = new WeakSet<object>();
+    while (pending.length > 0) {
+      const { item, exit, context } = pending.pop()!;
+      if (exit != null) {
+        onPath.delete(exit);
+        (context ? scannedInContext : scannedOutside).add(exit);
+        continue;
+      }
+      if (context && item === "@nest") return true;
+      if (
+        item == null || typeof item !== "object" ||
+        scannedInContext.has(item) || (!context && scannedOutside.has(item))
+      ) {
+        continue;
+      }
+      if (onPath.has(item)) return true;
+      onPath.add(item);
+      pending.push({ item: undefined, exit: item, context });
+      if (globalThis.Array.isArray(item)) {
+        for (const element of item) pending.push({ item: element, context });
+        continue;
+      }
+      for (const [key, child] of globalThis.Object.entries(item)) {
+        if (context && key === "@nest") return true;
+        pending.push({ item: child, context: context || key === "@context" });
+      }
+    }
+    return false;
+  };
+  const candidates = json != null && typeof json === "object" &&
+      !mentionsNest(json)
+    ? collectEmbeddedDocuments(json)
+    : [];
+  // The embedded objects get the documents as they are in one copy of the
+  // whole document, rather than a copy each, which would copy a document as
+  // many times as there are documents around it:
+  const received = candidates.length > 0 ? copyJsonValue(json) : undefined;
+  const documents = received == null ? [] : collectEmbeddedDocuments(received);
+  if (documents.length < 1) {
+    return {
+      expanded: await jsonld.expand(json as Record<string, unknown>, options),
+    };
+  }
+  // An IRI that a context cannot know, and that cannot be a compact IRI, as
+  // its suffix after the scheme starts with //.  Some runtimes do not make
+  // random values everywhere, e.g., Cloudflare Workers outside handlers, in
+  // which case the document is expanded without markers:
+  let token: string;
+  try {
+    token = globalThis.crypto.randomUUID();
+  } catch {
+    return {
+      expanded: await jsonld.expand(json as Record<string, unknown>, options),
+    };
+  }
+  const marker = "https://fedify.dev/ns/received#" + token;
+  const replacements = new Map<object, object>();
+  for (const [index, document] of documents.entries()) {
+    replacements.set(document, {
+      ...document,
+      [marker]: globalThis.String(index),
+    });
+  }
+  // Only a document that cannot take its marker makes the document be
+  // expanded again without markers; a context that fails to load fails the
+  // decoding as it would without them:
+  let loadFailed = false;
+  let nestLoaded = false;
+  const markedOptions = {
+    ...options,
+    documentLoader: (async (url, loaderOptions) => {
+      try {
+        const loaded = await sharedLoader(url, loaderOptions);
+        if (mentionsNest(loaded.document)) nestLoaded = true;
+        return loaded;
+      } catch (error) {
+        loadFailed = true;
+        throw error;
+      }
+    }) as DocumentLoader,
+  };
+  let expanded: unknown[];
+  try {
+    expanded = await jsonld.expand(
+      replaceInDocument(received as object, replacements) as Record<
+        string,
+        unknown
+      >,
+      markedOptions,
+    );
+  } catch (error) {
+    if (loadFailed) throw error;
+    getLogger(["fedify", "vocab"]).debug(
+      "Failed to mark the embedded documents of {json}: {error}",
+      { json, error },
+    );
+    return {
+      expanded: await jsonld.expand(json as Record<string, unknown>, options),
+    };
+  }
+  const nodes: ReceivedDocuments = new WeakMap();
+  // Whether two documents became one node, as one under an alias of @nest
+  // merged into the node around it, which leaves the expansion as it would be
+  // without markers but would give that node the wrong document:
+  let merged = false;
+  // Takes the markers out, also from JSON literals, which keep the documents
+  // in them as they are:
+  const pending: { value: unknown; literal: boolean }[] = [
+    { value: expanded, literal: false },
+  ];
+  while (pending.length > 0) {
+    const { value, literal } = pending.pop()!;
+    if (globalThis.Array.isArray(value)) {
+      // A loop, as spreading a long array into arguments overflows the stack:
+      for (const element of value) pending.push({ value: element, literal });
+      continue;
+    }
+    if (value == null || typeof value !== "object") continue;
+    const object = value as Record<string, unknown>;
+    if (marker in object) {
+      const mark = object[marker];
+      const index = literal
+        ? undefined
+        : (globalThis.Array.isArray(mark)
+          ? (mark[0] as { "@value"?: unknown } | undefined)?.["@value"]
+          : undefined);
+      delete object[marker];
+      if (!literal && globalThis.Array.isArray(mark) && mark.length > 1) {
+        merged = true;
+        break;
+      }
+      if (typeof index === "string") {
+        const document = documents[globalThis.Number(index)];
+        if (document != null) nodes.set(object, document);
+      }
+    }
+    if (!literal && object["@type"] === "@json") {
+      pending.push({ value: object["@value"], literal: true });
+      continue;
+    }
+    for (const [key, child] of globalThis.Object.entries(object)) {
+      if (literal || key !== "@value") pending.push({ value: child, literal });
+    }
+  }
+  // A marker can change what a document expands to in more ways than can be
+  // told before expanding it, e.g., a key of an index map that reads @context
+  // is no context, and a graph object with a marker is a node, so the
+  // document is expanded without markers as well, and the markers' mapping is
+  // used only if both expansions are the same:
+  const unmarked = await jsonld.expand(
+    json as Record<string, unknown>,
+    options,
+  );
+  if (merged || nestLoaded || !isSameJsonValue(expanded, unmarked)) {
+    return { expanded: unmarked };
+  }
+  return { expanded, documents: nodes };
+}
+
+// Gives an embedded object the document it was received as, which toJsonLd()
+// has to return as is, as a proof can cover it.  The object is decoded from the
+// whole document, since an embedded document alone cannot rebuild what its
+// parents' contexts contributed to it:
+function keepReceivedJsonLd(
+  object: unknown,
+  node: unknown,
+  options: unknown,
+): void {
+  const documents = (options as { _receivedDocuments?: ReceivedDocuments })
+    ._receivedDocuments;
+  if (
+    documents == null || node == null || typeof node !== "object" ||
+    object == null || typeof object !== "object" ||
+    !(RAW_PROPERTY_PROTOCOL in object) || receivedJsonLd.has(object) ||
+    // Decoding dropped some of the document as malformed, which the document
+    // would bring back:
+    (object as unknown as { _shouldCacheJsonLd?: boolean })
+        ._shouldCacheJsonLd === false
+  ) {
+    return;
+  }
+  // A graph object with nothing else is decoded from its first node, as
+  // expansion would take that node out of it:
+  const graph = (node as { "@graph"?: unknown })["@graph"];
+  const decodedNode = globalThis.Object.keys(node).length === 1 &&
+      globalThis.Array.isArray(graph) && graph[0] != null &&
+      typeof graph[0] === "object"
+    ? graph[0]
+    : node;
+  const document = documents.get(decodedNode);
+  if (document == null) return;
+  receivedJsonLd.add(object);
+  (object as unknown as { _cachedJsonLd?: unknown })._cachedJsonLd = document;
+  embeddedReceivedJsonLd.add(document);
+}
+
+// The documents that embedded objects were received as, which they keep as
+// their cached JSON-LD.  Such a document can rely on what the documents around
+// it define, e.g., terms of their contexts and their base IRIs, so a parent
+// that encodes its values anew encodes such an object from its values instead;
+// the object's own toJsonLd() still returns the document as is, as a proof can
+// cover it.  The documents rather than the objects are kept, as a cache can be
+// copied to another object, e.g., by @fedify/testing:
+const embeddedReceivedJsonLd = new WeakSet<object>();
 
 async function readRawProperty(
   object: object,
@@ -403,9 +723,6 @@ export async function* generateRawPropertyDescriptors(
             ? `{ "@list": array }`
             : "array"
         };
-      },
-      values(object: object): readonly unknown[] {
-        return (object as ${type.name}).${await getFieldName(property.uri)};
       },
     };
     descriptors.set(${JSON.stringify(property.uri)}, descriptor);
