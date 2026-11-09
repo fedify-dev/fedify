@@ -81,6 +81,8 @@ export interface BackfillOptions<
    * to try the first `contextHistory` value, falling back to the first `context`
    * ID when history is absent or unavailable. Unavailable includes a lookup
    * returning `null`, an ordinary loader error, or a non-collection result.
+   * With {@link contextDiscovery} set to `"ancestors"`, the same selection
+   * applies to each ancestor.
    *
    * A resolved history collection remains selected even if empty or no
    * supported objects can be yielded. Later history references are not tried,
@@ -143,10 +145,10 @@ export interface BackfillOptions<
   /**
    * Maximum number of calls to {@link BackfillContext.documentLoader}.
    *
-   * Dereferencing the note context or history, collection item IRIs, reply
-   * target IRIs, replies collection IRIs, and future page IRIs all count as
-   * requests across all strategies. Embedded objects and collections accepted
-   * without fetching do not count.
+   * Dereferencing the seed's or an ancestor's context or history, collection
+   * item IRIs, reply target IRIs, replies collection IRIs, and collection page
+   * IRIs all count as requests across all strategies. Embedded objects and
+   * collections accepted without fetching do not count.
    */
   readonly maxRequests?: number;
 
@@ -195,9 +197,10 @@ export interface BackfillItem<TObject extends APObject = APObject> {
   /**
    * Traversal depth.
    *
-   * Direct context collection items are depth 0.  Reply-tree items use depth
-   * 1 for immediate `inReplyTo` targets and direct `replies` collection items,
-   * depth 2 for the next level, and so on.
+   * Context collection items are depth 0, including items from collections
+   * discovered through ancestors. Reply-tree items use depth 1 for immediate
+   * `inReplyTo` targets and direct `replies` collection items, depth 2 for the
+   * next level, and so on.
    */
   readonly depth?: number;
 }

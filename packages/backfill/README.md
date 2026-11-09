@@ -132,6 +132,18 @@ depth 1, their next-level parents or replies have depth 2, and so on.
 Reply-tree traversal defaults to a maximum depth of 10; set `maxDepth` to use a
 different limit.
 
+### Discovering collections through ancestors
+
+*This option is available since Fedify 2.5.0.*
+
+Set `contextDiscovery: "ancestors"` to find the nearest ancestor collection
+through `inReplyTo` when the seed has no usable collection. `maxDepth` bounds
+the search. Combine it with `contextSource: "history-first"` to prefer history
+collections on the seed and each ancestor. See the [backfill manual] for an
+example and selection rules.
+
+[backfill manual]: https://fedify.dev/manual/backfill#discovering-collections-through-ancestors
+
 
 Traversal controls
 ------------------
@@ -142,8 +154,8 @@ All configured strategies share the same traversal controls:
     not count.
  -  `maxRequests` limits calls to `documentLoader`.  Embedded objects and
     collections, including embedded pages, do not count.
- -  `maxDepth` limits reply-tree traversal and defaults to 10.  It does not
-    limit context collection items.
+ -  `maxDepth` limits reply-tree traversal and ancestor collection discovery,
+    and defaults to 10. It does not limit context collection items.
  -  `interval` adds a delay between loader requests.  Its callback receives
     the zero-based request index.
  -  `signal` cancels traversal and is forwarded to `documentLoader`.
@@ -151,9 +163,10 @@ All configured strategies share the same traversal controls:
 An `interval` string requires the global `Temporal` API or a polyfill.
 `Temporal.DurationLike` objects work without the global API.
 
-If the seed has no context, or its context resolves to a non-collection,
-context strategies yield nothing.  Loader failures are skipped unless
-traversal is aborted.  If the context collection cannot be loaded, later
+Without history selection or ancestor discovery, if the seed has no context,
+or its context resolves to a non-collection, context strategies yield nothing.
+Loader failures are skipped unless traversal is aborted. If the context
+collection cannot be loaded, later
 configured strategies can still run.  Failed loads consume a request, and
 later strategies can use embedded data even when the request budget is
 exhausted.  Configuration errors, such as an invalid `interval`, still
