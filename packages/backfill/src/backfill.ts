@@ -201,8 +201,9 @@ async function* getContextStrategyItems(
   readonly depth: 0;
 }> {
   const collection =
-    options.contextSource === "history-first"
-      ? await (budget.conversationCollection ??= getConversationCollection(
+    options.contextSource === "history-first" ||
+    options.contextDiscovery === "ancestors"
+      ? await (budget.conversationCollection ??= discoverConversationCollection(
           context,
           note,
           options,
@@ -234,6 +235,65 @@ async function* getContextStrategyItems(
       }
     }
   }
+}
+
+async function discoverConversationCollection(
+  context: BackfillContext,
+  note: APObject,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): Promise<BackfillCollection | null> {
+  const collection = await getConversationCollection(
+    context,
+    note,
+    options,
+    budget,
+  );
+  if (collection != null || options.contextDiscovery !== "ancestors") {
+    return collection;
+  }
+
+  const visitedObjectIds = new Set<string>();
+  if (note.id != null) visitedObjectIds.add(note.id.href);
+  const visitedObjects = new WeakSet<APObject>([note]);
+  let frontier = [note];
+  // Finish each depth before exploring parents so a farther collection
+  // cannot take precedence over a nearer reply target's collection.
+  for (
+    let depth = 1;
+    depth <= (options.maxDepth ?? DEFAULT_MAX_DEPTH);
+    depth++
+  ) {
+    const next: APObject[] = [];
+    for (const object of frontier) {
+      for await (const target of getReplyTargets(
+        context,
+        object,
+        options,
+        budget,
+        visitedObjectIds,
+      )) {
+        budget.signal?.throwIfAborted();
+        if (!isContextPostObject(target)) continue;
+        if (
+          !visitReplyTreeObject(target, { visitedObjectIds, visitedObjects })
+        ) {
+          continue;
+        }
+        const collection = await getConversationCollection(
+          context,
+          target,
+          options,
+          budget,
+        );
+        if (collection != null) return collection;
+        next.push(target);
+      }
+    }
+    if (next.length === 0) return null;
+    frontier = next;
+  }
+  return null;
 }
 
 async function getConversationCollection(
@@ -466,14 +526,39 @@ async function* getReplyTargets(
   object: APObject,
   options: BackfillOptions,
   budget: RequestBudget,
+  skipIds?: ReadonlySet<string>,
 ): AsyncIterable<APObject | Link> {
+  let budgetError: MaxRequestsExceeded | undefined;
   try {
-    yield* object.getReplyTargets({
+    for await (const target of object.getReplyTargets({
+      // Skip vocabulary-level failures per target rather than closing the
+      // iterator before its remaining reply targets can be explored.
+      suppressError: true,
       documentLoader: async (url) => {
-        return await loadCollectionItemDocument(context, url, options, budget);
+        if (budgetError != null) throw budgetError;
+        try {
+          return await loadCollectionItemDocument(
+            context,
+            url,
+            options,
+            budget,
+            skipIds,
+          );
+        } catch (error) {
+          // The vocabulary accessor can suppress budget errors too. Retain
+          // them so it cannot continue with an embedded sibling afterward.
+          if (error instanceof MaxRequestsExceeded) budgetError = error;
+          throw error;
+        }
       },
       crossOrigin: "trust",
-    });
+    })) {
+      budget.signal?.throwIfAborted();
+      if (budgetError != null) throw budgetError;
+      yield target;
+    }
+    budget.signal?.throwIfAborted();
+    if (budgetError != null) throw budgetError;
   } catch (error) {
     if (error instanceof MaxRequestsExceeded) throw error;
     budget.signal?.throwIfAborted();
@@ -502,7 +587,7 @@ async function getRepliesCollection(
 
 function visitReplyTreeObject(
   object: APObject,
-  traversal: ReplyTreeTraversal,
+  traversal: Pick<ReplyTreeTraversal, "visitedObjectIds" | "visitedObjects">,
 ): boolean {
   if (object.id != null) {
     if (traversal.visitedObjectIds.has(object.id.href)) return false;

@@ -92,6 +92,23 @@ export interface BackfillOptions<
   readonly contextSource?: "history-first";
 
   /**
+   * Discovers a conversation collection through `inReplyTo` ancestors.
+   *
+   * Set to `"ancestors"` to search when the seed has no usable collection.
+   * Selects the nearest ancestor with a collection, following reply-target
+   * property order at the same depth. Uses {@link contextSource} for each
+   * post. A valid empty collection remains selected.
+   *
+   * Discovery is bounded by {@link maxDepth}. Collection items have origin
+   * `"collection"` and depth 0. Ancestors themselves are yielded only when
+   * `"reply-tree"` is configured. If omitted, context strategies make no
+   * ancestor requests.
+   *
+   * @since 2.5.0
+   */
+  readonly contextDiscovery?: "ancestors";
+
+  /**
    * Backfill strategies to run.
    *
    * Strategies run in order and share request, item, abort, and deduplication
@@ -112,7 +129,7 @@ export interface BackfillOptions<
   readonly maxItems?: number;
 
   /**
-   * Maximum reply-tree traversal depth.
+   * Maximum reply-tree traversal and ancestor collection discovery depth.
    *
    * Immediate `inReplyTo` targets and direct `replies` collection items have
    * depth 1.  Their parents or replies have depth 2, and so on.  Context

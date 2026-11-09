@@ -22,6 +22,329 @@ async function collect(
   return await Array.fromAsync(backfill(context, note, options));
 }
 
+describe("ancestor collection discovery", () => {
+  const seedId = new URL("https://example.com/seed");
+  const parentId = new URL("https://example.com/parent");
+  const rootId = new URL("https://example.com/root");
+  const contextId = new URL("https://example.com/context");
+  const sibling = new Note({ id: new URL("https://example.com/sibling") });
+
+  function loader(entries: [string, Note | Collection][] = []) {
+    const documents = new Map(entries);
+    const requests: string[] = [];
+    return {
+      requests,
+      documentLoader: (iri: URL) => {
+        requests.push(iri.href);
+        return Promise.resolve(documents.get(iri.href) ?? null);
+      },
+    };
+  }
+
+  test("discovers a root collection at maxDepth without yielding ancestors", async () => {
+    const context = loader([
+      [parentId.href, new Note({ id: parentId, replyTarget: rootId })],
+      [rootId.href, new Note({ id: rootId, contexts: [contextId] })],
+      [contextId.href, new Collection({ items: [sibling] })],
+    ]);
+    const results = await collect(
+      context,
+      new Note({ id: seedId, replyTarget: parentId }),
+      { contextDiscovery: "ancestors", maxDepth: 2 },
+    );
+    deepStrictEqual(context.requests, [
+      parentId.href,
+      rootId.href,
+      contextId.href,
+    ]);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id],
+    );
+    strictEqual(results[0].strategy, "context-auto");
+    strictEqual(results[0].origin, "collection");
+    strictEqual(results[0].depth, 0);
+  });
+
+  test("omitting discovery makes no ancestor requests", async () => {
+    const context = loader();
+    deepStrictEqual(
+      await collect(context, new Note({ replyTarget: parentId })),
+      [],
+    );
+    deepStrictEqual(context.requests, []);
+  });
+
+  test("a valid empty seed collection prevents discovery", async () => {
+    const context = loader([[contextId.href, new Collection({})]]);
+    deepStrictEqual(
+      await collect(
+        context,
+        new Note({
+          contexts: [contextId],
+          replyTarget: parentId,
+        }),
+        { contextDiscovery: "ancestors" },
+      ),
+      [],
+    );
+    deepStrictEqual(context.requests, [contextId.href]);
+  });
+
+  test("a seed context that is not a collection triggers discovery", async () => {
+    const invalidId = new URL("https://example.com/invalid");
+    const context = loader([
+      [invalidId.href, new Note({ id: invalidId })],
+      [parentId.href, new Note({ id: parentId, contexts: [contextId] })],
+      [contextId.href, new Collection({ items: [sibling] })],
+    ]);
+    const results = await collect(
+      context,
+      new Note({
+        contexts: [invalidId],
+        replyTarget: parentId,
+      }),
+      { contextDiscovery: "ancestors" },
+    );
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id],
+    );
+    deepStrictEqual(context.requests, [
+      invalidId.href,
+      parentId.href,
+      contextId.href,
+    ]);
+  });
+
+  test("prefers a nearer collection over the first branch's farther collection", async () => {
+    const fartherId = new URL("https://example.com/far");
+    const context = loader([
+      [parentId.href, new Note({ id: parentId, replyTarget: rootId })],
+      [
+        rootId.href,
+        new Note({
+          id: rootId,
+          contexts: [fartherId],
+        }),
+      ],
+      [fartherId.href, new Collection({ items: [new Note({ id: rootId })] })],
+      [contextId.href, new Collection({ items: [sibling] })],
+    ]);
+    const nearer = new Note({ contexts: [contextId] });
+    const results = await collect(
+      context,
+      new Note({ replyTargets: [parentId, nearer] }),
+      {
+        contextDiscovery: "ancestors",
+      },
+    );
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id],
+    );
+    deepStrictEqual(context.requests, [parentId.href, contextId.href]);
+  });
+
+  test("selects the first usable collection in property order at the same depth", async () => {
+    const secondId = new URL("https://example.com/second-context");
+    const context = loader([
+      [contextId.href, new Collection({ items: [sibling] })],
+      [secondId.href, new Collection({ items: [new Note({ id: rootId })] })],
+    ]);
+    const results = await collect(
+      context,
+      new Note({
+        replyTargets: [
+          new Note({ contexts: [contextId] }),
+          new Note({ contexts: [secondId] }),
+        ],
+      }),
+      { contextDiscovery: "ancestors" },
+    );
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id],
+    );
+    deepStrictEqual(context.requests, [contextId.href]);
+  });
+
+  for (const maxDepth of [0, 1]) {
+    test(`does not discover a collection beyond maxDepth ${maxDepth}`, async () => {
+      const context = loader([
+        [parentId.href, new Note({ id: parentId, replyTarget: rootId })],
+        [rootId.href, new Note({ id: rootId, contexts: [contextId] })],
+        [contextId.href, new Collection({ items: [sibling] })],
+      ]);
+      deepStrictEqual(
+        await collect(context, new Note({ replyTarget: parentId }), {
+          contextDiscovery: "ancestors",
+          maxDepth,
+        }),
+        [],
+      );
+      deepStrictEqual(context.requests, maxDepth === 0 ? [] : [parentId.href]);
+    });
+  }
+
+  test("applies history-first selection to ancestors", async () => {
+    const historyId = new URL("https://example.com/history");
+    const context = loader([
+      [
+        parentId.href,
+        new Note({
+          id: parentId,
+          contextHistory: historyId,
+          contexts: [contextId],
+        }),
+      ],
+      [
+        historyId.href,
+        new OrderedCollection({ items: [new Create({ object: sibling })] }),
+      ],
+    ]);
+    const results = await collect(
+      context,
+      new Note({ replyTarget: parentId }),
+      {
+        contextDiscovery: "ancestors",
+        contextSource: "history-first",
+      },
+    );
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id],
+    );
+    deepStrictEqual(context.requests, [parentId.href, historyId.href]);
+  });
+
+  test("an empty ancestor collection stops discovery", async () => {
+    const context = loader([
+      [
+        parentId.href,
+        new Note({ id: parentId, contexts: [contextId], replyTarget: rootId }),
+      ],
+      [contextId.href, new Collection({})],
+    ]);
+    deepStrictEqual(
+      await collect(context, new Note({ replyTarget: parentId }), {
+        contextDiscovery: "ancestors",
+      }),
+      [],
+    );
+    deepStrictEqual(context.requests, [parentId.href, contextId.href]);
+  });
+
+  test("an ancestor loader error allows other reply targets", async () => {
+    const context = loader([
+      [contextId.href, new Collection({ items: [sibling] })],
+    ]);
+    const results = await collect(
+      {
+        documentLoader: async (iri) => {
+          if (iri.href === parentId.href) {
+            context.requests.push(iri.href);
+            throw new Error("ancestor unavailable");
+          }
+          return await context.documentLoader(iri);
+        },
+      },
+      new Note({
+        replyTargets: [parentId, new Note({ contexts: [contextId] })],
+      }),
+      {
+        contextDiscovery: "ancestors",
+      },
+    );
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id],
+    );
+    deepStrictEqual(context.requests, [parentId.href, contextId.href]);
+  });
+
+  test("a vocabulary lookup failure allows later reply targets", async () => {
+    const context = loader([
+      [contextId.href, new Collection({ items: [sibling] })],
+    ]);
+    const seed = await Note.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      inReplyTo: [
+        "ap://did:key:z6Mkabc/post",
+        { type: "Note", context: contextId.href },
+      ],
+    });
+    const results = await collect(context, seed, {
+      contextDiscovery: "ancestors",
+    });
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id],
+    );
+    deepStrictEqual(context.requests, [contextId.href]);
+  });
+
+  test("request budget exhaustion stops discovery before embedded siblings", async () => {
+    const context = loader();
+    const results = await collect(
+      context,
+      new Note({
+        replyTargets: [
+          parentId,
+          new Note({
+            contextHistory: new OrderedCollection({ items: [sibling] }),
+          }),
+        ],
+      }),
+      {
+        contextDiscovery: "ancestors",
+        contextSource: "history-first",
+        maxRequests: 0,
+      },
+    );
+    deepStrictEqual(results, []);
+    deepStrictEqual(context.requests, []);
+  });
+
+  test("cancellation during ancestor discovery propagates", async () => {
+    const controller = new AbortController();
+    const reason = new Error("cancelled");
+    const requests: string[] = [];
+    await rejects(
+      collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            controller.abort(reason);
+            return Promise.resolve(null);
+          },
+        },
+        new Note({ replyTarget: parentId }),
+        {
+          contextDiscovery: "ancestors",
+          signal: controller.signal,
+        },
+      ),
+      (error) => error === reason,
+    );
+    deepStrictEqual(requests, [parentId.href]);
+  });
+
+  test("ancestor cycles terminate without requesting the seed again", async () => {
+    const context = loader([
+      [parentId.href, new Note({ id: parentId, replyTarget: seedId })],
+    ]);
+    deepStrictEqual(
+      await collect(context, new Note({ id: seedId, replyTarget: parentId }), {
+        contextDiscovery: "ancestors",
+      }),
+      [],
+    );
+    deepStrictEqual(context.requests, [parentId.href]);
+  });
+});
+
 describe("history-first source selection", () => {
   const historyId = new URL("https://example.com/history");
   const contextId = new URL("https://example.com/context");
