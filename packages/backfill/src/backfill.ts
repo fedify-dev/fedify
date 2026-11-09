@@ -34,6 +34,7 @@ interface RequestBudget {
   readonly signal?: AbortSignal;
   requestCount: number;
   readonly documents: Map<string, Promise<APObject | null>>;
+  conversationCollection?: Promise<BackfillCollection | null>;
 }
 
 type StrategyItem = {
@@ -198,12 +199,16 @@ async function* getContextStrategyItems(
   readonly origin: "collection";
   readonly depth: 0;
 }> {
-  const contextId = note.contextIds[0];
-  if (contextId == null) return;
-  const collection = await loadObject(context, contextId, options, budget, {
-    skipLoaderErrors: true,
-  });
-  if (!isCollection(collection)) return;
+  const collection =
+    options.contextSource === "history-first"
+      ? await (budget.conversationCollection ??= getConversationCollection(
+          context,
+          note,
+          options,
+          budget,
+        ))
+      : await getConversationCollection(context, note, options, budget);
+  if (collection == null) return;
   for await (const object of getCollectionItems(
     context,
     collection,
@@ -228,6 +233,63 @@ async function* getContextStrategyItems(
       }
     }
   }
+}
+
+async function getConversationCollection(
+  context: BackfillContext,
+  note: APObject,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): Promise<BackfillCollection | null> {
+  if (options.contextSource === "history-first") {
+    const history = await getContextHistoryCollection(
+      context,
+      note,
+      options,
+      budget,
+    );
+    if (history != null) return history;
+  }
+  const contextId = note.contextIds[0];
+  if (contextId == null) return null;
+  const collection = await loadObject(context, contextId, options, budget, {
+    skipLoaderErrors: true,
+  });
+  return isCollection(collection) ? collection : null;
+}
+
+async function getContextHistoryCollection(
+  context: BackfillContext,
+  note: APObject,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): Promise<BackfillCollection | null> {
+  const unresolvedReference = new Error(
+    "History reference requires backfill loading",
+  );
+  let historyId: URL | undefined;
+  try {
+    // Read embedded history on a copy. For a reference, stop the vocabulary
+    // accessor before fetching so the backfill loader can return objects
+    // directly, without a JSON-LD serialization and parsing round trip.
+    return await note.clone().getContextHistory({
+      crossOrigin: "trust",
+      documentLoader: (url) => {
+        historyId = new URL(url);
+        throw unresolvedReference;
+      },
+    });
+  } catch (error) {
+    if (error !== unresolvedReference) {
+      budget.signal?.throwIfAborted();
+      return null;
+    }
+  }
+  if (historyId == null) return null;
+  const collection = await loadObject(context, historyId, options, budget, {
+    skipLoaderErrors: true,
+  });
+  return isCollection(collection) ? collection : null;
 }
 
 async function* getStrategyItems(
