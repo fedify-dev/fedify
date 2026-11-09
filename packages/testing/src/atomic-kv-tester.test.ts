@@ -387,6 +387,64 @@ test("testAtomicKvStore() drains racing writes before disposal after a failed re
 test("testAtomicKvStore() accepts omitted object-key-order claims", () =>
   testAtomicKvStore(() => pair(new MemoryKvStore())));
 
+test("testAtomicKvStore() checks CAS equivalence without an object-key-order claim", async () => {
+  for (const policy of [
+    { single: true, batch: false },
+    { single: false, batch: true },
+    { single: true, batch: true },
+  ]) {
+    class OrderSensitiveMemoryKvStore extends MemoryKvStore {
+      override async cas(
+        key: KvKey,
+        expectedValue: unknown,
+        newValue: unknown,
+        options?: KvStoreSetOptions,
+      ): Promise<boolean> {
+        if (policy.single) {
+          const actual = await this.get(key);
+          if (
+            isDeepStrictEqual(actual, expectedValue) &&
+            JSON.stringify(actual) !== JSON.stringify(expectedValue)
+          )
+            return false;
+        }
+        return await super.cas(key, expectedValue, newValue, options);
+      }
+
+      override async casMany(
+        entries: readonly KvStoreCasEntry[],
+      ): Promise<boolean> {
+        if (policy.batch) {
+          for (const entry of entries) {
+            if (entry == null) continue;
+            const actual = await this.get(entry.key);
+            if (
+              isDeepStrictEqual(actual, entry.expectedValue) &&
+              JSON.stringify(actual) !== JSON.stringify(entry.expectedValue)
+            )
+              return false;
+          }
+        }
+        return await super.casMany(entries);
+      }
+    }
+    const run = () =>
+      testAtomicKvStore(() => pair(new OrderSensitiveMemoryKvStore()));
+    if (policy.single === policy.batch) await run();
+    else
+      await rejects(
+        run,
+        (error: unknown) =>
+          error instanceof AssertionError &&
+          error.message.startsWith(
+            "single and batch CAS must use the same object comparison rules",
+          ) &&
+          error.actual === !policy.batch &&
+          error.expected === !policy.single,
+      );
+  }
+});
+
 test("testAtomicKvStore() rejects an incorrect object-key-order claim", async () => {
   await rejects(
     () =>

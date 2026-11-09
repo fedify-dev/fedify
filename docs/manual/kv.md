@@ -947,18 +947,18 @@ Only `MemoryKvStore` currently implements the full `AtomicKvStore` contract.
 Existing single-key CAS support does not imply atomic multi-key support.
 The linked issues track separate adapter implementations:
 
-| Implementation              | `AtomicKvStore` | Status                                                               |
-| --------------------------- | --------------- | -------------------------------------------------------------------- |
-| `MemoryKvStore`             | Yes             | Development and testing only; one instance.                          |
-| `PostgresKvStore`           | No              | Planned in [#1364].                                                  |
-| `RedisKvStore`              | No              | Planned in [#1365].                                                  |
-| `PgliteKvStore`             | No              | Planned in [#1366].                                                  |
-| `SqliteKvStore`             | No              | Planned in [#1367].                                                  |
-| `MysqlKvStore`              | No              | Planned in [#1368].                                                  |
-| `DenoKvStore`               | No              | No atomic adapter child issue; deprecated since 2.5.0.               |
-| `NetlifyBlobsKvStore`       | No              | Single-key CAS only; no atomic adapter child issue.                  |
-| `WorkersKvStore`            | No              | No CAS; cannot implement this contract with Workers KV.              |
-| `WorkersD1KvStore`          | No              | Base adapter [PR #1360] supports single-key CAS; atomic follow-up is [#1379]. |
+| Implementation        | `AtomicKvStore` | Status                                                                        |
+| --------------------- | --------------- | ----------------------------------------------------------------------------- |
+| `MemoryKvStore`       | Yes             | Development and testing only; one instance.                                   |
+| `PostgresKvStore`     | No              | Planned in [#1364].                                                           |
+| `RedisKvStore`        | No              | Planned in [#1365].                                                           |
+| `PgliteKvStore`       | No              | Planned in [#1366].                                                           |
+| `SqliteKvStore`       | No              | Planned in [#1367].                                                           |
+| `MysqlKvStore`        | No              | Planned in [#1368].                                                           |
+| `DenoKvStore`         | No              | No atomic adapter child issue; deprecated since 2.5.0.                        |
+| `NetlifyBlobsKvStore` | No              | Single-key CAS only; no atomic adapter child issue.                           |
+| `WorkersKvStore`      | No              | No CAS; cannot implement this contract with Workers KV.                       |
+| `WorkersD1KvStore`    | No              | Base adapter [PR #1360] supports single-key CAS; atomic follow-up is [#1379]. |
 
 [PR #1360]: https://github.com/fedify-dev/fedify/pull/1360
 [#1364]: https://github.com/fedify-dev/fedify/issues/1364

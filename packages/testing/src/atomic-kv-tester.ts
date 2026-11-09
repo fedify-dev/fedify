@@ -415,19 +415,21 @@ export default async function testAtomicKvStore(
         "batch CAS must not match null against absence",
       );
       strictEqual(await second.get(missing), undefined);
+      const value = { a: 1, b: { c: 2 } };
+      const reordered = { b: { c: 2 }, a: 1 };
+      await first.set(valueKey, value);
+      const single = await first.cas(valueKey, reordered, "changed");
+      await first.set(valueKey, value);
+      const batch = await first.casMany([
+        { key: valueKey, expectedValue: reordered, newValue: "changed" },
+      ]);
+      strictEqual(
+        batch,
+        single,
+        "single and batch CAS must use the same object comparison rules",
+      );
       if (options.objectKeyOrder != null) {
-        const value = { a: 1, b: { c: 2 } };
-        const reordered = { b: { c: 2 }, a: 1 };
-        const expected = options.objectKeyOrder === "ignored";
-        await first.set(valueKey, value);
-        strictEqual(await first.cas(valueKey, reordered, "changed"), expected);
-        await first.set(valueKey, value);
-        strictEqual(
-          await first.casMany([
-            { key: valueKey, expectedValue: reordered, newValue: "changed" },
-          ]),
-          expected,
-        );
+        strictEqual(single, options.objectKeyOrder === "ignored");
       }
     },
     async ({ first, second }, key) => {
