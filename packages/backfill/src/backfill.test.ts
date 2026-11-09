@@ -331,6 +331,195 @@ describe("ancestor collection discovery", () => {
     deepStrictEqual(requests, [parentId.href]);
   });
 
+  for (const strategies of [
+    ["context-auto", "reply-tree"],
+    ["reply-tree", "context-auto"],
+  ] as const) {
+    test(`discovery shares cache, scheduling, and deduplication with ${strategies.join(" then ")}`, async () => {
+      const reply = new Note({ id: rootId });
+      const context = loader([
+        [parentId.href, new Note({ id: parentId, contexts: [contextId] })],
+        [
+          contextId.href,
+          new Collection({
+            items: [seedId, parentId, sibling, new Note({ id: sibling.id })],
+          }),
+        ],
+      ]);
+      const intervals: number[] = [];
+      const results = await collect(
+        context,
+        new Note({
+          id: seedId,
+          replyTarget: parentId,
+          replies: new Collection({ items: [reply] }),
+        }),
+        {
+          contextDiscovery: "ancestors",
+          strategies,
+          maxRequests: 2,
+          interval: (iteration) => {
+            intervals.push(iteration);
+            return { milliseconds: 0 };
+          },
+        },
+      );
+      const contextFirst = strategies[0] === "context-auto";
+      deepStrictEqual(
+        results.map(({ id }) => id),
+        contextFirst
+          ? [parentId, sibling.id, reply.id]
+          : [parentId, reply.id, sibling.id],
+      );
+      strictEqual(results[0].strategy, strategies[0]);
+      strictEqual(
+        results[0].origin,
+        contextFirst ? "collection" : "in-reply-to",
+      );
+      strictEqual(results[0].depth, contextFirst ? 0 : 1);
+      deepStrictEqual(context.requests, [parentId.href, contextId.href]);
+      deepStrictEqual(intervals, [0, 1]);
+    });
+  }
+
+  test("seed, ancestor, collection, and item loads share the request budget", async () => {
+    const invalidId = new URL("https://example.com/invalid");
+    const context = loader([
+      [invalidId.href, new Note({ id: invalidId })],
+      [parentId.href, new Note({ id: parentId, contexts: [contextId] })],
+      [contextId.href, new Collection({ items: [sibling.id!] })],
+      [sibling.id!.href, sibling],
+    ]);
+    const results = await collect(
+      context,
+      new Note({
+        contexts: [invalidId],
+        replyTarget: parentId,
+      }),
+      { contextDiscovery: "ancestors", maxRequests: 3 },
+    );
+    deepStrictEqual(results, []);
+    deepStrictEqual(context.requests, [
+      invalidId.href,
+      parentId.href,
+      contextId.href,
+    ]);
+  });
+
+  test("discovery and reply-tree yields share the item budget", async () => {
+    const context = loader([
+      [
+        parentId.href,
+        new Note({ id: parentId, contexts: [contextId], replyTarget: rootId }),
+      ],
+      [
+        contextId.href,
+        new Collection({ items: [sibling, new Note({ id: sibling.id })] }),
+      ],
+      [rootId.href, new Note({ id: rootId })],
+    ]);
+    const results = await collect(
+      context,
+      new Note({ replyTarget: parentId }),
+      {
+        contextDiscovery: "ancestors",
+        strategies: ["context-auto", "reply-tree"],
+        maxItems: 2,
+      },
+    );
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id, parentId],
+    );
+    deepStrictEqual(
+      results.map(({ strategy }) => strategy),
+      ["context-auto", "reply-tree"],
+    );
+    deepStrictEqual(context.requests, [parentId.href, contextId.href]);
+  });
+
+  test("discovery stays selected across separated context strategies", async () => {
+    const failedId = new URL("https://example.com/unavailable");
+    const context = loader([
+      [parentId.href, new Note({ id: parentId, contexts: [contextId] })],
+      [
+        contextId.href,
+        new Collection({
+          items: [sibling, new Create({ object: new Note({ id: rootId }) })],
+        }),
+      ],
+    ]);
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          if (iri.href === failedId.href) {
+            context.requests.push(iri.href);
+            return Promise.reject(new Error("unavailable ancestor"));
+          }
+          return context.documentLoader(iri);
+        },
+      },
+      new Note({ replyTargets: [failedId, parentId] }),
+      {
+        contextDiscovery: "ancestors",
+        strategies: ["context-objects", "reply-tree", "context-activities"],
+      },
+    );
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id, parentId, rootId],
+    );
+    deepStrictEqual(
+      results.map(({ strategy }) => strategy),
+      ["context-objects", "reply-tree", "context-activities"],
+    );
+    // The failed lookup is retried by reply-tree, but context discovery is
+    // not repeated for the later context-activities strategy.
+    deepStrictEqual(context.requests, [
+      failedId.href,
+      parentId.href,
+      contextId.href,
+      failedId.href,
+    ]);
+  });
+
+  test("cancellation during the discovered collection load prevents all yields", async () => {
+    const controller = new AbortController();
+    const reason = new Error("cancelled collection load");
+    const requests: string[] = [];
+    const yielded: unknown[] = [];
+    await rejects(
+      async () => {
+        for await (const item of backfill(
+          {
+            documentLoader: (iri, options) => {
+              strictEqual(options?.signal, controller.signal);
+              requests.push(iri.href);
+              if (iri.href === parentId.href) {
+                return Promise.resolve(
+                  new Note({ id: parentId, contexts: [contextId] }),
+                );
+              }
+              strictEqual(iri.href, contextId.href);
+              controller.abort(reason);
+              return Promise.resolve(new Collection({ items: [sibling] }));
+            },
+          },
+          new Note({ replyTarget: parentId }),
+          {
+            contextDiscovery: "ancestors",
+            strategies: ["context-auto", "reply-tree"],
+            signal: controller.signal,
+          },
+        ))
+          yielded.push(item);
+      },
+      (error) => error === reason,
+    );
+    deepStrictEqual(yielded, []);
+    deepStrictEqual(requests, [parentId.href, contextId.href]);
+  });
+
   test("ancestor cycles terminate without requesting the seed again", async () => {
     const context = loader([
       [parentId.href, new Note({ id: parentId, replyTarget: seedId })],

@@ -101,8 +101,9 @@ export interface BackfillOptions<
    *
    * Discovery is bounded by {@link maxDepth}. Collection items have origin
    * `"collection"` and depth 0. Ancestors themselves are yielded only when
-   * `"reply-tree"` is configured. If omitted, context strategies make no
-   * ancestor requests.
+   * `"reply-tree"` is configured. Discovery shares request and item budgets,
+   * document caching, cancellation, and ID deduplication with the configured
+   * strategies. If omitted, context strategies make no ancestor requests.
    *
    * @since 2.5.0
    */

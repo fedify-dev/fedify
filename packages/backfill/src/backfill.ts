@@ -268,7 +268,8 @@ async function discoverConversationCollection(
     for (const object of frontier) {
       for await (const target of getReplyTargets(
         context,
-        object,
+        // Keep failed lookup placeholders off the source so later strategies can retry.
+        object.clone(),
         options,
         budget,
         visitedObjectIds,
