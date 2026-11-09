@@ -198,6 +198,24 @@ test("testAtomicKvStore() detects single CAS retaining an old TTL", async () => 
   );
 });
 
+test("testAtomicKvStore() detects partial writes before sparse input rejection", async () => {
+  class SparseWriteKvStore extends MemoryKvStore {
+    override async setMany(entries: readonly KvStoreSetEntry[]): Promise<void> {
+      if (Array.from(entries).some((entry) => entry == null)) {
+        for (const entry of entries) {
+          if (entry == null) throw new TypeError("missing batch element");
+          await super.set(entry.key, entry.value, entry.options);
+        }
+      } else await super.setMany(entries);
+    }
+  }
+  await rejects(
+    () =>
+      testAtomicKvStore(() => pair(new SparseWriteKvStore()), memoryOptions),
+    /setMany must reject sparse input without changing state/,
+  );
+});
+
 test("testAtomicKvStore() disposes a pair after an assertion failure", async () => {
   let disposed = 0;
   await rejects(
@@ -469,11 +487,11 @@ class ScopedMemoryKvStore extends LimitedMemoryKvStore {
     return super.get<T>(key);
   }
 
-  override getMany<T = unknown>(
+  override async getMany<T = unknown>(
     keys: readonly KvKey[],
   ): Promise<(T | undefined)[]> {
     for (const key of keys) assertMappedKey(key);
-    return super.getMany<T>(keys);
+    return await super.getMany<T>(keys);
   }
 }
 

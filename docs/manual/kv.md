@@ -917,9 +917,10 @@ expired.  It rejects calendar durations that require a relative date.  Other
 adapters must document their duration support and expiry precision;
 `RedisKvStore`'s current single-key operations round up to whole seconds.
 
-Mutation batches reject duplicate keys before writing, including keys expressed
-by separate arrays with identical string components.  Empty reads return
-`[]`; empty writes and deletes do nothing; an empty `casMany()` returns `true`.
+Batch arrays with missing elements (sparse arrays) are invalid.  Mutation
+batches reject duplicate keys before writing, including keys expressed by
+separate arrays with identical string components.  Empty reads return `[]`;
+empty writes and deletes do nothing; an empty `casMany()` returns `true`.
 Invalid input, unsupported scope, size limits, and backend failures are errors.
 `false` means only a proven comparison mismatch.  `MemoryKvStore` reports
 validation errors through rejected promises, including its single-key methods.

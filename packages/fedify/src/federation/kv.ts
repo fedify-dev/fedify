@@ -168,6 +168,8 @@ export interface KvStore {
  * precision, key scope, and size limits.  Single and multi-key CAS use the
  * same comparison rules.  Invalid input, unsupported scope, exceeded limits,
  * and backend failures reject; a batch must never be silently split.
+ * Batch arrays must not be sparse: a missing element makes the batch invalid.
+ * Empty arrays are valid.
  *
  * Logical expiry counts as absence.  `undefined` is not stored; use deletion
  * instead.  CAS deletion rejects a non-null TTL.  Replacing a value without a
@@ -264,8 +266,15 @@ export class MemoryKvStore implements AtomicKvStore {
     return JSON.stringify(key);
   }
 
+  #encodeKeyList(keys: readonly KvKey[]): string[] {
+    if (!Array.isArray(keys)) {
+      throw new TypeError("A KV batch must be an array.");
+    }
+    return Array.from(keys, (key) => this.#encodeKey(key));
+  }
+
   #encodeKeys(keys: readonly KvKey[]): string[] {
-    const encoded = keys.map((key) => this.#encodeKey(key));
+    const encoded = this.#encodeKeyList(keys);
     if (new Set(encoded).size !== encoded.length) {
       throw new TypeError("Duplicate keys in an atomic mutation.");
     }
@@ -381,7 +390,7 @@ export class MemoryKvStore implements AtomicKvStore {
   async getMany<T = unknown>(
     keys: readonly KvKey[],
   ): Promise<(T | undefined)[]> {
-    const encoded = keys.map((key) => this.#encodeKey(key));
+    const encoded = this.#encodeKeyList(keys);
     const now = Temporal.Now.instant();
     return encoded.map((key) => this.#read(key, now) as T | undefined);
   }

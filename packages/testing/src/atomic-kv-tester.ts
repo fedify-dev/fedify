@@ -247,6 +247,33 @@ export default async function testAtomicKvStore(
       await check();
     },
     async ({ first, second }, key) => {
+      const a = key("sparse", "a");
+      const b = key("sparse", "b");
+      await first.setMany([
+        { key: a, value: 1 },
+        { key: b, value: 2 },
+      ]);
+      const keys = new Array<KvKey>(2);
+      keys[0] = a;
+      const writes = new Array<KvStoreSetEntry>(2);
+      writes[0] = { key: a, value: 3 };
+      const conditions = new Array<KvStoreCasEntry>(2);
+      conditions[0] = { key: a, expectedValue: "wrong", newValue: 3 };
+      for (const [operation, invoke] of [
+        ["getMany", () => first.getMany(keys)],
+        ["setMany", () => first.setMany(writes)],
+        ["deleteMany", () => first.deleteMany(keys)],
+        ["casMany", () => first.casMany(conditions)],
+      ] as const) {
+        await rejects(invoke, `${operation} must reject sparse input`);
+        deepStrictEqual(
+          await readSeparately(second, [a, b]),
+          [1, 2],
+          `${operation} must reject sparse input without changing state`,
+        );
+      }
+    },
+    async ({ first, second }, key) => {
       const a = key("undefined", "a");
       const b = key("undefined", "b");
       await first.setMany([

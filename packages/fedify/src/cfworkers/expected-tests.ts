@@ -2,6 +2,11 @@
 export const expectedTestNames = [
   "MemoryKvStore atomic contract and capability guard",
   "MemoryKvStore validates whole batches before mutation",
+  "MemoryKvStore rejects sparse getMany input before mutation",
+  "MemoryKvStore rejects sparse setMany input before mutation",
+  "MemoryKvStore rejects sparse deleteMany input before mutation",
+  "MemoryKvStore rejects sparse casMany input before comparison",
+  "MemoryKvStore rejects non-array batch containers",
   "MemoryKvStore atomic expiry and stale iterator reclamation",
   "MemoryKvStore snapshots and CAS serialize competing calls",
   "MemoryKvStore private primitives preserve subclass instrumentation",

@@ -5,6 +5,8 @@ import {
   isAtomicKvStore,
   type KvKey,
   type KvStore,
+  type KvStoreCasEntry,
+  type KvStoreSetEntry,
   MemoryKvStore,
 } from "./kv.ts";
 
@@ -142,6 +144,65 @@ test("MemoryKvStore validates whole batches before mutation", async () => {
   await rejects(store.deleteMany([["a"], invalidKey]), TypeError);
   deepStrictEqual(await store.getMany([["a"], ["b"]]), [1, 2]);
   strictEqual(await store.cas(["a"], 1, undefined, {}), true);
+});
+
+// An array hole is invalid input, even after a valid entry or a CAS mismatch.
+// Array.prototype.map() skips holes, so a sparse prepared batch can otherwise
+// fail only after applying an earlier write.
+function sparseBatch<T>(first: T): T[] {
+  const batch = new Array<T>(2);
+  batch[0] = first;
+  return batch;
+}
+
+async function assertSparseBatchRejected(
+  invoke: (store: MemoryKvStore) => Promise<unknown>,
+): Promise<void> {
+  const store = new MemoryKvStore();
+  await store.setMany([
+    { key: ["a"], value: 1 },
+    { key: ["b"], value: 2 },
+  ]);
+  await rejects(() => invoke(store), TypeError);
+  deepStrictEqual(await store.getMany([["a"], ["b"]]), [1, 2]);
+}
+
+test("MemoryKvStore rejects sparse getMany input before mutation", () =>
+  assertSparseBatchRejected((store) =>
+    store.getMany(sparseBatch<KvKey>(["a"])),
+  ));
+
+test("MemoryKvStore rejects sparse setMany input before mutation", () =>
+  assertSparseBatchRejected((store) =>
+    store.setMany(sparseBatch<KvStoreSetEntry>({ key: ["a"], value: 3 })),
+  ));
+
+test("MemoryKvStore rejects sparse deleteMany input before mutation", () =>
+  assertSparseBatchRejected((store) =>
+    store.deleteMany(sparseBatch<KvKey>(["a"])),
+  ));
+
+test("MemoryKvStore rejects sparse casMany input before comparison", () =>
+  assertSparseBatchRejected((store) =>
+    store.casMany(
+      sparseBatch<KvStoreCasEntry>({
+        key: ["a"],
+        expectedValue: "wrong",
+        newValue: 3,
+      }),
+    ),
+  ));
+
+test("MemoryKvStore rejects non-array batch containers", async () => {
+  const store = new MemoryKvStore();
+  await store.set(["a"], 1);
+  for (const invalid of [undefined, null, {}, new Set<KvKey>()]) {
+    await rejects(() => store.getMany(invalid as never), TypeError);
+    await rejects(() => store.setMany(invalid as never), TypeError);
+    await rejects(() => store.deleteMany(invalid as never), TypeError);
+    await rejects(() => store.casMany(invalid as never), TypeError);
+    strictEqual(await store.get(["a"]), 1);
+  }
 });
 
 test("MemoryKvStore atomic expiry and stale iterator reclamation", async () => {
