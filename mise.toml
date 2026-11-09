@@ -529,7 +529,7 @@ mise run fmt
 
 [tasks."test:tooling"]
 description = "Test Node.js maintenance scripts and harness utilities"
-run = 'node --experimental-transform-types --test "scripts/*.test.ts" "scripts/*.test.mjs" "examples/test-examples/*.test.ts" "packages/init/src/harness.test.ts"'
+run = 'node --experimental-transform-types --test "scripts/*.test.ts" "scripts/*.test.mjs" "examples/test-examples/*.test.ts" "packages/init/src/harness.test.ts" "packages/cli/scripts/compile.test.ts"'
 
 [tasks."generate:packages-table"]
 description = "Generate package tables and links for release announcements"
