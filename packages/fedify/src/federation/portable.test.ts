@@ -41,10 +41,10 @@ import { PORTABLE_OBJECT_CONTENT_TYPE } from "./portable.ts";
 
 const did = await exportDidKey(ed25519PublicKey.publicKey);
 const keyId = new URL(`${did}#${did.substring("did:key:".length)}`);
-const otherKeyPair = await crypto.subtle.generateKey("Ed25519", true, [
+const otherKeyPair = (await crypto.subtle.generateKey("Ed25519", true, [
   "sign",
   "verify",
-]) as CryptoKeyPair;
+])) as CryptoKeyPair;
 const otherDid = await exportDidKey(otherKeyPair.publicKey);
 const otherKeyId = new URL(
   `${otherDid}#${otherDid.substring("did:key:".length)}`,
@@ -162,7 +162,7 @@ test("Federation.fetch() serves portable objects through object dispatchers", as
       PORTABLE_OBJECT_CONTENT_TYPE,
     );
     assertEquals(response.headers.get("Vary"), "Accept");
-    const json = await response.json() as Record<string, unknown>;
+    const json = (await response.json()) as Record<string, unknown>;
     assertEquals(json.id, `ap+ef61://${did}/users/alice/notes/123`);
     assertEquals(json.content, "Note 123 by alice");
     const verified = await verifyPortableObjectProof(json, {
@@ -222,24 +222,22 @@ test("Federation.fetch() serves portable objects through object dispatchers", as
   });
 
   await t.step("responds with 404 for objects it does not serve", async () => {
-    for (
-      const request of [
-        // The dispatcher returns null:
-        gatewayRequest("/users/alice/notes/missing"),
-        // The dispatcher returns an object with an HTTPS ID:
-        gatewayRequest("/users/alice/notes/https"),
-        // The dispatcher does not host objects for the other DID:
-        gatewayRequest("/users/alice/notes/123", { authority: otherDid }),
-        // The dispatcher returns an object of another DID:
-        gatewayRequest("/users/alice/notes/ignores-authority", {
-          authority: otherDid,
-        }),
-        // No object dispatcher matches:
-        gatewayRequest("/users/alice/posts/123"),
-        // The actor dispatcher returns an actor with an HTTPS ID:
-        gatewayRequest("/actors/alice"),
-      ]
-    ) {
+    for (const request of [
+      // The dispatcher returns null:
+      gatewayRequest("/users/alice/notes/missing"),
+      // The dispatcher returns an object with an HTTPS ID:
+      gatewayRequest("/users/alice/notes/https"),
+      // The dispatcher does not host objects for the other DID:
+      gatewayRequest("/users/alice/notes/123", { authority: otherDid }),
+      // The dispatcher returns an object of another DID:
+      gatewayRequest("/users/alice/notes/ignores-authority", {
+        authority: otherDid,
+      }),
+      // No object dispatcher matches:
+      gatewayRequest("/users/alice/posts/123"),
+      // The actor dispatcher returns an actor with an HTTPS ID:
+      gatewayRequest("/actors/alice"),
+    ]) {
       const response = await federation.fetch(request, {
         contextData: undefined,
       });
@@ -248,13 +246,11 @@ test("Federation.fetch() serves portable objects through object dispatchers", as
   });
 
   await t.step("responds with 400 for malformed portable IDs", async () => {
-    for (
-      const path of [
-        `/.well-known/apgateway/${did}`,
-        "/.well-known/apgateway/did:key:/users/alice/notes/123",
-        `/.well-known/apgateway/${did}/users/alice/notes/%ZZ`,
-      ]
-    ) {
+    for (const path of [
+      `/.well-known/apgateway/${did}`,
+      "/.well-known/apgateway/did:key:/users/alice/notes/123",
+      `/.well-known/apgateway/${did}/users/alice/notes/%ZZ`,
+    ]) {
       const response = await federation.fetch(
         new Request(`https://example.com${path}`, {
           headers: { Accept: ACCEPT },
@@ -266,20 +262,18 @@ test("Federation.fetch() serves portable objects through object dispatchers", as
   });
 
   await t.step("leaves other gateway requests to onNotFound()", async () => {
-    for (
-      const request of [
-        new Request("https://example.com/.well-known/apgateway", {
-          headers: { Accept: ACCEPT },
-        }),
-        new Request(
-          "https://example.com/.well-known/apgateway/hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
-        ),
-        gatewayRequest("/users/alice/notes/123", {
-          method: "POST",
-          body: "{}",
-        }),
-      ]
-    ) {
+    for (const request of [
+      new Request("https://example.com/.well-known/apgateway", {
+        headers: { Accept: ACCEPT },
+      }),
+      new Request(
+        "https://example.com/.well-known/apgateway/hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+      ),
+      gatewayRequest("/users/alice/notes/123", {
+        method: "POST",
+        body: "{}",
+      }),
+    ]) {
       let notFound = false;
       const response = await federation.fetch(request, {
         contextData: undefined,
@@ -294,18 +288,16 @@ test("Federation.fetch() serves portable objects through object dispatchers", as
   });
 
   await t.step("responds to HEAD without a body on errors", async () => {
-    for (
-      const [request, status] of [
-        [gatewayRequest("/users/alice/notes/missing", { method: "HEAD" }), 404],
-        [
-          gatewayRequest("/users/alice/notes/123", {
-            method: "HEAD",
-            headers: { Accept: "text/html" },
-          }),
-          406,
-        ],
-      ] as const
-    ) {
+    for (const [request, status] of [
+      [gatewayRequest("/users/alice/notes/missing", { method: "HEAD" }), 404],
+      [
+        gatewayRequest("/users/alice/notes/123", {
+          method: "HEAD",
+          headers: { Accept: "text/html" },
+        }),
+        406,
+      ],
+    ] as const) {
       const response = await federation.fetch(request, {
         contextData: undefined,
       });
@@ -387,12 +379,14 @@ test("Federation.fetch() applies the FEP-ef61 proof policy to portable objects",
         },
       ),
     "tampered-collection": async () =>
-      (await sign(
-        new Collection({
-          id: parseIri(`ap+ef61://${did}/objects/tampered-collection`),
-          totalItems: 0,
-        }),
-      )).clone({ totalItems: 1 }),
+      (
+        await sign(
+          new Collection({
+            id: parseIri(`ap+ef61://${did}/objects/tampered-collection`),
+            totalItems: 0,
+          }),
+        )
+      ).clone({ totalItems: 1 }),
     "activity": () =>
       sign(
         new Create({
@@ -551,9 +545,11 @@ test("Federation.fetch() serves tombstones of portable objects", async (t) => {
         otherKeyId,
       ),
     "tampered": async () =>
-      (await sign(
-        new Tombstone({ id: parseIri(`ap+ef61://${did}/notes/tampered`) }),
-      )).clone({ formerType: Note }),
+      (
+        await sign(
+          new Tombstone({ id: parseIri(`ap+ef61://${did}/notes/tampered`) }),
+        )
+      ).clone({ formerType: Note }),
     // The exemption of unsecured collections does not apply to tombstones:
     "unsigned-collection": () =>
       tombstoneFromJsonLd("/notes/unsigned-collection", { totalItems: 0 }),
@@ -638,7 +634,7 @@ test("Federation.fetch() serves tombstones of portable objects", async (t) => {
           PORTABLE_OBJECT_CONTENT_TYPE,
         );
         assertEquals(response.headers.get("Vary"), "Accept");
-        const body = await response.json() as Record<string, unknown>;
+        const body = (await response.json()) as Record<string, unknown>;
         assertEquals(body.type, "Tombstone");
         const verified = await verifyPortableObjectProof(body, {
           contextLoader: mockDocumentLoader,
@@ -656,7 +652,7 @@ test("Federation.fetch() serves tombstones of portable objects", async (t) => {
       let response = await federation.fetch(gatewayRequest("/notes/signed"), {
         contextData: undefined,
       });
-      let body = await response.json() as Record<string, unknown>;
+      let body = (await response.json()) as Record<string, unknown>;
       assertEquals(body.id, `ap+ef61://${did}/notes/signed`);
       assertEquals(body.formerType, "as:Note");
       assertEquals(body.deleted, "2026-01-01T00:00:00Z");
@@ -664,13 +660,16 @@ test("Federation.fetch() serves tombstones of portable objects", async (t) => {
       response = await federation.fetch(gatewayRequest("/notes/compatible"), {
         contextData: undefined,
       });
-      body = await response.json() as Record<string, unknown>;
+      body = (await response.json()) as Record<string, unknown>;
       assertEquals(body.id, compatible("/notes/compatible").href);
     },
   );
 
   await t.step("responds to HEAD without a body", async () => {
-    for (const [id, status] of [["signed", 410], ["unsigned", 404]] as const) {
+    for (const [id, status] of [
+      ["signed", 410],
+      ["unsigned", 404],
+    ] as const) {
       const response = await federation.fetch(
         gatewayRequest(`/notes/${id}`, { method: "HEAD" }),
         { contextData: undefined },
@@ -1007,11 +1006,14 @@ test("Federation.fetch() serves non-public portable objects to their audience", 
     )
     .authorize(async (ctx, values) => {
       const note = await notes[values.id];
-      return note != null && await ctx.isSignedByAudience(note, {
-        isMember: (addressee, actor) =>
-          addressee.href === followers.href &&
-          actor.id?.href === person2.href,
-      });
+      return (
+        note != null &&
+        (await ctx.isSignedByAudience(note, {
+          isMember: (addressee, actor) =>
+            addressee.href === followers.href &&
+            actor.id?.href === person2.href,
+        }))
+      );
     });
   const signed = async (id: string, key: "key2" | "key3" = "key3") =>
     await signRequest(
@@ -1027,20 +1029,18 @@ test("Federation.fetch() serves non-public portable objects to their audience", 
       });
       assertEquals(response.status, 200, id);
       assertEquals(response.headers.get("Cache-Control"), "private", id);
-      const json = await response.json() as Record<string, unknown>;
+      const json = (await response.json()) as Record<string, unknown>;
       assertEquals(json.id, `ap+ef61://${did}/notes/${id}`);
     }
   });
 
   await t.step("denies a request by anyone else", async () => {
-    for (
-      const request of [
-        gatewayRequest("/notes/direct"),
-        await signed("direct", "key2"),
-        await signed("followers", "key2"),
-        await signed("other"),
-      ]
-    ) {
+    for (const request of [
+      gatewayRequest("/notes/direct"),
+      await signed("direct", "key2"),
+      await signed("followers", "key2"),
+      await signed("other"),
+    ]) {
       const response = await federation.fetch(request, {
         contextData: undefined,
       });
@@ -1227,7 +1227,7 @@ test("Federation.fetch() serves portable objects with compatible IDs", async (t)
         );
         // The object is served as it is, with the compatible identifier
         // naming its own gateway:
-        const json = await response.json() as Record<string, unknown>;
+        const json = (await response.json()) as Record<string, unknown>;
         assertEquals(json.id, (await objects[id]()).id?.href);
       });
     }
@@ -1236,11 +1236,8 @@ test("Federation.fetch() serves portable objects with compatible IDs", async (t)
   await t.step("authorizes compatible-ID objects on any gateway", async () => {
     const authorized = createTestFederation();
     authorized
-      .setObjectDispatcher(
-        Note,
-        "/notes/{id}",
-        (_ctx, values) =>
-          sign(new Note({ id: compatible(`/notes/${values.id}`) })),
+      .setObjectDispatcher(Note, "/notes/{id}", (_ctx, values) =>
+        sign(new Note({ id: compatible(`/notes/${values.id}`) })),
       )
       .authorize(async (ctx) => {
         const owner = await ctx.getSignedKeyOwner();
@@ -1308,10 +1305,8 @@ test("Federation.fetch() compares portable IDs with the requested path", async (
     contextLoaderFactory: () => mockDocumentLoader,
     trailingSlashInsensitive: true,
   });
-  tolerant.setObjectDispatcher(
-    Note,
-    "/notes/{id}",
-    (_ctx, values) => signedNote(`/notes/${values.id}`),
+  tolerant.setObjectDispatcher(Note, "/notes/{id}", (_ctx, values) =>
+    signedNote(`/notes/${values.id}`),
   );
   response = await tolerant.fetch(gatewayRequest("/notes/1/"), {
     contextData: undefined,
@@ -1402,16 +1397,14 @@ test("Context.getPortableObjectUri()", async (t) => {
   });
 
   await t.step("requires a bare DID authority", () => {
-    for (
-      const authority of [
-        `${did}/extra`,
-        `${did}?query`,
-        `${did}#fragment`,
-        "did:key:",
-        "https://example.com",
-        "",
-      ]
-    ) {
+    for (const authority of [
+      `${did}/extra`,
+      `${did}?query`,
+      `${did}#fragment`,
+      "did:key:",
+      "https://example.com",
+      "",
+    ]) {
       assertThrows(
         () => ctx.getPortableObjectUri(Note, values, authority),
         TypeError,
@@ -1461,18 +1454,12 @@ test("Federation.fetch() serves portable actors through WebFinger", async () => 
     );
   };
   federation
-    .setActorDispatcher(
-      "/users/{identifier}",
-      (ctx, identifier) => getActor(ctx, identifier),
+    .setActorDispatcher("/users/{identifier}", (ctx, identifier) =>
+      getActor(ctx, identifier),
     )
     .mapHandle((_ctx, username) => username);
-  federation.setObjectDispatcher(
-    Person,
-    "/actors/{name}",
-    (ctx, values) =>
-      ctx.portableRequest?.authority === did
-        ? getActor(ctx, values.name)
-        : null,
+  federation.setObjectDispatcher(Person, "/actors/{name}", (ctx, values) =>
+    ctx.portableRequest?.authority === did ? getActor(ctx, values.name) : null,
   );
 
   const webFinger = await federation.fetch(
@@ -1597,16 +1584,17 @@ test("object responses warn about compatible IDs off the owner's first gateway",
   });
   federation.setObjectDispatcher(Note, "/notes/{id}", async (_ctx, values) => {
     if (values.id === "secondary") return secondary;
-    const id = values.id === "portable"
-      ? parseIri(`ap://${did}/notes/portable`)
-      : values.id === "ordinary"
-      ? new URL("https://example.com/notes/ordinary")
-      : toCompatibleEf61Id(
-        parseIri(`ap://${did}/notes/${values.id}`),
-        values.id === "secondary" || values.id === "retained"
-          ? gateways[1]
-          : gateways[0],
-      );
+    const id =
+      values.id === "portable"
+        ? parseIri(`ap://${did}/notes/portable`)
+        : values.id === "ordinary"
+          ? new URL("https://example.com/notes/ordinary")
+          : toCompatibleEf61Id(
+              parseIri(`ap://${did}/notes/${values.id}`),
+              values.id === "secondary" || values.id === "retained"
+                ? gateways[1]
+                : gateways[0],
+            );
     const note = new Note({
       id,
       attribution: ownerId,
@@ -1640,15 +1628,13 @@ test("object responses warn about compatible IDs off the owner's first gateway",
         actor: ownerId,
       }),
   );
-  for (
-    const [id, expected] of [
-      ["secondary", 1],
-      ["retained", 1],
-      ["primary", 0],
-      ["portable", 0],
-      ["ordinary", 0],
-    ] as const
-  ) {
+  for (const [id, expected] of [
+    ["secondary", 1],
+    ["retained", 1],
+    ["primary", 0],
+    ["portable", 0],
+    ["ordinary", 0],
+  ] as const) {
     const records = await captureWarnings(async () => {
       const response = await federation.fetch(
         new Request(`https://example.com/notes/${id}`, {
@@ -1657,7 +1643,7 @@ test("object responses warn about compatible IDs off the owner's first gateway",
         { contextData: undefined },
       );
       assertEquals(response.status, 200);
-      const body = await response.json() as { id: string; type: string };
+      const body = (await response.json()) as { id: string; type: string };
       assertEquals(body.type, "Note");
       if (id === "retained") {
         assertEquals(
@@ -1687,10 +1673,9 @@ test("object responses warn about compatible IDs off the owner's first gateway",
   );
   for (const id of ["secondary", "retained"]) {
     const gatewayRecords = await captureWarnings(async () => {
-      const response = await federation.fetch(
-        gatewayRequest(`/notes/${id}`),
-        { contextData: undefined },
-      );
+      const response = await federation.fetch(gatewayRequest(`/notes/${id}`), {
+        contextData: undefined,
+      });
       assertEquals(response.status, 200);
     });
     assertEquals(
@@ -1703,14 +1688,12 @@ test("object responses warn about compatible IDs off the owner's first gateway",
     format: "compact",
     contextLoader: mockDocumentLoader,
   });
-  for (
-    const request of [
-      new Request("https://example.com/notes/secondary", {
-        headers: { Accept: ACCEPT },
-      }),
-      gatewayRequest("/notes/secondary"),
-    ]
-  ) {
+  for (const request of [
+    new Request("https://example.com/notes/secondary", {
+      headers: { Accept: ACCEPT },
+    }),
+    gatewayRequest("/notes/secondary"),
+  ]) {
     const records = await captureWarnings(async () => {
       const response = await federation.fetch(request, {
         contextData: undefined,
@@ -1718,7 +1701,10 @@ test("object responses warn about compatible IDs off the owner's first gateway",
       assertEquals(response.status, 200);
       assertEquals(await response.json(), expectedBody);
     });
-    assertEquals(records.filter((r) => r.properties.kind != null), []);
+    assertEquals(
+      records.filter((r) => r.properties.kind != null),
+      [],
+    );
   }
   assertEquals(actorCalls, 8);
 });
@@ -1760,9 +1746,8 @@ test("Federation.fetch() serves compatible-ID actors", async (t) => {
     );
   };
   federation
-    .setActorDispatcher(
-      "/users/{identifier}",
-      (ctx, identifier) => getActor(ctx, identifier),
+    .setActorDispatcher("/users/{identifier}", (ctx, identifier) =>
+      getActor(ctx, identifier),
     )
     .mapHandle((_ctx, username) => username)
     .mapAlias((_ctx, resource) => {
@@ -1772,17 +1757,11 @@ test("Federation.fetch() serves compatible-ID actors", async (t) => {
         ? null
         : { identifier: match[1] };
     });
-  federation.setFollowersDispatcher(
-    "/users/{identifier}/followers",
-    () => ({ items: [] }),
-  );
-  federation.setObjectDispatcher(
-    Person,
-    "/actors/{name}",
-    (ctx, values) =>
-      ctx.portableRequest?.authority === did
-        ? getActor(ctx, values.name)
-        : null,
+  federation.setFollowersDispatcher("/users/{identifier}/followers", () => ({
+    items: [],
+  }));
+  federation.setObjectDispatcher(Person, "/actors/{name}", (ctx, values) =>
+    ctx.portableRequest?.authority === did ? getActor(ctx, values.name) : null,
   );
   const compatibleId = gatewayUrl("/actors/alice");
 
@@ -1792,9 +1771,9 @@ test("Federation.fetch() serves compatible-ID actors", async (t) => {
       for (const resource of ["acct:alice@example.com", compatibleId]) {
         const response = await federation.fetch(
           new Request(
-            `https://example.com/.well-known/webfinger?resource=${
-              encodeURIComponent(resource)
-            }`,
+            `https://example.com/.well-known/webfinger?resource=${encodeURIComponent(
+              resource,
+            )}`,
           ),
           { contextData: undefined },
         );
@@ -1809,7 +1788,10 @@ test("Federation.fetch() serves compatible-ID actors", async (t) => {
       }
     });
     // The actor's IDs are not compared with the ones Context builds:
-    assertEquals(records.map((r) => r.rawMessage), []);
+    assertEquals(
+      records.map((r) => r.rawMessage),
+      [],
+    );
   });
 
   await t.step("gateway", async () => {
@@ -1818,7 +1800,7 @@ test("Federation.fetch() serves compatible-ID actors", async (t) => {
       { contextData: undefined },
     );
     assertEquals(response.status, 200);
-    const json = await response.json() as Record<string, unknown>;
+    const json = (await response.json()) as Record<string, unknown>;
     assertEquals(json.id, compatibleId);
     const actor = await lookupObject(compatibleId, {
       documentLoader: (url) =>
@@ -1921,11 +1903,7 @@ test("Federation.fetch() warns about portable actors without valid gateways", as
     "/users/{identifier}",
     (ctx, identifier) => actors[identifier]?.(ctx) ?? null,
   );
-  federation.setObjectDispatcher(
-    Person,
-    "/actors/{name}",
-    () => null,
-  );
+  federation.setObjectDispatcher(Person, "/actors/{name}", () => null);
   const expected: Record<string, string[]> = {
     valid: [],
     empty: [`ap+ef61://${did}/actors/empty`],
@@ -1945,8 +1923,8 @@ test("Federation.fetch() warns about portable actors without valid gateways", as
       });
       // A tombstone is logged as a 410 Gone response, not as a warning about
       // the actor:
-      const actorRecords = records.filter((r) =>
-        r.category.join(".") === "fedify.federation.actor"
+      const actorRecords = records.filter(
+        (r) => r.category.join(".") === "fedify.federation.actor",
       );
       assertEquals(
         actorRecords.map((r) => r.properties.actorId),

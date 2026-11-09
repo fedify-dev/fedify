@@ -93,9 +93,7 @@ function createLoadingRemoteContextFailedError(
 }
 
 /** @internal */
-export function isClearlyMalformedContextReference(
-  reference: string,
-): boolean {
+export function isClearlyMalformedContextReference(reference: string): boolean {
   // Opaque identifiers such as did:, urn:, or app: may be handled by
   // deployment-specific loaders, so a scheme prefix alone is not enough to
   // mark an @context reference as permanently malformed.  Treat only clearly
@@ -109,9 +107,7 @@ export function isClearlyMalformedContextReference(
     const code = char.charCodeAt(0);
     if (code <= 0x20 || code === 0x7f) return true;
   }
-  if (
-    /^[A-Za-z][A-Za-z0-9+.-]*:/.test(reference) && !URL.canParse(reference)
-  ) {
+  if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(reference) && !URL.canParse(reference)) {
     return true;
   }
   for (let i = 0; i < reference.length; i++) {
@@ -126,8 +122,10 @@ export function isClearlyMalformedContextReference(
     i += 2;
   }
   if (
-    reference.startsWith("./") || reference.startsWith("../") ||
-    reference.startsWith("/") || reference.startsWith("//")
+    reference.startsWith("./") ||
+    reference.startsWith("../") ||
+    reference.startsWith("/") ||
+    reference.startsWith("//")
   ) {
     for (const char of reference) {
       if ('[]<>"\\^`{|}'.includes(char)) return true;
@@ -195,7 +193,8 @@ export function wrapContextLoaderForJsonLd(
   contextLoader: DocumentLoader | undefined,
 ): DocumentLoader {
   if (
-    contextLoader != null && effectiveContextLoaderPolicies.has(contextLoader)
+    contextLoader != null &&
+    effectiveContextLoaderPolicies.has(contextLoader)
   ) {
     return contextLoader;
   }
@@ -255,14 +254,13 @@ export async function compactJsonLd(
   jsonLd: unknown,
   contextLoader: DocumentLoader | undefined,
 ): Promise<unknown> {
-  const hasLds = typeof jsonLd === "object" && jsonLd != null &&
-    "signature" in jsonLd;
+  const hasLds =
+    typeof jsonLd === "object" && jsonLd != null && "signature" in jsonLd;
   const signature = hasLds
     ? (jsonLd as { signature: unknown }).signature
     : undefined;
-  const normalizationContextLoader = getNormalizationContextLoader(
-    contextLoader,
-  );
+  const normalizationContextLoader =
+    getNormalizationContextLoader(contextLoader);
   const document = hasLds ? detachSignature(jsonLd) : jsonLd;
   // Most unsafe JSON-LD keywords remain visible after compaction and can be
   // rejected on the normalized document.  @graph is the exception: a source
@@ -276,11 +274,9 @@ export async function compactJsonLd(
   // the remote context payloads observed by the pre-scan cannot diverge from
   // the ones observed by jsonld.compact() later in this call.
   await assertNoGraphBeforeCompaction(document, normalizationContextLoader);
-  const compacted = await jsonld.compact(
-    document,
-    localContext,
-    { documentLoader: normalizationContextLoader },
-  );
+  const compacted = await jsonld.compact(document, localContext, {
+    documentLoader: normalizationContextLoader,
+  });
   if (hasLds && typeof compacted === "object" && compacted != null) {
     // Linked Data Signatures are handled out-of-band by this module.
     (compacted as Record<string, unknown>).signature = signature;
@@ -341,7 +337,9 @@ function getRemoteContext(
     document = JSON.parse(document) as unknown;
   }
   if (
-    typeof document !== "object" || document == null || Array.isArray(document)
+    typeof document !== "object" ||
+    document == null ||
+    Array.isArray(document)
   ) {
     throw createInvalidRemoteContextError(reference);
   }
@@ -396,7 +394,8 @@ function getDirectContextTarget(
   if (definition === null) return null;
   if (typeof definition === "string") return definition;
   if (
-    typeof definition === "object" && definition != null &&
+    typeof definition === "object" &&
+    definition != null &&
     "@id" in definition
   ) {
     const id = definition["@id"];
@@ -407,8 +406,12 @@ function getDirectContextTarget(
 }
 
 function isJsonTypedDefinition(definition: unknown): boolean {
-  return typeof definition === "object" && definition != null &&
-    "@type" in definition && definition["@type"] === "@json";
+  return (
+    typeof definition === "object" &&
+    definition != null &&
+    "@type" in definition &&
+    definition["@type"] === "@json"
+  );
 }
 
 function resolveLocalContextTarget(
@@ -460,11 +463,13 @@ function normalizeContextReference(
 /** @internal */
 export function isInvalidUrlTypeError(error: unknown): error is TypeError {
   const code = (error as { code?: unknown }).code;
-  return error instanceof TypeError &&
+  return (
+    error instanceof TypeError &&
     (code === "ERR_INVALID_URL" ||
       error.message === "Invalid URL string." ||
       /^Invalid URL(?::|$)/.test(error.message) ||
-      / cannot be parsed as a URL\.?$/.test(error.message));
+      / cannot be parsed as a URL\.?$/.test(error.message))
+  );
 }
 
 async function applyGraphAliasContext(
@@ -507,10 +512,7 @@ async function applyGraphAliasContext(
         // re-applying it against the caller's current JSON-LD context state.
         remoteContext = (async () => {
           try {
-            return getRemoteContext(
-              await documentLoader(reference),
-              reference,
-            );
+            return getRemoteContext(await documentLoader(reference), reference);
           } catch (error) {
             if (
               reference === context &&
@@ -581,7 +583,8 @@ async function applyGraphAliasContext(
         nextState.termTargets.delete(term);
       }
       if (
-        typeof definition === "object" && definition != null &&
+        typeof definition === "object" &&
+        definition != null &&
         "@context" in definition
       ) {
         // Property-scoped contexts can carry relative remote references whose
@@ -668,8 +671,9 @@ async function assertNoGraphBeforeCompaction(
 }
 
 function isJsonLiteralWrapper(value: Record<string, unknown>): boolean {
-  return "@value" in value &&
-    (value["@type"] === "@json" || value.type === "@json");
+  return (
+    "@value" in value && (value["@type"] === "@json" || value.type === "@json")
+  );
 }
 
 /** @internal */
@@ -870,22 +874,28 @@ export function hasSignatureLike(jsonLd: unknown): boolean {
   const hasReference = (value: unknown): boolean => {
     if (typeof value === "string") return true;
     if (Array.isArray(value)) return value.some(hasReference);
-    return typeof value === "object" && value != null &&
+    return (
+      typeof value === "object" &&
+      value != null &&
       (("id" in value && typeof value.id === "string") ||
-        ("@id" in value && typeof value["@id"] === "string"));
+        ("@id" in value && typeof value["@id"] === "string"))
+    );
   };
 
   const hasSignatureObject = (value: unknown): boolean => {
     if (typeof value !== "object" || value == null) return false;
     const signatureRecord = value as Record<string, unknown>;
-    const hasType = typeof signatureRecord.type === "string" ||
+    const hasType =
+      typeof signatureRecord.type === "string" ||
       (Array.isArray(signatureRecord.type) &&
         signatureRecord.type.some((item) => typeof item === "string"));
-    return hasType &&
+    return (
+      hasType &&
       (hasReference(signatureRecord.creator) ||
         hasReference(signatureRecord.verificationMethod)) &&
       (typeof signatureRecord.signatureValue === "string" ||
-        typeof signatureRecord.jws === "string");
+        typeof signatureRecord.jws === "string")
+    );
   };
 
   return Array.isArray(signature)
@@ -904,11 +914,16 @@ export function hasSignature(jsonLd: unknown): jsonLd is SignedJsonLd {
   if ("signature" in jsonLd) {
     const signature = jsonLd.signature;
     if (typeof signature !== "object" || signature == null) return false;
-    return "type" in signature && signature.type === "RsaSignature2017" &&
-      "creator" in signature && typeof signature.creator === "string" &&
-      "created" in signature && typeof signature.created === "string" &&
+    return (
+      "type" in signature &&
+      signature.type === "RsaSignature2017" &&
+      "creator" in signature &&
+      typeof signature.creator === "string" &&
+      "created" in signature &&
+      typeof signature.created === "string" &&
       "signatureValue" in signature &&
-      typeof signature.signatureValue === "string";
+      typeof signature.signatureValue === "string"
+    );
   }
   return false;
 }
@@ -1103,8 +1118,7 @@ export async function verifySignature(
 /**
  * Options for verifying JSON-LD documents.
  */
-export interface VerifyJsonLdOptions extends VerifySignatureOptions {
-}
+export interface VerifyJsonLdOptions extends VerifySignatureOptions {}
 
 /**
  * Known Linked Data Signature `type` values, used to keep
@@ -1113,9 +1127,9 @@ export interface VerifyJsonLdOptions extends VerifySignatureOptions {
  * only from external documents and are dropped from the metric attribute to
  * avoid attacker-controlled cardinality.
  */
-const LD_KNOWN_SIGNATURE_TYPES = new Set<string>(
-  ["RsaSignature2017"] satisfies readonly LinkedDataSignatureMetricType[],
-);
+const LD_KNOWN_SIGNATURE_TYPES = new Set<string>([
+  "RsaSignature2017",
+] satisfies readonly LinkedDataSignatureMetricType[]);
 
 /**
  * Reports only whether a `signature` key is present on the document, with
@@ -1128,9 +1142,7 @@ const LD_KNOWN_SIGNATURE_TYPES = new Set<string>(
  * presence-only check captures both cases.
  */
 function hasLdSignatureProperty(jsonLd: unknown): boolean {
-  return (
-    typeof jsonLd === "object" && jsonLd != null && "signature" in jsonLd
-  );
+  return typeof jsonLd === "object" && jsonLd != null && "signature" in jsonLd;
 }
 
 function getLdSignatureObject(
@@ -1139,7 +1151,8 @@ function getLdSignatureObject(
   if (!hasLdSignatureProperty(jsonLd)) return undefined;
   const { signature } = jsonLd as { signature: unknown };
   if (
-    typeof signature !== "object" || signature == null ||
+    typeof signature !== "object" ||
+    signature == null ||
     Array.isArray(signature)
   ) {
     return undefined;
@@ -1199,21 +1212,24 @@ async function verifyJsonLdInternal(
   options: VerifyJsonLdOptions,
   compact: boolean,
 ): Promise<VerifyJsonLdDetailedResult> {
-  if (
-    options[verificationObservation]?.attempt == null
-  ) {
+  if (options[verificationObservation]?.attempt == null) {
     return await observeAttempt(
       {
         ...options,
-        [verificationObservation]: options[verificationObservation] ??
-          { attempts: [] },
+        [verificationObservation]: options[verificationObservation] ?? {
+          attempts: [],
+        },
       },
       "linkedData",
       (observation) =>
-        verifyJsonLdInternal(jsonLd, {
-          ...options,
-          [verificationObservation]: observation,
-        }, compact),
+        verifyJsonLdInternal(
+          jsonLd,
+          {
+            ...options,
+            [verificationObservation]: observation,
+          },
+          compact,
+        ),
       (value) => value.verified,
     );
   }
@@ -1230,9 +1246,11 @@ async function verifyJsonLdInternal(
       try {
         const verificationOptions = hasSignature(jsonLd)
           ? {
-            ...options,
-            contextLoader: getNormalizationContextLoader(options.contextLoader),
-          }
+              ...options,
+              contextLoader: getNormalizationContextLoader(
+                options.contextLoader,
+              ),
+            }
           : options;
         const compacted = compact
           ? hasSignature(jsonLd)
@@ -1242,9 +1260,8 @@ async function verifyJsonLdInternal(
         const object = await Object.fromJsonLd(compacted, verificationOptions);
         observation?.parsedObject?.(object);
         if (observation?.subject != null) {
-          observation.subject.id = object.id == null
-            ? null
-            : new URL(object.id.href);
+          observation.subject.id =
+            object.id == null ? null : new URL(object.id.href);
         }
         if (object.id != null) {
           span.setAttribute("activitypub.object.id", object.id.href);
@@ -1327,25 +1344,27 @@ async function verifyJsonLdInternal(
         const classified: SignatureVerificationResult = threw
           ? "error"
           : verified
-          ? "verified"
-          : hasLdSignatureProperty(jsonLd)
-          ? "rejected"
-          : "missing";
-        getFederationMetrics(options.meterProvider)
-          .recordSignatureVerificationDuration(
-            getDurationMs(start),
-            "linked_data",
-            classified,
-            {
-              ldType: signatureType,
-              verificationFailureReason: verified || threw
+            ? "verified"
+            : hasLdSignatureProperty(jsonLd)
+              ? "rejected"
+              : "missing";
+        getFederationMetrics(
+          options.meterProvider,
+        ).recordSignatureVerificationDuration(
+          getDurationMs(start),
+          "linked_data",
+          classified,
+          {
+            ldType: signatureType,
+            verificationFailureReason:
+              verified || threw
                 ? undefined
-                : observation?.attempt?.reason?.type ??
+                : (observation?.attempt?.reason?.type ??
                   (hasLdSignatureProperty(jsonLd)
                     ? "signatureVerificationFailed"
-                    : "noSignature"),
-            },
-          );
+                    : "noSignature")),
+          },
+        );
         span.end();
       }
     },

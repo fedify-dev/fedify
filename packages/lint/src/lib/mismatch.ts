@@ -27,62 +27,59 @@ import type {
   SpreadElement,
 } from "./types.ts";
 
-const isIdentifierWithName = <T extends string>(name: T) =>
-(
-  node: Expression | SpreadElement | PrivateIdentifier,
-): node is Identifier & { "name": T } =>
-  allOf(isNodeType("Identifier"), isNodeName(name))(node);
+const isIdentifierWithName =
+  <T extends string>(name: T) =>
+  (
+    node: Expression | SpreadElement | PrivateIdentifier,
+  ): node is Identifier & { "name": T } =>
+    allOf(isNodeType("Identifier"), isNodeName(name))(node);
 
 /**
  * Checks if a node is a CallExpression calling the expected context method.
  */
-const isExpectedMethodCall = (
-  {
-    ctxName,
-    idName,
-    methodName,
-    requiresIdentifier,
-  }: MethodCallContext,
-  identifierFirst = false,
-) =>
-(node: Node): boolean => {
-  if (
-    !isNodeType("CallExpression")(node) ||
-    !hasMemberExpressionCallee(node) ||
-    !isIdentifierWithName(ctxName)(node.callee.object) ||
-    !isIdentifierWithName(methodName)(node.callee.property)
-  ) return false;
+const isExpectedMethodCall =
+  (
+    { ctxName, idName, methodName, requiresIdentifier }: MethodCallContext,
+    identifierFirst = false,
+  ) =>
+  (node: Node): boolean => {
+    if (
+      !isNodeType("CallExpression")(node) ||
+      !hasMemberExpressionCallee(node) ||
+      !isIdentifierWithName(ctxName)(node.callee.object) ||
+      !isIdentifierWithName(methodName)(node.callee.property)
+    )
+      return false;
 
-  if (!requiresIdentifier) return isEmpty(node.arguments);
-  if (identifierFirst) {
-    return node.arguments.length > 0 &&
-      isIdentifierWithName(idName)(node.arguments[0]);
-  }
-  return allOf<typeof node.arguments>(
-    negate(isEmpty),
-    some(isIdentifierWithName(idName)),
-  )(node.arguments);
-};
+    if (!requiresIdentifier) return isEmpty(node.arguments);
+    if (identifierFirst) {
+      return (
+        node.arguments.length > 0 &&
+        isIdentifierWithName(idName)(node.arguments[0])
+      );
+    }
+    return allOf<typeof node.arguments>(
+      negate(isEmpty),
+      some(isIdentifierWithName(idName)),
+    )(node.arguments);
+  };
 
 /** Accepts an inline compatible ID built from the matching portable URI. */
-const isCompatiblePortableMethodCall = (
-  context: MethodCallContext,
-  portableGetter: string,
-) =>
-(node: Node): boolean =>
-  isNodeType("CallExpression")(node) &&
-  isIdentifierWithName("toCompatibleEf61Id")(node.callee) &&
-  node.arguments.length > 0 &&
-  isExpectedMethodCall({ ...context, methodName: portableGetter }, true)(
-    node.arguments[0],
-  );
+const isCompatiblePortableMethodCall =
+  (context: MethodCallContext, portableGetter: string) =>
+  (node: Node): boolean =>
+    isNodeType("CallExpression")(node) &&
+    isIdentifierWithName("toCompatibleEf61Id")(node.callee) &&
+    node.arguments.length > 0 &&
+    isExpectedMethodCall(
+      { ...context, methodName: portableGetter },
+      true,
+    )(node.arguments[0]);
 
 /**
  * Extracts parameter names from a function.
  */
-const extractParams = (
-  fn: FunctionNode,
-): [string | null, string | null] => {
+const extractParams = (fn: FunctionNode): [string | null, string | null] => {
   const params = fn.params;
   if (params.length < 2) return [null, null];
 
@@ -99,13 +96,14 @@ function createMismatchRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
   config: PropertyConfig & { getter: string },
   describe: (
     methodCallContext: MethodCallContext,
-  ) => Context extends Deno.lint.RuleContext ? {
-      message: string;
-    }
+  ) => Context extends Deno.lint.RuleContext
+    ? {
+        message: string;
+      }
     : {
-      messageId: string;
-      data: { message: string };
-    },
+        messageId: string;
+        data: { message: string };
+      },
 ) {
   return (context: Context) => {
     const tracker = trackFederationVariables();
@@ -118,7 +116,8 @@ function createMismatchRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
           !isSetActorDispatcherCall(node) ||
           !hasMemberExpressionCallee(node) ||
           !tracker.isFederationObject(node.callee.object)
-        ) return;
+        )
+          return;
 
         const dispatcherArg = node.arguments[1];
         if (!isFunction(dispatcherArg)) return;
@@ -143,22 +142,23 @@ function createMismatchRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
         if (!hasProperty) return;
 
         // Property exists, now check if the value is correct
-        const propertyChecker = createPropertyChecker((value) =>
-          isExpectedMethodCall(methodCallContext)(value) ||
-          (config.portableGetter != null && (
-            isExpectedMethodCall({
-              ...methodCallContext,
-              methodName: config.portableGetter,
-            }, true)(value) ||
-            isCompatiblePortableMethodCall(
-              methodCallContext,
-              config.portableGetter,
-            )(value)
-          ))
+        const propertyChecker = createPropertyChecker(
+          (value) =>
+            isExpectedMethodCall(methodCallContext)(value) ||
+            (config.portableGetter != null &&
+              (isExpectedMethodCall(
+                {
+                  ...methodCallContext,
+                  methodName: config.portableGetter,
+                },
+                true,
+              )(value) ||
+                isCompatiblePortableMethodCall(
+                  methodCallContext,
+                  config.portableGetter,
+                )(value))),
         )(config.path);
-        const propertySearcher = createPropertySearcher(
-          propertyChecker,
-        );
+        const propertySearcher = createPropertySearcher(propertyChecker);
 
         if (!propertySearcher(dispatcherArg.body)) {
           (context as { report: (arg: unknown) => void }).report({
@@ -182,12 +182,9 @@ function createMismatchRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
 export const createMismatchRuleDeno = (
   config: PropertyConfig & { getter: string },
 ): Deno.lint.Rule => ({
-  create: createMismatchRule(
-    config,
-    (context) => ({
-      message: actorPropertyMismatch(context),
-    }),
-  ),
+  create: createMismatchRule(config, (context) => ({
+    message: actorPropertyMismatch(context),
+  })),
 });
 
 export const createMismatchRuleEslint = (
@@ -196,20 +193,17 @@ export const createMismatchRuleEslint = (
   meta: {
     type: "problem",
     docs: {
-      description: `Ensure actor's ${
-        config.path.join(".")
-      } property uses correct context method`,
+      description: `Ensure actor's ${config.path.join(
+        ".",
+      )} property uses correct context method`,
     },
     schema: [],
     messages: {
       mismatch: "{{ message }}",
     },
   },
-  create: createMismatchRule(
-    config,
-    (context) => ({
-      messageId: "mismatch",
-      data: { message: actorPropertyMismatch(context) },
-    }),
-  ),
+  create: createMismatchRule(config, (context) => ({
+    messageId: "mismatch",
+    data: { message: actorPropertyMismatch(context) },
+  })),
 });

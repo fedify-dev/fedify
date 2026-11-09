@@ -26,14 +26,7 @@ import webFrameworks from "../webframeworks/mod.ts";
  * @returns A promise resolving to a complete InitCommandData object
  */
 const setData = (data: InitCommandOptions): Promise<InitCommandData> =>
-  pipe(
-    data,
-    setProjectName,
-    setInitializer,
-    setKv,
-    setMq,
-    setEnv,
-  );
+  pipe(data, setProjectName, setInitializer, setKv, setMq, setEnv);
 
 export default setData;
 
@@ -42,19 +35,21 @@ const setProjectName = set(
   async <T extends { dir: string }>({ dir }: T) =>
     basename(existsSync(dir) ? await realpath(dir) : normalize(dir)),
 );
-const setInitializer = set("initializer", <
-  T extends Parameters<WebFrameworkDescription["init"]>[0],
->(data: T) => webFrameworks[data.webFramework].init(data));
+const setInitializer = set(
+  "initializer",
+  <T extends Parameters<WebFrameworkDescription["init"]>[0]>(data: T) =>
+    webFrameworks[data.webFramework].init(data),
+);
 
-const setKv = set("kv", <
-  T extends { kvStore: KvStore },
->({ kvStore }: T) => kvStores[kvStore]);
+const setKv = set(
+  "kv",
+  <T extends { kvStore: KvStore }>({ kvStore }: T) => kvStores[kvStore],
+);
 
 const setMq = set(
   "mq",
-  <
-    T extends { messageQueue: MessageQueue },
-  >({ messageQueue }: T) => messageQueues[messageQueue],
+  <T extends { messageQueue: MessageQueue }>({ messageQueue }: T) =>
+    messageQueues[messageQueue],
 );
 const setEnv = set(
   "env",
@@ -64,6 +59,9 @@ const setEnv = set(
       kv: KvStoreDescription;
       mq: MessageQueueDescription;
     },
-  >({ initializer, kv, mq }: T) =>
-    merge(initializer.env)(merge(kv.env)(mq.env)),
+  >({
+    initializer,
+    kv,
+    mq,
+  }: T) => merge(initializer.env)(merge(kv.env)(mq.env)),
 );

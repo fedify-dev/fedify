@@ -55,9 +55,7 @@ interface EnqueueTasksContext<TContextData> {
  * @param options The enqueue options governing delay, ordering, and dedup.
  * @internal
  */
-const enqueueTasks = <TContextData>(
-  ctx: EnqueueTasksContext<TContextData>,
-) =>
+const enqueueTasks = <TContextData>(ctx: EnqueueTasksContext<TContextData>) =>
   async function <TData>(
     task: TaskDefinition<TContextData, TData>,
     items: readonly TData[],
@@ -66,9 +64,9 @@ const enqueueTasks = <TContextData>(
     const def = ctx.federation.taskDefinitions.get(task.name);
     if (def == null || def.handle !== task) {
       throw new TypeError(
-        `Task ${
-          JSON.stringify(task.name)
-        } is not defined on this federation; ` +
+        `Task ${JSON.stringify(
+          task.name,
+        )} is not defined on this federation; ` +
           "pass a handle returned by its defineTask().",
       );
     }
@@ -158,13 +156,13 @@ function planDeduplication<TContextData>(
   const key = options.deduplicationKey;
   const native = queue.nativeDeduplication === true;
   const canCas = ctx.federation.kv.cas != null;
-  const canBatchAtomically = queue.enqueueMany != null &&
-    queue.atomicEnqueueMany !== false;
+  const canBatchAtomically =
+    queue.enqueueMany != null && queue.atomicEnqueueMany !== false;
   if (itemCount > 1 && !canBatchAtomically && (native || canCas)) {
     throw new TypeError(
-      `Task ${
-        JSON.stringify(taskName)
-      } was enqueued as a batch with a deduplicationKey, but its message ` +
+      `Task ${JSON.stringify(
+        taskName,
+      )} was enqueued as a batch with a deduplicationKey, but its message ` +
         "queue does not provide an atomic enqueueMany implementation; a " +
         "multi-item batch cannot be deduplicated atomically without it.  " +
         "Use a queue with atomic batch enqueueing, or enqueue the tasks " +
@@ -261,7 +259,10 @@ async function dispatch(
     orderingKey?: string;
     deduplicationKey?: string;
   },
-  { meterProvider, taskName }: {
+  {
+    meterProvider,
+    taskName,
+  }: {
     meterProvider: MeterProvider | undefined;
     taskName: string;
   },
@@ -301,27 +302,28 @@ async function dispatch(
  * stamps the message envelope with a fresh id, the context's origin, and the
  * active trace context.  Curried so the batch encode reuses one bound encoder.
  */
-const encodeTaskMessage = <TContextData, TData>(
-  codec: TaskCodec,
-  origin: string,
-  task: TaskDefinition<TContextData, TData>,
-  options: TaskEnqueueOptions,
-) =>
-async (data: TData): Promise<TaskMessage> => {
-  const encoded = await codec.encode(task.schema, data);
-  const carrier: Record<string, string> = {};
-  propagation.inject(context.active(), carrier);
-  return {
-    type: "task",
-    id: crypto.randomUUID(),
-    baseUrl: origin,
-    taskName: task.name,
-    data: encoded,
-    started: Temporal.Now.instant().toString(),
-    attempt: 0,
-    orderingKey: options.orderingKey,
-    traceContext: carrier,
+const encodeTaskMessage =
+  <TContextData, TData>(
+    codec: TaskCodec,
+    origin: string,
+    task: TaskDefinition<TContextData, TData>,
+    options: TaskEnqueueOptions,
+  ) =>
+  async (data: TData): Promise<TaskMessage> => {
+    const encoded = await codec.encode(task.schema, data);
+    const carrier: Record<string, string> = {};
+    propagation.inject(context.active(), carrier);
+    return {
+      type: "task",
+      id: crypto.randomUUID(),
+      baseUrl: origin,
+      taskName: task.name,
+      data: encoded,
+      started: Temporal.Now.instant().toString(),
+      attempt: 0,
+      orderingKey: options.orderingKey,
+      traceContext: carrier,
+    };
   };
-};
 
 const logger = getLogger(["fedify", "federation", "task"]);

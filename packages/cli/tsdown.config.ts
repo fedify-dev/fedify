@@ -2,11 +2,7 @@ import { defineConfig } from "tsdown";
 import { temporalPolyfillIntro } from "../../scripts/tsdown/temporal.mts";
 
 export default defineConfig({
-  entry: [
-    "src/mod.ts",
-    "src/kv.bun.ts",
-    "src/kv.node.ts",
-  ],
+  entry: ["src/mod.ts", "src/kv.bun.ts", "src/kv.node.ts"],
   platform: "node",
   unbundle: true,
   outExtensions() {

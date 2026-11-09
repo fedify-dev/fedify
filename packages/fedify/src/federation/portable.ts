@@ -35,18 +35,18 @@ export const HASHLINK_MEDIA_ROUTE_TEMPLATE =
  */
 export type PortableGatewayRequest =
   | {
-    readonly type: "object";
-    /** The request information exposed to object dispatchers. */
-    readonly portableRequest: PortableRequest;
-    /** The canonical form of the requested portable ID. */
-    readonly canonicalId: string;
-    /** The object path to route, e.g., `/notes/123`. */
-    readonly path: `/${string}`;
-  }
+      readonly type: "object";
+      /** The request information exposed to object dispatchers. */
+      readonly portableRequest: PortableRequest;
+      /** The canonical form of the requested portable ID. */
+      readonly canonicalId: string;
+      /** The object path to route, e.g., `/notes/123`. */
+      readonly path: `/${string}`;
+    }
   | {
-    readonly type: "malformed";
-    readonly error: TypeError;
-  };
+      readonly type: "malformed";
+      readonly error: TypeError;
+    };
 
 /**
  * Recognizes an FEP-ef61 gateway request for a portable object, e.g.,
@@ -186,14 +186,14 @@ function assertBase58BtcDidKey(did: string): void {
  */
 export type HashlinkGatewayRequest =
   | {
-    readonly type: "media";
-    /** The request information passed to the hashlink media dispatcher. */
-    readonly media: HashlinkMediaRequest;
-  }
+      readonly type: "media";
+      /** The request information passed to the hashlink media dispatcher. */
+      readonly media: HashlinkMediaRequest;
+    }
   | {
-    readonly type: "malformed";
-    readonly error: TypeError;
-  };
+      readonly type: "malformed";
+      readonly error: TypeError;
+    };
 
 /**
  * Recognizes an FEP-ef61 gateway request for a resource addressed by

@@ -12,20 +12,20 @@ export const getErrorMessage = (resource: string, error: unknown): Message =>
   error instanceof InvalidHandleError
     ? message`Invalid handle format: ${error.handle}`
     : error instanceof PortableActorError
-    ? message`Failed to look up the portable actor ${error.resource}, as ${error.reason}.`
-    : error instanceof UnlinkedPortableActorError
-    ? message`${error.address} does not link back to the portable actor ${error.actorId}, so it is not verified to be the actor's WebFinger address:`
-    : error instanceof NotFoundError
-    ? message`Resource not found: ${error.resource}`
-    : error instanceof WebFingerLookupError
-    ? error.result === "network_error"
-      ? message`Failed to look up WebFinger for ${error.resource}: a network error occurred.`
-      : error.result === "invalid"
-      ? message`Failed to look up WebFinger for ${error.resource}: the server returned a response Fedify could not understand.`
-      : message`Failed to look up WebFinger for ${error.resource}: the server returned an unexpected error.`
-    : error instanceof Error
-    ? message`Failed to look up WebFinger for ${resource}: ${error.message}`
-    : message`Failed to look up WebFinger for ${resource}: ${String(error)}`;
+      ? message`Failed to look up the portable actor ${error.resource}, as ${error.reason}.`
+      : error instanceof UnlinkedPortableActorError
+        ? message`${error.address} does not link back to the portable actor ${error.actorId}, so it is not verified to be the actor's WebFinger address:`
+        : error instanceof NotFoundError
+          ? message`Resource not found: ${error.resource}`
+          : error instanceof WebFingerLookupError
+            ? error.result === "network_error"
+              ? message`Failed to look up WebFinger for ${error.resource}: a network error occurred.`
+              : error.result === "invalid"
+                ? message`Failed to look up WebFinger for ${error.resource}: the server returned a response Fedify could not understand.`
+                : message`Failed to look up WebFinger for ${error.resource}: the server returned an unexpected error.`
+            : error instanceof Error
+              ? message`Failed to look up WebFinger for ${resource}: ${error.message}`
+              : message`Failed to look up WebFinger for ${resource}: ${String(error)}`;
 
 /**
  * Custom error class for invalid handle formats.
@@ -70,7 +70,10 @@ export class NotFoundError extends Error {
  * @extends {Error}
  */
 export class WebFingerLookupError extends Error {
-  constructor(public resource: string, public result: WebFingerLookupResult) {
+  constructor(
+    public resource: string,
+    public result: WebFingerLookupResult,
+  ) {
     super(
       `Failed to look up WebFinger for ${resource}: result was "${result}".`,
     );
@@ -93,7 +96,10 @@ export class WebFingerLookupError extends Error {
  * @extends {Error}
  */
 export class PortableActorError extends Error {
-  constructor(public resource: string, public reason: string) {
+  constructor(
+    public resource: string,
+    public reason: string,
+  ) {
     super(`Failed to look up the portable actor ${resource}, as ${reason}.`);
     this.name = "PortableActorError";
   }
@@ -109,7 +115,10 @@ export class PortableActorError extends Error {
  * @extends {Error}
  */
 export class UnlinkedPortableActorError extends Error {
-  constructor(public address: string, public actorId: string) {
+  constructor(
+    public address: string,
+    public actorId: string,
+  ) {
     super(`${address} does not link back to the portable actor ${actorId}.`);
     this.name = "UnlinkedPortableActorError";
   }

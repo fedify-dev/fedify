@@ -75,8 +75,7 @@ export function createTunnelOption<S extends TunnelConfigSection>(section: S) {
     tunnel: bindConfig(
       map(
         flag("-T", "--no-tunnel", {
-          description:
-            message`Do not tunnel the server to the public Internet.`,
+          description: message`Do not tunnel the server to the public Internet.`,
         }),
         () => false as const,
       ),
@@ -110,12 +109,9 @@ export const debugOption = object({
 
 export const userAgentOption = object({
   userAgent: bindConfig(
-    option(
-      "-u",
-      "--user-agent",
-      string({ metavar: "USER_AGENT" }),
-      { description: message`The custom User-Agent header value.` },
-    ),
+    option("-u", "--user-agent", string({ metavar: "USER_AGENT" }), {
+      description: message`The custom User-Agent header value.`,
+    }),
     {
       context: configContext,
       key: (config) => config.userAgent ?? getUserAgent(),
@@ -162,11 +158,7 @@ const configOption = withDefault(
  * Combines debug mode and configuration file options into a single
  * "Global options" group.
  */
-export const globalOptions = merge(
-  "Global options",
-  debugOption,
-  configOption,
-);
+export const globalOptions = merge("Global options", debugOption, configOption);
 
 /**
  * Type representing the parsed global options.

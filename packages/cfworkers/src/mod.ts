@@ -70,9 +70,7 @@ export interface WorkersKvNamespaceLike<Key extends string = string> {
   getWithMetadata<ExpectedValue = unknown, Metadata = unknown>(
     key: Key,
     type: "json",
-  ): Promise<
-    WorkersKvNamespaceGetWithMetadataResult<ExpectedValue, Metadata>
-  >;
+  ): Promise<WorkersKvNamespaceGetWithMetadataResult<ExpectedValue, Metadata>>;
   put(
     key: Key,
     value: string,
@@ -150,9 +148,8 @@ export class WorkersKvStore implements KvStore {
 
   async get<T = unknown>(key: KvKey): Promise<T | undefined> {
     const encodedKey = this.#encodeKey(key);
-    const { value, metadata } = await this.#namespace.getWithMetadata<
-      KvMetadata
-    >(encodedKey);
+    const { value, metadata } =
+      await this.#namespace.getWithMetadata<KvMetadata>(encodedKey);
     if (value == null) return undefined;
     if (metadata?.expires != null && metadata.expires < Date.now()) {
       return undefined;
@@ -166,18 +163,23 @@ export class WorkersKvStore implements KvStore {
     options?: KvStoreSetOptions,
   ): Promise<void> {
     const encodedKey = this.#encodeKey(key);
-    const metadata: KvMetadata = options?.ttl == null ? {} : {
-      expires: Date.now() + options.ttl.total("milliseconds"),
-    };
+    const metadata: KvMetadata =
+      options?.ttl == null
+        ? {}
+        : {
+            expires: Date.now() + options.ttl.total("milliseconds"),
+          };
     await this.#namespace.put(
       encodedKey,
       JSON.stringify(value),
-      options?.ttl == null ? { metadata } : {
-        // According to Cloudflare Workers KV documentation,
-        // the minimum TTL is 60 seconds:
-        expirationTtl: Math.max(options.ttl.total("seconds"), 60),
-        metadata,
-      },
+      options?.ttl == null
+        ? { metadata }
+        : {
+            // According to Cloudflare Workers KV documentation,
+            // the minimum TTL is 60 seconds:
+            expirationTtl: Math.max(options.ttl.total("seconds"), 60),
+            metadata,
+          },
     );
   }
 
@@ -206,12 +208,12 @@ export class WorkersKvStore implements KvStore {
 
     // First, check if the exact prefix key exists
     if (exactKey != null) {
-      const { value, metadata } = await this.#namespace.getWithMetadata(
-        exactKey,
-      );
+      const { value, metadata } =
+        await this.#namespace.getWithMetadata(exactKey);
       if (
         value != null &&
-        (metadata == null || (metadata as KvMetadata).expires == null ||
+        (metadata == null ||
+          (metadata as KvMetadata).expires == null ||
           (metadata as KvMetadata).expires! >= Date.now())
       ) {
         yield {
@@ -350,8 +352,10 @@ export class WorkersMessageQueue implements MessageQueue {
         throw new TypeError("Queue message must be JSON-serializable.");
       }
 
-      return utf8Encoder.encode(serialized).byteLength +
-        ESTIMATED_METADATA_BYTES_PER_MESSAGE;
+      return (
+        utf8Encoder.encode(serialized).byteLength +
+        ESTIMATED_METADATA_BYTES_PER_MESSAGE
+      );
     };
 
     const delaySeconds = options?.delay?.total("seconds") ?? 0;
@@ -380,7 +384,8 @@ export class WorkersMessageQueue implements MessageQueue {
       } satisfies MessageSendRequest;
 
       const messageBytes = estimateMessageBytes(body);
-      const exceedsBatchLimit = batch.length >= MAX_BATCH_MESSAGES ||
+      const exceedsBatchLimit =
+        batch.length >= MAX_BATCH_MESSAGES ||
         estimatedBatchBytes + messageBytes > MAX_ESTIMATED_BATCH_BYTES;
 
       if (batch.length > 0 && exceedsBatchLimit) {
@@ -435,9 +440,8 @@ export class WorkersMessageQueue implements MessageQueue {
     // Handle both wrapped and unwrapped messages for backwards compatibility
     const wrapped = rawMessage as WrappedMessage;
     const orderingKey = wrapped.__fedify_ordering_key__;
-    const message = "__fedify_payload__" in wrapped
-      ? wrapped.__fedify_payload__
-      : rawMessage;
+    const message =
+      "__fedify_payload__" in wrapped ? wrapped.__fedify_payload__ : rawMessage;
 
     // If no ordering key or no KV configured, process immediately
     if (orderingKey == null || this.#orderingKv == null) {

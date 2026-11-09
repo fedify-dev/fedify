@@ -61,10 +61,9 @@ export async function spawnBenchmarkTarget(): Promise<BenchmarkTargetFixture> {
       if (identifier !== "alice") return [];
       return await keyPairs;
     });
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox").on(
-    Create,
-    () => {},
-  );
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .on(Create, () => {});
   let inboxUserAgent: string | null = null;
   const server = createServer(
     async (incoming: IncomingMessage, outgoing: ServerResponse) => {
@@ -94,7 +93,7 @@ export async function spawnBenchmarkTarget(): Promise<BenchmarkTargetFixture> {
     requests: () => requests.slice(),
     close: () =>
       new Promise<void>((resolve, reject) => {
-        server.close((error) => error == null ? resolve() : reject(error));
+        server.close((error) => (error == null ? resolve() : reject(error)));
       }),
   };
 }

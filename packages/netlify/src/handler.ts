@@ -89,14 +89,12 @@ function decodeOrderingMetadata(value: unknown): OrderingMetadata {
   if (
     orderingSequence !== undefined &&
     (typeof orderingSequence !== "number" ||
-      !Number.isSafeInteger(orderingSequence) || orderingSequence < 1)
+      !Number.isSafeInteger(orderingSequence) ||
+      orderingSequence < 1)
   ) {
     throw new ErrorDoNotRetry("Invalid Fedify queue ordering sequence.");
   }
-  if (
-    (value.orderingKey === undefined) !==
-      (orderingSequence === undefined)
-  ) {
+  if ((value.orderingKey === undefined) !== (orderingSequence === undefined)) {
     throw new ErrorDoNotRetry("Incomplete Fedify queue ordering metadata.");
   }
   return { orderingKey: value.orderingKey, orderingSequence };
@@ -170,9 +168,10 @@ export function createNetlifyQueueEventHandler<TContextData>(
     try {
       const process = async () => {
         const federation = await options.federation(event);
-        const contextData = options.contextData == null
-          ? undefined as TContextData
-          : await options.contextData(event);
+        const contextData =
+          options.contextData == null
+            ? (undefined as TContextData)
+            : await options.contextData(event);
         await federation.processQueuedTask(contextData, data.message);
       };
       if (data.orderingKey != null && data.orderingSequence != null) {
@@ -185,7 +184,8 @@ export function createNetlifyQueueEventHandler<TContextData>(
       }
     } catch (error) {
       if (
-        data.orderingKey != null && data.orderingSequence != null &&
+        data.orderingKey != null &&
+        data.orderingSequence != null &&
         // Async Workloads numbers the initial invocation 0, so maxRetries is
         // also the number of the final invocation.
         (error instanceof ErrorDoNotRetry || event.attempt >= maxRetries)

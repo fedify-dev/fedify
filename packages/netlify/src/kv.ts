@@ -30,7 +30,8 @@ export class NetlifyBlobsKvStore implements KvStore {
   }
 
   private serializeKey(key: KvKey): string {
-    const serialized = BLOB_KEY_PREFIX +
+    const serialized =
+      BLOB_KEY_PREFIX +
       key.map((part) => encodeBase64Url(part)).join(BLOB_KEY_SEPARATOR) +
       BLOB_KEY_SEPARATOR;
     if (new TextEncoder().encode(serialized).byteLength > MAX_BLOB_KEY_BYTES) {
@@ -42,11 +43,11 @@ export class NetlifyBlobsKvStore implements KvStore {
   }
 
   private deserializeKey(key: string): KvKey {
-    const encodedParts = key.slice(BLOB_KEY_PREFIX.length, -1).split(
-      BLOB_KEY_SEPARATOR,
-    );
+    const encodedParts = key
+      .slice(BLOB_KEY_PREFIX.length, -1)
+      .split(BLOB_KEY_SEPARATOR);
     return encodedParts.map((part) =>
-      textDecoder.decode(decodeBase64Url(part))
+      textDecoder.decode(decodeBase64Url(part)),
     ) as [string, ...string[]];
   }
 
@@ -57,8 +58,10 @@ export class NetlifyBlobsKvStore implements KvStore {
   private isAbsent(metadata: Record<string, unknown>): boolean {
     if (metadata.tombstone === true) return true;
     const expireIn = metadata.expireIn;
-    return typeof expireIn === "number" &&
-      expireIn <= Temporal.Now.instant().epochMilliseconds;
+    return (
+      typeof expireIn === "number" &&
+      expireIn <= Temporal.Now.instant().epochMilliseconds
+    );
   }
 
   private getEtag(entry: { readonly etag?: string } | null): string {
@@ -88,10 +91,11 @@ export class NetlifyBlobsKvStore implements KvStore {
     value: unknown,
     options?: KvStoreSetOptions | undefined,
   ): Promise<void> {
-    const expireIn = options?.ttl == null
-      ? null
-      : Temporal.Now.instant().epochMilliseconds +
-        options.ttl.total("millisecond");
+    const expireIn =
+      options?.ttl == null
+        ? null
+        : Temporal.Now.instant().epochMilliseconds +
+          options.ttl.total("millisecond");
 
     await this.#store.setJSON(this.serializeKey(key), value, {
       metadata: { "expireIn": expireIn },
@@ -143,9 +147,10 @@ export class NetlifyBlobsKvStore implements KvStore {
         type: "json",
       });
 
-      const currentValue = entry === null || this.isAbsent(entry.metadata)
-        ? undefined
-        : entry.data;
+      const currentValue =
+        entry === null || this.isAbsent(entry.metadata)
+          ? undefined
+          : entry.data;
 
       if (!isEqual(currentValue, expectedValue)) return false;
 
@@ -165,21 +170,23 @@ export class NetlifyBlobsKvStore implements KvStore {
       }
 
       const metadata = {
-        "expireIn": options?.ttl == null
-          ? null
-          : Temporal.Now.instant().epochMilliseconds +
-            options.ttl.total("millisecond"),
+        "expireIn":
+          options?.ttl == null
+            ? null
+            : Temporal.Now.instant().epochMilliseconds +
+              options.ttl.total("millisecond"),
       };
 
-      const result = entry === null
-        ? await this.#store.setJSON(serializedKey, newValue, {
-          onlyIfNew: true,
-          metadata: metadata,
-        })
-        : await this.#store.setJSON(serializedKey, newValue, {
-          onlyIfMatch: this.getEtag(entry),
-          metadata: metadata,
-        });
+      const result =
+        entry === null
+          ? await this.#store.setJSON(serializedKey, newValue, {
+              onlyIfNew: true,
+              metadata: metadata,
+            })
+          : await this.#store.setJSON(serializedKey, newValue, {
+              onlyIfMatch: this.getEtag(entry),
+              metadata: metadata,
+            });
 
       if (result.modified) return true;
     }

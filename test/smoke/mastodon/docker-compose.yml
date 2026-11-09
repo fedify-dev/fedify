@@ -99,8 +99,8 @@ services:
       - bash
       - -c
       - |
-          cat /usr/lib/ssl/cert.pem /certs/ca.crt > /tmp/ca-bundle.crt
-          bundle exec rails s -p 3000 -b 0.0.0.0
+        cat /usr/lib/ssl/cert.pem /certs/ca.crt > /tmp/ca-bundle.crt
+        bundle exec rails s -p 3000 -b 0.0.0.0
     env_file: mastodon.env
     environment:
       SSL_CERT_FILE: /tmp/ca-bundle.crt
@@ -113,11 +113,7 @@ services:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -sf http://localhost:3000/health | grep -q OK",
-        ]
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/health | grep -q OK"]
       interval: 10s
       retries: 18
 
@@ -145,8 +141,8 @@ services:
       - bash
       - -c
       - |
-          cat /usr/lib/ssl/cert.pem /certs/ca.crt > /tmp/ca-bundle.crt
-          bundle exec sidekiq -q ingress -q default -q push
+        cat /usr/lib/ssl/cert.pem /certs/ca.crt > /tmp/ca-bundle.crt
+        bundle exec sidekiq -q ingress -q default -q push
     env_file: mastodon.env
     environment:
       SSL_CERT_FILE: /tmp/ca-bundle.crt

@@ -23,17 +23,20 @@ declare const Deno: {
 };
 
 // Keep Deno's dependency cache separate from each child's isolated CLI cache.
-const denoDir = "Deno" in globalThis
-  ? JSON.parse(
-    new TextDecoder().decode(
-      (await new Deno.Command(Deno.execPath(), {
-        args: ["info", "--json"],
-        stdout: "piped",
-        stderr: "piped",
-      }).output()).stdout,
-    ),
-  ).denoDir as string
-  : undefined;
+const denoDir =
+  "Deno" in globalThis
+    ? (JSON.parse(
+        new TextDecoder().decode(
+          (
+            await new Deno.Command(Deno.execPath(), {
+              args: ["info", "--json"],
+              stdout: "piped",
+              stderr: "piped",
+            }).output()
+          ).stdout,
+        ),
+      ).denoDir as string)
+    : undefined;
 
 const packageDir = fileURLToPath(new URL("../", import.meta.url));
 
@@ -50,16 +53,15 @@ async function runLookup(args: string[]) {
     };
     if (denoDir != null) env.DENO_DIR = denoDir;
     delete env.FEDIFY_LOG_FILE;
-    for (
-      const name of [
-        "HTTP_PROXY",
-        "HTTPS_PROXY",
-        "ALL_PROXY",
-        "http_proxy",
-        "https_proxy",
-        "all_proxy",
-      ]
-    ) delete env[name];
+    for (const name of [
+      "HTTP_PROXY",
+      "HTTPS_PROXY",
+      "ALL_PROXY",
+      "http_proxy",
+      "https_proxy",
+      "all_proxy",
+    ])
+      delete env[name];
     const deno = "Deno" in globalThis;
     const result = await new Promise<{
       code: number | null;
@@ -85,24 +87,30 @@ async function runLookup(args: string[]) {
         "--",
         ...args,
       ];
-      const child = spawn(deno ? Deno.execPath() : process.execPath, [
-        ...("Bun" in globalThis ? bunArgs : [
-          ...(deno ? ["run", "-A", "src/mod.ts"] : ["dist/mod.js"]),
-          "--ignore-config",
-          "lookup",
-          ...args,
-        ]),
-      ], {
-        cwd: packageDir,
-        env,
-        stdio: ["ignore", "pipe", "pipe"],
-        timeout: 60_000,
-        killSignal: "SIGKILL",
-      });
+      const child = spawn(
+        deno ? Deno.execPath() : process.execPath,
+        [
+          ...("Bun" in globalThis
+            ? bunArgs
+            : [
+                ...(deno ? ["run", "-A", "src/mod.ts"] : ["dist/mod.js"]),
+                "--ignore-config",
+                "lookup",
+                ...args,
+              ]),
+        ],
+        {
+          cwd: packageDir,
+          env,
+          stdio: ["ignore", "pipe", "pipe"],
+          timeout: 60_000,
+          killSignal: "SIGKILL",
+        },
+      );
       let stdout = "";
       let stderr = "";
-      child.stdout.setEncoding("utf8").on("data", (s: string) => stdout += s);
-      child.stderr.setEncoding("utf8").on("data", (s: string) => stderr += s);
+      child.stdout.setEncoding("utf8").on("data", (s: string) => (stdout += s));
+      child.stderr.setEncoding("utf8").on("data", (s: string) => (stderr += s));
       child.on("error", reject);
       child.on("close", (code) => resolve({ code, stdout, stderr }));
     });
@@ -168,33 +176,34 @@ async function withServer(
     }
     const document = path.startsWith("/collection")
       ? {
-        "@context": "https://www.w3.org/ns/activitystreams",
-        type: "Collection",
-        id: url.href,
-        ...(path === "/collection-render"
-          ? { items: [{ type: "Note", icon: `${origin}/404` }] }
-          : {
-            first: `${origin}/${
-              path === "/collection403"
-                ? "403"
-                : path === "/collection-context"
-                ? "page-context"
-                : path === "/collection-timeout"
-                ? "slow"
-                : "500"
-            }`,
-          }),
-      }
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Collection",
+          id: url.href,
+          ...(path === "/collection-render"
+            ? { items: [{ type: "Note", icon: `${origin}/404` }] }
+            : {
+                first: `${origin}/${
+                  path === "/collection403"
+                    ? "403"
+                    : path === "/collection-context"
+                      ? "page-context"
+                      : path === "/collection-timeout"
+                        ? "slow"
+                        : "500"
+                }`,
+              }),
+        }
       : {
-        "@context": path === "/context-failure" || path === "/page-context"
-          ? `${origin}/404`
-          : path === "/context-timeout"
-          ? `${origin}/slow-context`
-          : "https://www.w3.org/ns/activitystreams",
-        type: path === "/page-context" ? "CollectionPage" : "Note",
-        id: url.href,
-        content: "Successful lookup",
-      };
+          "@context":
+            path === "/context-failure" || path === "/page-context"
+              ? `${origin}/404`
+              : path === "/context-timeout"
+                ? `${origin}/slow-context`
+                : "https://www.w3.org/ns/activitystreams",
+          type: path === "/page-context" ? "CollectionPage" : "Note",
+          id: url.href,
+          content: "Successful lookup",
+        };
     res.end(JSON.stringify(document));
   });
   await new Promise<void>((resolve, reject) => {
@@ -211,7 +220,7 @@ async function withServer(
       resolve();
     }
     await new Promise<void>((resolve, reject) => {
-      server.close((error) => error ? reject(error) : resolve());
+      server.close((error) => (error ? reject(error) : resolve()));
       server.closeAllConnections();
     });
   }
@@ -232,9 +241,13 @@ for (const status of [401, 403, 404, 410, 429, 500]) {
     }));
 }
 
-for (
-  const path of ["html", "malformed", "context-failure", "control", "dns-text"]
-) {
+for (const path of [
+  "html",
+  "malformed",
+  "context-failure",
+  "control",
+  "dns-text",
+]) {
   test(`lookup command diagnoses ${path}`, () =>
     withServer(async (origin) => {
       const result = await runLookup([`${origin}/${path}`]);
@@ -264,15 +277,13 @@ test("lookup command retains successes when another lookup throws", () =>
     equal(result.stderr.includes("--authorized-fetch"), false);
   }));
 
-for (
-  const path of [
-    "500",
-    "collection",
-    "collection403",
-    "collection-context",
-    "collection-render",
-  ]
-) {
+for (const path of [
+  "500",
+  "collection",
+  "collection403",
+  "collection-context",
+  "collection-render",
+]) {
   test(`lookup command diagnoses traversal of ${path}`, () =>
     withServer(async (origin) => {
       const result = await runLookup(["-t", `${origin}/${path}`]);
@@ -284,8 +295,8 @@ for (
             path === "collection403"
               ? 403
               : path === "collection-context" || path === "collection-render"
-              ? 404
-              : 500
+                ? 404
+                : 500
           }`,
         ),
       );
@@ -300,14 +311,12 @@ for (
     }));
 }
 
-for (
-  const path of [
-    "slow",
-    "body-timeout",
-    "context-timeout",
-    "collection-timeout",
-  ]
-) {
+for (const path of [
+  "slow",
+  "body-timeout",
+  "context-timeout",
+  "collection-timeout",
+]) {
   test(`lookup command retains timeout diagnostics for ${path}`, () =>
     withServer(async (origin) => {
       const result = await runLookup([

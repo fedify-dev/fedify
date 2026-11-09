@@ -26,7 +26,7 @@ export const OPERATORS = ["", "+", ".", "/", ";", "?", "&", "#"] as const;
 /**
  * Union of supported URI Template operators.
  */
-export type Operator = typeof OPERATORS[number];
+export type Operator = (typeof OPERATORS)[number];
 
 /**
  * RFC 6570 operator behavior table used during expansion.

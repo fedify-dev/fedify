@@ -10,11 +10,11 @@ import type {
 export type FunctionLikeNode =
   | FunctionNode
   | (Node & {
-    type: "FunctionDeclaration";
-    id: Identifier | null;
-    params: unknown[];
-    body: unknown;
-  });
+      type: "FunctionDeclaration";
+      id: Identifier | null;
+      params: unknown[];
+      body: unknown;
+    });
 
 const FUNCTION_NODE_TYPES = new Set([
   "FunctionDeclaration",
@@ -71,8 +71,10 @@ function alwaysExits(node: Node): boolean {
         return alwaysExits(node.consequent as Node);
       }
       if (node.alternate == null) return false;
-      return alwaysExits(node.consequent as Node) &&
-        alwaysExits(node.alternate as Node);
+      return (
+        alwaysExits(node.consequent as Node) &&
+        alwaysExits(node.alternate as Node)
+      );
     }
 
     case "TryStatement":
@@ -107,12 +109,7 @@ function collectBindingExpressions(
         if (node.kind === "var") {
           for (const name of names) bindings?.declaredHere.add(name);
         }
-        collectBindingExpressions(
-          decl.id as Node,
-          out,
-          bindings,
-          true,
-        );
+        collectBindingExpressions(decl.id as Node, out, bindings, true);
       }
       break;
     case "ObjectPattern":
@@ -142,12 +139,7 @@ function collectBindingExpressions(
     case "ArrayPattern":
       for (const elem of node.elements) {
         if (elem != null) {
-          collectBindingExpressions(
-            elem as Node,
-            out,
-            bindings,
-            declares,
-          );
+          collectBindingExpressions(elem as Node, out, bindings, declares);
         }
       }
       break;
@@ -155,20 +147,10 @@ function collectBindingExpressions(
       // This is the default value, e.g. { id = ctx.sendActivity(...) }
       out.push(node);
       if (declares) bindings?.declarationPatterns.add(node);
-      collectBindingExpressions(
-        node.left as Node,
-        out,
-        bindings,
-        declares,
-      );
+      collectBindingExpressions(node.left as Node, out, bindings, declares);
       break;
     case "RestElement":
-      collectBindingExpressions(
-        node.argument as Node,
-        out,
-        bindings,
-        declares,
-      );
+      collectBindingExpressions(node.argument as Node, out, bindings, declares);
       break;
     case "MemberExpression": {
       const object = node.object as Node;
@@ -205,18 +187,10 @@ export function collectReachableStatements(
       const test = node.test as Expression;
       out.push(test);
       if (!isStaticallyFalsy(test)) {
-        collectReachableStatements(
-          node.consequent as Node,
-          out,
-          bindings,
-        );
+        collectReachableStatements(node.consequent as Node, out, bindings);
       }
       if (node.alternate != null && !isStaticallyTruthy(test)) {
-        collectReachableStatements(
-          node.alternate as Node,
-          out,
-          bindings,
-        );
+        collectReachableStatements(node.alternate as Node, out, bindings);
       }
       return;
     }
@@ -224,18 +198,10 @@ export function collectReachableStatements(
     case "TryStatement":
       collectReachableStatements(node.block as Node, out, bindings);
       if (node.handler != null) {
-        collectReachableStatements(
-          node.handler.body as Node,
-          out,
-          bindings,
-        );
+        collectReachableStatements(node.handler.body as Node, out, bindings);
       }
       if (node.finalizer != null) {
-        collectReachableStatements(
-          node.finalizer as Node,
-          out,
-          bindings,
-        );
+        collectReachableStatements(node.finalizer as Node, out, bindings);
       }
       return;
 
@@ -244,11 +210,7 @@ export function collectReachableStatements(
       for (const switchCase of node.cases) {
         if (switchCase.test != null) out.push(switchCase.test as Node);
         for (const statement of switchCase.consequent) {
-          collectReachableStatements(
-            statement as Node,
-            out,
-            bindings,
-          );
+          collectReachableStatements(statement as Node, out, bindings);
           if (alwaysExits(statement as Node)) break;
         }
       }
@@ -492,9 +454,7 @@ function collectScopeBoundNames(
   const addAssigned = (target: unknown): void => {
     // `(name as T) = ...` and `name! = ...` still rebind `name`.
     let current = target;
-    while (
-      isNode(current) && TS_EXPRESSION_WRAPPERS.has(current.type)
-    ) {
+    while (isNode(current) && TS_EXPRESSION_WRAPPERS.has(current.type)) {
       current = (current as unknown as { expression: unknown }).expression;
     }
     add(current);
@@ -638,11 +598,7 @@ function collectFunctionsByName(
   if (!isNode(node)) return;
   const n = node;
 
-  const bindTo = (
-    names: string[],
-    from: unknown,
-    bindings = out,
-  ): void => {
+  const bindTo = (names: string[], from: unknown, bindings = out): void => {
     const functions: FunctionLikeNode[] = [];
     collectHeldFunctions(from, functions);
     if (functions.length < 1) return;
@@ -876,7 +832,7 @@ export function walkUsedScopes(
       for (const name of names) functionsHere.set(name, []);
     }
     const scopeDeclarations = new Set<Node>(
-      scopeRoot.type === "BlockStatement" ? scopeRoot.body as Node[] : [],
+      scopeRoot.type === "BlockStatement" ? (scopeRoot.body as Node[]) : [],
     );
     const scopeBoundNames = collectScopeBoundNames(scopeRoot, scopeFn);
     const localNames = new Set([...scopeBoundNames, ...outerStaleNames]);
@@ -903,8 +859,8 @@ export function walkUsedScopes(
     }
     for (const [name, functions] of augmentingAssignmentsHere) {
       const base = declaredHere.has(name)
-        ? functionsHere.get(name) ?? []
-        : functionsByName.get(name) ?? [];
+        ? (functionsHere.get(name) ?? [])
+        : (functionsByName.get(name) ?? []);
       functionsByName.set(name, [...base, ...functions]);
     }
     visit({ fn: scopeFn, statements, functionsByName });

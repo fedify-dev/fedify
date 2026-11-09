@@ -42,20 +42,21 @@ const getKeyName = (node: Property): string | null => {
  * as an identifier (`url`) or as a string literal (`"url"` or `["url"]`).
  * Computed identifier keys stay dynamic and are not matched.
  */
-const hasKeyName = (propertyName: string) => (node: Property): boolean =>
-  getKeyName(node) === propertyName;
+const hasKeyName =
+  (propertyName: string) =>
+  (node: Property): boolean =>
+    getKeyName(node) === propertyName;
 
 /**
  * Checks if a node is a Property with a specific key name.
  */
-export const isPropertyWithName = (propertyName: string) =>
-(
-  node: Property | SpreadElement,
-): node is Property =>
-  allOf(
-    isNodeType("Property"),
-    hasKeyName(propertyName),
-  )(node as Expression & Property);
+export const isPropertyWithName =
+  (propertyName: string) =>
+  (node: Property | SpreadElement): node is Property =>
+    allOf(
+      isNodeType("Property"),
+      hasKeyName(propertyName),
+    )(node as Expression & Property);
 
 /**
  * Creates a predicate function that checks if a nested property exists.
@@ -64,14 +65,11 @@ export const isPropertyWithName = (propertyName: string) =>
  * @returns A predicate function that checks if the nested property exists
  */
 export function createPropertyChecker(
-  checker: (
-    node:
-      | Expression
-      | AssignmentPattern,
-  ) => boolean,
+  checker: (node: Expression | AssignmentPattern) => boolean,
 ): (path: readonly string[]) => PropertyChecker {
   const inner =
-    ([first, ...rest]: readonly string[]): PropertyChecker => (node) => {
+    ([first, ...rest]: readonly string[]): PropertyChecker =>
+    (node) => {
       if (!isPropertyWithName(first)(node)) return false;
 
       // Base case: last property in path
@@ -98,7 +96,8 @@ export function createPropertyChecker(
  * @returns A function that checks the ObjectExpression
  */
 const checkObjectExpression =
-  (propertyChecker: PropertyChecker) => (obj: ObjectExpression): boolean =>
+  (propertyChecker: PropertyChecker) =>
+  (obj: ObjectExpression): boolean =>
     obj.properties.some(propertyChecker);
 
 /**
@@ -147,9 +146,8 @@ const isTombstoneExpression = (node: Expression): boolean =>
 export const isNonEmptyInitializer = (
   node: Expression | AssignmentPattern,
 ): boolean => {
-  const value = node.type === "AssignmentPattern"
-    ? node.right as Expression
-    : node;
+  const value =
+    node.type === "AssignmentPattern" ? (node.right as Expression) : node;
   const expression = unwrapTypeScriptExpression(value);
   if (isNullLiteral(expression) || isUndefinedExpression(expression)) {
     return false;
@@ -162,7 +160,8 @@ export const isNonEmptyInitializer = (
 
 // Check if both branches have the property
 const checkBranchWith =
-  (propertyChecker: PropertyChecker) => (branch: Expression): boolean => {
+  (propertyChecker: PropertyChecker) =>
+  (branch: Expression): boolean => {
     const expression = unwrapTypeScriptExpression(branch);
 
     // A null or undefined return means that no actor was found, so there is
@@ -197,9 +196,9 @@ const checkBranchWith =
 /**
  * Extracts the first argument if it's an ObjectExpression.
  */
-const extractFirstObjectExpression = (node: NewExpression):
-  | ObjectExpression
-  | null =>
+const extractFirstObjectExpression = (
+  node: NewExpression,
+): ObjectExpression | null =>
   pipe(
     node,
     prop("arguments"),
@@ -241,10 +240,7 @@ const checkReturnStatement =
 export const createPropertySearcher = (propertyChecker: PropertyChecker) => {
   return (
     node: Expression | BlockStatement | ReturnStatement,
-  ): node is
-    | ReturnStatement
-    | BlockStatement
-    | NewExpression => {
+  ): node is ReturnStatement | BlockStatement | NewExpression => {
     switch (node.type) {
       case "ReturnStatement":
         return checkReturnStatement(propertyChecker)(node);
@@ -267,19 +263,18 @@ export const createPropertySearcher = (propertyChecker: PropertyChecker) => {
   };
 };
 
-const checkAllReturnPaths = (propertyChecker: PropertyChecker) =>
-(
-  node: Expression | BlockStatement | Statement,
-): boolean =>
-  pipe(
-    node,
-    collectReturnPaths,
-    cases<ReturnStatement[], boolean>(
-      isEmpty,
-      always(false),
-      every(checkReturnStatement(propertyChecker)),
-    ),
-  );
+const checkAllReturnPaths =
+  (propertyChecker: PropertyChecker) =>
+  (node: Expression | BlockStatement | Statement): boolean =>
+    pipe(
+      node,
+      collectReturnPaths,
+      cases<ReturnStatement[], boolean>(
+        isEmpty,
+        always(false),
+        every(checkReturnStatement(propertyChecker)),
+      ),
+    );
 
 /**
  * Collects all return statements from a node, traversing control flow.
@@ -287,12 +282,7 @@ const checkAllReturnPaths = (propertyChecker: PropertyChecker) =>
  */
 const collectReturnPaths = (
   node: Expression | BlockStatement | Statement,
-): ReturnStatement[] =>
-  pipe(
-    node,
-    flatten,
-    toArray,
-  );
+): ReturnStatement[] => pipe(node, flatten, toArray);
 
 function* flatten(node: Node): Generator<ReturnStatement> {
   switch (node.type) {
@@ -343,8 +333,8 @@ function* flatten(node: Node): Generator<ReturnStatement> {
       break;
 
     default:
-      // For other node types (expressions, declarations, etc.),
-      // we don't traverse deeper to avoid infinite recursion
-      // from circular references like `parent`
+    // For other node types (expressions, declarations, etc.),
+    // we don't traverse deeper to avoid infinite recursion
+    // from circular references like `parent`
   }
 }

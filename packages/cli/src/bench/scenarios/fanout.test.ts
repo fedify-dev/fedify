@@ -14,16 +14,18 @@ test("fanoutRunner - triggers benchmark hook and reports drain", async () => {
   const suite: Suite = {
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "fanout",
-      type: "fanout",
-      sender: "alice",
-      followers: 5,
-      load: { concurrency: 1 },
-      duration: "50ms",
-      queueDrainTimeout: "1s",
-      expect: { deliveryThroughput: ">= 1/s" },
-    }],
+    scenarios: [
+      {
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+        followers: 5,
+        load: { concurrency: 1 },
+        duration: "50ms",
+        queueDrainTimeout: "1s",
+        expect: { deliveryThroughput: ">= 1/s" },
+      },
+    ],
   };
   const scenario = normalizeSuite(suite).scenarios[0];
   const measurement = await fanoutRunner.run({
@@ -36,11 +38,15 @@ test("fanoutRunner - triggers benchmark hook and reports drain", async () => {
     fetch: (input, init) => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/fedify/bench/stats") {
-        return Promise.resolve(json(statsSnapshot({
-          enqueued: triggerCalls * 6,
-          completed: triggerCalls * 6,
-          failed: 0,
-        })));
+        return Promise.resolve(
+          json(
+            statsSnapshot({
+              enqueued: triggerCalls * 6,
+              completed: triggerCalls * 6,
+              failed: 0,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         triggerCalls++;
@@ -70,35 +76,37 @@ test("fanoutRunner.validate - accepts schema-minimum follower count", () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "fanout",
-      type: "fanout",
-      sender: "alice",
-      followers: 1,
-    }],
+    scenarios: [
+      {
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+        followers: 1,
+      },
+    ],
   }).scenarios[0];
   assert.doesNotThrow(() => fanoutRunner.validate?.(scenario));
 });
 
 test("fanoutRunner.validate - rejects invalid sinkBase URLs", () => {
-  for (
-    const sinkBase of [
-      "http://target.test/",
-      "https://target.test:8443/",
-      "http://user:pass@target.test:9090/",
-      "http://target.test:9090/sinks/",
-    ]
-  ) {
+  for (const sinkBase of [
+    "http://target.test/",
+    "https://target.test:8443/",
+    "http://user:pass@target.test:9090/",
+    "http://target.test:9090/sinks/",
+  ]) {
     const scenario = normalizeSuite({
       version: 1,
       target: "http://target.test/",
-      scenarios: [{
-        name: "fanout",
-        type: "fanout",
-        sender: "alice",
-        followers: 5,
-        sinkBase,
-      }],
+      scenarios: [
+        {
+          name: "fanout",
+          type: "fanout",
+          sender: "alice",
+          followers: 5,
+          sinkBase,
+        },
+      ],
     }).scenarios[0];
 
     assert.throws(
@@ -116,15 +124,17 @@ test("fanoutRunner - serializes overlapping trigger drains", async () => {
   const suite: Suite = {
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "fanout",
-      type: "fanout",
-      sender: "alice",
-      followers: 5,
-      load: { concurrency: 3 },
-      duration: "40ms",
-      queueDrainTimeout: "1s",
-    }],
+    scenarios: [
+      {
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+        followers: 5,
+        load: { concurrency: 3 },
+        duration: "40ms",
+        queueDrainTimeout: "1s",
+      },
+    ],
   };
   const scenario = normalizeSuite(suite).scenarios[0];
   await fanoutRunner.run({
@@ -139,11 +149,13 @@ test("fanoutRunner - serializes overlapping trigger drains", async () => {
       if (url.pathname === "/.well-known/fedify/bench/stats") {
         statsCalls++;
         const drained = statsCalls % 2 === 0;
-        return json(statsSnapshot({
-          enqueued: drained ? 6 : 0,
-          completed: drained ? 6 : 0,
-          failed: 0,
-        }));
+        return json(
+          statsSnapshot({
+            enqueued: drained ? 6 : 0,
+            completed: drained ? 6 : 0,
+            failed: 0,
+          }),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         activeTriggers++;
@@ -165,15 +177,17 @@ test("fanoutRunner - counts failed queue tasks as delivery failures", async () =
   const suite: Suite = {
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "fanout",
-      type: "fanout",
-      sender: "alice",
-      followers: 5,
-      load: { concurrency: 1 },
-      duration: "40ms",
-      queueDrainTimeout: "1s",
-    }],
+    scenarios: [
+      {
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+        followers: 5,
+        load: { concurrency: 1 },
+        duration: "40ms",
+        queueDrainTimeout: "1s",
+      },
+    ],
   };
   const scenario = normalizeSuite(suite).scenarios[0];
   const measurement = await fanoutRunner.run({
@@ -188,11 +202,15 @@ test("fanoutRunner - counts failed queue tasks as delivery failures", async () =
       if (url.pathname === "/.well-known/fedify/bench/stats") {
         statsCalls++;
         const failedTasks = Math.floor(statsCalls / 2) * 6;
-        return Promise.resolve(json(statsSnapshot({
-          enqueued: failedTasks,
-          completed: 0,
-          failed: failedTasks,
-        })));
+        return Promise.resolve(
+          json(
+            statsSnapshot({
+              enqueued: failedTasks,
+              completed: 0,
+              failed: failedTasks,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         return Promise.resolve(json({ version: 1 }, 202));
@@ -214,15 +232,17 @@ test("fanoutRunner - waits for observed queue work before drain", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "fanout",
-      type: "fanout",
-      sender: "alice",
-      followers: 5,
-      load: { concurrency: 1 },
-      duration: "40ms",
-      queueDrainTimeout: "1s",
-    }],
+    scenarios: [
+      {
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+        followers: 5,
+        load: { concurrency: 1 },
+        duration: "40ms",
+        queueDrainTimeout: "1s",
+      },
+    ],
   }).scenarios[0];
 
   const measurement = await fanoutRunner.run({
@@ -238,11 +258,15 @@ test("fanoutRunner - waits for observed queue work before drain", async () => {
         statsCalls++;
         const observed = statsCalls > 2;
         const queueTasks = observed ? triggerCalls * 6 : 0;
-        return Promise.resolve(json(statsSnapshot({
-          enqueued: queueTasks,
-          completed: queueTasks,
-          failed: 0,
-        })));
+        return Promise.resolve(
+          json(
+            statsSnapshot({
+              enqueued: queueTasks,
+              completed: queueTasks,
+              failed: 0,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         triggerCalls++;
@@ -273,15 +297,17 @@ test("fanoutRunner - ignores baseline backlog completions while draining", async
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "fanout",
-      type: "fanout",
-      sender: "alice",
-      followers: 5,
-      load: { concurrency: 1 },
-      duration: "1ms",
-      queueDrainTimeout: "30ms",
-    }],
+    scenarios: [
+      {
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+        followers: 5,
+        load: { concurrency: 1 },
+        duration: "1ms",
+        queueDrainTimeout: "30ms",
+      },
+    ],
   }).scenarios[0];
 
   const measurement = await fanoutRunner.run({
@@ -295,11 +321,15 @@ test("fanoutRunner - ignores baseline backlog completions while draining", async
     fetch: (input) => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/fedify/bench/stats") {
-        return Promise.resolve(json(statsSnapshot({
-          enqueued: 6 + triggerCalls * 6,
-          completed: triggerCalls > 0 ? 6 : 0,
-          failed: 0,
-        })));
+        return Promise.resolve(
+          json(
+            statsSnapshot({
+              enqueued: 6 + triggerCalls * 6,
+              completed: triggerCalls > 0 ? 6 : 0,
+              failed: 0,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         triggerCalls++;
@@ -322,15 +352,17 @@ test("fanoutRunner - tolerates transient drain stats failures", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "fanout",
-      type: "fanout",
-      sender: "alice",
-      followers: 5,
-      load: { concurrency: 1 },
-      duration: "40ms",
-      queueDrainTimeout: "1s",
-    }],
+    scenarios: [
+      {
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+        followers: 5,
+        load: { concurrency: 1 },
+        duration: "40ms",
+        queueDrainTimeout: "1s",
+      },
+    ],
   }).scenarios[0];
 
   const measurement = await fanoutRunner.run({
@@ -351,11 +383,15 @@ test("fanoutRunner - tolerates transient drain stats failures", async () => {
             }),
           );
         }
-        return Promise.resolve(json(statsSnapshot({
-          enqueued: triggerCalls * 6,
-          completed: triggerCalls * 6,
-          failed: 0,
-        })));
+        return Promise.resolve(
+          json(
+            statsSnapshot({
+              enqueued: triggerCalls * 6,
+              completed: triggerCalls * 6,
+              failed: 0,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         triggerCalls++;
@@ -387,15 +423,17 @@ test("fanoutRunner - uses abortable drain poll sleeps", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "fanout",
-      type: "fanout",
-      sender: "alice",
-      followers: 5,
-      load: { rate: "1000/s" },
-      duration: "1ms",
-      queueDrainTimeout: "1ms",
-    }],
+    scenarios: [
+      {
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+        followers: 5,
+        load: { rate: "1000/s" },
+        duration: "1ms",
+        queueDrainTimeout: "1ms",
+      },
+    ],
   }).scenarios[0];
   let triggerCalls = 0;
 
@@ -409,11 +447,15 @@ test("fanoutRunner - uses abortable drain poll sleeps", async () => {
     fetch: (input) => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/fedify/bench/stats") {
-        return Promise.resolve(json(statsSnapshot({
-          enqueued: triggerCalls * 6,
-          completed: 0,
-          failed: 0,
-        })));
+        return Promise.resolve(
+          json(
+            statsSnapshot({
+              enqueued: triggerCalls * 6,
+              completed: 0,
+              failed: 0,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         triggerCalls++;
@@ -436,16 +478,18 @@ test("fanoutRunner - uses configured sink base for recipients", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "fanout",
-      type: "fanout",
-      sender: "alice",
-      followers: 5,
-      sinkBase,
-      load: { concurrency: 1 },
-      duration: "40ms",
-      queueDrainTimeout: "1s",
-    }],
+    scenarios: [
+      {
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+        followers: 5,
+        sinkBase,
+        load: { concurrency: 1 },
+        duration: "40ms",
+        queueDrainTimeout: "1s",
+      },
+    ],
   }).scenarios[0];
 
   const measurement = await fanoutRunner.run({
@@ -458,18 +502,22 @@ test("fanoutRunner - uses configured sink base for recipients", async () => {
     fetch: (input, init) => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/fedify/bench/stats") {
-        return Promise.resolve(json(statsSnapshot({
-          enqueued: triggerCalls * 6,
-          completed: triggerCalls * 6,
-          failed: 0,
-        })));
+        return Promise.resolve(
+          json(
+            statsSnapshot({
+              enqueued: triggerCalls * 6,
+              completed: triggerCalls * 6,
+              failed: 0,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         triggerCalls++;
         const body = JSON.parse(String(init?.body));
-        recipientInboxes = body.recipients.map((
-          recipient: Record<string, unknown>,
-        ) => recipient.inbox);
+        recipientInboxes = body.recipients.map(
+          (recipient: Record<string, unknown>) => recipient.inbox,
+        );
         return Promise.resolve(json({ version: 1 }, 202));
       }
       return Promise.resolve(new Response("unexpected", { status: 500 }));
@@ -488,16 +536,18 @@ test("fanoutRunner - gates sink recipients before triggering", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "fanout",
-      type: "fanout",
-      sender: "alice",
-      followers: 5,
-      sinkBase: `http://127.0.0.1:${await reservePort()}/`,
-      load: { concurrency: 1 },
-      duration: "30ms",
-      queueDrainTimeout: "1s",
-    }],
+    scenarios: [
+      {
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+        followers: 5,
+        sinkBase: `http://127.0.0.1:${await reservePort()}/`,
+        load: { concurrency: 1 },
+        duration: "30ms",
+        queueDrainTimeout: "1s",
+      },
+    ],
   }).scenarios[0];
   let gateCalls = 0;
   let triggerCalls = 0;
@@ -567,15 +617,17 @@ test("fanoutRunner - omits queue drain metrics without drain samples", async () 
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "fanout",
-      type: "fanout",
-      sender: "alice",
-      followers: 5,
-      load: { concurrency: 1 },
-      duration: "30ms",
-      queueDrainTimeout: "1s",
-    }],
+    scenarios: [
+      {
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+        followers: 5,
+        load: { concurrency: 1 },
+        duration: "30ms",
+        queueDrainTimeout: "1s",
+      },
+    ],
   }).scenarios[0];
 
   const measurement = await fanoutRunner.run({
@@ -588,11 +640,15 @@ test("fanoutRunner - omits queue drain metrics without drain samples", async () 
     fetch: (input) => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/fedify/bench/stats") {
-        return Promise.resolve(json(statsSnapshot({
-          enqueued: 0,
-          completed: 0,
-          failed: 0,
-        })));
+        return Promise.resolve(
+          json(
+            statsSnapshot({
+              enqueued: 0,
+              completed: 0,
+              failed: 0,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         return Promise.resolve(json({ error: "unavailable" }, 503));
@@ -634,13 +690,15 @@ function statsSnapshot(counts: {
   return {
     version: 1,
     source: "server",
-    scopeMetrics: [{
-      metrics: [
-        sum("fedify.queue.task.enqueued", counts.enqueued),
-        sum("fedify.queue.task.completed", counts.completed),
-        sum("fedify.queue.task.failed", counts.failed),
-      ],
-    }],
+    scopeMetrics: [
+      {
+        metrics: [
+          sum("fedify.queue.task.enqueued", counts.enqueued),
+          sum("fedify.queue.task.completed", counts.completed),
+          sum("fedify.queue.task.failed", counts.failed),
+        ],
+      },
+    ],
   };
 }
 

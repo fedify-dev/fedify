@@ -17,7 +17,7 @@ if (!actor || !noteObj) {
   return new Response("Not Found", { status: 404 });
 }
 
-const user = await actor.toJsonLd() as {
+const user = (await actor.toJsonLd()) as {
   icon: { url: string };
   name: string;
   preferredUsername: string;
@@ -25,7 +25,7 @@ const user = await actor.toJsonLd() as {
   summary: string;
 };
 
-const post = await noteObj.toJsonLd() as {
+const post = (await noteObj.toJsonLd()) as {
   published?: string;
   content: string;
   url: string;

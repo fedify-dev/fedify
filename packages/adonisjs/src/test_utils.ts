@@ -49,9 +49,9 @@ import type { ContextDataFactory } from "./types.ts";
  * The dispatchers never read the context data, so the type parameter is free
  * for the test to choose; it defaults to `null`.
  */
-export function createTestFederation<TContextData = null>(): Federation<
-  TContextData
-> {
+export function createTestFederation<
+  TContextData = null,
+>(): Federation<TContextData> {
   const federation = createFederation<TContextData>({
     kv: new MemoryKvStore(),
     // The tests never make outbound requests, but Fedify's SSRF guard would
@@ -135,8 +135,9 @@ interface TestServerBaseOptions {
  * Options for a server whose Fedify middleware is built by
  * {@link fedifyMiddleware} from these values.
  */
-export interface FederationServerOptions<TContextData>
-  extends TestServerBaseOptions {
+export interface FederationServerOptions<
+  TContextData,
+> extends TestServerBaseOptions {
   federation: Federation<TContextData>;
   /** Omit it to exercise the default that `fedifyMiddleware` supplies. */
   contextDataFactory?: ContextDataFactory<TContextData>;
@@ -218,12 +219,12 @@ export async function listen(
   // The HTTP/2 compat layer hands `handle()` request and response objects it
   // is perfectly happy with, but Node types the two servers separately.
   const httpServer: NodeHttpServer = options.http2
-    ? createHttp2Server(
-      handle as unknown as (
-        request: Http2ServerRequest,
-        response: Http2ServerResponse,
-      ) => void,
-    ) as unknown as NodeHttpServer
+    ? (createHttp2Server(
+        handle as unknown as (
+          request: Http2ServerRequest,
+          response: Http2ServerResponse,
+        ) => void,
+      ) as unknown as NodeHttpServer)
     : createServer(handle);
   // Without the `error` listener a failed bind never settles the promise, and
   // the run stalls until the test timeout with nothing said about the cause.
@@ -265,16 +266,20 @@ export async function startTestServer<TContextData>(
   );
   await app.init();
 
-  const middleware = "middleware" in options
-    ? asMiddlewareClass(options.middleware)
-    : fedifyMiddleware<TContextData>(
-      options.federation,
-      // The generic helper cannot know whether `TContextData` lets the factory
-      // be omitted; each test passes what its federation type requires.
-      ...([options.contextDataFactory, {
-        ignoreRoutePrefixes: options.ignoreRoutePrefixes,
-      }] as unknown as FedifyMiddlewareArgs<TContextData>),
-    );
+  const middleware =
+    "middleware" in options
+      ? asMiddlewareClass(options.middleware)
+      : fedifyMiddleware<TContextData>(
+          options.federation,
+          // The generic helper cannot know whether `TContextData` lets the factory
+          // be omitted; each test passes what its federation type requires.
+          ...([
+            options.contextDataFactory,
+            {
+              ignoreRoutePrefixes: options.ignoreRoutePrefixes,
+            },
+          ] as unknown as FedifyMiddlewareArgs<TContextData>),
+        );
 
   const server = new ServerFactory()
     .merge({
@@ -291,13 +296,13 @@ export async function startTestServer<TContextData>(
   if (options.afterFedify) {
     const downstream = options.afterFedify;
     stack.push(() =>
-      Promise.resolve({ default: asMiddlewareClass(downstream) })
+      Promise.resolve({ default: asMiddlewareClass(downstream) }),
     );
   }
   if (options.beforeFedify) {
     const upstream = options.beforeFedify;
     stack.unshift(() =>
-      Promise.resolve({ default: asMiddlewareClass(upstream) })
+      Promise.resolve({ default: asMiddlewareClass(upstream) }),
     );
   }
 

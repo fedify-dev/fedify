@@ -38,9 +38,9 @@ interface SnapshotMetric {
 }
 
 interface Snapshot {
-  readonly scopeMetrics?: ReadonlyArray<
-    { readonly metrics?: SnapshotMetric[] }
-  >;
+  readonly scopeMetrics?: ReadonlyArray<{
+    readonly metrics?: SnapshotMetric[];
+  }>;
 }
 
 /** An explicit-bucket histogram: bucket upper boundaries and their counts. */
@@ -83,18 +83,19 @@ export function parseServerSnapshot(snapshot: unknown): ServerSnapshot | null {
   try {
     const metrics = flattenMetrics(snapshot as Snapshot);
 
-    const sig = metrics.find((m) =>
-      m.dataPointType === "histogram" &&
-      (m.name ?? "").includes("signature.verification")
+    const sig = metrics.find(
+      (m) =>
+        m.dataPointType === "histogram" &&
+        (m.name ?? "").includes("signature.verification"),
     );
     const signature = sig == null ? null : mergeHistogram(sig.dataPoints);
 
     let queueDepthMax: number | null = null;
     const depth = metrics.find((m) => m.name === "fedify.queue.depth");
     if (depth != null && Array.isArray(depth.dataPoints)) {
-      const values = depth.dataPoints.map((p) => p.value).filter(
-        isFiniteNumber,
-      );
+      const values = depth.dataPoints
+        .map((p) => p.value)
+        .filter(isFiniteNumber);
       if (values.length > 0) queueDepthMax = Math.max(...values);
     }
 
@@ -281,8 +282,10 @@ function mergeHistogram(
       boundaries = [...b];
       counts = [...c];
     } else if (
-      counts != null && counts.length === c.length &&
-      boundaries.length === b.length && boundaries.every((v, i) => v === b[i])
+      counts != null &&
+      counts.length === c.length &&
+      boundaries.length === b.length &&
+      boundaries.every((v, i) => v === b[i])
     ) {
       // Only sum data points that share the exact same bucketing; differing
       // boundaries would misalign the counts and skew the percentiles.
@@ -298,11 +301,13 @@ function parseQueueTasks(
   const enqueued = sumMetric(metrics, "fedify.queue.task.enqueued");
   const completed = sumMetric(metrics, "fedify.queue.task.completed");
   const failed = sumMetric(metrics, "fedify.queue.task.failed");
-  return enqueued == null && completed == null && failed == null ? null : {
-    enqueued: enqueued ?? 0,
-    completed: completed ?? 0,
-    failed: failed ?? 0,
-  };
+  return enqueued == null && completed == null && failed == null
+    ? null
+    : {
+        enqueued: enqueued ?? 0,
+        completed: completed ?? 0,
+        failed: failed ?? 0,
+      };
 }
 
 function sumMetric(
@@ -336,7 +341,7 @@ function diffHistogram(
   // refuse to subtract rather than misattribute counts.
   if (!histogramsCompatible(baseline, end)) return null;
   const counts = end.counts.map((count, i) =>
-    Math.max(0, count - baseline.counts[i])
+    Math.max(0, count - baseline.counts[i]),
   );
   return { boundaries: end.boundaries, counts };
 }
@@ -363,13 +368,12 @@ function diffCounter(
   return Math.max(0, end - baseline);
 }
 
-function histogramsCompatible(
-  a: ServerHistogram,
-  b: ServerHistogram,
-): boolean {
-  return a.boundaries.length === b.boundaries.length &&
+function histogramsCompatible(a: ServerHistogram, b: ServerHistogram): boolean {
+  return (
+    a.boundaries.length === b.boundaries.length &&
     a.counts.length === b.counts.length &&
-    a.boundaries.every((boundary, i) => boundary === b.boundaries[i]);
+    a.boundaries.every((boundary, i) => boundary === b.boundaries[i])
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -389,7 +393,7 @@ function histogramPercentile(histogram: ServerHistogram, p: number): number {
       // so fall back to the highest boundary.
       return i < boundaries.length
         ? boundaries[i]
-        : boundaries[boundaries.length - 1] ?? 0;
+        : (boundaries[boundaries.length - 1] ?? 0);
     }
   }
   return boundaries[boundaries.length - 1] ?? 0;

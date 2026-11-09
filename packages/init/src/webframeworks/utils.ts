@@ -12,7 +12,7 @@ export const nodeBunDevToolTasks = {
 
 export const getNodeBunDevToolTasks = (
   pm: PackageManager,
-): Record<string, string> => pm === "deno" ? {} : nodeBunDevToolTasks;
+): Record<string, string> => (pm === "deno" ? {} : nodeBunDevToolTasks);
 
 const SMOKE_TEST_FILE = "scripts/smoke.test.ts";
 
@@ -25,8 +25,8 @@ export const getTestTask = (pm: PackageManager): string =>
   pmToRt(pm) === "deno"
     ? `deno run -A ${SMOKE_TEST_FILE}`
     : pmToRt(pm) === "bun"
-    ? `bun run ${SMOKE_TEST_FILE}`
-    : `tsx ${SMOKE_TEST_FILE}`;
+      ? `bun run ${SMOKE_TEST_FILE}`
+      : `tsx ${SMOKE_TEST_FILE}`;
 
 /**
  * Returns the dev dependencies the `test` task needs beyond what the
@@ -67,4 +67,4 @@ Then, try to look up an actor from your server:
  * @returns The runtime name (deno, bun, or node)
  */
 export const pmToRt = (pm: PackageManager): "deno" | "bun" | "node" =>
-  (pm !== "deno" && pm !== "bun") ? "node" : pm;
+  pm !== "deno" && pm !== "bun" ? "node" : pm;

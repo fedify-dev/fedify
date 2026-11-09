@@ -227,12 +227,13 @@ function* generateEntityTypeHelpers(
   types: Record<string, TypeSchema>,
 ): Iterable<string> {
   const entityTypes = sortedTypeUris.flatMap((typeUri) =>
-    types[typeUri].entity ? [{ name: types[typeUri].name, uri: typeUri }] : []
+    types[typeUri].entity ? [{ name: types[typeUri].name, uri: typeUri }] : [],
   );
   const entityTypeNames = entityTypes.map((entityType) => entityType.name);
-  const entityTypeUnion = entityTypeNames.length < 1
-    ? " never"
-    : `\n  | typeof ${entityTypeNames.join("\n  | typeof ")}`;
+  const entityTypeUnion =
+    entityTypeNames.length < 1
+      ? " never"
+      : `\n  | typeof ${entityTypeNames.join("\n  | typeof ")}`;
   yield `/**
  * Constructor types for all generated vocabulary entity classes.
  */
@@ -277,9 +278,12 @@ function canContainIriValue(
   property: PropertySchema,
   types: Record<string, TypeSchema>,
 ): boolean {
-  return property.range.some((typeUri) =>
-    typeUri === XSD_ANY_URI || typeUri === FEDIFY_URL ||
-    typeUri === FEDIFY_ABSOLUTE_IRI || types[typeUri]?.entity
+  return property.range.some(
+    (typeUri) =>
+      typeUri === XSD_ANY_URI ||
+      typeUri === FEDIFY_URL ||
+      typeUri === FEDIFY_ABSOLUTE_IRI ||
+      types[typeUri]?.entity,
   );
 }
 
@@ -364,8 +368,8 @@ function isValidLanguageTag(language: string): boolean {
   if (
     Object.values(types).some((type) =>
       type.properties.some((property) =>
-        property.range.includes(FEDIFY_ABSOLUTE_IRI)
-      )
+        property.range.includes(FEDIFY_ABSOLUTE_IRI),
+      ),
     )
   ) {
     // An absolute IRI may arrive as an IRI node or, when the publisher's
@@ -405,8 +409,8 @@ function isAbsoluteIriValue(value: unknown): boolean {
       type.properties.flatMap((property) =>
         property.extraContext == null
           ? []
-          : [[property.uri, property.extraContext]]
-      )
+          : [[property.uri, property.extraContext]],
+      ),
     ),
   );
   if (Object.keys(extraContexts).length > 0) {
@@ -457,9 +461,9 @@ function getExtraContexts(document: unknown): string[] {
     }
   }
   yield "const PORTABLE_IRI_PATTERN = /^ap(?:\\+ef61)?:\\/\\//i;\n";
-  yield `const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(${
-    JSON.stringify([...portableIriKeys].sort())
-  });\n\n`;
+  yield `const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(${JSON.stringify(
+    [...portableIriKeys].sort(),
+  )});\n\n`;
   const moduleVarNames = new Map<string, string>();
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {

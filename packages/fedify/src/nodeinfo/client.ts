@@ -94,7 +94,8 @@ export async function fetchPublicUrl<T>(
         redirect: "manual",
       });
       if (
-        response.status < 300 || response.status >= 400 ||
+        response.status < 300 ||
+        response.status >= 400 ||
         !response.headers.has("Location")
       ) {
         return await consume(response);
@@ -136,10 +137,10 @@ export async function fetchPublicUrl<T>(
  */
 function cancelBody(response: Response, url: URL | string): void {
   response.body?.cancel().catch((error) => {
-    logger.debug(
-      "Failed to cancel the response body from {url}: {error}",
-      { url: url.toString(), error },
-    );
+    logger.debug("Failed to cancel the response body from {url}: {error}", {
+      url: url.toString(),
+      error,
+    });
   });
 }
 
@@ -239,9 +240,10 @@ export async function getNodeInfoInternal(
   try {
     const headers = {
       Accept: "application/json",
-      "User-Agent": typeof options.userAgent === "string"
-        ? options.userAgent
-        : getUserAgent(options.userAgent),
+      "User-Agent":
+        typeof options.userAgent === "string"
+          ? options.userAgent
+          : getUserAgent(options.userAgent),
     };
     let nodeInfoUrl: URL | string = url;
     if (!options.direct) {
@@ -269,13 +271,14 @@ export async function getNodeInfoInternal(
       );
       if (wellKnown == null) return undefined;
       const wellKnownRd = wellKnown.rd;
-      const link = wellKnownRd?.links?.find((link) =>
-        link != null &&
-        "rel" in link &&
-        (link.rel === "http://nodeinfo.diaspora.software/ns/schema/2.0" ||
-          link.rel === "http://nodeinfo.diaspora.software/ns/schema/2.1") &&
-        "href" in link &&
-        link.href != null
+      const link = wellKnownRd?.links?.find(
+        (link) =>
+          link != null &&
+          "rel" in link &&
+          (link.rel === "http://nodeinfo.diaspora.software/ns/schema/2.0" ||
+            link.rel === "http://nodeinfo.diaspora.software/ns/schema/2.1") &&
+          "href" in link &&
+          link.href != null,
       );
       if (link == null || link.href == null) {
         logger.error(
@@ -313,9 +316,11 @@ export async function getNodeInfoInternal(
     if (document == null) return undefined;
     const { data } = document;
     if (options.parse === "none") return data as JsonValue;
-    return parseNodeInfo(data, {
-      tryBestEffort: options.parse === "best-effort",
-    }) ?? undefined;
+    return (
+      parseNodeInfo(data, {
+        tryBestEffort: options.parse === "best-effort",
+      }) ?? undefined
+    );
   } catch (error) {
     logger.error("Failed to fetch NodeInfo document from {url}: {error}", {
       url: url.toString(),
@@ -422,7 +427,8 @@ export function parseSoftware(
   }
   let name: string;
   if (
-    "name" in data && typeof data.name === "string" &&
+    "name" in data &&
+    typeof data.name === "string" &&
     data.name.match(/^\s*[A-Za-z0-9-]+\s*$/)
   ) {
     if (!data.name.match(/^[a-z0-9-]+$/) && !options.tryBestEffort) return null;
@@ -472,9 +478,15 @@ export function parseSoftware(
 export function parseProtocol(data: unknown): Protocol | null {
   // cSpell: disable
   if (
-    data === "activitypub" || data === "buddycloud" || data === "dfrn" ||
-    data === "diaspora" || data === "libertree" || data === "ostatus" ||
-    data === "pumpio" || data === "tent" || data === "xmpp" ||
+    data === "activitypub" ||
+    data === "buddycloud" ||
+    data === "dfrn" ||
+    data === "diaspora" ||
+    data === "libertree" ||
+    data === "ostatus" ||
+    data === "pumpio" ||
+    data === "tent" ||
+    data === "xmpp" ||
     data === "zot"
   ) {
     // cSpell: enable
@@ -512,9 +524,14 @@ export function parseServices(
 export function parseInboundService(data: unknown): InboundService | null {
   // cSpell: disable
   if (
-    data === "atom1.0" || data === "gnusocial" || data === "imap" ||
-    data === "pnut" || data === "pop3" || data === "pumpio" ||
-    data === "rss2.0" || data === "twitter"
+    data === "atom1.0" ||
+    data === "gnusocial" ||
+    data === "imap" ||
+    data === "pnut" ||
+    data === "pop3" ||
+    data === "pumpio" ||
+    data === "rss2.0" ||
+    data === "twitter"
   ) {
     // cSpell: enable
     return data;
@@ -525,15 +542,33 @@ export function parseInboundService(data: unknown): InboundService | null {
 export function parseOutboundService(data: unknown): OutboundService | null {
   // cSpell: disable
   if (
-    data === "atom1.0" || data === "blogger" || data === "buddycloud" ||
-    data === "diaspora" || data === "dreamwidth" || data === "drupal" ||
-    data === "facebook" || data === "friendica" || data === "gnusocial" ||
-    data === "google" || data === "insanejournal" || data === "libertree" ||
-    data === "linkedin" || data === "livejournal" || data === "mediagoblin" ||
-    data === "myspace" || data === "pinterest" || data === "pnut" ||
-    data === "posterous" || data === "pumpio" || data === "redmatrix" ||
-    data === "rss2.0" || data === "smtp" || data === "tent" ||
-    data === "tumblr" || data === "twitter" || data === "wordpress" ||
+    data === "atom1.0" ||
+    data === "blogger" ||
+    data === "buddycloud" ||
+    data === "diaspora" ||
+    data === "dreamwidth" ||
+    data === "drupal" ||
+    data === "facebook" ||
+    data === "friendica" ||
+    data === "gnusocial" ||
+    data === "google" ||
+    data === "insanejournal" ||
+    data === "libertree" ||
+    data === "linkedin" ||
+    data === "livejournal" ||
+    data === "mediagoblin" ||
+    data === "myspace" ||
+    data === "pinterest" ||
+    data === "pnut" ||
+    data === "posterous" ||
+    data === "pumpio" ||
+    data === "redmatrix" ||
+    data === "rss2.0" ||
+    data === "smtp" ||
+    data === "tent" ||
+    data === "tumblr" ||
+    data === "twitter" ||
+    data === "wordpress" ||
     data === "xmpp"
   ) {
     // cSpell: enable

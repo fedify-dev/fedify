@@ -102,9 +102,10 @@ function toRequest(ctx: any): { request: Request; body?: RequestBody } {
       headers.append(key, value);
     }
   }
-  const body = ctx.method === "GET" || ctx.method === "HEAD"
-    ? undefined
-    : createRequestBody(ctx.req);
+  const body =
+    ctx.method === "GET" || ctx.method === "HEAD"
+      ? undefined
+      : createRequestBody(ctx.req);
   const request = new Request(url, {
     method: ctx.method,
     headers,
@@ -155,13 +156,11 @@ function createRequestBody(message: Readable): RequestBody {
           // Reading the exact buffered size, unlike read() without an argument,
           // never makes the stream emit "end", after which unshift() would
           // throw:
-          const chunk: Uint8Array | string | null = size > 0
-            ? message.read(size)
-            : null;
+          const chunk: Uint8Array | string | null =
+            size > 0 ? message.read(size) : null;
           if (chunk != null) {
-            const bytes = typeof chunk === "string"
-              ? Buffer.from(chunk)
-              : chunk;
+            const bytes =
+              typeof chunk === "string" ? Buffer.from(chunk) : chunk;
             consumed.push(bytes);
             controller.enqueue(bytes);
             return;
@@ -204,9 +203,11 @@ function createRequestBody(message: Readable): RequestBody {
  * `readableEnded` elsewhere.
  */
 function isEnded(message: Readable): boolean {
-  const state = (message as Readable & {
-    _readableState?: { ended?: boolean };
-  })._readableState;
+  const state = (
+    message as Readable & {
+      _readableState?: { ended?: boolean };
+    }
+  )._readableState;
   return state?.ended ?? message.readableEnded;
 }
 
@@ -266,22 +267,24 @@ function setNotAcceptableResponse(ctx: any): void {
   // _explicitStatus when an application uses the status setter; its initial
   // default 404 is assigned directly to the raw response instead.
   if (
-    ctx.status === 404 && ctx.body === undefined &&
+    ctx.status === 404 &&
+    ctx.body === undefined &&
     ctx.message === "Not Found" &&
-    !ctx.response._explicitStatus && !ctx.headerSent && ctx.writable &&
+    !ctx.response._explicitStatus &&
+    !ctx.headerSent &&
+    ctx.writable &&
     ctx.respond !== false
   ) {
-    for (
-      const header of [
-        "Content-Encoding",
-        "Content-Language",
-        "Content-Range",
-        "ETag",
-        "Last-Modified",
-        "Transfer-Encoding",
-        "Content-Length",
-      ]
-    ) ctx.remove(header);
+    for (const header of [
+      "Content-Encoding",
+      "Content-Language",
+      "Content-Range",
+      "ETag",
+      "Last-Modified",
+      "Transfer-Encoding",
+      "Content-Length",
+    ])
+      ctx.remove(header);
     ctx.status = 406;
     ctx.body = "Not acceptable";
     ctx.set("Content-Type", "text/plain; charset=utf-8");

@@ -49,9 +49,7 @@ export interface ScheduleOptions {
  * @param options The scheduling options.
  * @yields Arrival offsets within `[0, durationMs)`, in increasing order.
  */
-export function* scheduleArrivals(
-  options: ScheduleOptions,
-): Generator<number> {
+export function* scheduleArrivals(options: ScheduleOptions): Generator<number> {
   const { ratePerSec, durationMs, arrival } = options;
   if (ratePerSec <= 0 || durationMs <= 0) return;
   const meanGapMs = 1000 / ratePerSec;

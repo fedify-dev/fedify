@@ -27,9 +27,10 @@ import {
 export function renderText(report: BenchReport): string {
   const lines: string[] = [];
   lines.push("Fedify benchmark report", "");
-  const fedify = report.target.fedifyVersion == null
-    ? "Fedify version unknown"
-    : `Fedify ${report.target.fedifyVersion}`;
+  const fedify =
+    report.target.fedifyVersion == null
+      ? "Fedify version unknown"
+      : `Fedify ${report.target.fedifyVersion}`;
   const stats = report.target.statsAvailable
     ? "stats available"
     : "stats unavailable";
@@ -59,31 +60,31 @@ function renderScenario(scenario: ScenarioResult): string[] {
   const r = scenario.requests;
   lines.push(
     `  Requests: ${formatNumber(r.total)}  (ok ${formatNumber(r.ok)}, ` +
-      `failed ${formatNumber(r.failed)}, success ${
-        formatPercent(r.successRate)
-      })`,
+      `failed ${formatNumber(r.failed)}, success ${formatPercent(
+        r.successRate,
+      )})`,
   );
   lines.push(`  Throughput: ${formatNumber(scenario.throughputPerSec)} req/s`);
   if (scenario.deliveryThroughputPerSec != null) {
     lines.push(
-      `  Delivery throughput: ${
-        formatNumber(scenario.deliveryThroughputPerSec)
-      } deliveries/s`,
+      `  Delivery throughput: ${formatNumber(
+        scenario.deliveryThroughputPerSec,
+      )} deliveries/s`,
     );
   }
   const l = scenario.client.latencyMs;
   lines.push(
-    `  Client latency (ms): p50 ${formatNumber(l.p50)}  p95 ${
-      formatNumber(l.p95)
-    }  p99 ${formatNumber(l.p99)}  mean ${formatNumber(l.mean)}  max ${
-      formatNumber(l.max)
-    }`,
+    `  Client latency (ms): p50 ${formatNumber(l.p50)}  p95 ${formatNumber(
+      l.p95,
+    )}  p99 ${formatNumber(l.p99)}  mean ${formatNumber(l.mean)}  max ${formatNumber(
+      l.max,
+    )}`,
   );
   if (scenario.server?.signatureVerificationMs != null) {
     lines.push(
-      `  Server signature verification (ms): ${
-        describePartial(scenario.server.signatureVerificationMs.overall)
-      }`,
+      `  Server signature verification (ms): ${describePartial(
+        scenario.server.signatureVerificationMs.overall,
+      )}`,
     );
   }
   const queue = scenario.server?.queue;
@@ -111,9 +112,10 @@ function renderScenario(scenario: ScenarioResult): string[] {
       const tag = e.pass ? "PASS" : e.severity === "warn" ? "WARN" : "FAIL";
       const unit = metricDisplayUnit(e.metric);
       lines.push(
-        `    [${tag}] ${e.metric} ${opSymbol(e.op)} ${
-          formatThreshold(e.threshold, e.unit ?? unit)
-        }  (actual ${formatActual(e.actual, unit)})`,
+        `    [${tag}] ${e.metric} ${opSymbol(e.op)} ${formatThreshold(
+          e.threshold,
+          e.unit ?? unit,
+        )}  (actual ${formatActual(e.actual, unit)})`,
       );
     }
   }
@@ -121,9 +123,9 @@ function renderScenario(scenario: ScenarioResult): string[] {
 }
 
 function describeLoad(load: ScenarioResult["load"]): string {
-  const tail = `duration ${formatNumber(load.durationMs)}ms, warmup ${
-    formatNumber(load.warmupMs)
-  }ms`;
+  const tail = `duration ${formatNumber(load.durationMs)}ms, warmup ${formatNumber(
+    load.warmupMs,
+  )}ms`;
   if (load.model === "closed") {
     return `closed, concurrency ${load.concurrency}, ${tail}`;
   }

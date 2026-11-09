@@ -108,7 +108,7 @@ Deno.test("integrateFetchOptions() - onNotFound delegates to ctx.next with corre
   const options = integrateFetchOptions(mockCtx);
   const request = new Request("https://example.com/some-page");
 
-  ok((options.onNotFound) != null);
+  ok(options.onNotFound != null);
   const response = await options.onNotFound(request);
 
   strictEqual(capturedThis, mockCtx);
@@ -122,7 +122,7 @@ Deno.test("onNotAcceptable() returns Fresh response when not 404", async () => {
   });
 
   const options = integrateFetchOptions(ctx);
-  ok((options.onNotAcceptable) != null);
+  ok(options.onNotAcceptable != null);
   const response = await options.onNotAcceptable(ctx.req);
 
   strictEqual(response.status, 200);
@@ -135,7 +135,7 @@ Deno.test("onNotAcceptable() returns 406 when Fresh returns 404", async () => {
   });
 
   const options = integrateFetchOptions(ctx);
-  ok((options.onNotAcceptable) != null);
+  ok(options.onNotAcceptable != null);
   const response = await options.onNotAcceptable(ctx.req);
 
   strictEqual(response.status, 406);

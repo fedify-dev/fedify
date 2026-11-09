@@ -17,12 +17,14 @@ function resolvedInbox() {
     version: 1,
     target: "http://localhost:3000",
     defaults: { load: { concurrency: 50 }, duration: "60s", warmup: "10s" },
-    scenarios: [{
-      name: "inbox-shared",
-      type: "inbox",
-      recipient: "acct:a@x",
-      expect: { successRate: ">= 99%", "latency.p95": "< 100ms" },
-    }],
+    scenarios: [
+      {
+        name: "inbox-shared",
+        type: "inbox",
+        recipient: "acct:a@x",
+        expect: { successRate: ">= 99%", "latency.p95": "< 100ms" },
+      },
+    ],
   }).scenarios[0];
 }
 
@@ -82,16 +84,18 @@ test("buildScenarioResult - aggregates repeated runs for CI gates", () => {
       warmup: "10s",
       runs: 3,
     },
-    scenarios: [{
-      name: "inbox-shared",
-      type: "inbox",
-      recipient: "acct:a@x",
-      expect: {
-        successRate: ">= 95%",
-        "latency.p95": "< 250ms",
-        throughputPerSec: ">= 100/s",
+    scenarios: [
+      {
+        name: "inbox-shared",
+        type: "inbox",
+        recipient: "acct:a@x",
+        expect: {
+          successRate: ">= 95%",
+          "latency.p95": "< 250ms",
+          throughputPerSec: ">= 100/s",
+        },
       },
-    }],
+    ],
   }).scenarios[0];
   const result = buildScenarioResult(scenario, [
     {
@@ -140,12 +144,14 @@ test("buildScenarioResult - fails repeated server gates with missing stats", () 
       warmup: "10s",
       runs: 3,
     },
-    scenarios: [{
-      name: "inbox-shared",
-      type: "inbox",
-      recipient: "acct:a@x",
-      expect: { "signatureVerification.p95": "< 20ms" },
-    }],
+    scenarios: [
+      {
+        name: "inbox-shared",
+        type: "inbox",
+        recipient: "acct:a@x",
+        expect: { "signatureVerification.p95": "< 20ms" },
+      },
+    ],
   }).scenarios[0];
   const result = buildScenarioResult(scenario, [
     measurement(),

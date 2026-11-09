@@ -34,7 +34,8 @@ const isChainedFromOutboxListeners = (
     return federationTracker.isFederationObject(expr.callee.object);
   }
   if (
-    methodName === "authorize" || methodName === "onError" ||
+    methodName === "authorize" ||
+    methodName === "onError" ||
     methodName === "on"
   ) {
     return isChainedFromOutboxListeners(expr.callee.object, federationTracker);
@@ -90,12 +91,15 @@ const resolveFunctionBinding = (
     return null;
   }
   if (
-    expr.type === "MemberExpression" && expr.object.type === "Identifier" &&
+    expr.type === "MemberExpression" &&
+    expr.object.type === "Identifier" &&
     !expr.computed
   ) {
     const binding = bindings.get(expr.object.name);
     if (
-      binding == null || !isNode(binding) || binding.type !== "ObjectExpression"
+      binding == null ||
+      !isNode(binding) ||
+      binding.type !== "ObjectExpression"
     ) {
       return null;
     }
@@ -103,11 +107,12 @@ const resolveFunctionBinding = (
     if (propertyName == null) return null;
     for (const prop of binding.properties) {
       if (!isNode(prop) || prop.type !== "Property") continue;
-      const keyName = prop.key.type === "Identifier"
-        ? prop.key.name
-        : prop.key.type === "Literal" && typeof prop.key.value === "string"
-        ? prop.key.value
-        : null;
+      const keyName =
+        prop.key.type === "Identifier"
+          ? prop.key.name
+          : prop.key.type === "Literal" && typeof prop.key.value === "string"
+            ? prop.key.value
+            : null;
       if (keyName !== propertyName || !isNode(prop.value)) continue;
       const value = prop.value as unknown;
       if (
@@ -153,19 +158,17 @@ export function createOutboxListenerVisitor(
     ) {
       return;
     }
-    if (
-      !isChainedFromOutboxListeners(node.callee.object, federationTracker)
-    ) {
+    if (!isChainedFromOutboxListeners(node.callee.object, federationTracker)) {
       return;
     }
 
     const listener = node.arguments[1] as unknown;
     const resolvedListener =
       isNode(listener) && isFunction(listener as Expression)
-        ? listener as FunctionLikeNode
+        ? (listener as FunctionLikeNode)
         : isNode(listener)
-        ? resolveFunctionBinding(listener as Expression, bindings)
-        : null;
+          ? resolveFunctionBinding(listener as Expression, bindings)
+          : null;
     if (resolvedListener == null) return;
 
     onListener(resolvedListener);

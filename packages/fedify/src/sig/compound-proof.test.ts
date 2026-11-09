@@ -11,12 +11,8 @@ import jsonld from "@fedify/vocab-runtime/jsonld";
 import { assert, assertEquals } from "@std/assert";
 import { encodeHex } from "byte-encodings/hex";
 import serialize from "json-canon";
-import vector from "../../test-vectors/fep-8b32/map-local-create-note.json" with {
-  type: "json",
-};
-import conflictVector from "../../test-vectors/fep-8b32/map-local-context-conflict.json" with {
-  type: "json",
-};
+import vector from "../../test-vectors/fep-8b32/map-local-create-note.json" with { type: "json" };
+import conflictVector from "../../test-vectors/fep-8b32/map-local-context-conflict.json" with { type: "json" };
 import { normalizeOutgoingActivityJsonLd } from "../compat/outgoing-jsonld.ts";
 import { preloadedOnlyDocumentLoader } from "../compat/preloaded-context-loader.ts";
 import { ed25519PrivateKey, ed25519PublicKey } from "../testing/keys.ts";
@@ -71,10 +67,7 @@ const context = [
   "https://www.w3.org/ns/activitystreams",
   "https://w3id.org/security/data-integrity/v1",
 ];
-const distinctInnerContext = [
-  ...context,
-  { ex: "https://example.com/ns#" },
-];
+const distinctInnerContext = [...context, { ex: "https://example.com/ns#" }];
 const options = {
   context,
   contextLoader: mockDocumentLoader,
@@ -369,13 +362,18 @@ test("the context-conflict vector records valid proofs and divergent semantics",
     serialize(standaloneExpansion[0]) === serialize(inParentObject),
     conflictVector.expectedInterpretation.standaloneAndInParentExpansionsEqual,
   );
-  assertEquals(standaloneContent, [{
-    "@value": "A portable note with inherited language",
-  }]);
-  assertEquals(inParentContent, [{
-    "@value": "A portable note with inherited language",
-    "@language": conflictVector.expectedInterpretation.inParentContentLanguage,
-  }]);
+  assertEquals(standaloneContent, [
+    {
+      "@value": "A portable note with inherited language",
+    },
+  ]);
+  assertEquals(inParentContent, [
+    {
+      "@value": "A portable note with inherited language",
+      "@language":
+        conflictVector.expectedInterpretation.inParentContentLanguage,
+    },
+  ]);
   assertEquals(
     (standaloneContent as Array<Record<string, unknown>>)[0]["@language"] ??
       null,
@@ -449,9 +447,7 @@ test("the raw same-context baseline verifies map-locally", async () => {
 
   const replaced = structuredClone(compound);
   const replacedInner = replaced.object as Record<string, unknown>;
-  replacedInner.proof = structuredClone(
-    vector.documents.replacementInnerProof,
-  );
+  replacedInner.proof = structuredClone(vector.documents.replacementInnerProof);
   const replacementInnerKey = await verifyProof(
     replacedInner,
     await parseProof(replacedInner),
@@ -493,7 +489,7 @@ async function serializeOutgoing(
   object: Object,
   context?: typeof distinctInnerContext,
 ): Promise<Record<string, unknown>> {
-  return await normalizeOutgoingActivityJsonLd(
+  return (await normalizeOutgoingActivityJsonLd(
     await object.toJsonLd({
       format: "compact",
       ...options,
@@ -501,7 +497,7 @@ async function serializeOutgoing(
     }),
     mockDocumentLoader,
     { preserveNestedSecuredDocuments: true },
-  ) as Record<string, unknown>;
+  )) as Record<string, unknown>;
 }
 
 async function signOuterCreate(
@@ -561,7 +557,10 @@ test("typed Create serialization embeds the signed child representation", async 
   assert(mapLocal.verified);
   assertEquals(
     mapLocal.documents.map(({ path, verified }) => ({ path, verified })),
-    [{ path: "/object", verified: true }, { path: "", verified: true }],
+    [
+      { path: "/object", verified: true },
+      { path: "", verified: true },
+    ],
   );
 });
 
@@ -591,9 +590,9 @@ test("replacing an embedded child proof invalidates only the outer proof", async
     replacementCreated,
     "replaced-proof",
   );
-  const replacementProof =
-    (await serializeOutgoing(replacement, distinctInnerContext))
-      .proof as Record<string, unknown>;
+  const replacementProof = (
+    await serializeOutgoing(replacement, distinctInnerContext)
+  ).proof as Record<string, unknown>;
   const outer = await signOuterCreate(created, "replaced-proof", inner);
   const compound = await serializeOutgoing(outer);
   const replacedInner = compound.object as Record<string, unknown>;
@@ -630,12 +629,11 @@ test("cloning or re-signing a signed child drops its retained representation", a
 
   // A second proof puts the child outside the map-local profile, which
   // accepts exactly one direct proof per map, so nothing is retained.
-  const reSigned = await signObject(
-    inner,
-    ed25519PrivateKey,
-    innerKeyId,
-    { ...options, context: distinctInnerContext, created },
-  );
+  const reSigned = await signObject(inner, ed25519PrivateKey, innerKeyId, {
+    ...options,
+    context: distinctInnerContext,
+    created,
+  });
   const reSignedCompound = await serializeOutgoing(
     await signOuterCreate(created, "re-signed", reSigned),
   );
@@ -681,7 +679,7 @@ test("a signed child is embedded through a compactable ancestor too", async () =
     id: parseIri(`ap+ef61://${outerDid}/objects/question`),
     exclusiveOptions: [wrapper],
   });
-  const serialized = await question.toJsonLd() as Record<string, unknown>;
+  const serialized = (await question.toJsonLd()) as Record<string, unknown>;
   const embeddedWrapper = serialized.oneOf as Record<string, unknown>;
   const embedded = embeddedWrapper.attachment as Record<string, unknown>;
 
@@ -727,11 +725,13 @@ test("typed Create serialization bypasses a parsed child's JSON-LD cache", async
     null,
   );
   assertEquals(
-    (await verifyProof(
-      reparsedCompound,
-      await parseProof(reparsedCompound),
-      options,
-    ))?.id,
+    (
+      await verifyProof(
+        reparsedCompound,
+        await parseProof(reparsedCompound),
+        options,
+      )
+    )?.id,
     outerKeyId,
   );
 });
@@ -748,10 +748,7 @@ test("verifyProof() does not invent a missing child context", async () => {
     inboundOptions,
   );
 
-  assertEquals(
-    await verifyProof(received, proof, inboundOptions),
-    null,
-  );
+  assertEquals(await verifyProof(received, proof, inboundOptions), null);
   assertEquals(received, snapshot);
 
   const guessed = structuredClone(received);

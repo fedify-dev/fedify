@@ -4,9 +4,11 @@ import { buildFleet } from "./fleet.ts";
 
 test("buildFleet - rejects a group with two HTTP signature standards", async () => {
   await assert.rejects(
-    buildFleet([{
-      signatureStandards: ["draft-cavage-http-signatures-12", "rfc9421"],
-    }]),
+    buildFleet([
+      {
+        signatureStandards: ["draft-cavage-http-signatures-12", "rfc9421"],
+      },
+    ]),
     TypeError,
   );
 });

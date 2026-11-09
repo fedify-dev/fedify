@@ -89,11 +89,11 @@ function parseVarList(
       throw modifier.used
         ? new UnexpectedCharacterError(template, offset + index, source[index])
         : new InvalidVarNameError(
-          template,
-          offset + index,
-          name,
-          source[index],
-        );
+            template,
+            offset + index,
+            name,
+            source[index],
+          );
     }
 
     vars.push({

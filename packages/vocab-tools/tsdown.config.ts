@@ -15,13 +15,15 @@ export default defineConfig({
   hooks: {
     "build:done": async (ctx) => {
       // Each hook reports its own failure; a later watch rebuild can retry.
-      schemaCopy = schemaCopy.catch(() => {}).then(() =>
-        cp(
-          join("src", "schema.yaml"),
-          join(ctx.options.outDir, "schema.yaml"),
-          { force: false, errorOnExist: false },
-        )
-      );
+      schemaCopy = schemaCopy
+        .catch(() => {})
+        .then(() =>
+          cp(
+            join("src", "schema.yaml"),
+            join(ctx.options.outDir, "schema.yaml"),
+            { force: false, errorOnExist: false },
+          ),
+        );
       await schemaCopy;
     },
   },

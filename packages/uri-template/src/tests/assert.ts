@@ -112,8 +112,10 @@ function validateSuites(
 
 function validatePairCase(c: unknown): void {
   if (
-    !Array.isArray(c) || c.length !== 2 ||
-    typeof c[0] !== "string" || typeof c[1] !== "string"
+    !Array.isArray(c) ||
+    c.length !== 2 ||
+    typeof c[0] !== "string" ||
+    typeof c[1] !== "string"
   ) {
     throw new TypeError(
       "each case must be a [template: string, expanded: string] tuple",
@@ -149,7 +151,9 @@ function validateMatchCase(c: unknown): void {
 
 function validateRouteDefinition(value: unknown): void {
   if (
-    !Array.isArray(value) || value.length < 2 || value.length > 3 ||
+    !Array.isArray(value) ||
+    value.length < 2 ||
+    value.length > 3 ||
     typeof value[1] !== "string"
   ) {
     throw new TypeError(
@@ -166,7 +170,8 @@ function validateRouteDefinition(value: unknown): void {
 
 function validateRouterBuildCase(value: unknown): void {
   if (
-    !Array.isArray(value) || value.length !== 2 ||
+    !Array.isArray(value) ||
+    value.length !== 2 ||
     typeof value[0] !== "string"
   ) {
     throw new TypeError(
@@ -270,10 +275,7 @@ function validateRouterRouteResult(value: unknown, label: string): void {
   assertRouteValuesRecord(value.values, `${label}.values`);
 }
 
-function assertString(
-  value: unknown,
-  label: string,
-): asserts value is string {
+function assertString(value: unknown, label: string): asserts value is string {
   if (typeof value !== "string") {
     throw new TypeError(`${label} must be a string`);
   }
@@ -314,10 +316,7 @@ function assertStringArray(
   for (const item of value) assertString(item, label);
 }
 
-function assertPath(
-  value: unknown,
-  label: string,
-): asserts value is Path {
+function assertPath(value: unknown, label: string): asserts value is Path {
   assertString(value, label);
   if (value !== "" && !value.startsWith("/") && !/^\{\/[^}]+\}/.test(value)) {
     throw new TypeError(`${label} must be a router path`);
@@ -364,9 +363,9 @@ function assertErrorName(
   assertString(value, label);
   if (!ERROR_NAMES.has(value)) {
     throw new TypeError(
-      `${label} must be one of [${[...ERROR_NAMES].join(", ")}], got ${
-        JSON.stringify(value)
-      }`,
+      `${label} must be one of [${[...ERROR_NAMES].join(", ")}], got ${JSON.stringify(
+        value,
+      )}`,
     );
   }
 }

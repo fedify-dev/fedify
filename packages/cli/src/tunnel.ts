@@ -25,27 +25,18 @@ export const tunnelOptions = merge(
     port: argument(integer({ metavar: "PORT", min: 0, max: 65535 }), {
       description: message`The local port number to expose.`,
     }),
-    service: createTunnelServiceOption([
-      "-s",
-      "--service",
-    ]),
+    service: createTunnelServiceOption(["-s", "--service"]),
   }),
 );
 
 export const tunnelMetadata = {
-  brief:
-    message`Expose a local HTTP server to the public internet using a secure tunnel.`,
-  description:
-    message`Expose a local HTTP server to the public internet using a secure tunnel.
+  brief: message`Expose a local HTTP server to the public internet using a secure tunnel.`,
+  description: message`Expose a local HTTP server to the public internet using a secure tunnel.
 
 Note that the HTTP requests through the tunnel have X-Forwarded-* headers.`,
 };
 
-export const tunnelCommand = command(
-  "tunnel",
-  tunnelOptions,
-  tunnelMetadata,
-);
+export const tunnelCommand = command("tunnel", tunnelOptions, tunnelMetadata);
 
 export interface TunnelDeps {
   readonly openTunnel: typeof openTunnel;
@@ -64,10 +55,12 @@ export async function runTunnel(
   if (command.debug) {
     await configureLogging();
   }
-  const spinner = deps.ora({
-    text: "Creating a secure tunnel...",
-    discardStdin: false,
-  }).start();
+  const spinner = deps
+    .ora({
+      text: "Creating a secure tunnel...",
+      discardStdin: false,
+    })
+    .start();
   let tunnel: Tunnel;
   try {
     tunnel = await deps.openTunnel({

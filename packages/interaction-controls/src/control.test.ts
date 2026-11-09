@@ -38,11 +38,7 @@ function remoteDocument(url: URL | string, document: unknown): RemoteDocument {
 }
 
 function httpError(url: string, status: number): FetchError {
-  return new FetchError(
-    url,
-    `HTTP ${status}`,
-    new Response(null, { status }),
-  );
+  return new FetchError(url, `HTTP ${status}`, new Response(null, { status }));
 }
 
 /**
@@ -90,12 +86,10 @@ test("verifyRequest() reports transient instrument fetch failures", async () => 
 });
 
 test("verifyRequest() reports permanent instrument fetch failures", async () => {
-  for (
-    const error of [
-      httpError(likeId.href, 404),
-      new UrlError("Disallowed private URL"),
-    ]
-  ) {
+  for (const error of [
+    httpError(likeId.href, 404),
+    new UrlError("Disallowed private URL"),
+  ]) {
     const result = await likeInteraction.verifyRequest(context, {
       request: likeRequestWithInstrumentIri(),
       documentLoader: documentLoader({}, () => error),
@@ -185,15 +179,18 @@ test("verifyRequest() reports failed instrument contexts with their URLs", async
 
   const result = await likeInteraction.verifyRequest(context, {
     request: likeRequestWithInstrumentIri(),
-    documentLoader: documentLoader({
-      [likeId.href]: {
-        "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
-        type: "Like",
-        id: likeId.href,
-        actor: actor.href,
-        object: targetId.href,
+    documentLoader: documentLoader(
+      {
+        [likeId.href]: {
+          "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
+          type: "Like",
+          id: likeId.href,
+          actor: actor.href,
+          object: targetId.href,
+        },
       },
-    }, () => error),
+      () => error,
+    ),
   });
 
   assert.equal(result.verified, false);
@@ -210,15 +207,18 @@ test("verifyRequest() reports nullish context loader rejections as transient", a
 
   const result = await likeInteraction.verifyRequest(context, {
     request: likeRequestWithInstrumentIri(),
-    documentLoader: documentLoader({
-      [likeId.href]: {
-        "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
-        type: "Like",
-        id: likeId.href,
-        actor: actor.href,
-        object: targetId.href,
+    documentLoader: documentLoader(
+      {
+        [likeId.href]: {
+          "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
+          type: "Like",
+          id: likeId.href,
+          actor: actor.href,
+          object: targetId.href,
+        },
       },
-    }, () => null),
+      () => null,
+    ),
   });
 
   if (result.verified || result.failure.type !== "notDereferenceable") {
@@ -237,13 +237,16 @@ test("verifyAuthorization() reports nullish context loader rejections as transie
     interactingObject: likeId,
     interactionTarget: targetId,
     attributedTo: author,
-    documentLoader: documentLoader({
-      [authorizationId.href]: {
-        "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
-        type: "https://gotosocial.org/ns#LikeApproval",
-        id: authorizationId.href,
+    documentLoader: documentLoader(
+      {
+        [authorizationId.href]: {
+          "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
+          type: "https://gotosocial.org/ns#LikeApproval",
+          id: authorizationId.href,
+        },
       },
-    }, () => undefined),
+      () => undefined,
+    ),
   });
 
   if (result.verified || result.failure.type !== "notDereferenceable") {
@@ -345,11 +348,13 @@ test("verifyRequest() keeps loader errors of concurrent verifications apart", as
   ]);
 
   assert.ok(
-    !transient.verified && transient.failure.category === "unverifiable" &&
+    !transient.verified &&
+      transient.failure.category === "unverifiable" &&
       transient.failure.transient === true,
   );
   assert.ok(
-    !permanent.verified && permanent.failure.category === "unverifiable" &&
+    !permanent.verified &&
+      permanent.failure.category === "unverifiable" &&
       permanent.failure.transient === false,
   );
 });
@@ -361,31 +366,32 @@ function portableLikeRequest(
   gateways: readonly string[],
   verifyPortableObject: PortableObjectVerifier,
 ): LikeRequest {
-  return new LikeRequest({
-    id: requestId,
-    actor,
-    object: new Note({ id: targetId, attribution: author }),
-    instrument: withGatewayHints(portableLikeId, gateways),
-  }, { verifyPortableObject });
+  return new LikeRequest(
+    {
+      id: requestId,
+      actor,
+      object: new Note({ id: targetId, attribution: author }),
+      instrument: withGatewayHints(portableLikeId, gateways),
+    },
+    { verifyPortableObject },
+  );
 }
 
 test("verifyRequest() reports any transient gateway failure as transient", async () => {
-  for (
-    const gateways of [
-      ["https://unavailable.example/", "https://missing.example/"],
-      ["https://missing.example/", "https://unavailable.example/"],
-    ]
-  ) {
+  for (const gateways of [
+    ["https://unavailable.example/", "https://missing.example/"],
+    ["https://missing.example/", "https://unavailable.example/"],
+  ]) {
     const result = await likeInteraction.verifyRequest(context, {
-      request: portableLikeRequest(
-        gateways,
-        () => Promise.resolve({ verified: false }),
+      request: portableLikeRequest(gateways, () =>
+        Promise.resolve({ verified: false }),
       ),
       documentLoader: documentLoader({}, (url) =>
         httpError(
           url,
           url.startsWith("https://unavailable.example/") ? 503 : 404,
-        )),
+        ),
+      ),
     });
 
     assert.equal(result.verified, false);
@@ -400,12 +406,15 @@ test("verifyRequest() reports any transient gateway failure as transient", async
 
 test("verifyRequest() reports failures of portable references without gateways", async () => {
   const result = await likeInteraction.verifyRequest(context, {
-    request: new LikeRequest({
-      id: requestId,
-      actor,
-      object: new Note({ id: targetId, attribution: author }),
-      instrument: parseIri(portableLikeId),
-    }, { verifyPortableObject: () => Promise.resolve({ verified: false }) }),
+    request: new LikeRequest(
+      {
+        id: requestId,
+        actor,
+        object: new Note({ id: targetId, attribution: author }),
+        instrument: parseIri(portableLikeId),
+      },
+      { verifyPortableObject: () => Promise.resolve({ verified: false }) },
+    ),
     // FetchError cannot be constructed with a portable URL, so a network
     // failure is used:
     documentLoader: documentLoader({}, () => new TypeError("fetch failed")),
@@ -420,12 +429,15 @@ test("verifyRequest() reports failures of portable references without gateways",
 
 test("verifyRequest() reports null loader results for portable references", async () => {
   const result = await likeInteraction.verifyRequest(context, {
-    request: new LikeRequest({
-      id: requestId,
-      actor,
-      object: new Note({ id: targetId, attribution: author }),
-      instrument: parseIri(portableLikeId),
-    }, { verifyPortableObject: () => Promise.resolve({ verified: false }) }),
+    request: new LikeRequest(
+      {
+        id: requestId,
+        actor,
+        object: new Note({ id: targetId, attribution: author }),
+        instrument: parseIri(portableLikeId),
+      },
+      { verifyPortableObject: () => Promise.resolve({ verified: false }) },
+    ),
     documentLoader: async (url: string) => {
       if (url in preloadedContexts) return await documentLoader({})(url);
       return null as unknown as RemoteDocument;
@@ -460,13 +472,16 @@ test("verification returns failures for unparseable context URLs", async () => {
 
   const request = await likeInteraction.verifyRequest(context, {
     request: requestId,
-    documentLoader: documentLoader({
-      [requestId.href]: {
-        ...document,
-        type: "https://gotosocial.org/ns#LikeRequest",
-        id: requestId.href,
+    documentLoader: documentLoader(
+      {
+        [requestId.href]: {
+          ...document,
+          type: "https://gotosocial.org/ns#LikeRequest",
+          id: requestId.href,
+        },
       },
-    }, (url) => new TypeError(`Invalid URL: ${url}`)),
+      (url) => new TypeError(`Invalid URL: ${url}`),
+    ),
   });
   assert.equal(request.verified, false);
 
@@ -475,13 +490,16 @@ test("verification returns failures for unparseable context URLs", async () => {
     interactingObject: likeId,
     interactionTarget: targetId,
     attributedTo: author,
-    documentLoader: documentLoader({
-      [authorizationId.href]: {
-        "@context": ["https://www.w3.org/ns/activitystreams", "::"],
-        type: "https://gotosocial.org/ns#LikeApproval",
-        id: authorizationId.href,
+    documentLoader: documentLoader(
+      {
+        [authorizationId.href]: {
+          "@context": ["https://www.w3.org/ns/activitystreams", "::"],
+          type: "https://gotosocial.org/ns#LikeApproval",
+          id: authorizationId.href,
+        },
       },
-    }, (url) => new TypeError(`Invalid URL: ${url}`)),
+      (url) => new TypeError(`Invalid URL: ${url}`),
+    ),
   });
   assert.equal(authorization.verified, false);
 });
@@ -546,18 +564,16 @@ test("evaluatePolicy() uses fallback rules", async () => {
     automaticApproval: PUBLIC_COLLECTION,
   });
 
-  for (
-    const subject of [
-      new Note({ id: targetId, attribution: author }),
-      new Note({
-        id: targetId,
-        attribution: author,
-        interactionPolicy: new InteractionPolicy({
-          canLike: new InteractionRule({ automaticApproval: author }),
-        }),
+  for (const subject of [
+    new Note({ id: targetId, attribution: author }),
+    new Note({
+      id: targetId,
+      attribution: author,
+      interactionPolicy: new InteractionPolicy({
+        canLike: new InteractionRule({ automaticApproval: author }),
       }),
-    ]
-  ) {
+    }),
+  ]) {
     assert.deepEqual(
       await quoteInteraction.evaluatePolicy(context, {
         subject,
@@ -934,7 +950,7 @@ test("response constructors do not require IDs or recipients", async () => {
     assert.deepEqual(activity.ccIds, []);
   }
   assert.equal(
-    (await revocation.toJsonLd() as Record<string, unknown>).object,
+    ((await revocation.toJsonLd()) as Record<string, unknown>).object,
     authorizationId.href,
   );
 });
@@ -960,7 +976,7 @@ test("createRevocation() can embed authorizations without leaking objects", asyn
   });
 
   assert.ok(embedded instanceof Delete);
-  const json = await embedded.toJsonLd() as Record<string, unknown>;
+  const json = (await embedded.toJsonLd()) as Record<string, unknown>;
   assert.deepEqual(json.object, {
     type: "LikeAuthorization",
     id: authorizationId.href,
@@ -970,7 +986,7 @@ test("createRevocation() can embed authorizations without leaking objects", asyn
   });
   assert.ok(authorization.interactionTargetId != null);
   assert.ok(
-    !(await authorization.getInteractionTarget() instanceof URL),
+    !((await authorization.getInteractionTarget()) instanceof URL),
     "the given authorization must be left untouched",
   );
 
@@ -979,7 +995,7 @@ test("createRevocation() can embed authorizations without leaking objects", asyn
     authorization,
   });
   assert.equal(
-    (await referenced.toJsonLd() as Record<string, unknown>).object,
+    ((await referenced.toJsonLd()) as Record<string, unknown>).object,
     authorizationId.href,
   );
 

@@ -49,16 +49,13 @@ test("kvCache()", async (t) => {
     ]);
     deepStrictEqual(cache, result);
 
-    await kv.set(
-      ["_test", "cached", "https://example.org/"],
-      {
-        contextUrl: null,
-        documentUrl: "https://example.org/",
-        document: {
-          "id": "https://example.org/",
-        },
+    await kv.set(["_test", "cached", "https://example.org/"], {
+      contextUrl: null,
+      documentUrl: "https://example.org/",
+      document: {
+        "id": "https://example.org/",
       },
-    );
+    });
     const result2 = await loader("https://example.org/");
     deepStrictEqual(result2, {
       contextUrl: null,
@@ -68,16 +65,13 @@ test("kvCache()", async (t) => {
       },
     });
 
-    await kv.set(
-      ["_test", "cached", "https://example.net/"],
-      {
-        contextUrl: null,
-        documentUrl: "https://example.net/",
-        document: {
-          "id": "https://example.net/",
-        },
+    await kv.set(["_test", "cached", "https://example.net/"], {
+      contextUrl: null,
+      documentUrl: "https://example.net/",
+      document: {
+        "id": "https://example.net/",
       },
-    );
+    });
     const result3 = await loader("https://example.net/");
     deepStrictEqual(result3, {
       contextUrl: null,
@@ -230,10 +224,7 @@ test("kvCache()", async (t) => {
       const all = recorder.getMeasurements("activitypub.document.cache");
       deepStrictEqual(all.length, 2);
       deepStrictEqual(all[1].attributes["activitypub.lookup.result"], "hit");
-      deepStrictEqual(
-        all[1].attributes["activitypub.lookup.kind"],
-        "object",
-      );
+      deepStrictEqual(all[1].attributes["activitypub.lookup.kind"], "object");
       deepStrictEqual(
         all[1].attributes["activitypub.remote.host"],
         "example.com",

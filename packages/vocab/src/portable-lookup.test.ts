@@ -80,45 +80,113 @@ function selfLinks(...hrefs: string[]) {
   };
 }
 
-test("lookupObject() with FEP-ef61 portable actors", {
-  sanitizeResources: false,
-  sanitizeOps: false,
-}, async (t) => {
-  fetchMock.spyGlobal();
-  try {
-    await t.step("compatible self link, alias-free JRD", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.get(webFingerPrefix, selfLinks(compatibleId));
-      const document = person();
-      const documentLoader = createLoader({ [compatibleId]: document });
-      const verifyPortableObject = createVerifier();
-      const actor = await lookupObject("@alice@example.com", {
-        documentLoader,
-        contextLoader: mockDocumentLoader,
-        ...allowPrivateAddress,
-        verifyPortableObject,
-      });
-      assertInstanceOf(actor, Person);
-      deepStrictEqual(actor.id, parseIri(actorId));
-      deepStrictEqual(documentLoader.fetched, [compatibleId]);
-      deepStrictEqual(verifyPortableObject.documents, [document]);
-    });
-
-    await t.step(
-      "canonical self link asks the WebFinger host first",
-      async () => {
+test(
+  "lookupObject() with FEP-ef61 portable actors",
+  {
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  async (t) => {
+    fetchMock.spyGlobal();
+    try {
+      await t.step("compatible self link, alias-free JRD", async () => {
         fetchMock.removeRoutes();
-        fetchMock.get(webFingerPrefix, {
-          subject: "acct:alice@example.com",
-          links: [{
-            rel: "self",
-            type:
-              'application/ld+json; profile="https://www.w3.org/ns/activitystreams"',
-            href: `ap://${did}/actor?@gateway=https%3A%2F%2Fhint.example`,
-          }],
+        fetchMock.get(webFingerPrefix, selfLinks(compatibleId));
+        const document = person();
+        const documentLoader = createLoader({ [compatibleId]: document });
+        const verifyPortableObject = createVerifier();
+        const actor = await lookupObject("@alice@example.com", {
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          ...allowPrivateAddress,
+          verifyPortableObject,
         });
-        const hinted = `https://hint.example${gatewayPath}`;
-        const documentLoader = createLoader({ [hinted]: person() });
+        assertInstanceOf(actor, Person);
+        deepStrictEqual(actor.id, parseIri(actorId));
+        deepStrictEqual(documentLoader.fetched, [compatibleId]);
+        deepStrictEqual(verifyPortableObject.documents, [document]);
+      });
+
+      await t.step(
+        "canonical self link asks the WebFinger host first",
+        async () => {
+          fetchMock.removeRoutes();
+          fetchMock.get(webFingerPrefix, {
+            subject: "acct:alice@example.com",
+            links: [
+              {
+                rel: "self",
+                type: 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"',
+                href: `ap://${did}/actor?@gateway=https%3A%2F%2Fhint.example`,
+              },
+            ],
+          });
+          const hinted = `https://hint.example${gatewayPath}`;
+          const documentLoader = createLoader({ [hinted]: person() });
+          const actor = await lookupObject("@alice@example.com", {
+            documentLoader,
+            contextLoader: mockDocumentLoader,
+            ...allowPrivateAddress,
+            verifyPortableObject: createVerifier(),
+          });
+          assertInstanceOf(actor, Person);
+          deepStrictEqual(documentLoader.fetched, [compatibleId, hinted]);
+        },
+      );
+
+      await t.step("explicit gateways replace WebFinger hints", async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          webFingerPrefix,
+          selfLinks(`ap://${did}/actor?@gateway=https%3A%2F%2Fhint.example`),
+        );
+        const second = `https://second.example${gatewayPath}`;
+        const documentLoader = createLoader({ [second]: person() });
+        const actor = await lookupObject("@alice@example.com", {
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          ...allowPrivateAddress,
+          verifyPortableObject: createVerifier(),
+          gateways: ["https://second.example"],
+        });
+        assertInstanceOf(actor, Person);
+        deepStrictEqual(documentLoader.fetched, [compatibleId, second]);
+      });
+
+      await t.step(
+        "WebFinger host counts toward the five attempts",
+        async () => {
+          fetchMock.removeRoutes();
+          fetchMock.get(webFingerPrefix, selfLinks(`ap://${did}/actor`));
+          const documentLoader = createLoader({});
+          equal(
+            await lookupObject("@alice@example.com", {
+              documentLoader,
+              contextLoader: mockDocumentLoader,
+              ...allowPrivateAddress,
+              verifyPortableObject: createVerifier(),
+              gateways: Array.from(
+                { length: 6 },
+                (_, i) => `https://g${i}.example`,
+              ),
+            }),
+            null,
+          );
+          deepStrictEqual(documentLoader.fetched, [
+            compatibleId,
+            ...[0, 1, 2, 3].map((i) => `https://g${i}.example${gatewayPath}`),
+          ]);
+        },
+      );
+
+      await t.step("tries the next self link after a failure", async () => {
+        fetchMock.removeRoutes();
+        const other = `https://other.example${gatewayPath}`;
+        fetchMock.get(
+          webFingerPrefix,
+          selfLinks(`ap://${did}/actor`, compatibleId, other),
+        );
+        const documentLoader = createLoader({ [other]: person() });
         const actor = await lookupObject("@alice@example.com", {
           documentLoader,
           contextLoader: mockDocumentLoader,
@@ -126,98 +194,34 @@ test("lookupObject() with FEP-ef61 portable actors", {
           verifyPortableObject: createVerifier(),
         });
         assertInstanceOf(actor, Person);
-        deepStrictEqual(documentLoader.fetched, [compatibleId, hinted]);
-      },
-    );
-
-    await t.step("explicit gateways replace WebFinger hints", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.get(
-        webFingerPrefix,
-        selfLinks(
-          `ap://${did}/actor?@gateway=https%3A%2F%2Fhint.example`,
-        ),
-      );
-      const second = `https://second.example${gatewayPath}`;
-      const documentLoader = createLoader({ [second]: person() });
-      const actor = await lookupObject("@alice@example.com", {
-        documentLoader,
-        contextLoader: mockDocumentLoader,
-        ...allowPrivateAddress,
-        verifyPortableObject: createVerifier(),
-        gateways: ["https://second.example"],
+        // The same gateway is not asked twice for the same portable ID:
+        deepStrictEqual(documentLoader.fetched, [compatibleId, other]);
       });
-      assertInstanceOf(actor, Person);
-      deepStrictEqual(documentLoader.fetched, [compatibleId, second]);
-    });
 
-    await t.step("WebFinger host counts toward the five attempts", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.get(webFingerPrefix, selfLinks(`ap://${did}/actor`));
-      const documentLoader = createLoader({});
-      equal(
-        await lookupObject("@alice@example.com", {
+      await t.step("accepts a compatible identifier as the ID", async () => {
+        // Some publishers, e.g., tootik, identify their portable actors by
+        // compatible identifiers; the document is verified as the portable
+        // object, and keeps its own ID:
+        fetchMock.removeRoutes();
+        fetchMock.get(webFingerPrefix, selfLinks(compatibleId));
+        const document = person(compatibleId);
+        const documentLoader = createLoader({ [compatibleId]: document });
+        const verifyPortableObject = createVerifier();
+        const actor = await lookupObject("@alice@example.com", {
           documentLoader,
           contextLoader: mockDocumentLoader,
           ...allowPrivateAddress,
-          verifyPortableObject: createVerifier(),
-          gateways: Array.from(
-            { length: 6 },
-            (_, i) => `https://g${i}.example`,
-          ),
-        }),
-        null,
-      );
-      deepStrictEqual(documentLoader.fetched, [
-        compatibleId,
-        ...[0, 1, 2, 3].map((i) => `https://g${i}.example${gatewayPath}`),
-      ]);
-    });
-
-    await t.step("tries the next self link after a failure", async () => {
-      fetchMock.removeRoutes();
-      const other = `https://other.example${gatewayPath}`;
-      fetchMock.get(
-        webFingerPrefix,
-        selfLinks(`ap://${did}/actor`, compatibleId, other),
-      );
-      const documentLoader = createLoader({ [other]: person() });
-      const actor = await lookupObject("@alice@example.com", {
-        documentLoader,
-        contextLoader: mockDocumentLoader,
-        ...allowPrivateAddress,
-        verifyPortableObject: createVerifier(),
+          verifyPortableObject,
+        });
+        assertInstanceOf(actor, Person);
+        deepStrictEqual(actor.id, new URL(compatibleId));
+        deepStrictEqual(verifyPortableObject.documents, [document]);
       });
-      assertInstanceOf(actor, Person);
-      // The same gateway is not asked twice for the same portable ID:
-      deepStrictEqual(documentLoader.fetched, [compatibleId, other]);
-    });
 
-    await t.step("accepts a compatible identifier as the ID", async () => {
-      // Some publishers, e.g., tootik, identify their portable actors by
-      // compatible identifiers; the document is verified as the portable
-      // object, and keeps its own ID:
-      fetchMock.removeRoutes();
-      fetchMock.get(webFingerPrefix, selfLinks(compatibleId));
-      const document = person(compatibleId);
-      const documentLoader = createLoader({ [compatibleId]: document });
-      const verifyPortableObject = createVerifier();
-      const actor = await lookupObject("@alice@example.com", {
-        documentLoader,
-        contextLoader: mockDocumentLoader,
-        ...allowPrivateAddress,
-        verifyPortableObject,
-      });
-      assertInstanceOf(actor, Person);
-      deepStrictEqual(actor.id, new URL(compatibleId));
-      deepStrictEqual(verifyPortableObject.documents, [document]);
-    });
-
-    await t.step("rejects objects that fail the checks", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.get(webFingerPrefix, selfLinks(compatibleId));
-      for (
-        const [document, verified] of [
+      await t.step("rejects objects that fail the checks", async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(webFingerPrefix, selfLinks(compatibleId));
+        for (const [document, verified] of [
           [person(), false],
           // Same DID, but another object:
           [person(`ap://${did}/other`), true],
@@ -228,207 +232,206 @@ test("lookupObject() with FEP-ef61 portable actors", {
           ],
           // A compatible identifier of the object, but unverified:
           [person(compatibleId), false],
-        ] as const
-      ) {
-        const documentLoader = createLoader({ [compatibleId]: document });
-        const verifyPortableObject = createVerifier(verified);
-        equal(
-          await lookupObject("@alice@example.com", {
-            documentLoader,
-            contextLoader: mockDocumentLoader,
-            ...allowPrivateAddress,
-            verifyPortableObject,
-          }),
-          null,
+        ] as const) {
+          const documentLoader = createLoader({ [compatibleId]: document });
+          const verifyPortableObject = createVerifier(verified);
+          equal(
+            await lookupObject("@alice@example.com", {
+              documentLoader,
+              contextLoader: mockDocumentLoader,
+              ...allowPrivateAddress,
+              verifyPortableObject,
+            }),
+            null,
+          );
+          // No fallback to fetching the compatible identifier as an ordinary
+          // HTTPS URL:
+          deepStrictEqual(documentLoader.fetched, [compatibleId]);
+          await rejects(
+            () =>
+              lookupObject("@alice@example.com", {
+                documentLoader,
+                contextLoader: mockDocumentLoader,
+                ...allowPrivateAddress,
+                verifyPortableObject,
+                crossOrigin: "throw",
+              }),
+            { name: "PortableObjectRejectedError" },
+          );
+          equal(
+            await lookupObject("@alice@example.com", {
+              documentLoader,
+              contextLoader: mockDocumentLoader,
+              ...allowPrivateAddress,
+              verifyPortableObject,
+              crossOrigin: "trust",
+            }),
+            null,
+          );
+        }
+      });
+
+      await t.step("without verifyPortableObject", async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          webFingerPrefix,
+          selfLinks(`ap://${did}/actor`, compatibleId),
         );
-        // No fallback to fetching the compatible identifier as an ordinary
-        // HTTPS URL:
-        deepStrictEqual(documentLoader.fetched, [compatibleId]);
+        const documentLoader = createLoader({ [compatibleId]: person() });
+        for (const crossOrigin of ["ignore", "trust"] as const) {
+          // The canonical link is skipped, and the compatible identifier is
+          // fetched as an ordinary URL, but its portable object is refused:
+          equal(
+            await lookupObject("@alice@example.com", {
+              documentLoader,
+              contextLoader: mockDocumentLoader,
+              ...allowPrivateAddress,
+              crossOrigin,
+            }),
+            null,
+          );
+        }
+        deepStrictEqual(documentLoader.fetched, [compatibleId, compatibleId]);
         await rejects(
           () =>
             lookupObject("@alice@example.com", {
               documentLoader,
               contextLoader: mockDocumentLoader,
               ...allowPrivateAddress,
-              verifyPortableObject,
               crossOrigin: "throw",
             }),
-          { name: "PortableObjectRejectedError" },
+          /has a different origin than the document URL/,
         );
+
+        // An object with an ordinary ID served at a compatible identifier
+        // keeps working as before:
+        const httpLoader = createLoader({
+          [compatibleId]: person(compatibleId),
+        });
+        const actor = await lookupObject("@alice@example.com", {
+          documentLoader: httpLoader,
+          contextLoader: mockDocumentLoader,
+          ...allowPrivateAddress,
+        });
+        assertInstanceOf(actor, Person);
+        deepStrictEqual(actor.id, new URL(compatibleId));
+
+        const malformed = `${compatibleId}?gateways=x`;
+        const ordinaryLoader = createLoader({
+          [malformed]: person(malformed),
+        });
+        const ordinary = await lookupObject(malformed, {
+          documentLoader: ordinaryLoader,
+          contextLoader: mockDocumentLoader,
+          ...allowPrivateAddress,
+        });
+        assertInstanceOf(ordinary, Person);
+        deepStrictEqual(ordinaryLoader.fetched, [malformed]);
+      });
+
+      await t.step("refuses portable IRIs changed by URL parsing", async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          webFingerPrefix,
+          selfLinks(`ap://${did}/x/../actor`, `ap://${did}/x/%2e%2e/actor`),
+        );
+        const documentLoader = createLoader({ [compatibleId]: person() });
+        const options = {
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          ...allowPrivateAddress,
+          verifyPortableObject: createVerifier(),
+        };
+        equal(await lookupObject("@alice@example.com", options), null);
+        equal(
+          await lookupObject(
+            `ap://${did}/x/../actor?@gateway=https%3A%2F%2Fexample.com`,
+            options,
+          ),
+          null,
+        );
+        deepStrictEqual(documentLoader.fetched, []);
+      });
+
+      await t.step(
+        "refuses compatible IDs changed by URL parsing",
+        async () => {
+          fetchMock.removeRoutes();
+          const dotted = compatibleId.replace("/actor", "/x/../actor");
+          const documentLoader = createLoader({ [compatibleId]: person() });
+          const options = {
+            documentLoader,
+            contextLoader: mockDocumentLoader,
+            ...allowPrivateAddress,
+            verifyPortableObject: createVerifier(),
+          };
+          equal(await lookupObject(dotted, options), null);
+          fetchMock.get(webFingerPrefix, selfLinks(dotted));
+          equal(await lookupObject("@alice@example.com", options), null);
+          deepStrictEqual(documentLoader.fetched, []);
+        },
+      );
+
+      await t.step("bounds gateway requests", async () => {
+        fetchMock.removeRoutes();
+        const hints = Array.from(
+          { length: 5 },
+          (_, i) => `@gateway=https%3A%2F%2Fg${i}.example`,
+        ).join("&");
+        fetchMock.get(
+          webFingerPrefix,
+          selfLinks(
+            `ap://${did}/actor?${hints}`,
+            `ap://${did}/actor2?${hints}`,
+            `https://g9.example/.well-known/apgateway/${did}/actor`,
+          ),
+        );
+        const documentLoader = createLoader({});
+        equal(
+          await lookupObject("@alice@example.com", {
+            documentLoader,
+            contextLoader: mockDocumentLoader,
+            ...allowPrivateAddress,
+            verifyPortableObject: createVerifier(),
+          }),
+          null,
+        );
+        deepStrictEqual(documentLoader.fetched, [
+          compatibleId,
+          ...[0, 1, 2, 3].map((i) => `https://g${i}.example${gatewayPath}`),
+        ]);
+      });
+
+      await t.step("cancellation", async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          webFingerPrefix,
+          selfLinks(`ap://${did}/actor`, `https://other.example${gatewayPath}`),
+        );
+        const controller = new AbortController();
+        const verifyPortableObject: PortableObjectVerifier = () => {
+          controller.abort();
+          return Promise.resolve({ verified: true });
+        };
+        const documentLoader = createLoader({ [compatibleId]: person() });
         equal(
           await lookupObject("@alice@example.com", {
             documentLoader,
             contextLoader: mockDocumentLoader,
             ...allowPrivateAddress,
             verifyPortableObject,
-            crossOrigin: "trust",
+            signal: controller.signal,
           }),
           null,
         );
-      }
-    });
-
-    await t.step("without verifyPortableObject", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.get(
-        webFingerPrefix,
-        selfLinks(`ap://${did}/actor`, compatibleId),
-      );
-      const documentLoader = createLoader({ [compatibleId]: person() });
-      for (const crossOrigin of ["ignore", "trust"] as const) {
-        // The canonical link is skipped, and the compatible identifier is
-        // fetched as an ordinary URL, but its portable object is refused:
-        equal(
-          await lookupObject("@alice@example.com", {
-            documentLoader,
-            contextLoader: mockDocumentLoader,
-            ...allowPrivateAddress,
-            crossOrigin,
-          }),
-          null,
-        );
-      }
-      deepStrictEqual(documentLoader.fetched, [compatibleId, compatibleId]);
-      await rejects(
-        () =>
-          lookupObject("@alice@example.com", {
-            documentLoader,
-            contextLoader: mockDocumentLoader,
-            ...allowPrivateAddress,
-            crossOrigin: "throw",
-          }),
-        /has a different origin than the document URL/,
-      );
-
-      // An object with an ordinary ID served at a compatible identifier
-      // keeps working as before:
-      const httpLoader = createLoader({ [compatibleId]: person(compatibleId) });
-      const actor = await lookupObject("@alice@example.com", {
-        documentLoader: httpLoader,
-        contextLoader: mockDocumentLoader,
-        ...allowPrivateAddress,
+        deepStrictEqual(documentLoader.fetched, [compatibleId]);
       });
-      assertInstanceOf(actor, Person);
-      deepStrictEqual(actor.id, new URL(compatibleId));
-
-      const malformed = `${compatibleId}?gateways=x`;
-      const ordinaryLoader = createLoader({
-        [malformed]: person(malformed),
-      });
-      const ordinary = await lookupObject(malformed, {
-        documentLoader: ordinaryLoader,
-        contextLoader: mockDocumentLoader,
-        ...allowPrivateAddress,
-      });
-      assertInstanceOf(ordinary, Person);
-      deepStrictEqual(ordinaryLoader.fetched, [malformed]);
-    });
-
-    await t.step("refuses portable IRIs changed by URL parsing", async () => {
+    } finally {
       fetchMock.removeRoutes();
-      fetchMock.get(
-        webFingerPrefix,
-        selfLinks(
-          `ap://${did}/x/../actor`,
-          `ap://${did}/x/%2e%2e/actor`,
-        ),
-      );
-      const documentLoader = createLoader({ [compatibleId]: person() });
-      const options = {
-        documentLoader,
-        contextLoader: mockDocumentLoader,
-        ...allowPrivateAddress,
-        verifyPortableObject: createVerifier(),
-      };
-      equal(await lookupObject("@alice@example.com", options), null);
-      equal(
-        await lookupObject(
-          `ap://${did}/x/../actor?@gateway=https%3A%2F%2Fexample.com`,
-          options,
-        ),
-        null,
-      );
-      deepStrictEqual(documentLoader.fetched, []);
-    });
-
-    await t.step("refuses compatible IDs changed by URL parsing", async () => {
-      fetchMock.removeRoutes();
-      const dotted = compatibleId.replace("/actor", "/x/../actor");
-      const documentLoader = createLoader({ [compatibleId]: person() });
-      const options = {
-        documentLoader,
-        contextLoader: mockDocumentLoader,
-        ...allowPrivateAddress,
-        verifyPortableObject: createVerifier(),
-      };
-      equal(await lookupObject(dotted, options), null);
-      fetchMock.get(webFingerPrefix, selfLinks(dotted));
-      equal(await lookupObject("@alice@example.com", options), null);
-      deepStrictEqual(documentLoader.fetched, []);
-    });
-
-    await t.step("bounds gateway requests", async () => {
-      fetchMock.removeRoutes();
-      const hints = Array.from(
-        { length: 5 },
-        (_, i) => `@gateway=https%3A%2F%2Fg${i}.example`,
-      ).join("&");
-      fetchMock.get(
-        webFingerPrefix,
-        selfLinks(
-          `ap://${did}/actor?${hints}`,
-          `ap://${did}/actor2?${hints}`,
-          `https://g9.example/.well-known/apgateway/${did}/actor`,
-        ),
-      );
-      const documentLoader = createLoader({});
-      equal(
-        await lookupObject("@alice@example.com", {
-          documentLoader,
-          contextLoader: mockDocumentLoader,
-          ...allowPrivateAddress,
-          verifyPortableObject: createVerifier(),
-        }),
-        null,
-      );
-      deepStrictEqual(documentLoader.fetched, [
-        compatibleId,
-        ...[0, 1, 2, 3].map((i) => `https://g${i}.example${gatewayPath}`),
-      ]);
-    });
-
-    await t.step("cancellation", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.get(
-        webFingerPrefix,
-        selfLinks(
-          `ap://${did}/actor`,
-          `https://other.example${gatewayPath}`,
-        ),
-      );
-      const controller = new AbortController();
-      const verifyPortableObject: PortableObjectVerifier = () => {
-        controller.abort();
-        return Promise.resolve({ verified: true });
-      };
-      const documentLoader = createLoader({ [compatibleId]: person() });
-      equal(
-        await lookupObject("@alice@example.com", {
-          documentLoader,
-          contextLoader: mockDocumentLoader,
-          ...allowPrivateAddress,
-          verifyPortableObject,
-          signal: controller.signal,
-        }),
-        null,
-      );
-      deepStrictEqual(documentLoader.fetched, [compatibleId]);
-    });
-  } finally {
-    fetchMock.removeRoutes();
-    fetchMock.hardReset();
-  }
-});
+      fetchMock.hardReset();
+    }
+  },
+);
 
 test("lookupObject() looks up portable identifiers directly", async () => {
   const verifyPortableObject = createVerifier();
@@ -443,16 +446,14 @@ test("lookupObject() looks up portable identifiers directly", async () => {
     contextLoader: mockDocumentLoader,
     verifyPortableObject,
   };
-  for (
-    const identifier of [
-      `ap://${did}/actor?@gateway=https%3A%2F%2Fgw.example`,
-      compatibleId,
-      new URL(compatibleId),
-      // Without hints, the document loader gets the portable ID itself:
-      `ap://${did}/actor`,
-      parseIri(`ap://${did}/actor`),
-    ]
-  ) {
+  for (const identifier of [
+    `ap://${did}/actor?@gateway=https%3A%2F%2Fgw.example`,
+    compatibleId,
+    new URL(compatibleId),
+    // Without hints, the document loader gets the portable ID itself:
+    `ap://${did}/actor`,
+    parseIri(`ap://${did}/actor`),
+  ]) {
     const actor = await lookupObject(identifier, options);
     assertInstanceOf(actor, Person);
     deepStrictEqual(actor.id, parseIri(actorId));
@@ -576,91 +577,112 @@ test("lookupObject() uses explicit gateways for portable IDs", async (t) => {
   });
 });
 
-test("getActorHandle() with FEP-ef61 portable actors", {
-  sanitizeResources: false,
-  sanitizeOps: false,
-}, async (t) => {
-  const actor = new Person({
-    id: parseIri(actorId),
-    preferredUsername: "alice",
-    gateways: [new URL("https://example.com"), new URL("https://example.org")],
-  });
-  fetchMock.spyGlobal();
-  try {
-    await t.step("verified through the first gateway", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.get(
-        "https://example.com/.well-known/webfinger?resource=acct%3Aalice%40example.com",
-        selfLinks(compatibleId),
-      );
-      deepStrictEqual(
-        await getActorHandle(actor, {
-          ...allowPrivateAddress,
-          userAgent: undefined,
-        }),
-        "@alice@example.com",
-      );
+test(
+  "getActorHandle() with FEP-ef61 portable actors",
+  {
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  async (t) => {
+    const actor = new Person({
+      id: parseIri(actorId),
+      preferredUsername: "alice",
+      gateways: [
+        new URL("https://example.com"),
+        new URL("https://example.org"),
+      ],
     });
-
-    await t.step("canonical self link", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.get(webFingerPrefix, selfLinks(`ap://${did}/actor`));
-      deepStrictEqual(
-        await getActorHandle(actor, {
-          ...allowPrivateAddress,
-          userAgent: undefined,
-        }),
-        "@alice@example.com",
-      );
-    });
-
-    await t.step("follows a verified subject", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.get(webFingerPrefix, {
-        ...selfLinks(compatibleId),
-        subject: "acct:alice@example.org",
-      });
-      fetchMock.get(
-        "begin:https://example.org/.well-known/webfinger",
-        { ...selfLinks(compatibleId), subject: "acct:alice@example.org" },
-      );
-      deepStrictEqual(
-        await getActorHandle(actor, {
-          ...allowPrivateAddress,
-          userAgent: undefined,
-        }),
-        "@alice@example.org",
-      );
-
-      // An unverified subject is ignored:
-      fetchMock.removeRoutes();
-      fetchMock.get(webFingerPrefix, {
-        ...selfLinks(compatibleId),
-        subject: "acct:alice@example.org",
-      });
-      fetchMock.get(
-        "begin:https://example.org/.well-known/webfinger",
-        selfLinks(`ap://${did}/other`),
-      );
-      deepStrictEqual(
-        await getActorHandle(actor, {
-          ...allowPrivateAddress,
-          userAgent: undefined,
-        }),
-        "@alice@example.com",
-      );
-    });
-
-    await t.step("rejects a WebFinger response for another actor", async () => {
-      for (
-        const jrd of [
-          selfLinks(`https://example.com/.well-known/apgateway/${did}/other`),
-          selfLinks("https://example.com/users/alice"),
-          { subject: "acct:alice@example.com", links: [] },
-        ]
-      ) {
+    fetchMock.spyGlobal();
+    try {
+      await t.step("verified through the first gateway", async () => {
         fetchMock.removeRoutes();
-        fetchMock.get(webFingerPrefix, jrd);
+        fetchMock.get(
+          "https://example.com/.well-known/webfinger?resource=acct%3Aalice%40example.com",
+          selfLinks(compatibleId),
+        );
+        deepStrictEqual(
+          await getActorHandle(actor, {
+            ...allowPrivateAddress,
+            userAgent: undefined,
+          }),
+          "@alice@example.com",
+        );
+      });
+
+      await t.step("canonical self link", async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(webFingerPrefix, selfLinks(`ap://${did}/actor`));
+        deepStrictEqual(
+          await getActorHandle(actor, {
+            ...allowPrivateAddress,
+            userAgent: undefined,
+          }),
+          "@alice@example.com",
+        );
+      });
+
+      await t.step("follows a verified subject", async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(webFingerPrefix, {
+          ...selfLinks(compatibleId),
+          subject: "acct:alice@example.org",
+        });
+        fetchMock.get("begin:https://example.org/.well-known/webfinger", {
+          ...selfLinks(compatibleId),
+          subject: "acct:alice@example.org",
+        });
+        deepStrictEqual(
+          await getActorHandle(actor, {
+            ...allowPrivateAddress,
+            userAgent: undefined,
+          }),
+          "@alice@example.org",
+        );
+
+        // An unverified subject is ignored:
+        fetchMock.removeRoutes();
+        fetchMock.get(webFingerPrefix, {
+          ...selfLinks(compatibleId),
+          subject: "acct:alice@example.org",
+        });
+        fetchMock.get(
+          "begin:https://example.org/.well-known/webfinger",
+          selfLinks(`ap://${did}/other`),
+        );
+        deepStrictEqual(
+          await getActorHandle(actor, {
+            ...allowPrivateAddress,
+            userAgent: undefined,
+          }),
+          "@alice@example.com",
+        );
+      });
+
+      await t.step(
+        "rejects a WebFinger response for another actor",
+        async () => {
+          for (const jrd of [
+            selfLinks(`https://example.com/.well-known/apgateway/${did}/other`),
+            selfLinks("https://example.com/users/alice"),
+            { subject: "acct:alice@example.com", links: [] },
+          ]) {
+            fetchMock.removeRoutes();
+            fetchMock.get(webFingerPrefix, jrd);
+            await rejects(
+              () =>
+                getActorHandle(actor, {
+                  ...allowPrivateAddress,
+                  userAgent: undefined,
+                }),
+              TypeError,
+            );
+          }
+        },
+      );
+
+      await t.step("does not fall back when WebFinger fails", async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(webFingerPrefix, 404);
         await rejects(
           () =>
             getActorHandle(actor, {
@@ -669,51 +691,36 @@ test("getActorHandle() with FEP-ef61 portable actors", {
             }),
           TypeError,
         );
-      }
-    });
+      });
 
-    await t.step("does not fall back when WebFinger fails", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.get(webFingerPrefix, 404);
-      await rejects(
-        () =>
-          getActorHandle(actor, {
-            ...allowPrivateAddress,
-            userAgent: undefined,
-          }),
-        TypeError,
-      );
-    });
-
-    await t.step("not enough information", async () => {
-      fetchMock.removeRoutes();
-      fetchMock.clearHistory();
-      for (
-        const target of [
+      await t.step("not enough information", async () => {
+        fetchMock.removeRoutes();
+        fetchMock.clearHistory();
+        for (const target of [
           parseIri(actorId),
           new Person({ id: parseIri(actorId), preferredUsername: "alice" }),
           new Person({
             id: parseIri(actorId),
             gateways: [new URL("https://example.com")],
           }),
-        ]
-      ) {
-        await rejects(
-          () =>
-            getActorHandle(target, {
-              ...allowPrivateAddress,
-              userAgent: undefined,
-            }),
-          TypeError,
-        );
-      }
-      deepStrictEqual(fetchMock.callHistory.calls().length, 0);
-    });
-  } finally {
-    fetchMock.removeRoutes();
-    fetchMock.hardReset();
-  }
-});
+        ]) {
+          await rejects(
+            () =>
+              getActorHandle(target, {
+                ...allowPrivateAddress,
+                userAgent: undefined,
+              }),
+            TypeError,
+          );
+        }
+        deepStrictEqual(fetchMock.callHistory.calls().length, 0);
+      });
+    } finally {
+      fetchMock.removeRoutes();
+      fetchMock.hardReset();
+    }
+  },
+);
 
 test("lookupObject() reports inferred gateways as hints", async () => {
   const calls: PortableObjectVerifierOptions[] = [];

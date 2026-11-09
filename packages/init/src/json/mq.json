@@ -1,13 +1,7 @@
 {
   "in-process": {
     "label": "In-Process",
-    "packageManagers": [
-      "deno",
-      "bun",
-      "npm",
-      "yarn",
-      "pnpm"
-    ],
+    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
     "imports": {
       "@fedify/fedify": {
         "InProcessMessageQueue": "InProcessMessageQueue"
@@ -17,13 +11,7 @@
   },
   "redis": {
     "label": "Redis",
-    "packageManagers": [
-      "deno",
-      "bun",
-      "npm",
-      "yarn",
-      "pnpm"
-    ],
+    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
     "dependencies": {
       "npm:ioredis": "^5.11.1"
     },
@@ -42,13 +30,7 @@
   },
   "postgres": {
     "label": "PostgreSQL",
-    "packageManagers": [
-      "deno",
-      "bun",
-      "npm",
-      "yarn",
-      "pnpm"
-    ],
+    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
     "dependencies": {
       "npm:postgres": "^3.4.9"
     },
@@ -67,13 +49,7 @@
   },
   "mysql": {
     "label": "MySQL/MariaDB",
-    "packageManagers": [
-      "deno",
-      "bun",
-      "npm",
-      "yarn",
-      "pnpm"
-    ],
+    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
     "dependencies": {
       "npm:mysql2": "^3.23.2"
     },
@@ -92,13 +68,7 @@
   },
   "amqp": {
     "label": "AMQP (e.g., RabbitMQ)",
-    "packageManagers": [
-      "deno",
-      "bun",
-      "npm",
-      "yarn",
-      "pnpm"
-    ],
+    "packageManagers": ["deno", "bun", "npm", "yarn", "pnpm"],
     "dependencies": {
       "npm:amqplib": "^0.10.9"
     },
@@ -120,9 +90,7 @@
   },
   "denokv": {
     "label": "Deno KV",
-    "packageManagers": [
-      "deno"
-    ],
+    "packageManagers": ["deno"],
     "imports": {
       "@fedify/denokv": {
         "DenoKvMessageQueue": "DenoKvMessageQueue"
@@ -130,8 +98,6 @@
     },
     "object": "new DenoKvMessageQueue(await Deno.openKv())",
     "deprecated": true,
-    "denoUnstable": [
-      "kv"
-    ]
+    "denoUnstable": ["kv"]
   }
 }

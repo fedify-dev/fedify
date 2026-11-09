@@ -72,13 +72,11 @@ describe("built package", { skip: !distBuilt && "dist/ is not built" }, () => {
     // against the built tree.
     const { stubsRoot } = await import("@fedify/adonisjs");
 
-    for (
-      const stub of [
-        "config/fedify.stub",
-        "start/federation.stub",
-        "federation/main.stub",
-      ]
-    ) {
+    for (const stub of [
+      "config/fedify.stub",
+      "start/federation.stub",
+      "federation/main.stub",
+    ]) {
       ok(existsSync(join(stubsRoot, stub)), `missing dist stub: ${stub}`);
     }
   });

@@ -203,11 +203,7 @@
         "template": "{?list*}",
         "uri": "?list=red&list=green&list=blue",
         "expected": {
-          "list": [
-            "red",
-            "green",
-            "blue"
-          ]
+          "list": ["red", "green", "blue"]
         },
         "reason": "Per RFC 6570 §3.2.8, an exploded list under `?` emits `list=red&list=green&...`. Repetition of the same name signals list semantics."
       }
@@ -246,11 +242,7 @@
         "template": "{/list*}",
         "uri": "/red/green/blue",
         "expected": {
-          "list": [
-            "red",
-            "green",
-            "blue"
-          ]
+          "list": ["red", "green", "blue"]
         },
         "reason": "`{/list*}` distributes list elements as `/`-separated segments. Match recovers the list of three elements."
       }
@@ -376,10 +368,7 @@
         "uri": "/posts/42?include=author&include=tags",
         "expected": {
           "id": "42",
-          "include": [
-            "author",
-            "tags"
-          ]
+          "include": ["author", "tags"]
         },
         "reason": "`{?include*}` distributes a list as repeated `include=…` parameters per RFC 6570 §3.2.8. Match recovers the list of two members; `{/id}` separately captures `42`."
       },
@@ -388,11 +377,7 @@
         "template": "/files{/path*}",
         "uri": "/files/a/b/c",
         "expected": {
-          "path": [
-            "a",
-            "b",
-            "c"
-          ]
+          "path": ["a", "b", "c"]
         },
         "reason": "`{/path*}` distributes list members as `/`-separated segments. The string interpretation `path = \"a/b/c\"` would round-trip to `/a%2Fb%2Fc`, so only the list binding is consistent."
       },

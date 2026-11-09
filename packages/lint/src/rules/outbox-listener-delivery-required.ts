@@ -39,7 +39,8 @@ const isChainedFromOutboxListeners = (
     return federationTracker.isFederationObject(expr.callee.object);
   }
   if (
-    methodName === "authorize" || methodName === "onError" ||
+    methodName === "authorize" ||
+    methodName === "onError" ||
     methodName === "on"
   ) {
     return isChainedFromOutboxListeners(expr.callee.object, federationTracker);
@@ -96,8 +97,8 @@ function bindPattern(node: Node, bindings: Bindings): void {
       for (const property of node.properties) {
         bindPattern(
           property.type === "Property"
-            ? property.value as Node
-            : property as Node,
+            ? (property.value as Node)
+            : (property as Node),
           bindings,
         );
       }
@@ -136,18 +137,21 @@ function createBindingIndex() {
   const enclosingScope = (node: Node, functionScope = false): Node => {
     let scope = getParent(node)!;
     while (
-      scope.type !== "Program" && scope.type !== "StaticBlock" &&
+      scope.type !== "Program" &&
+      scope.type !== "StaticBlock" &&
       scope.type !== "TSModuleBlock" &&
       !isFunctionLike(scope) &&
-      (functionScope || ![
-        "BlockStatement",
-        "ForStatement",
-        "ForInStatement",
-        "ForOfStatement",
-        "SwitchStatement",
-        "CatchClause",
-      ].includes(scope.type))
-    ) scope = getParent(scope)!;
+      (functionScope ||
+        ![
+          "BlockStatement",
+          "ForStatement",
+          "ForInStatement",
+          "ForOfStatement",
+          "SwitchStatement",
+          "CatchClause",
+        ].includes(scope.type))
+    )
+      scope = getParent(scope)!;
     return scope;
   };
 
@@ -174,11 +178,12 @@ function createBindingIndex() {
         if (
           node.type === "FunctionDeclaration" &&
           bindings.get(pattern.name)?.initializedVariable
-        ) return;
+        )
+          return;
         bindings.set(pattern.name, {
           value,
-          initializedVariable: node.type === "VariableDeclarator" &&
-            value != null,
+          initializedVariable:
+            node.type === "VariableDeclarator" && value != null,
         });
       } else bindPattern(pattern, bindings);
     },
@@ -189,7 +194,8 @@ type BindingIndex = ReturnType<typeof createBindingIndex>;
 
 const position = (node: Node): number =>
   (node as Node & { range?: [number, number]; start?: number }).range?.[0] ??
-    (node as Node & { start?: number }).start ?? -1;
+  (node as Node & { start?: number }).start ??
+  -1;
 
 const enclosingFunction = (node: Node): FunctionLikeNode | null => {
   for (
@@ -238,8 +244,7 @@ const isDirectStatement = (node: Node, fn: FunctionLikeNode): boolean => {
     "ReturnStatement",
     "VariableDeclaration",
     "BlockStatement",
-  ]
-    .includes(current.type);
+  ].includes(current.type);
 };
 
 const resolveBindingValue = (
@@ -271,11 +276,12 @@ const resolveListenerReference = (
   if (propertyName == null) return null;
   for (const prop of object.properties) {
     if (prop.type !== "Property") continue;
-    const keyName = prop.key.type === "Identifier" && !prop.computed
-      ? prop.key.name
-      : prop.key.type === "Literal" && typeof prop.key.value === "string"
-      ? prop.key.value
-      : null;
+    const keyName =
+      prop.key.type === "Identifier" && !prop.computed
+        ? prop.key.name
+        : prop.key.type === "Literal" && typeof prop.key.value === "string"
+          ? prop.key.value
+          : null;
     if (keyName !== propertyName) continue;
     const value = resolveBindingValue(prop.value as Node, bindings);
     if (value != null && isFunctionLike(value)) return value;
@@ -428,8 +434,7 @@ function getDeliveryAliasName(node: Node): string | null {
 function buildContextExpressionPattern(contextName: string): string {
   const name = escapeRegExp(contextName);
   const boundedName = String.raw`(?<![\w$])${name}(?![\w$])`;
-  return String
-    .raw`(?:${boundedName}|\(\s*${boundedName}(?:\s+as\s+[^)]+)?\s*\))`;
+  return String.raw`(?:${boundedName}|\(\s*${boundedName}(?:\s+as\s+[^)]+)?\s*\))`;
 }
 
 /**
@@ -470,26 +475,28 @@ function collectDeliveryScanCode(
 
       const nested: FunctionLikeNode[] = [];
       collectNestedFunctions(statement, nested);
-      const byDescendingStart = [...nested].sort((a, b) =>
-        getRange(b)[0] - getRange(a)[0]
+      const byDescendingStart = [...nested].sort(
+        (a, b) => getRange(b)[0] - getRange(a)[0],
       );
 
       let result = text;
       for (const fn of byDescendingStart) {
         const [fnStart, fnEnd] = getRange(fn);
-        const replacement = used.has(fn) && !ignored.has(fn)
-          ? collectDeliveryScanCode(
-            sourceCode,
-            fn.body as Node,
-            used,
-            ignored,
-            visited,
-          )
-          : "";
+        const replacement =
+          used.has(fn) && !ignored.has(fn)
+            ? collectDeliveryScanCode(
+                sourceCode,
+                fn.body as Node,
+                used,
+                ignored,
+                visited,
+              )
+            : "";
         // A method's range starts right after its key (`go` in `go() {}`)
         // on some parsers, so keep the spliced text apart from what
         // surrounds it, or `go` and `ctx` fuse into a single `goctx`.
-        result = result.slice(0, fnStart - statementStart) +
+        result =
+          result.slice(0, fnStart - statementStart) +
           `\n${replacement.length > 0 ? replacement : "()=>{}"}\n` +
           result.slice(fnEnd - statementStart);
       }
@@ -500,9 +507,11 @@ function collectDeliveryScanCode(
 
 function unwrapArgument(node: Node): Node {
   while (
-    node.type === "TSAsExpression" || node.type === "TSTypeAssertion" ||
+    node.type === "TSAsExpression" ||
+    node.type === "TSTypeAssertion" ||
     node.type === "TSNonNullExpression"
-  ) node = node.expression as Node;
+  )
+    node = node.expression as Node;
   return node;
 }
 
@@ -513,9 +522,10 @@ function ignoredLocalSetupFunctions(
   assignments: readonly Node[],
 ): FunctionLikeNode[] {
   const ignored: FunctionLikeNode[] = [];
-  const directCalls = calls.filter((call) =>
-    enclosingFunction(call as Node) === listener &&
-    isDirectStatement(call as Node, listener)
+  const directCalls = calls.filter(
+    (call) =>
+      enclosingFunction(call as Node) === listener &&
+      isDirectStatement(call as Node, listener),
   );
 
   for (const assignment of assignments) {
@@ -524,21 +534,24 @@ function ignoredLocalSetupFunctions(
       assignment.operator !== "=" ||
       assignment.left.type !== "MemberExpression" ||
       !isFunction(assignment.right as Expression)
-    ) continue;
+    )
+      continue;
     const setup = enclosingFunction(assignment as Node);
-    if (
-      setup == null || setup === listener || !isInside(setup, listener)
-    ) continue;
+    if (setup == null || setup === listener || !isInside(setup, listener))
+      continue;
     const setupParent = getParent(setup);
-    const namedLocalSetup = enclosingFunction(setup) === listener &&
+    const namedLocalSetup =
+      enclosingFunction(setup) === listener &&
       (setup.type === "FunctionDeclaration" ||
         (setupParent?.type === "VariableDeclarator" &&
-          setupParent.init === setup && setupParent.id.type === "Identifier"));
+          setupParent.init === setup &&
+          setupParent.id.type === "Identifier"));
     const passedToCall = calls.some((call) =>
-      call.arguments.some((argument) =>
-        argument.type !== "SpreadElement" &&
-        resolveListenerReference(argument as Expression, bindings) === setup
-      )
+      call.arguments.some(
+        (argument) =>
+          argument.type !== "SpreadElement" &&
+          resolveListenerReference(argument as Expression, bindings) === setup,
+      ),
     );
     if (!namedLocalSetup || passedToCall) continue;
     const installed = assignment.right as FunctionLikeNode;
@@ -552,14 +565,17 @@ function ignoredLocalSetupFunctions(
     const property = getMemberPropertyName(assignment.left);
     if (property == null) continue;
 
-    const setupCalls = directCalls.filter((call) =>
-      resolveListenerReference(call.callee as Expression, bindings) === setup
+    const setupCalls = directCalls.filter(
+      (call) =>
+        resolveListenerReference(call.callee as Expression, bindings) === setup,
     );
     if (setupCalls.length === 0) {
-      const called = calls.some((call) =>
-        resolveListenerReference(call.callee as Expression, bindings) === setup
+      const called = calls.some(
+        (call) =>
+          resolveListenerReference(call.callee as Expression, bindings) ===
+          setup,
       );
-      ignored.push(called ? assignment.right as FunctionLikeNode : setup);
+      ignored.push(called ? (assignment.right as FunctionLikeNode) : setup);
       continue;
     }
 
@@ -569,18 +585,22 @@ function ignoredLocalSetupFunctions(
     );
     const deliveryCalls = directCalls.filter((call) => {
       const callee = call.callee;
-      return callee.type === "MemberExpression" &&
+      return (
+        callee.type === "MemberExpression" &&
         callee.object.type === "Identifier" &&
         getMemberPropertyName(callee) === property &&
         bindings.lookup(callee.object as Node, callee.object.name) ===
-          objectBinding;
+          objectBinding
+      );
     });
-    const installedBeforeUse = objectBinding != null &&
+    const installedBeforeUse =
+      objectBinding != null &&
       setupCalls.some((setupCall) =>
-        deliveryCalls.some((deliveryCall) =>
-          position(setupCall as Node) >= 0 &&
-          position(setupCall as Node) < position(deliveryCall as Node)
-        )
+        deliveryCalls.some(
+          (deliveryCall) =>
+            position(setupCall as Node) >= 0 &&
+            position(setupCall as Node) < position(deliveryCall as Node),
+        ),
       );
     if (!installedBeforeUse) ignored.push(installed);
   }
@@ -598,7 +618,7 @@ function functionCallsDelivery(
 ): boolean {
   let indices = visited.get(listener);
   if (indices?.has(contextIndex)) return false;
-  if (indices == null) visited.set(listener, indices = new Set());
+  if (indices == null) visited.set(listener, (indices = new Set()));
   indices.add(contextIndex);
   const ignored = ignoredLocalSetupFunctions(
     listener,
@@ -636,8 +656,10 @@ function functionCallsDelivery(
       if (
         (field.type === "PropertyDefinition" ||
           field.type === "AccessorProperty") &&
-        !field.static && field.value === child
-      ) break;
+        !field.static &&
+        field.value === child
+      )
+        break;
       child = owner;
       owner = getParent(owner);
     }
@@ -648,7 +670,8 @@ function functionCallsDelivery(
         const [start, end] = getRange(statement);
         return start <= callStart && callEnd <= end;
       })
-    ) continue;
+    )
+      continue;
     const helper = resolveListenerReference(
       call.callee as Expression,
       bindings,
@@ -659,10 +682,12 @@ function functionCallsDelivery(
       if (argument.type === "SpreadElement") break;
       const arg = unwrapArgument(argument as Node);
       if (
-        arg.type !== "Identifier" || arg.name !== param.name ||
+        arg.type !== "Identifier" ||
+        arg.name !== param.name ||
         bindings.lookup(arg, arg.name) !== contextBinding ||
         (helper.params[index] as Node | undefined)?.type === "RestElement"
-      ) continue;
+      )
+        continue;
       if (
         functionCallsDelivery(
           sourceCode,
@@ -673,7 +698,8 @@ function functionCallsDelivery(
           index,
           visited,
         )
-      ) return true;
+      )
+        return true;
     }
   }
   return false;
@@ -697,30 +723,37 @@ const listenerCallsDeliveryMethod = (
       assignment.left.object.type !== "Identifier" ||
       !isFunction(assignment.right as Expression) ||
       !isInside(assignment, listener)
-    ) continue;
+    )
+      continue;
     const property = getMemberPropertyName(assignment.left);
     const objectBinding = bindings.lookup(
       assignment.left.object as Node,
       assignment.left.object.name,
     );
     if (
-      property == null || objectBinding == null ||
-      !calls.some((call) =>
-        enclosingFunction(call as Node) === listener &&
-        call.callee.type === "MemberExpression" &&
-        call.callee.object.type === "Identifier" &&
-        getMemberPropertyName(call.callee) === property &&
-        bindings.lookup(call.callee.object as Node, call.callee.object.name) ===
-          objectBinding
+      property == null ||
+      objectBinding == null ||
+      !calls.some(
+        (call) =>
+          enclosingFunction(call as Node) === listener &&
+          call.callee.type === "MemberExpression" &&
+          call.callee.object.type === "Identifier" &&
+          getMemberPropertyName(call.callee) === property &&
+          bindings.lookup(
+            call.callee.object as Node,
+            call.callee.object.name,
+          ) === objectBinding,
       )
-    ) continue;
+    )
+      continue;
     const installed = assignment.right as FunctionLikeNode;
     if (ignoredSet.has(installed)) continue;
     for (
       let fn: FunctionLikeNode | null = installed;
       fn != null && fn !== listener && !ignoredSet.has(fn);
       fn = enclosingFunction(fn)
-    ) used.add(fn);
+    )
+      used.add(fn);
   }
   const code = stripCommentsAndStrings(
     collectDeliveryScanCode(
@@ -735,18 +768,18 @@ const listenerCallsDeliveryMethod = (
   const contextParam = unwrapContextParam(
     listener.params[contextIndex] as Node | undefined,
   );
-  const contextName = contextParam?.type === "Identifier"
-    ? contextParam.name
-    : null;
+  const contextName =
+    contextParam?.type === "Identifier" ? contextParam.name : null;
 
   if (contextParam?.type === "ObjectPattern") {
     for (const prop of contextParam.properties) {
       if (!isNode(prop) || prop.type !== "Property") continue;
-      const keyName = prop.key.type === "Identifier"
-        ? prop.key.name
-        : prop.key.type === "Literal" && typeof prop.key.value === "string"
-        ? prop.key.value
-        : null;
+      const keyName =
+        prop.key.type === "Identifier"
+          ? prop.key.name
+          : prop.key.type === "Literal" && typeof prop.key.value === "string"
+            ? prop.key.value
+            : null;
       if (keyName == null || !DELIVERY_METHOD_NAMES.has(keyName)) continue;
       const alias = getDeliveryAliasName(prop.value as Node);
       if (alias != null) aliases.add(alias);
@@ -756,8 +789,7 @@ const listenerCallsDeliveryMethod = (
   if (contextName != null) {
     const contextExpr = buildContextExpressionPattern(contextName);
     const memberPattern = new RegExp(
-      String
-        .raw`${contextExpr}\s*(?:\?\s*\.\s*(?:sendActivity|forwardActivity)|\.\s*(?:sendActivity|forwardActivity)|\?\s*\.\s*\[\s*["'\`](?:sendActivity|forwardActivity)["'\`]\s*\]|\[\s*["'\`](?:sendActivity|forwardActivity)["'\`]\s*\])\s*\(`,
+      String.raw`${contextExpr}\s*(?:\?\s*\.\s*(?:sendActivity|forwardActivity)|\.\s*(?:sendActivity|forwardActivity)|\?\s*\.\s*\[\s*["'\`](?:sendActivity|forwardActivity)["'\`]\s*\]|\[\s*["'\`](?:sendActivity|forwardActivity)["'\`]\s*\])\s*\(`,
     );
     if (memberPattern.test(code)) return true;
 
@@ -766,21 +798,21 @@ const listenerCallsDeliveryMethod = (
       "g",
     );
     for (const match of code.matchAll(destructuringPattern)) {
-      const fields = match[1].split(",").map((field) => field.trim()).filter(
-        Boolean,
-      );
+      const fields = match[1]
+        .split(",")
+        .map((field) => field.trim())
+        .filter(Boolean);
       for (const field of fields) {
-        const [sourceName, aliasName] = field.split(":").map((part) =>
-          part.trim()
-        );
+        const [sourceName, aliasName] = field
+          .split(":")
+          .map((part) => part.trim());
         if (!DELIVERY_METHOD_NAMES.has(sourceName)) continue;
         aliases.add(aliasName ?? sourceName);
       }
     }
 
     const aliasPattern = new RegExp(
-      String
-        .raw`(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*${contextExpr}\s*(?:\?\s*\.\s*(sendActivity|forwardActivity)|\.\s*(sendActivity|forwardActivity)|\?\s*\.\s*\[\s*["'\`](sendActivity|forwardActivity)["'\`]\s*\]|\[\s*["'\`](sendActivity|forwardActivity)["'\`]\s*\])`,
+      String.raw`(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*${contextExpr}\s*(?:\?\s*\.\s*(sendActivity|forwardActivity)|\.\s*(sendActivity|forwardActivity)|\?\s*\.\s*\[\s*["'\`](sendActivity|forwardActivity)["'\`]\s*\]|\[\s*["'\`](sendActivity|forwardActivity)["'\`]\s*\])`,
       "g",
     );
     for (const match of code.matchAll(aliasPattern)) {
@@ -789,27 +821,28 @@ const listenerCallsDeliveryMethod = (
   }
 
   return globalThis.Array.from(aliases).some((alias) =>
-    new RegExp(String.raw`\b${escapeRegExp(alias)}\s*\(`).test(code)
+    new RegExp(String.raw`\b${escapeRegExp(alias)}\s*\(`).test(code),
   );
 };
 
 function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
-  buildReport: Context extends Deno.lint.RuleContext ? {
-      message: string;
-    }
+  buildReport: Context extends Deno.lint.RuleContext
+    ? {
+        message: string;
+      }
     : {
-      messageId: string;
-      data: { message: string };
-    },
+        messageId: string;
+        data: { message: string };
+      },
 ) {
   return (context: Context) => {
     const federationTracker = trackFederationVariables();
     const bindings = createBindingIndex();
     const pendingCalls: CallExpression[] = [];
     const pendingAssignments: Node[] = [];
-    const sourceCode =
-      (context as { sourceCode: { getText(node: unknown): string } })
-        .sourceCode;
+    const sourceCode = (
+      context as { sourceCode: { getText(node: unknown): string } }
+    ).sourceCode;
 
     const inspectCall = (node: CallExpression): void => {
       if (
@@ -829,10 +862,10 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
       const listener = node.arguments[1] as unknown;
       const resolvedListener =
         isNode(listener) && isFunction(listener as Expression)
-          ? listener as FunctionLikeNode
+          ? (listener as FunctionLikeNode)
           : isNode(listener)
-          ? resolveListenerReference(listener as Expression, bindings)
-          : null;
+            ? resolveListenerReference(listener as Expression, bindings)
+            : null;
       if (resolvedListener == null) return;
 
       if (
@@ -843,7 +876,8 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
           pendingCalls,
           pendingAssignments,
         )
-      ) return;
+      )
+        return;
 
       (context as { report: (arg: unknown) => void }).report({
         node: resolvedListener,
@@ -874,8 +908,10 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
         if (node.id == null) return;
         const parent = getParent(node);
         const owner = parent == null ? null : getParent(parent);
-        const inVarBody = parent?.type === "BlockStatement" &&
-          owner != null && (owner.type === "StaticBlock" ||
+        const inVarBody =
+          parent?.type === "BlockStatement" &&
+          owner != null &&
+          (owner.type === "StaticBlock" ||
             (isFunctionLike(owner) && owner.body === parent));
         bindings.declare(node, node.id, node, inVarBody);
       },

@@ -175,61 +175,55 @@ export async function signRequest(
 ): Promise<Request> {
   validateCryptoKey(privateKey, "private");
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
-  const tracer = tracerProvider.getTracer(
-    metadata.name,
-    metadata.version,
-  );
-  return await tracer.startActiveSpan(
-    "http_signatures.sign",
-    async (span) => {
-      try {
-        // Choose implementation based on spec option
-        const spec = options.spec ?? "draft-cavage-http-signatures-12";
-        let signed: Request;
+  const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
+  return await tracer.startActiveSpan("http_signatures.sign", async (span) => {
+    try {
+      // Choose implementation based on spec option
+      const spec = options.spec ?? "draft-cavage-http-signatures-12";
+      let signed: Request;
 
-        if (spec === "rfc9421") {
-          // Pass through test options if provided
-          signed = await signRequestRfc9421(
-            request,
-            privateKey,
-            keyId,
-            span,
-            options.currentTime,
-            options.body,
-            options.rfc9421,
-          );
-        } else {
-          // Default to draft-cavage
-          signed = await signRequestDraft(
-            request,
-            privateKey,
-            keyId,
-            span,
-            options.currentTime,
-            options.body,
-          );
-        }
-
-        if (span.isRecording()) {
-          span.setAttribute(ATTR_HTTP_REQUEST_METHOD, signed.method);
-          span.setAttribute(ATTR_URL_FULL, signed.url);
-          for (const [name, value] of signed.headers) {
-            span.setAttribute(ATTR_HTTP_REQUEST_HEADER(name), value);
-          }
-          span.setAttribute("http_signatures.key_id", keyId.href);
-        }
-        return signed;
-      } catch (error) {
-        span.setStatus({
-          code: SpanStatusCode.ERROR,
-          message: String(error),
-        });
-        throw error;
-      } finally {
-        span.end();
+      if (spec === "rfc9421") {
+        // Pass through test options if provided
+        signed = await signRequestRfc9421(
+          request,
+          privateKey,
+          keyId,
+          span,
+          options.currentTime,
+          options.body,
+          options.rfc9421,
+        );
+      } else {
+        // Default to draft-cavage
+        signed = await signRequestDraft(
+          request,
+          privateKey,
+          keyId,
+          span,
+          options.currentTime,
+          options.body,
+        );
       }
-    },
-  );
+
+      if (span.isRecording()) {
+        span.setAttribute(ATTR_HTTP_REQUEST_METHOD, signed.method);
+        span.setAttribute(ATTR_URL_FULL, signed.url);
+        for (const [name, value] of signed.headers) {
+          span.setAttribute(ATTR_HTTP_REQUEST_HEADER(name), value);
+        }
+        span.setAttribute("http_signatures.key_id", keyId.href);
+      }
+      return signed;
+    } catch (error) {
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: String(error),
+      });
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
 }
 
 async function signRequestDraft(
@@ -244,11 +238,12 @@ async function signRequestDraft(
     throw new TypeError("Unsupported algorithm: " + privateKey.algorithm.name);
   }
   const url = new URL(request.url);
-  const body: ArrayBuffer | null = bodyBuffer !== undefined
-    ? bodyBuffer
-    : request.method !== "GET" && request.method !== "HEAD"
-    ? await request.clone().arrayBuffer()
-    : null;
+  const body: ArrayBuffer | null =
+    bodyBuffer !== undefined
+      ? bodyBuffer
+      : request.method !== "GET" && request.method !== "HEAD"
+        ? await request.clone().arrayBuffer()
+        : null;
   const headers = new Headers(request.headers);
   if (!headers.has("Host")) {
     headers.set("Host", url.host);
@@ -265,8 +260,8 @@ async function signRequestDraft(
       "Date",
       currentTime == null
         ? new Date().toUTCString()
-        // FIXME: Do we have any better way to format Temporal.Instant to RFC 9421?
-        : new Date(currentTime.toString()).toUTCString(),
+        : // FIXME: Do we have any better way to format Temporal.Instant to RFC 9421?
+          new Date(currentTime.toString()).toUTCString(),
     );
   }
   const serialized: [string, string][] = [
@@ -275,16 +270,17 @@ async function signRequestDraft(
   ];
   const headerNames: string[] = serialized.map(([name]) => name);
   const message = serialized
-    .map(([name, value]) => `${name}: ${value.trim()}`).join("\n");
+    .map(([name, value]) => `${name}: ${value.trim()}`)
+    .join("\n");
   // TODO: support other than RSASSA-PKCS1-v1_5:
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
     privateKey,
     new TextEncoder().encode(message),
   );
-  const sigHeader = `keyId="${keyId.href}",algorithm="rsa-sha256",headers="${
-    headerNames.join(" ")
-  }",signature="${encodeBase64(signature)}"`;
+  const sigHeader = `keyId="${keyId.href}",algorithm="rsa-sha256",headers="${headerNames.join(
+    " ",
+  )}",signature="${encodeBase64(signature)}"`;
   headers.set("Signature", sigHeader);
   if (span.isRecording()) {
     span.setAttribute("http_signatures.algorithm", "rsa-sha256");
@@ -341,24 +337,27 @@ export function createRfc9421SignatureBase(
 ): string {
   const url = new URL(request.url);
   // Build the base string
-  return components.map((component) => {
-    const id = formatComponentId(component);
-    const derived = derivedComponents[component.value]?.(request, url);
-    if (derived != null) return `${id}: ${derived}`;
-    if (component.value.startsWith("@")) {
-      throw new Error(`Unsupported derived component: ${component.value}`);
-    }
-    const header = request.headers.get(component.value);
-    if (header == null) {
-      throw new Error(`Missing header: ${component.value}`);
-    }
-    // Format the component as per RFC 9421 Section 2.1
-    return `${id}: ${header}`;
-  }).concat([
-    `"@signature-params": (${
-      components.map((c) => formatComponentId(c)).join(" ")
-    });${parameters}`,
-  ]).join("\n");
+  return components
+    .map((component) => {
+      const id = formatComponentId(component);
+      const derived = derivedComponents[component.value]?.(request, url);
+      if (derived != null) return `${id}: ${derived}`;
+      if (component.value.startsWith("@")) {
+        throw new Error(`Unsupported derived component: ${component.value}`);
+      }
+      const header = request.headers.get(component.value);
+      if (header == null) {
+        throw new Error(`Missing header: ${component.value}`);
+      }
+      // Format the component as per RFC 9421 Section 2.1
+      return `${id}: ${header}`;
+    })
+    .concat([
+      `"@signature-params": (${components
+        .map((c) => formatComponentId(c))
+        .join(" ")});${parameters}`,
+    ])
+    .join("\n");
 }
 
 const derivedComponents: Record<
@@ -395,9 +394,9 @@ export function formatRfc9421Signature(
   parameters: string,
   label = "sig1",
 ): [string, string] {
-  const signatureInputValue = `${label}=(${
-    components.map((c) => formatComponentId(c)).join(" ")
-  });${parameters}`;
+  const signatureInputValue = `${label}=(${components
+    .map((c) => formatComponentId(c))
+    .join(" ")});${parameters}`;
   const signatureValue = `${label}=:${encodeBase64(signature)}:`;
   return [signatureInputValue, signatureValue];
 }
@@ -407,9 +406,7 @@ export function formatRfc9421Signature(
  * @param signatureInput The Signature-Input header value.
  * @returns Parsed signature input parameters.
  */
-export function parseRfc9421SignatureInput(
-  signatureInput: string,
-): Record<
+export function parseRfc9421SignatureInput(signatureInput: string): Record<
   string,
   {
     keyId: string;
@@ -448,7 +445,8 @@ export function parseRfc9421SignatureInput(
       !Array.isArray(item.value) ||
       typeof item.params.keyid !== "string" ||
       typeof item.params.created !== "number"
-    ) continue;
+    )
+      continue;
     const components: AcceptSignatureComponent[] = item.value
       .filter((subitem: Item) => typeof subitem.value === "string")
       .map((subitem: Item) => ({
@@ -460,9 +458,8 @@ export function parseRfc9421SignatureInput(
       keyId: item.params.keyid,
       alg: item.params.alg,
       created: item.params.created,
-      nonce: typeof item.params.nonce === "string"
-        ? item.params.nonce
-        : undefined,
+      nonce:
+        typeof item.params.nonce === "string" ? item.params.nonce : undefined,
       tag: typeof item.params.tag === "string" ? item.params.tag : undefined,
       components,
       parameters: params.slice(params.indexOf(";") + 1),
@@ -505,11 +502,11 @@ export function parseRfc9421Signature(
  */
 function parseDraftSignature(signature: string): Record<string, string> {
   return Object.fromEntries(
-    signature.split(",").map((pair) =>
-      pair.match(/^\s*([A-Za-z]+)=(?:"([^"]*)"|(\d+))\s*$/)
-    ).filter((m) => m != null).map((m) =>
-      [m![1], m![2] ?? m![3]] as [string, string]
-    ),
+    signature
+      .split(",")
+      .map((pair) => pair.match(/^\s*([A-Za-z]+)=(?:"([^"]*)"|(\d+))\s*$/))
+      .filter((m) => m != null)
+      .map((m) => [m![1], m![2] ?? m![3]] as [string, string]),
   );
 }
 
@@ -564,7 +561,8 @@ export function listRequestSignatures(
   const values = parseDraftSignature(signature);
   const keyId = parseKeyId(values.keyId);
   if (keyId == null) return [];
-  const components = (values.headers ?? "").split(/\s+/g)
+  const components = (values.headers ?? "")
+    .split(/\s+/g)
     .filter((name) => name !== "")
     .map((name) => ({ value: name, params: {} }));
   return [{ keyId, label: null, components }];
@@ -597,9 +595,9 @@ export function selectRequestSignature(
       return "";
     }
     return Object.hasOwn(dict, label)
-      ? encodeDict(
-        { [label]: (dict as Record<string, Item>)[label] } as Dictionary,
-      )
+      ? encodeDict({
+          [label]: (dict as Record<string, Item>)[label],
+        } as Dictionary)
       : "";
   };
   const headers = new Headers(copy.headers);
@@ -622,11 +620,12 @@ async function signRequestRfc9421(
   }
 
   const url = new URL(request.url);
-  const body: ArrayBuffer | null = bodyBuffer !== undefined
-    ? bodyBuffer
-    : request.method !== "GET" && request.method !== "HEAD"
-    ? await request.clone().arrayBuffer()
-    : null;
+  const body: ArrayBuffer | null =
+    bodyBuffer !== undefined
+      ? bodyBuffer
+      : request.method !== "GET" && request.method !== "HEAD"
+        ? await request.clone().arrayBuffer()
+        : null;
 
   const headers = new Headers(request.headers);
   if (!headers.has("Host")) {
@@ -664,9 +663,10 @@ async function signRequestRfc9421(
   ];
 
   // Generate the signature base using the headers
-  const expires = rfc9421Options?.expires === true
-    ? ((currentTime.epochMilliseconds / 1000) | 0) + 3600
-    : undefined;
+  const expires =
+    rfc9421Options?.expires === true
+      ? ((currentTime.epochMilliseconds / 1000) | 0) + 3600
+      : undefined;
   const signatureParams = formatRfc9421SignatureParameters({
     algorithm: "rsa-v1_5-sha256",
     keyId,
@@ -751,7 +751,7 @@ export const DEFAULT_MAX_RFC9421_SIGNATURES = 3;
  * @internal
  */
 export function validateMaxSignatures(value: number, name: string): void {
-  if (value === Infinity || Number.isSafeInteger(value) && value >= 1) return;
+  if (value === Infinity || (Number.isSafeInteger(value) && value >= 1)) return;
   throw new RangeError(`${name} must be a positive integer or Infinity.`);
 }
 
@@ -849,17 +849,17 @@ export interface VerifyRequestOptions extends VerificationObservationOptions {
  */
 export type VerifyRequestFailureReason =
   | {
-    readonly type: "keyFetchError";
-    readonly keyId: URL;
-    readonly result: FetchKeyErrorResult;
-  }
+      readonly type: "keyFetchError";
+      readonly keyId: URL;
+      readonly result: FetchKeyErrorResult;
+    }
   | {
-    readonly type: "invalidSignature";
-    readonly keyId?: URL;
-  }
+      readonly type: "invalidSignature";
+      readonly keyId?: URL;
+    }
   | {
-    readonly type: "noSignature";
-  };
+      readonly type: "noSignature";
+    };
 
 /**
  * The detailed result of {@link verifyRequestDetailed}.
@@ -867,14 +867,14 @@ export type VerifyRequestFailureReason =
  */
 export type VerifyRequestDetailedResult =
   | {
-    readonly verified: true;
-    readonly key: CryptographicKey;
-    readonly signatureLabel?: string;
-  }
+      readonly verified: true;
+      readonly key: CryptographicKey;
+      readonly signatureLabel?: string;
+    }
   | {
-    readonly verified: false;
-    readonly reason: VerifyRequestFailureReason;
-  };
+      readonly verified: false;
+      readonly reason: VerifyRequestFailureReason;
+    };
 
 function noSignatureResult(): VerifyRequestDetailedResult {
   return {
@@ -888,13 +888,13 @@ function invalidSignatureResult(
 ): VerifyRequestDetailedResult {
   return keyId == null
     ? {
-      verified: false,
-      reason: { type: "invalidSignature" },
-    }
+        verified: false,
+        reason: { type: "invalidSignature" },
+      }
     : {
-      verified: false,
-      reason: { type: "invalidSignature", keyId },
-    };
+        verified: false,
+        reason: { type: "invalidSignature", keyId },
+      };
 }
 
 function keyFetchErrorResult(
@@ -940,18 +940,16 @@ interface HttpSignatureMetricsContext {
  * algorithm, so unknown values are dropped from the metric to prevent
  * cardinality blow-up.
  */
-const DRAFT_KNOWN_ALGORITHMS = new Set<string>(
-  [
-    "ecdsa-sha256",
-    "ecdsa-sha384",
-    "ecdsa-sha512",
-    "ed25519",
-    "hs2019",
-    "rsa-sha1",
-    "rsa-sha256",
-    "rsa-sha512",
-  ] satisfies readonly HttpSignatureMetricAlgorithm[],
-);
+const DRAFT_KNOWN_ALGORITHMS = new Set<string>([
+  "ecdsa-sha256",
+  "ecdsa-sha384",
+  "ecdsa-sha512",
+  "ed25519",
+  "hs2019",
+  "rsa-sha1",
+  "rsa-sha256",
+  "rsa-sha512",
+] satisfies readonly HttpSignatureMetricAlgorithm[]);
 
 function classifyHttpVerifyResult(
   result: VerifyRequestDetailedResult,
@@ -973,10 +971,7 @@ function recordVerificationResult(
   }
   if (reason.type !== "keyFetchError") return;
   if ("status" in reason.result) {
-    span.setAttribute(
-      "http_signatures.key_fetch_status",
-      reason.result.status,
-    );
+    span.setAttribute("http_signatures.key_fetch_status", reason.result.status);
   } else {
     span.setAttribute(
       "http_signatures.key_fetch_error",
@@ -1027,27 +1022,30 @@ export async function verifyRequestDetailed(
     options[verificationObservation] != null &&
     options[verificationObservation]?.attempt == null
   ) {
-    return await observeAttempt(options, "http", async (observation) => {
-      const result = await verifyRequestDetailed(request, {
-        ...options,
-        [verificationObservation]: observation,
-      });
-      if (!result.verified) {
-        observation.attempt!.reason = result.reason.type === "noSignature"
-          ? { type: "noSignature" }
-          : { type: "signatureVerificationFailed" };
-      }
-      return result;
-    }, (result) => result.verified);
+    return await observeAttempt(
+      options,
+      "http",
+      async (observation) => {
+        const result = await verifyRequestDetailed(request, {
+          ...options,
+          [verificationObservation]: observation,
+        });
+        if (!result.verified) {
+          observation.attempt!.reason =
+            result.reason.type === "noSignature"
+              ? { type: "noSignature" }
+              : { type: "signatureVerificationFailed" };
+        }
+        return result;
+      },
+      (result) => result.verified,
+    );
   }
   if (options.maxSignatures !== undefined) {
     validateMaxSignatures(options.maxSignatures, "maxSignatures");
   }
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
-  const tracer = tracerProvider.getTracer(
-    metadata.name,
-    metadata.version,
-  );
+  const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   return await tracer.startActiveSpan(
     "http_signatures.verify",
     async (span) => {
@@ -1113,20 +1111,22 @@ export async function verifyRequestDetailed(
         // `missing` rows do not carry a `http_signatures.failure_reason`
         // attribute.
         const failureReason: HttpSignatureMetricFailureReason | undefined =
-          result != null && !result.verified &&
-            result.reason.type !== "noSignature"
+          result != null &&
+          !result.verified &&
+          result.reason.type !== "noSignature"
             ? result.reason.type
             : undefined;
-        getFederationMetrics(options.meterProvider)
-          .recordSignatureVerificationDuration(
-            getDurationMs(start),
-            "http",
-            classified,
-            {
-              algorithm: metricsContext.algorithm,
-              failureReason,
-            },
-          );
+        getFederationMetrics(
+          options.meterProvider,
+        ).recordSignatureVerificationDuration(
+          getDurationMs(start),
+          "http",
+          classified,
+          {
+            algorithm: metricsContext.algorithm,
+            failureReason,
+          },
+        );
         span.end();
       }
     },
@@ -1149,7 +1149,8 @@ async function verifyRequestDraft(
   }
   let result: VerifyRequestDetailedResult = noSignatureResult();
   const raw = request.headers.get("Signature");
-  const declared = raw == null ? null : parseDraftSignature(raw)?.keyId ?? null;
+  const declared =
+    raw == null ? null : (parseDraftSignature(raw)?.keyId ?? null);
   if (raw == null) return result;
   await observeCheck(
     options,
@@ -1161,9 +1162,11 @@ async function verifyRequestDraft(
         [verificationObservation]: observation,
       });
       if (
-        !result.verified && result.reason.type === "keyFetchError" &&
+        !result.verified &&
+        result.reason.type === "keyFetchError" &&
         observation.check != null
-      ) observation.check.reason = result.reason;
+      )
+        observation.check.reason = result.reason;
       return result.verified ? result.key : null;
     },
   );
@@ -1187,55 +1190,55 @@ async function verifyRequestDraftInternal(
 ): Promise<VerifyRequestDetailedResult> {
   const logger = getLogger(["fedify", "sig", "http"]);
   if (request.bodyUsed) {
-    logger.error(
-      "Failed to verify; the request body is already consumed.",
-      { url: request.url },
-    );
+    logger.error("Failed to verify; the request body is already consumed.", {
+      url: request.url,
+    });
     return noSignatureResult();
   } else if (request.body?.locked) {
-    logger.error(
-      "Failed to verify; the request body is locked.",
-      { url: request.url },
-    );
+    logger.error("Failed to verify; the request body is locked.", {
+      url: request.url,
+    });
     return noSignatureResult();
   }
   const originalRequest = request;
   request = request.clone() as Request;
   const sigHeader = request.headers.get("Signature");
   if (sigHeader == null) {
-    logger.debug(
-      "Failed to verify; no Signature header found.",
-      { headers: Object.fromEntries(request.headers.entries()) },
-    );
+    logger.debug("Failed to verify; no Signature header found.", {
+      headers: Object.fromEntries(request.headers.entries()),
+    });
     return noSignatureResult();
   }
   const sigValues = parseDraftSignature(sigHeader);
   const parsedKeyId = parseKeyId(sigValues.keyId);
   const dateHeader = request.headers.get("Date");
   if (dateHeader == null) {
-    logger.debug(
-      "Failed to verify; no Date header found.",
-      { headers: Object.fromEntries(request.headers.entries()) },
-    );
+    logger.debug("Failed to verify; no Date header found.", {
+      headers: Object.fromEntries(request.headers.entries()),
+    });
     return invalidSignatureResult(parsedKeyId);
   }
   const digestHeader = request.headers.get("Digest");
   if (
-    request.method !== "GET" && request.method !== "HEAD" &&
+    request.method !== "GET" &&
+    request.method !== "HEAD" &&
     digestHeader == null
   ) {
-    logger.debug(
-      "Failed to verify; no Digest header found.",
-      { headers: Object.fromEntries(request.headers.entries()) },
-    );
+    logger.debug("Failed to verify; no Digest header found.", {
+      headers: Object.fromEntries(request.headers.entries()),
+    });
     return invalidSignatureResult(parsedKeyId);
   }
   let body: ArrayBuffer | null = null;
   if (digestHeader != null) {
     body = await request.arrayBuffer();
-    const digests = digestHeader.split(",").map((pair) =>
-      pair.includes("=") ? pair.split("=", 2) as [string, string] : [pair, ""]
-    );
+    const digests = digestHeader
+      .split(",")
+      .map((pair) =>
+        pair.includes("=")
+          ? (pair.split("=", 2) as [string, string])
+          : [pair, ""],
+      );
     let matched = false;
     for (let [algo, digestBase64] of digests) {
       algo = algo.trim().toLowerCase();
@@ -1286,19 +1289,20 @@ async function verifyRequestDraftInternal(
   const date = Temporal.Instant.from(new Date(dateHeader).toISOString());
   const now = currentTime ?? Temporal.Now.instant();
   if (timeWindow !== false) {
-    const tw: Temporal.Duration | Temporal.DurationLike = timeWindow ??
-      { hours: 1 };
+    const tw: Temporal.Duration | Temporal.DurationLike = timeWindow ?? {
+      hours: 1,
+    };
     if (Temporal.Instant.compare(date, now.add(tw)) > 0) {
-      logger.debug(
-        "Failed to verify; Date is too far in the future.",
-        { date: date.toString(), now: now.toString() },
-      );
+      logger.debug("Failed to verify; Date is too far in the future.", {
+        date: date.toString(),
+        now: now.toString(),
+      });
       return invalidSignatureResult(parsedKeyId);
     } else if (Temporal.Instant.compare(date, now.subtract(tw)) < 0) {
-      logger.debug(
-        "Failed to verify; Date is too far in the past.",
-        { date: date.toString(), now: now.toString() },
-      );
+      logger.debug("Failed to verify; Date is too far in the past.", {
+        date: date.toString(),
+        now: now.toString(),
+      });
       return invalidSignatureResult(parsedKeyId);
     }
   }
@@ -1360,16 +1364,16 @@ async function verifyRequestDraftInternal(
       );
       const tw: Temporal.DurationLike = timeWindow ?? { minutes: 1 };
       if (Temporal.Instant.compare(created, now.add(tw)) > 0) {
-        logger.debug(
-          "Failed to verify; created is too far in the future.",
-          { created: created.toString(), now: now.toString() },
-        );
+        logger.debug("Failed to verify; created is too far in the future.", {
+          created: created.toString(),
+          now: now.toString(),
+        });
         return invalidSignatureResult(parsedKeyId);
       } else if (Temporal.Instant.compare(created, now.subtract(tw)) < 0) {
-        logger.debug(
-          "Failed to verify; created is too far in the past.",
-          { created: created.toString(), now: now.toString() },
-        );
+        logger.debug("Failed to verify; created is too far in the past.", {
+          created: created.toString(),
+          now: now.toString(),
+        });
         return invalidSignatureResult(parsedKeyId);
       }
     }
@@ -1415,7 +1419,8 @@ async function verifyRequestDraftInternal(
   if (key == null) return invalidSignatureResult(keyIdUrl);
   const headerNames = headers.split(/\s+/g);
   if (
-    !headerNames.includes("(request-target)") || !headerNames.includes("date")
+    !headerNames.includes("(request-target)") ||
+    !headerNames.includes("date")
   ) {
     logger.debug(
       "Failed to verify; required headers missing in the Signature header: " +
@@ -1432,18 +1437,21 @@ async function verifyRequestDraftInternal(
     );
     return invalidSignatureResult(keyIdUrl);
   }
-  const message = headerNames.map((name) =>
-    `${name}: ` +
-    (name === "(request-target)"
-      ? `${request.method.toLowerCase()} ${new URL(request.url).pathname}`
-      : name === "(created)"
-      ? (sigValues.created ?? "")
-      : name === "(expires)"
-      ? (sigValues.expires ?? "")
-      : name === "host"
-      ? request.headers.get("host") ?? new URL(request.url).host
-      : request.headers.get(name))
-  ).join("\n");
+  const message = headerNames
+    .map(
+      (name) =>
+        `${name}: ` +
+        (name === "(request-target)"
+          ? `${request.method.toLowerCase()} ${new URL(request.url).pathname}`
+          : name === "(created)"
+            ? (sigValues.created ?? "")
+            : name === "(expires)"
+              ? (sigValues.expires ?? "")
+              : name === "host"
+                ? (request.headers.get("host") ?? new URL(request.url).host)
+                : request.headers.get(name)),
+    )
+    .join("\n");
   const sig = decodeBase64(signature);
   span?.setAttribute("http_signatures.signature", encodeHex(sig));
   // TODO: support other than RSASSA-PKCS1-v1_5:
@@ -1465,21 +1473,16 @@ async function verifyRequestDraftInternal(
       // a single observed verification operation: one `http_signatures.verify`
       // span and one `activitypub.signature.verification.duration` measurement
       // per public call.
-      return await verifyRequestDraft(
-        originalRequest,
-        span,
-        metricsContext,
-        {
-          documentLoader,
-          contextLoader,
-          timeWindow,
-          currentTime,
-          keyCache: bypassKeyCacheReads(keyCache),
-          meterProvider,
-          tracerProvider,
-          [verificationObservation]: observation,
-        },
-      );
+      return await verifyRequestDraft(originalRequest, span, metricsContext, {
+        documentLoader,
+        contextLoader,
+        timeWindow,
+        currentTime,
+        keyCache: bypassKeyCacheReads(keyCache),
+        meterProvider,
+        tracerProvider,
+        [verificationObservation]: observation,
+      });
     }
     logger.debug(
       "Failed to verify with the fetched key {keyId}; signature {signature} " +
@@ -1564,19 +1567,19 @@ async function verifyRfc9421ContentDigest(
  */
 type Rfc9421SignatureVerification =
   | {
-    readonly verified: true;
-    readonly algorithm: HttpSignatureMetricAlgorithm;
-  }
+      readonly verified: true;
+      readonly algorithm: HttpSignatureMetricAlgorithm;
+    }
   | {
-    readonly verified: false;
-    readonly algorithm?: HttpSignatureMetricAlgorithm;
-    /**
-     * Whether the signature is well-formed and just does not match the key,
-     * so that another version of the key, e.g., a fresh one instead of
-     * a cached one, might verify it.
-     */
-    readonly mismatched: boolean;
-  };
+      readonly verified: false;
+      readonly algorithm?: HttpSignatureMetricAlgorithm;
+      /**
+       * Whether the signature is well-formed and just does not match the key,
+       * so that another version of the key, e.g., a fresh one instead of
+       * a cached one, might verify it.
+       */
+      readonly mismatched: boolean;
+    };
 
 /**
  * Verifies one RFC 9421 signature of a request with a key.
@@ -1601,18 +1604,20 @@ async function verifyRfc9421SignatureWithKey(
   let alg = sigInput.alg?.toLowerCase();
   if (alg == null) {
     if (key.publicKey.algorithm.name === "RSASSA-PKCS1-v1_5") {
-      alg = "hash" in key.publicKey.algorithm
-        ? (key.publicKey.algorithm.hash === "SHA-512"
-          ? "rsa-v1_5-sha512"
-          : "rsa-v1_5-sha256")
-        : "rsa-v1_5-sha256";
+      alg =
+        "hash" in key.publicKey.algorithm
+          ? key.publicKey.algorithm.hash === "SHA-512"
+            ? "rsa-v1_5-sha512"
+            : "rsa-v1_5-sha256"
+          : "rsa-v1_5-sha256";
     } else if (key.publicKey.algorithm.name === "RSA-PSS") {
       alg = "rsa-pss-sha512";
     } else if (key.publicKey.algorithm.name === "ECDSA") {
-      alg = "namedCurve" in key.publicKey.algorithm &&
-          key.publicKey.algorithm.namedCurve === "P-256"
-        ? "ecdsa-p256-sha256"
-        : "ecdsa-p384-sha384";
+      alg =
+        "namedCurve" in key.publicKey.algorithm &&
+        key.publicKey.algorithm.namedCurve === "P-256"
+          ? "ecdsa-p256-sha256"
+          : "ecdsa-p384-sha384";
     } else if (key.publicKey.algorithm.name === "Ed25519") {
       alg = "ed25519";
     }
@@ -1622,13 +1627,10 @@ async function verifyRfc9421SignatureWithKey(
   }
   const algorithm = alg && rfc9421AlgorithmMap[alg];
   if (!algorithm) {
-    logger.debug(
-      "Failed to verify; unsupported algorithm: {algorithm}",
-      {
-        algorithm: sigInput.alg,
-        supported: Object.keys(rfc9421AlgorithmMap),
-      },
-    );
+    logger.debug("Failed to verify; unsupported algorithm: {algorithm}", {
+      algorithm: sigInput.alg,
+      supported: Object.keys(rfc9421AlgorithmMap),
+    });
     return { verified: false, mismatched: false };
   }
   // Only record the algorithm metric attribute after the value matches the
@@ -1647,10 +1649,10 @@ async function verifyRfc9421SignatureWithKey(
       sigInput.parameters,
     );
   } catch (error) {
-    logger.debug(
-      "Failed to create signature base for verification: {error}",
-      { error, signatureInput: sigInput },
-    );
+    logger.debug("Failed to create signature base for verification: {error}", {
+      error,
+      signatureInput: sigInput,
+    });
     return { verified: false, algorithm: metricAlgorithm, mismatched: false };
   }
   const signatureBaseBytes = new TextEncoder().encode(signatureBase);
@@ -1661,9 +1663,8 @@ async function verifyRfc9421SignatureWithKey(
   // WebCrypto throws for it rather than returning false, but it may be
   // a stale copy of a key that has since been rotated, e.g., from RSA to
   // Ed25519, which a fresh copy of the key could verify:
-  const algorithmName = typeof algorithm === "string"
-    ? algorithm
-    : algorithm.name;
+  const algorithmName =
+    typeof algorithm === "string" ? algorithm : algorithm.name;
   if (key.publicKey.algorithm.name !== algorithmName) {
     logger.debug(
       "Failed to verify; key {keyId} is not a key for algorithm {algorithm}.",
@@ -1681,10 +1682,11 @@ async function verifyRfc9421SignatureWithKey(
       signatureBaseBytes,
     );
   } catch (error) {
-    logger.debug(
-      "Error during signature verification: {error}",
-      { error, keyId: sigInput.keyId, algorithm: sigInput.alg },
-    );
+    logger.debug("Error during signature verification: {error}", {
+      error,
+      keyId: sigInput.keyId,
+      algorithm: sigInput.alg,
+    });
     return { verified: false, algorithm: metricAlgorithm, mismatched: false };
   }
   if (verified) return { verified: true, algorithm: metricAlgorithm };
@@ -1713,16 +1715,14 @@ async function verifyRequestRfc9421(
 ): Promise<VerifyRequestDetailedResult> {
   const logger = getLogger(["fedify", "sig", "http"]);
   if (request.bodyUsed) {
-    logger.error(
-      "Failed to verify; the request body is already consumed.",
-      { url: request.url },
-    );
+    logger.error("Failed to verify; the request body is already consumed.", {
+      url: request.url,
+    });
     return noSignatureResult();
   } else if (request.body?.locked) {
-    logger.error(
-      "Failed to verify; the request body is locked.",
-      { url: request.url },
-    );
+    logger.error("Failed to verify; the request body is locked.", {
+      url: request.url,
+    });
     return noSignatureResult();
   }
 
@@ -1731,28 +1731,25 @@ async function verifyRequestRfc9421(
   // Check for required headers
   const signatureInputHeader = request.headers.get("Signature-Input");
   if (!signatureInputHeader) {
-    logger.debug(
-      "Failed to verify; no Signature-Input header found.",
-      { headers: Object.fromEntries(request.headers.entries()) },
-    );
+    logger.debug("Failed to verify; no Signature-Input header found.", {
+      headers: Object.fromEntries(request.headers.entries()),
+    });
     return noSignatureResult();
   }
 
   const signatureHeader = request.headers.get("Signature");
   if (!signatureHeader) {
-    logger.debug(
-      "Failed to verify; no Signature header found.",
-      { headers: Object.fromEntries(request.headers.entries()) },
-    );
+    logger.debug("Failed to verify; no Signature header found.", {
+      headers: Object.fromEntries(request.headers.entries()),
+    });
     return noSignatureResult();
   }
 
   // Parse the Signature-Input and Signature headers
   const signatureInputs = parseRfc9421SignatureInput(signatureInputHeader);
-  logger.debug(
-    "Parsed Signature-Input header: {signatureInputs}",
-    { signatureInputs },
-  );
+  logger.debug("Parsed Signature-Input header: {signatureInputs}", {
+    signatureInputs,
+  });
   const signatures = parseRfc9421Signature(signatureHeader);
 
   // Check if we have at least one signature to verify
@@ -1787,24 +1784,21 @@ async function verifyRequestRfc9421(
     keyId: URL,
     keyCache: KeyCache | undefined,
   ): Promise<FetchKeyDetailedResult<CryptographicKey>> =>
-    measureSignatureKeyFetch(
-      meterProvider,
-      "http",
-      () =>
-        fetchKeyDetailed(keyId, CryptographicKey, {
+    measureSignatureKeyFetch(meterProvider, "http", () =>
+      fetchKeyDetailed(keyId, CryptographicKey, {
+        documentLoader,
+        contextLoader,
+        keyCache,
+        tracerProvider,
+        meterProvider,
+        portableKeyResolvers: createPortableKeyResolvers({
           documentLoader,
           contextLoader,
           keyCache,
           tracerProvider,
           meterProvider,
-          portableKeyResolvers: createPortableKeyResolvers({
-            documentLoader,
-            contextLoader,
-            keyCache,
-            tracerProvider,
-            meterProvider,
-          }),
         }),
+      }),
     );
 
   let failure: VerifyRequestDetailedResult = noSignatureResult();
@@ -1873,8 +1867,9 @@ async function verifyRequestRfc9421(
         const now = currentTime ?? Temporal.Now.instant();
 
         if (timeWindow !== false) {
-          const tw: Temporal.Duration | Temporal.DurationLike = timeWindow ??
-            { hours: 1 };
+          const tw: Temporal.Duration | Temporal.DurationLike = timeWindow ?? {
+            hours: 1,
+          };
           if (Temporal.Instant.compare(signatureCreated, now.add(tw)) > 0) {
             logger.debug(
               "Failed to verify; signature created time is too far in the future.",
@@ -1987,9 +1982,11 @@ async function verifyRequestRfc9421(
           break;
         }
         if (
-          !failure.verified && failure.reason.type === "keyFetchError" &&
+          !failure.verified &&
+          failure.reason.type === "keyFetchError" &&
           candidateObservation.check != null
-        ) candidateObservation.check.reason = failure.reason;
+        )
+          candidateObservation.check.reason = failure.reason;
         return null;
       },
     );
@@ -2161,10 +2158,9 @@ async function fetchDoubleKnockRequest(
   signal: AbortSignal | undefined,
   observation?: DoubleKnockObservation,
 ): Promise<Response> {
-  const maxAttempts = request.method === "GET" || request.method === "HEAD"
-    ? 2
-    : 1;
-  for (let attempt = 1;; attempt++) {
+  const maxAttempts =
+    request.method === "GET" || request.method === "HEAD" ? 2 : 1;
+  for (let attempt = 1; ; attempt++) {
     try {
       return await submitDoubleKnockRequest(
         session,
@@ -2243,8 +2239,10 @@ function getAbortedSignal(
 }
 
 function getAbortReason(signal: AbortSignal): unknown {
-  return signal.reason ??
-    new DOMException("The operation was aborted.", "AbortError");
+  return (
+    signal.reason ??
+    new DOMException("The operation was aborted.", "AbortError")
+  );
 }
 
 /**
@@ -2354,8 +2352,11 @@ function openGlobalFetchHop(url: string): Promise<PublicFetchSession> {
 }
 
 function isRedirectResponse(response: Response): boolean {
-  return response.status >= 300 && response.status < 400 &&
-    response.headers.has("Location");
+  return (
+    response.status >= 300 &&
+    response.status < 400 &&
+    response.headers.has("Location")
+  );
 }
 
 /**
@@ -2387,35 +2388,34 @@ async function doubleKnockCore(
   const visited = new Set<string>();
 
   // Get the request body once at the top level to avoid multiple clones
-  const body = options.body !== undefined
-    ? options.body
-    : request.method !== "GET" && request.method !== "HEAD"
-    ? await request.clone().arrayBuffer()
-    : null;
+  const body =
+    options.body !== undefined
+      ? options.body
+      : request.method !== "GET" && request.method !== "HEAD"
+        ? await request.clone().arrayBuffer()
+        : null;
 
   let session = await openHop(request.url);
   try {
-    for (let redirected = 0;; redirected++) {
+    for (let redirected = 0; ; redirected++) {
       visited.add(request.url);
       const origin = new URL(request.url).origin;
-      const firstTrySpec: HttpMessageSignaturesSpec = specDeterminer == null
-        ? "rfc9421"
-        : await observeDoubleKnockOperation(
-          observation,
-          "spec-lookup",
-          () => specDeterminer.determineSpec(origin),
-        );
+      const firstTrySpec: HttpMessageSignaturesSpec =
+        specDeterminer == null
+          ? "rfc9421"
+          : await observeDoubleKnockOperation(observation, "spec-lookup", () =>
+              specDeterminer.determineSpec(origin),
+            );
       signal?.throwIfAborted();
       let signedRequest = await observeDoubleKnockOperation(
         observation,
         "signing",
         () =>
-          signRequest(
-            request,
-            identity.privateKey,
-            identity.keyId,
-            { spec: firstTrySpec, tracerProvider, body },
-          ),
+          signRequest(request, identity.privateKey, identity.keyId, {
+            spec: firstTrySpec,
+            tracerProvider,
+            body,
+          }),
       );
       signal?.throwIfAborted();
       log?.(signedRequest);
@@ -2435,7 +2435,8 @@ async function doubleKnockCore(
         // RFC 9421 signatures. This extends double-knocking to 5xx errors as a workaround,
         // allowing fallback to draft-cavage signatures. This should be reverted once Mastodon
         // fixes their RFC 9421 implementation and affected servers are updated.
-        (response.status === 400 || response.status === 401 ||
+        (response.status === 400 ||
+          response.status === 401 ||
           response.status > 401)
       ) {
         const logger = getLogger(["fedify", "sig", "http"]);
@@ -2510,7 +2511,7 @@ async function doubleKnockCore(
                 "post-response",
                 () =>
                   specDeterminer?.rememberSpec(origin, "rfc9421") ??
-                    Promise.resolve(),
+                  Promise.resolve(),
               );
               return { response, session };
             }
@@ -2526,9 +2527,10 @@ async function doubleKnockCore(
           observation?.response(response, "intermediate");
           // verification failed; retry with the other spec of HTTP Signatures
           // (double-knocking; see https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions)
-          const spec = firstTrySpec === "draft-cavage-http-signatures-12"
-            ? "rfc9421"
-            : "draft-cavage-http-signatures-12";
+          const spec =
+            firstTrySpec === "draft-cavage-http-signatures-12"
+              ? "rfc9421"
+              : "draft-cavage-http-signatures-12";
           getLogger(["fedify", "sig", "http"]).debug(
             "Failed to verify with the spec {spec} ({status} {statusText}); retrying with spec {secondSpec}... (double-knocking)",
             {
@@ -2545,12 +2547,11 @@ async function doubleKnockCore(
             observation,
             "signing",
             () =>
-              signRequest(
-                request,
-                identity.privateKey,
-                identity.keyId,
-                { spec, tracerProvider, body },
-              ),
+              signRequest(request, identity.privateKey, identity.keyId, {
+                spec,
+                tracerProvider,
+                body,
+              }),
           );
           signal?.throwIfAborted();
           log?.(signedRequest);
@@ -2563,7 +2564,8 @@ async function doubleKnockCore(
           );
           if (
             !isRedirectResponse(response) &&
-            response.status !== 400 && response.status !== 401
+            response.status !== 400 &&
+            response.status !== 401
           ) {
             observation?.response(response, "final");
             await observeDoubleKnockOperation(
@@ -2581,7 +2583,7 @@ async function doubleKnockCore(
           "post-response",
           () =>
             specDeterminer?.rememberSpec(origin, firstTrySpec) ??
-              Promise.resolve(),
+            Promise.resolve(),
         );
       }
       if (!isRedirectResponse(response)) {

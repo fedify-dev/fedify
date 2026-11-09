@@ -89,12 +89,14 @@ export default async function runBench(
 ): Promise<void> {
   // Set the exit code rather than terminating, so cleanup (closing the fleet)
   // and output flushing complete before the process exits.
-  const exit = deps.exit ?? ((code: number) => {
-    process.exitCode = code;
-  });
+  const exit =
+    deps.exit ??
+    ((code: number) => {
+      process.exitCode = code;
+    });
   const writeOutput = deps.writeOutput ?? defaultWriteOutput;
-  const log = deps.log ??
-    ((message: string) => process.stderr.write(`${message}\n`));
+  const log =
+    deps.log ?? ((message: string) => process.stderr.write(`${message}\n`));
   // Apply the configured User-Agent to all benchmark traffic — the probe, the
   // stats reads, and the runners' inbox/WebFinger requests — not just the
   // document loader, so a target that inspects the UA sees it on every request.
@@ -193,9 +195,10 @@ export default async function runBench(
     url: URL,
     scenario: ResolvedScenario,
   ): Promise<void> => {
-    const destinationTier = url.origin === suite.target.origin
-      ? tier
-      : await classifyResolvedTarget(url, deps.resolveTargetAddresses);
+    const destinationTier =
+      url.origin === suite.target.origin
+        ? tier
+        : await classifyResolvedTarget(url, deps.resolveTargetAddresses);
     assertInboxDestinationAllowed(url, {
       targetOrigin: suite.target.origin,
       targetTier: tier,
@@ -224,7 +227,8 @@ export default async function runBench(
       : await classifyResolvedTarget(url, deps.resolveTargetAddresses);
     const inheritsTargetGate = sameOrigin && probe.benchmarkMode;
     if (
-      destinationTier === "public" && !inheritsTargetGate &&
+      destinationTier === "public" &&
+      !inheritsTargetGate &&
       !command.allowUnsafeTarget
     ) {
       throw new UnsafeTargetError(
@@ -287,9 +291,10 @@ export default async function runBench(
   // reachable host (--advertise-host).  Without one, refuse signed scenarios
   // rather than let every signed delivery fail key lookup.
   if (
-    tier !== "loopback" && command.advertiseHost == null &&
+    tier !== "loopback" &&
+    command.advertiseHost == null &&
     suite.scenarios.some((scenario) =>
-      scenarioNeedsReachableLocalServer(scenario, suite.scenarios)
+      scenarioNeedsReachableLocalServer(scenario, suite.scenarios),
     )
   ) {
     log(
@@ -308,7 +313,7 @@ export default async function runBench(
     throwIfAborted(signal);
     if (
       suite.scenarios.some((scenario) =>
-        scenarioNeedsSyntheticServer(scenario, suite.scenarios)
+        scenarioNeedsSyntheticServer(scenario, suite.scenarios),
       )
     ) {
       fleet = await spawnSyntheticServer(await buildFleet(suite.actors), {
@@ -321,9 +326,8 @@ export default async function runBench(
       const measurements: ScenarioMeasurement[] = [];
       for (let run = 1; run <= scenario.runs; run++) {
         throwIfAborted(signal);
-        const suffix = scenario.runs === 1
-          ? ""
-          : ` run ${run}/${scenario.runs}`;
+        const suffix =
+          scenario.runs === 1 ? "" : ` run ${run}/${scenario.runs}`;
         log(`Running scenario "${scenario.name}" (${scenario.type})${suffix}…`);
         measurements.push(
           await runners[i].run({
@@ -477,7 +481,7 @@ async function renderPlan(
     lines.push(
       `- ${scenario.name} (${scenario.type}): ${describePlan(scenario)}`,
     );
-    lines.push(...await describeDiscoveryPlan(scenario, suite, context));
+    lines.push(...(await describeDiscoveryPlan(scenario, suite, context)));
   }
   lines.push(
     "",
@@ -488,9 +492,10 @@ async function renderPlan(
 }
 
 function describePlan(scenario: ResolvedScenario): string {
-  const load = scenario.load.kind === "open"
-    ? `open-loop ${scenario.load.ratePerSec}/s ${scenario.load.arrival}`
-    : `closed-loop concurrency ${scenario.load.concurrency}`;
+  const load =
+    scenario.load.kind === "open"
+      ? `open-loop ${scenario.load.ratePerSec}/s ${scenario.load.arrival}`
+      : `closed-loop concurrency ${scenario.load.concurrency}`;
   const totalDurationMs = scenario.durationMs * scenario.runs;
   const volume = describePlannedRequestVolume(scenario);
   return [
@@ -507,8 +512,8 @@ function describePlannedRequestVolume(
   scenario: ResolvedScenario,
 ): string | null {
   if (scenario.load.kind !== "open") return null;
-  const estimatedRequests = scenario.load.ratePerSec *
-    (scenario.durationMs / 1000) * scenario.runs;
+  const estimatedRequests =
+    scenario.load.ratePerSec * (scenario.durationMs / 1000) * scenario.runs;
   return `estimated scheduled requests ${formatPlanNumber(estimatedRequests)}`;
 }
 
@@ -578,9 +583,8 @@ function describeWebFingerPlan(
   scenario: ResolvedScenario,
   target: URL,
 ): string[] {
-  const recipients = scenario.recipients.length > 0
-    ? scenario.recipients
-    : [target.href];
+  const recipients =
+    scenario.recipients.length > 0 ? scenario.recipients : [target.href];
   return recipients.map((recipient) => {
     const resource = convertUrlIfHandle(recipient).href;
     const url = new URL("/.well-known/webfinger", target);
@@ -650,8 +654,8 @@ async function describeObjectPlan(
 function describeMixedPlan(scenario: ResolvedScenario): string[] {
   const entries = scenario.raw.mix ?? [];
   if (entries.length < 1) return ["  mix: no child scenarios"];
-  return entries.map((entry) =>
-    `  mix: ${entry.scenario} weight ${entry.weight}`
+  return entries.map(
+    (entry) => `  mix: ${entry.scenario} weight ${entry.weight}`,
   );
 }
 
@@ -676,8 +680,10 @@ async function describeDestinationSafety(
 }
 
 function usesReadDestinationGate(scenario: ResolvedScenario): boolean {
-  return (scenario.type === "actor" || scenario.type === "object") &&
-    !scenario.authenticated;
+  return (
+    (scenario.type === "actor" || scenario.type === "object") &&
+    !scenario.authenticated
+  );
 }
 
 interface PublicDestinationOverrideContext {
@@ -694,10 +700,11 @@ function assertPublicDestinationOverrideAllowed(
   scenario: ResolvedScenario,
   context: PublicDestinationOverrideContext,
 ): void {
-  const inheritsTargetGate = url.origin === context.targetOrigin &&
-    context.targetBenchmarkMode;
+  const inheritsTargetGate =
+    url.origin === context.targetOrigin && context.targetBenchmarkMode;
   if (
-    context.destinationTier !== "public" || inheritsTargetGate ||
+    context.destinationTier !== "public" ||
+    inheritsTargetGate ||
     !context.allowUnsafe
   ) {
     return;
@@ -715,7 +722,7 @@ function unsafeOverrideScenarios(
   suite: Suite,
 ): Parameters<typeof assertUnsafeOverrideAllowed>[0]["scenarios"] {
   return suite.scenarios.map((scenario) =>
-    unsafeOverrideScenario(scenario, suite.defaults)
+    unsafeOverrideScenario(scenario, suite.defaults),
   );
 }
 
@@ -736,10 +743,12 @@ function unsafeOverrideScenario(
 }
 
 function hasExplicitLoad(load: LoadConfig | undefined): boolean {
-  return load != null &&
+  return (
+    load != null &&
     typeof load === "object" &&
     (("rate" in load && load.rate != null) ||
-      ("concurrency" in load && load.concurrency != null));
+      ("concurrency" in load && load.concurrency != null))
+  );
 }
 
 function scenarioNeedsSyntheticServer(
@@ -759,7 +768,7 @@ function scenarioNeedsSyntheticServer(
       return failureFaultsOf(scenario).some(isInboundFailureFault);
     case "mixed":
       return mixedChildrenOf(scenario, scenarios).some((child) =>
-        scenarioNeedsSyntheticServer(child, scenarios, nextSeen)
+        scenarioNeedsSyntheticServer(child, scenarios, nextSeen),
       );
     default:
       return false;
@@ -774,15 +783,16 @@ function scenarioNeedsReachableLocalServer(
   if (scenario.type === "fanout") return scenario.raw.sinkBase == null;
   if (scenario.type === "failure") {
     const faults = failureFaultsOf(scenario);
-    return faults.includes("invalid-signature") ||
-      (scenario.raw.sinkBase == null &&
-        faults.some(isRemoteFailureFault));
+    return (
+      faults.includes("invalid-signature") ||
+      (scenario.raw.sinkBase == null && faults.some(isRemoteFailureFault))
+    );
   }
   if (scenario.type === "mixed") {
     if (seen.has(scenario.name)) return false;
     const nextSeen = new Set(seen).add(scenario.name);
     return mixedChildrenOf(scenario, scenarios).some((child) =>
-      scenarioNeedsReachableLocalServer(child, scenarios, nextSeen)
+      scenarioNeedsReachableLocalServer(child, scenarios, nextSeen),
     );
   }
   return scenarioNeedsSyntheticServer(scenario, scenarios, seen);
@@ -797,8 +807,8 @@ function mixedChildrenOf(
   scenarios: readonly ResolvedScenario[],
 ): readonly ResolvedScenario[] {
   return (scenario.raw.mix ?? []).flatMap((entry) => {
-    const child = scenarios.find((candidate) =>
-      candidate.name === entry.scenario
+    const child = scenarios.find(
+      (candidate) => candidate.name === entry.scenario,
     );
     return child == null ? [] : [child];
   });
@@ -809,6 +819,10 @@ function isInboundFailureFault(fault: string): boolean {
 }
 
 function isRemoteFailureFault(fault: string): boolean {
-  return fault === "remote-404" || fault === "remote-410" ||
-    fault === "slow-inbox" || fault === "network-error";
+  return (
+    fault === "remote-404" ||
+    fault === "remote-410" ||
+    fault === "slow-inbox" ||
+    fault === "network-error"
+  );
 }

@@ -36,14 +36,17 @@ test("readBoundedText rejects a declared oversized body without pulling", async 
   let pulled = false;
   let canceled = false;
   const response = new Response(
-    new ReadableStream({
-      pull() {
-        pulled = true;
+    new ReadableStream(
+      {
+        pull() {
+          pulled = true;
+        },
+        cancel() {
+          canceled = true;
+        },
       },
-      cancel() {
-        canceled = true;
-      },
-    }, { highWaterMark: 0 }),
+      { highWaterMark: 0 },
+    ),
     { headers: { "Content-Length": "100" } },
   );
   await rejects(readBoundedText(response, 10, url), BodyTooLargeError);
@@ -56,15 +59,18 @@ test("readBoundedText cancels chunked bodies despite absent or false lengths", a
   for (const length of [undefined, "1", "invalid"]) {
     let pulls = 0;
     let canceled = false;
-    const stream = new ReadableStream<Uint8Array>({
-      pull(controller) {
-        pulls++;
-        controller.enqueue(new Uint8Array(4));
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          pulls++;
+          controller.enqueue(new Uint8Array(4));
+        },
+        cancel() {
+          canceled = true;
+        },
       },
-      cancel() {
-        canceled = true;
-      },
-    }, { highWaterMark: 0 });
+      { highWaterMark: 0 },
+    );
     const response = new Response(stream, {
       headers: length == null ? {} : { "Content-Length": length },
     });

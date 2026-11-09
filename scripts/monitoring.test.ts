@@ -24,27 +24,32 @@ posixTest(
     if (args.includes('up')) {
       fs.writeFileSync(${JSON.stringify(started)}, 'ready');
       setInterval(() => {}, 1000);
-    } else if (args.includes('down') && fs.existsSync(${
-        JSON.stringify(started)
-      })) {
-      setTimeout(() => fs.writeFileSync(${
-        JSON.stringify(cleaned)
-      }, 'done'), 300);
+    } else if (args.includes('down') && fs.existsSync(${JSON.stringify(
+      started,
+    )})) {
+      setTimeout(() => fs.writeFileSync(${JSON.stringify(
+        cleaned,
+      )}, 'done'), 300);
     }
   `,
       { mode: 0o755 },
     );
-    const node = process.versions.deno != null || process.versions.bun != null
-      ? "node"
-      : process.execPath;
-    const child = startCommand(node, [
-      "--experimental-strip-types",
-      fileURLToPath(
-        new URL("../examples/monitoring/validate.ts", import.meta.url),
-      ),
-      "--config-only",
-      "--smoke",
-    ], { env: { PATH: dir + delimiter + process.env.PATH } });
+    const node =
+      process.versions.deno != null || process.versions.bun != null
+        ? "node"
+        : process.execPath;
+    const child = startCommand(
+      node,
+      [
+        "--experimental-strip-types",
+        fileURLToPath(
+          new URL("../examples/monitoring/validate.ts", import.meta.url),
+        ),
+        "--config-only",
+        "--smoke",
+      ],
+      { env: { PATH: dir + delimiter + process.env.PATH } },
+    );
     const output = Promise.all([
       new Response(child.stdout).text(),
       new Response(child.stderr).text(),
@@ -54,7 +59,7 @@ posixTest(
       let ready = false;
       while (Date.now() < deadline) {
         try {
-          ready = await readFile(started, "utf8") === "ready";
+          ready = (await readFile(started, "utf8")) === "ready";
           if (ready) break;
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;

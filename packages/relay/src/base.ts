@@ -56,7 +56,9 @@ export abstract class BaseRelay implements Relay {
   }
 
   async fetch(request: Request): Promise<Response> {
-    return await (await this.#getFederation()).fetch(request, {
+    return await (
+      await this.#getFederation()
+    ).fetch(request, {
       contextData: this.options,
     });
   }
@@ -154,19 +156,16 @@ export abstract class BaseRelay implements Relay {
     follow: Follow,
   ): Promise<void> {
     const follower = await validateFollowActivity(ctx, follow);
-    if (follower?.id == null || await this.shouldSkipFollow(ctx, follower)) {
+    if (follower?.id == null || (await this.shouldSkipFollow(ctx, follower))) {
       return;
     }
 
     const approved = await this.options.subscriptionHandler(ctx, follower);
     if (approved) {
-      await ctx.data.kv.set(
-        ["follower", follower.id.href],
-        {
-          actor: await follower.toJsonLd(),
-          state: this.initialFollowerState,
-        },
-      );
+      await ctx.data.kv.set(["follower", follower.id.href], {
+        actor: await follower.toJsonLd(),
+        state: this.initialFollowerState,
+      });
     }
 
     await sendFollowResponse(ctx, follow, follower, approved);
@@ -197,23 +196,14 @@ export abstract class BaseRelay implements Relay {
         Undo,
         async (ctx, undo) => await handleUndoFollow(ctx, undo, this.logger),
       )
-      .on(
-        Create,
-        async (ctx, create) => await this.#relayActivity(ctx, create),
-      )
+      .on(Create, async (ctx, create) => await this.#relayActivity(ctx, create))
       .on(
         Delete,
         async (ctx, deleteActivity) =>
           await this.#relayActivity(ctx, deleteActivity),
       )
-      .on(
-        Move,
-        async (ctx, move) => await this.#relayActivity(ctx, move),
-      )
-      .on(
-        Update,
-        async (ctx, update) => await this.#relayActivity(ctx, update),
-      )
+      .on(Move, async (ctx, move) => await this.#relayActivity(ctx, move))
+      .on(Update, async (ctx, update) => await this.#relayActivity(ctx, update))
       .on(
         Announce,
         async (ctx, announce) => await this.#relayActivity(ctx, announce),

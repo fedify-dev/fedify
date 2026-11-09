@@ -106,8 +106,5 @@ export function actorDehydrator<TContextData>(
 export function getDefaultActivityTransformers<
   TContextData,
 >(): readonly ActivityTransformer<TContextData>[] {
-  return [
-    autoIdAssigner,
-    actorDehydrator,
-  ];
+  return [autoIdAssigner, actorDehydrator];
 }

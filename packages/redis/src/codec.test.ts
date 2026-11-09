@@ -9,10 +9,7 @@ test("JsonCodec.encode()", () => {
     codec.encode({ foo: "bar" }),
     Buffer.from(new TextEncoder().encode('{"foo":"bar"}')),
   );
-  assert.throws(
-    () => codec.encode(1n),
-    EncodingError,
-  );
+  assert.throws(() => codec.encode(1n), EncodingError);
 });
 
 test("JsonCodec.decode()", () => {

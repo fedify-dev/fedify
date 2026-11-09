@@ -424,7 +424,8 @@ const scalarTypes: Record<string, ScalarType> = {
     },
   },
   "fedify:proofPurpose": {
-    name: '"assertionMethod" | "authentication" | "capabilityInvocation" | ' +
+    name:
+      '"assertionMethod" | "authentication" | "capabilityInvocation" | ' +
       '"capabilityDelegation" | "keyAgreement"',
     typeGuard(v) {
       return `${v} === "assertionMethod" || ${v} === "authentication" ||
@@ -455,8 +456,10 @@ const scalarTypes: Record<string, ScalarType> = {
   "fedify:units": {
     name: '"cm" | "feet" | "inches" | "km" | "m" | "miles"',
     typeGuard(v) {
-      return `${v} == "cm" || ${v} == "feet" || ${v} == "inches" ` +
-        `|| ${v} == "km" || ${v} == "m" || ${v} == "miles"`;
+      return (
+        `${v} == "cm" || ${v} == "feet" || ${v} == "inches" ` +
+        `|| ${v} == "km" || ${v} == "m" || ${v} == "miles"`
+      );
     },
     encoder(v) {
       return `{ "@value": ${v} }`;
@@ -465,10 +468,12 @@ const scalarTypes: Record<string, ScalarType> = {
       return v;
     },
     dataCheck(v) {
-      return `typeof ${v} === "object" && "@value" in ${v}
+      return (
+        `typeof ${v} === "object" && "@value" in ${v}
       && (${v}["@value"] == "cm" || ${v}["@value"] == "feet" ` +
         `|| ${v}["@value"] == "inches" || ${v}["@value"] == "km" ` +
-        `|| ${v}["@value"] == "m" || ${v}["@value"] == "miles")`;
+        `|| ${v}["@value"] == "m" || ${v}["@value"] == "miles")`
+      );
     },
     decoder(v) {
       return `${v}["@value"]`;
@@ -557,12 +562,14 @@ export function isCompactableType(
       return false;
     }
     const defaultContext = type.defaultContext;
-    return defaultContext != null &&
-        HEURISTICS_CONTEXTS.includes(defaultContext as string) ||
-      Array.isArray(defaultContext) &&
+    return (
+      (defaultContext != null &&
+        HEURISTICS_CONTEXTS.includes(defaultContext as string)) ||
+      (Array.isArray(defaultContext) &&
         (defaultContext as string[]).some(
           HEURISTICS_CONTEXTS.includes.bind(HEURISTICS_CONTEXTS),
-        );
+        ))
+    );
   }
   throw new Error(`Unknown type: ${typeUri}`);
 }
@@ -611,8 +618,8 @@ export function getEncoder(
 ): string {
   if (typeUri in scalarTypes) {
     return compact
-      ? scalarTypes[typeUri].compactEncoder?.(variable) ??
-        scalarTypes[typeUri].encoder(variable)
+      ? (scalarTypes[typeUri].compactEncoder?.(variable) ??
+          scalarTypes[typeUri].encoder(variable))
       : scalarTypes[typeUri].encoder(variable);
   }
   if (typeUri in types) {
@@ -671,10 +678,7 @@ export function getDecoder(
   baseUrlVariable: string,
 ): string {
   if (typeUri in scalarTypes) {
-    return scalarTypes[typeUri].decoder(
-      variable,
-      baseUrlVariable,
-    );
+    return scalarTypes[typeUri].decoder(variable, baseUrlVariable);
   }
   if (typeUri in types) {
     return `await ${types[typeUri].name}.fromJsonLd(
@@ -697,12 +701,14 @@ export function getDataCheck(
   if (typeUri in scalarTypes) return scalarTypes[typeUri].dataCheck(variable);
   if (typeUri in types) {
     const subtypes = getSubtypes(typeUri, types);
-    return `typeof ${variable} === "object" && "@type" in ${variable}
+    return (
+      `typeof ${variable} === "object" && "@type" in ${variable}
       && Array.isArray(${variable}["@type"])` +
       (subtypes.length > 1
         ? `&& ${JSON.stringify(subtypes)}.some(
             t => ${variable}["@type"].includes(t))`
-        : `&& ${variable}["@type"].includes(${JSON.stringify(typeUri)})`);
+        : `&& ${variable}["@type"].includes(${JSON.stringify(typeUri)})`)
+    );
   }
   throw new Error(`Unknown type: ${typeUri}`);
 }

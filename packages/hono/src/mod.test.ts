@@ -21,8 +21,10 @@ describe("federation middleware", () => {
       fetch: () => Promise.resolve(new Response("OK")),
     };
 
-    const contextDataFactory: ContextDataFactory<undefined, MockHonoContext> =
-      () => undefined;
+    const contextDataFactory: ContextDataFactory<
+      undefined,
+      MockHonoContext
+    > = () => undefined;
 
     const middleware = federation(mockFederation as never, contextDataFactory);
     strictEqual(typeof middleware, "function");
@@ -40,8 +42,10 @@ describe("federation middleware", () => {
       },
     };
 
-    const contextDataFactory: ContextDataFactory<string, MockHonoContext> =
-      () => "test-context";
+    const contextDataFactory: ContextDataFactory<
+      string,
+      MockHonoContext
+    > = () => "test-context";
 
     const middleware = federation(mockFederation as never, contextDataFactory);
 
@@ -90,9 +94,6 @@ describe("federation middleware", () => {
 
     await middleware(mockContext, () => Promise.resolve());
 
-    strictEqual(
-      capturedContextData.contextData,
-      ASYNC_CONTEXT,
-    );
+    strictEqual(capturedContextData.contextData, ASYNC_CONTEXT);
   });
 });

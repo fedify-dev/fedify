@@ -44,9 +44,7 @@ const createDispatcherTracker = (
 
   return {
     isDispatcherConfigured: () => dispatcherConfigured,
-    checkDispatcherCall: (
-      node: CallExpression,
-    ) => {
+    checkDispatcherCall: (node: CallExpression) => {
       if (
         isDispatcherMethodCall(dispatcherMethod)(node) &&
         federationTracker.isFederationObject(node.callee.object)
@@ -59,13 +57,14 @@ const createDispatcherTracker = (
 
 function createRequiredRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
   config: PropertyConfig,
-  description: Context extends Deno.lint.RuleContext ? {
-      message: string;
-    }
+  description: Context extends Deno.lint.RuleContext
+    ? {
+        message: string;
+      }
     : {
-      messageId: string;
-      data: { message: string };
-    },
+        messageId: string;
+        data: { message: string };
+      },
 ) {
   return (context: Context) => {
     const federationTracker = trackFederationVariables();
@@ -78,15 +77,14 @@ function createRequiredRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
     const valueChecker = config.requireNonEmptyValue
       ? isNonEmptyInitializer
       : Boolean;
-    const propertyChecker = createPropertyChecker(valueChecker)(
-      config.path,
-    );
-    const pluralPropertyChecker = config.pluralName == null ? null : (
-      createPropertyChecker(valueChecker)([
-        ...config.path.slice(0, -1),
-        config.pluralName,
-      ])
-    );
+    const propertyChecker = createPropertyChecker(valueChecker)(config.path);
+    const pluralPropertyChecker =
+      config.pluralName == null
+        ? null
+        : createPropertyChecker(valueChecker)([
+            ...config.path.slice(0, -1),
+            config.pluralName,
+          ]);
     const propertySearcher = createPropertySearcher(
       pluralPropertyChecker == null
         ? propertyChecker
@@ -127,14 +125,11 @@ function createRequiredRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
 /**
  * Creates a required rule with the given property configuration.
  */
-export function createRequiredRuleDeno(
-  config: PropertyConfig,
-): Deno.lint.Rule {
+export function createRequiredRuleDeno(config: PropertyConfig): Deno.lint.Rule {
   return {
-    create: createRequiredRule(
-      config,
-      { message: actorPropertyRequired(config) },
-    ),
+    create: createRequiredRule(config, {
+      message: actorPropertyRequired(config),
+    }),
   };
 }
 
@@ -148,21 +143,18 @@ export function createRequiredRuleEslint(
     meta: {
       type: "suggestion",
       docs: {
-        description: `Ensure actor dispatcher returns ${
-          config.path.join(".")
-        } property.`,
+        description: `Ensure actor dispatcher returns ${config.path.join(
+          ".",
+        )} property.`,
       },
       schema: [],
       messages: {
         required: "{{ message }}",
       },
     },
-    create: createRequiredRule(
-      config,
-      {
-        messageId: "required",
-        data: { message: actorPropertyRequired(config) },
-      },
-    ),
+    create: createRequiredRule(config, {
+      messageId: "required",
+      data: { message: actorPropertyRequired(config) },
+    }),
   };
 }

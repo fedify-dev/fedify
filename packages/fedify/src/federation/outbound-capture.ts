@@ -21,7 +21,8 @@ export function snapshotBodyCapture<T>(
 ): OutboundResponseBodyCapture<T> | undefined {
   if (value === undefined) return undefined;
   if (
-    value == null || typeof value !== "object" ||
+    value == null ||
+    typeof value !== "object" ||
     typeof value.onBody !== "function"
   ) {
     throw new TypeError("Response body capture requires an onBody callback.");
@@ -38,7 +39,8 @@ export function snapshotBodyCapture<T>(
     );
   }
   if (
-    !Number.isFinite(timeoutMs) || timeoutMs <= 0 ||
+    !Number.isFinite(timeoutMs) ||
+    timeoutMs <= 0 ||
     Math.ceil(timeoutMs) > 2147483647
   ) {
     throw new RangeError(
@@ -109,112 +111,126 @@ export async function captureResponseBody(
     | Promise<ReadableStreamReadResult<Uint8Array> | undefined>
     | undefined;
   const read = () =>
-    pending ??= pump.read().then((value) => {
-      pending = undefined;
-      if (value?.done) eof = true;
-      if (
-        !response.ok && value != null && !value.done &&
-        performance.now() - start < diagnosticTimeoutMs
-      ) {
-        const remaining = diagnosticMaxBytes - diagnosticBytes;
-        const chunk = value.value;
-        if (chunk.length > remaining) diagnosticTruncated = true;
-        if (remaining > 0 && chunk.length > 0) {
-          const selected = chunk.subarray(0, remaining);
-          preview.push(decoder.decode(selected, { stream: true }));
-          diagnosticBytes += selected.length;
+    (pending ??= pump.read().then(
+      (value) => {
+        pending = undefined;
+        if (value?.done) eof = true;
+        if (
+          !response.ok &&
+          value != null &&
+          !value.done &&
+          performance.now() - start < diagnosticTimeoutMs
+        ) {
+          const remaining = diagnosticMaxBytes - diagnosticBytes;
+          const chunk = value.value;
+          if (chunk.length > remaining) diagnosticTruncated = true;
+          if (remaining > 0 && chunk.length > 0) {
+            const selected = chunk.subarray(0, remaining);
+            preview.push(decoder.decode(selected, { stream: true }));
+            diagnosticBytes += selected.length;
+          }
         }
-      }
-      return value;
-    }, (error) => {
-      pending = undefined;
-      diagnosticFailed = true;
-      throw error;
-    });
+        return value;
+      },
+      (error) => {
+        pending = undefined;
+        diagnosticFailed = true;
+        throw error;
+      },
+    ));
   const revoke = (reason: unknown) => {
     active = false;
     if (!signal.signal.aborted) signal.abort(reason);
     // Controller access works even while the application retains a locked reader.
     try {
       controller.error(reason);
-    } catch { /* The consumer may already have cancelled. */ }
+    } catch {
+      /* The consumer may already have cancelled. */
+    }
   };
-  const body = new ReadableStream<Uint8Array>({
-    start(value) {
-      controller = value;
-    },
-    async pull() {
-      try {
-        while (active) {
-          if (performance.now() >= expires) {
-            result = { type: "deadline" };
-            revoke(
-              new DOMException(
-                "Response body capture deadline exceeded.",
-                "TimeoutError",
-              ),
-            );
+  const body = new ReadableStream<Uint8Array>(
+    {
+      start(value) {
+        controller = value;
+      },
+      async pull() {
+        try {
+          while (active) {
+            if (performance.now() >= expires) {
+              result = { type: "deadline" };
+              revoke(
+                new DOMException(
+                  "Response body capture deadline exceeded.",
+                  "TimeoutError",
+                ),
+              );
+              return;
+            }
+            const value = await read();
+            if (!active) return;
+            if (performance.now() >= expires || value == null) {
+              result = { type: "deadline" };
+              revoke(
+                new DOMException(
+                  "Response body capture deadline exceeded.",
+                  "TimeoutError",
+                ),
+              );
+              return;
+            }
+            if (value.done) {
+              result = { type: "complete" };
+              active = false;
+              controller.close();
+              return;
+            }
+            if (value.value.length === 0) continue;
+            const chunk = value.value.slice(0, options.maxBytes - bytesExposed);
+            bytesExposed += chunk.length;
+            controller.enqueue(chunk);
+            if (bytesExposed === options.maxBytes) {
+              result = { type: "limit-reached" };
+              revoke(
+                new DOMException(
+                  "Response body capture byte limit reached.",
+                  "QuotaExceededError",
+                ),
+              );
+            }
             return;
           }
-          const value = await read();
-          if (!active) return;
-          if (performance.now() >= expires || value == null) {
-            result = { type: "deadline" };
-            revoke(
-              new DOMException(
-                "Response body capture deadline exceeded.",
-                "TimeoutError",
-              ),
-            );
-            return;
+        } catch (error) {
+          if (active) {
+            result = { type: "failed", phase: "body", error };
+            revoke(error);
           }
-          if (value.done) {
-            result = { type: "complete" };
-            active = false;
-            controller.close();
-            return;
-          }
-          if (value.value.length === 0) continue;
-          const chunk = value.value.slice(0, options.maxBytes - bytesExposed);
-          bytesExposed += chunk.length;
-          controller.enqueue(chunk);
-          if (bytesExposed === options.maxBytes) {
-            result = { type: "limit-reached" };
-            revoke(
-              new DOMException(
-                "Response body capture byte limit reached.",
-                "QuotaExceededError",
-              ),
-            );
-          }
-          return;
         }
-      } catch (error) {
-        if (active) {
-          result = { type: "failed", phase: "body", error };
-          revoke(error);
-        }
-      }
+      },
+      cancel(reason) {
+        result = { type: "consumer-stopped", reason };
+        revoke(reason);
+      },
     },
-    cancel(reason) {
-      result = { type: "consumer-stopped", reason };
-      revoke(reason);
-    },
-  }, { highWaterMark: 0 });
+    { highWaterMark: 0 },
+  );
   let timer!: ReturnType<typeof setTimeout>;
   const deadline = new Promise<void>((resolve) => {
-    timer = setTimeout(() => {
-      result = { type: "deadline" };
-      revoke(
-        new DOMException(
-          "Response body capture deadline exceeded.",
-          "TimeoutError",
-        ),
-      );
-      resolve();
-    }, Math.max(0, expires - performance.now()));
+    timer = setTimeout(
+      () => {
+        result = { type: "deadline" };
+        revoke(
+          new DOMException(
+            "Response body capture deadline exceeded.",
+            "TimeoutError",
+          ),
+        );
+        resolve();
+      },
+      Math.max(0, expires - performance.now()),
+    );
   });
-  const callback = Promise.resolve().then(() => onBody(body, signal.signal))
+  const callback = Promise.resolve()
+    .then(() => onBody(body, signal.signal))
     .then(
       () => {},
       (error) => {
@@ -234,20 +250,23 @@ export async function captureResponseBody(
       pump.limitLifetime(diagnosticTimeoutMs - (performance.now() - start));
       try {
         while (
-          !eof && !diagnosticTruncated &&
+          !eof &&
+          !diagnosticTruncated &&
           performance.now() - start < diagnosticTimeoutMs
         ) {
-          if (await read() == null) break;
+          if ((await read()) == null) break;
         }
-      } catch { /* Diagnostic failure does not replace HTTP evidence. */ }
+      } catch {
+        /* Diagnostic failure does not replace HTTP evidence. */
+      }
       diagnostics.set(
         response,
         preview.join("") +
           (diagnosticTruncated
             ? "… (truncated)"
             : !eof && !diagnosticFailed
-            ? "… (timed out)"
-            : ""),
+              ? "… (timed out)"
+              : ""),
       );
     }
     return Object.freeze({

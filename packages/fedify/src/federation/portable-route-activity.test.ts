@@ -15,10 +15,10 @@ import { createFederation } from "./middleware.ts";
 
 const did = await exportDidKey(ed25519PublicKey.publicKey);
 const keyId = new URL(`${did}#${did.slice("did:key:".length)}`);
-const otherKeyPair = await crypto.subtle.generateKey("Ed25519", true, [
+const otherKeyPair = (await crypto.subtle.generateKey("Ed25519", true, [
   "sign",
   "verify",
-]) as CryptoKeyPair;
+])) as CryptoKeyPair;
 const otherDid = await exportDidKey(otherKeyPair.publicKey);
 const otherKeyId = new URL(`${otherDid}#${otherDid.slice("did:key:".length)}`);
 
@@ -110,9 +110,9 @@ async function route(
     null,
     activity instanceof URL
       ? new Create({
-        id: activity,
-        actors: [...(actors ?? served?.actorIds ?? [])],
-      })
+          id: activity,
+          actors: [...(actors ?? served?.actorIds ?? [])],
+        })
       : activity,
   );
   return { routed, received };
@@ -214,12 +214,7 @@ test("Context.routeActivity() accepts portable activities of the same DID", asyn
     [
       "actor ID with a location hint",
       portableId(did, "/activities/1"),
-      [
-        portableId(
-          did,
-          `/actor?@gateway=${encodeURIComponent(GATEWAY)}`,
-        ),
-      ],
+      [portableId(did, `/actor?@gateway=${encodeURIComponent(GATEWAY)}`)],
     ],
   ];
   for (const [name, id, actors] of cases) {
@@ -260,10 +255,7 @@ test("Context.routeActivity() compares portable activity IDs canonically", async
   await t.step("ap+ef61: ID with a location hint", async () => {
     const served = await portableCreate(id, actors);
     const { routed } = await route(
-      portableId(
-        did,
-        `/activities/1?@gateway=${encodeURIComponent(GATEWAY)}`,
-      ),
+      portableId(did, `/activities/1?@gateway=${encodeURIComponent(GATEWAY)}`),
       { served },
     );
     assert(routed);

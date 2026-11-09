@@ -2,10 +2,7 @@
   <div v-if="data" class="post-detail-container">
     <NuxtLink class="back-link" to="/">&larr; Back to home</NuxtLink>
     <article class="post-detail-card">
-      <NuxtLink
-        class="post-detail-author"
-        :to="`/users/${data.identifier}`"
-      >
+      <NuxtLink class="post-detail-author" :to="`/users/${data.identifier}`">
         <img
           :src="data.author.icon ?? '/demo-profile.png'"
           :alt="`${data.author.name}'s profile`"
@@ -13,9 +10,7 @@
         />
         <div class="author-info">
           <h1 class="author-name">{{ data.author.name }}</h1>
-          <p class="author-handle">
-            @{{ data.identifier }}@{{ data.host }}
-          </p>
+          <p class="author-handle">@{{ data.identifier }}@{{ data.host }}</p>
           <time
             v-if="data.published"
             class="post-timestamp"
@@ -47,8 +42,8 @@ useHead({
   title: error.value
     ? "Error - Fedify Nuxt Example"
     : data.value
-    ? `Post - ${data.value.author.name} - Fedify Nuxt Example`
-    : "Not Found - Fedify Nuxt Example",
+      ? `Post - ${data.value.author.name} - Fedify Nuxt Example`
+      : "Not Found - Fedify Nuxt Example",
 });
 
 function formatDate(dateStr: string): string {

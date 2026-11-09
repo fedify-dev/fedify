@@ -48,14 +48,13 @@
     "temporal-polyfill": "catalog:"
   },
   "devDependencies": {
-    "@dprint/formatter": "0.6.0",
-    "@dprint/typescript": "0.96.1",
     "@fedify/fixture": "workspace:*",
     "@types/node": "catalog:",
     "fast-check": "catalog:",
     "fetch-mock": "catalog:",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "oxfmt": "catalog:"
   },
   "scripts": {
     "build:self": "node --experimental-strip-types scripts/codegen.ts && tsdown",

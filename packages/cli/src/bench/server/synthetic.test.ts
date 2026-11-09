@@ -10,10 +10,12 @@ import {
 } from "./synthetic.ts";
 
 test("spawnSyntheticServer - serves a verifiable actor document", async () => {
-  const fleet = await buildFleet([{
-    count: 1,
-    signatureStandards: ["draft-cavage-http-signatures-12", "fep8b32"],
-  }]);
+  const fleet = await buildFleet([
+    {
+      count: 1,
+      signatureStandards: ["draft-cavage-http-signatures-12", "fep8b32"],
+    },
+  ]);
   const server = await spawnSyntheticServer(fleet);
   try {
     const actor = server.actors[0];
@@ -23,10 +25,7 @@ test("spawnSyntheticServer - serves a verifiable actor document", async () => {
 
     const response = await fetch(actor.id);
     assert.strictEqual(response.status, 200);
-    assert.match(
-      response.headers.get("content-type") ?? "",
-      /activity\+json/,
-    );
+    assert.match(response.headers.get("content-type") ?? "", /activity\+json/);
     const json = await response.text();
     assert.match(json, /publicKeyPem/);
     assert.match(json, /BEGIN PUBLIC KEY/);
@@ -58,10 +57,12 @@ test("spawnSyntheticServer - serves a verifiable actor document", async () => {
 });
 
 test("spawnSyntheticServer - advertises a reachable host in actor URLs", async () => {
-  const fleet = await buildFleet([{
-    count: 1,
-    signatureStandards: ["draft-cavage-http-signatures-12"],
-  }]);
+  const fleet = await buildFleet([
+    {
+      count: 1,
+      signatureStandards: ["draft-cavage-http-signatures-12"],
+    },
+  ]);
   // 192.0.2.0/24 is TEST-NET-1: a non-loopback host that is never actually
   // routed, so this checks the advertised URLs without needing a remote peer.
   const server = await spawnSyntheticServer(fleet, {
@@ -86,9 +87,11 @@ test("spawnSyntheticServer - advertises a reachable host in actor URLs", async (
 });
 
 test("spawnSyntheticServer - unknown paths 404", async () => {
-  const fleet = await buildFleet([{
-    signatureStandards: ["rfc9421"],
-  }]);
+  const fleet = await buildFleet([
+    {
+      signatureStandards: ["rfc9421"],
+    },
+  ]);
   const server = await spawnSyntheticServer(fleet);
   try {
     const response = await fetch(new URL("/nope", server.url));
@@ -135,18 +138,16 @@ test("resolveAdvertiseHost - IPv6 binds all IPv6 interfaces and is bracketed", (
 });
 
 test("resolveAdvertiseHost - rejects ports, schemes, paths, and junk", () => {
-  for (
-    const bad of [
-      "",
-      "  ",
-      "10.0.0.5:8080",
-      "http://10.0.0.5",
-      "10.0.0.5/path",
-      "user@host",
-      "[2001:db8::1",
-      "2001:db8:::",
-    ]
-  ) {
+  for (const bad of [
+    "",
+    "  ",
+    "10.0.0.5:8080",
+    "http://10.0.0.5",
+    "10.0.0.5/path",
+    "user@host",
+    "[2001:db8::1",
+    "2001:db8:::",
+  ]) {
     assert.throws(
       () => resolveAdvertiseHost(bad),
       AdvertiseHostError,

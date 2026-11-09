@@ -14,19 +14,12 @@
     "@cfworker/json-schema": "npm:@cfworker/json-schema@^4.1.1",
     "yaml": "npm:yaml@^2.9.0"
   },
-  "exclude": [
-    "dist",
-    "node_modules",
-    "src/schema.yaml"
-  ],
+  "exclude": ["dist", "node_modules", "src/schema.yaml"],
   "publish": {
-    "exclude": [
-      "**/*.test.ts",
-      "tsdown.config.ts"
-    ]
+    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
   },
   "tasks": {
-    "check": "deno fmt --check && deno check src/*.ts",
+    "check": "deno check src/*.ts",
     "test": "deno test -A"
   }
 }

@@ -1,13 +1,6 @@
 {
-  "count": [
-    "one",
-    "two",
-    "three"
-  ],
-  "dom": [
-    "example",
-    "com"
-  ],
+  "count": ["one", "two", "three"],
+  "dom": ["example", "com"],
   "dub": "me/too",
   "hello": "Hello World!",
   "half": "50%",
@@ -15,11 +8,7 @@
   "who": "fred",
   "base": "http://example.com/home/",
   "path": "/foo/bar",
-  "list": [
-    "red",
-    "green",
-    "blue"
-  ],
+  "list": ["red", "green", "blue"],
   "keys": {
     "semi": ";",
     "dot": ".",
@@ -32,11 +21,7 @@
   "empty_keys": {},
   "undef": null,
   "semi": ";",
-  "year": [
-    "1965",
-    "2000",
-    "2012"
-  ],
+  "year": ["1965", "2000", "2012"],
   "empty_list": [],
   "unicode": "페디파이",
   "abc%20def": "spaced",
@@ -45,11 +30,7 @@
   "%41": "encoded-A",
   "foo.bar": "dotted",
   "123": "numeric",
-  "sparse": [
-    "one",
-    null,
-    "three"
-  ],
+  "sparse": ["one", null, "three"],
   "nullable_keys": {
     "a": "1",
     "b": null,

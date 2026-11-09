@@ -179,45 +179,55 @@ const INBOX_COMPOUND_PROOF_LIMITS = {
 } as const;
 
 function isRemoteContextLoadingFailure(error: unknown): boolean {
-  return error instanceof Error &&
+  return (
+    error instanceof Error &&
     typeof (error as Error & { details?: { code?: unknown } }).details ===
       "object" &&
     (error as Error & { details?: { code?: unknown } }).details != null &&
     (error as Error & { details: { code?: unknown } }).details.code ===
-      "loading remote context failed";
+      "loading remote context failed"
+  );
 }
 
 function isPermanentRemoteContextError(error: unknown): boolean {
   if (!(error instanceof Error) || error.name !== "jsonld.InvalidUrl") {
     return false;
   }
-  const details = (error as Error & {
-    details?: { code?: unknown; url?: unknown };
-  }).details;
+  const details = (
+    error as Error & {
+      details?: { code?: unknown; url?: unknown };
+    }
+  ).details;
   if (details?.code === "invalid remote context") {
     return true;
   }
-  return isRemoteContextLoadingFailure(error) &&
+  return (
+    isRemoteContextLoadingFailure(error) &&
     typeof details?.url === "string" &&
     !URL.canParse(details.url) &&
-    isClearlyMalformedContextReference(details.url);
+    isClearlyMalformedContextReference(details.url)
+  );
 }
 
 function isInvalidJsonLdError(error: unknown): error is Error {
   if (!(error instanceof Error)) return false;
   const name = error.name;
-  return name === "UnsafeJsonLdError" ||
+  return (
+    name === "UnsafeJsonLdError" ||
     error instanceof InvalidContextReferenceError ||
     isPermanentRemoteContextError(error) ||
-    (name === "jsonld.SyntaxError" &&
-      !isRemoteContextLoadingFailure(error));
+    (name === "jsonld.SyntaxError" && !isRemoteContextLoadingFailure(error))
+  );
 }
 
 function isValidationTypeError(error: unknown): error is TypeError {
-  return error instanceof TypeError &&
-    (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:|Invalid FEP-ef61 gateway:)/
-      .test(error.message) ||
-      isInvalidUrlTypeError(error));
+  return (
+    error instanceof TypeError &&
+    (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:|Invalid FEP-ef61 gateway:)/.test(
+      error.message,
+    ) ||
+      isInvalidUrlTypeError(error))
+  );
 }
 
 function isPermanentActivityParseError(error: unknown): error is Error {
@@ -236,8 +246,9 @@ function isPermanentActivityParseError(error: unknown): error is Error {
 }
 
 function hasHttpSignatureHeaders(request: Request): boolean {
-  return request.headers.has("Signature") ||
-    request.headers.has("Signature-Input");
+  return (
+    request.headers.has("Signature") || request.headers.has("Signature-Input")
+  );
 }
 
 function hasObjectIntegrityProof(json: unknown): boolean {
@@ -286,7 +297,7 @@ export async function handleActor<TContextData>(
     return await onNotFound(request);
   }
   if (authorizePredicate != null) {
-    if (!await authorizePredicate(context, identifier)) {
+    if (!(await authorizePredicate(context, identifier))) {
       return await onUnauthorized(request);
     }
   }
@@ -344,7 +355,7 @@ export async function handleObject<TContextData>(
   const object = await objectDispatcher(context, values);
   if (object == null) return await onNotFound(request);
   if (authorizePredicate != null) {
-    if (!await authorizePredicate(context, values)) {
+    if (!(await authorizePredicate(context, values))) {
       return await onUnauthorized(request);
     }
   }
@@ -374,8 +385,9 @@ export async function handleObject<TContextData>(
  * Parameters for handling an FEP-ef61 portable object request.
  * @template TContextData The context data to pass to the context.
  */
-export interface PortableObjectHandlerParameters<TContextData>
-  extends ObjectHandlerParameters<TContextData> {
+export interface PortableObjectHandlerParameters<
+  TContextData,
+> extends ObjectHandlerParameters<TContextData> {
   /**
    * The canonical form of the requested portable ID.
    */
@@ -442,7 +454,7 @@ export async function handlePortableObject<TContextData>(
     return await onNotFound(request);
   }
   if (authorizePredicate != null) {
-    if (!await authorizePredicate(context, values)) {
+    if (!(await authorizePredicate(context, values))) {
       return await onUnauthorized(request);
     }
   }
@@ -467,7 +479,8 @@ export async function handlePortableObject<TContextData>(
   // the ID that is actually served too:
   const servedId = root?.["@id"];
   if (
-    root == null || typeof servedId !== "string" ||
+    root == null ||
+    typeof servedId !== "string" ||
     !isRequestedPortableId(servedId, canonicalId)
   ) {
     logger.debug(
@@ -481,7 +494,9 @@ export async function handlePortableObject<TContextData>(
   // differ, and before verifying the proofs, so that a request that may not
   // see the object can neither trigger the verification nor tell its result:
   if (
-    authorizePredicate == null && kind === "object" && !isActor(object) &&
+    authorizePredicate == null &&
+    kind === "object" &&
+    !isActor(object) &&
     !isPubliclyAddressedNode(root)
   ) {
     logger.debug(
@@ -526,10 +541,9 @@ export async function handlePortableObject<TContextData>(
     // Unsecured collections and other core types are exempt from the proof
     // policy, but a tombstone is never served without a proof:
     if (
-      tombstone || (
-        result.reason.type !== "unsecuredCollection" &&
-        result.reason.type !== "unsupportedObjectType"
-      )
+      tombstone ||
+      (result.reason.type !== "unsecuredCollection" &&
+        result.reason.type !== "unsupportedObjectType")
     ) {
       if (result.reason.type === "invalidGateways") {
         logger.error(
@@ -573,15 +587,15 @@ async function warnServedCompatibleObject<TContextData>(
   try {
     // Actor dispatchers already check their own compatible IDs.
     if (isActor(object)) return;
-    const id = typeof serializedId === "string"
-      ? parseIri(serializedId)
-      : serializedId ?? object.id;
+    const id =
+      typeof serializedId === "string"
+        ? parseIri(serializedId)
+        : (serializedId ?? object.id);
     if (id == null || !isCompatibleEf61Iri(id)) return;
     const did = getPortableDid(id);
     if (did == null) return;
-    const ownerIds = object instanceof Activity
-      ? object.actorIds
-      : object.attributionIds;
+    const ownerIds =
+      object instanceof Activity ? object.actorIds : object.attributionIds;
     for (const ownerId of ownerIds) {
       if (getPortableDid(ownerId) !== did) continue;
       const gateway = await getLocalFirstGateway(context, ownerId, did);
@@ -630,8 +644,9 @@ async function expandJsonLdRoot(
 function isRequestedPortableId(id: string, canonicalId: string): boolean {
   if (!/^ap(?:\+ef61)?:\/\//i.test(id)) {
     // A compatible identifier, which is an ordinary HTTP(S) URL:
-    return URL.canParse(id) &&
-      getCanonicalPortableId(new URL(id)) === canonicalId;
+    return (
+      URL.canParse(id) && getCanonicalPortableId(new URL(id)) === canonicalId
+    );
   }
   try {
     // Canonicalizes the raw string, since the URL class would normalize
@@ -826,12 +841,13 @@ const BUILT_IN_COLLECTION_METRIC_KINDS = new Set<string>([
 ]);
 
 function getCollectionMetricKind(name: string): CollectionMetricKind {
-  const normalized = name.trim()
+  const normalized = name
+    .trim()
     .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
     .toLowerCase()
     .replace(/\s+/g, "_");
   return BUILT_IN_COLLECTION_METRIC_KINDS.has(normalized)
-    ? normalized as CollectionMetricKind
+    ? (normalized as CollectionMetricKind)
     : "custom";
 }
 
@@ -939,7 +955,9 @@ export async function handleCollection<
     // A portable collection's owner is already resolved, so the request is
     // authorized before anything is dispatched:
     if (portable != null && collectionCallbacks.authorizePredicate != null) {
-      if (!await collectionCallbacks.authorizePredicate(context, identifier)) {
+      if (
+        !(await collectionCallbacks.authorizePredicate(context, identifier))
+      ) {
         return finish(await onUnauthorized(request), "unauthorized");
       }
     }
@@ -952,9 +970,10 @@ export async function handleCollection<
         context,
         identifier,
       );
-      const totalItems = filter == null
-        ? await collectionCallbacks.counter?.(context, identifier)
-        : undefined;
+      const totalItems =
+        filter == null
+          ? await collectionCallbacks.counter?.(context, identifier)
+          : undefined;
       totalItemCount = totalItems == null ? undefined : Number(totalItems);
       if (firstCursor == null) {
         const itemsOrResponse = await tracer.startActiveSpan(
@@ -1019,7 +1038,8 @@ export async function handleCollection<
           // Without a counter, an empty one would have none of them, but
           // the dispatcher has returned all the items, so their number is
           // the total:
-          totalItems: totalItemCount ??
+          totalItems:
+            totalItemCount ??
             (portable == null ? null : itemsOrResponse.length),
           items: itemsOrResponse,
         });
@@ -1119,14 +1139,14 @@ export async function handleCollection<
     }
     if (portable == null && collectionCallbacks.authorizePredicate != null) {
       if (
-        !await collectionCallbacks.authorizePredicate(context, identifier)
+        !(await collectionCallbacks.authorizePredicate(context, identifier))
       ) {
         return finish(await onUnauthorized(request), "unauthorized");
       }
     }
     const jsonLd = await collection.toJsonLd(context);
     if (portable != null) {
-      return await verifyPortableCollection(jsonLd, context, portable)
+      return (await verifyPortableCollection(jsonLd, context, portable))
         ? finish(respondWithPortableCollection(request, jsonLd), "served")
         : finish(portableObjectInternalServerError(request), "error");
     }
@@ -1260,14 +1280,14 @@ export async function handleOutbox<TContextData>(
     return await onNotFound(request);
   }
   if (authorizePredicate != null) {
-    const authorizeContext = ctx.clone(ctx.data) as
-      & RequestContext<TContextData>
-      & {
-        request: Request;
-      };
+    const authorizeContext = ctx.clone(
+      ctx.data,
+    ) as RequestContext<TContextData> & {
+      request: Request;
+    };
     authorizeContext.request = request.clone() as Request;
     const requestForUnauthorized = authorizeContext.request.clone() as Request;
-    if (!await authorizePredicate(authorizeContext, identifier)) {
+    if (!(await authorizePredicate(authorizeContext, identifier))) {
       return await onUnauthorized(requestForUnauthorized);
     }
   }
@@ -1362,7 +1382,7 @@ export async function handleOutbox<TContextData>(
   // identifier still matches the outbox owner:
   if (
     !activity.actorIds.every((actorId) =>
-      isSameObjectId(actorId, expectedActorId)
+      isSameObjectId(actorId, expectedActorId),
     )
   ) {
     const error = new Error(
@@ -1447,14 +1467,11 @@ export async function handleOutbox<TContextData>(
       },
     );
   }
-  logger.info(
-    "Activity {activityId} has been processed in outbox listener.",
-    {
-      activityId: activity.id?.href,
-      activityType: getTypeId(activity).href,
-      identifier,
-    },
-  );
+  logger.info("Activity {activityId} has been processed in outbox listener.", {
+    activityId: activity.id?.href,
+    activityType: getTypeId(activity).href,
+    identifier,
+  });
   return new Response("", {
     status: 202,
     headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -1579,11 +1596,11 @@ export async function handleMediaUpload<TContextData>(
         headers: request.headers,
         body: body.byteLength > 0 ? body : undefined,
       });
-    const authorizeContext = ctx.clone(ctx.data) as
-      & RequestContext<TContextData>
-      & { request: Request };
+    const authorizeContext = ctx.clone(
+      ctx.data,
+    ) as RequestContext<TContextData> & { request: Request };
     authorizeContext.request = rebuild();
-    if (!await authorizePredicate(authorizeContext, identifier)) {
+    if (!(await authorizePredicate(authorizeContext, identifier))) {
       return await onUnauthorized(rebuild());
     }
     request = rebuild();
@@ -1621,9 +1638,8 @@ export async function handleMediaUpload<TContextData>(
   }
   let object: Object;
   try {
-    const objectText = typeof objectField === "string"
-      ? objectField
-      : await objectField.text();
+    const objectText =
+      typeof objectField === "string" ? objectField : await objectField.text();
     object = await Object.fromJsonLd(JSON.parse(objectText), ctx);
   } catch (error) {
     logger.error("Failed to parse the object field:\n{error}", {
@@ -1817,11 +1833,12 @@ export async function handleInbox<TContextData>(
 ): Promise<Response> {
   if (options.observation == null) {
     const observation = new InboxObservation({
-      kind: options.portableInbox != null
-        ? "portable"
-        : options.recipient == null
-        ? "shared"
-        : "personal",
+      kind:
+        options.portableInbox != null
+          ? "portable"
+          : options.recipient == null
+            ? "shared"
+            : "personal",
       recipient: options.recipient,
     });
     return await observation.runAndFinish(
@@ -1953,11 +1970,7 @@ async function handleInboxInternal<TContextData>(
   let json: unknown;
   try {
     json = JSON.parse(
-      await readBoundedText(
-        request.clone(),
-        MAX_BODY_SIZE,
-        request.url,
-      ),
+      await readBoundedText(request.clone(), MAX_BODY_SIZE, request.url),
     );
   } catch (error) {
     if (error instanceof BodyTooLargeError) {
@@ -2085,10 +2098,10 @@ async function handleInboxInternal<TContextData>(
       } catch (error) {
         if (
           error instanceof RangeError &&
-          await hasMalformedKnownTemporalLiteral(
+          (await hasMalformedKnownTemporalLiteral(
             compactedJsonWithoutSig,
             normalizationLoader,
-          )
+          ))
         ) {
           return await respondInvalidActivity(error);
         }
@@ -2117,10 +2130,10 @@ async function handleInboxInternal<TContextData>(
           } catch (parseError) {
             if (
               parseError instanceof RangeError &&
-              await hasMalformedKnownTemporalLiteral(
+              (await hasMalformedKnownTemporalLiteral(
                 compactedJsonWithoutSig,
                 normalizationLoader,
-              )
+              ))
             ) {
               return await respondInvalidActivity(parseError);
             }
@@ -2176,7 +2189,7 @@ async function handleInboxInternal<TContextData>(
     if (skipSignatureVerification) return false;
     if (
       inboxListeners?.dispatchWithClass(candidate)?.options.allowActorless !==
-        true
+      true
     ) {
       return false;
     }
@@ -2210,10 +2223,10 @@ async function handleInboxInternal<TContextData>(
     } catch (error) {
       if (
         error instanceof RangeError &&
-        await hasMalformedKnownTemporalLiteral(
+        (await hasMalformedKnownTemporalLiteral(
           compactedJsonWithoutSig,
           normalizationLoader,
-        )
+        ))
       ) {
         return await respondInvalidActivity(error);
       }
@@ -2228,12 +2241,14 @@ async function handleInboxInternal<TContextData>(
       baseUrl: null,
     };
     if (ldSigKey?.ownerId != null) {
-      documentSigners = [{
-        kind: "actor",
-        id: ldSigKey.ownerId,
-        mechanism: "linked-data-signatures",
-        keyId: ldSigKey.id,
-      }];
+      documentSigners = [
+        {
+          kind: "actor",
+          id: ldSigKey.ownerId,
+          mechanism: "linked-data-signatures",
+          keyId: ldSigKey.id,
+        },
+      ];
     }
     // The proof may be under any JSON-LD alias of the `proof` property, so
     // the proofs are verified whenever the activity has no actor:
@@ -2266,14 +2281,15 @@ async function handleInboxInternal<TContextData>(
       // activity, nor a portable activity; only an Object Integrity Proof
       // made by its DID does:
       try {
-        proofVerified = await verifyObject(Activity, jsonWithoutSig, {
-          ...signatureObservation,
-          contextLoader: standardLoader,
-          documentLoader: ctx.documentLoader,
-          keyCache,
-          meterProvider,
-          tracerProvider,
-        }) != null;
+        proofVerified =
+          (await verifyObject(Activity, jsonWithoutSig, {
+            ...signatureObservation,
+            contextLoader: standardLoader,
+            documentLoader: ctx.documentLoader,
+            keyCache,
+            meterProvider,
+            tracerProvider,
+          })) != null;
       } catch (error) {
         if (!isPermanentActivityParseError(error)) throw error;
         logger.debug(
@@ -2284,10 +2300,10 @@ async function handleInboxInternal<TContextData>(
       }
     }
   } else {
-    logger.debug(
-      "Linked Data Signatures are not verified.",
-      { recipient, json },
-    );
+    logger.debug("Linked Data Signatures are not verified.", {
+      recipient,
+      json,
+    });
     let proofResult: Awaited<ReturnType<typeof verifyProofs>>;
     try {
       proofResult = await verifyProofs();
@@ -2295,7 +2311,7 @@ async function handleInboxInternal<TContextData>(
       if (
         error instanceof RangeError &&
         // The diagnosis inspects the document the way the failed parse did:
-        await hasMalformedKnownTemporalLiteral(jsonWithoutSig, standardLoader)
+        (await hasMalformedKnownTemporalLiteral(jsonWithoutSig, standardLoader))
       ) {
         // A deferred LDS loader failure is still retriable, but it must not
         // hide a payload that this boundary can already prove is permanently
@@ -2340,7 +2356,7 @@ async function handleInboxInternal<TContextData>(
     if (proofResult.status === "verified") {
       if (
         proofResult.signers.length < 1 &&
-        await isActorlessCandidate(proofResult.object, rawViewSource)
+        (await isActorlessCandidate(proofResult.object, rawViewSource))
       ) {
         // Without an actor, there is nothing for the proofs to cover, so
         // a successful verification of zero proofs authenticates nobody:
@@ -2360,7 +2376,10 @@ async function handleInboxInternal<TContextData>(
       } catch {
         // The activity will be parsed again below.
       }
-      if (parsed != null && await isActorlessCandidate(parsed, rawViewSource)) {
+      if (
+        parsed != null &&
+        (await isActorlessCandidate(parsed, rawViewSource))
+      ) {
         // The proof of an activity without an actor may be its only
         // authentication, so a key that cannot be fetched for now must not
         // be superseded by another mechanism:
@@ -2368,15 +2387,15 @@ async function handleInboxInternal<TContextData>(
       }
     }
     if (activity == null) {
-      logger.debug(
-        "Object Integrity Proofs are not verified.",
-        { recipient, activity: json },
-      );
+      logger.debug("Object Integrity Proofs are not verified.", {
+        recipient,
+        activity: json,
+      });
     } else {
-      logger.debug(
-        "Object Integrity Proofs are verified.",
-        { recipient, activity: json },
-      );
+      logger.debug("Object Integrity Proofs are verified.", {
+        recipient,
+        activity: json,
+      });
       activityVerified = true;
       proofVerified = true;
     }
@@ -2408,19 +2427,18 @@ async function handleInboxInternal<TContextData>(
           reason: "authentication",
         };
         const reason = verification.reason;
-        const remoteHost = "keyId" in reason && reason.keyId != null
-          ? getRemoteHost(reason.keyId)
-          : undefined;
-        getFederationMetrics(parameters.meterProvider)
-          .recordSignatureVerificationFailure(reason.type, remoteHost);
-        logger.error(
-          "Failed to verify the request's HTTP Signatures.",
-          {
-            recipient,
-            reason: reason.type,
-            keyId: "keyId" in reason ? reason.keyId?.href : undefined,
-          },
-        );
+        const remoteHost =
+          "keyId" in reason && reason.keyId != null
+            ? getRemoteHost(reason.keyId)
+            : undefined;
+        getFederationMetrics(
+          parameters.meterProvider,
+        ).recordSignatureVerificationFailure(reason.type, remoteHost);
+        logger.error("Failed to verify the request's HTTP Signatures.", {
+          recipient,
+          reason: reason.type,
+          keyId: "keyId" in reason ? reason.keyId?.href : undefined,
+        });
         span.setStatus({
           code: SpanStatusCode.ERROR,
           message: `Failed to verify the request's HTTP Signatures.`,
@@ -2472,9 +2490,8 @@ async function handleInboxInternal<TContextData>(
           "activitypub.activity.verified": false,
           "ld_signatures.verified": ldSigVerified,
           "http_signatures.verified": false,
-          "http_signatures.key_id": "keyId" in reason
-            ? (reason.keyId?.href ?? "")
-            : "",
+          "http_signatures.key_id":
+            "keyId" in reason ? (reason.keyId?.href ?? "") : "",
           "http_signatures.failure_reason": reason.type,
         };
         if (reason.type === "keyFetchError") {
@@ -2491,11 +2508,7 @@ async function handleInboxInternal<TContextData>(
         span.addEvent("activitypub.activity.received", eventAttributes);
         let response: void | Response;
         try {
-          response = await unverifiedActivityHandler(
-            ctx,
-            activity,
-            reason,
-          );
+          response = await unverifiedActivityHandler(ctx, activity, reason);
         } catch (error) {
           observation.result = {
             disposition: "failed",
@@ -2532,7 +2545,8 @@ async function handleInboxInternal<TContextData>(
         );
       } else {
         if (
-          inboxChallengePolicy?.enabled && inboxChallengePolicy.requestNonce
+          inboxChallengePolicy?.enabled &&
+          inboxChallengePolicy.requestNonce
         ) {
           // Defer nonce consumption until after actor/key ownership check to
           // avoid burning nonces on requests that will be rejected anyway.
@@ -2569,7 +2583,8 @@ async function handleInboxInternal<TContextData>(
   // allows that, and only if a principal is authenticated for it.  Values
   // that ID accessors or typed parsing drop, such as anonymous actors, still
   // count as a declared actor:
-  const actorless = !skipSignatureVerification &&
+  const actorless =
+    !skipSignatureVerification &&
     getActorPresence(view.expanded) === "absent" &&
     inboxListeners?.dispatchWithClass(activity)?.options.allowActorless ===
       true;
@@ -2597,7 +2612,8 @@ async function handleInboxInternal<TContextData>(
   });
 
   if (
-    !skipSignatureVerification && !proofVerified &&
+    !skipSignatureVerification &&
+    !proofVerified &&
     (isPortableActivity(activity) || isPortableActorKey(httpSigKey))
   ) {
     // HTTP Signatures made with a portable actor's key only tell that one of
@@ -2624,7 +2640,8 @@ async function handleInboxInternal<TContextData>(
     );
     span.setStatus({
       code: SpanStatusCode.ERROR,
-      message: `The activity of the portable actor ` +
+      message:
+        `The activity of the portable actor ` +
         `(${activity.actorId?.href}) is not authenticated by a valid ` +
         `Object Integrity Proof.`,
     });
@@ -2638,7 +2655,8 @@ async function handleInboxInternal<TContextData>(
     );
   }
   if (
-    !skipSignatureVerification && activity.id != null &&
+    !skipSignatureVerification &&
+    activity.id != null &&
     isPortableId(activity.id)
   ) {
     // The proofs above authenticate the activity's actors, but not its own
@@ -2693,7 +2711,8 @@ async function handleInboxInternal<TContextData>(
       );
       span.setStatus({
         code: SpanStatusCode.ERROR,
-        message: `The portable activity (${activity.id.href}) is not ` +
+        message:
+          `The portable activity (${activity.id.href}) is not ` +
           `authenticated by an Object Integrity Proof of its own DID.`,
       });
       return new Response(
@@ -2707,8 +2726,9 @@ async function handleInboxInternal<TContextData>(
     }
   }
   if (
-    httpSigKey != null && !actorless &&
-    !await doesActorOwnKey(activity, httpSigKey, ctx)
+    httpSigKey != null &&
+    !actorless &&
+    !(await doesActorOwnKey(activity, httpSigKey, ctx))
   ) {
     if (deferredLdSignatureError != null) throw deferredLdSignatureError;
     observation.authentication = {
@@ -2719,11 +2739,12 @@ async function handleInboxInternal<TContextData>(
         actorIds: activity.actorIds.map((id) => new URL(id.href)),
       },
     };
-    getFederationMetrics(parameters.meterProvider)
-      .recordSignatureVerificationFailure(
-        "actorKeyMismatch",
-        httpSigKey.id == null ? undefined : getRemoteHost(httpSigKey.id),
-      );
+    getFederationMetrics(
+      parameters.meterProvider,
+    ).recordSignatureVerificationFailure(
+      "actorKeyMismatch",
+      httpSigKey.id == null ? undefined : getRemoteHost(httpSigKey.id),
+    );
     logger.error(
       "The signer ({keyId}) and the actor ({actorId}) do not match.",
       {
@@ -2735,7 +2756,8 @@ async function handleInboxInternal<TContextData>(
     );
     span.setStatus({
       code: SpanStatusCode.ERROR,
-      message: `The signer (${httpSigKey.id?.href}) and ` +
+      message:
+        `The signer (${httpSigKey.id?.href}) and ` +
         `the actor (${activity.actorId?.href}) do not match.`,
     });
     return new Response("The signer and the actor do not match.", {
@@ -2744,12 +2766,14 @@ async function handleInboxInternal<TContextData>(
     });
   }
   if (httpSigKey != null && !actorless && activity.actorId != null) {
-    requestSigners = [{
-      kind: "actor",
-      id: activity.actorId,
-      mechanism: "http-signatures",
-      keyId: httpSigKey.id,
-    }];
+    requestSigners = [
+      {
+        kind: "actor",
+        id: activity.actorId,
+        mechanism: "http-signatures",
+        keyId: httpSigKey.id,
+      },
+    ];
   }
   if (actorless) {
     const check = checkActorlessActivity(activity, {
@@ -2775,13 +2799,10 @@ async function handleInboxInternal<TContextData>(
         code: SpanStatusCode.ERROR,
         message: "No principal is authenticated for the activity.",
       });
-      return new Response(
-        "No principal is authenticated for the activity.",
-        {
-          status: 401,
-          headers: { "Content-Type": "text/plain; charset=utf-8" },
-        },
-      );
+      return new Response("No principal is authenticated for the activity.", {
+        status: 401,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
     } else if (check.status === "activityOriginMismatch") {
       // Without an actor, the activity's ID has to have the same FEP-fe34
       // origin as a principal that authenticated it; otherwise a signer
@@ -2807,7 +2828,8 @@ async function handleInboxInternal<TContextData>(
       );
       span.setStatus({
         code: SpanStatusCode.ERROR,
-        message: `The activity (${activity.id?.href}) does not have the ` +
+        message:
+          `The activity (${activity.id?.href}) does not have the ` +
           "same origin as the principals that authenticated it.",
       });
       return new Response(
@@ -2851,14 +2873,15 @@ async function handleInboxInternal<TContextData>(
               reason: result.reason,
             };
           } else if (!result.verified) {
-            const failed = result.portableObjects.find((object) =>
-              !object.verified
+            const failed = result.portableObjects.find(
+              (object) => !object.verified,
             );
             verification.attempt!.reason = {
               type: "proofPolicy",
-              reason: failed?.verified === false
-                ? failed.reason
-                : { type: "invalidProof" },
+              reason:
+                failed?.verified === false
+                  ? failed.reason
+                  : { type: "invalidProof" },
             };
           }
           return result;
@@ -2875,9 +2898,10 @@ async function handleInboxInternal<TContextData>(
           {
             recipient,
             activity: json,
-            reason: compoundProof.status === "unsupported"
-              ? compoundProof.reason.type
-              : "invalidProof",
+            reason:
+              compoundProof.status === "unsupported"
+                ? compoundProof.reason.type
+                : "invalidProof",
           },
         );
         span.setStatus({
@@ -2908,11 +2932,12 @@ async function handleInboxInternal<TContextData>(
         status: "rejected",
         reason: { type: "invalidNonce" },
       };
-      getFederationMetrics(parameters.meterProvider)
-        .recordSignatureVerificationFailure(
-          "invalidNonce",
-          httpSigKey?.id == null ? undefined : getRemoteHost(httpSigKey.id),
-        );
+      getFederationMetrics(
+        parameters.meterProvider,
+      ).recordSignatureVerificationFailure(
+        "invalidNonce",
+        httpSigKey?.id == null ? undefined : getRemoteHost(httpSigKey.id),
+      );
       logger.error(
         "Signature nonce verification failed (missing, expired, or replayed).",
         { recipient },
@@ -2925,7 +2950,9 @@ async function handleInboxInternal<TContextData>(
     }
   }
   if (
-    !skipSignatureVerification && !actorless && activity.id != null &&
+    !skipSignatureVerification &&
+    !actorless &&
+    activity.id != null &&
     !actorsHaveSameOrigin(activity)
   ) {
     // The activity's ID has to have the same origin as its actors, as
@@ -2950,7 +2977,8 @@ async function handleInboxInternal<TContextData>(
     );
     span.setStatus({
       code: SpanStatusCode.ERROR,
-      message: `The activity (${activity.id.href}) and its actors do not ` +
+      message:
+        `The activity (${activity.id.href}) and its actors do not ` +
         "have the same origin.",
     });
     return new Response(
@@ -2964,13 +2992,14 @@ async function handleInboxInternal<TContextData>(
   observation.authentication = skipSignatureVerification
     ? { status: "skipped" }
     : {
-      status: "verified",
-      attempts: observation.verification.attempts.filter((
-        attempt,
-      ): attempt is Extract<typeof attempt, { status: "verified" }> =>
-        attempt.status === "verified"
-      ),
-    };
+        status: "verified",
+        attempts: observation.verification.attempts.filter(
+          (
+            attempt,
+          ): attempt is Extract<typeof attempt, { status: "verified" }> =>
+            attempt.status === "verified",
+        ),
+      };
   observation.stage = "dispatch";
   if (!actorless && activity.actorId == null) {
     observation.result = { disposition: "rejected", reason: "missingActor" };
@@ -3000,9 +3029,8 @@ async function handleInboxInternal<TContextData>(
     // backlog messages from older producers can still depend on it, while the
     // raw payload stays preserved separately for forwarding and low-level
     // hooks.
-    normalizedActivity: hasLdSignature && compactedJson !== json
-      ? compactedJson
-      : undefined,
+    normalizedActivity:
+      hasLdSignature && compactedJson !== json ? compactedJson : undefined,
     ldSignatureVerified: hasLdSignature ? ldSigVerified : undefined,
     authentication: createAuthenticationEvidence({
       verified: !skipSignatureVerification,
@@ -3020,9 +3048,11 @@ async function handleInboxInternal<TContextData>(
     inboxListeners,
     inboxContextFactory,
     listenerInboxContextFactory: ldSigVerified
-      ? (inboxContextFactory as typeof inboxContextFactory & {
-        [rawInboxContextFactorySymbol]?: typeof inboxContextFactory;
-      })[rawInboxContextFactorySymbol]
+      ? (
+          inboxContextFactory as typeof inboxContextFactory & {
+            [rawInboxContextFactorySymbol]?: typeof inboxContextFactory;
+          }
+        )[rawInboxContextFactorySymbol]
       : undefined,
     inboxErrorHandler: async (context, error) => {
       observation.result = {
@@ -3041,7 +3071,8 @@ async function handleInboxInternal<TContextData>(
     idempotencyStrategy: parameters.idempotencyStrategy,
   });
   if (
-    portableInbox != null && activity.id != null &&
+    portableInbox != null &&
+    activity.id != null &&
     PORTABLE_INBOX_FORWARDABLE_RESULTS.has(routeResult)
   ) {
     // A Linked Data Signature never authenticates a portable actor's activity,
@@ -3070,26 +3101,26 @@ async function handleInboxInternal<TContextData>(
           getTypeId(activity).href,
           // Signatures beyond the limit are ignored here as well, so that
           // they cannot identify the sending gateway either:
-          listRequestSignatures(request, maxHttpSignatures).map((
-            signature,
-          ) => ({
-            keyId: signature.keyId,
-            coversDelivery: coversDelivery(signature),
-            verify: async () => {
-              const verification = await verifyRequestDetailed(
-                selectRequestSignature(request, signature),
-                {
-                  contextLoader: ctx.contextLoader,
-                  documentLoader: ctx.documentLoader,
-                  timeWindow: signatureTimeWindow,
-                  keyCache,
-                  meterProvider,
-                  tracerProvider,
-                },
-              );
-              return verification.verified ? verification.key : null;
-            },
-          })),
+          listRequestSignatures(request, maxHttpSignatures).map(
+            (signature) => ({
+              keyId: signature.keyId,
+              coversDelivery: coversDelivery(signature),
+              verify: async () => {
+                const verification = await verifyRequestDetailed(
+                  selectRequestSignature(request, signature),
+                  {
+                    contextLoader: ctx.contextLoader,
+                    documentLoader: ctx.documentLoader,
+                    timeWindow: signatureTimeWindow,
+                    keyCache,
+                    meterProvider,
+                    tracerProvider,
+                  },
+                );
+                return verification.verified ? verification.key : null;
+              },
+            }),
+          ),
         );
       } catch (error) {
         logger.error(
@@ -3172,12 +3203,7 @@ export interface CustomCollectionCallbacks<
   /**
    * A callback that dispatches a custom collection.
    */
-  dispatcher: CustomCollectionDispatcher<
-    TItem,
-    TParam,
-    TContext,
-    TContextData
-  >;
+  dispatcher: CustomCollectionDispatcher<TItem, TParam, TContext, TContextData>;
 
   /**
    * A callback that counts the number of items in a custom collection.
@@ -3197,10 +3223,7 @@ export interface CustomCollectionCallbacks<
   /**
    * A callback that determines if a request is authorized to access the custom collection.
    */
-  authorizePredicate?: ObjectAuthorizePredicate<
-    TContextData,
-    TParam
-  >;
+  authorizePredicate?: ObjectAuthorizePredicate<TContextData, TParam>;
 
   /**
    * A callback that maps the custom collection to the identifier of the actor
@@ -3337,12 +3360,7 @@ async function _handleCustomCollection<
     collectionCallbacks: callbacks,
     filterPredicate,
     portable,
-  }: CustomCollectionHandlerParameters<
-    TItem,
-    TParam,
-    TContext,
-    TContextData
-  >,
+  }: CustomCollectionHandlerParameters<TItem, TParam, TContext, TContextData>,
 ): Promise<Response> {
   verifyDefined(callbacks);
   await authIfNeeded(context, values, callbacks);
@@ -3403,12 +3421,7 @@ async function _handleOrderedCollection<
     collectionCallbacks: callbacks,
     filterPredicate,
     portable,
-  }: CustomCollectionHandlerParameters<
-    TItem,
-    TParam,
-    TContext,
-    TContextData
-  >,
+  }: CustomCollectionHandlerParameters<TItem, TParam, TContext, TContextData>,
 ): Promise<Response> {
   verifyDefined(callbacks);
   await authIfNeeded(context, values, callbacks);
@@ -3446,12 +3459,11 @@ async function respondWithCustomCollection<TContextData>(
     return response;
   } catch (e) {
     if (
-      !deferPendingCollectionMetrics(
-        e,
-        (result, response) =>
-          handler.recordPendingCollectionMetrics(result, response),
+      !deferPendingCollectionMetrics(e, (result, response) =>
+        handler.recordPendingCollectionMetrics(result, response),
       )
-    ) handler.recordPendingCollectionMetrics("error");
+    )
+      handler.recordPendingCollectionMetrics("error");
     throw e;
   }
 }
@@ -3545,9 +3557,10 @@ class CustomCollectionHandler<
       // The ID of a portable collection or its page is built from the view,
       // not from the gateway request URL:
       const cursor = this.context.url.searchParams.get("cursor");
-      this.#id = cursor == null
-        ? new URL(portable.view)
-        : appendCursorIfExists(portable.view, cursor);
+      this.#id =
+        cursor == null
+          ? new URL(portable.view)
+          : appendCursorIfExists(portable.view, cursor);
     }
     this.#dispatcher = callbacks.dispatcher.bind(callbacks);
   }
@@ -3585,9 +3598,10 @@ class CustomCollectionHandler<
       return new this.CollectionPage(props);
     }
     const firstCursor = await this.firstCursor;
-    const props = typeof firstCursor === "string"
-      ? await this.getProps(firstCursor)
-      : await this.getPropsWithoutCursor();
+    const props =
+      typeof firstCursor === "string"
+        ? await this.getProps(firstCursor)
+        : await this.getPropsWithoutCursor();
     return new this.Collection(props);
   }
 
@@ -3665,12 +3679,13 @@ class CustomCollectionHandler<
    * @param options Options for getting the page, including cursor and total items.
    * @returns A promise that resolves to the page items.
    */
-  async getPages(
-    { cursor = null, totalItems = null }: {
-      cursor?: string | null;
-      totalItems?: number | null;
-    },
-  ): Promise<PageItems<TItem>> {
+  async getPages({
+    cursor = null,
+    totalItems = null,
+  }: {
+    cursor?: string | null;
+    totalItems?: number | null;
+  }): Promise<PageItems<TItem>> {
     return await this.#tracer.startActiveSpan(
       `${this.ATTRS.DISPATCH_COLLECTION} ${this.name}`,
       this.spanOptions(SpanKind.SERVER, cursor),
@@ -3701,52 +3716,47 @@ class CustomCollectionHandler<
   spanPages: (params: {
     totalItems?: number | null;
     cursor?: string | null;
-  }) => (span: Span) => Promise<PageItems<TItem>> = ({
-    totalItems = null,
-    cursor = null,
-  }) =>
-  async (span: Span): Promise<PageItems<TItem>> => {
-    const pageMetricBase = this.metricBase(cursor !== null);
-    const started = performance.now();
-    try {
-      if (totalItems !== null) {
-        span.setAttribute(this.ATTRS.TOTAL_ITEMS, totalItems);
+  }) => (span: Span) => Promise<PageItems<TItem>> =
+    ({ totalItems = null, cursor = null }) =>
+    async (span: Span): Promise<PageItems<TItem>> => {
+      const pageMetricBase = this.metricBase(cursor !== null);
+      const started = performance.now();
+      try {
+        if (totalItems !== null) {
+          span.setAttribute(this.ATTRS.TOTAL_ITEMS, totalItems);
+        }
+        const page = await this.dispatch(cursor);
+        const durationMs = getDurationMs(started);
+        span.setAttribute(this.ATTRS.ITEMS, page.items.length);
+        this.#pendingCollectionMetrics.push({
+          page: pageMetricBase.page,
+          dispatchDurationMs: durationMs,
+          totalItems: totalItems == null ? undefined : Number(totalItems),
+        });
+        return page;
+      } catch (e) {
+        this.#pendingCollectionMetrics.push({
+          page: cursor !== null,
+          dispatchDurationMs: getDurationMs(started),
+        });
+        const message = e instanceof Error ? e.message : String(e);
+        span.setStatus({ code: SpanStatusCode.ERROR, message });
+        throw e;
+      } finally {
+        span.end();
       }
-      const page = await this.dispatch(cursor);
-      const durationMs = getDurationMs(started);
-      span.setAttribute(this.ATTRS.ITEMS, page.items.length);
-      this.#pendingCollectionMetrics.push({
-        page: pageMetricBase.page,
-        dispatchDurationMs: durationMs,
-        totalItems: totalItems == null ? undefined : Number(totalItems),
-      });
-      return page;
-    } catch (e) {
-      this.#pendingCollectionMetrics.push({
-        page: cursor !== null,
-        dispatchDurationMs: getDurationMs(started),
-      });
-      const message = e instanceof Error ? e.message : String(e);
-      span.setStatus({ code: SpanStatusCode.ERROR, message });
-      throw e;
-    } finally {
-      span.end();
-    }
-  };
+    };
 
   /**
    * Dispatches the collection request to get items.
    * @param cursor The cursor for pagination, or null for the first page.
    * @returns A promise that resolves to the page items.
    */
-  async dispatch(
-    cursor: string | null = null,
-  ): Promise<PageItems<TItem>> {
-    return await this.#dispatcher(
-      this.context,
-      this.values,
-      cursor,
-    ) ?? new ItemsNotFoundError().throw();
+  async dispatch(cursor: string | null = null): Promise<PageItems<TItem>> {
+    return (
+      (await this.#dispatcher(this.context, this.values, cursor)) ??
+      new ItemsNotFoundError().throw()
+    );
   }
 
   /**
@@ -3859,9 +3869,10 @@ class CustomCollectionHandler<
   set totalItems(value: Promise<TotalItems> | TotalItems) {
     const toNumber = (value: TotalItems): number | null =>
       value == null ? null : Number(value);
-    this.#totalItems = value instanceof Promise
-      ? value.then(toNumber)
-      : Promise.resolve(toNumber(value));
+    this.#totalItems =
+      value instanceof Promise
+        ? value.then(toNumber)
+        : Promise.resolve(toNumber(value));
   }
 
   /**
@@ -3871,7 +3882,7 @@ class CustomCollectionHandler<
    */
   get firstCursor(): Promise<string | null> {
     const cursor = this.callbacks.firstCursor?.(this.context, this.values);
-    return (Promise.resolve(cursor ?? null));
+    return Promise.resolve(cursor ?? null);
   }
 
   /**
@@ -3920,11 +3931,7 @@ function exceptWrapper<TParams extends ErrorHandlers>(
       switch (error?.constructor) {
         case ItemsNotFoundError: {
           const response = await onNotFound(request);
-          recordDeferredPendingCollectionMetrics(
-            error,
-            "not_found",
-            response,
-          );
+          recordDeferredPendingCollectionMetrics(error, "not_found", response);
           recordCollectionRequest(
             meterProvider,
             collectionAttributes(metricBase, "not_found", response),
@@ -4005,14 +4012,11 @@ const authIfNeeded = async <TContextData>(
   {
     authorizePredicate: authorize = undefined,
   }: {
-    authorizePredicate?: ObjectAuthorizePredicate<
-      TContextData,
-      string
-    >;
+    authorizePredicate?: ObjectAuthorizePredicate<TContextData, string>;
   },
 ): Promise<void | never> => {
   if (authorize === undefined) return;
-  if (!await authorize(context, values)) {
+  if (!(await authorize(context, values))) {
     throw new UnauthorizedError();
   }
 };
@@ -4201,15 +4205,11 @@ const getFailedSignatureResponse = async (
   kv: KvStore,
   kvPrefixes: { acceptSignatureNonce: KvKey },
 ): Promise<Response> => {
-  const headers = await getFailedSignatureHeaders(
-    policy,
-    kv,
-    kvPrefixes,
-  );
-  return new Response(
-    "Failed to verify the request signature.",
-    { status: 401, headers },
-  );
+  const headers = await getFailedSignatureHeaders(policy, kv, kvPrefixes);
+  return new Response("Failed to verify the request signature.", {
+    status: 401,
+    headers,
+  });
 };
 
 const getFailedSignatureHeaders = async (
@@ -4265,18 +4265,12 @@ const DEF_COMPONENTS = [
 
 // Minimum set of components that must always appear in a challenge to ensure
 // basic request binding.  These are merged with any caller-supplied components.
-const MIN_COMPONENTS = [
-  "@method",
-  "@target-uri",
-  "@authority",
-];
+const MIN_COMPONENTS = ["@method", "@target-uri", "@authority"];
 
 /**
  * Turns the signers of verified Object Integrity Proofs into principals.
  */
-function toProofPrincipals(
-  signers: readonly ProofSigner[],
-): InboxPrincipal[] {
+function toProofPrincipals(signers: readonly ProofSigner[]): InboxPrincipal[] {
   return signers.map(toProofPrincipal);
 }
 
@@ -4315,8 +4309,12 @@ function getHttpKeyPrincipal(key: CryptographicKey): InboxPrincipal | null {
  * signed document can establish.
  */
 function isPortableActorKey(key: CryptographicKey | null): boolean {
-  return key?.id != null && isPortableKeyId(key.id) &&
-    key.ownerId != null && isPortableId(key.ownerId);
+  return (
+    key?.id != null &&
+    isPortableKeyId(key.id) &&
+    key.ownerId != null &&
+    isPortableId(key.ownerId)
+  );
 }
 
 /**
@@ -4327,8 +4325,10 @@ function isPortableActorKey(key: CryptographicKey | null): boolean {
  * [FEP-ef61]: https://w3id.org/fep/ef61
  */
 function isPortableActivity(activity: Activity): boolean {
-  return hasPortableActor(activity) ||
-    activity.id != null && isPortableId(activity.id);
+  return (
+    hasPortableActor(activity) ||
+    (activity.id != null && isPortableId(activity.id))
+  );
 }
 
 /**

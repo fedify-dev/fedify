@@ -5,40 +5,24 @@
   "exports": {
     ".": "./src/mod.ts"
   },
-  "exclude": [
-    "dist",
-    "node_modules",
-    "npm",
-    "pnpm-lock.yaml"
-  ],
+  "exclude": ["dist", "node_modules", "npm", "pnpm-lock.yaml"],
   "publish": {
-    "exclude": [
-      "**/*.test.ts",
-      "tsdown.config.ts"
-    ]
+    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
   },
   "tasks": {
     "build": "pnpm build",
-    "check": "deno fmt --check && deno check",
+    "check": "deno check",
     "test": "deno test --allow-read --allow-net --allow-env",
     "test:node": {
-      "dependencies": [
-        "build"
-      ],
+      "dependencies": ["build"],
       "command": "node --experimental-transform-types --test"
     },
     "test:bun": {
-      "dependencies": [
-        "build"
-      ],
+      "dependencies": ["build"],
       "command": "bun test --timeout 15000"
     },
     "test-all": {
-      "dependencies": [
-        "test",
-        "test:node",
-        "test:bun"
-      ]
+      "dependencies": ["test", "test:node", "test:bun"]
     }
   }
 }

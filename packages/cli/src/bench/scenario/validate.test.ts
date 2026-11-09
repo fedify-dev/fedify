@@ -30,11 +30,13 @@ scenarios:
     type: webfinger
     recipient: "acct:alice@x"
 `);
-  const json = parseSuiteText(JSON.stringify({
-    version: 1,
-    target: "http://localhost:3000",
-    scenarios: [{ name: "wf", type: "webfinger", recipient: "acct:alice@x" }],
-  }));
+  const json = parseSuiteText(
+    JSON.stringify({
+      version: 1,
+      target: "http://localhost:3000",
+      scenarios: [{ name: "wf", type: "webfinger", recipient: "acct:alice@x" }],
+    }),
+  );
   assert.deepEqual(validateSuite(yaml), validateSuite(json));
 });
 
@@ -51,9 +53,11 @@ test("validateSuite - rejects a wrong-typed field", () => {
 
 test("validateSuite - enforces exactly one HTTP signature scheme", () => {
   const bad = validInbox() as Record<string, unknown>;
-  bad.actors = [{
-    signatureStandards: ["draft-cavage-http-signatures-12", "rfc9421"],
-  }];
+  bad.actors = [
+    {
+      signatureStandards: ["draft-cavage-http-signatures-12", "rfc9421"],
+    },
+  ];
   assert.throws(() => validateSuite(bad), SuiteValidationError);
 
   const docOnly = validInbox() as Record<string, unknown>;
@@ -77,12 +81,14 @@ test("validateSuite - accepts a partial load override", () => {
 
   const scenarioOverride = validInbox() as Record<string, unknown>;
   scenarioOverride.defaults = { load: { rate: "100/s" } };
-  scenarioOverride.scenarios = [{
-    name: "inbox-shared",
-    type: "inbox",
-    recipient: "acct:alice@x",
-    load: { maxInFlight: 50 },
-  }];
+  scenarioOverride.scenarios = [
+    {
+      name: "inbox-shared",
+      type: "inbox",
+      recipient: "acct:alice@x",
+      load: { maxInFlight: 50 },
+    },
+  ];
   assert.doesNotThrow(() => validateSuite(scenarioOverride));
 });
 
@@ -90,12 +96,14 @@ test("validateSuite - enforces per-type expect metric allowlist", () => {
   const bad = {
     version: 1,
     target: "http://localhost:3000",
-    scenarios: [{
-      name: "wf",
-      type: "webfinger",
-      recipient: "acct:alice@x",
-      expect: { "signatureVerification.p95": "< 10ms" },
-    }],
+    scenarios: [
+      {
+        name: "wf",
+        type: "webfinger",
+        recipient: "acct:alice@x",
+        expect: { "signatureVerification.p95": "< 10ms" },
+      },
+    ],
   };
   assert.throws(() => validateSuite(bad), SuiteValidationError);
 });
@@ -104,12 +112,14 @@ test("validateSuite - rejects unsigned actor signature expectations", () => {
   const bad = {
     version: 1,
     target: "http://localhost:3000",
-    scenarios: [{
-      name: "actor",
-      type: "actor",
-      recipient: "http://localhost:3000/users/alice",
-      expect: { "signatureVerification.p95": "< 10ms" },
-    }],
+    scenarios: [
+      {
+        name: "actor",
+        type: "actor",
+        recipient: "http://localhost:3000/users/alice",
+        expect: { "signatureVerification.p95": "< 10ms" },
+      },
+    ],
   };
   assert.throws(() => validateSuite(bad), SuiteValidationError);
 });
@@ -118,13 +128,15 @@ test("validateSuite - accepts authenticated actor signature expectations", () =>
   const suite = {
     version: 1,
     target: "http://localhost:3000",
-    scenarios: [{
-      name: "actor",
-      type: "actor",
-      recipient: "http://localhost:3000/users/alice",
-      authenticated: true,
-      expect: { "signatureVerification.p95": "< 10ms" },
-    }],
+    scenarios: [
+      {
+        name: "actor",
+        type: "actor",
+        recipient: "http://localhost:3000/users/alice",
+        authenticated: true,
+        expect: { "signatureVerification.p95": "< 10ms" },
+      },
+    ],
   };
   assert.doesNotThrow(() => validateSuite(suite));
 });
@@ -133,12 +145,14 @@ test("validateSuite - rejects mixed server-side expect metrics", () => {
   const bad = {
     version: 1,
     target: "http://localhost:3000",
-    scenarios: [{
-      name: "blend",
-      type: "mixed",
-      mix: [{ scenario: "fanout", weight: 1 }],
-      expect: { "queueDrain.p95": "< 10ms" },
-    }],
+    scenarios: [
+      {
+        name: "blend",
+        type: "mixed",
+        mix: [{ scenario: "fanout", weight: 1 }],
+        expect: { "queueDrain.p95": "< 10ms" },
+      },
+    ],
   };
   assert.throws(() => validateSuite(bad), SuiteValidationError);
 });
@@ -147,12 +161,14 @@ test("validateSuite - accepts mixed delivery throughput expectations", () => {
   const suite = {
     version: 1,
     target: "http://localhost:3000",
-    scenarios: [{
-      name: "blend",
-      type: "mixed",
-      mix: [{ scenario: "fanout", weight: 1 }],
-      expect: { deliveryThroughput: ">= 1/s" },
-    }],
+    scenarios: [
+      {
+        name: "blend",
+        type: "mixed",
+        mix: [{ scenario: "fanout", weight: 1 }],
+        expect: { deliveryThroughput: ">= 1/s" },
+      },
+    ],
   };
   assert.doesNotThrow(() => validateSuite(suite));
 });

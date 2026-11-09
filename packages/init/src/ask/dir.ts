@@ -19,9 +19,9 @@ import { getCwd, getOsType } from "../utils.ts";
 const fillDir: <T extends { allowNonEmpty: boolean; dir?: string }>(
   options: T,
 ) => Promise<T & { dir: string }> = async (options) => {
-  const dir = options.dir ?? await askDir(getCwd());
+  const dir = options.dir ?? (await askDir(getCwd()));
   if (options.allowNonEmpty) return { ...options, dir };
-  return await askIfNonEmpty(dir)
+  return (await askIfNonEmpty(dir))
     ? { ...options, dir }
     : await fillDir(options);
 };
@@ -47,38 +47,32 @@ Do you want to use it anyway?`,
   });
 
 const moveOrDeleteDir = (dir: string) =>
-  pipe(
-    dir,
-    buildMoveOrDelete,
-    (action) =>
-      pipe(
-        action.confirm,
-        when(identity, runAction(action.command, action.error)),
-      ),
+  pipe(dir, buildMoveOrDelete, (action) =>
+    pipe(
+      action.confirm,
+      when(identity, runAction(action.command, action.error)),
+    ),
   );
 
 const buildMoveOrDelete = (dir: string) =>
-  pipe(
-    getOsType(),
-    detectSupportedAction,
-    (fn) => {
-      return {
-        confirm: fn.confirmAction(dir),
-        command: fn.actionPlan.command(dir),
-        error: errorMessages[fn.actionPlan.mode](dir),
-      };
-    },
-  );
+  pipe(getOsType(), detectSupportedAction, (fn) => {
+    return {
+      confirm: fn.confirmAction(dir),
+      command: fn.actionPlan.command(dir),
+      error: errorMessages[fn.actionPlan.mode](dir),
+    };
+  });
 
 const detectSupportedAction = (os: NodeJS.Platform) => {
   const actionPlan =
     trashOrDeleteCommands[os as keyof typeof trashOrDeleteCommands] ??
-      trashOrDeleteCommands.linux;
+    trashOrDeleteCommands.linux;
 
   return {
-    confirmAction: (actionPlan.mode === "trash")
-      ? moveToTrashConfirm
-      : deletePermanentlyConfirm,
+    confirmAction:
+      actionPlan.mode === "trash"
+        ? moveToTrashConfirm
+        : deletePermanentlyConfirm,
     actionPlan,
   };
 };

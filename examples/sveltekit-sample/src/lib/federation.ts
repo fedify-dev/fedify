@@ -52,7 +52,7 @@ federation
     const { privateKey, publicKey } = await generateCryptoKeyPair();
     keyPairsStore.set(identifier, [{ privateKey, publicKey }]);
     return [{ privateKey, publicKey }];
-  }) /* .mapAlias() */;
+  }); /* .mapAlias() */
 
 federation
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
@@ -68,7 +68,7 @@ federation
     if (result?.type !== "actor" || result.identifier !== IDENTIFIER) {
       return;
     }
-    const follower = await follow.getActor(context) as Person;
+    const follower = (await follow.getActor(context)) as Person;
     if (!follower?.id || follower.id === null) {
       throw new Error("follower is null");
     }
@@ -121,18 +121,14 @@ federation.setObjectDispatcher(
   },
 );
 
-federation
-  .setFollowersDispatcher(
-    "/users/{identifier}/followers",
-    () => {
-      const followers = Array.from(relationStore.values());
-      const items: Recipient[] = followers.map((f) => ({
-        id: f.id,
-        inboxId: f.inboxId,
-        endpoints: f.endpoints,
-      }));
-      return { items };
-    },
-  );
+federation.setFollowersDispatcher("/users/{identifier}/followers", () => {
+  const followers = Array.from(relationStore.values());
+  const items: Recipient[] = followers.map((f) => ({
+    id: f.id,
+    inboxId: f.inboxId,
+    endpoints: f.endpoints,
+  }));
+  return { items };
+});
 
 export default federation;

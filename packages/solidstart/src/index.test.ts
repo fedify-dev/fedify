@@ -89,17 +89,15 @@ describe("[solidstart] onBeforeResponse()", () => {
     strictEqual(beforeResponse(event), undefined);
   });
 
-  for (
-    const [name, status, body] of [
-      ["a 404 status", 404, undefined],
-      [
-        "a returned 404 response",
-        200,
-        new Response("Not Found", { status: 404 }),
-      ],
-      ["no response", undefined, undefined],
-    ] as const
-  ) {
+  for (const [name, status, body] of [
+    ["a 404 status", 404, undefined],
+    [
+      "a returned 404 response",
+      200,
+      new Response("Not Found", { status: 404 }),
+    ],
+    ["no response", undefined, undefined],
+  ] as const) {
     test(`replaces ${name} with the deferred 406`, async () => {
       const onRequest = createOnRequestHandler(
         createActorFederation(),

@@ -52,9 +52,8 @@ builder
     if (identifier !== "test") return [];
     const key = (await ctx.data.kv.get("key", "json")) as KeyPair | undefined;
     if (key == null) {
-      const { privateKey, publicKey } = await generateCryptoKeyPair(
-        "RSASSA-PKCS1-v1_5",
-      );
+      const { privateKey, publicKey } =
+        await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
       await ctx.data.kv.put(
         "key",
         JSON.stringify({
@@ -110,19 +109,21 @@ builder
 
 async function listFollowers(request: Request, env: Env): Promise<Response> {
   const keys = await env.FEDIFY_KV.list({ prefix: "followers/" });
-  const values = keys.keys.length > 0
-    ? await env.FEDIFY_KV.get(
-      keys.keys.map((k) => k.name),
-      { type: "json" },
-    )
-    : new Map();
-  const followers = values.size > 0
-    ? (
-      await Promise.all(
-        [...values.values()].map((json) => Object.fromJsonLd(json)),
-      )
-    ).filter(isActor)
-    : [];
+  const values =
+    keys.keys.length > 0
+      ? await env.FEDIFY_KV.get(
+          keys.keys.map((k) => k.name),
+          { type: "json" },
+        )
+      : new Map();
+  const followers =
+    values.size > 0
+      ? (
+          await Promise.all(
+            [...values.values()].map((json) => Object.fromJsonLd(json)),
+          )
+        ).filter(isActor)
+      : [];
   const list = followers.map((f) => `- ${f.name} (${f.id?.href})`).join("\n");
   return new Response(
     `Please follow @test@${new URL(request.url).host}!

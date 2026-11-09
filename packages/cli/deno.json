@@ -33,49 +33,30 @@
     "fedify-cli-*.zip"
   ],
   "publish": {
-    "exclude": [
-      "**/*.test.ts",
-      "tsdown.config.ts",
-      "scripts/"
-    ]
+    "exclude": ["**/*.test.ts", "tsdown.config.ts", "scripts/"]
   },
   "tasks": {
     "codegen": "deno task -f @fedify/vocab compile",
     "check": {
-      "command": "deno fmt --check && deno check src/**/*.ts",
-      "dependencies": [
-        "codegen"
-      ]
+      "command": "deno check src/**/*.ts",
+      "dependencies": ["codegen"]
     },
     "run": {
       "command": "deno run --allow-all src/mod.ts",
-      "dependencies": [
-        "codegen"
-      ]
+      "dependencies": ["codegen"]
     },
     "runi": "deno run --allow-all src/mod.ts",
     "pack": {
       "command": "deno run -A scripts/pack.ts",
-      "dependencies": [
-        "codegen"
-      ]
+      "dependencies": ["codegen"]
     },
     "generate-bench-schema": "deno run -A scripts/generate-bench-schema.ts",
     "test": {
       "command": "deno test --allow-all",
-      "dependencies": [
-        "codegen"
-      ]
+      "dependencies": ["codegen"]
     }
   },
-  "fmt": {
-    "exclude": [
-      "src/init/templates/**"
-    ]
-  },
   "test": {
-    "exclude": [
-      "src/init/test/**"
-    ]
+    "exclude": ["src/init/test/**"]
   }
 }

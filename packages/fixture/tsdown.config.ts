@@ -30,16 +30,14 @@ export default [
   }),
   defineConfig({
     outDir: "dist-tests",
-    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
-      .map((f) => f.replace(sep, "/")),
+    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`))).map((f) =>
+      f.replace(sep, "/"),
+    ),
     dts: false,
     format: ["esm", "cjs"],
     platform: "node",
     deps: {
-      neverBundle: [
-        /^node:/,
-        "@fedify/vocab-runtime",
-      ],
+      neverBundle: [/^node:/, "@fedify/vocab-runtime"],
     },
   }),
 ];

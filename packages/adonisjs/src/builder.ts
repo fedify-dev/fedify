@@ -53,5 +53,5 @@ const registry = globalThis as { [SLOT]?: FederationBuilder<ContextData> };
  * Prefer importing it through the `@fedify/adonisjs/services/builder` service
  * module, which is the path the generated stubs and the documentation use.
  */
-export const builder: FederationBuilder<ContextData> = registry[SLOT] ??=
-  createFederationBuilder<ContextData>();
+export const builder: FederationBuilder<ContextData> = (registry[SLOT] ??=
+  createFederationBuilder<ContextData>());

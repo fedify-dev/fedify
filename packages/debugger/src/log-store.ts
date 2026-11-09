@@ -64,15 +64,15 @@ export class LogStore {
     const key: KvKey = [
       ...this.#keyPrefix,
       traceId,
-      `${Date.now().toString(36).padStart(10, "0")}-${
-        Math.random().toString(36).slice(2)
-      }`,
+      `${Date.now().toString(36).padStart(10, "0")}-${Math.random()
+        .toString(36)
+        .slice(2)}`,
     ] as unknown as KvKey;
     // Errors are swallowed so a single failed write cannot poison the
     // chain or cause an unhandled rejection—logging is best-effort.
-    this.#pending = this.#pending.then(
-      () => this.#kv.set(key, record),
-    ).catch(() => {});
+    this.#pending = this.#pending
+      .then(() => this.#kv.set(key, record))
+      .catch(() => {});
   }
 
   /** Wait for all pending writes to complete. */

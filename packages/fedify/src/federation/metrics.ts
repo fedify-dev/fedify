@@ -592,19 +592,7 @@ class FederationMetrics {
         unit: "ms",
         advice: {
           explicitBucketBoundaries: [
-            0.1,
-            0.25,
-            0.5,
-            1,
-            2.5,
-            5,
-            10,
-            25,
-            50,
-            100,
-            250,
-            500,
-            1000,
+            0.1, 0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000,
           ],
         },
       },
@@ -648,19 +636,7 @@ class FederationMetrics {
           // Mirror the OpenTelemetry HTTP server semantic-conventions
           // recommended buckets, expressed in milliseconds.
           explicitBucketBoundaries: [
-            5,
-            10,
-            25,
-            50,
-            75,
-            100,
-            250,
-            500,
-            750,
-            1000,
-            2500,
-            5000,
-            7500,
+            5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500,
             10000,
           ],
         },
@@ -695,19 +671,7 @@ class FederationMetrics {
           // since queue task durations span a similar 5 ms to 10 s range
           // (network-bound outbox delivery dominates the tail).
           explicitBucketBoundaries: [
-            5,
-            10,
-            25,
-            50,
-            75,
-            100,
-            250,
-            500,
-            750,
-            1000,
-            2500,
-            5000,
-            7500,
+            5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500,
             10000,
           ],
         },
@@ -774,19 +738,7 @@ class FederationMetrics {
           // since key lookups span the same 5 ms to 10 s range that other
           // network-bound histograms in this package already use.
           explicitBucketBoundaries: [
-            5,
-            10,
-            25,
-            50,
-            75,
-            100,
-            250,
-            500,
-            750,
-            1000,
-            2500,
-            5000,
-            7500,
+            5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500,
             10000,
           ],
         },
@@ -807,19 +759,7 @@ class FederationMetrics {
         unit: "ms",
         advice: {
           explicitBucketBoundaries: [
-            5,
-            10,
-            25,
-            50,
-            75,
-            100,
-            250,
-            500,
-            750,
-            1000,
-            2500,
-            5000,
-            7500,
+            5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500,
             10000,
           ],
         },
@@ -848,19 +788,7 @@ class FederationMetrics {
           // since WebFinger requests follow the same 5 ms to 10 s range as
           // the rest of Fedify's request path.
           explicitBucketBoundaries: [
-            5,
-            10,
-            25,
-            50,
-            75,
-            100,
-            250,
-            500,
-            750,
-            1000,
-            2500,
-            5000,
-            7500,
+            5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500,
             10000,
           ],
         },
@@ -882,19 +810,7 @@ class FederationMetrics {
         unit: "ms",
         advice: {
           explicitBucketBoundaries: [
-            5,
-            10,
-            25,
-            50,
-            75,
-            100,
-            250,
-            500,
-            750,
-            1000,
-            2500,
-            5000,
-            7500,
+            5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500,
             10000,
           ],
         },
@@ -903,7 +819,8 @@ class FederationMetrics {
     this.collectionPageItems = meter.createHistogram(
       "activitypub.collection.page.items",
       {
-        description: "Number of items Fedify materialized for an ActivityPub " +
+        description:
+          "Number of items Fedify materialized for an ActivityPub " +
           "collection response.",
         unit: "{item}",
       },
@@ -1294,32 +1211,34 @@ export function registerQueueDepthGauge(
   const queueEntries = Array.from(uniqueQueues.entries());
   const gauge = getFederationMetrics(meterProvider).queueDepth;
   gauge.addCallback(async (observableResult) => {
-    await Promise.all(queueEntries.map(async ([queue, roles]) => {
-      let depth;
-      try {
-        depth = await queue.getDepth!();
-      } catch {
-        return;
-      }
-      if (depth == null) return;
-      const attributes = buildQueueDepthAttributes(queue, roles, options);
-      observableResult.observe(depth.queued, {
-        ...attributes,
-        "fedify.queue.depth.state": "queued",
-      });
-      if (depth.ready != null) {
-        observableResult.observe(depth.ready, {
+    await Promise.all(
+      queueEntries.map(async ([queue, roles]) => {
+        let depth;
+        try {
+          depth = await queue.getDepth!();
+        } catch {
+          return;
+        }
+        if (depth == null) return;
+        const attributes = buildQueueDepthAttributes(queue, roles, options);
+        observableResult.observe(depth.queued, {
           ...attributes,
-          "fedify.queue.depth.state": "ready",
+          "fedify.queue.depth.state": "queued",
         });
-      }
-      if (depth.delayed != null) {
-        observableResult.observe(depth.delayed, {
-          ...attributes,
-          "fedify.queue.depth.state": "delayed",
-        });
-      }
-    }));
+        if (depth.ready != null) {
+          observableResult.observe(depth.ready, {
+            ...attributes,
+            "fedify.queue.depth.state": "ready",
+          });
+        }
+        if (depth.delayed != null) {
+          observableResult.observe(depth.delayed, {
+            ...attributes,
+            "fedify.queue.depth.state": "delayed",
+          });
+        }
+      }),
+    );
   });
 }
 
@@ -1591,15 +1510,15 @@ export function recordCollectionTotalItems(
  *  -  Any other value: `result=error`.
  * @since 2.3.0
  */
-export function classifyFetchError(
-  error: unknown,
-): { result: DocumentFetchResult; statusCode?: number } {
+export function classifyFetchError(error: unknown): {
+  result: DocumentFetchResult;
+  statusCode?: number;
+} {
   if (error instanceof FetchError) {
     if (error.response != null) {
       const status = error.response.status;
-      const result: DocumentFetchResult = status === 404 || status === 410
-        ? "not_found"
-        : "error";
+      const result: DocumentFetchResult =
+        status === 404 || status === 410 ? "not_found" : "error";
       return { result, statusCode: status };
     }
     return { result: "network_error" };

@@ -132,8 +132,9 @@ const identifierSingularAllowPlus = {
   },
 } as const;
 
-export class FederationBuilderImpl<TContextData>
-  implements FederationBuilder<TContextData> {
+export class FederationBuilderImpl<
+  TContextData,
+> implements FederationBuilder<TContextData> {
   router: Router;
   actorCallbacks?: ActorCallbacks<TContextData>;
   nodeInfoDispatcher?: NodeInfoDispatcher<TContextData>;
@@ -204,10 +205,7 @@ export class FederationBuilderImpl<TContextData>
   idempotencyStrategy?:
     | IdempotencyStrategy
     | IdempotencyKeyCallback<TContextData>;
-  collectionTypeIds: Record<
-    string | symbol,
-    ConstructorWithTypeId<Object>
-  >;
+  collectionTypeIds: Record<string | symbol, ConstructorWithTypeId<Object>>;
   collectionCallbacks: Record<
     string | symbol,
     CustomCollectionCallbacks<
@@ -258,9 +256,8 @@ export class FederationBuilderImpl<TContextData>
     f.router.trailingSlashInsensitive = trailingSlashInsensitiveValue;
     f._initializeRouter();
 
-    f.actorCallbacks = this.actorCallbacks == null
-      ? undefined
-      : { ...this.actorCallbacks };
+    f.actorCallbacks =
+      this.actorCallbacks == null ? undefined : { ...this.actorCallbacks };
     f.nodeInfoDispatcher = this.nodeInfoDispatcher;
     f.webFingerLinksDispatcher = this.webFingerLinksDispatcher;
     f.objectCallbacks = { ...this.objectCallbacks };
@@ -271,27 +268,28 @@ export class FederationBuilderImpl<TContextData>
     f.#collectionNames = new Map(this.#collectionNames);
     f.inboxPath = this.inboxPath;
     f.outboxPath = this.outboxPath;
-    f.inboxCallbacks = this.inboxCallbacks == null
-      ? undefined
-      : { ...this.inboxCallbacks };
-    f.outboxCallbacks = this.outboxCallbacks == null
-      ? undefined
-      : { ...this.outboxCallbacks };
-    f.followingCallbacks = this.followingCallbacks == null
-      ? undefined
-      : { ...this.followingCallbacks };
-    f.followersCallbacks = this.followersCallbacks == null
-      ? undefined
-      : { ...this.followersCallbacks };
-    f.likedCallbacks = this.likedCallbacks == null
-      ? undefined
-      : { ...this.likedCallbacks };
-    f.featuredCallbacks = this.featuredCallbacks == null
-      ? undefined
-      : { ...this.featuredCallbacks };
-    f.featuredTagsCallbacks = this.featuredTagsCallbacks == null
-      ? undefined
-      : { ...this.featuredTagsCallbacks };
+    f.inboxCallbacks =
+      this.inboxCallbacks == null ? undefined : { ...this.inboxCallbacks };
+    f.outboxCallbacks =
+      this.outboxCallbacks == null ? undefined : { ...this.outboxCallbacks };
+    f.followingCallbacks =
+      this.followingCallbacks == null
+        ? undefined
+        : { ...this.followingCallbacks };
+    f.followersCallbacks =
+      this.followersCallbacks == null
+        ? undefined
+        : { ...this.followersCallbacks };
+    f.likedCallbacks =
+      this.likedCallbacks == null ? undefined : { ...this.likedCallbacks };
+    f.featuredCallbacks =
+      this.featuredCallbacks == null
+        ? undefined
+        : { ...this.featuredCallbacks };
+    f.featuredTagsCallbacks =
+      this.featuredTagsCallbacks == null
+        ? undefined
+        : { ...this.featuredTagsCallbacks };
     f.inboxListeners = this.inboxListeners?.clone();
     f.outboxListeners = this.outboxListeners?.clone();
     f.inboxRequestFinishedHandler = this.inboxRequestFinishedHandler;
@@ -371,7 +369,8 @@ export class FederationBuilderImpl<TContextData>
               "Set the property with Context.getActorUri(identifier).",
           );
         } else if (
-          !portable && actor.id.href != context.getActorUri(identifier).href
+          !portable &&
+          actor.id.href != context.getActorUri(identifier).href
         ) {
           logger.warn(
             "Actor dispatcher returned an actor with an id property that " +
@@ -578,7 +577,7 @@ export class FederationBuilderImpl<TContextData>
             );
           } else if (
             actor.endpoints.uploadMedia.href !=
-              context.getMediaUploaderUri(identifier).href
+            context.getMediaUploaderUri(identifier).href
           ) {
             logger.warn(
               "You configured a media uploader, but the actor's " +
@@ -639,15 +638,11 @@ export class FederationBuilderImpl<TContextData>
           throw new RouterError("Identifier cannot be empty.");
         }
         if (this.router.has(`${ACTOR_ALIAS_PREFIX}${identifier}`)) {
-          throw new RouterError(
-            `Actor alias for "${identifier}" already set.`,
-          );
+          throw new RouterError(`Actor alias for "${identifier}" already set.`);
         }
         const variables = Router.variables(path);
         if (variables.size > 0) {
-          throw new RouterError(
-            "Path for actor alias must have no variables.",
-          );
+          throw new RouterError("Path for actor alias must have no variables.");
         }
         const existingRoute = this.router.route(path);
         if (existingRoute != null) {
@@ -719,8 +714,8 @@ export class FederationBuilderImpl<TContextData>
       schema: options.schema,
       handle,
       handler: options.handler as TaskHandler<TContextData, unknown>,
-      onError: options
-        .onError as TaskDefinitionInternal<TContextData>["onError"],
+      onError:
+        options.onError as TaskDefinitionInternal<TContextData>["onError"],
       retryPolicy: options.retryPolicy,
       queue: options.queue,
     });
@@ -967,9 +962,9 @@ export class FederationBuilderImpl<TContextData>
       this.outboxPath = outboxPath;
     }
 
-    const listeners = this.outboxListeners = new ActivityListenerSet<
+    const listeners = (this.outboxListeners = new ActivityListenerSet<
       OutboxContext<TContextData>
-    >();
+    >());
     const setters: OutboxListenerSetters<TContextData> = {
       on<TActivity extends Activity>(
         // oxlint-disable-next-line typescript/no-explicit-any
@@ -1346,15 +1341,13 @@ export class FederationBuilderImpl<TContextData>
     if (sharedInboxPath != null) {
       const siVars = Router.variables(sharedInboxPath as Path);
       if (siVars.size !== 0) {
-        throw new RouterError(
-          "Path for shared inbox must have no variables.",
-        );
+        throw new RouterError("Path for shared inbox must have no variables.");
       }
       this.router.add(sharedInboxPath as Path, "sharedInbox");
     }
-    const listeners = this.inboxListeners = new ActivityListenerSet<
+    const listeners = (this.inboxListeners = new ActivityListenerSet<
       InboxContext<TContextData>
-    >();
+    >());
     const setters: InboxListenerSetters<TContextData> = {
       on<TActivity extends Activity>(
         // oxlint-disable-next-line typescript/no-explicit-any
@@ -1409,10 +1402,7 @@ export class FederationBuilderImpl<TContextData>
    * inferred from `path` (now typed as a plain `string`); to use them, specify
    * the variable name through the `TParam` generic argument.
    */
-  setCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
+  setCollectionDispatcher<TObject extends Object, TParam extends string>(
     name: string | symbol,
     itemType: ConstructorWithTypeId<TObject>,
     path: string,
@@ -1442,10 +1432,7 @@ export class FederationBuilderImpl<TContextData>
    * inferred from `path` (now typed as a plain `string`); to use them, specify
    * the variable name through the `TParam` generic argument.
    */
-  setOrderedCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
+  setOrderedCollectionDispatcher<TObject extends Object, TParam extends string>(
     name: string | symbol,
     itemType: ConstructorWithTypeId<TObject>,
     path: string,
@@ -1469,10 +1456,7 @@ export class FederationBuilderImpl<TContextData>
     );
   }
 
-  #setCustomCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
+  #setCustomCollectionDispatcher<TObject extends Object, TParam extends string>(
     name: string | symbol,
     collectionType: "collection" | "orderedCollection",
     itemType: ConstructorWithTypeId<TObject>,
@@ -1529,12 +1513,7 @@ export class FederationBuilderImpl<TContextData>
       RequestContext<TContextData>,
       TContextData
     > = {
-      setCounter(
-        counter: CustomCollectionCounter<
-          TParam,
-          TContextData
-        >,
-      ) {
+      setCounter(counter: CustomCollectionCounter<TParam, TContextData>) {
         callbacks.counter = counter;
         return setters;
       },
@@ -1558,12 +1537,7 @@ export class FederationBuilderImpl<TContextData>
         callbacks.lastCursor = cursor;
         return setters;
       },
-      authorize(
-        predicate: ObjectAuthorizePredicate<
-          TContextData,
-          TParam
-        >,
-      ) {
+      authorize(predicate: ObjectAuthorizePredicate<TContextData, TParam>) {
         callbacks.authorizePredicate = predicate;
         return setters;
       },
@@ -1592,15 +1566,18 @@ export class FederationBuilderImpl<TContextData>
     // Check if it's a registered custom collection
     if (!(name in this.collectionCallbacks)) return null;
     const routeName = this.#uniqueCollectionId(name);
-    const path = this.router.build(`collection:${routeName}`, values) ??
+    const path =
+      this.router.build(`collection:${routeName}`, values) ??
       this.router.build(`orderedCollection:${routeName}`, values);
     return path;
   }
 
   /** Resolves a custom collection route to its original name. */
   getCollectionName(routeName: string): string | symbol {
-    return this.#collectionNames.get(routeName) ??
-      routeName.replace(/^(collection|orderedCollection):/, "");
+    return (
+      this.#collectionNames.get(routeName) ??
+      routeName.replace(/^(collection|orderedCollection):/, "")
+    );
   }
 
   setOutboxPermanentFailureHandler(
@@ -1732,9 +1709,9 @@ export class FederationBuilderImpl<TContextData>
  * @returns A new {@link FederationBuilder} instance.
  * @since 1.6.0
  */
-export function createFederationBuilder<TContextData>(): FederationBuilder<
-  TContextData
-> {
+export function createFederationBuilder<
+  TContextData,
+>(): FederationBuilder<TContextData> {
   return new FederationBuilderImpl<TContextData>();
 }
 

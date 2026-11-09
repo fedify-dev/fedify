@@ -16,9 +16,12 @@ const nitroDescription: WebFrameworkDescription = {
   init: async ({ packageManager: pm, testMode }) => ({
     command: getNitroInitCommand(pm),
     cleanupFiles: pm === "deno" ? [] : ["server/routes/index.ts"],
-    cleanupPackageJson: pm === "deno" ? {} : {
-      devDependencies: ["eslint", "eslint-config-unjs", "prettier"],
-    },
+    cleanupPackageJson:
+      pm === "deno"
+        ? {}
+        : {
+            devDependencies: ["eslint", "eslint-config-unjs", "prettier"],
+          },
     dependencies: {
       "@fedify/h3": PACKAGE_VERSION,
       ...(pm === "deno" && defaultDenoDependencies),
@@ -33,7 +36,7 @@ const nitroDescription: WebFrameworkDescription = {
     format: {
       ignorePatterns: [".output/**"],
     },
-    env: testMode ? { HOST: "127.0.0.1" } : {} as Record<string, string>,
+    env: testMode ? { HOST: "127.0.0.1" } : ({} as Record<string, string>),
     files: {
       "server/plugins/logging.ts": await readTemplate(
         "nitro/server/plugins/logging.ts",
@@ -43,32 +46,37 @@ const nitroDescription: WebFrameworkDescription = {
       ),
       "server/error.ts": await readTemplate("nitro/server/error.ts"),
       "nitro.config.ts": await readTemplate("nitro/nitro.config.ts"),
-      ...(pm === "deno" ? {} : {
-        "server/routes/index.ts": await readTemplate(
-          "nitro/server/routes/index.ts",
-        ),
-      }),
+      ...(pm === "deno"
+        ? {}
+        : {
+            "server/routes/index.ts": await readTemplate(
+              "nitro/server/routes/index.ts",
+            ),
+          }),
     },
-    compilerOptions: pm === "deno" ? undefined : {
-      target: "ESNext",
-      module: "ESNext",
-      moduleResolution: "Bundler",
-      jsx: "preserve",
-      jsxFactory: "h",
-      jsxFragmentFactory: "Fragment",
-      strict: true,
-      noEmit: true,
-      skipLibCheck: true,
-      resolveJsonModule: true,
-      allowSyntheticDefaultImports: true,
-      forceConsistentCasingInFileNames: true,
-      noImplicitReturns: true,
-      noFallthroughCasesInSwitch: true,
-      useUnknownInCatchVariables: true,
-      noUnusedLocals: true,
-      lib: ["ESNext", "DOM"],
-      baseUrl: ".",
-    },
+    compilerOptions:
+      pm === "deno"
+        ? undefined
+        : {
+            target: "ESNext",
+            module: "ESNext",
+            moduleResolution: "Bundler",
+            jsx: "preserve",
+            jsxFactory: "h",
+            jsxFragmentFactory: "Fragment",
+            strict: true,
+            noEmit: true,
+            skipLibCheck: true,
+            resolveJsonModule: true,
+            allowSyntheticDefaultImports: true,
+            forceConsistentCasingInFileNames: true,
+            noImplicitReturns: true,
+            noFallthroughCasesInSwitch: true,
+            useUnknownInCatchVariables: true,
+            noUnusedLocals: true,
+            lib: ["ESNext", "DOM"],
+            baseUrl: ".",
+          },
     tasks: { ...getNodeBunDevToolTasks(pm), test: getTestTask(pm) },
     instruction: getInstruction(pm, 3000),
   }),
@@ -81,9 +89,7 @@ export default nitroDescription;
  * in the current directory using the given package manager.
  * Also removes the default `nitro.config.ts` so it can be replaced by a template.
  */
-const getNitroInitCommand = (
-  pm: PackageManager,
-): string[] => [
+const getNitroInitCommand = (pm: PackageManager): string[] => [
   ...createNitroAppCommand(pm),
   pm === "deno" ? "npm:giget@latest" : "giget@latest",
   "nitro",
@@ -98,7 +104,7 @@ const createNitroAppCommand = (pm: PackageManager): string[] =>
   pm === "deno"
     ? ["deno", "run", "-A"]
     : pm === "bun"
-    ? ["bunx"]
-    : pm === "npm"
-    ? ["npx"]
-    : [pm, "dlx"];
+      ? ["bunx"]
+      : pm === "npm"
+        ? ["npx"]
+        : [pm, "dlx"];

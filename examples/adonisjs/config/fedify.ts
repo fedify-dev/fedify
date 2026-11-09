@@ -17,8 +17,8 @@ export default defineConfig({
   | it to the app, so local lookups keep working after such a fallback.
   |
   */
-  origin: env.get("PUBLIC_URL") ??
-    `http://${reachableHost()}:${env.get("PORT")}`,
+  origin:
+    env.get("PUBLIC_URL") ?? `http://${reachableHost()}:${env.get("PORT")}`,
 });
 
 function reachableHost(): string {

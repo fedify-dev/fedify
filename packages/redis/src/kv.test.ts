@@ -121,14 +121,14 @@ test("RedisKvStore.cas()", { ignore }, async () => {
     const contenders = [store, new RedisKvStore(other, { keyPrefix })];
     const results = await Promise.all(
       contenders.map((candidate, i) =>
-        candidate.cas(["cas", "race"], undefined, i)
+        candidate.cas(["cas", "race"], undefined, i),
       ),
     );
     assert.equal(results.filter(Boolean).length, 1);
     const winner = await store.get(["cas", "race"]);
     const updates = await Promise.all(
       contenders.map((candidate, i) =>
-        candidate.cas(["cas", "race"], winner, i + 10)
+        candidate.cas(["cas", "race"], winner, i + 10),
       ),
     );
     assert.equal(updates.filter(Boolean).length, 1);
@@ -143,7 +143,11 @@ test("RedisKvStore conforms to KvStore", { ignore }, async () => {
   if (ignore) return;
   const { redis, store, cleanup } = getRedis();
   try {
-    await testKvStore(() => store, async () => {}, { testTtl: false });
+    await testKvStore(
+      () => store,
+      async () => {},
+      { testTtl: false },
+    );
   } finally {
     await cleanup();
     await redis.quit();

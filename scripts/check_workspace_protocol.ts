@@ -52,7 +52,9 @@ if (isMain(import.meta.url)) {
       // A package.json could be `null`, a string, a number, or an array; skip
       // anything that is not a plain object so the field lookups below are safe.
       if (
-        parsed === null || typeof parsed !== "object" || Array.isArray(parsed)
+        parsed === null ||
+        typeof parsed !== "object" ||
+        Array.isArray(parsed)
       ) {
         continue;
       }
@@ -68,9 +70,9 @@ if (isMain(import.meta.url)) {
       if (deps == null || typeof deps !== "object" || Array.isArray(deps)) {
         continue;
       }
-      for (
-        const [name, spec] of Object.entries(deps as Record<string, unknown>)
-      ) {
+      for (const [name, spec] of Object.entries(
+        deps as Record<string, unknown>,
+      )) {
         if (spec === "workspace:") invalid.push(name);
       }
     }

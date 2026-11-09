@@ -106,7 +106,7 @@ export class PostgresKvStore implements KvStore {
     this.#expiring = (async () => {
       let interval = expiryInterval;
       try {
-        if (await this.#sweep() === expiryBatchSize) {
+        if ((await this.#sweep()) === expiryBatchSize) {
           interval = expiryCatchUpInterval;
         }
       } catch (error) {
@@ -180,9 +180,10 @@ export class PostgresKvStore implements KvStore {
     options?: KvStoreSetOptions | undefined,
   ): Promise<void> {
     await this.initialize();
-    const ttl = options?.ttl == null
-      ? null
-      : Temporal.Duration.from(options.ttl).toString();
+    const ttl =
+      options?.ttl == null
+        ? null
+        : Temporal.Duration.from(options.ttl).toString();
     await this.#sql`
       INSERT INTO ${this.#sql(this.#tableName)} (key, value, created, ttl)
       VALUES (
@@ -220,12 +221,13 @@ export class PostgresKvStore implements KvStore {
     options?: KvStoreSetOptions,
   ): Promise<boolean> {
     await this.initialize();
-    const ttl = options?.ttl == null
-      ? null
-      : Temporal.Duration.from(options.ttl).toString();
+    const ttl =
+      options?.ttl == null
+        ? null
+        : Temporal.Duration.from(options.ttl).toString();
 
     if (expectedValue === undefined && newValue === undefined) {
-      return await this.get(key) === undefined;
+      return (await this.get(key)) === undefined;
     }
 
     let result;
@@ -370,9 +372,10 @@ export class PostgresKvStore implements KvStore {
   }
 
   #callerOwned(): boolean {
-    return ("savepoint" in this.#sql &&
-      typeof this.#sql.savepoint === "function") ||
-      ("release" in this.#sql && typeof this.#sql.release === "function");
+    return (
+      ("savepoint" in this.#sql && typeof this.#sql.savepoint === "function") ||
+      ("release" in this.#sql && typeof this.#sql.release === "function")
+    );
   }
 
   async #initializeExpiryIndex(): Promise<void> {
@@ -426,7 +429,8 @@ export class PostgresKvStore implements KvStore {
             },
           );
         if (
-          !table.owner || table.relrowsecurity ||
+          !table.owner ||
+          table.relrowsecurity ||
           (table.relkind !== "r" && table.relkind !== "p") ||
           (table.relkind === "r" && table.children)
         ) {
@@ -440,7 +444,7 @@ export class PostgresKvStore implements KvStore {
           return result.empty;
         };
         // Never queue a write-blocking lock against a populated legacy table.
-        if (!await empty()) {
+        if (!(await empty())) {
           manual();
           return;
         }
@@ -454,7 +458,7 @@ export class PostgresKvStore implements KvStore {
         await sql.unsafe(`LOCK TABLE ${table.name} IN SHARE MODE`);
         // READ COMMITTED gives this recheck a fresh snapshot after the lock.
         if (await indexed()) return;
-        if (!await empty()) {
+        if (!(await empty())) {
           manual();
           return;
         }

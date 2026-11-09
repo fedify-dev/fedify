@@ -73,10 +73,7 @@ test("self-reference ESM import exposes working Astro integration API", async ()
   let capturedContextData: unknown;
   const middleware = mod.fedifyMiddleware(
     toFederation<string>({
-      async fetch(
-        request: Request,
-        options: FederationFetchOptions<string>,
-      ) {
+      async fetch(request: Request, options: FederationFetchOptions<string>) {
         capturedRequest = request;
         capturedContextData = options.contextData;
         if (options.onNotAcceptable == null) {
@@ -90,9 +87,8 @@ test("self-reference ESM import exposes working Astro integration API", async ()
 
   const request = new Request("https://example.com/");
   const response = expectResponse(
-    await middleware(
-      toApiContext({ request }),
-      () => Promise.resolve(new Response("Not found", { status: 404 })),
+    await middleware(toApiContext({ request }), () =>
+      Promise.resolve(new Response("Not found", { status: 404 })),
     ),
   );
   strictEqual(capturedRequest, request);
@@ -147,10 +143,7 @@ test(
     let nextCalled = false;
     const middleware = mod.fedifyMiddleware(
       toFederation<void>({
-        async fetch(
-          _request: Request,
-          options: FederationFetchOptions<void>,
-        ) {
+        async fetch(_request: Request, options: FederationFetchOptions<void>) {
           if (options.onNotFound == null) {
             throw new TypeError("Expected onNotFound to be defined");
           }

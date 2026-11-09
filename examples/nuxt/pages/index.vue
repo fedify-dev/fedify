@@ -2,11 +2,7 @@
   <div class="home-container">
     <div class="profile-header">
       <div class="avatar-section">
-        <img
-          src="/demo-profile.png"
-          alt="Fedify Demo profile"
-          class="avatar"
-        />
+        <img src="/demo-profile.png" alt="Fedify Demo profile" class="avatar" />
       </div>
       <div class="user-info">
         <h1 class="user-name">Fedify Demo</h1>
@@ -124,10 +120,7 @@
     <!-- Posts -->
     <div class="info-card">
       <h3>Posts</h3>
-      <div
-        class="posts-grid"
-        v-if="data && data.posts.length > 0"
-      >
+      <div class="posts-grid" v-if="data && data.posts.length > 0">
         <article v-for="post in data.posts" :key="post.id" class="post-card">
           <a :href="post.url" class="post-link">
             <div class="post-header">
@@ -157,7 +150,12 @@
 
     <div class="fedify-badge">
       Powered by
-      <a href="https://fedify.dev" class="fedify-anchor" target="_blank" rel="noopener noreferrer">
+      <a
+        href="https://fedify.dev"
+        class="fedify-anchor"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
         Fedify
       </a>
     </div>
@@ -232,7 +230,9 @@ onBeforeUnmount(() => {
   font-size: 1rem;
   background: var(--background);
   color: var(--foreground);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   font-family: inherit;
 }
 .search-input:focus {
@@ -274,7 +274,9 @@ onBeforeUnmount(() => {
   cursor: pointer;
   background: #ef4444;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 .danger-button:hover {
   transform: translateY(-1px);

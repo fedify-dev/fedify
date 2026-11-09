@@ -10,10 +10,13 @@ import { parseGatewayUrl, validatePublicUrl } from "./url.ts";
 /** A link or document with an external resource and its integrity digest. */
 export interface PortableMedia {
   readonly href?: URL | null;
-  readonly url?: URL | {
-    readonly href: URL | null;
-    readonly digestMultibase?: string | null;
-  } | null;
+  readonly url?:
+    | URL
+    | {
+        readonly href: URL | null;
+        readonly digestMultibase?: string | null;
+      }
+    | null;
   readonly digestMultibase?: string | null;
 }
 
@@ -62,13 +65,16 @@ async function withTimeout<T>(
   parent?.addEventListener("abort", onParentAbort, { once: true });
   let timer: ReturnType<typeof setTimeout> | undefined;
   if (timeout != null) {
-    timer = setTimeout(() =>
-      controller.abort(
-        new DOMException(
-          `Media retrieval timed out after ${timeout} ms.`,
-          "TimeoutError",
+    timer = setTimeout(
+      () =>
+        controller.abort(
+          new DOMException(
+            `Media retrieval timed out after ${timeout} ms.`,
+            "TimeoutError",
+          ),
         ),
-      ), timeout);
+      timeout,
+    );
   }
   let onAbort: (() => void) | undefined;
   const aborted = new Promise<never>((_, reject) => {
@@ -94,16 +100,20 @@ function mediaTarget(media: string | URL | PortableMedia): {
     return { url: media.toString(), digestMultibase: undefined };
   }
   const target = media.href ?? media.url;
-  const url = target instanceof URL
-    ? target.href
-    : target != null && typeof target === "object" && "href" in target
-    ? target.href?.href
-    : undefined;
+  const url =
+    target instanceof URL
+      ? target.href
+      : target != null && typeof target === "object" && "href" in target
+        ? target.href?.href
+        : undefined;
   if (url == null) throw new TypeError("Portable media has no URL or href.");
-  const linkDigest = target != null && !(target instanceof URL) &&
-      typeof target === "object" && "digestMultibase" in target
-    ? target.digestMultibase
-    : undefined;
+  const linkDigest =
+    target != null &&
+    !(target instanceof URL) &&
+    typeof target === "object" &&
+    "digestMultibase" in target
+      ? target.digestMultibase
+      : undefined;
   if (media.digestMultibase != null && linkDigest != null) {
     const outer = parseDigestMultibase(media.digestMultibase).digest;
     const inner = parseDigestMultibase(linkDigest).digest;
@@ -137,9 +147,10 @@ async function fetchVerified(
       method: "GET",
       headers: {
         Accept: "*/*",
-        "User-Agent": typeof options.userAgent === "string"
-          ? options.userAgent
-          : getUserAgent(options.userAgent),
+        "User-Agent":
+          typeof options.userAgent === "string"
+            ? options.userAgent
+            : getUserAgent(options.userAgent),
       },
       redirect: "manual",
       signal,
@@ -159,7 +170,7 @@ async function fetchVerified(
     }
     const bytes = await readBoundedBytes(response, maxBytes, url);
     signal.throwIfAborted();
-    if (!await verifyDigestMultibase(bytes, digestMultibase)) {
+    if (!(await verifyDigestMultibase(bytes, digestMultibase))) {
       throw new Error("Portable media digest does not match.");
     }
     const headers = new Headers();
@@ -212,16 +223,16 @@ export async function fetchPortableMedia(
     }
     const gateways = [
       ...new Set(
-        [...options.gateways ?? []].map((gateway) =>
-          parseGatewayUrl(gateway.toString()).origin
+        [...(options.gateways ?? [])].map(
+          (gateway) => parseGatewayUrl(gateway.toString()).origin,
         ),
       ),
     ];
     if (gateways.length === 0) {
       throw new TypeError("Hashlink media requires at least one gateway.");
     }
-    targets = gateways.map((gateway) =>
-      new URL(`/.well-known/apgateway/${url}`, gateway)
+    targets = gateways.map(
+      (gateway) => new URL(`/.well-known/apgateway/${url}`, gateway),
     );
   } else {
     const target = new URL(url);

@@ -11,9 +11,7 @@
       </div>
       <div class="user-info">
         <h1 class="user-name">{{ data.name }}</h1>
-        <p class="user-handle">
-          @{{ data.identifier }}@{{ data.host }}
-        </p>
+        <p class="user-handle">@{{ data.identifier }}@{{ data.host }}</p>
         <p v-if="data.summary" class="user-bio">{{ data.summary }}</p>
       </div>
     </div>
@@ -62,7 +60,7 @@ useHead({
   title: error.value
     ? "Error - Fedify Nuxt Example"
     : data.value
-    ? `${data.value.name} - Fedify Nuxt Example`
-    : "Not Found - Fedify Nuxt Example",
+      ? `${data.value.name} - Fedify Nuxt Example`
+      : "Not Found - Fedify Nuxt Example",
 });
 </script>

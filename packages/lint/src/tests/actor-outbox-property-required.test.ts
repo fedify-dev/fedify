@@ -10,7 +10,4 @@ const ruleName = RULE_IDS.actorOutboxPropertyRequired;
 const config = { rule, ruleName };
 
 runTests(ruleName, createRequiredDispatcherRuleTests("outbox", config));
-runTests(
-  ruleName,
-  createRequiredEdgeCaseTests("outbox", config),
-);
+runTests(ruleName, createRequiredEdgeCaseTests("outbox", config));

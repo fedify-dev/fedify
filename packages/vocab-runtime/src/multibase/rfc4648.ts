@@ -18,7 +18,7 @@ const decode = (
   }
 
   // Allocate the output:
-  const out = new Uint8Array((end * bitsPerChar / 8) | 0);
+  const out = new Uint8Array(((end * bitsPerChar) / 8) | 0);
 
   // Parse the data:
   let bits = 0; // Number of bits currently in the buffer
@@ -91,13 +91,15 @@ const encode = (
 /**
  * RFC4648 Factory
  */
-export const rfc4648 = (bitsPerChar: number): CodecFactory => (alphabet) => {
-  return {
-    encode(input: Uint8Array): string {
-      return encode(input, alphabet, bitsPerChar);
-    },
-    decode(input: string): Uint8Array {
-      return decode(input, alphabet, bitsPerChar);
-    },
+export const rfc4648 =
+  (bitsPerChar: number): CodecFactory =>
+  (alphabet) => {
+    return {
+      encode(input: Uint8Array): string {
+        return encode(input, alphabet, bitsPerChar);
+      },
+      decode(input: string): Uint8Array {
+        return decode(input, alphabet, bitsPerChar);
+      },
+    };
   };
-};

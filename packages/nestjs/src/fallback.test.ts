@@ -20,21 +20,19 @@ import type { Response as ExpressResponse } from "express";
 // Node cannot load legacy decorators directly; exercise the built middleware.
 import { integrateFederation } from "../dist/index.mjs";
 
-for (
-  const scenario of [
-    "unhandled",
-    "async-pass",
-    "html",
-    "async-html",
-    "not-found-html",
-    "not-found-json",
-    "not-found-error",
-    "controller-pass",
-    "wrapped-unhandled",
-    "wrapped-not-found-json",
-    "wrapped-html",
-  ]
-) {
+for (const scenario of [
+  "unhandled",
+  "async-pass",
+  "html",
+  "async-html",
+  "not-found-html",
+  "not-found-json",
+  "not-found-error",
+  "controller-pass",
+  "wrapped-unhandled",
+  "wrapped-not-found-json",
+  "wrapped-html",
+]) {
   const mode = scenario.replace(/^wrapped-/, "");
   test(
     "NestJS preserves the application's response or falls back to 406: " +
@@ -85,47 +83,51 @@ for (
         configure(consumer: MiddlewareConsumer) {
           // The factory receives Express's request object, so Express APIs
           // such as req.get() must type-check here:
-          consumer.apply(
-            integrateFederation(fed, (req) => void req.get("host")),
-          ).forRoutes(
-            { path: "users/:identifier", method: RequestMethod.GET },
-            { path: "users/:identifier", method: RequestMethod.HEAD },
-          );
-          if (scenario.startsWith("wrapped-")) {
-            consumer.apply(
-              (_req: unknown, res: ExpressResponse, next: () => void) => {
-                const end = res.end;
-                res.end = function (this: ExpressResponse, ...args: unknown[]) {
-                  this.writeHead(this.statusCode);
-                  return end.apply(this, args as Parameters<typeof end>);
-                } as typeof res.end;
-                next();
-              },
-            ).forRoutes(
+          consumer
+            .apply(integrateFederation(fed, (req) => void req.get("host")))
+            .forRoutes(
               { path: "users/:identifier", method: RequestMethod.GET },
               { path: "users/:identifier", method: RequestMethod.HEAD },
             );
+          if (scenario.startsWith("wrapped-")) {
+            consumer
+              .apply(
+                (_req: unknown, res: ExpressResponse, next: () => void) => {
+                  const end = res.end;
+                  res.end = function (
+                    this: ExpressResponse,
+                    ...args: unknown[]
+                  ) {
+                    this.writeHead(this.statusCode);
+                    return end.apply(this, args as Parameters<typeof end>);
+                  } as typeof res.end;
+                  next();
+                },
+              )
+              .forRoutes(
+                { path: "users/:identifier", method: RequestMethod.GET },
+                { path: "users/:identifier", method: RequestMethod.HEAD },
+              );
           }
           if (mode === "async-pass") {
-            consumer.apply(
-              async (_req: unknown, _res: unknown, next: () => void) => {
+            consumer
+              .apply(async (_req: unknown, _res: unknown, next: () => void) => {
                 await new Promise((r) => setTimeout(r, 10));
                 next();
-              },
-            ).forRoutes({
-              path: "users/:identifier",
-              method: RequestMethod.GET,
-            });
+              })
+              .forRoutes({
+                path: "users/:identifier",
+                method: RequestMethod.GET,
+              });
           }
         }
       }
       Module({
-        controllers: mode !== "unhandled" && mode !== "async-pass"
-          ? [ActorController]
-          : [],
-      })(
-        AppModule,
-      );
+        controllers:
+          mode !== "unhandled" && mode !== "async-pass"
+            ? [ActorController]
+            : [],
+      })(AppModule);
       const app = await NestFactory.create(AppModule, { logger: false });
       try {
         await app.listen(0, "127.0.0.1");
@@ -140,8 +142,8 @@ for (
           const expected = mode.startsWith("not-found")
             ? 404
             : mode.endsWith("html")
-            ? 200
-            : 406;
+              ? 200
+              : 406;
           assert.equal(response.status, expected);
           const body = await response.text();
           if (method === "HEAD") assert.equal(body, "");
@@ -149,23 +151,26 @@ for (
             assert.deepEqual(JSON.parse(body), { error: "No such user" });
           } else if (mode === "not-found-error") {
             assert.equal(JSON.parse(body).message, "No such user");
-          } else {assert.equal(
+          } else {
+            assert.equal(
               body,
               expected === 406
                 ? "Not acceptable"
                 : mode === "not-found-html"
-                ? "<p>No such user</p>"
-                : "<p>Alice</p>",
-            );}
+                  ? "<p>No such user</p>"
+                  : "<p>Alice</p>",
+            );
+          }
           if (expected === 406) {
             assert.equal(
               response.headers.get("Content-Type")?.split(";")[0],
               "text/plain",
             );
             assert.ok(
-              response.headers.get("Vary")?.split(",").some((field) =>
-                field.trim().toLowerCase() === "accept"
-              ),
+              response.headers
+                .get("Vary")
+                ?.split(",")
+                .some((field) => field.trim().toLowerCase() === "accept"),
             );
             assert.equal(response.headers.get("ETag"), null);
           }

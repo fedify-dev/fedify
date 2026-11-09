@@ -38,16 +38,16 @@ import { linksToActor, lookupPortableWebFinger } from "./webfinger/action.ts";
 import { webFingerCommand } from "./webfinger/command.ts";
 import { WebFingerLookupError } from "./webfinger/error.ts";
 
-const keyPair = await crypto.subtle.generateKey("Ed25519", true, [
+const keyPair = (await crypto.subtle.generateKey("Ed25519", true, [
   "sign",
   "verify",
-]) as CryptoKeyPair;
+])) as CryptoKeyPair;
 const did = await exportDidKey(keyPair.publicKey);
 const keyId = new URL(`${did}#${did.slice("did:key:".length)}`);
-const otherKeyPair = await crypto.subtle.generateKey("Ed25519", true, [
+const otherKeyPair = (await crypto.subtle.generateKey("Ed25519", true, [
   "sign",
   "verify",
-]) as CryptoKeyPair;
+])) as CryptoKeyPair;
 const otherDid = await exportDidKey(otherKeyPair.publicKey);
 const contextLoader = getDefaultDocumentLoader();
 
@@ -248,8 +248,7 @@ function parseOutputs(output: string, separator = "----"): unknown[] {
 test("getIriKey() identifies portable objects canonically", () => {
   const key = `ap+ef61://${did}/actor`;
   const encoded = `ap://${encodeURIComponent(did)}/actor`;
-  const compatible =
-    `https://gateway.example/.well-known/apgateway/${did}/actor`;
+  const compatible = `https://gateway.example/.well-known/apgateway/${did}/actor`;
   assert.equal(getIriKey(`ap://${did}/actor`), key);
   assert.equal(getIriKey(encoded), key);
   assert.equal(getIriKey(`ap+ef61://${did}/actor`), key);
@@ -315,15 +314,13 @@ test("gatewayUrl() accepts only gateway origins", () => {
   const result = parser.parse("https://gateway.example");
   assert.ok(result.success);
   assert.equal(result.value.href, "https://gateway.example/");
-  for (
-    const input of [
-      "https://gateway.example/path",
-      "https://gateway.example/?q=1",
-      "https://user@gateway.example/",
-      "ftp://gateway.example/",
-      "not a url",
-    ]
-  ) {
+  for (const input of [
+    "https://gateway.example/path",
+    "https://gateway.example/?q=1",
+    "https://user@gateway.example/",
+    "ftp://gateway.example/",
+    "not a url",
+  ]) {
     assert.ok(!parser.parse(input).success, input);
   }
 });
@@ -375,22 +372,18 @@ test("matchesActor() matches portable actors by their canonical IDs", async () =
   assert.ok(await matches([`ap+ef61://${did}/actor`]));
   assert.ok(await matches([`ap://${encodeURIComponent(did)}/actor`]));
   assert.ok(
-    await matches([
-      `ap://${did}/actor?@gateway=https%3A%2F%2Fother.example`,
-    ]),
+    await matches([`ap://${did}/actor?@gateway=https%3A%2F%2Fother.example`]),
   );
   assert.ok(
-    await matches([
-      `https://other.example/.well-known/apgateway/${did}/actor`,
-    ]),
+    await matches([`https://other.example/.well-known/apgateway/${did}/actor`]),
   );
-  assert.ok(!await matches([`ap://${did}/other`]));
-  assert.ok(!await matches([`ap://${otherDid}/actor`]));
-  assert.ok(!await matches([`ap://${did}/actor#key`]));
+  assert.ok(!(await matches([`ap://${did}/other`])));
+  assert.ok(!(await matches([`ap://${otherDid}/actor`])));
+  assert.ok(!(await matches([`ap://${did}/actor#key`])));
   assert.ok(
-    !await matches([
+    !(await matches([
       `https://other.example/.well-known/apgateway/${did}/actor?@gateway=x`,
-    ]),
+    ])),
   );
   assert.equal(handleLookups, 0);
   assert.ok(await matches([`ap://${did}/other`, `ap://${did}/actor`]));
@@ -437,13 +430,11 @@ test("fedify lookup looks up portable objects", async () => {
   try {
     await serveFixtures(gateway);
     const hint = encodeURIComponent(gateway.url.origin);
-    for (
-      const url of [
-        `ap://${did}/actor?@gateway=${hint}`,
-        `ap+ef61://${encodeURIComponent(did)}/actor?@gateway=${hint}`,
-        toCompatibleEf61Id(portableId("/actor"), gateway.url).href,
-      ]
-    ) {
+    for (const url of [
+      `ap://${did}/actor?@gateway=${hint}`,
+      `ap+ef61://${encodeURIComponent(did)}/actor?@gateway=${hint}`,
+      toCompatibleEf61Id(portableId("/actor"), gateway.url).href,
+    ]) {
       const { code, output, stderr } = await lookup({ urls: [url] });
       assert.equal(code, 0, stderr);
       const [actor] = parseOutputs(output) as Record<string, unknown>[];
@@ -566,9 +557,9 @@ test("fedify lookup --recurse uses --gateway for unhinted links", async () => {
         }),
       ),
     );
-    const hinted = `ap://${did}/reply?@gateway=${
-      encodeURIComponent(gateway.url.origin)
-    }`;
+    const hinted = `ap://${did}/reply?@gateway=${encodeURIComponent(
+      gateway.url.origin,
+    )}`;
     const failed = await lookup({
       urls: [hinted],
       recurse: "replyTarget",
@@ -700,9 +691,9 @@ test("fedify lookup does not blame a recovered owner fetch failure", async () =>
     // Explicit gateways would replace the owner's location hints:
     const { code, stderr } = await lookup({
       urls: [
-        `ap://${did}/actor/outbox?@gateway=${
-          encodeURIComponent(gateway.url.origin)
-        }`,
+        `ap://${did}/actor/outbox?@gateway=${encodeURIComponent(
+          gateway.url.origin,
+        )}`,
       ],
     });
     assert.equal(code, 1);
@@ -724,11 +715,13 @@ test("fedify lookup looks up portable actors by WebFinger handles", async () => 
   fetchMock.spyGlobal();
   fetchMock.get(`begin:https://${host}/.well-known/webfinger`, {
     subject: `acct:alice@${host}`,
-    links: [{
-      rel: "self",
-      type: "application/activity+json",
-      href: toCompatibleEf61Id(portableId("/actor"), gateway.url).href,
-    }],
+    links: [
+      {
+        rel: "self",
+        type: "application/activity+json",
+        href: toCompatibleEf61Id(portableId("/actor"), gateway.url).href,
+      },
+    ],
   });
   try {
     await serveFixtures(gateway);
@@ -784,7 +777,7 @@ test("fedify lookup --recurse reports the default timeout of a linked object", a
       },
       {
         getDocumentLoader: createTimeoutLoaderFactory((u) =>
-          u.endsWith("/note")
+          u.endsWith("/note"),
         ),
       },
     );
@@ -803,7 +796,7 @@ test("fedify lookup --recurse reports the default timeout of a linked object", a
       },
       {
         getDocumentLoader: createTimeoutLoaderFactory((u) =>
-          u.endsWith("/note")
+          u.endsWith("/note"),
         ),
       },
     );
@@ -816,7 +809,7 @@ test("fedify lookup --recurse reports the default timeout of a linked object", a
 
 test("fedify lookup --recurse reports an explicit timeout of a linked object", async () => {
   let release: () => void = () => {};
-  const released = new Promise<void>((resolve) => release = resolve);
+  const released = new Promise<void>((resolve) => (release = resolve));
   const server = serve({
     port: 0,
     hostname: "127.0.0.1",
@@ -824,13 +817,16 @@ test("fedify lookup --recurse reports an explicit timeout of a linked object", a
     async fetch(request) {
       const { pathname, origin } = new URL(request.url);
       if (pathname === "/reply") {
-        return Response.json({
-          "@context": "https://www.w3.org/ns/activitystreams",
-          type: "Note",
-          id: `${origin}/reply`,
-          inReplyTo: `${origin}/stalled`,
-          content: "Reply",
-        }, { headers: { "Content-Type": "application/activity+json" } });
+        return Response.json(
+          {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Note",
+            id: `${origin}/reply`,
+            inReplyTo: `${origin}/stalled`,
+            content: "Reply",
+          },
+          { headers: { "Content-Type": "application/activity+json" } },
+        );
       }
       await released;
       return new Response(null, { status: 404 });
@@ -860,20 +856,20 @@ test("lookupPortableWebFinger() uses the first gateway of the actor", async () =
   const compatibleId = toCompatibleEf61Id(portableId("/actor"), gateway.url);
   fetchMock.get(`begin:https://${gateway.url.host}/.well-known/webfinger`, {
     subject: `acct:alice@${gateway.url.host}`,
-    links: [{
-      rel: "self",
-      type: "application/activity+json",
-      href: compatibleId.href,
-    }],
+    links: [
+      {
+        rel: "self",
+        type: "application/activity+json",
+        href: compatibleId.href,
+      },
+    ],
   });
   try {
     await serveFixtures(gateway);
-    for (
-      const resource of [
-        `ap://${did}/actor?@gateway=${encodeURIComponent(gateway.url.origin)}`,
-        compatibleId.href,
-      ]
-    ) {
+    for (const resource of [
+      `ap://${did}/actor?@gateway=${encodeURIComponent(gateway.url.origin)}`,
+      compatibleId.href,
+    ]) {
       const result = await lookupPortableWebFinger({
         resource,
         allowPrivateAddresses: true,
@@ -905,9 +901,9 @@ test("lookupPortableWebFinger() uses the first gateway of the actor", async () =
 test("lookupPortableWebFinger() preserves WebFinger diagnostics", async () => {
   const gateway = await startGateway();
   fetchMock.spyGlobal();
-  const resource = `ap://${did}/actor?@gateway=${
-    encodeURIComponent(gateway.url.origin)
-  }`;
+  const resource = `ap://${did}/actor?@gateway=${encodeURIComponent(
+    gateway.url.origin,
+  )}`;
   fetchMock.get(`begin:https://${gateway.url.host}/.well-known/webfinger`, {
     status: 500,
   });
@@ -933,53 +929,67 @@ test("lookupPortableWebFinger() preserves WebFinger diagnostics", async () => {
 
 test("linksToActor() checks the first ActivityStreams self link", () => {
   const actorId = portableId("/actor");
-  const compatible =
-    `https://gateway.example/.well-known/apgateway/${did}/actor`;
+  const compatible = `https://gateway.example/.well-known/apgateway/${did}/actor`;
   assert.ok(
-    linksToActor({
-      subject: "acct:alice@gateway.example",
-      links: [
-        { rel: "self", type: "text/html", href: "https://example.com/" },
-        {
-          rel: "self",
-          type:
-            'application/ld+json;profile="https://www.w3.org/ns/activitystreams"',
-          href: compatible,
-        },
-      ],
-    }, actorId),
+    linksToActor(
+      {
+        subject: "acct:alice@gateway.example",
+        links: [
+          { rel: "self", type: "text/html", href: "https://example.com/" },
+          {
+            rel: "self",
+            type: 'application/ld+json;profile="https://www.w3.org/ns/activitystreams"',
+            href: compatible,
+          },
+        ],
+      },
+      actorId,
+    ),
   );
   assert.ok(
-    linksToActor({
-      subject: "acct:alice@gateway.example",
-      links: [{
-        rel: "self",
-        type: "application/activity+json",
-        href: `ap://${did}/actor`,
-      }],
-    }, actorId),
+    linksToActor(
+      {
+        subject: "acct:alice@gateway.example",
+        links: [
+          {
+            rel: "self",
+            type: "application/activity+json",
+            href: `ap://${did}/actor`,
+          },
+        ],
+      },
+      actorId,
+    ),
   );
   assert.ok(
-    !linksToActor({
-      subject: "acct:alice@gateway.example",
-      links: [
-        {
-          rel: "self",
-          type: "application/activity+json",
-          href: `ap://${otherDid}/actor`,
-        },
-        { rel: "self", type: "application/activity+json", href: compatible },
-      ],
-    }, actorId),
+    !linksToActor(
+      {
+        subject: "acct:alice@gateway.example",
+        links: [
+          {
+            rel: "self",
+            type: "application/activity+json",
+            href: `ap://${otherDid}/actor`,
+          },
+          { rel: "self", type: "application/activity+json", href: compatible },
+        ],
+      },
+      actorId,
+    ),
   );
   assert.ok(
-    !linksToActor({
-      subject: "acct:alice@gateway.example",
-      links: [{
-        rel: "self",
-        type: "application/activity+json",
-        href: "https://gateway.example/users/alice",
-      }],
-    }, actorId),
+    !linksToActor(
+      {
+        subject: "acct:alice@gateway.example",
+        links: [
+          {
+            rel: "self",
+            type: "application/activity+json",
+            href: "https://gateway.example/users/alice",
+          },
+        ],
+      },
+      actorId,
+    ),
   );
 });

@@ -455,10 +455,10 @@ describe("backfill", () => {
 
     strictEqual(items.length, 1);
     strictEqual(items[0].object.id?.href, parentId.href);
-    deepStrictEqual(requests.map((url) => url.href), [
-      contextId.href,
-      parentId.href,
-    ]);
+    deepStrictEqual(
+      requests.map((url) => url.href),
+      [contextId.href, parentId.href],
+    );
   });
 
   test("document cache does not keep failed dereferences", async () => {
@@ -501,11 +501,10 @@ describe("backfill", () => {
 
     strictEqual(items.length, 1);
     strictEqual(items[0].object.id?.href, parentId.href);
-    deepStrictEqual(requests.map((url) => url.href), [
-      contextId.href,
-      parentId.href,
-      parentId.href,
-    ]);
+    deepStrictEqual(
+      requests.map((url) => url.href),
+      [contextId.href, parentId.href, parentId.href],
+    );
   });
 
   test("strategy order controls deduplicated item metadata", async () => {
@@ -698,9 +697,9 @@ describe("backfill", () => {
         Promise.resolve(
           iri.href === repliesId.href
             ? new Collection({
-              id: repliesId,
-              items: [reply],
-            })
+                id: repliesId,
+                items: [reply],
+              })
             : null,
         ),
     };
@@ -1153,10 +1152,10 @@ describe("backfill", () => {
 
     strictEqual(items.length, 1);
     strictEqual(items[0].object.id?.href, item.id?.href);
-    deepStrictEqual(requests.map((url) => url.href), [
-      contextId.href,
-      itemId.href,
-    ]);
+    deepStrictEqual(
+      requests.map((url) => url.href),
+      [contextId.href, itemId.href],
+    );
   });
 
   test("context activity collection dereferences activity URL", async () => {
@@ -1194,10 +1193,10 @@ describe("backfill", () => {
 
     strictEqual(items.length, 1);
     strictEqual(items[0].object.id?.href, item.id?.href);
-    deepStrictEqual(requests.map((url) => url.href), [
-      contextId.href,
-      activityId.href,
-    ]);
+    deepStrictEqual(
+      requests.map((url) => url.href),
+      [contextId.href, activityId.href],
+    );
   });
 
   test("context activity collection deduplicates by extracted object ID", async () => {
@@ -1324,10 +1323,10 @@ describe("backfill", () => {
     });
 
     deepStrictEqual(items, []);
-    deepStrictEqual(requests.map((url) => url.href), [
-      contextId.href,
-      activityId.href,
-    ]);
+    deepStrictEqual(
+      requests.map((url) => url.href),
+      [contextId.href, activityId.href],
+    );
   });
 
   test("maxItems limits context activity items", async () => {
@@ -1399,10 +1398,10 @@ describe("backfill", () => {
     strictEqual(items.length, 1);
     ok(items[0].id instanceof URL);
     strictEqual(items[0].id.href, itemId.href);
-    deepStrictEqual(requests.map((url) => url.href), [
-      contextId.href,
-      itemId.href,
-    ]);
+    deepStrictEqual(
+      requests.map((url) => url.href),
+      [contextId.href, itemId.href],
+    );
   });
 
   test("seen context collection URL items are not loaded", async () => {
@@ -1438,10 +1437,10 @@ describe("backfill", () => {
 
     strictEqual(items.length, 1);
     strictEqual(items[0].id?.href, itemId.href);
-    deepStrictEqual(requests.map((url) => url.href), [
-      contextId.href,
-      itemId.href,
-    ]);
+    deepStrictEqual(
+      requests.map((url) => url.href),
+      [contextId.href, itemId.href],
+    );
   });
 
   test("failed URL collection items are skipped", async () => {
@@ -1672,10 +1671,9 @@ describe("backfill", () => {
         ),
     };
 
-    await rejects(
-      collect(context, note, { signal: controller.signal }),
-      { name: "AbortError" },
-    );
+    await rejects(collect(context, note, { signal: controller.signal }), {
+      name: "AbortError",
+    });
   });
 
   test("AbortSignal stops traversal across strategies", async () => {
@@ -1710,12 +1708,10 @@ describe("backfill", () => {
     const items: Awaited<ReturnType<typeof collect>> = [];
     await rejects(
       async () => {
-        for await (
-          const item of backfill(context, note, {
-            strategies: ["context-auto", "reply-tree"],
-            signal: controller.signal,
-          })
-        ) {
+        for await (const item of backfill(context, note, {
+          strategies: ["context-auto", "reply-tree"],
+          signal: controller.signal,
+        })) {
           items.push(item);
           controller.abort();
         }
@@ -1824,17 +1820,17 @@ describe("collection pagination", () => {
             maxDepth: 1,
             maxRequests: embedded ? (replies ? 0 : 1) : 3,
           });
-          deepStrictEqual(items.map((item) => item.id?.href), [
-            a.id?.href,
-            b.id?.href,
-          ]);
+          deepStrictEqual(
+            items.map((item) => item.id?.href),
+            [a.id?.href, b.id?.href],
+          );
           deepStrictEqual(
             items.map((item) => item.depth),
             replies ? [1, 1] : [0, 0],
           );
           strictEqual(
             calls.length,
-            embedded ? (replies ? 0 : 1) : (replies ? 2 : 3),
+            embedded ? (replies ? 0 : 1) : replies ? 2 : 3,
           );
         });
       }
@@ -1853,16 +1849,19 @@ describe("collection pagination", () => {
       next: first.id,
     });
     const calls: string[] = [];
-    const items = await collect({
-      documentLoader: (url) => {
-        calls.push(url.href);
-        return Promise.resolve(url.href === first.id?.href ? first : second);
+    const items = await collect(
+      {
+        documentLoader: (url) => {
+          calls.push(url.href);
+          return Promise.resolve(url.href === first.id?.href ? first : second);
+        },
       },
-    }, new Note({ contexts: [first.id!] }));
-    deepStrictEqual(items.map((item) => item.id?.href), [
-      iri("a").href,
-      iri("b").href,
-    ]);
+      new Note({ contexts: [first.id!] }),
+    );
+    deepStrictEqual(
+      items.map((item) => item.id?.href),
+      [iri("a").href, iri("b").href],
+    );
     deepStrictEqual(calls, [first.id?.href, second.id?.href]);
   });
 
@@ -1889,7 +1888,10 @@ describe("collection pagination", () => {
         }),
         { [limit]: 1, strategies: ["context-auto", "reply-tree"] },
       );
-      deepStrictEqual(items.map((item) => item.id?.href), [iri("a").href]);
+      deepStrictEqual(
+        items.map((item) => item.id?.href),
+        [iri("a").href],
+      );
       deepStrictEqual(calls, [first.id?.href]);
     });
   }
@@ -1917,29 +1919,32 @@ describe("collection pagination", () => {
         seed,
         { strategies: ["context-auto", "reply-tree"] },
       );
-      deepStrictEqual(items.map((item) => item.id?.href), [
-        iri("a").href,
-        iri("reply").href,
-      ]);
+      deepStrictEqual(
+        items.map((item) => item.id?.href),
+        [iri("a").href, iri("reply").href],
+      );
     });
   }
 
   test("inline items precede page items", async () => {
-    const items = await collect({
-      documentLoader: () =>
-        Promise.resolve(
-          new Collection({
-            items: [new Note({ id: iri("inline") })],
-            first: new CollectionPage({
-              items: [new Note({ id: iri("paged") })],
+    const items = await collect(
+      {
+        documentLoader: () =>
+          Promise.resolve(
+            new Collection({
+              items: [new Note({ id: iri("inline") })],
+              first: new CollectionPage({
+                items: [new Note({ id: iri("paged") })],
+              }),
             }),
-          }),
-        ),
-    }, new Note({ contexts: [iri("thread")] }));
-    deepStrictEqual(items.map((item) => item.id?.href), [
-      iri("inline").href,
-      iri("paged").href,
-    ]);
+          ),
+      },
+      new Note({ contexts: [iri("thread")] }),
+    );
+    deepStrictEqual(
+      items.map((item) => item.id?.href),
+      [iri("inline").href, iri("paged").href],
+    );
   });
 
   test("cancellation during a page load prevents later strategies", async () => {
@@ -2001,7 +2006,10 @@ test("page loads share the cache and interval across strategies", async () => {
       },
     },
   );
-  deepStrictEqual(items.map((item) => item.id?.href), [iri("a").href]);
+  deepStrictEqual(
+    items.map((item) => item.id?.href),
+    [iri("a").href],
+  );
   deepStrictEqual(calls, [iri("thread").href, iri("page").href]);
   deepStrictEqual(intervals, [0, 1]);
 });
@@ -2026,7 +2034,10 @@ test("embedded pages without IDs follow next without loader calls", async () => 
     seed,
     { strategies: ["reply-tree"], maxRequests: 0, maxDepth: 1 },
   );
-  deepStrictEqual(items.map((item) => item.id?.href), [a.id?.href, b.id?.href]);
+  deepStrictEqual(
+    items.map((item) => item.id?.href),
+    [a.id?.href, b.id?.href],
+  );
 });
 
 describe("context loader failures", () => {
@@ -2054,7 +2065,10 @@ describe("context loader failures", () => {
         seed,
         { strategies: ["context-auto", "reply-tree"], maxRequests: 1 },
       );
-      deepStrictEqual(items.map((item) => item.object), [parent]);
+      deepStrictEqual(
+        items.map((item) => item.object),
+        [parent],
+      );
       strictEqual(items[0].strategy, "reply-tree");
       strictEqual(requests, 1);
     });
@@ -2087,9 +2101,9 @@ describe("context loader failures", () => {
       const reason = new Error("Stop backfill");
       const seed = new Note({ contexts: [contextId], replyTarget: parent });
       const yielded: unknown[] = [];
-      await rejects(async () => {
-        for await (
-          const item of backfill(
+      await rejects(
+        async () => {
+          for await (const item of backfill(
             {
               documentLoader: (_url, options) => {
                 strictEqual(options?.signal, controller.signal);
@@ -2102,9 +2116,11 @@ describe("context loader failures", () => {
               strategies: ["context-auto", "reply-tree"],
               signal: controller.signal,
             },
-          )
-        ) yielded.push(item);
-      }, (error) => error === reason);
+          ))
+            yielded.push(item);
+        },
+        (error) => error === reason,
+      );
       deepStrictEqual(yielded, []);
     });
   }
@@ -2118,9 +2134,7 @@ describe("context loader failures", () => {
           strictEqual(url.href, contextId.href);
           requests++;
           if (requests === 1) {
-            return Promise.reject(
-              new Error("Temporary failure"),
-            );
+            return Promise.reject(new Error("Temporary failure"));
           }
           return Promise.resolve(parent);
         },
@@ -2128,9 +2142,10 @@ describe("context loader failures", () => {
       seed,
       { strategies: ["context-auto", "reply-tree"], maxRequests: 2 },
     );
-    deepStrictEqual(items.map((item) => item.object.id?.href), [
-      parent.id?.href,
-    ]);
+    deepStrictEqual(
+      items.map((item) => item.object.id?.href),
+      [parent.id?.href],
+    );
     strictEqual(requests, 2);
   });
 
@@ -2145,7 +2160,10 @@ describe("context loader failures", () => {
       seed,
       { strategies: ["context-auto", "reply-tree"], maxRequests: 0 },
     );
-    deepStrictEqual(items.map((item) => item.object), [parent]);
+    deepStrictEqual(
+      items.map((item) => item.object),
+      [parent],
+    );
   });
 
   test("interval callback errors propagate before the loader is called", async () => {
@@ -2176,19 +2194,21 @@ describe("context loader failures", () => {
   test("invalid interval strings still propagate", async () => {
     let requests = 0;
     const seed = new Note({ contexts: [contextId], replyTarget: parent });
-    await rejects(collect(
-      {
-        documentLoader: () => {
-          requests++;
-          return Promise.resolve(null);
+    await rejects(
+      collect(
+        {
+          documentLoader: () => {
+            requests++;
+            return Promise.resolve(null);
+          },
         },
-      },
-      seed,
-      {
-        strategies: ["context-auto", "reply-tree"],
-        interval: "not a duration",
-      },
-    ));
+        seed,
+        {
+          strategies: ["context-auto", "reply-tree"],
+          interval: "not a duration",
+        },
+      ),
+    );
     strictEqual(requests, 0);
   });
 });

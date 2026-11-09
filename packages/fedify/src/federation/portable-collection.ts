@@ -23,20 +23,20 @@ const NON_VIEW_PARAMETERS: ReadonlySet<string> = new Set([
  */
 export type PortableCollectionOwnerResolution =
   | {
-    readonly status: "accepted";
-    /** The ID of the portable actor that owns the collection. */
-    readonly ownerId: URL;
-    /** The ID of the collection, without query and fragment. */
-    readonly collectionId: URL;
-  }
+      readonly status: "accepted";
+      /** The ID of the portable actor that owns the collection. */
+      readonly ownerId: URL;
+      /** The ID of the collection, without query and fragment. */
+      readonly collectionId: URL;
+    }
   | {
-    readonly status: "rejected";
-    readonly reason:
-      | "notFound"
-      | "notPortable"
-      | "authorityMismatch"
-      | "collectionMismatch";
-  };
+      readonly status: "rejected";
+      readonly reason:
+        | "notFound"
+        | "notPortable"
+        | "authorityMismatch"
+        | "collectionMismatch";
+    };
 
 /**
  * Checks that a collection requested through the FEP-ef61 gateway endpoint
@@ -59,23 +59,20 @@ export type PortableCollectionOwnerResolution =
  */
 export function resolvePortableCollectionOwner(
   actor: unknown,
-  options:
-    & { readonly authority: string }
-    & (
-      | {
+  options: { readonly authority: string } & (
+    | {
         readonly canonicalId: string;
         readonly property: (actor: Actor) => URL | null;
       }
-      | { readonly portableId: URL }
-    ),
+    | { readonly portableId: URL }
+  ),
 ): PortableCollectionOwnerResolution {
   if (!isActor(actor)) return { status: "rejected", reason: "notFound" };
   // The actor may be identified by a compatible identifier instead of an ap:
   // URI, as FEP-ef61 allows:
   const ownerId = actor.id;
-  const did = ownerId == null || !isPortableId(ownerId)
-    ? null
-    : getPortableDid(ownerId);
+  const did =
+    ownerId == null || !isPortableId(ownerId) ? null : getPortableDid(ownerId);
   if (ownerId == null || did == null) {
     return { status: "rejected", reason: "notPortable" };
   }

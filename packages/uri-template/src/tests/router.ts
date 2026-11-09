@@ -22,9 +22,7 @@ interface RouterRouteResult {
 }
 
 type RouteOptionsInput = {
-  readonly variables?: Readonly<
-    Record<string, Partial<VariableConstraint>>
-  >;
+  readonly variables?: Readonly<Record<string, Partial<VariableConstraint>>>;
   readonly exact?: boolean;
 };
 
@@ -40,8 +38,9 @@ interface RouterConstructor<TPattern> {
   new (options?: RouterTestOptions): RouterInstance<TPattern>;
 }
 
-interface RouterExtendedConstructor<TPattern>
-  extends RouterConstructor<TPattern> {
+interface RouterExtendedConstructor<
+  TPattern,
+> extends RouterConstructor<TPattern> {
   compile(path: Path): TPattern;
   variables(path: Path): Set<string>;
 }
@@ -136,9 +135,8 @@ const createRouterDefinitions = (
   Array.from({ length: count }, (_, index) => createDefinition(index));
 
 const createSampledIndexes = (count: number, sampleCount: number): number[] =>
-  Array.from(
-    { length: sampleCount },
-    (_, index) => Math.floor(index * count / sampleCount),
+  Array.from({ length: sampleCount }, (_, index) =>
+    Math.floor((index * count) / sampleCount),
   );
 
 const padRouterIndex = (index: number): string =>
@@ -157,11 +155,13 @@ export function createRoutesPressureTest(): RouterMemoryPressureSuite {
   return {
     name: "hundreds of routes",
     routeDefinitions,
-    hitPaths: sampledIndexes.map((index) =>
-      `/bulk/group-${index % 16}/items/${padRouterIndex(index)}/value` as Path
+    hitPaths: sampledIndexes.map(
+      (index) =>
+        `/bulk/group-${index % 16}/items/${padRouterIndex(index)}/value` as Path,
     ),
-    missPaths: sampledIndexes.map((index) =>
-      `/bulk/group-${index % 16}/missing/${padRouterIndex(index)}/value` as Path
+    missPaths: sampledIndexes.map(
+      (index) =>
+        `/bulk/group-${index % 16}/missing/${padRouterIndex(index)}/value` as Path,
     ),
     routeName: `bulk${padRouterIndex(511)}`,
   };
@@ -172,10 +172,7 @@ export function createDeepPrefixRouterTest(): RouterMemoryPressureSuite {
     { length: 128 },
     (_, index) => `segment-${padRouterIndex(index)}`,
   );
-  const routeDefinitions = segments.map((
-    _,
-    index,
-  ): RouterRouteDefinition => [
+  const routeDefinitions = segments.map((_, index): RouterRouteDefinition => [
     `/deep/${segments.slice(0, index + 1).join("/")}` as Path,
     `deep${padRouterIndex(index)}`,
   ]);
@@ -203,11 +200,11 @@ export function createDynamicRoutesTest(): RouterMemoryPressureSuite {
   return {
     name: "root-adjacent dynamic routes",
     routeDefinitions,
-    hitPaths: sampledIndexes.map((index) =>
-      `/alice/resource-${padRouterIndex(index)}/value` as Path
+    hitPaths: sampledIndexes.map(
+      (index) => `/alice/resource-${padRouterIndex(index)}/value` as Path,
     ),
-    missPaths: sampledIndexes.map((index) =>
-      `/alice/missing-${padRouterIndex(index)}/value` as Path
+    missPaths: sampledIndexes.map(
+      (index) => `/alice/missing-${padRouterIndex(index)}/value` as Path,
     ),
     routeName: `rootDynamic${padRouterIndex(383)}`,
   };
@@ -250,17 +247,17 @@ export function createRouterAddTest<TPattern>(
 ) => (t: TestContext) => Promise<void> {
   return (
     definitions: readonly RouterRouteDefinition[],
-  ): (t: TestContext) => Promise<void> =>
-  async (t: TestContext): Promise<void> => {
-    const router = new Router();
+  ): ((t: TestContext) => Promise<void>) =>
+    async (t: TestContext): Promise<void> => {
+      const router = new Router();
 
-    for (const [path, name, routeOptions] of definitions) {
-      await t.step(`${path} as ${name}`, () => {
-        equal(router.add(path, name, routeOptions), undefined);
-        equal(router.has(name), true);
-      });
-    }
-  };
+      for (const [path, name, routeOptions] of definitions) {
+        await t.step(`${path} as ${name}`, () => {
+          equal(router.add(path, name, routeOptions), undefined);
+          equal(router.has(name), true);
+        });
+      }
+    };
 }
 
 export function createRouterCompileErrorTest<TPattern>(
@@ -270,19 +267,19 @@ export function createRouterCompileErrorTest<TPattern>(
 ) => (t: TestContext) => Promise<void> {
   return (
     cases: readonly RouterCompileErrorCase[],
-  ): (t: TestContext) => Promise<void> =>
-  async (t: TestContext): Promise<void> => {
-    for (const { name, path, expected } of cases) {
-      await t.step(name, () => {
-        for (const errorName of expected) {
-          throws(
-            () => Router.compile(path as Path),
-            ERROR_CLASSES[errorName],
-          );
-        }
-      });
-    }
-  };
+  ): ((t: TestContext) => Promise<void>) =>
+    async (t: TestContext): Promise<void> => {
+      for (const { name, path, expected } of cases) {
+        await t.step(name, () => {
+          for (const errorName of expected) {
+            throws(
+              () => Router.compile(path as Path),
+              ERROR_CLASSES[errorName],
+            );
+          }
+        });
+      }
+    };
 }
 
 export function createRouterVariablesTest<TPattern>(
@@ -292,15 +289,14 @@ export function createRouterVariablesTest<TPattern>(
 ) => (t: TestContext) => Promise<void> {
   return (
     cases: readonly RouterVariablesCase[],
-  ): (t: TestContext) => Promise<void> =>
-  async (t: TestContext): Promise<void> => {
-    for (const { name, path, expected } of cases) {
-      await t.step(
-        name,
-        () => deepEqual(Router.variables(path), new Set(expected)),
-      );
-    }
-  };
+  ): ((t: TestContext) => Promise<void>) =>
+    async (t: TestContext): Promise<void> => {
+      for (const { name, path, expected } of cases) {
+        await t.step(name, () =>
+          deepEqual(Router.variables(path), new Set(expected)),
+        );
+      }
+    };
 }
 
 export function createRouterRouteTest<TPattern>(
@@ -308,15 +304,13 @@ export function createRouterRouteTest<TPattern>(
 ): (
   routeDefinitions: readonly RouterRouteDefinition[],
   options?: RouterTestOptions,
-) => (
-  cases: readonly RouterRouteCase[],
-) => (t: TestContext) => Promise<void> {
+) => (cases: readonly RouterRouteCase[]) => (t: TestContext) => Promise<void> {
   return (
     routeDefinitions: readonly RouterRouteDefinition[],
     options: RouterTestOptions = {},
-  ): (
+  ): ((
     cases: readonly RouterRouteCase[],
-  ) => (t: TestContext) => Promise<void> => {
+  ) => (t: TestContext) => Promise<void>) => {
     const router = createRouterFromDefinitions(
       Router,
       routeDefinitions,
@@ -325,15 +319,12 @@ export function createRouterRouteTest<TPattern>(
 
     return (
       cases: readonly RouterRouteCase[],
-    ): (t: TestContext) => Promise<void> =>
-    async (t: TestContext): Promise<void> => {
-      for (const { name, path, expected } of cases) {
-        await t.step(
-          name,
-          () => deepEqual(router.route(path), expected),
-        );
-      }
-    };
+    ): ((t: TestContext) => Promise<void>) =>
+      async (t: TestContext): Promise<void> => {
+        for (const { name, path, expected } of cases) {
+          await t.step(name, () => deepEqual(router.route(path), expected));
+        }
+      };
   };
 }
 
@@ -348,9 +339,9 @@ export function createRouterBuildTest<TPattern>(
   return (
     routeDefinitions: readonly RouterRouteDefinition[],
     options: RouterTestOptions = {},
-  ): (
+  ): ((
     cases: readonly RouterBuildTestCase[],
-  ) => (t: TestContext) => Promise<void> => {
+  ) => (t: TestContext) => Promise<void>) => {
     const router = createRouterFromDefinitions(
       Router,
       routeDefinitions,
@@ -359,15 +350,14 @@ export function createRouterBuildTest<TPattern>(
 
     return (
       cases: readonly RouterBuildTestCase[],
-    ): (t: TestContext) => Promise<void> =>
-    async (t: TestContext): Promise<void> => {
-      for (const { name, routeName, values, expected } of cases) {
-        await t.step(
-          name,
-          () => equal(router.build(routeName, values), expected),
-        );
-      }
-    };
+    ): ((t: TestContext) => Promise<void>) =>
+      async (t: TestContext): Promise<void> => {
+        for (const { name, routeName, values, expected } of cases) {
+          await t.step(name, () =>
+            equal(router.build(routeName, values), expected),
+          );
+        }
+      };
   };
 }
 
@@ -378,36 +368,40 @@ export function createRouterCloneTest<TPattern>(
 ) => (t: TestContext) => Promise<void> {
   return (
     suites: readonly RouterCloneTestSuite[],
-  ): (t: TestContext) => Promise<void> =>
-  async (t: TestContext): Promise<void> => {
-    for (const suite of suites) {
-      await t.step(suite.name, () => {
-        const original = new Router(suite.options);
-        for (const [path, name, routeOptions] of suite.routeDefinitions) {
-          original.add(path, name, routeOptions);
-        }
-        const clone = original.clone();
+  ): ((t: TestContext) => Promise<void>) =>
+    async (t: TestContext): Promise<void> => {
+      for (const suite of suites) {
+        await t.step(suite.name, () => {
+          const original = new Router(suite.options);
+          for (const [path, name, routeOptions] of suite.routeDefinitions) {
+            original.add(path, name, routeOptions);
+          }
+          const clone = original.clone();
 
-        for (const [path, name, routeOptions] of suite.clonedRouteDefinitions) {
-          clone.add(path, name, routeOptions);
-        }
-        for (const [, name] of suite.routeDefinitions) {
-          equal(original.has(name), true);
-          equal(clone.has(name), true);
-        }
-        for (const [, name] of suite.clonedRouteDefinitions) {
-          equal(original.has(name), false);
-          equal(clone.has(name), true);
-        }
-        for (const { path, expected } of suite.originalRouteCases) {
-          deepEqual(original.route(path), expected);
-        }
-        for (const { path, expected } of suite.clonedRouteCases) {
-          deepEqual(clone.route(path), expected);
-        }
-      });
-    }
-  };
+          for (const [
+            path,
+            name,
+            routeOptions,
+          ] of suite.clonedRouteDefinitions) {
+            clone.add(path, name, routeOptions);
+          }
+          for (const [, name] of suite.routeDefinitions) {
+            equal(original.has(name), true);
+            equal(clone.has(name), true);
+          }
+          for (const [, name] of suite.clonedRouteDefinitions) {
+            equal(original.has(name), false);
+            equal(clone.has(name), true);
+          }
+          for (const { path, expected } of suite.originalRouteCases) {
+            deepEqual(original.route(path), expected);
+          }
+          for (const { path, expected } of suite.clonedRouteCases) {
+            deepEqual(clone.route(path), expected);
+          }
+        });
+      }
+    };
 }
 
 export function createRouterCompileAndAddBench<TPattern>(
@@ -419,7 +413,7 @@ export function createRouterCompileAndAddBench<TPattern>(
   return (
     routeDefinitions: readonly RouterRouteDefinition[],
     routeName: string,
-  ): () => void => {
+  ): (() => void) => {
     const createRouter = (): RouterInstance<TPattern> =>
       createRouterFromDefinitions(Router, routeDefinitions);
 
@@ -441,11 +435,11 @@ export function createRouterFirstRouteAfterBuildBench<TPattern>(
   return (
     routeDefinitions: readonly RouterRouteDefinition[],
     path: Path,
-  ): () => void =>
-  (): void => {
-    const router = createRouterFromDefinitions(Router, routeDefinitions);
-    consumeRouterRoute(router.route(path));
-  };
+  ): (() => void) =>
+    (): void => {
+      const router = createRouterFromDefinitions(Router, routeDefinitions);
+      consumeRouterRoute(router.route(path));
+    };
 }
 
 export function createRouterRouteHitsBench<TPattern>(
@@ -457,7 +451,7 @@ export function createRouterRouteHitsBench<TPattern>(
   return (
     routeDefinitions: readonly RouterRouteDefinition[],
     paths: readonly Path[],
-  ): () => void => {
+  ): (() => void) => {
     const router = createRouterFromDefinitions(Router, routeDefinitions);
 
     return (): void => {
@@ -477,7 +471,7 @@ export function createRouterRouteMissesBench<TPattern>(
   return (
     routeDefinitions: readonly RouterRouteDefinition[],
     paths: readonly Path[],
-  ): () => void => {
+  ): (() => void) => {
     const router = createRouterFromDefinitions(Router, routeDefinitions);
 
     return (): void => {
@@ -497,7 +491,7 @@ export function createRouterBuildPathsBench<TPattern>(
   return (
     routeDefinitions: readonly RouterRouteDefinition[],
     cases: readonly RouterBuildCase[],
-  ): () => void => {
+  ): (() => void) => {
     const router = createRouterFromDefinitions(Router, routeDefinitions);
 
     return (): void => {

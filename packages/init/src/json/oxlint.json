@@ -7,9 +7,7 @@
     "dist/**",
     "node_modules/**"
   ],
-  "jsPlugins": [
-    "@fedify/lint/oxlint"
-  ],
+  "jsPlugins": ["@fedify/lint/oxlint"],
   "rules": {
     "@fedify/lint/actor-id-mismatch": "error",
     "@fedify/lint/actor-id-required": "error",

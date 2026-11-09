@@ -47,8 +47,13 @@ interface CompatibleKeyEntry {
 }
 
 function isCompatibleKeyEntry(value: unknown): value is CompatibleKeyEntry {
-  return value != null && typeof value === "object" && "key" in value &&
-    "expires" in value && typeof value.expires === "number";
+  return (
+    value != null &&
+    typeof value === "object" &&
+    "key" in value &&
+    "expires" in value &&
+    typeof value.expires === "number"
+  );
 }
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
@@ -93,8 +98,8 @@ export class KvKeyCache implements FetchErrorMetadataCache {
     this.kv = kv;
     this.prefix = prefix;
     this.options = options;
-    this.unavailableKeyTtl = options.unavailableKeyTtl ??
-      Temporal.Duration.from({ minutes: 10 });
+    this.unavailableKeyTtl =
+      options.unavailableKeyTtl ?? Temporal.Duration.from({ minutes: 10 });
     this.keyTtl = options.keyTtl ?? Temporal.Duration.from({ days: 30 });
     this.nullKeys = new Map();
   }
@@ -235,11 +240,11 @@ export class KvKeyCache implements FetchErrorMetadataCache {
       },
       getEntry,
       set: async (keyId, key, options) => {
-        const serialized = key == null
-          ? null
-          : await key.toJsonLd(this.options);
+        const serialized =
+          key == null ? null : await key.toJsonLd(this.options);
         const current = now();
-        let expires = current.epochMilliseconds +
+        let expires =
+          current.epochMilliseconds +
           (key == null ? unavailableKeyTtl : keyTtl);
         if (options?.expires != null) {
           expires = Math.min(expires, options.expires.epochMilliseconds);
@@ -250,11 +255,13 @@ export class KvKeyCache implements FetchErrorMetadataCache {
           await this.kv.delete(entryKey(keyId));
           return undefined;
         }
-        const owner = key == null || options?.owner == null ||
-            new TextEncoder().encode(JSON.stringify(options.owner)).length >
-              MAX_OWNER_BYTES
-          ? undefined
-          : options.owner;
+        const owner =
+          key == null ||
+          options?.owner == null ||
+          new TextEncoder().encode(JSON.stringify(options.owner)).length >
+            MAX_OWNER_BYTES
+            ? undefined
+            : options.owner;
         await this.kv.set(
           entryKey(keyId),
           {
@@ -278,10 +285,14 @@ export class KvKeyCache implements FetchErrorMetadataCache {
     const cached = await this.kv.get(this.#getFetchErrorKey(keyId));
     if (cached == null || typeof cached !== "object") return undefined;
     if (
-      "status" in cached && typeof cached.status === "number" &&
-      "statusText" in cached && typeof cached.statusText === "string" &&
-      "headers" in cached && Array.isArray(cached.headers) &&
-      "body" in cached && typeof cached.body === "string"
+      "status" in cached &&
+      typeof cached.status === "number" &&
+      "statusText" in cached &&
+      typeof cached.statusText === "string" &&
+      "headers" in cached &&
+      Array.isArray(cached.headers) &&
+      "body" in cached &&
+      typeof cached.body === "string"
     ) {
       return {
         status: cached.status,
@@ -292,13 +303,17 @@ export class KvKeyCache implements FetchErrorMetadataCache {
         }),
       };
     } else if (
-      "errorName" in cached && typeof cached.errorName === "string" &&
-      "errorMessage" in cached && typeof cached.errorMessage === "string"
+      "errorName" in cached &&
+      typeof cached.errorName === "string" &&
+      "errorMessage" in cached &&
+      typeof cached.errorMessage === "string"
     ) {
       let error: Error;
       if (
-        "errorType" in cached && cached.errorType === "FetchError" &&
-        "errorUrl" in cached && typeof cached.errorUrl === "string" &&
+        "errorType" in cached &&
+        cached.errorType === "FetchError" &&
+        "errorUrl" in cached &&
+        typeof cached.errorUrl === "string" &&
         URL.canParse(cached.errorUrl)
       ) {
         error = new FetchError(cached.errorUrl);
@@ -306,7 +321,8 @@ export class KvKeyCache implements FetchErrorMetadataCache {
         // stored message already includes it, so restore it verbatim.
         error.message = cached.errorMessage;
       } else if (
-        "errorType" in cached && cached.errorType === "UrlError" &&
+        "errorType" in cached &&
+        cached.errorType === "UrlError" &&
         "errorReason" in cached &&
         (cached.errorReason === "dns" || cached.errorReason === "disallowed")
       ) {
@@ -319,7 +335,8 @@ export class KvKeyCache implements FetchErrorMetadataCache {
       }
       error.name = cached.errorName;
       if (
-        "errorCause" in cached && cached.errorCause != null &&
+        "errorCause" in cached &&
+        cached.errorCause != null &&
         typeof cached.errorCause === "object" &&
         "name" in cached.errorCause &&
         typeof cached.errorCause.name === "string" &&
@@ -375,16 +392,16 @@ export class KvKeyCache implements FetchErrorMetadataCache {
         ...(error.error instanceof FetchError
           ? { errorType: "FetchError", errorUrl: error.error.url.href }
           : error.error instanceof UrlError
-          ? { errorType: "UrlError", errorReason: error.error.reason }
-          : {}),
+            ? { errorType: "UrlError", errorReason: error.error.reason }
+            : {}),
         ...(cause instanceof Error || cause instanceof DOMException
           ? {
-            errorCause: {
-              name: cause.name,
-              message: cause.message,
-              isDomException: cause instanceof DOMException,
-            },
-          }
+              errorCause: {
+                name: cause.name,
+                message: cause.message,
+                isDomException: cause instanceof DOMException,
+              },
+            }
           : {}),
       },
       { ttl: this.unavailableKeyTtl },

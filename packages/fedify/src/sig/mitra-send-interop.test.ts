@@ -9,45 +9,19 @@ import {
 import { assert, assertEquals } from "@std/assert";
 import { encodeHex } from "byte-encodings/hex";
 import serialize from "json-canon";
-import actor from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/actor.json" with {
-  type: "json",
-};
-import captured from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/request.json" with {
-  type: "json",
-};
-import registration from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/registration-response.json" with {
-  type: "json",
-};
-import servedActor from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/served-actor.json" with {
-  type: "json",
-};
-import baselineResponse from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/baseline-gateway-response.json" with {
-  type: "json",
-};
-import tamperedRequest from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/tampered-request.json" with {
-  type: "json",
-};
-import metadata from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/metadata.json" with {
-  type: "json",
-};
-import processed from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/processed-collections.json" with {
-  type: "json",
-};
-import processedNote from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/processed-note.json" with {
-  type: "json",
-};
-import profiles from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/profiles.json" with {
-  type: "json",
-};
-import raw from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/raw-bodies.json" with {
-  type: "json",
-};
-import response from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/response.json" with {
-  type: "json",
-};
-import tamperedResponse from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/tampered-response.json" with {
-  type: "json",
-};
+import actor from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/actor.json" with { type: "json" };
+import captured from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/request.json" with { type: "json" };
+import registration from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/registration-response.json" with { type: "json" };
+import servedActor from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/served-actor.json" with { type: "json" };
+import baselineResponse from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/baseline-gateway-response.json" with { type: "json" };
+import tamperedRequest from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/tampered-request.json" with { type: "json" };
+import metadata from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/metadata.json" with { type: "json" };
+import processed from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/processed-collections.json" with { type: "json" };
+import processedNote from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/processed-note.json" with { type: "json" };
+import profiles from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/profiles.json" with { type: "json" };
+import raw from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/raw-bodies.json" with { type: "json" };
+import response from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/response.json" with { type: "json" };
+import tamperedResponse from "../../test-vectors/fep-ef61/mitra-v5.10.0/send/tampered-response.json" with { type: "json" };
 import { verifyRequestDetailed } from "./http.ts";
 import { doesActorOwnKey } from "./owner.ts";
 import { verifyPortableObjectProof } from "./proof.ts";
@@ -158,8 +132,8 @@ test("Fedify to Mitra v5.10.0 records native registration and worker processing"
   const portableId = fromCompatibleEf61Id(activity.id);
   assert(portableId != null);
   const expectedId = canonicalizePortableUri(portableId.href);
-  const entries = processed.rows.filter((row) =>
-    canonicalizePortableUri(row.object_id) === expectedId
+  const entries = processed.rows.filter(
+    (row) => canonicalizePortableUri(row.object_id) === expectedId,
   );
   assert(entries.some((row) => row.collection_id.endsWith("/actor/inbox")));
   assert(entries.every((row) => row.type === "Create"));
@@ -168,10 +142,10 @@ test("Fedify to Mitra v5.10.0 records native registration and worker processing"
     entries.every((row) => row.collection_id.includes(metadata.recipientDid)),
   );
   const sender = profiles.rows.find((row) =>
-    row.actor_id.includes(metadata.senderDid)
+    row.actor_id.includes(metadata.senderDid),
   );
   const recipient = profiles.rows.find((row) =>
-    row.actor_id.includes(metadata.recipientDid)
+    row.actor_id.includes(metadata.recipientDid),
   );
   assert(sender != null && recipient != null);
   assertEquals(sender.has_portable_account, false);
@@ -184,10 +158,12 @@ test("Fedify to Mitra v5.10.0 records native registration and worker processing"
 test("Fedify to Mitra v5.10.0 rejects a tampered RFC 9421 HTTP signature", async () => {
   assertEquals(tamperedResponse.status, 401);
   assertEquals(
-    (await verifyRequestDetailed(
-      request(tamperedRequest.headers as [string, string][]),
-      options,
-    )).verified,
+    (
+      await verifyRequestDetailed(
+        request(tamperedRequest.headers as [string, string][]),
+        options,
+      )
+    ).verified,
     false,
   );
 });

@@ -24,14 +24,18 @@ export function getPropOr<T extends PropertyKey, V>(
 
 type PropOr<T extends PropertyKey, S, V> = T extends keyof S ? S[T] : V;
 
-export const eq = <T, S extends T>(value: S) => (other: T): boolean =>
-  value === other;
+export const eq =
+  <T, S extends T>(value: S) =>
+  (other: T): boolean =>
+    value === other;
 
 export const getArticle = (word: string): string =>
   /^[aeiou]/i.test(word) ? "an" : "a";
 
-export const endsWith = (suffix: string) => (str: string): boolean =>
-  str.endsWith(suffix);
+export const endsWith =
+  (suffix: string) =>
+  (str: string): boolean =>
+    str.endsWith(suffix);
 
 export const replace: {
   (searchValue: string | RegExp, replaceValue: string): (str: string) => string;
@@ -39,16 +43,17 @@ export const replace: {
     searchValue: string | RegExp,
     replacer: (substring: string, ...args: unknown[]) => string,
   ): (str: string) => string;
-} = (
-  searchValue: string | RegExp,
-  replaceValue: string | ((substring: string, ...args: unknown[]) => string),
-): (str: string) => string =>
-(str: string): string =>
-  str.replace(
-    searchValue,
-    // @ts-ignore tsc cannot infer the type here
-    replaceValue,
-  );
+} =
+  (
+    searchValue: string | RegExp,
+    replaceValue: string | ((substring: string, ...args: unknown[]) => string),
+  ): ((str: string) => string) =>
+  (str: string): string =>
+    str.replace(
+      searchValue,
+      // @ts-ignore tsc cannot infer the type here
+      replaceValue,
+    );
 
 export function cases<T1, T2, R1, R2>(
   pred: <T extends T1 | T2>(value: T) => value is T1 & T,
@@ -70,5 +75,5 @@ export function cases<T, R>(
   ifTrue: (value: T) => R,
   ifFalse: (value: T) => R,
 ): (value: T) => R {
-  return (value: T): R => pred(value) ? ifTrue(value) : ifFalse(value);
+  return (value: T): R => (pred(value) ? ifTrue(value) : ifFalse(value));
 }

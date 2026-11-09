@@ -15,7 +15,7 @@ if (!actor) {
   return Astro.redirect("/");
 }
 
-const user = await actor.toJsonLd() as {
+const user = (await actor.toJsonLd()) as {
   icon: { url: string };
   name: string;
   preferredUsername: string;
@@ -38,7 +38,9 @@ const host = new URL(user.url).host;
       </div>
       <div class="user-info">
         <h1 class="user-name">{user.name}</h1>
-        <p class="user-handle">@{user.preferredUsername}@{host}</p>
+        <p class="user-handle">
+          @{user.preferredUsername}@{host}
+        </p>
         {user.summary && <p class="user-bio">{user.summary}</p>}
       </div>
     </div>
@@ -51,15 +53,22 @@ const host = new URL(user.url).host;
             <span class="info-label">Information</span>
             <span class="info-value">
               This profile is demo for
-              <a href="https://fedify.dev" class="fedify-anchor" target="_blank">
+              <a
+                href="https://fedify.dev"
+                class="fedify-anchor"
+                target="_blank"
+              >
                 Fedify
-              </a>&ndash;<a href="https://astro.build/">
+              </a>
+              &ndash;
+              <a href="https://astro.build/">
                 <img
                   src="/astro-horizonal.svg"
                   alt="Astro"
                   class="astro-inline-logo"
                 />
-              </a> integration.
+              </a>{" "}
+              integration.
             </span>
           </div>
         </div>

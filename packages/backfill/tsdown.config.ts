@@ -17,8 +17,9 @@ export default [
     deps: { neverBundle: ["@fedify/vocab"] },
   }),
   defineConfig({
-    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
-      .map((f) => f.replaceAll(sep, "/")),
+    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`))).map((f) =>
+      f.replaceAll(sep, "/"),
+    ),
     format: ["esm", "cjs"],
     platform: "node",
     outExtensions({ format }) {

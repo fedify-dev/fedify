@@ -22,7 +22,7 @@ export default async function runTestInit(
   await checkRequiredDbs(data);
   logTestDir(data);
   let success = true;
-  if (data.dryRun) success = await runTests(true)(data) && success;
-  if (data.hydRun) success = await runTests(false)(data) && success;
+  if (data.dryRun) success = (await runTests(true)(data)) && success;
+  if (data.hydRun) success = (await runTests(false)(data)) && success;
   return success;
 }

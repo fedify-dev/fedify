@@ -53,16 +53,13 @@ test("sortTopologically()", () => {
       defaultContext: {},
     },
   });
-  deepStrictEqual(
-    sorted,
-    [
-      "https://example.com/foo",
-      "https://example.com/bar",
-      "https://example.com/qux",
-      "https://example.com/quux",
-      "https://example.com/baz",
-    ],
-  );
+  deepStrictEqual(sorted, [
+    "https://example.com/foo",
+    "https://example.com/bar",
+    "https://example.com/qux",
+    "https://example.com/quux",
+    "https://example.com/baz",
+  ]);
 });
 
 test("generateClasses() imports the browser-safe jsonld entrypoint", async () => {
@@ -133,30 +130,32 @@ test("getDataCheck() uses canParseDecimal() for xsd:decimal", () => {
 
 test("generateClasses() rejects xsd:string and xsd:decimal unions", async () => {
   await rejects(
-    Array.fromAsync(generateClasses({
-      "https://example.com/measure": {
-        name: "Measure",
-        uri: "https://example.com/measure",
-        compactName: "Measure",
-        entity: false,
-        description: "A measure.",
-        properties: [
-          {
-            singularName: "amount",
-            functional: true,
-            compactName: "amount",
-            uri: "https://example.com/amount",
-            description: "An exact decimal amount.",
-            range: [
-              "http://www.w3.org/2001/XMLSchema#decimal",
-              "http://www.w3.org/2001/XMLSchema#string",
-            ],
-          },
-        ],
-        defaultContext:
-          "https://example.com/context" as TypeSchema["defaultContext"],
-      },
-    })),
+    Array.fromAsync(
+      generateClasses({
+        "https://example.com/measure": {
+          name: "Measure",
+          uri: "https://example.com/measure",
+          compactName: "Measure",
+          entity: false,
+          description: "A measure.",
+          properties: [
+            {
+              singularName: "amount",
+              functional: true,
+              compactName: "amount",
+              uri: "https://example.com/amount",
+              description: "An exact decimal amount.",
+              range: [
+                "http://www.w3.org/2001/XMLSchema#decimal",
+                "http://www.w3.org/2001/XMLSchema#string",
+              ],
+            },
+          ],
+          defaultContext:
+            "https://example.com/context" as TypeSchema["defaultContext"],
+        },
+      }),
+    ),
     /cannot have both xsd:string and xsd:decimal in its range/,
   );
 });
@@ -278,18 +277,16 @@ async function getEntityTypeFixtureCode() {
 
 async function changeNodeSnapshotPath() {
   const { snapshot } = await import("node:test");
-  snapshot.setResolveSnapshotPath(
-    (path) => {
-      if (!path) {
-        throw new Error("path is undefined");
-      }
-      return join(
-        dirname(path),
-        "__snapshots__",
-        basename(path.replace(extname(path), ".ts")) + ".node.snap",
-      );
-    },
-  );
+  snapshot.setResolveSnapshotPath((path) => {
+    if (!path) {
+      throw new Error("path is undefined");
+    }
+    return join(
+      dirname(path),
+      "__snapshots__",
+      basename(path.replace(extname(path), ".ts")) + ".node.snap",
+    );
+  });
   snapshot.setDefaultSnapshotSerializers([
     (value) => JSON.stringify(value, null, 2),
     (value) => value.replaceAll("\\n", "\n"),

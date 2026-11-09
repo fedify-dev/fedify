@@ -55,17 +55,22 @@ function snapshotDeliveryIdentity(
   identity: SerializedOutboundDelivery,
 ): SerializedOutboundDelivery {
   if (
-    identity == null || typeof identity.deliveryId !== "string" ||
+    identity == null ||
+    typeof identity.deliveryId !== "string" ||
     identity.deliveryId.length < 1 ||
     typeof identity.destinationInbox !== "string" ||
     identity.destinationInbox.length < 1 ||
     identity.broadcast == null ||
-    !(identity.broadcast.type === "unknown" ||
-      identity.broadcast.type === "known" &&
+    !(
+      identity.broadcast.type === "unknown" ||
+      (identity.broadcast.type === "known" &&
         typeof identity.broadcast.id === "string" &&
-        identity.broadcast.id.length > 0) ||
-    !(identity.portableInbox == null ||
-      typeof identity.portableInbox === "string")
+        identity.broadcast.id.length > 0)
+    ) ||
+    !(
+      identity.portableInbox == null ||
+      typeof identity.portableInbox === "string"
+    )
   ) {
     throw new TypeError(
       "Invalid outbound delivery identity in queue metadata.",
@@ -93,11 +98,9 @@ async function legacyFanoutIdentity(
   // A legacy task establishes destination obligations, not its originating
   // invocation. JSON tuple encoding keeps different task/destination pairs
   // unambiguous; hashing keeps the derived identity opaque and bounded.
-  const bytes = new TextEncoder().encode(JSON.stringify([
-    "fedify-legacy-fanout-delivery",
-    taskId,
-    inbox,
-  ]));
+  const bytes = new TextEncoder().encode(
+    JSON.stringify(["fedify-legacy-fanout-delivery", taskId, inbox]),
+  );
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return {
     broadcast: { type: "unknown" },
@@ -120,9 +123,8 @@ async function notifyObserver<
 ): Promise<void> {
   if (callback == null) return;
   try {
-    await withContext(
-      sourceLogContext(event.provenance),
-      () => callback(context, event),
+    await withContext(sourceLogContext(event.provenance), () =>
+      callback(context, event),
     );
   } catch (error) {
     logObserverFailure(unit, error);
@@ -158,10 +160,12 @@ function snapshotTrace(
   const spanContext = span.spanContext();
   // A no-op tracer can return the parent's context instead of creating a span.
   if (
-    !isSpanContextValid(spanContext) || spanContext.isRemote ||
-    spanContext.traceId === parentSpanContext?.traceId &&
-      spanContext.spanId === parentSpanContext.spanId
-  ) return undefined;
+    !isSpanContextValid(spanContext) ||
+    spanContext.isRemote ||
+    (spanContext.traceId === parentSpanContext?.traceId &&
+      spanContext.spanId === parentSpanContext.spanId)
+  )
+    return undefined;
   return Object.freeze({
     traceId: spanContext.traceId,
     spanId: spanContext.spanId,
@@ -266,12 +270,14 @@ export class OutboundAttemptObservation {
     const snapshot = Object.freeze({
       url: request.url,
       method: request.method,
-      ...(this.headerPolicies.requestHeaders == null ? {} : {
-        headers: snapshotHeaders(
-          request.headers,
-          this.headerPolicies.requestHeaders,
-        ),
-      }),
+      ...(this.headerPolicies.requestHeaders == null
+        ? {}
+        : {
+            headers: snapshotHeaders(
+              request.headers,
+              this.headerPolicies.requestHeaders,
+            ),
+          }),
     });
     let response: Response;
     try {
@@ -293,37 +299,45 @@ export class OutboundAttemptObservation {
     });
     const responseSnapshot = Object.freeze({
       ...metadata,
-      ...(this.headerPolicies.responseHeaders == null ? {} : {
-        headers: snapshotHeaders(
-          response.headers,
-          this.headerPolicies.responseHeaders,
-        ),
-      }),
-    });
-    const bodyCapture = this.bodyCapture == null
-      ? undefined
-      : await captureResponseBody(
-        response,
-        this.bodyCapture,
-        (body, signal) =>
-          this.bodyCapture!.onBody({
-            attemptId: this.#attemptId,
-            inboxUrl: this.inboxUrl,
-            exchangeIndex,
-            observedAt: Temporal.Now.instant().epochMilliseconds,
-            request: snapshot,
-            response: responseSnapshot,
-            body,
-            signal,
+      ...(this.headerPolicies.responseHeaders == null
+        ? {}
+        : {
+            headers: snapshotHeaders(
+              response.headers,
+              this.headerPolicies.responseHeaders,
+            ),
           }),
-      );
+    });
+    const bodyCapture =
+      this.bodyCapture == null
+        ? undefined
+        : await captureResponseBody(
+            response,
+            this.bodyCapture,
+            (body, signal) =>
+              this.bodyCapture!.onBody({
+                attemptId: this.#attemptId,
+                inboxUrl: this.inboxUrl,
+                exchangeIndex,
+                observedAt: Temporal.Now.instant().epochMilliseconds,
+                request: snapshot,
+                response: responseSnapshot,
+                body,
+                signal,
+              }),
+          );
     if (bodyCapture?.type === "failed" && bodyCapture.phase === "observer") {
       logObserverFailure("response-body", bodyCapture.error);
     }
-    await this.#exchange(exchangeIndex, snapshot, {
-      type: "response",
-      response: responseSnapshot,
-    }, bodyCapture);
+    await this.#exchange(
+      exchangeIndex,
+      snapshot,
+      {
+        type: "response",
+        response: responseSnapshot,
+      },
+      bodyCapture,
+    );
     return response;
   }
 
@@ -333,15 +347,17 @@ export class OutboundAttemptObservation {
     outcome: OutboundHttpExchangeReport["outcome"],
     bodyCapture?: OutboundBodyCaptureSummary,
   ): Promise<void> {
-    return this.reportExchange?.({
-      attemptId: this.#attemptId,
-      inboxUrl: this.inboxUrl,
-      exchangeIndex,
-      observedAt: Temporal.Now.instant().epochMilliseconds,
-      request,
-      outcome: Object.freeze(outcome),
-      ...(bodyCapture == null ? {} : { bodyCapture }),
-    }) ?? Promise.resolve();
+    return (
+      this.reportExchange?.({
+        attemptId: this.#attemptId,
+        inboxUrl: this.inboxUrl,
+        exchangeIndex,
+        observedAt: Temporal.Now.instant().epochMilliseconds,
+        request,
+        outcome: Object.freeze(outcome),
+        ...(bodyCapture == null ? {} : { bodyCapture }),
+      }) ?? Promise.resolve()
+    );
   }
 
   response(response: Response, disposition: "final" | "intermediate"): void {
@@ -364,8 +380,8 @@ export class OutboundAttemptObservation {
 
   unknown(error: unknown): void {
     if (
-      !this.#failures.some((failure) =>
-        failure.error === error || failure.phase !== "cleanup"
+      !this.#failures.some(
+        (failure) => failure.error === error || failure.phase !== "cleanup",
       )
     ) {
       this.failure({ kind: "unknown", phase: "unknown", error });
@@ -390,11 +406,13 @@ export class OutboundAttemptObservation {
       (this.#response.metadata.status < 200 ||
         this.#response.metadata.status >= 300)
     ) {
-      failure = this.#failures.find((failure) => failure.kind === "http") ??
+      failure =
+        this.#failures.find((failure) => failure.kind === "http") ??
         Object.freeze({ kind: "http", phase: "response" });
       diagnostics = this.#failures.filter((failure) => failure.kind !== "http");
     } else {
-      failure = this.#failures.find((failure) => failure.phase !== "cleanup") ??
+      failure =
+        this.#failures.find((failure) => failure.phase !== "cleanup") ??
         this.#failures[0] ??
         Object.freeze({ kind: "unknown", phase: "unknown", error });
       diagnostics = this.#failures.filter((item) => item !== failure);
@@ -498,14 +516,16 @@ export class OutboundWorkerObservation<TContextData> {
     identity?: SerializedOutboundDelivery,
   ): void {
     this.attemptStarted();
-    this.#actions?.push(Object.freeze({
-      type: "handoff",
-      action: "direct",
-      inboxUrls: Object.freeze([inboxUrl]),
-      ...(identity == null
-        ? {}
-        : { delivery: snapshotDeliveryIdentity(identity) }),
-    }));
+    this.#actions?.push(
+      Object.freeze({
+        type: "handoff",
+        action: "direct",
+        inboxUrls: Object.freeze([inboxUrl]),
+        ...(identity == null
+          ? {}
+          : { delivery: snapshotDeliveryIdentity(identity) }),
+      }),
+    );
   }
 
   async enqueueChildren(
@@ -532,12 +552,14 @@ export class OutboundWorkerObservation<TContextData> {
       await enqueue();
     } catch (error) {
       for (const fact of facts) {
-        this.#actions.push(Object.freeze({
-          type: "action-failed",
-          ...fact,
-          acceptance: "unknown" as const,
-          error,
-        }));
+        this.#actions.push(
+          Object.freeze({
+            type: "action-failed",
+            ...fact,
+            acceptance: "unknown" as const,
+            error,
+          }),
+        );
       }
       throw error;
     }
@@ -569,13 +591,13 @@ export class OutboundWorkerObservation<TContextData> {
       ...(preparationFailures == null || preparationFailures.length === 0
         ? {}
         : {
-          preparationFailures: Object.freeze(
-            [...preparationFailures],
-          ),
-        }),
-      ...(message.gatewayNotBefore == null ? {} : {
-        notBefore: Object.freeze({ ...message.gatewayNotBefore }),
-      }),
+            preparationFailures: Object.freeze([...preparationFailures]),
+          }),
+      ...(message.gatewayNotBefore == null
+        ? {}
+        : {
+            notBefore: Object.freeze({ ...message.gatewayNotBefore }),
+          }),
     };
     try {
       await enqueue();
@@ -606,10 +628,8 @@ export class OutboundWorkerObservation<TContextData> {
         ...(preparationFailures == null || preparationFailures.length === 0
           ? {}
           : {
-            preparationFailures: Object.freeze(
-              [...preparationFailures],
-            ),
-          }),
+              preparationFailures: Object.freeze([...preparationFailures]),
+            }),
       }),
     );
   }
@@ -638,7 +658,7 @@ export class OutboundWorkerObservation<TContextData> {
   }
 
   getContext(): Context<TContextData> {
-    return this.#currentContext ??= this.context();
+    return (this.#currentContext ??= this.context());
   }
 
   useContext(context: Context<TContextData>): void {
@@ -683,10 +703,10 @@ export class OutboundWorkerObservation<TContextData> {
           !Object.is(this.#preparationFailure.error, error)
           ? { type: "failed", error }
           : {
-            type: "preparation-failed",
-            failure: this.#preparationFailure,
-            error,
-          },
+              type: "preparation-failed",
+              failure: this.#preparationFailure,
+              error,
+            },
       );
       throw error;
     }
@@ -706,9 +726,13 @@ export class OutboundWorkerObservation<TContextData> {
           ...(this.#delivery == null ? {} : { delivery: this.#delivery }),
           attemptsStarted: this.#attemptsStarted,
           actions: Object.freeze([...(this.#actions ?? [])]),
-          ...(this.#preparationFailures.length === 0 ? {} : {
-            preparationFailures: Object.freeze([...this.#preparationFailures]),
-          }),
+          ...(this.#preparationFailures.length === 0
+            ? {}
+            : {
+                preparationFailures: Object.freeze([
+                  ...this.#preparationFailures,
+                ]),
+              }),
           observedAt,
           ...(this.#trace == null ? {} : { trace: this.#trace }),
           provenance: this.provenance,
@@ -733,12 +757,9 @@ export class OutboundAttemptObserver<TContextData> {
     readonly identity: AttemptIdentity,
     readonly provenance: OutboundProvenance,
     queue?: OutboundAttemptReport["queue"],
-    readonly onHttpExchange: OutboundObservers<TContextData>["onHttpExchange"] =
-      undefined,
+    readonly onHttpExchange: OutboundObservers<TContextData>["onHttpExchange"] = undefined,
     readonly headerPolicies: HeaderPolicies = {},
-    readonly bodyCapture: OutboundObservers<
-      TContextData
-    >["responseBodyCapture"] = undefined,
+    readonly bodyCapture: OutboundObservers<TContextData>["responseBodyCapture"] = undefined,
   ) {
     this.#queue = queue == null ? undefined : Object.freeze({ ...queue });
   }
@@ -773,9 +794,11 @@ export class OutboundAttemptObserver<TContextData> {
 
   startAttempt(inboxUrl: string): OutboundAttemptObservation | undefined {
     if (
-      this.callback == null && this.onHttpExchange == null &&
+      this.callback == null &&
+      this.onHttpExchange == null &&
       this.bodyCapture == null
-    ) return undefined;
+    )
+      return undefined;
     const context = this.context();
     return new OutboundAttemptObservation(
       inboxUrl,
@@ -808,24 +831,24 @@ export class OutboundAttemptObserver<TContextData> {
       this.onHttpExchange == null && this.bodyCapture == null
         ? {}
         : this.headerPolicies,
-      this.bodyCapture == null ? undefined : {
-        ...this.bodyCapture,
-        onBody: (event) =>
-          withContext(
-            sourceLogContext(this.provenance),
-            () =>
-              this.bodyCapture!.onBody(
-                context,
-                Object.freeze({
-                  ...this.identity,
-                  ...event,
-                  ...(this.#queue == null ? {} : { queue: this.#queue }),
-                  provenance: this.provenance,
-                  local: snapshotLocalContext(context),
-                }),
+      this.bodyCapture == null
+        ? undefined
+        : {
+            ...this.bodyCapture,
+            onBody: (event) =>
+              withContext(sourceLogContext(this.provenance), () =>
+                this.bodyCapture!.onBody(
+                  context,
+                  Object.freeze({
+                    ...this.identity,
+                    ...event,
+                    ...(this.#queue == null ? {} : { queue: this.#queue }),
+                    provenance: this.provenance,
+                    local: snapshotLocalContext(context),
+                  }),
+                ),
               ),
-          ),
-      },
+          },
       this.callback != null && this.headerPolicies.senderPayload === true,
     );
   }
@@ -865,7 +888,8 @@ class OutboundDeliveryObservation<TContextData> {
     this.#plan = Object.freeze({
       actorIds: Object.freeze(Array.from(destination.actorIds)),
       sharedInbox: destination.sharedInbox,
-      mode: destination.mode ??
+      mode:
+        destination.mode ??
         (destination.portableInbox == null ? "ordinary" : "portable-fallback"),
     });
   }
@@ -994,9 +1018,11 @@ export class OutboundBroadcastObservation<TContextData> {
     parentSpanContext?: SpanContext,
   ): Promise<OutboundBroadcastObservation<TContextData> | undefined> {
     if (
-      observers.onDelivery == null && observers.onAttempt == null &&
+      observers.onDelivery == null &&
+      observers.onAttempt == null &&
       observers.onHttpExchange == null &&
-      observers.responseBodyCapture == null && observers.onWorker == null &&
+      observers.responseBodyCapture == null &&
+      observers.onWorker == null &&
       !Object.values(message.inboxes).some((entry) => entry.outbound != null)
     ) {
       return undefined;
@@ -1118,7 +1144,7 @@ export class OutboundBroadcastObservation<TContextData> {
             type: "enqueue-failed",
             acceptance: "unknown",
             error,
-          })
+          }),
         ),
       );
       throw error;
@@ -1130,7 +1156,7 @@ export class OutboundBroadcastObservation<TContextData> {
           type: "enqueued",
           queue,
           queueMessageId,
-        })
+        }),
       ),
     );
     return result;
@@ -1167,21 +1193,27 @@ export class OutboundBroadcastObservation<TContextData> {
   }
 
   prepared(preparedFor: "fanout" | "delivery"): Promise<void> {
-    return this.#finish(Object.freeze({
-      type: "prepared",
-      preparedFor,
-      destinationCount: this.#destinationCount,
-    }));
+    return this.#finish(
+      Object.freeze({
+        type: "prepared",
+        preparedFor,
+        destinationCount: this.#destinationCount,
+      }),
+    );
   }
 
   skipped(
-    reason: Extract<OutboundPreparationResult, { type: "skipped" }>["reason"] =
-      "no-destinations",
+    reason: Extract<
+      OutboundPreparationResult,
+      { type: "skipped" }
+    >["reason"] = "no-destinations",
   ): Promise<void> {
-    return this.#finish(Object.freeze({
-      type: "skipped",
-      reason,
-    }));
+    return this.#finish(
+      Object.freeze({
+        type: "skipped",
+        reason,
+      }),
+    );
   }
 
   async run<TResult>(
@@ -1191,12 +1223,14 @@ export class OutboundBroadcastObservation<TContextData> {
     ) => Promise<TResult>,
   ): Promise<TResult> {
     if (this.#broadcast.type === "known") {
-      await this.#notify(Object.freeze({
-        broadcastId: this.#broadcast.id,
-        operation: this.operation,
-        stage: "started",
-        activity: this.#activity,
-      }));
+      await this.#notify(
+        Object.freeze({
+          broadcastId: this.#broadcast.id,
+          operation: this.operation,
+          stage: "started",
+          activity: this.#activity,
+        }),
+      );
     }
     try {
       return await send(this, this.provenance);
@@ -1212,31 +1246,33 @@ export class OutboundBroadcastObservation<TContextData> {
       phase: this.#phase,
       error,
     };
-    return this.#finish(Object.freeze({
-      type: "failed",
-      failure: Object.freeze(failure),
-      planning: this.#planning,
-      plannedDestinationCount: this.#destinationCount,
-    }));
+    return this.#finish(
+      Object.freeze({
+        type: "failed",
+        failure: Object.freeze(failure),
+        planning: this.#planning,
+        plannedDestinationCount: this.#destinationCount,
+      }),
+    );
   }
 
   async #finish(result: OutboundPreparationResult): Promise<void> {
     if (this.#finished) return;
     this.#finished = true;
     if (this.#broadcast.type === "known") {
-      await this.#notify(Object.freeze({
-        broadcastId: this.#broadcast.id,
-        operation: this.operation,
-        stage: "preparation-finished",
-        result,
-        activity: this.#activity,
-      }));
+      await this.#notify(
+        Object.freeze({
+          broadcastId: this.#broadcast.id,
+          operation: this.operation,
+          stage: "preparation-finished",
+          result,
+          activity: this.#activity,
+        }),
+      );
     }
   }
 
-  #notify(
-    event: WithoutSource<OutboundBroadcastEvent>,
-  ): Promise<void> {
+  #notify(event: WithoutSource<OutboundBroadcastEvent>): Promise<void> {
     return notifyObserver(
       this.context,
       this.#onBroadcast,
@@ -1282,8 +1318,10 @@ export function observeOutboundBroadcast<TContextData, TResult>(
   };
   return withContext(sourceLogContext(provenance), () => {
     if (
-      observers.onBroadcast == null && observers.onDelivery == null &&
-      observers.onAttempt == null && observers.onHttpExchange == null &&
+      observers.onBroadcast == null &&
+      observers.onDelivery == null &&
+      observers.onAttempt == null &&
+      observers.onHttpExchange == null &&
       observers.responseBodyCapture == null
     ) {
       return execute();

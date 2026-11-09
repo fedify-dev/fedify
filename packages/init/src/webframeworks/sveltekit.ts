@@ -33,13 +33,14 @@ const sveltekitDescription: WebFrameworkDescription = {
     federationFile: "src/lib/federation.ts",
     loggingFile: "src/lib/logging.ts",
     testFile: "scripts/smoke.test.ts",
-    env: testMode ? { HOST: "127.0.0.1" } : {} as Record<string, string>,
+    env: testMode ? { HOST: "127.0.0.1" } : ({} as Record<string, string>),
     files: {
       "src/hooks.server.ts": await readTemplate("sveltekit/hooks.server.ts"),
     },
-    tasks: pmToRt(pm) === "deno"
-      ? { test: getTestTask("deno") }
-      : { ...TASKS, test: getTestTask(pm) },
+    tasks:
+      pmToRt(pm) === "deno"
+        ? { test: getTestTask("deno") }
+        : { ...TASKS, test: getTestTask(pm) },
     instruction: getInstruction(pm, 5173),
   }),
 };
@@ -70,10 +71,10 @@ const getSvelteKitInitCommand = (pm: PackageManager): string[] =>
   pm === "bun"
     ? ["bunx", "sv", "create"]
     : pm === "deno"
-    ? ["deno", "run", "-A", "npm:sv", "create"]
-    : pm === "npm"
-    ? ["npx", "sv", "create"]
-    : [pm, "dlx", "sv", "create"];
+      ? ["deno", "run", "-A", "npm:sv", "create"]
+      : pm === "npm"
+        ? ["npx", "sv", "create"]
+        : [pm, "dlx", "sv", "create"];
 
 const TASKS = {
   "dev": "dotenvx run -- vite dev",

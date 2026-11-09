@@ -69,10 +69,7 @@ test("createHashlink() and parseHashlink() round-trip simple hashlinks", () => {
     ),
   );
   const base64Hashlink = createHashlink(base64DigestMultibase);
-  equal(
-    base64Hashlink,
-    "hl:mEiD//////////////////////////////////////////w",
-  );
+  equal(base64Hashlink, "hl:mEiD//////////////////////////////////////////w");
   deepStrictEqual(parseHashlink(base64Hashlink), {
     digestMultibase: base64DigestMultibase,
   });

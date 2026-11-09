@@ -148,36 +148,40 @@ test("outbound observation timestamps snapshot each boundary and refresh on fano
       await observation.delivery(otherInbox)!.failed(new Error("local setup"));
       await observation.prepared("delivery");
     });
-    deepStrictEqual(events.map((event) => event.stage), [
-      "started",
-      "planned",
-      "planned",
-      "handoff",
-      "preparation-failed",
-      "preparation-finished",
-    ]);
-    deepStrictEqual(timestamps, [
-      1_800_000_000_000,
-      1_800_000_001_000,
-      1_800_000_002_000,
-      1_800_000_003_000,
-      1_800_000_004_000,
-      1_800_000_005_000,
-    ]);
+    deepStrictEqual(
+      events.map((event) => event.stage),
+      [
+        "started",
+        "planned",
+        "planned",
+        "handoff",
+        "preparation-failed",
+        "preparation-finished",
+      ],
+    );
+    deepStrictEqual(
+      timestamps,
+      [
+        1_800_000_000_000, 1_800_000_001_000, 1_800_000_002_000,
+        1_800_000_003_000, 1_800_000_004_000, 1_800_000_005_000,
+      ],
+    );
     const identity = observation.continuation(inbox)!.outbound;
     strictEqual("observedAt" in identity, false);
-    const message: FanoutMessage = JSON.parse(JSON.stringify({
-      type: "fanout",
-      id: crypto.randomUUID(),
-      baseUrl: "https://example.com/",
-      keys: [],
-      inboxes: {
-        [inbox]: { actorIds: [], sharedInbox: false, outbound: identity },
-      },
-      activity: {},
-      activityType: Create.typeId.href,
-      traceContext: {},
-    }));
+    const message: FanoutMessage = JSON.parse(
+      JSON.stringify({
+        type: "fanout",
+        id: crypto.randomUUID(),
+        baseUrl: "https://example.com/",
+        keys: [],
+        inboxes: {
+          [inbox]: { actorIds: [], sharedInbox: false, outbound: identity },
+        },
+        activity: {},
+        activityType: Create.typeId.href,
+        traceContext: {},
+      }),
+    );
     // Replaying the same task preserves grouping, but observes a new instant.
     for (let replay = 0; replay < 2; replay++) {
       now += 60_000;
@@ -198,11 +202,14 @@ test("outbound observation timestamps snapshot each boundary and refresh on fano
       strictEqual(event.provenance, events[0].provenance);
       deepStrictEqual(event.local, events[0].local);
     }
-    deepStrictEqual(timestamps.slice(6), [
-      1_800_000_066_000,
-      1_800_000_127_000,
-    ]);
-    deepStrictEqual(events.map((event) => event.observedAt), timestamps);
+    deepStrictEqual(
+      timestamps.slice(6),
+      [1_800_000_066_000, 1_800_000_127_000],
+    );
+    deepStrictEqual(
+      events.map((event) => event.observedAt),
+      timestamps,
+    );
     strictEqual("observedAt" in message.inboxes[inbox].outbound!, false);
   } finally {
     Temporal.Now.instant = originalNow;
@@ -244,17 +251,17 @@ test("outbound exchange-only observers await snapshots across unsigned worker re
   const data = { label: "worker" };
   const next = new URL("/next", message.inbox).href;
   const bodies: unknown[] = [];
-  fetchMock.mockGlobal()
+  fetchMock
+    .mockGlobal()
     .post(message.inbox, (call) => {
       bodies.push(JSON.parse(String(call.options.body)));
       return { status: 303, headers: { Location: next } };
     })
     .get(next, 202);
   let settled = false;
-  const processing = federation.processQueuedTask(data, message)
-    .finally(() => {
-      settled = true;
-    });
+  const processing = federation.processQueuedTask(data, message).finally(() => {
+    settled = true;
+  });
   try {
     await observing;
     strictEqual(settled, false);
@@ -275,11 +282,17 @@ test("outbound exchange-only observers await snapshots across unsigned worker re
     strictEqual(exchanges.length, 2);
     deepStrictEqual(contexts, [data, data]);
     deepStrictEqual(bodies, [message.activity]);
-    deepStrictEqual(exchanges.map((report) => report.exchangeIndex), [0, 1]);
-    deepStrictEqual(exchanges.map((report) => report.request), [
-      { url: message.inbox, method: "POST" },
-      { url: next, method: "GET" },
-    ]);
+    deepStrictEqual(
+      exchanges.map((report) => report.exchangeIndex),
+      [0, 1],
+    );
+    deepStrictEqual(
+      exchanges.map((report) => report.request),
+      [
+        { url: message.inbox, method: "POST" },
+        { url: next, method: "GET" },
+      ],
+    );
     strictEqual(exchanges[0].attemptId, exchanges[1].attemptId);
     for (const [index, report] of exchanges.entries()) {
       strictEqual(report.deliveryId, message.outbound!.deliveryId);
@@ -307,17 +320,15 @@ test("outbound exchange-only observers await snapshots across unsigned worker re
 });
 
 test("outbound unsigned exchanges report only actual submissions and retain received responses", async (t) => {
-  for (
-    const phase of [
-      "http",
-      "request",
-      "policy",
-      "serialization",
-      "redirect-policy",
-      "redirect-cleanup",
-      "final-cleanup",
-    ] as const
-  ) {
+  for (const phase of [
+    "http",
+    "request",
+    "policy",
+    "serialization",
+    "redirect-policy",
+    "redirect-cleanup",
+    "final-cleanup",
+  ] as const) {
     await t.step(phase, async () => {
       const federation = createFederation<void>(options);
       const ctx = federation.createContext(
@@ -326,15 +337,19 @@ test("outbound unsigned exchanges report only actual submissions and retain rece
       );
       const exchanges: OutboundHttpExchangeReport[] = [];
       const attempts: OutboundAttemptReport[] = [];
-      const observation = new OutboundBroadcastObservation(ctx, {
-        onAttempt(_ctx, report) {
-          attempts.push(report);
+      const observation = new OutboundBroadcastObservation(
+        ctx,
+        {
+          onAttempt(_ctx, report) {
+            attempts.push(report);
+          },
+          onHttpExchange(_ctx, report) {
+            exchanges.push(report);
+            throw new Error("recorder must not change the exchange result");
+          },
         },
-        onHttpExchange(_ctx, report) {
-          exchanges.push(report);
-          throw new Error("recorder must not change the exchange result");
-        },
-      }, "send");
+        "send",
+      );
       const inbox = recipient.inboxId!.href;
       await observation.planDestinations({
         [inbox]: { actorIds: [], sharedInbox: false },
@@ -346,47 +361,52 @@ test("outbound unsigned exchanges report only actual submissions and retain rece
       let closed = 0;
       let outward: unknown;
       await rejects(
-        sendConcreteActivity({
-          observation: observation.delivery(inbox),
-          activity: phase === "serialization"
-            ? {
-              toJSON() {
-                throw failure;
-              },
-            }
-            : {},
-          keys: [],
-          inbox: new URL(inbox),
-        }, {
-          openHop(url) {
-            if (
-              phase === "policy" || phase === "redirect-policy" && url !== inbox
-            ) {
-              return Promise.reject(failure);
-            }
-            return Promise.resolve({
-              url: new URL(url),
-              fetch() {
-                submissions++;
-                if (phase === "request") return Promise.reject(failure);
-                const redirect = phase.startsWith("redirect-");
-                return Promise.resolve(
-                  new Response(null, {
-                    status: redirect ? 307 : phase === "http" ? 503 : 202,
-                    statusText: "Observed response",
-                    headers: redirect ? { Location: "/next" } : {},
-                  }),
-                );
-              },
-              close() {
-                closed++;
-                return phase.endsWith("cleanup")
-                  ? Promise.reject(failure)
-                  : Promise.resolve();
-              },
-            });
+        sendConcreteActivity(
+          {
+            observation: observation.delivery(inbox),
+            activity:
+              phase === "serialization"
+                ? {
+                    toJSON() {
+                      throw failure;
+                    },
+                  }
+                : {},
+            keys: [],
+            inbox: new URL(inbox),
           },
-        }),
+          {
+            openHop(url) {
+              if (
+                phase === "policy" ||
+                (phase === "redirect-policy" && url !== inbox)
+              ) {
+                return Promise.reject(failure);
+              }
+              return Promise.resolve({
+                url: new URL(url),
+                fetch() {
+                  submissions++;
+                  if (phase === "request") return Promise.reject(failure);
+                  const redirect = phase.startsWith("redirect-");
+                  return Promise.resolve(
+                    new Response(null, {
+                      status: redirect ? 307 : phase === "http" ? 503 : 202,
+                      statusText: "Observed response",
+                      headers: redirect ? { Location: "/next" } : {},
+                    }),
+                  );
+                },
+                close() {
+                  closed++;
+                  return phase.endsWith("cleanup")
+                    ? Promise.reject(failure)
+                    : Promise.resolve();
+                },
+              });
+            },
+          },
+        ),
         (error: unknown) => {
           outward = error;
           return true;
@@ -430,8 +450,8 @@ test("outbound unsigned exchanges report only actual submissions and retain rece
           status: phase.startsWith("redirect-")
             ? 307
             : phase === "http"
-            ? 503
-            : 202,
+              ? 503
+              : 202,
           statusText: "Observed response",
         });
       }
@@ -443,91 +463,100 @@ test("outbound unsigned exchanges report only actual submissions and retain rece
 test("outbound signed exchanges follow actual challenge, fallback, and redirect submissions", async (t) => {
   const challenge =
     'sig1=("@method" "@target-uri");created;nonce="observer-nonce"';
-  for (
-    const mode of [
-      "success",
-      "fallback",
-      "challenge",
-      "challenge-fallback",
-      "challenge-redirect",
-      "unfulfillable",
-    ] as const
-  ) {
+  for (const mode of [
+    "success",
+    "fallback",
+    "challenge",
+    "challenge-fallback",
+    "challenge-redirect",
+    "unfulfillable",
+  ] as const) {
     await t.step(mode, async () => {
       const inbox = recipient.inboxId!.href;
       const next = new URL("/next", inbox).href;
-      const responses: ResponseInit[] = mode === "success"
-        ? [{ status: 202 }]
-        : mode === "fallback"
-        ? [{ status: 401 }, { status: 202 }]
-        : mode === "unfulfillable"
-        ? [
-          {
-            status: 401,
-            headers: {
-              "Accept-Signature": 'sig1=("@method" "x-absent");created',
-            },
-          },
-          { status: 202 },
-        ]
-        : [
-          { status: 401, headers: { "Accept-Signature": challenge } },
-          ...(mode === "challenge"
-            ? [{ status: 202 }]
-            : mode === "challenge-fallback"
+      const responses: ResponseInit[] =
+        mode === "success"
+          ? [{ status: 202 }]
+          : mode === "fallback"
             ? [{ status: 401 }, { status: 202 }]
-            : [{ status: 307, headers: { Location: next } }, { status: 202 }]),
-        ];
+            : mode === "unfulfillable"
+              ? [
+                  {
+                    status: 401,
+                    headers: {
+                      "Accept-Signature": 'sig1=("@method" "x-absent");created',
+                    },
+                  },
+                  { status: 202 },
+                ]
+              : [
+                  { status: 401, headers: { "Accept-Signature": challenge } },
+                  ...(mode === "challenge"
+                    ? [{ status: 202 }]
+                    : mode === "challenge-fallback"
+                      ? [{ status: 401 }, { status: 202 }]
+                      : [
+                          { status: 307, headers: { Location: next } },
+                          { status: 202 },
+                        ]),
+                ];
       const ctx = createFederation<void>(options).createContext(
         new URL("https://example.com"),
         undefined,
       );
       const exchanges: OutboundHttpExchangeReport[] = [];
       const attempts: OutboundAttemptReport[] = [];
-      const observation = new OutboundBroadcastObservation(ctx, {
-        onAttempt(_ctx, report) {
-          attempts.push(report);
+      const observation = new OutboundBroadcastObservation(
+        ctx,
+        {
+          onAttempt(_ctx, report) {
+            attempts.push(report);
+          },
+          onHttpExchange(_ctx, report) {
+            exchanges.push(report);
+            throw new Error("observer must not alter signature negotiation");
+          },
         },
-        onHttpExchange(_ctx, report) {
-          exchanges.push(report);
-          throw new Error("observer must not alter signature negotiation");
-        },
-      }, "send");
+        "send",
+      );
       await observation.planDestinations({
         [inbox]: { actorIds: [], sharedInbox: false },
       });
       const requests: Request[] = [];
       const origins: string[] = [];
       const payload = { id: "https://example.com/activity", extra: "original" };
-      await sendConcreteActivity({
-        observation: observation.delivery(inbox),
-        activity: payload,
-        keys: [sender],
-        inbox: new URL(inbox),
-        specDeterminer: {
-          determineSpec(origin) {
-            origins.push(origin);
-            return "rfc9421";
-          },
-          rememberSpec() {},
-        },
-      }, {
-        openHop: (url) =>
-          Promise.resolve({
-            url: new URL(url),
-            fetch(input) {
-              ok(input instanceof Request);
-              const response = responses[requests.length];
-              requests.push(input);
-              ok(
-                response,
-                "observation must not create extra HTTP submissions",
-              );
-              return Promise.resolve(new Response(null, response));
+      await sendConcreteActivity(
+        {
+          observation: observation.delivery(inbox),
+          activity: payload,
+          keys: [sender],
+          inbox: new URL(inbox),
+          specDeterminer: {
+            determineSpec(origin) {
+              origins.push(origin);
+              return "rfc9421";
             },
-            close: () => Promise.resolve(),
-          }),
-      });
+            rememberSpec() {},
+          },
+        },
+        {
+          openHop: (url) =>
+            Promise.resolve({
+              url: new URL(url),
+              fetch(input) {
+                ok(input instanceof Request);
+                const response = responses[requests.length];
+                requests.push(input);
+                ok(
+                  response,
+                  "observation must not create extra HTTP submissions",
+                );
+                return Promise.resolve(new Response(null, response));
+              },
+              close: () => Promise.resolve(),
+            }),
+        },
+      );
       strictEqual(attempts.length, 1);
       strictEqual(attempts[0].outcome.type, "succeeded");
       strictEqual(exchanges.length, responses.length);
@@ -558,13 +587,14 @@ test("outbound signed exchanges follow actual challenge, fallback, and redirect 
       ok(requests[0].headers.has("Signature-Input"));
       if (mode.startsWith("challenge")) {
         ok(
-          requests[1].headers.get("Signature-Input")?.includes(
-            'nonce="observer-nonce"',
-          ),
+          requests[1].headers
+            .get("Signature-Input")
+            ?.includes('nonce="observer-nonce"'),
         );
       }
       if (
-        mode === "fallback" || mode === "challenge-fallback" ||
+        mode === "fallback" ||
+        mode === "challenge-fallback" ||
         mode === "unfulfillable"
       ) {
         strictEqual(requests.at(-1)!.headers.has("Signature-Input"), false);
@@ -575,17 +605,15 @@ test("outbound signed exchanges follow actual challenge, fallback, and redirect 
 });
 
 test("outbound signed exchanges preserve earlier responses when subsequent operations fail", async (t) => {
-  for (
-    const phase of [
-      "spec-lookup",
-      "signing",
-      "later-spec-lookup",
-      "later-signing",
-      "post-response",
-      "request",
-      "handled-signing",
-    ] as const
-  ) {
+  for (const phase of [
+    "spec-lookup",
+    "signing",
+    "later-spec-lookup",
+    "later-signing",
+    "post-response",
+    "request",
+    "handled-signing",
+  ] as const) {
     await t.step(phase, async () => {
       const inbox = recipient.inboxId!.href;
       const exchanges: OutboundHttpExchangeReport[] = [];
@@ -594,14 +622,18 @@ test("outbound signed exchanges preserve earlier responses when subsequent opera
         new URL("https://example.com"),
         undefined,
       );
-      const observation = new OutboundBroadcastObservation(ctx, {
-        onAttempt(_ctx, report) {
-          attempts.push(report);
+      const observation = new OutboundBroadcastObservation(
+        ctx,
+        {
+          onAttempt(_ctx, report) {
+            attempts.push(report);
+          },
+          onHttpExchange(_ctx, report) {
+            exchanges.push(report);
+          },
         },
-        onHttpExchange(_ctx, report) {
-          exchanges.push(report);
-        },
-      }, "send");
+        "send",
+      );
       await observation.planDestinations({
         [inbox]: { actorIds: [], sharedInbox: false },
       });
@@ -613,62 +645,71 @@ test("outbound signed exchanges preserve earlier responses when subsequent opera
       Object.defineProperty(keyId, "href", {
         get() {
           if (
-            phase === "signing" || phase === "later-signing" && submissions > 0
-          ) throw failure;
+            phase === "signing" ||
+            (phase === "later-signing" && submissions > 0)
+          )
+            throw failure;
           return href;
         },
       });
       let outward: unknown;
       await rejects(
-        sendConcreteActivity({
-          observation: observation.delivery(inbox),
-          activity: {},
-          keys: [{ ...sender, keyId }],
-          inbox: new URL(inbox),
-          specDeterminer: {
-            determineSpec() {
-              lookups++;
-              if (
-                phase === "spec-lookup" ||
-                phase === "later-spec-lookup" && lookups > 1
-              ) throw failure;
-              return "rfc9421";
-            },
-            rememberSpec() {
-              if (phase === "post-response") return Promise.reject(failure);
+        sendConcreteActivity(
+          {
+            observation: observation.delivery(inbox),
+            activity: {},
+            keys: [{ ...sender, keyId }],
+            inbox: new URL(inbox),
+            specDeterminer: {
+              determineSpec() {
+                lookups++;
+                if (
+                  phase === "spec-lookup" ||
+                  (phase === "later-spec-lookup" && lookups > 1)
+                )
+                  throw failure;
+                return "rfc9421";
+              },
+              rememberSpec() {
+                if (phase === "post-response") return Promise.reject(failure);
+              },
             },
           },
-        }, {
-          openHop: (url) =>
-            Promise.resolve({
-              url: new URL(url),
-              fetch() {
-                submissions++;
-                if (
-                  phase === "request" ||
-                  phase === "handled-signing" && submissions > 1
-                ) return Promise.reject(failure);
-                return Promise.resolve(
-                  new Response(null, {
-                    status: phase === "later-spec-lookup"
-                      ? 307
-                      : phase === "post-response"
-                      ? 202
-                      : 401,
-                    headers: phase === "later-spec-lookup"
-                      ? { Location: "/next" }
-                      : phase === "handled-signing"
-                      ? {
-                        "Accept-Signature":
-                          'sig1=("@method" "x-absent");created',
-                      }
-                      : {},
-                  }),
-                );
-              },
-              close: () => Promise.resolve(),
-            }),
-        }),
+          {
+            openHop: (url) =>
+              Promise.resolve({
+                url: new URL(url),
+                fetch() {
+                  submissions++;
+                  if (
+                    phase === "request" ||
+                    (phase === "handled-signing" && submissions > 1)
+                  )
+                    return Promise.reject(failure);
+                  return Promise.resolve(
+                    new Response(null, {
+                      status:
+                        phase === "later-spec-lookup"
+                          ? 307
+                          : phase === "post-response"
+                            ? 202
+                            : 401,
+                      headers:
+                        phase === "later-spec-lookup"
+                          ? { Location: "/next" }
+                          : phase === "handled-signing"
+                            ? {
+                                "Accept-Signature":
+                                  'sig1=("@method" "x-absent");created',
+                              }
+                            : {},
+                    }),
+                  );
+                },
+                close: () => Promise.resolve(),
+              }),
+          },
+        ),
         (error: unknown) => {
           outward = error;
           return error instanceof FetchError;
@@ -686,11 +727,12 @@ test("outbound signed exchanges preserve earlier responses when subsequent opera
         outcome.failure.phase,
         transport ? "request" : phase.replace("later-", ""),
       );
-      const count = phase === "spec-lookup" || phase === "signing"
-        ? 0
-        : phase === "handled-signing"
-        ? 2
-        : 1;
+      const count =
+        phase === "spec-lookup" || phase === "signing"
+          ? 0
+          : phase === "handled-signing"
+            ? 2
+            : 1;
       strictEqual(submissions, count);
       strictEqual(attempts[0].httpExchangeCount, count);
       if (phase === "post-response") {
@@ -718,8 +760,8 @@ test("outbound signed exchanges preserve earlier responses when subsequent opera
             phase === "later-spec-lookup"
               ? 307
               : phase === "post-response"
-              ? 202
-              : 401,
+                ? 202
+                : 401,
           );
         }
       }
@@ -738,14 +780,18 @@ test("outbound attempt finality preserves HTTP, cache, and cleanup failures toge
           new URL("https://example.com"),
           undefined,
         );
-        const observation = new OutboundBroadcastObservation(ctx, {
-          onAttempt(_ctx, report) {
-            reports.push(report);
+        const observation = new OutboundBroadcastObservation(
+          ctx,
+          {
+            onAttempt(_ctx, report) {
+              reports.push(report);
+            },
+            onHttpExchange(_ctx, report) {
+              exchanges.push(report);
+            },
           },
-          onHttpExchange(_ctx, report) {
-            exchanges.push(report);
-          },
-        }, "send");
+          "send",
+        );
         await observation.planDestinations({
           [inbox]: { actorIds: [], sharedInbox: false },
         });
@@ -754,36 +800,39 @@ test("outbound attempt finality preserves HTTP, cache, and cleanup failures toge
         let submissions = 0;
         let outward: unknown;
         await rejects(
-          sendConcreteActivity({
-            observation: observation.delivery(inbox),
-            activity: {},
-            keys: [sender],
-            inbox: new URL(inbox),
-            specDeterminer: {
-              determineSpec: () => "rfc9421",
-              rememberSpec() {
-                if (phase !== "cleanup") throw cacheError;
+          sendConcreteActivity(
+            {
+              observation: observation.delivery(inbox),
+              activity: {},
+              keys: [sender],
+              inbox: new URL(inbox),
+              specDeterminer: {
+                determineSpec: () => "rfc9421",
+                rememberSpec() {
+                  if (phase !== "cleanup") throw cacheError;
+                },
               },
             },
-          }, {
-            openHop: (url) =>
-              Promise.resolve({
-                url: new URL(url),
-                fetch() {
-                  return Promise.resolve(
-                    new Response(null, {
-                      status: ++submissions === 1 ? 401 : status,
-                      statusText: "Observed response",
-                    }),
-                  );
-                },
-                close() {
-                  return phase === "cache"
-                    ? Promise.resolve()
-                    : Promise.reject(cleanupError);
-                },
-              }),
-          }),
+            {
+              openHop: (url) =>
+                Promise.resolve({
+                  url: new URL(url),
+                  fetch() {
+                    return Promise.resolve(
+                      new Response(null, {
+                        status: ++submissions === 1 ? 401 : status,
+                        statusText: "Observed response",
+                      }),
+                    );
+                  },
+                  close() {
+                    return phase === "cache"
+                      ? Promise.resolve()
+                      : Promise.reject(cleanupError);
+                  },
+                }),
+            },
+          ),
           (error: unknown) => {
             outward = error;
             return error instanceof FetchError;
@@ -847,15 +896,13 @@ test("outbound attempt finality preserves HTTP, cache, and cleanup failures toge
 });
 
 test("outbound attempt finality follows branch decisions rather than status or last index", async (t) => {
-  for (
-    const mode of [
-      "challenge-cache",
-      "final-401",
-      "unsigned-300",
-      "signed-300",
-      "undetermined",
-    ] as const
-  ) {
+  for (const mode of [
+    "challenge-cache",
+    "final-401",
+    "unsigned-300",
+    "signed-300",
+    "undetermined",
+  ] as const) {
     await t.step(mode, async () => {
       const inbox = recipient.inboxId!.href;
       const reports: OutboundAttemptReport[] = [];
@@ -864,14 +911,18 @@ test("outbound attempt finality follows branch decisions rather than status or l
         new URL("https://example.com"),
         undefined,
       );
-      const observation = new OutboundBroadcastObservation(ctx, {
-        onAttempt(_ctx, report) {
-          reports.push(report);
+      const observation = new OutboundBroadcastObservation(
+        ctx,
+        {
+          onAttempt(_ctx, report) {
+            reports.push(report);
+          },
+          onHttpExchange(_ctx, report) {
+            exchanges.push(report);
+          },
         },
-        onHttpExchange(_ctx, report) {
-          exchanges.push(report);
-        },
-      }, "send");
+        "send",
+      );
       await observation.planDestinations({
         [inbox]: { actorIds: [], sharedInbox: false },
       });
@@ -889,48 +940,51 @@ test("outbound attempt finality follows branch decisions rather than status or l
       });
       let outward: unknown;
       await rejects(
-        sendConcreteActivity({
-          observation: observation.delivery(inbox),
-          activity: {},
-          keys: mode === "unsigned-300" ? [] : [{ ...sender, keyId }],
-          inbox: new URL(inbox),
-          specDeterminer: {
-            determineSpec: () => "rfc9421",
-            rememberSpec() {
-              cacheWrites++;
-              if (mode === "challenge-cache") throw failure;
+        sendConcreteActivity(
+          {
+            observation: observation.delivery(inbox),
+            activity: {},
+            keys: mode === "unsigned-300" ? [] : [{ ...sender, keyId }],
+            inbox: new URL(inbox),
+            specDeterminer: {
+              determineSpec: () => "rfc9421",
+              rememberSpec() {
+                cacheWrites++;
+                if (mode === "challenge-cache") throw failure;
+              },
             },
           },
-        }, {
-          openHop(url) {
-            if (url !== inbox) return Promise.reject(denied);
-            return Promise.resolve({
-              url: new URL(url),
-              fetch() {
-                submissions++;
-                return Promise.resolve(
-                  new Response(null, {
-                    status: mode.endsWith("300")
-                      ? 300
-                      : mode === "challenge-cache" && submissions > 1
-                      ? 202
-                      : 401,
-                    statusText: "Observed response",
-                    headers: mode.endsWith("300")
-                      ? { Location: "/next" }
-                      : mode === "challenge-cache" || mode === "undetermined"
-                      ? {
-                        "Accept-Signature":
-                          'sig1=("@method" "@target-uri");created',
-                      }
-                      : {},
-                  }),
-                );
-              },
-              close: () => Promise.resolve(),
-            });
+          {
+            openHop(url) {
+              if (url !== inbox) return Promise.reject(denied);
+              return Promise.resolve({
+                url: new URL(url),
+                fetch() {
+                  submissions++;
+                  return Promise.resolve(
+                    new Response(null, {
+                      status: mode.endsWith("300")
+                        ? 300
+                        : mode === "challenge-cache" && submissions > 1
+                          ? 202
+                          : 401,
+                      statusText: "Observed response",
+                      headers: mode.endsWith("300")
+                        ? { Location: "/next" }
+                        : mode === "challenge-cache" || mode === "undetermined"
+                          ? {
+                              "Accept-Signature":
+                                'sig1=("@method" "@target-uri");created',
+                            }
+                          : {},
+                    }),
+                  );
+                },
+                close: () => Promise.resolve(),
+              });
+            },
           },
-        }),
+        ),
         (error: unknown) => {
           outward = error;
           return true;
@@ -1017,14 +1071,21 @@ test("outbound attempts report ordinary and outbox sends with attempt-only build
             undefined,
           );
           ok(base instanceof ContextImpl);
-          const ctx = kind === "ordinary"
-            ? base
-            : base.toOutboxContext("alice", {}, undefined, Create.typeId.href);
-          const target = status === "policy"
-            ? recipient.clone({
-              inbox: new URL("http://127.0.0.1/inbox"),
-            })
-            : recipient;
+          const ctx =
+            kind === "ordinary"
+              ? base
+              : base.toOutboxContext(
+                  "alice",
+                  {},
+                  undefined,
+                  Create.typeId.href,
+                );
+          const target =
+            status === "policy"
+              ? recipient.clone({
+                  inbox: new URL("http://127.0.0.1/inbox"),
+                })
+              : recipient;
           if (status !== "policy") {
             fetchMock.mockGlobal().post(target.inboxId!.href, status);
           }
@@ -1040,7 +1101,7 @@ test("outbound attempts report ordinary and outbox sends with attempt-only build
               return status === "policy"
                 ? error instanceof UrlError
                 : error instanceof SendActivityError &&
-                  error.statusCode === status;
+                    error.statusCode === status;
             });
           }
           strictEqual(recorded, true);
@@ -1138,9 +1199,10 @@ test("outbound attempts await the selected observer without inventing pre-entry 
       new URL("https://example.com"),
       undefined,
     );
-    const sending = ctx.sendActivity(sender, recipient, activity, {
-      immediate: true,
-    })
+    const sending = ctx
+      .sendActivity(sender, recipient, activity, {
+        immediate: true,
+      })
       .finally(() => {
         settled = true;
       });
@@ -1164,17 +1226,15 @@ test("outbound attempts await the selected observer without inventing pre-entry 
 });
 
 test("outbound attempts preserve boundary failures and allocate fresh IDs per concrete entry", async (t) => {
-  for (
-    const phase of [
-      "success",
-      "serialization",
-      "dns",
-      "request",
-      "cleanup",
-      "http-cleanup",
-      "spec-lookup",
-    ] as const
-  ) {
+  for (const phase of [
+    "success",
+    "serialization",
+    "dns",
+    "request",
+    "cleanup",
+    "http-cleanup",
+    "spec-lookup",
+  ] as const) {
     await t.step(phase, async () => {
       const federation = createFederation<void>(options);
       const ctx = federation.createContext(
@@ -1183,66 +1243,75 @@ test("outbound attempts preserve boundary failures and allocate fresh IDs per co
       );
       const reports: OutboundAttemptReport[] = [];
       const deliveries: OutboundDeliveryEvent[] = [];
-      const observation = new OutboundBroadcastObservation(ctx, {
-        onAttempt(_ctx, report) {
-          reports.push(report);
+      const observation = new OutboundBroadcastObservation(
+        ctx,
+        {
+          onAttempt(_ctx, report) {
+            reports.push(report);
+          },
+          onDelivery(_ctx, event) {
+            deliveries.push(event);
+          },
         },
-        onDelivery(_ctx, event) {
-          deliveries.push(event);
-        },
-      }, "send");
+        "send",
+      );
       const inbox = "https://receiver.example/inbox";
       await observation.planDestinations({
         [inbox]: { actorIds: [], sharedInbox: false },
       });
-      const failure = phase === "dns"
-        ? new UrlError(inbox, { reason: "dns" })
-        : Symbol(phase);
+      const failure =
+        phase === "dns"
+          ? new UrlError(inbox, { reason: "dns" })
+          : Symbol(phase);
       const delivery = observation.delivery(inbox)!;
       let submissions = 0;
       const send = () =>
-        sendConcreteActivity({
-          observation: delivery,
-          activity: phase === "serialization"
-            ? {
-              toJSON() {
+        sendConcreteActivity(
+          {
+            observation: delivery,
+            activity:
+              phase === "serialization"
+                ? {
+                    toJSON() {
+                      throw failure;
+                    },
+                  }
+                : {},
+            keys: phase === "spec-lookup" ? [sender] : [],
+            inbox: new URL(inbox),
+            specDeterminer: {
+              determineSpec() {
                 throw failure;
               },
-            }
-            : {},
-          keys: phase === "spec-lookup" ? [sender] : [],
-          inbox: new URL(inbox),
-          specDeterminer: {
-            determineSpec() {
-              throw failure;
-            },
-            rememberSpec() {
-              return Promise.resolve();
+              rememberSpec() {
+                return Promise.resolve();
+              },
             },
           },
-        }, {
-          openHop(url) {
-            if (phase === "dns") return Promise.reject(failure);
-            return Promise.resolve({
-              url: new URL(url),
-              fetch() {
-                submissions++;
-                return phase === "request"
-                  ? Promise.reject(failure)
-                  : Promise.resolve(
-                    new Response(null, {
-                      status: phase === "http-cleanup" ? 503 : 202,
-                    }),
-                  );
-              },
-              close() {
-                return phase === "cleanup" || phase === "http-cleanup"
-                  ? Promise.reject(failure)
-                  : Promise.resolve();
-              },
-            });
+          {
+            openHop(url) {
+              if (phase === "dns") return Promise.reject(failure);
+              return Promise.resolve({
+                url: new URL(url),
+                fetch() {
+                  submissions++;
+                  return phase === "request"
+                    ? Promise.reject(failure)
+                    : Promise.resolve(
+                        new Response(null, {
+                          status: phase === "http-cleanup" ? 503 : 202,
+                        }),
+                      );
+                },
+                close() {
+                  return phase === "cleanup" || phase === "http-cleanup"
+                    ? Promise.reject(failure)
+                    : Promise.resolve();
+                },
+              });
+            },
           },
-        });
+        );
       let outward: unknown;
       if (phase === "success") {
         await send();
@@ -1270,11 +1339,13 @@ test("outbound attempts preserve boundary failures and allocate fresh IDs per co
           kind: "http",
           phase: "response",
         });
-        deepStrictEqual(report.outcome.diagnostics, [{
-          kind: "local",
-          phase: "cleanup",
-          error: failure,
-        }]);
+        deepStrictEqual(report.outcome.diagnostics, [
+          {
+            kind: "local",
+            phase: "cleanup",
+            error: failure,
+          },
+        ]);
         deepStrictEqual(report.outcome.response, {
           type: "final",
           exchangeIndex: 0,
@@ -1297,9 +1368,8 @@ test("outbound attempts preserve boundary failures and allocate fresh IDs per co
 });
 
 test("outbound observers report fresh immutable starts without tracing or extra loading", async (t) => {
-  const { AlwaysOffSampler, BasicTracerProvider } = await import(
-    "@opentelemetry/sdk-trace-base"
-  );
+  const { AlwaysOffSampler, BasicTracerProvider } =
+    await import("@opentelemetry/sdk-trace-base");
   const provider = new BasicTracerProvider({ sampler: new AlwaysOffSampler() });
   try {
     for (const tracerProvider of [undefined, provider]) {
@@ -1367,14 +1437,12 @@ test("outbound observers report fresh immutable starts without tracing or extra 
 });
 
 test("outbound trace snapshots identify producer and fanout spans without changing callbacks", async (t) => {
-  for (
-    const mode of [
-      "send",
-      "outbox-send",
-      "inbox-forward",
-      "outbox-forward",
-    ] as const
-  ) {
+  for (const mode of [
+    "send",
+    "outbox-send",
+    "inbox-forward",
+    "outbox-forward",
+  ] as const) {
     await t.step(mode, async () => {
       const [tracerProvider, exporter] = createTestTracerProvider();
       try {
@@ -1426,9 +1494,10 @@ test("outbound trace snapshots identify producer and fanout spans without changi
             undefined,
           ).forwardActivity(sender, recipient, { skipIfUnsigned: true });
         } else {
-          const producer = mode === "outbox-send"
-            ? ctx.toOutboxContext("alice", {}, undefined, Create.typeId.href)
-            : ctx;
+          const producer =
+            mode === "outbox-send"
+              ? ctx.toOutboxContext("alice", {}, undefined, Create.typeId.href)
+              : ctx;
           await producer.sendActivity(sender, recipient, activity, {
             fanout: mode === "send" ? "force" : "skip",
           });
@@ -1449,8 +1518,8 @@ test("outbound trace snapshots identify producer and fanout spans without changi
           if (index === 0) continue;
           ok(event.trace);
           ok(Object.isFrozen(event.trace));
-          const span = exporter.spans.find((span) =>
-            span.spanContext().spanId === event.trace!.spanId
+          const span = exporter.spans.find(
+            (span) => span.spanContext().spanId === event.trace!.spanId,
           );
           ok(span);
           deepStrictEqual(event.trace, {
@@ -1480,19 +1549,21 @@ test("outbound trace snapshots omit invalid and inherited span identities", asyn
     spanId: "2222222222222222",
     traceFlags: TraceFlags.NONE,
   };
-  for (
-    const spanContext of [
-      { ...parent, traceId: "00000000000000000000000000000000" },
-      parent,
-      { ...parent, isRemote: true },
-    ]
-  ) {
+  for (const spanContext of [
+    { ...parent, traceId: "00000000000000000000000000000000" },
+    parent,
+    { ...parent, isRemote: true },
+  ]) {
     const events: OutboundBroadcastEvent[] = [];
-    const observation = new OutboundBroadcastObservation(ctx, {
-      onBroadcast(_ctx, event) {
-        events.push(event);
+    const observation = new OutboundBroadcastObservation(
+      ctx,
+      {
+        onBroadcast(_ctx, event) {
+          events.push(event);
+        },
       },
-    }, "send");
+      "send",
+    );
     observation.setSpan(trace.wrapSpanContext(spanContext), parent);
     await observation.skipped();
     strictEqual(events.length, 1);
@@ -1504,7 +1575,8 @@ test("outbound observers await entry before preparation and retain the selected 
   const federation = createFederation<void>(options);
   let preparations = 0;
   const failure = Symbol("original preparation failure");
-  federation.setActorDispatcher("/users/{identifier}", () => new Person({}))
+  federation
+    .setActorDispatcher("/users/{identifier}", () => new Person({}))
     .mapHandle(() => {
       preparations++;
       throw failure;
@@ -1579,7 +1651,8 @@ test("outbound observers isolate callback and logging errors from success and or
     const federation = createFederation<void>(options);
     const failure = { original: true };
     let calls = 0;
-    federation.setActorDispatcher("/users/{identifier}", () => new Person({}))
+    federation
+      .setActorDispatcher("/users/{identifier}", () => new Person({}))
       .mapHandle(() => {
         throw failure;
       });
@@ -1631,7 +1704,8 @@ test("outbound observers copy registration and isolate builder instances", async
     },
   });
   for (const federation of [first, second, third]) {
-    await federation.createContext(new URL("https://example.com"), undefined)
+    await federation
+      .createContext(new URL("https://example.com"), undefined)
       .sendActivity(sender, [], activity);
   }
   deepStrictEqual(calls, [
@@ -1643,7 +1717,8 @@ test("outbound observers copy registration and isolate builder instances", async
     "new builder",
   ]);
   second.setOutboundObservers({});
-  await second.createContext(new URL("https://example.com"), undefined)
+  await second
+    .createContext(new URL("https://example.com"), undefined)
     .sendActivity(sender, [], activity);
   strictEqual(calls.length, 6);
 });
@@ -1666,7 +1741,8 @@ test("outbound observers do not veto an actual immediate delivery", async () => 
         throw new Error("recording failed");
       },
     });
-    await federation.createContext(new URL("https://example.com"), undefined)
+    await federation
+      .createContext(new URL("https://example.com"), undefined)
       .sendActivity(
         sender,
         new Person({
@@ -1688,10 +1764,10 @@ test("outbound observers do not veto an actual immediate delivery", async () => 
 });
 
 function preparation(events: OutboundBroadcastEvent[]) {
-  deepStrictEqual(events.map((event) => event.stage), [
-    "started",
-    "preparation-finished",
-  ]);
+  deepStrictEqual(
+    events.map((event) => event.stage),
+    ["started", "preparation-finished"],
+  );
   strictEqual(events[0].broadcastId, events[1].broadcastId);
   ok(events.every((event) => Object.isFrozen(event)));
   const event = events[1];
@@ -1706,17 +1782,15 @@ const recipient = new Person({
 });
 
 test("outbound preparation preserves failure provenance and plan completeness", async (t) => {
-  for (
-    const phase of [
-      "sender-resolution",
-      "key-resolution",
-      "recipient-resolution",
-      "transformation",
-      "signing",
-      "destination-planning",
-      "serialization",
-    ] as const
-  ) {
+  for (const phase of [
+    "sender-resolution",
+    "key-resolution",
+    "recipient-resolution",
+    "transformation",
+    "signing",
+    "destination-planning",
+    "serialization",
+  ] as const) {
     await t.step(phase, async () => {
       const failure = Symbol(phase);
       const events: OutboundBroadcastEvent[] = [];
@@ -1725,10 +1799,12 @@ test("outbound preparation preserves failure provenance and plan completeness", 
         kv: new MemoryKvStore(),
         ...(phase === "transformation"
           ? {
-            activityTransformers: [() => {
-              throw failure;
-            }],
-          }
+              activityTransformers: [
+                () => {
+                  throw failure;
+                },
+              ],
+            }
           : { activityTransformers: [] }),
       });
       federation.setOutboundObservers({
@@ -1761,27 +1837,25 @@ test("outbound preparation preserves failure provenance and plan completeness", 
         });
       }
       if (phase === "sender-resolution") {
-        federation.setActorDispatcher(
-          "/users/{identifier}",
-          () => new Person({}),
-        )
+        federation
+          .setActorDispatcher("/users/{identifier}", () => new Person({}))
           .mapHandle(() => {
             throw failure;
           });
       }
       let keyDispatches = 0;
       if (phase === "key-resolution" || phase === "recipient-resolution") {
-        federation.setActorDispatcher(
-          "/users/{identifier}",
-          () => new Person({}),
-        )
+        federation
+          .setActorDispatcher("/users/{identifier}", () => new Person({}))
           .setKeyPairsDispatcher(() => {
             keyDispatches++;
             if (phase === "key-resolution") throw failure;
-            return [{
-              privateKey: rsaPrivateKey2,
-              publicKey: rsaPublicKey2.publicKey!,
-            }];
+            return [
+              {
+                privateKey: rsaPrivateKey2,
+                publicKey: rsaPublicKey2.publicKey!,
+              },
+            ];
           });
       }
       if (phase === "recipient-resolution") {
@@ -1796,25 +1870,28 @@ test("outbound preparation preserves failure provenance and plan completeness", 
         new URL("https://example.com"),
         undefined,
       );
-      const sending = phase === "recipient-resolution"
-        ? ctx.sendActivity({ identifier: "alice" }, "followers", sentActivity)
-        : ctx.sendActivity(
-          phase === "sender-resolution"
-            ? { username: "alice" }
-            : phase === "key-resolution"
-            ? { identifier: "alice" }
-            : sender,
-          target,
-          sentActivity,
-        );
+      const sending =
+        phase === "recipient-resolution"
+          ? ctx.sendActivity({ identifier: "alice" }, "followers", sentActivity)
+          : ctx.sendActivity(
+              phase === "sender-resolution"
+                ? { username: "alice" }
+                : phase === "key-resolution"
+                  ? { identifier: "alice" }
+                  : sender,
+              target,
+              sentActivity,
+            );
       let originalError: unknown;
       await rejects(sending, (error: unknown) => {
         originalError = error;
         if (phase === "key-resolution") {
           // Key-dispatcher errors are already handled by getActorKeyPairs().
           // Preserve the public send error from the resulting empty key set.
-          return error instanceof Error &&
-            error.message === 'No key pair found for actor "alice".';
+          return (
+            error instanceof Error &&
+            error.message === 'No key pair found for actor "alice".'
+          );
         }
         return error === failure;
       });
@@ -1827,11 +1904,12 @@ test("outbound preparation preserves failure provenance and plan completeness", 
       deepStrictEqual(result, {
         type: "failed",
         failure: { kind: "local", phase, error: originalError },
-        planning: phase === "serialization"
-          ? "complete"
-          : phase === "destination-planning"
-          ? "incomplete"
-          : "not-started",
+        planning:
+          phase === "serialization"
+            ? "complete"
+            : phase === "destination-planning"
+              ? "incomplete"
+              : "not-started",
         plannedDestinationCount: phase === "serialization" ? 1 : 0,
       });
     });
@@ -1852,12 +1930,14 @@ test("broadcast activity references are immutable and follow transformed activit
     ...options,
     queue: { fanout: queue },
     manuallyStartQueue: true,
-    activityTransformers: [() =>
-      new Follow({
-        id: new URL(transformedId),
-        actor: new URL("https://example.com/alice"),
-        object: new URL("https://example.com/bob"),
-      })],
+    activityTransformers: [
+      () =>
+        new Follow({
+          id: new URL(transformedId),
+          actor: new URL("https://example.com/alice"),
+          object: new URL("https://example.com/bob"),
+        }),
+    ],
   });
   const events: OutboundBroadcastEvent[] = [];
   federation.setOutboundObservers({
@@ -1881,12 +1961,15 @@ test("broadcast activity references are immutable and follow transformed activit
 
   strictEqual(messages.length, 2);
   const starts = events.filter((event) => event.stage === "started");
-  const finishes = events.filter((event) =>
-    event.stage === "preparation-finished"
+  const finishes = events.filter(
+    (event) => event.stage === "preparation-finished",
   );
   strictEqual(starts.length, 3);
   strictEqual(finishes.length, 3);
-  deepStrictEqual(starts.map((event) => event.activity), [{}, {}, {}]);
+  deepStrictEqual(
+    starts.map((event) => event.activity),
+    [{}, {}, {}],
+  );
   strictEqual(new Set(starts.map((event) => event.broadcastId)).size, 3);
   for (const event of finishes.slice(0, 2)) {
     deepStrictEqual(event.activity, {
@@ -1916,10 +1999,12 @@ test("transformed activity type capture does not mask validation failures", asyn
       : "https://example.com/missing-actor";
     const federation = createFederation<void>({
       ...options,
-      activityTransformers: [() => {
-        const ActivityClass = unreadableType ? UnreadableTypeFollow : Follow;
-        return new ActivityClass({ id: new URL(transformedId) } as never);
-      }],
+      activityTransformers: [
+        () => {
+          const ActivityClass = unreadableType ? UnreadableTypeFollow : Follow;
+          return new ActivityClass({ id: new URL(transformedId) } as never);
+        },
+      ],
     });
     const events: OutboundBroadcastEvent[] = [];
     federation.setOutboundObservers({
@@ -1937,12 +2022,13 @@ test("transformed activity type capture does not mask validation failures", asyn
       ctx.sendActivity(sender, recipient, activity),
       (error: unknown) => {
         rejected = error;
-        return error instanceof TypeError &&
-          error.message === validationMessage;
+        return (
+          error instanceof TypeError && error.message === validationMessage
+        );
       },
     );
-    const finished = events.find((event) =>
-      event.stage === "preparation-finished"
+    const finished = events.find(
+      (event) => event.stage === "preparation-finished",
     );
     ok(finished);
     strictEqual(finished.activity.id, transformedId);
@@ -2007,8 +2093,8 @@ test("transformed activity ID getter failures retain the readable type", async (
     ok(started);
     deepStrictEqual(started.activity, {});
     ok(Object.isFrozen(started.activity));
-    const finished = events.find((event) =>
-      event.stage === "preparation-finished"
+    const finished = events.find(
+      (event) => event.stage === "preparation-finished",
     );
     ok(finished);
     deepStrictEqual(
@@ -2064,10 +2150,8 @@ test("outbound preparation precedes queue acceptance and is not rewritten by enq
               }
             },
           });
-          const sending = federation.createContext(
-            new URL("https://example.com"),
-            undefined,
-          )
+          const sending = federation
+            .createContext(new URL("https://example.com"), undefined)
             .sendActivity(sender, [recipient, recipient], activity, {
               fanout: role === "fanout" ? "force" : "skip",
             });
@@ -2086,11 +2170,12 @@ test("outbound preparation precedes queue acceptance and is not rewritten by enq
           strictEqual(messages.length, 1);
           strictEqual(messages[0].type, role);
           const message = messages[0];
-          const identity = message.type === "fanout"
-            ? message.inboxes[recipient.inboxId!.href].outbound
-            : message.type === "outbox"
-            ? message.outbound
-            : undefined;
+          const identity =
+            message.type === "fanout"
+              ? message.inboxes[recipient.inboxId!.href].outbound
+              : message.type === "outbox"
+                ? message.outbound
+                : undefined;
           ok(identity);
           deepStrictEqual(identity.broadcast, {
             type: "known",
@@ -2139,14 +2224,13 @@ test("outbound preparation finishes before immediate sends settle without report
           sendEnded();
         }
       };
-      fetchMock.mockGlobal().post(
-        "https://receiver.example/inbox",
-        async () => {
+      fetchMock
+        .mockGlobal()
+        .post("https://receiver.example/inbox", async () => {
           fetched();
           await responseGate;
           return { status, body: "receiver response" };
-        },
-      );
+        });
       try {
         const federation = createFederation<void>({
           kv: new MemoryKvStore(),
@@ -2166,20 +2250,22 @@ test("outbound preparation finishes before immediate sends settle without report
           },
         });
         let settled = false;
-        const sending = federation.createContext(
-          new URL("https://example.com"),
-          undefined,
-        )
+        const sending = federation
+          .createContext(new URL("https://example.com"), undefined)
           .sendActivity(sender, recipient, activity, { immediate: true })
           .finally(() => {
             settled = true;
           });
-        const result = status === 202
-          ? sending
-          : rejects(sending, (error: unknown) => {
-            return error instanceof Error && "statusCode" in error &&
-              error.statusCode === status;
-          });
+        const result =
+          status === 202
+            ? sending
+            : rejects(sending, (error: unknown) => {
+                return (
+                  error instanceof Error &&
+                  "statusCode" in error &&
+                  error.statusCode === status
+                );
+              });
         await Promise.all([prepared, fetching]);
         strictEqual(settled, false);
         deepStrictEqual(preparation(events), {
@@ -2200,10 +2286,10 @@ test("outbound preparation finishes before immediate sends settle without report
         strictEqual(settled, false);
         releaseObserver();
         await result;
-        deepStrictEqual(deliveries.map((event) => event.stage), [
-          "planned",
-          "handoff",
-        ]);
+        deepStrictEqual(
+          deliveries.map((event) => event.stage),
+          ["planned", "handoff"],
+        );
         const handoff = deliveries[1];
         ok(handoff.stage === "handoff");
         deepStrictEqual(handoff.result, { type: "direct" });
@@ -2259,16 +2345,14 @@ test("outbound preparation preserves earlier handoffs when later destination set
             manuallyStartQueue: true,
             ...(immediate ? {} : { queue: { outbox: queue } }),
           });
-          federation.setActorDispatcher(
-            "/users/{identifier}",
-            () => new Person({}),
-          )
-            .setKeyPairsDispatcher(
-              () => [{
+          federation
+            .setActorDispatcher("/users/{identifier}", () => new Person({}))
+            .setKeyPairsDispatcher(() => [
+              {
                 privateKey: rsaPrivateKey2,
                 publicKey: rsaPublicKey2.publicKey!,
-              }],
-            );
+              },
+            ]);
           federation.setFollowersDispatcher(
             "/users/{identifier}/followers",
             () => ({
@@ -2285,7 +2369,8 @@ test("outbound preparation preserves earlier handoffs when later destination set
           });
           let originalError: unknown;
           await rejects(
-            federation.createContext(new URL("https://example.com"), undefined)
+            federation
+              .createContext(new URL("https://example.com"), undefined)
               .sendActivity({ identifier: "alice" }, "followers", activity, {
                 immediate,
                 syncCollection: true,
@@ -2310,12 +2395,12 @@ test("outbound preparation preserves earlier handoffs when later destination set
             // Prove the earlier send still reaches fetch after producer failure.
             await fetching;
           }
-          const planned = deliveries.filter((event) =>
-            event.stage === "planned"
+          const planned = deliveries.filter(
+            (event) => event.stage === "planned",
           );
           strictEqual(planned.length, 2);
-          const first = deliveries.filter((event) =>
-            event.destinationInbox === firstInbox
+          const first = deliveries.filter(
+            (event) => event.destinationInbox === firstInbox,
           );
           deepStrictEqual(
             first.map((event) => event.stage),
@@ -2326,8 +2411,8 @@ test("outbound preparation preserves earlier handoffs when later destination set
             ok(handoff.stage === "handoff");
             deepStrictEqual(handoff.result, { type: "direct" });
           }
-          const failed = deliveries.find((event) =>
-            event.stage === "preparation-failed"
+          const failed = deliveries.find(
+            (event) => event.stage === "preparation-failed",
           );
           ok(failed?.stage === "preparation-failed");
           strictEqual(
@@ -2352,7 +2437,8 @@ test("outbox-context observers await starts and preserve context, registration, 
   const federation = createFederation<{ label: string }>(options);
   const failure = Symbol("sender resolution failed");
   let resolutions = 0;
-  federation.setActorDispatcher("/users/{identifier}", () => new Person({}))
+  federation
+    .setActorDispatcher("/users/{identifier}", () => new Person({}))
     .mapHandle(() => {
       resolutions++;
       throw failure;
@@ -2581,14 +2667,13 @@ test("outbox-context observers report immediate readiness before transport settl
       const events: OutboundBroadcastEvent[] = [];
       const contexts: unknown[] = [];
       const [tracerProvider, spanExporter] = createTestTracerProvider();
-      fetchMock.mockGlobal().post(
-        "https://receiver.example/inbox",
-        async () => {
+      fetchMock
+        .mockGlobal()
+        .post("https://receiver.example/inbox", async () => {
           fetched();
           await gate;
           return new Response(null, { status });
-        },
-      );
+        });
       try {
         const federation = createFederation<void>({
           kv: new MemoryKvStore(),
@@ -2615,18 +2700,23 @@ test("outbox-context observers report immediate readiness before transport settl
           },
         });
         let settled = false;
-        const sending = ctx.sendActivity(sender, recipient, activity, {
-          immediate: true,
-        })
+        const sending = ctx
+          .sendActivity(sender, recipient, activity, {
+            immediate: true,
+          })
           .finally(() => {
             settled = true;
           });
-        const result = status === 202
-          ? sending
-          : rejects(sending, (error: unknown) => {
-            return error instanceof Error && "statusCode" in error &&
-              error.statusCode === status;
-          });
+        const result =
+          status === 202
+            ? sending
+            : rejects(sending, (error: unknown) => {
+                return (
+                  error instanceof Error &&
+                  "statusCode" in error &&
+                  error.statusCode === status
+                );
+              });
         await Promise.all([fetching, prepared]);
         strictEqual(settled, false);
         strictEqual(ctx.hasDeliveredActivity(), false);
@@ -2662,9 +2752,12 @@ test("outbox-context observers report immediate readiness before transport settl
 // Keep extension fields and signature-shaped data opaque; forwarding observes
 // their existing shape checks, not authentication or a vocabulary round trip.
 const forwardingPayload = {
-  "@context": ["https://www.w3.org/ns/activitystreams", {
-    extension: "https://example.com/extension",
-  }],
+  "@context": [
+    "https://www.w3.org/ns/activitystreams",
+    {
+      extension: "https://example.com/extension",
+    },
+  ],
   type: "Create",
   id: "https://sender.example/create",
   actor: "https://sender.example/actor",
@@ -2686,17 +2779,17 @@ function forwardingContext<TContextData>(
   ok(base instanceof ContextImpl);
   return kind === "inbox"
     ? base.toInboxContext(
-      null,
-      payload,
-      forwardingPayload.id,
-      Create.typeId.href,
-    )
+        null,
+        payload,
+        forwardingPayload.id,
+        Create.typeId.href,
+      )
     : base.toOutboxContext(
-      "alice",
-      payload,
-      forwardingPayload.id,
-      Create.typeId.href,
-    );
+        "alice",
+        payload,
+        forwardingPayload.id,
+        Create.typeId.href,
+      );
 }
 
 test("forwarding observers distinguish skips from preparation failures without extra loading", async (t) => {
@@ -2716,10 +2809,8 @@ test("forwarding observers distinguish skips from preparation failures without e
             throw new Error("extra lookup");
           },
         });
-        federation.setActorDispatcher(
-          "/users/{identifier}",
-          () => new Person({}),
-        )
+        federation
+          .setActorDispatcher("/users/{identifier}", () => new Person({}))
           .mapHandle(() => {
             throw failure;
           });
@@ -2752,19 +2843,20 @@ test("forwarding observers distinguish skips from preparation failures without e
           preparation(events),
           scenario === "failed"
             ? {
-              type: "failed",
-              failure: {
-                kind: "local",
-                phase: "sender-resolution",
-                error: failure,
-              },
-              planning: "not-started",
-              plannedDestinationCount: 0,
-            }
+                type: "failed",
+                failure: {
+                  kind: "local",
+                  phase: "sender-resolution",
+                  error: failure,
+                },
+                planning: "not-started",
+                plannedDestinationCount: 0,
+              }
             : {
-              type: "skipped",
-              reason: scenario === "unsigned" ? "unsigned" : "no-destinations",
-            },
+                type: "skipped",
+                reason:
+                  scenario === "unsigned" ? "unsigned" : "no-destinations",
+              },
         );
         for (const event of events) strictEqual(event.operation, "forward");
         for (const context of contexts) strictEqual(context, ctx);
@@ -2799,11 +2891,13 @@ test("forwarding observers await readiness before enqueue while preserving raw p
             },
             ...(batch
               ? {
-                enqueueMany(batch: readonly Message[]) {
-                  messages.push(...batch);
-                  return rejected ? Promise.reject(failure) : Promise.resolve();
-                },
-              }
+                  enqueueMany(batch: readonly Message[]) {
+                    messages.push(...batch);
+                    return rejected
+                      ? Promise.reject(failure)
+                      : Promise.resolve();
+                  },
+                }
               : {}),
             listen: () => Promise.resolve(),
           };
@@ -2812,9 +2906,11 @@ test("forwarding observers await readiness before enqueue while preserving raw p
             kv: new MemoryKvStore(),
             queue: { outbox: queue },
             manuallyStartQueue: true,
-            activityTransformers: [() => {
-              throw new Error("forwarding must not transform");
-            }],
+            activityTransformers: [
+              () => {
+                throw new Error("forwarding must not transform");
+              },
+            ],
           });
           const ctx = forwardingContext(
             federation,
@@ -2924,15 +3020,14 @@ test("forwarding observers retain readiness and registration through late immedi
         }
       };
       let submitted: unknown;
-      fetchMock.mockGlobal().post(
-        "https://receiver.example/inbox",
-        async (call) => {
+      fetchMock
+        .mockGlobal()
+        .post("https://receiver.example/inbox", async (call) => {
           submitted = JSON.parse(String(call.options.body));
           fetched();
           await responseGate;
           return new Response(null, { status });
-        },
-      );
+        });
       try {
         const federation = createFederation<void>({
           kv: new MemoryKvStore(),
@@ -2965,19 +3060,24 @@ test("forwarding observers retain readiness and registration through late immedi
           },
         });
         let settled = false;
-        const sending = ctx.forwardActivity(sender, recipient, {
-          immediate: true,
-          skipIfUnsigned: true,
-        })
+        const sending = ctx
+          .forwardActivity(sender, recipient, {
+            immediate: true,
+            skipIfUnsigned: true,
+          })
           .finally(() => {
             settled = true;
           });
-        const result = status === 202
-          ? sending
-          : rejects(sending, (error: unknown) => {
-            return error instanceof Error && "statusCode" in error &&
-              error.statusCode === status;
-          });
+        const result =
+          status === 202
+            ? sending
+            : rejects(sending, (error: unknown) => {
+                return (
+                  error instanceof Error &&
+                  "statusCode" in error &&
+                  error.statusCode === status
+                );
+              });
         await Promise.all([prepared, fetching]);
         deepStrictEqual(submitted, forwardingPayload);
         strictEqual(settled, false);
@@ -3000,10 +3100,10 @@ test("forwarding observers retain readiness and registration through late immedi
         strictEqual(settled, false);
         release();
         await result;
-        deepStrictEqual(deliveries.map((event) => event.stage), [
-          "planned",
-          "handoff",
-        ]);
+        deepStrictEqual(
+          deliveries.map((event) => event.stage),
+          ["planned", "handoff"],
+        );
         const handoff = deliveries[1];
         ok(handoff.stage === "handoff");
         deepStrictEqual(handoff.result, { type: "direct" });
@@ -3108,8 +3208,8 @@ test("outbound delivery observers snapshot registration and deduplicated destina
   for (const context of contexts) strictEqual(context, ctx);
   const planned = events.filter((event) => event.stage === "planned");
   strictEqual(planned.length, 2);
-  const sharedPlan = planned.find((event) =>
-    event.destinationInbox === shared.href
+  const sharedPlan = planned.find(
+    (event) => event.destinationInbox === shared.href,
   );
   ok(sharedPlan?.stage === "planned");
   deepStrictEqual(
@@ -3133,8 +3233,8 @@ test("outbound delivery observers snapshot registration and deduplicated destina
       const result = event.result;
       ok(result.type === "enqueued");
       strictEqual(result.queue, "outbox");
-      const message = messages.find((message) =>
-        message.id === result.queueMessageId
+      const message = messages.find(
+        (message) => message.id === result.queueMessageId,
       );
       ok(message?.type === "outbox");
       strictEqual(message.inbox, event.destinationInbox);
@@ -3154,17 +3254,19 @@ test("outbound delivery observers report queue acceptance separately from produc
           const queue: MessageQueue = {
             enqueue(message) {
               messages.push(message);
-              const fails = rejected &&
-                (mode !== "single" || messages.length === 1);
+              const fails =
+                rejected && (mode !== "single" || messages.length === 1);
               return fails ? Promise.reject(failure) : Promise.resolve();
             },
             ...(mode === "batch" || mode === "forward"
               ? {
-                enqueueMany(batch: readonly Message[]) {
-                  messages.push(...batch);
-                  return rejected ? Promise.reject(failure) : Promise.resolve();
-                },
-              }
+                  enqueueMany(batch: readonly Message[]) {
+                    messages.push(...batch);
+                    return rejected
+                      ? Promise.reject(failure)
+                      : Promise.resolve();
+                  },
+                }
               : {}),
             listen: () => Promise.resolve(),
           };
@@ -3196,17 +3298,19 @@ test("outbound delivery observers report queue acceptance separately from produc
             undefined,
           );
           ok(ctx instanceof ContextImpl);
-          const sending = mode === "forward"
-            ? ctx.toInboxContext(
-              null,
-              forwardingPayload,
-              forwardingPayload.id,
-              Create.typeId.href,
-            )
-              .forwardActivity(sender, targets, { skipIfUnsigned: true })
-            : ctx.sendActivity(sender, targets, activity, {
-              fanout: mode === "fanout" ? "force" : "skip",
-            });
+          const sending =
+            mode === "forward"
+              ? ctx
+                  .toInboxContext(
+                    null,
+                    forwardingPayload,
+                    forwardingPayload.id,
+                    Create.typeId.href,
+                  )
+                  .forwardActivity(sender, targets, { skipIfUnsigned: true })
+              : ctx.sendActivity(sender, targets, activity, {
+                  fanout: mode === "fanout" ? "force" : "skip",
+                });
           if (rejected) {
             await rejects(sending, (error: unknown) => error === failure);
           } else await sending;
@@ -3215,17 +3319,18 @@ test("outbound delivery observers report queue acceptance separately from produc
             preparedFor: mode === "fanout" ? "fanout" : "delivery",
             destinationCount: 2,
           });
-          const planned = deliveries.filter((event) =>
-            event.stage === "planned"
+          const planned = deliveries.filter(
+            (event) => event.stage === "planned",
           );
-          const handoffs = deliveries.filter((event) =>
-            event.stage === "handoff"
+          const handoffs = deliveries.filter(
+            (event) => event.stage === "handoff",
           );
           strictEqual(planned.length, 2);
           strictEqual(handoffs.length, 2);
           for (const event of handoffs) {
             ok(event.stage === "handoff");
-            const fails = rejected &&
+            const fails =
+              rejected &&
               (mode !== "single" ||
                 event.destinationInbox === recipient.inboxId!.href);
             if (fails) {
@@ -3240,8 +3345,8 @@ test("outbound delivery observers report queue acceptance separately from produc
                 mode === "fanout" ? "fanout" : "outbox",
               );
               ok(
-                messages.some((message) =>
-                  message.id === result.queueMessageId
+                messages.some(
+                  (message) => message.id === result.queueMessageId,
                 ),
               );
             }
@@ -3251,14 +3356,15 @@ test("outbound delivery observers report queue acceptance separately from produc
               message.type === "fanout"
                 ? event.destinationInbox in message.inboxes
                 : message.type === "outbox" &&
-                  message.inbox === event.destinationInbox
+                  message.inbox === event.destinationInbox,
             );
             ok(message);
-            const identity = message.type === "fanout"
-              ? message.inboxes[event.destinationInbox].outbound
-              : message.type === "outbox"
-              ? message.outbound
-              : undefined;
+            const identity =
+              message.type === "fanout"
+                ? message.inboxes[event.destinationInbox].outbound
+                : message.type === "outbox"
+                  ? message.outbound
+                  : undefined;
             deepStrictEqual(identity, {
               broadcast: event.broadcast,
               deliveryId: event.deliveryId,
@@ -3268,8 +3374,8 @@ test("outbound delivery observers report queue acceptance separately from produc
             deepStrictEqual(structuredClone(identity), identity);
             strictEqual(
               event.deliveryId,
-              planned.find((plan) =>
-                plan.destinationInbox === event.destinationInbox
+              planned.find(
+                (plan) => plan.destinationInbox === event.destinationInbox,
               )!.deliveryId,
             );
           }
@@ -3306,11 +3412,15 @@ test("outbound delivery observers retain accepted handoffs after bookkeeping fai
     },
   });
   await rejects(
-    federation.createContext(new URL("https://example.com"), undefined)
+    federation
+      .createContext(new URL("https://example.com"), undefined)
       .sendActivity(sender, recipient, activity),
     (error: unknown) => error === failure,
   );
-  deepStrictEqual(events.map((event) => event.stage), ["planned", "handoff"]);
+  deepStrictEqual(
+    events.map((event) => event.stage),
+    ["planned", "handoff"],
+  );
   const event = events[1];
   ok(event.stage === "handoff");
   ok(event.result.type === "enqueued");
@@ -3361,9 +3471,8 @@ test("outbound queue identities survive fanout replay and legacy messages", asyn
         ok(message?.type === "fanout");
         const original = structuredClone(message);
         if (legacy) {
-          for (
-            const entry of Object.values(message.inboxes)
-          ) delete (entry as { outbound?: unknown }).outbound;
+          for (const entry of Object.values(message.inboxes))
+            delete (entry as { outbound?: unknown }).outbound;
         }
         const events: OutboundDeliveryEvent[] = [];
         let newBroadcasts = 0;
@@ -3387,8 +3496,8 @@ test("outbound queue identities survive fanout replay and legacy messages", asyn
         strictEqual(new Set(outboxes.map((message) => message.id)).size, 4);
         const identities = new Set<string>();
         for (const inbox of Object.keys(message.inboxes)) {
-          const children = outboxes.filter((message) =>
-            message.type === "outbox" && message.inbox === inbox
+          const children = outboxes.filter(
+            (message) => message.type === "outbox" && message.inbox === inbox,
           );
           strictEqual(children.length, 2);
           ok(children[0].type === "outbox" && children[1].type === "outbox");
@@ -3406,11 +3515,9 @@ test("outbound queue identities survive fanout replay and legacy messages", asyn
           if (!legacy) {
             deepStrictEqual(identity, original.inboxes[inbox].outbound);
           }
-          for (
-            const event of events.filter((event) =>
-              event.destinationInbox === inbox
-            )
-          ) {
+          for (const event of events.filter(
+            (event) => event.destinationInbox === inbox,
+          )) {
             strictEqual(event.stage, "handoff");
             strictEqual(event.deliveryId, identity.deliveryId);
             deepStrictEqual(event.broadcast, identity.broadcast);
@@ -3583,35 +3690,32 @@ function continuationMessage(
     ...(portableInbox == null ? {} : { portableInbox }),
     ...(observed
       ? {
-        provenance: {
-          dispatchId: "application-dispatch",
-          inboxRequest: {
-            inboxRequestId: crypto.randomUUID(),
-            requestId: "original-request-label",
-            context: {
-              origin: "https://source.example:8443",
-              host: "source.example:8443",
-              hostname: "source.example",
-              canonicalOrigin: "https://canonical.example",
+          provenance: {
+            dispatchId: "application-dispatch",
+            inboxRequest: {
+              inboxRequestId: crypto.randomUUID(),
+              requestId: "original-request-label",
+              context: {
+                origin: "https://source.example:8443",
+                host: "source.example:8443",
+                hostname: "source.example",
+                canonicalOrigin: "https://canonical.example",
+              },
             },
           },
-        },
-        outbound: {
-          broadcast: { type: "known" as const, id: crypto.randomUUID() },
-          deliveryId: crypto.randomUUID(),
-          destinationInbox: inbox,
-          ...(portableInbox == null ? {} : { portableInbox }),
-        },
-      }
+          outbound: {
+            broadcast: { type: "known" as const, id: crypto.randomUUID() },
+            deliveryId: crypto.randomUUID(),
+            destinationInbox: inbox,
+            ...(portableInbox == null ? {} : { portableInbox }),
+          },
+        }
       : {}),
   };
 }
 
 test("gateway retry preparation diagnostics include only the failed route", async () => {
-  const gateways = [
-    "https://gw1.example/inbox",
-    "https://gw2.example/inbox",
-  ];
+  const gateways = ["https://gw1.example/inbox", "https://gw2.example/inbox"];
   const queued: Message[] = [];
   const reports: OutboundWorkerReport[] = [];
   const federation = createFederation<void>({
@@ -3650,9 +3754,10 @@ test("gateway retry preparation diagnostics include only the failed route", asyn
     ok(action?.type === "scheduled");
     strictEqual(action.action, "retry");
     deepStrictEqual(action.inboxUrls, gateways);
-    deepStrictEqual(action.preparationFailures?.map((item) => item.inboxUrl), [
-      gateways[1],
-    ]);
+    deepStrictEqual(
+      action.preparationFailures?.map((item) => item.inboxUrl),
+      [gateways[1]],
+    );
     strictEqual(
       action.preparationFailures?.[0].failure.phase,
       "request-preparation",
@@ -3698,7 +3803,9 @@ test("gateway worker actions retain route abandonment without claiming an unqueu
     ...continuationMessage(gateways[0], true),
     gatewayInboxes: gateways,
   };
-  fetchMock.mockGlobal().post(gateways[0], 404)
+  fetchMock
+    .mockGlobal()
+    .post(gateways[0], 404)
     .post(gateways[1], { status: 429, headers: { "Retry-After": "3600" } })
     .post(gateways[2], 202);
   try {
@@ -3706,17 +3813,18 @@ test("gateway worker actions retain route abandonment without claiming an unqueu
     strictEqual(workers.length, 1);
     strictEqual(workers[0].attemptsStarted, 3);
     deepStrictEqual(workers[0].result, { type: "completed" });
-    deepStrictEqual(workers[0].actions, [{
-      type: "abandoned",
-      reason: "permanent-failure",
-      inboxUrls: [gateways[0]],
-    }]);
-    strictEqual(queued.length, 0);
-    deepStrictEqual(attempts.map((report) => report.outcome.type), [
-      "failed",
-      "failed",
-      "succeeded",
+    deepStrictEqual(workers[0].actions, [
+      {
+        type: "abandoned",
+        reason: "permanent-failure",
+        inboxUrls: [gateways[0]],
+      },
     ]);
+    strictEqual(queued.length, 0);
+    deepStrictEqual(
+      attempts.map((report) => report.outcome.type),
+      ["failed", "failed", "succeeded"],
+    );
     for (const report of attempts) {
       strictEqual(report.deliveryId, message.outbound!.deliveryId);
     }
@@ -3727,16 +3835,14 @@ test("gateway worker actions retain route abandonment without claiming an unqueu
 
 test("gateway worker actions preserve abandonment and available drop errors", async (t) => {
   const gateways = ["https://gw1.example/inbox", "https://gw2.example/inbox"];
-  for (
-    const mode of [
-      "permanent",
-      "permanent-handler",
-      "declined",
-      "queue-unavailable",
-      "ttl",
-      "ttl-parse",
-    ] as const
-  ) {
+  for (const mode of [
+    "permanent",
+    "permanent-handler",
+    "declined",
+    "queue-unavailable",
+    "ttl",
+    "ttl-parse",
+  ] as const) {
     await t.step(mode, async () => {
       const ttl = mode.startsWith("ttl");
       const failure = Symbol(mode);
@@ -3749,17 +3855,19 @@ test("gateway worker actions preserve abandonment and available drop errors", as
         circuitBreaker: ttl ? { heldActivityTtl: { seconds: 1 } } : false,
         outboxRetryPolicy: () =>
           mode === "declined" ? null : Temporal.Duration.from({ seconds: 1 }),
-        ...(mode === "queue-unavailable" ? {} : {
-          queue: {
-            outbox: {
-              enqueue(message: Message) {
-                queued.push(message);
-                return Promise.resolve();
+        ...(mode === "queue-unavailable"
+          ? {}
+          : {
+              queue: {
+                outbox: {
+                  enqueue(message: Message) {
+                    queued.push(message);
+                    return Promise.resolve();
+                  },
+                  listen: () => Promise.resolve(),
+                },
               },
-              listen: () => Promise.resolve(),
-            },
-          },
-        }),
+            }),
       });
       federation.setOutboundObservers({
         onWorker(_ctx, report) {
@@ -3783,9 +3891,9 @@ test("gateway worker actions preserve abandonment and available drop errors", as
         gatewayInboxes: gateways,
         ...(ttl
           ? {
-            circuitHeld: true as const,
-            circuitHeldSince: "2000-01-01T00:00:00Z",
-          }
+              circuitHeld: true as const,
+              circuitHeldSince: "2000-01-01T00:00:00Z",
+            }
           : {}),
       };
       fetchMock.mockGlobal();
@@ -3809,8 +3917,8 @@ test("gateway worker actions preserve abandonment and available drop errors", as
         );
         const actions = report.actions;
         ok(actions);
-        const abandonments = actions.filter((action) =>
-          action.type === "abandoned"
+        const abandonments = actions.filter(
+          (action) => action.type === "abandoned",
         );
         if (mode.startsWith("permanent")) {
           deepStrictEqual(
@@ -3821,17 +3929,21 @@ test("gateway worker actions preserve abandonment and available drop errors", as
               inboxUrls: [inbox],
             })),
           );
-        } else {deepStrictEqual(abandonments, [{
-            type: "abandoned",
-            reason: ttl
-              ? "held-ttl-expired"
-              : mode === "declined"
-              ? "retry-policy-declined"
-              : "queue-unavailable",
-            inboxUrls: gateways,
-          }]);}
-        const failed = actions.filter((action) =>
-          action.type === "action-failed"
+        } else {
+          deepStrictEqual(abandonments, [
+            {
+              type: "abandoned",
+              reason: ttl
+                ? "held-ttl-expired"
+                : mode === "declined"
+                  ? "retry-policy-declined"
+                  : "queue-unavailable",
+              inboxUrls: gateways,
+            },
+          ]);
+        }
+        const failed = actions.filter(
+          (action) => action.type === "action-failed",
         );
         if (mode === "permanent-handler" || mode === "ttl-parse") {
           strictEqual(failed.length, 1);
@@ -3854,9 +3966,11 @@ test("gateway continuation failures preserve partial actions and settled attempt
     "https://gw2.example/inbox",
     "https://gw3.example/inbox",
   ];
-  for (
-    const mode of ["retry-reject", "defer-reject", "retry-bookkeeping"] as const
-  ) {
+  for (const mode of [
+    "retry-reject",
+    "defer-reject",
+    "retry-bookkeeping",
+  ] as const) {
     await t.step(mode, async () => {
       const [meterProvider] = createTestMeterProvider();
       const failure = Symbol(mode);
@@ -3868,9 +3982,10 @@ test("gateway continuation failures preserve partial actions and settled attempt
         allowPrivateAddress: true,
         manuallyStartQueue: true,
         meterProvider,
-        circuitBreaker: mode === "defer-reject"
-          ? { failureThreshold: 1, recoveryDelay: { hours: 1 } }
-          : false,
+        circuitBreaker:
+          mode === "defer-reject"
+            ? { failureThreshold: 1, recoveryDelay: { hours: 1 } }
+            : false,
         outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 1 }),
         queue: {
           outbox: {
@@ -3908,10 +4023,11 @@ test("gateway continuation failures preserve partial actions and settled attempt
         ...continuationMessage(gateways[0], true),
         gatewayInboxes: gateways,
       };
-      fetchMock.mockGlobal().post(gateways[0], 404).post(gateways[1], 503).post(
-        gateways[2],
-        503,
-      );
+      fetchMock
+        .mockGlobal()
+        .post(gateways[0], 404)
+        .post(gateways[1], 503)
+        .post(gateways[2], 503);
       try {
         await rejects(
           federation.processQueuedTask(undefined, message),
@@ -3932,7 +4048,7 @@ test("gateway continuation failures preserve partial actions and settled attempt
         const action = actions[1];
         ok(
           action.type === "scheduled" ||
-            action.type === "action-failed" && action.action !== "drop",
+            (action.type === "action-failed" && action.action !== "drop"),
         );
         strictEqual(action.action, mode === "defer-reject" ? "defer" : "retry");
         deepStrictEqual(action.inboxUrls, gateways.slice(1));
@@ -3978,9 +4094,10 @@ test("ordinary outbox worker actions record actual retry and hold enqueues", asy
         allowPrivateAddress: true,
         manuallyStartQueue: true,
         outboxRetryPolicy: () => Temporal.Duration.from({ milliseconds: 250 }),
-        circuitBreaker: mode === "hold"
-          ? { failureThreshold: 1, recoveryDelay: { hours: 1 } }
-          : false,
+        circuitBreaker:
+          mode === "hold"
+            ? { failureThreshold: 1, recoveryDelay: { hours: 1 } }
+            : false,
         queue: {
           outbox: {
             enqueue(message, options) {
@@ -4007,9 +4124,9 @@ test("ordinary outbox worker actions record actual retry and hold enqueues", asy
         message.inbox,
         mode === "retry-after"
           ? {
-            status: 429,
-            headers: { "Retry-After": "1" },
-          }
+              status: 429,
+              headers: { "Retry-After": "1" },
+            }
           : 503,
       );
       try {
@@ -4065,14 +4182,12 @@ test("ordinary outbox worker actions record actual retry and hold enqueues", asy
 });
 
 test("handled header preparation failures stay attached to actual retry actions", async (t) => {
-  for (
-    const mode of [
-      "accepted",
-      "enqueue-failed",
-      "declined",
-      "queue-unavailable",
-    ] as const
-  ) {
+  for (const mode of [
+    "accepted",
+    "enqueue-failed",
+    "declined",
+    "queue-unavailable",
+  ] as const) {
     await t.step(mode, async () => {
       const reports: OutboundWorkerReport[] = [];
       const enqueueError = new Error("queue unavailable");
@@ -4089,19 +4204,21 @@ test("handled header preparation failures stay attached to actual retry actions"
         onOutboxError(error) {
           preparationErrors.push(error);
         },
-        ...(mode === "queue-unavailable" ? {} : {
-          queue: {
-            outbox: {
-              enqueue() {
-                enqueueCalls++;
-                return mode === "enqueue-failed"
-                  ? Promise.reject(enqueueError)
-                  : Promise.resolve();
+        ...(mode === "queue-unavailable"
+          ? {}
+          : {
+              queue: {
+                outbox: {
+                  enqueue() {
+                    enqueueCalls++;
+                    return mode === "enqueue-failed"
+                      ? Promise.reject(enqueueError)
+                      : Promise.resolve();
+                  },
+                  listen: () => Promise.resolve(),
+                },
               },
-              listen: () => Promise.resolve(),
-            },
-          },
-        }),
+            }),
       });
       federation.setOutboundObservers({
         onWorker(_ctx, report) {
@@ -4229,7 +4346,7 @@ test("ordinary outbox worker actions preserve enqueue uncertainty and accepted b
         );
         ok(
           action.type === "scheduled" ||
-            action.type === "action-failed" && action.action === "retry",
+            (action.type === "action-failed" && action.action === "retry"),
         );
         strictEqual(action.action, "retry");
         deepStrictEqual(action.queue, {
@@ -4254,17 +4371,15 @@ test("ordinary outbox worker actions preserve enqueue uncertainty and accepted b
 });
 
 test("ordinary outbox worker actions retain local abandonment and failed drop steps", async (t) => {
-  for (
-    const mode of [
-      "permanent",
-      "declined",
-      "queue-unavailable",
-      "ttl",
-      "ttl-parse",
-      "ttl-handler",
-      "permanent-handler",
-    ] as const
-  ) {
+  for (const mode of [
+    "permanent",
+    "declined",
+    "queue-unavailable",
+    "ttl",
+    "ttl-parse",
+    "ttl-handler",
+    "permanent-handler",
+  ] as const) {
     await t.step(mode, async () => {
       const reports: OutboundWorkerReport[] = [];
       const queued: Message[] = [];
@@ -4279,17 +4394,19 @@ test("ordinary outbox worker actions retain local abandonment and failed drop st
             ? Temporal.Duration.from({ seconds: 1 })
             : null,
         circuitBreaker: ttl ? { heldActivityTtl: { seconds: 1 } } : false,
-        ...(mode === "queue-unavailable" ? {} : {
-          queue: {
-            outbox: {
-              enqueue(message) {
-                queued.push(message);
-                return Promise.resolve();
+        ...(mode === "queue-unavailable"
+          ? {}
+          : {
+              queue: {
+                outbox: {
+                  enqueue(message) {
+                    queued.push(message);
+                    return Promise.resolve();
+                  },
+                  listen: () => Promise.resolve(),
+                },
               },
-              listen: () => Promise.resolve(),
-            },
-          },
-        }),
+            }),
       });
       federation.setOutboundObservers({
         onWorker(_ctx, report) {
@@ -4311,15 +4428,14 @@ test("ordinary outbox worker actions retain local abandonment and failed drop st
       const original = continuationMessage(recipient.inboxId!.href, true);
       const message = ttl
         ? {
-          ...original,
-          circuitHeld: true as const,
-          circuitHeldSince: "2000-01-01T00:00:00Z",
-        }
+            ...original,
+            circuitHeld: true as const,
+            circuitHeldSince: "2000-01-01T00:00:00Z",
+          }
         : original;
-      fetchMock.mockGlobal().post(
-        message.inbox,
-        mode.startsWith("permanent") ? 404 : 503,
-      );
+      fetchMock
+        .mockGlobal()
+        .post(message.inbox, mode.startsWith("permanent") ? 404 : 503);
       try {
         const processing = federation.processQueuedTask(undefined, message);
         if (mode === "ttl-parse") {
@@ -4344,10 +4460,10 @@ test("ordinary outbox worker actions retain local abandonment and failed drop st
           ttl
             ? "held-ttl-expired"
             : mode === "declined"
-            ? "retry-policy-declined"
-            : mode === "queue-unavailable"
-            ? "queue-unavailable"
-            : "permanent-failure",
+              ? "retry-policy-declined"
+              : mode === "queue-unavailable"
+                ? "queue-unavailable"
+                : "permanent-failure",
         );
         deepStrictEqual(abandoned.inboxUrls, [message.inbox]);
         if (mode.endsWith("handler") || mode === "ttl-parse") {
@@ -4366,16 +4482,14 @@ test("ordinary outbox worker actions retain local abandonment and failed drop st
 });
 
 test("outbound worker-only observers count real sends and report local settlement", async (t) => {
-  for (
-    const mode of [
-      "success",
-      "handled",
-      "native",
-      "gateway",
-      "recovered-preparation",
-      "recovered-preparation-success",
-    ] as const
-  ) {
+  for (const mode of [
+    "success",
+    "handled",
+    "native",
+    "gateway",
+    "recovered-preparation",
+    "recovered-preparation-success",
+  ] as const) {
     await t.step(mode, async () => {
       const [tracerProvider, exporter] = createTestTracerProvider();
       const builder = createFederationBuilder<{ label: string }>();
@@ -4398,8 +4512,8 @@ test("outbound worker-only observers count real sends and report local settlemen
         tracerProvider,
         queue: {
           outbox: {
-            nativeRetrial: mode === "native" ||
-              mode === "recovered-preparation",
+            nativeRetrial:
+              mode === "native" || mode === "recovered-preparation",
             enqueue(message) {
               queued.push(message);
               return Promise.resolve();
@@ -4415,7 +4529,8 @@ test("outbound worker-only observers count real sends and report local settlemen
       });
       const message = continuationMessage(recipient.inboxId!.href, true);
       if (
-        mode === "gateway" || mode === "recovered-preparation" ||
+        mode === "gateway" ||
+        mode === "recovered-preparation" ||
         mode === "recovered-preparation-success"
       ) {
         Object.assign(message, {
@@ -4430,25 +4545,28 @@ test("outbound worker-only observers count real sends and report local settlemen
         let reads = 0;
         preparationError = new Error("first gateway header preparation");
         Object.assign(message, {
-          headers: new Proxy({}, {
-            get(target, property, receiver) {
-              if (property === Symbol.iterator && ++reads === 1) {
-                throw preparationError;
-              }
-              // Proxy forwarding requires dynamic property access.
-              // oxlint-disable-next-line anti-slop/no-reflect-get
-              return Reflect.get(target, property, receiver);
+          headers: new Proxy(
+            {},
+            {
+              get(target, property, receiver) {
+                if (property === Symbol.iterator && ++reads === 1) {
+                  throw preparationError;
+                }
+                // Proxy forwarding requires dynamic property access.
+                // oxlint-disable-next-line anti-slop/no-reflect-get
+                return Reflect.get(target, property, receiver);
+              },
             },
-          }),
+          ),
         });
       }
       const data = { label: "worker data" };
-      fetchMock.mockGlobal().post(
-        message.inbox,
-        mode === "success" ? 202 : 503,
-      );
+      fetchMock
+        .mockGlobal()
+        .post(message.inbox, mode === "success" ? 202 : 503);
       if (
-        mode === "gateway" || mode === "recovered-preparation" ||
+        mode === "gateway" ||
+        mode === "recovered-preparation" ||
         mode === "recovered-preparation-success"
       ) {
         fetchMock.post(
@@ -4477,19 +4595,14 @@ test("outbound worker-only observers count real sends and report local settlemen
         } else if (mode === "handled") {
           ok(report.actions?.[0].type === "scheduled");
         } else deepStrictEqual(report.actions, []);
-        strictEqual(
-          report.attemptsStarted,
-          mode === "gateway" ? 2 : 1,
-        );
+        strictEqual(report.attemptsStarted, mode === "gateway" ? 2 : 1);
         if (
           mode === "recovered-preparation" ||
           mode === "recovered-preparation-success"
         ) {
           deepStrictEqual(
             report.preparationFailures?.map((item) => item.inboxUrl),
-            [
-              message.inbox,
-            ],
+            [message.inbox],
           );
           strictEqual(report.preparationFailures?.length, 1);
           strictEqual(Object.isFrozen(report.preparationFailures), true);
@@ -4560,25 +4673,28 @@ test("outbound worker observers report explicit key and fanout parse failures wi
           },
         },
       });
-      const message: Message = phase === "key-import"
-        ? {
-          ...original,
-          keys: [{ keyId: sender.keyId.href, privateKey: { kty: "invalid" } }],
-        }
-        : {
-          type: "fanout",
-          id: original.id,
-          baseUrl: original.baseUrl,
-          keys: [],
-          inboxes: {},
-          activity: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Person",
-          },
-          activityType: Create.typeId.href,
-          traceContext: {},
-          provenance: original.provenance,
-        };
+      const message: Message =
+        phase === "key-import"
+          ? {
+              ...original,
+              keys: [
+                { keyId: sender.keyId.href, privateKey: { kty: "invalid" } },
+              ],
+            }
+          : {
+              type: "fanout",
+              id: original.id,
+              baseUrl: original.baseUrl,
+              keys: [],
+              inboxes: {},
+              activity: {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                type: "Person",
+              },
+              activityType: Create.typeId.href,
+              traceContext: {},
+              provenance: original.provenance,
+            };
       let outward: unknown;
       await rejects(
         federation.processQueuedTask(undefined, message),
@@ -4617,9 +4733,8 @@ test("outbound worker classifies inbox URL parsing failures as validation", asyn
         kv: new MemoryKvStore(),
         allowPrivateAddress: true,
         manuallyStartQueue: true,
-        circuitBreaker: mode === "held-gateway"
-          ? { heldActivityTtl: { seconds: 1 } }
-          : false,
+        circuitBreaker:
+          mode === "held-gateway" ? { heldActivityTtl: { seconds: 1 } } : false,
         outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 1 }),
         queue: {
           outbox: {
@@ -4639,15 +4754,19 @@ test("outbound worker classifies inbox URL parsing failures as validation", asyn
       });
       const original = continuationMessage(recipient.inboxId!.href, true);
       const malformed = "not a URL";
-      const message: OutboxMessage = mode === "ordinary"
-        ? { ...original, inbox: malformed }
-        : {
-          ...original,
-          gatewayInboxes: [malformed, "https://gateway.example/inbox"],
-          ...(mode === "held-gateway"
-            ? { circuitHeld: true, circuitHeldSince: "2000-01-01T00:00:00Z" }
-            : {}),
-        };
+      const message: OutboxMessage =
+        mode === "ordinary"
+          ? { ...original, inbox: malformed }
+          : {
+              ...original,
+              gatewayInboxes: [malformed, "https://gateway.example/inbox"],
+              ...(mode === "held-gateway"
+                ? {
+                    circuitHeld: true,
+                    circuitHeldSince: "2000-01-01T00:00:00Z",
+                  }
+                : {}),
+            };
       let outward: unknown;
       await rejects(
         federation.processQueuedTask(undefined, message),
@@ -4669,15 +4788,13 @@ test("outbound worker classifies inbox URL parsing failures as validation", asyn
 });
 
 test("fanout worker classifies sendActivity validation, signing, serialization, and normalization failures as preparation", async (t) => {
-  for (
-    const phase of [
-      "validation",
-      "signing",
-      "serialization",
-      "normalization",
-      "key-export",
-    ] as const
-  ) {
+  for (const phase of [
+    "validation",
+    "signing",
+    "serialization",
+    "normalization",
+    "key-export",
+  ] as const) {
     await t.step(phase, async () => {
       const failure = Symbol(phase);
       const reports: OutboundWorkerReport[] = [];
@@ -4685,13 +4802,13 @@ test("fanout worker classifies sendActivity validation, signing, serialization, 
         ...options,
         ...(phase === "key-export"
           ? {
-            queue: {
-              outbox: {
-                enqueue: () => Promise.resolve(),
-                listen: () => Promise.resolve(),
+              queue: {
+                outbox: {
+                  enqueue: () => Promise.resolve(),
+                  listen: () => Promise.resolve(),
+                },
               },
-            },
-          }
+            }
           : {}),
       }) as FederationImpl<void>;
       federation.setOutboundObservers({
@@ -4724,16 +4841,20 @@ test("fanout worker classifies sendActivity validation, signing, serialization, 
           } else if (phase === "normalization") {
             Object.defineProperty(outgoing, "toJsonLd", {
               value: () =>
-                new Proxy({}, {
-                  ownKeys() {
-                    throw failure;
+                new Proxy(
+                  {},
+                  {
+                    ownKeys() {
+                      throw failure;
+                    },
                   },
-                }),
+                ),
             });
           }
-          const options = phase === "serialization" || phase === "normalization"
-            ? { ...sendOptions, activityJsonLd: undefined }
-            : sendOptions;
+          const options =
+            phase === "serialization" || phase === "normalization"
+              ? { ...sendOptions, activityJsonLd: undefined }
+              : sendOptions;
           return await originalSendActivity.call(
             federation,
             keys,
@@ -4753,10 +4874,12 @@ test("fanout worker classifies sendActivity validation, signing, serialization, 
         type: "fanout",
         id: crypto.randomUUID(),
         baseUrl: "https://example.com",
-        keys: [{
-          keyId: sender.keyId.href,
-          privateKey: await exportJwk(sender.privateKey),
-        }],
+        keys: [
+          {
+            keyId: sender.keyId.href,
+            privateKey: await exportJwk(sender.privateKey),
+          },
+        ],
         inboxes: {
           [recipient.inboxId!.href]: {
             actorIds: [],
@@ -4845,7 +4968,8 @@ test("fanout worker preserves a trace propagator failure as request preparation"
       reports.push(report);
     },
   });
-  await federation.createContext(new URL("https://example.com"), undefined)
+  await federation
+    .createContext(new URL("https://example.com"), undefined)
     .sendActivity(sender, [recipient], activity, { fanout: "force" });
   const message = fanouts[0];
   ok(message?.type === "fanout");
@@ -4925,10 +5049,10 @@ test("outbound worker reports distinguish fanout child tasks from concrete sends
       const task = fanouts[0];
       ok(task?.type === "fanout");
       const data = { label: "fanout worker" };
-      fetchMock.mockGlobal().post(recipient.inboxId!.href, 202).post(
-        "https://receiver.example/second",
-        202,
-      );
+      fetchMock
+        .mockGlobal()
+        .post(recipient.inboxId!.href, 202)
+        .post("https://receiver.example/second", 202);
       try {
         await federation.processQueuedTask(data, task);
         strictEqual(reports.length, 1);
@@ -4946,8 +5070,8 @@ test("outbound worker reports distinguish fanout child tasks from concrete sends
           deepStrictEqual(action.delivery?.broadcast, { type: "unknown" });
           ok(action.delivery?.deliveryId);
           if (action.type === "scheduled") {
-            const child = children.find((child) =>
-              child.id === action.queue.queueMessageId
+            const child = children.find(
+              (child) => child.id === action.queue.queueMessageId,
             );
             ok(child?.type === "outbox");
             deepStrictEqual(action.delivery, child.outbound);
@@ -4977,11 +5101,14 @@ test("outbound worker callbacks retain selection, await settlement, and isolate 
         throw new Error("logging failure");
       },
     },
-    loggers: [{
-      category: ["fedify", "federation", "outbox"],
-      sinks: ["broken"],
-      lowestLevel: "error",
-    }, { category: ["logtape", "meta"], sinks: [] }],
+    loggers: [
+      {
+        category: ["fedify", "federation", "outbox"],
+        sinks: ["broken"],
+        lowestLevel: "error",
+      },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
   });
   let respond!: () => void;
   const responseGate = new Promise<void>((resolve) => {
@@ -5020,11 +5147,11 @@ test("outbound worker callbacks retain selection, await settlement, and isolate 
     await responseGate;
     return 202;
   });
-  const processing = federation.processQueuedTask(undefined, message).finally(
-    () => {
+  const processing = federation
+    .processQueuedTask(undefined, message)
+    .finally(() => {
       settled = true;
-    },
-  );
+    });
   try {
     await fetching;
     federation.setOutboundObservers({
@@ -5208,8 +5335,8 @@ test("outbound fanout workers report fresh attempts with restored grouping and c
           );
           strictEqual(report.provenance.dispatchId, "original-dispatch");
           deepStrictEqual(report.queue, { queueMessageId: message.id });
-          const span = exporter.spans.find((span) =>
-            span.spanContext().spanId === report.trace?.spanId
+          const span = exporter.spans.find(
+            (span) => span.spanContext().spanId === report.trace?.spanId,
           );
           ok(span);
           strictEqual(span.name, "activitypub.send_activity");
@@ -5223,14 +5350,12 @@ test("outbound fanout workers report fresh attempts with restored grouping and c
 });
 
 test("outbound workers omit attempts for key import, fanout parsing, and held-task drops", async (t) => {
-  for (
-    const phase of [
-      "key-import",
-      "fanout-parsing",
-      "drop",
-      "gateway-drop",
-    ] as const
-  ) {
+  for (const phase of [
+    "key-import",
+    "fanout-parsing",
+    "drop",
+    "gateway-drop",
+  ] as const) {
     await t.step(phase, async () => {
       const messages: Message[] = [];
       const federation = createFederation<void>({
@@ -5255,35 +5380,43 @@ test("outbound workers omit attempts for key import, fanout parsing, and held-ta
         },
       });
       const original = continuationMessage(recipient.inboxId!.href, true);
-      const message: Message = phase === "fanout-parsing"
-        ? {
-          type: "fanout",
-          id: original.id,
-          baseUrl: original.baseUrl,
-          keys: [],
-          inboxes: { [original.inbox]: { actorIds: [], sharedInbox: false } },
-          activity: {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Person",
-          },
-          activityType: Create.typeId.href,
-          traceContext: {},
-        }
-        : phase === "key-import"
-        ? {
-          ...original,
-          keys: [{ keyId: sender.keyId.href, privateKey: { kty: "invalid" } }],
-        }
-        : {
-          ...original,
-          circuitHeld: true,
-          circuitHeldSince: "2000-01-01T00:00:00Z",
-          ...(phase === "gateway-drop"
-            ? {
-              gatewayInboxes: [original.inbox, "https://gateway.example/inbox"],
+      const message: Message =
+        phase === "fanout-parsing"
+          ? {
+              type: "fanout",
+              id: original.id,
+              baseUrl: original.baseUrl,
+              keys: [],
+              inboxes: {
+                [original.inbox]: { actorIds: [], sharedInbox: false },
+              },
+              activity: {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                type: "Person",
+              },
+              activityType: Create.typeId.href,
+              traceContext: {},
             }
-            : {}),
-        };
+          : phase === "key-import"
+            ? {
+                ...original,
+                keys: [
+                  { keyId: sender.keyId.href, privateKey: { kty: "invalid" } },
+                ],
+              }
+            : {
+                ...original,
+                circuitHeld: true,
+                circuitHeldSince: "2000-01-01T00:00:00Z",
+                ...(phase === "gateway-drop"
+                  ? {
+                      gatewayInboxes: [
+                        original.inbox,
+                        "https://gateway.example/inbox",
+                      ],
+                    }
+                  : {}),
+              };
       fetchMock.mockGlobal();
       try {
         const processing = federation.processQueuedTask(undefined, message);
@@ -5312,9 +5445,10 @@ test("outbound queue identities survive ordinary retries, holds, and native rede
           kv: new MemoryKvStore(),
           manuallyStartQueue: true,
           allowPrivateAddress: true,
-          circuitBreaker: mode === "hold"
-            ? { failureThreshold: 1, recoveryDelay: { hours: 1 } }
-            : false,
+          circuitBreaker:
+            mode === "hold"
+              ? { failureThreshold: 1, recoveryDelay: { hours: 1 } }
+              : false,
           queue: {
             outbox: {
               nativeRetrial: mode === "native",
@@ -5335,20 +5469,17 @@ test("outbound queue identities survive ordinary retries, holds, and native rede
         });
         const original = structuredClone(message);
         const task: OutboxMessage = JSON.parse(JSON.stringify(message));
-        fetchMock.mockGlobal().post(
-          message.inbox,
-          mode === "retry-after"
-            ? { status: 429, headers: { "Retry-After": "3600" } }
-            : 500,
-        );
+        fetchMock
+          .mockGlobal()
+          .post(
+            message.inbox,
+            mode === "retry-after"
+              ? { status: 429, headers: { "Retry-After": "3600" } }
+              : 500,
+          );
         try {
           if (mode === "native") {
-            await rejects(
-              federation.processQueuedTask(
-                undefined,
-                task,
-              ),
-            );
+            await rejects(federation.processQueuedTask(undefined, task));
             strictEqual(queued.length, 0);
             fetchMock.hardReset();
             fetchMock.mockGlobal().post(message.inbox, 202);
@@ -5363,10 +5494,7 @@ test("outbound queue identities survive ordinary retries, holds, and native rede
             ok(fetchMock.callHistory.calls().length > 0);
             strictEqual(queued.length, 0);
           } else {
-            await federation.processQueuedTask(
-              undefined,
-              task,
-            );
+            await federation.processQueuedTask(undefined, task);
             strictEqual(queued.length, 1);
             const next = queued[0].message;
             ok(next.type === "outbox");
@@ -5461,9 +5589,10 @@ test("outbound queue identities retain planned destinations through gateway cont
           kv: new MemoryKvStore(),
           manuallyStartQueue: true,
           allowPrivateAddress: true,
-          circuitBreaker: mode === "hold"
-            ? { failureThreshold: 1, recoveryDelay: { hours: 1 } }
-            : false,
+          circuitBreaker:
+            mode === "hold"
+              ? { failureThreshold: 1, recoveryDelay: { hours: 1 } }
+              : false,
           queue: {
             outbox: {
               nativeRetrial: mode === "native",
@@ -5498,18 +5627,13 @@ test("outbound queue identities retain planned destinations through gateway cont
             mode !== "native" && index === 0
               ? 404
               : mode === "defer"
-              ? { status: 429, headers: { "Retry-After": "3600" } }
-              : 500,
+                ? { status: 429, headers: { "Retry-After": "3600" } }
+                : 500,
           );
         }
         try {
           if (mode === "native") {
-            await rejects(
-              federation.processQueuedTask(
-                undefined,
-                task,
-              ),
-            );
+            await rejects(federation.processQueuedTask(undefined, task));
             strictEqual(queued.length, 0);
             fetchMock.hardReset();
             fetchMock.mockGlobal().post(gateways[0], 202);
@@ -5524,10 +5648,7 @@ test("outbound queue identities retain planned destinations through gateway cont
             ok(fetchMock.callHistory.calls().length > 0);
             strictEqual(queued.length, 0);
           } else {
-            await federation.processQueuedTask(
-              undefined,
-              task,
-            );
+            await federation.processQueuedTask(undefined, task);
             strictEqual(queued.length, 1);
             const next = queued[0];
             ok(next.type === "outbox");
@@ -5644,7 +5765,7 @@ test("outbound queue identities retain planned destinations through gateway cont
             ok(task.type === "outbox");
             strictEqual(
               action.action,
-              mode === "hold" || index === 1 && mode === "defer"
+              mode === "hold" || (index === 1 && mode === "defer")
                 ? "defer"
                 : "retry",
             );
@@ -5674,16 +5795,14 @@ test("outbound queue identities retain planned destinations through gateway cont
 });
 
 test("fanout worker actions retain child enqueue settlement and replay identities", async (t) => {
-  for (
-    const mode of [
-      "individual",
-      "partial",
-      "batch",
-      "batch-rejected",
-      "ordered",
-      "bookkeeping",
-    ] as const
-  ) {
+  for (const mode of [
+    "individual",
+    "partial",
+    "batch",
+    "batch-rejected",
+    "ordered",
+    "bookkeeping",
+  ] as const) {
     await t.step(mode, async () => {
       const fanouts: Message[] = [];
       const submitted: OutboxMessage[] = [];
@@ -5698,7 +5817,8 @@ test("fanout worker actions retain child enqueue settlement and replay identitie
           ok(message.type === "outbox");
           submitted.push(message);
           if (
-            mode === "partial" && reports.length === 0 &&
+            mode === "partial" &&
+            reports.length === 0 &&
             message.inbox.endsWith("/second")
           ) {
             return Promise.reject(failure);
@@ -5748,7 +5868,8 @@ test("fanout worker actions retain child enqueue settlement and replay identitie
           reports.push(report);
         },
       });
-      await federation.createContext(new URL("https://example.com"), undefined)
+      await federation
+        .createContext(new URL("https://example.com"), undefined)
         .sendActivity(
           sender,
           [
@@ -5790,16 +5911,16 @@ test("fanout worker actions retain child enqueue settlement and replay identitie
             undefined,
             structuredClone(task),
           );
-          const rejected = mode === "partial" && replay === 0 ||
-            mode === "batch-rejected" || mode === "bookkeeping";
+          const rejected =
+            (mode === "partial" && replay === 0) ||
+            mode === "batch-rejected" ||
+            mode === "bookkeeping";
           if (rejected) {
-            await rejects(
-              processing,
-              (error: unknown) =>
-                mode === "bookkeeping"
-                  ? error instanceof AggregateError &&
-                    error.errors.every((item) => item === failure)
-                  : error === failure,
+            await rejects(processing, (error: unknown) =>
+              mode === "bookkeeping"
+                ? error instanceof AggregateError &&
+                  error.errors.every((item) => item === failure)
+                : error === failure,
             );
           } else await processing;
           const report = reports[replay];
@@ -5810,13 +5931,14 @@ test("fanout worker actions retain child enqueue settlement and replay identitie
           strictEqual(submitted.length, 2);
           strictEqual(
             accepted.length,
-            mode === "partial" && replay === 0 || mode === "batch-rejected"
+            (mode === "partial" && replay === 0) || mode === "batch-rejected"
               ? 1
               : 2,
           );
           for (const child of submitted) {
-            const action = report.actions.find((action) =>
-              "queue" in action && action.queue.queueMessageId === child.id
+            const action = report.actions.find(
+              (action) =>
+                "queue" in action && action.queue.queueMessageId === child.id,
             );
             ok(
               action?.type === "scheduled" || action?.type === "action-failed",
@@ -5836,8 +5958,9 @@ test("fanout worker actions retain child enqueue settlement and replay identitie
             strictEqual(
               action.type,
               mode === "batch-rejected" ||
-                mode === "partial" && replay === 0 &&
-                  child.inbox.endsWith("/second")
+                (mode === "partial" &&
+                  replay === 0 &&
+                  child.inbox.endsWith("/second"))
                 ? "action-failed"
                 : "scheduled",
             );
@@ -5846,9 +5969,10 @@ test("fanout worker actions retain child enqueue settlement and replay identitie
               strictEqual(action.error, failure);
             }
             if (replay > 0) {
-              const earlier = reports[0].actions.find((earlier) =>
-                "delivery" in earlier &&
-                earlier.delivery?.destinationInbox === child.inbox
+              const earlier = reports[0].actions.find(
+                (earlier) =>
+                  "delivery" in earlier &&
+                  earlier.delivery?.destinationInbox === child.inbox,
               );
               ok(
                 (earlier?.type === "scheduled" ||
@@ -5916,10 +6040,8 @@ test("fanout worker actions preserve earlier direct entries across later setup f
             reports.push(report);
           },
         });
-        await federation.createContext(
-          new URL("https://example.com"),
-          undefined,
-        )
+        await federation
+          .createContext(new URL("https://example.com"), undefined)
           .sendActivity(
             sender,
             [
@@ -6060,11 +6182,14 @@ test("outbound header policies validate atomically and copy registration", async
     [null, TypeError],
   ] as const;
   for (const [value, error] of invalid) {
-    throws(() =>
-      builder.setOutboundObservers({
-        requestHeaders: { allow: [], maxBytes: 1 },
-        responseHeaders: value as never,
-      }), error);
+    throws(
+      () =>
+        builder.setOutboundObservers({
+          requestHeaders: { allow: [], maxBytes: 1 },
+          responseHeaders: value as never,
+        }),
+      error,
+    );
     strictEqual(builder.outboundObservers, original);
   }
   const federation = await builder.build(options);
@@ -6198,14 +6323,17 @@ test("outbound header policies retain selected snapshots across unsigned redirec
     },
   };
   const next = new URL("/next", message.inbox).href;
-  fetchMock.mockGlobal().post(message.inbox, {
-    status: 303,
-    headers: {
-      Location: next,
-      "X-Reply": "first",
-      "Set-Cookie": "secret-cookie",
-    },
-  }).get(next, { status: 202, headers: { "X-Reply": "second" } });
+  fetchMock
+    .mockGlobal()
+    .post(message.inbox, {
+      status: 303,
+      headers: {
+        Location: next,
+        "X-Reply": "first",
+        "Set-Cookie": "secret-cookie",
+      },
+    })
+    .get(next, { status: 202, headers: { "X-Reply": "second" } });
   const processing = federation.processQueuedTask(undefined, message);
   try {
     await observing;
@@ -6220,14 +6348,15 @@ test("outbound header policies retain selected snapshots across unsigned redirec
     strictEqual(exchanges.length, 2);
     for (const report of exchanges) {
       strictEqual(
-        report.request.headers?.entries.find(([name]) =>
-          name === "authorization"
+        report.request.headers?.entries.find(
+          ([name]) => name === "authorization",
         )?.[1],
         "[redacted]",
       );
       strictEqual(
-        report.request.headers?.entries.find(([name]) => name === "x-trace")
-          ?.[1],
+        report.request.headers?.entries.find(
+          ([name]) => name === "x-trace",
+        )?.[1],
         "worker",
       );
       ok(report.outcome.type === "response");
@@ -6236,8 +6365,8 @@ test("outbound header policies retain selected snapshots across unsigned redirec
     }
     strictEqual(exchanges[1].request.method, "GET");
     strictEqual(
-      exchanges[1].request.headers?.entries.some(([name]) =>
-        name === "content-type"
+      exchanges[1].request.headers?.entries.some(
+        ([name]) => name === "content-type",
       ),
       false,
     );
@@ -6250,10 +6379,9 @@ test("outbound header policies retain selected snapshots across unsigned redirec
       ["set-cookie", "[redacted]"],
       ["x-reply", "first"],
     ]);
-    deepStrictEqual(exchanges[1].outcome.response.headers?.entries, [[
-      "x-reply",
-      "second",
-    ]]);
+    deepStrictEqual(exchanges[1].outcome.response.headers?.entries, [
+      ["x-reply", "second"],
+    ]);
   } finally {
     release();
     await processing;
@@ -6267,19 +6395,23 @@ test("outbound header snapshots follow signed challenge and redirect requests", 
     undefined,
   );
   const exchanges: OutboundHttpExchangeReport[] = [];
-  const observation = new OutboundBroadcastObservation(ctx, {
-    requestHeaders: snapshotHeaderPolicy({
-      allow: ["content-digest", "signature", "signature-input"],
-      maxBytes: 1024,
-    }),
-    responseHeaders: snapshotHeaderPolicy({
-      allow: ["accept-signature", "location"],
-      maxBytes: 1024,
-    }),
-    onHttpExchange(_ctx, report) {
-      exchanges.push(report);
+  const observation = new OutboundBroadcastObservation(
+    ctx,
+    {
+      requestHeaders: snapshotHeaderPolicy({
+        allow: ["content-digest", "signature", "signature-input"],
+        maxBytes: 1024,
+      }),
+      responseHeaders: snapshotHeaderPolicy({
+        allow: ["accept-signature", "location"],
+        maxBytes: 1024,
+      }),
+      onHttpExchange(_ctx, report) {
+        exchanges.push(report);
+      },
     },
-  }, "send");
+    "send",
+  );
   const inbox = recipient.inboxId!.href;
   const next = new URL("/next", inbox).href;
   await observation.planDestinations({
@@ -6297,33 +6429,39 @@ test("outbound header snapshots follow signed challenge and redirect requests", 
     { status: 202 },
   ];
   const requests: Request[] = [];
-  await sendConcreteActivity({
-    observation: observation.delivery(inbox),
-    activity: { id: "https://example.com/activity" },
-    keys: [sender],
-    inbox: new URL(inbox),
-    specDeterminer: { determineSpec: () => "rfc9421", rememberSpec() {} },
-  }, {
-    openHop: (url) =>
-      Promise.resolve({
-        url: new URL(url),
-        fetch(input) {
-          ok(input instanceof Request);
-          requests.push(input);
-          return Promise.resolve(
-            new Response(null, responses[requests.length - 1]),
-          );
-        },
-        close: () => Promise.resolve(),
-      }),
-  });
+  await sendConcreteActivity(
+    {
+      observation: observation.delivery(inbox),
+      activity: { id: "https://example.com/activity" },
+      keys: [sender],
+      inbox: new URL(inbox),
+      specDeterminer: { determineSpec: () => "rfc9421", rememberSpec() {} },
+    },
+    {
+      openHop: (url) =>
+        Promise.resolve({
+          url: new URL(url),
+          fetch(input) {
+            ok(input instanceof Request);
+            requests.push(input);
+            return Promise.resolve(
+              new Response(null, responses[requests.length - 1]),
+            );
+          },
+          close: () => Promise.resolve(),
+        }),
+    },
+  );
   strictEqual(exchanges.length, 3);
   for (const [index, report] of exchanges.entries()) {
-    const expected = Array.from(requests[index].headers).filter(([name]) =>
-      ["content-digest", "signature", "signature-input"].includes(name)
-    ).map((
-      [name, value],
-    ) => [name, name.startsWith("signature") ? "[redacted]" : value]);
+    const expected = Array.from(requests[index].headers)
+      .filter(([name]) =>
+        ["content-digest", "signature", "signature-input"].includes(name),
+      )
+      .map(([name, value]) => [
+        name,
+        name.startsWith("signature") ? "[redacted]" : value,
+      ]);
     deepStrictEqual(report.request.headers?.entries, expected);
     strictEqual(report.request.headers?.limitReached, false);
     ok(requests[index].headers.has("signature"));
@@ -6349,11 +6487,11 @@ test("outbound header capture keeps each side independent and disabled by defaul
       federation.setOutboundObservers({
         ...(mode === "request" || mode === "empty"
           ? {
-            requestHeaders: {
-              allow: mode === "empty" ? [] : ["x-request"],
-              maxBytes: 128,
-            },
-          }
+              requestHeaders: {
+                allow: mode === "empty" ? [] : ["x-request"],
+                maxBytes: 128,
+              },
+            }
           : {}),
         ...(mode === "response"
           ? { responseHeaders: { allow: ["x-response"], maxBytes: 128 } }
@@ -6380,8 +6518,8 @@ test("outbound header capture keeps each side independent and disabled by defaul
           mode === "request"
             ? { entries: [["x-request", "request"]], limitReached: false }
             : mode === "empty"
-            ? { entries: [], limitReached: false }
-            : undefined,
+              ? { entries: [], limitReached: false }
+              : undefined,
         );
         deepStrictEqual(
           report.outcome.response.headers,
@@ -6444,11 +6582,14 @@ test("outbound body-only observers retain worker context and selection across re
   builder.setOutboundObservers({});
   const task = continuationMessage(recipient.inboxId!.href, false);
   const next = new URL("/captured-next", task.inbox).href;
-  fetchMock.mockGlobal().post(task.inbox, {
-    status: 303,
-    headers: { Location: next },
-    body: "first",
-  }).get(next, { status: 202, body: "second" });
+  fetchMock
+    .mockGlobal()
+    .post(task.inbox, {
+      status: 303,
+      headers: { Location: next },
+      body: "first",
+    })
+    .get(next, { status: 202, body: "second" });
   try {
     await federation.processQueuedTask({ label: "worker" }, task);
     deepStrictEqual(texts, ["first", "second"]);
@@ -6481,25 +6622,29 @@ test("outbound capture settles before exchanges without changing signed negotiat
         const attempts: OutboundAttemptReport[] = [];
         const order: string[] = [];
         const failure = new Error("capture observer failed");
-        const observation = new OutboundBroadcastObservation(ctx, {
-          responseBodyCapture: {
-            maxBytes: 128,
-            timeoutMs: 1000,
-            async onBody(_ctx, event) {
-              order.push(`body ${event.exchangeIndex}`);
-              if (fails && event.exchangeIndex === 0) throw failure;
-              await readCapturedText(event.body);
+        const observation = new OutboundBroadcastObservation(
+          ctx,
+          {
+            responseBodyCapture: {
+              maxBytes: 128,
+              timeoutMs: 1000,
+              async onBody(_ctx, event) {
+                order.push(`body ${event.exchangeIndex}`);
+                if (fails && event.exchangeIndex === 0) throw failure;
+                await readCapturedText(event.body);
+              },
+            },
+            onHttpExchange(_ctx, report) {
+              exchanges.push(report);
+              order.push(`exchange ${report.exchangeIndex}`);
+            },
+            onAttempt(_ctx, report) {
+              attempts.push(report);
+              order.push("attempt");
             },
           },
-          onHttpExchange(_ctx, report) {
-            exchanges.push(report);
-            order.push(`exchange ${report.exchangeIndex}`);
-          },
-          onAttempt(_ctx, report) {
-            attempts.push(report);
-            order.push("attempt");
-          },
-        }, "send");
+          "send",
+        );
         const inbox = recipient.inboxId!.href;
         const next = new URL("/capture-signed", inbox).href;
         await observation.planDestinations({
@@ -6517,25 +6662,31 @@ test("outbound capture settles before exchanges without changing signed negotiat
           { status: 202 },
         ];
         let submissions = 0;
-        await sendConcreteActivity({
-          observation: observation.delivery(inbox),
-          activity: { id: "https://example.com/capture" },
-          keys: [sender],
-          inbox: new URL(inbox),
-          specDeterminer: { determineSpec: () => "rfc9421", rememberSpec() {} },
-        }, {
-          openHop: (url) =>
-            Promise.resolve({
-              url: new URL(url),
-              fetch() {
-                const index = submissions++;
-                return Promise.resolve(
-                  new Response(`body ${index}`, responses[index]),
-                );
-              },
-              close: () => Promise.resolve(),
-            }),
-        });
+        await sendConcreteActivity(
+          {
+            observation: observation.delivery(inbox),
+            activity: { id: "https://example.com/capture" },
+            keys: [sender],
+            inbox: new URL(inbox),
+            specDeterminer: {
+              determineSpec: () => "rfc9421",
+              rememberSpec() {},
+            },
+          },
+          {
+            openHop: (url) =>
+              Promise.resolve({
+                url: new URL(url),
+                fetch() {
+                  const index = submissions++;
+                  return Promise.resolve(
+                    new Response(`body ${index}`, responses[index]),
+                  );
+                },
+                close: () => Promise.resolve(),
+              }),
+          },
+        );
         strictEqual(submissions, 3);
         deepStrictEqual(order, [
           "body 0",
@@ -6554,10 +6705,12 @@ test("outbound capture settles before exchanges without changing signed negotiat
               error: failure,
               bytesExposed: 0,
             });
-          } else {deepStrictEqual(report.bodyCapture, {
+          } else {
+            deepStrictEqual(report.bodyCapture, {
               type: "complete",
               bytesExposed: 6,
-            });}
+            });
+          }
           ok(report.outcome.type === "response");
           strictEqual(report.outcome.response.status, responses[index].status);
           strictEqual("body" in report, false);
@@ -6579,48 +6732,55 @@ test("outbound capture limits retain the original final HTTP diagnostic", async 
   );
   const exchanges: OutboundHttpExchangeReport[] = [];
   const attempts: OutboundAttemptReport[] = [];
-  const observation = new OutboundBroadcastObservation(ctx, {
-    responseBodyCapture: {
-      maxBytes: 4,
-      timeoutMs: 1000,
-      async onBody(_ctx, event) {
-        await readCapturedText(event.body);
+  const observation = new OutboundBroadcastObservation(
+    ctx,
+    {
+      responseBodyCapture: {
+        maxBytes: 4,
+        timeoutMs: 1000,
+        async onBody(_ctx, event) {
+          await readCapturedText(event.body);
+        },
+      },
+      onHttpExchange(_ctx, report) {
+        exchanges.push(report);
+      },
+      onAttempt(_ctx, report) {
+        attempts.push(report);
       },
     },
-    onHttpExchange(_ctx, report) {
-      exchanges.push(report);
-    },
-    onAttempt(_ctx, report) {
-      attempts.push(report);
-    },
-  }, "send");
+    "send",
+  );
   const inbox = recipient.inboxId!.href;
   await observation.planDestinations({
     [inbox]: { actorIds: [], sharedInbox: false },
   });
   let submissions = 0;
   await rejects(
-    sendConcreteActivity({
-      observation: observation.delivery(inbox),
-      activity: {},
-      keys: [],
-      inbox: new URL(inbox),
-    }, {
-      openHop: (url) =>
-        Promise.resolve({
-          url: new URL(url),
-          fetch() {
-            submissions++;
-            return Promise.resolve(
-              new Response("full diagnostic error", {
-                status: 503,
-                headers: { "Retry-After": "1" },
-              }),
-            );
-          },
-          close: () => Promise.resolve(),
-        }),
-    }),
+    sendConcreteActivity(
+      {
+        observation: observation.delivery(inbox),
+        activity: {},
+        keys: [],
+        inbox: new URL(inbox),
+      },
+      {
+        openHop: (url) =>
+          Promise.resolve({
+            url: new URL(url),
+            fetch() {
+              submissions++;
+              return Promise.resolve(
+                new Response("full diagnostic error", {
+                  status: 503,
+                  headers: { "Retry-After": "1" },
+                }),
+              );
+            },
+            close: () => Promise.resolve(),
+          }),
+      },
+    ),
     (error: unknown) => {
       ok(error instanceof SendActivityError);
       strictEqual(error.statusCode, 503);
@@ -6662,63 +6822,70 @@ test("outbound capture deadlines select each real exchange without changing HTTP
           const attempts: OutboundAttemptReport[] = [];
           const signals: AbortSignal[] = [];
           const timeoutMs = 25;
-          const observation = new OutboundBroadcastObservation(ctx, {
-            responseBodyCapture: {
-              maxBytes: 32,
-              timeoutMs,
-              responses,
-              onBody(_ctx, event) {
-                signals.push(event.signal);
-                // The archive callback never pulls or settles; each exchange still proceeds.
-                return new Promise<void>(() => {});
+          const observation = new OutboundBroadcastObservation(
+            ctx,
+            {
+              responseBodyCapture: {
+                maxBytes: 32,
+                timeoutMs,
+                responses,
+                onBody(_ctx, event) {
+                  signals.push(event.signal);
+                  // The archive callback never pulls or settles; each exchange still proceeds.
+                  return new Promise<void>(() => {});
+                },
+              },
+              onHttpExchange(_ctx, report) {
+                exchanges.push(report);
+              },
+              onAttempt(_ctx, report) {
+                attempts.push(report);
               },
             },
-            onHttpExchange(_ctx, report) {
-              exchanges.push(report);
-            },
-            onAttempt(_ctx, report) {
-              attempts.push(report);
-            },
-          }, "send");
+            "send",
+          );
           await observation.planDestinations({
             [inbox]: { actorIds: [], sharedInbox: false },
           });
           const steps: ResponseInit[] = signed
             ? [
-              {
-                status: 401,
-                headers: {
-                  "Accept-Signature":
-                    'sig1=("@method" "@target-uri");created;nonce="deadline-nonce"',
+                {
+                  status: 401,
+                  headers: {
+                    "Accept-Signature":
+                      'sig1=("@method" "@target-uri");created;nonce="deadline-nonce"',
+                  },
                 },
-              },
-              { status: 307, headers: { Location: next } },
-              { status: 202 },
-            ]
+                { status: 307, headers: { Location: next } },
+                { status: 202 },
+              ]
             : [{ status: 303, headers: { Location: next } }, { status: 202 }];
           let submissions = 0;
           const start = performance.now();
-          await sendConcreteActivity({
-            observation: observation.delivery(inbox),
-            activity: {},
-            keys: signed ? [sender] : [],
-            inbox: new URL(inbox),
-            specDeterminer: {
-              determineSpec: () => "rfc9421",
-              rememberSpec() {},
+          await sendConcreteActivity(
+            {
+              observation: observation.delivery(inbox),
+              activity: {},
+              keys: signed ? [sender] : [],
+              inbox: new URL(inbox),
+              specDeterminer: {
+                determineSpec: () => "rfc9421",
+                rememberSpec() {},
+              },
             },
-          }, {
-            openHop: (url) =>
-              Promise.resolve({
-                url: new URL(url),
-                fetch() {
-                  return Promise.resolve(
-                    new Response("response", steps[submissions++]),
-                  );
-                },
-                close: () => Promise.resolve(),
-              }),
-          });
+            {
+              openHop: (url) =>
+                Promise.resolve({
+                  url: new URL(url),
+                  fetch() {
+                    return Promise.resolve(
+                      new Response("response", steps[submissions++]),
+                    );
+                  },
+                  close: () => Promise.resolve(),
+                }),
+            },
+          );
           const elapsedMs = performance.now() - start;
           const selected = steps.length - (responses === "all" ? 0 : 1);
           strictEqual(submissions, steps.length);
@@ -6729,7 +6896,7 @@ test("outbound capture deadlines select each real exchange without changing HTTP
             steps.map((step) =>
               step.status === 202 && responses !== "all"
                 ? "filtered"
-                : "deadline"
+                : "deadline",
             ),
           );
           for (const [index, exchange] of exchanges.entries()) {
@@ -6769,21 +6936,25 @@ test("outbound capture evidence survives later final response bookkeeping failur
       );
       const exchanges: OutboundHttpExchangeReport[] = [];
       const attempts: OutboundAttemptReport[] = [];
-      const observation = new OutboundBroadcastObservation(ctx, {
-        responseBodyCapture: {
-          maxBytes: 4,
-          timeoutMs: 1000,
-          async onBody(_ctx, event) {
-            await readCapturedText(event.body);
+      const observation = new OutboundBroadcastObservation(
+        ctx,
+        {
+          responseBodyCapture: {
+            maxBytes: 4,
+            timeoutMs: 1000,
+            async onBody(_ctx, event) {
+              await readCapturedText(event.body);
+            },
+          },
+          onHttpExchange(_ctx, report) {
+            exchanges.push(report);
+          },
+          onAttempt(_ctx, report) {
+            attempts.push(report);
           },
         },
-        onHttpExchange(_ctx, report) {
-          exchanges.push(report);
-        },
-        onAttempt(_ctx, report) {
-          attempts.push(report);
-        },
-      }, "send");
+        "send",
+      );
       await observation.planDestinations({
         [inbox]: { actorIds: [], sharedInbox: false },
       });
@@ -6792,41 +6963,50 @@ test("outbound capture evidence survives later final response bookkeeping failur
       let submissions = 0;
       let outward: unknown;
       await rejects(
-        sendConcreteActivity({
-          observation: observation.delivery(inbox),
-          activity: {},
-          keys: [sender],
-          inbox: new URL(inbox),
-          specDeterminer: {
-            determineSpec: () => "rfc9421",
-            rememberSpec() {
-              throw cache;
+        sendConcreteActivity(
+          {
+            observation: observation.delivery(inbox),
+            activity: {},
+            keys: [sender],
+            inbox: new URL(inbox),
+            specDeterminer: {
+              determineSpec: () => "rfc9421",
+              rememberSpec() {
+                throw cache;
+              },
             },
           },
-        }, {
-          openHop: (url) =>
-            Promise.resolve({
-              url: new URL(url),
-              fetch() {
-                return Promise.resolve(
-                  new Response("response body", {
-                    status: ++submissions === 1 ? 401 : status,
-                  }),
-                );
-              },
-              close: () => Promise.reject(cleanup),
-            }),
-        }),
+          {
+            openHop: (url) =>
+              Promise.resolve({
+                url: new URL(url),
+                fetch() {
+                  return Promise.resolve(
+                    new Response("response body", {
+                      status: ++submissions === 1 ? 401 : status,
+                    }),
+                  );
+                },
+                close: () => Promise.reject(cleanup),
+              }),
+          },
+        ),
         (error: unknown) => {
           outward = error;
           return error instanceof FetchError && error.cause === cache;
         },
       );
       strictEqual(submissions, 2);
-      deepStrictEqual(exchanges.map((report) => report.bodyCapture), [{
-        type: "limit-reached",
-        bytesExposed: 4,
-      }, { type: "limit-reached", bytesExposed: 4 }]);
+      deepStrictEqual(
+        exchanges.map((report) => report.bodyCapture),
+        [
+          {
+            type: "limit-reached",
+            bytesExposed: 4,
+          },
+          { type: "limit-reached", bytesExposed: 4 },
+        ],
+      );
       const outcome = attempts[0].outcome;
       ok(outcome.type === "failed");
       strictEqual(outcome.error, outward);
@@ -6835,13 +7015,14 @@ test("outbound capture evidence survives later final response bookkeeping failur
       strictEqual(outcome.failure.kind, status === 503 ? "http" : "local");
       const failures = [outcome.failure, ...(outcome.diagnostics ?? [])];
       ok(
-        failures.some((failure) =>
-          failure.phase === "post-response" && failure.error === cache
+        failures.some(
+          (failure) =>
+            failure.phase === "post-response" && failure.error === cache,
         ),
       );
       ok(
-        failures.some((failure) =>
-          failure.phase === "cleanup" && failure.error === cleanup
+        failures.some(
+          (failure) => failure.phase === "cleanup" && failure.error === cleanup,
         ),
       );
       strictEqual(attempts[0].httpExchangeCount, 2);
@@ -6850,16 +7031,14 @@ test("outbound capture evidence survives later final response bookkeeping failur
 });
 
 test("sender payload projections preserve actual send forward and queued inputs", async (t) => {
-  for (
-    const mode of [
-      "ordinary",
-      "outbox",
-      "queued",
-      "fanout",
-      "forward",
-      "forward-queued",
-    ] as const
-  ) {
+  for (const mode of [
+    "ordinary",
+    "outbox",
+    "queued",
+    "fanout",
+    "forward",
+    "forward-queued",
+  ] as const) {
     await t.step(mode, async () => {
       const tasks: Message[] = [];
       const queue: MessageQueue = {
@@ -6875,11 +7054,11 @@ test("sender payload projections preserve actual send forward and queued inputs"
         manuallyStartQueue: true,
         ...(mode === "queued" || mode === "forward-queued" || mode === "fanout"
           ? {
-            queue: {
-              outbox: queue,
-              ...(mode === "fanout" ? { fanout: queue } : {}),
-            },
-          }
+              queue: {
+                outbox: queue,
+                ...(mode === "fanout" ? { fanout: queue } : {}),
+              },
+            }
           : {}),
       });
       const reports: OutboundAttemptReport[] = [];
@@ -6906,12 +7085,12 @@ test("sender payload projections preserve actual send forward and queued inputs"
       const ctx = mode.startsWith("forward")
         ? forwardingContext(federation, "inbox", payload, { label: "producer" })
         : mode === "outbox"
-        ? forwardingContext(federation, "outbox", payload, {
-          label: "producer",
-        })
-        : federation.createContext(new URL("https://example.com"), {
-          label: "producer",
-        });
+          ? forwardingContext(federation, "outbox", payload, {
+              label: "producer",
+            })
+          : federation.createContext(new URL("https://example.com"), {
+              label: "producer",
+            });
       const bodies: unknown[] = [];
       fetchMock.mockGlobal().post(recipient.inboxId!.href, (call) => {
         bodies.push(JSON.parse(String(call.options.body)));
@@ -6966,27 +7145,29 @@ test("sender payload projections preserve actual send forward and queued inputs"
 });
 
 test("sender payload availability never changes serialization or redirected bodies", async (t) => {
-  for (
-    const mode of [
-      "disabled",
-      "preparation",
-      "conversion",
-      "getter",
-      "redirect",
-    ] as const
-  ) {
+  for (const mode of [
+    "disabled",
+    "preparation",
+    "conversion",
+    "getter",
+    "redirect",
+  ] as const) {
     await t.step(mode, async () => {
       const ctx = createFederation<void>(options).createContext(
         new URL("https://example.com"),
         undefined,
       );
       const reports: OutboundAttemptReport[] = [];
-      const observation = new OutboundBroadcastObservation(ctx, {
-        senderPayload: mode !== "disabled",
-        onAttempt(_ctx, report) {
-          reports.push(report);
+      const observation = new OutboundBroadcastObservation(
+        ctx,
+        {
+          senderPayload: mode !== "disabled",
+          onAttempt(_ctx, report) {
+            reports.push(report);
+          },
         },
-      }, "send");
+        "send",
+      );
       const inbox = recipient.inboxId!.href;
       await observation.planDestinations({
         [inbox]: { actorIds: [], sharedInbox: false },
@@ -6999,51 +7180,60 @@ test("sender payload availability never changes serialization or redirected bodi
       };
       let conversions = 0;
       let getters = 0;
-      const input = mode === "conversion"
-        ? Object.defineProperty({}, "toJSON", {
-          // Bun ignores a non-enumerable converter; use a shared runtime fixture.
-          enumerable: true,
-          value() {
-            conversions++;
-            return payload;
-          },
-        })
-        : mode === "getter"
-        ? Object.defineProperty({ ...payload }, "object", {
-          enumerable: true,
-          get() {
-            getters++;
-            return payload.object;
-          },
-        })
-        : payload;
+      const input =
+        mode === "conversion"
+          ? Object.defineProperty({}, "toJSON", {
+              // Bun ignores a non-enumerable converter; use a shared runtime fixture.
+              enumerable: true,
+              value() {
+                conversions++;
+                return payload;
+              },
+            })
+          : mode === "getter"
+            ? Object.defineProperty({ ...payload }, "object", {
+                enumerable: true,
+                get() {
+                  getters++;
+                  return payload.object;
+                },
+              })
+            : payload;
       const requests: { method: string; body: string }[] = [];
       const failure = new Error("session unavailable before serialization");
-      const sending = sendConcreteActivity({
-        observation: observation.delivery(inbox),
-        activity: input,
-        keys: [],
-        inbox: new URL(inbox),
-      }, {
-        openHop: (url) =>
-          mode === "preparation" ? Promise.reject(failure) : Promise.resolve({
-            url: new URL(url),
-            async fetch(request) {
-              ok(request instanceof Request);
-              requests.push({
-                method: request.method,
-                body: await request.text(),
-              });
-              return new Response(
-                null,
-                mode === "redirect" && requests.length === 1
-                  ? { status: 303, headers: { Location: "/payload-next" } }
-                  : { status: 202 },
-              );
-            },
-            close: () => Promise.resolve(),
-          }),
-      });
+      const sending = sendConcreteActivity(
+        {
+          observation: observation.delivery(inbox),
+          activity: input,
+          keys: [],
+          inbox: new URL(inbox),
+        },
+        {
+          openHop: (url) =>
+            mode === "preparation"
+              ? Promise.reject(failure)
+              : Promise.resolve({
+                  url: new URL(url),
+                  async fetch(request) {
+                    ok(request instanceof Request);
+                    requests.push({
+                      method: request.method,
+                      body: await request.text(),
+                    });
+                    return new Response(
+                      null,
+                      mode === "redirect" && requests.length === 1
+                        ? {
+                            status: 303,
+                            headers: { Location: "/payload-next" },
+                          }
+                        : { status: 202 },
+                    );
+                  },
+                  close: () => Promise.resolve(),
+                }),
+        },
+      );
       if (mode === "preparation") {
         await rejects(sending, (error: unknown) => error === failure);
       } else await sending;
@@ -7060,15 +7250,18 @@ test("sender payload availability never changes serialization or redirected bodi
         strictEqual(requests[1].method, "GET");
         strictEqual(requests[1].body, "");
         ok(requests[0].body.includes("private.example"));
-      } else {deepStrictEqual(document, {
+      } else {
+        deepStrictEqual(document, {
           stage: "sender-payload",
           type: "unavailable",
-          reason: mode === "disabled"
-            ? "disabled"
-            : mode === "preparation"
-            ? "not-materialized"
-            : "privacy-filter-unavailable",
-        });}
+          reason:
+            mode === "disabled"
+              ? "disabled"
+              : mode === "preparation"
+                ? "not-materialized"
+                : "privacy-filter-unavailable",
+        });
+      }
       strictEqual(conversions, mode === "conversion" ? 1 : 0);
       strictEqual(getters, mode === "getter" ? 1 : 0);
       if (mode !== "preparation") {

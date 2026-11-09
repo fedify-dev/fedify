@@ -9,9 +9,10 @@ interface EnqueueBody {
 }
 
 export default async function enqueue(request: Request): Promise<Response> {
-  const body = await request.json() as EnqueueBody;
+  const body = (await request.json()) as EnqueueBody;
   if (
-    typeof body.id !== "string" || typeof body.value !== "string" ||
+    typeof body.id !== "string" ||
+    typeof body.value !== "string" ||
     (body.failures !== undefined &&
       (!Number.isInteger(body.failures) || (body.failures as number) < 0)) ||
     (body.hold !== undefined &&
@@ -33,12 +34,16 @@ export default async function enqueue(request: Request): Promise<Response> {
     eventId: "producer",
     kv,
   });
-  await context.enqueueTask(task, {
-    id: body.id,
-    value: body.value,
-    failures: body.failures as number | undefined ?? 0,
-    hold: body.hold as number | undefined ?? 0,
-    orderingKey: body.orderingKey as string | undefined,
-  }, { orderingKey: body.orderingKey as string | undefined });
+  await context.enqueueTask(
+    task,
+    {
+      id: body.id,
+      value: body.value,
+      failures: (body.failures as number | undefined) ?? 0,
+      hold: (body.hold as number | undefined) ?? 0,
+      orderingKey: body.orderingKey as string | undefined,
+    },
+    { orderingKey: body.orderingKey as string | undefined },
+  );
   return new Response(null, { status: 202 });
 }

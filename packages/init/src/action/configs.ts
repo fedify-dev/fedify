@@ -22,12 +22,8 @@ import { realpathSync } from "node:fs";
 import { join as joinPath, relative } from "node:path";
 import oxfmt from "../json/oxfmt.json" with { type: "json" };
 import oxlint from "../json/oxlint.json" with { type: "json" };
-import vscodeSettingsForDeno from "../json/vscode-settings-for-deno.json" with {
-  type: "json",
-};
-import vscodeSettings from "../json/vscode-settings.json" with {
-  type: "json",
-};
+import vscodeSettingsForDeno from "../json/vscode-settings-for-deno.json" with { type: "json" };
+import vscodeSettings from "../json/vscode-settings.json" with { type: "json" };
 import type { InitCommandData } from "../types.ts";
 import { merge } from "../utils.ts";
 import { getPackagesPath } from "./const.ts";
@@ -68,9 +64,10 @@ export const loadDenoConfig = (data: InitCommandData) => {
  * `denokv` option as deprecated, so the corresponding deprecation rules are
  * excluded when selected.
  */
-const getDenoLintExcludes = (
-  { kvStore, messageQueue }: Pick<InitCommandData, "kvStore" | "messageQueue">,
-): string[] => [
+const getDenoLintExcludes = ({
+  kvStore,
+  messageQueue,
+}: Pick<InitCommandData, "kvStore" | "messageQueue">): string[] => [
   "fedify-lint/actor-profile-url-required",
   ...(kvStore === "denokv" ? ["fedify-lint/deno-kv-store-deprecated"] : []),
   ...(messageQueue === "denokv"
@@ -131,17 +128,24 @@ const parseVersion: (match: string) => Version | null = (deno: string) =>
     unless(isNull, ([, ...segments]) => segments.map(Number) as Version),
   );
 
-const isLaterOrEqualThan = (basis: Version) => (target: Version): boolean =>
-  pipe(
-    zip(basis, target),
-    filter(([b, t]) => t !== b),
-    head,
-    (a) => a ? a[0] < a[1] : true,
-  );
+const isLaterOrEqualThan =
+  (basis: Version) =>
+  (target: Version): boolean =>
+    pipe(
+      zip(basis, target),
+      filter(([b, t]) => t !== b),
+      head,
+      (a) => (a ? a[0] < a[1] : true),
+    );
 
 const getLinks = <
   T extends Pick<InitCommandData, "kv" | "mq" | "initializer" | "dir">,
->({ kv, mq, initializer, dir }: T) =>
+>({
+  kv,
+  mq,
+  initializer,
+  dir,
+}: T) =>
   pipe(
     { "@fedify/fedify": "", "@fedify/vocab": "" },
     merge(initializer.dependencies),
@@ -177,9 +181,7 @@ export const loadTsConfig = ({ initializer, dir }: InitCommandData) => ({
  * @param param0 - Destructured initialization data containing initializer and directory
  * @returns Configuration object with path and package.json settings
  */
-export const loadPackageJson = (
-  data: InitCommandData,
-) => ({
+export const loadPackageJson = (data: InitCommandData) => ({
   path: "package.json",
   data: {
     type: "module",
@@ -189,47 +191,39 @@ export const loadPackageJson = (
   },
 });
 
-export const loadOxfmtConfig = (
-  data: InitCommandData,
-) => ({
+export const loadOxfmtConfig = (data: InitCommandData) => ({
   path: joinPath(".oxfmtrc.json"),
   data: withFormatIgnorePatterns(oxfmt, data),
 });
 
-export const loadOxlintConfig = (
-  data: InitCommandData,
-) => ({
+export const loadOxlintConfig = (data: InitCommandData) => ({
   path: joinPath(".oxlintrc.json"),
   data: withFormatIgnorePatterns(oxlint, data),
 });
 
-export const loadVscodeSettings = (
-  data: InitCommandData,
-) => ({
+export const loadVscodeSettings = (data: InitCommandData) => ({
   path: devToolConfigs.vscSet.path,
-  data: data.initializer.format?.tool === "prettier"
-    ? getVscodeSettingsForPrettier()
-    : vscodeSettings,
+  data:
+    data.initializer.format?.tool === "prettier"
+      ? getVscodeSettingsForPrettier()
+      : vscodeSettings,
 });
 
-export const loadVscodeExtensions = (
-  data: InitCommandData,
-) => ({
+export const loadVscodeExtensions = (data: InitCommandData) => ({
   path: devToolConfigs.vscExt.path,
-  data: data.initializer.format?.tool === "prettier"
-    ? {
-      recommendations: [
-        "astro-build.astro-vscode",
-        "esbenp.prettier-vscode",
-        "oxc.oxc-vscode",
-      ],
-    }
-    : devToolConfigs.vscExt.data,
+  data:
+    data.initializer.format?.tool === "prettier"
+      ? {
+          recommendations: [
+            "astro-build.astro-vscode",
+            "esbenp.prettier-vscode",
+            "oxc.oxc-vscode",
+          ],
+        }
+      : devToolConfigs.vscExt.data,
 });
 
-const withFormatIgnorePatterns = <
-  T extends { ignorePatterns?: string[] },
->(
+const withFormatIgnorePatterns = <T extends { ignorePatterns?: string[] }>(
   config: T,
   data: InitCommandData,
 ): T => ({

@@ -49,10 +49,7 @@ function getModuleName(node: unknown): string | null {
  */
 export function createDenoKvDeprecationRule<
   Context = Deno.lint.RuleContext | Rule.RuleContext,
->(
-  className: string,
-  message: string,
-) {
+>(className: string, message: string) {
   return (context: Context) => {
     const report = (descriptor: { node: Node; message: string }) =>
       (context as unknown as ReportContext).report(descriptor);

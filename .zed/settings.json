@@ -15,30 +15,46 @@
   "formatter": "language_server",
   "languages": {
     "JSON": {
-      "language_servers": [
-        "deno",
-        "!biome"
-      ]
+      "language_servers": ["deno", "!biome"],
+      "formatter": {
+        "external": {
+          "command": "node",
+          "arguments": [
+            "./node_modules/oxfmt/bin/oxfmt",
+            "--stdin-filepath",
+            "{buffer_path}",
+            "--config",
+            ".oxfmtrc.json"
+          ]
+        }
+      }
     },
     "JavaScript": {
-      "code_actions_on_format": {
-        "source.sortImports": true
-      },
       "language_servers": [
         "deno",
         "!typescript-language-server",
         "!vtsls",
         "!biome",
         "..."
-      ]
+      ],
+      "formatter": {
+        "external": {
+          "command": "node",
+          "arguments": [
+            "./node_modules/oxfmt/bin/oxfmt",
+            "--stdin-filepath",
+            "{buffer_path}",
+            "--config",
+            ".oxfmtrc.json"
+          ]
+        }
+      }
     },
     "Markdown": {
       "formatter": {
         "external": {
           "command": "hongdown",
-          "arguments": [
-            "-"
-          ]
+          "arguments": ["-"]
         }
       },
       "language_servers": [
@@ -50,39 +66,134 @@
       ]
     },
     "TypeScript": {
-      "code_actions_on_format": {
-        "source.sortImports": true
-      },
       "language_servers": [
         "deno",
         "!typescript-language-server",
         "!vtsls",
         "!biome",
         "..."
-      ]
+      ],
+      "formatter": {
+        "external": {
+          "command": "node",
+          "arguments": [
+            "./node_modules/oxfmt/bin/oxfmt",
+            "--stdin-filepath",
+            "{buffer_path}",
+            "--config",
+            ".oxfmtrc.json"
+          ]
+        }
+      }
     },
     "TSX": {
-      "code_actions_on_format": {
-        "source.sortImports": true
-      },
       "language_servers": [
         "deno",
         "!typescript-language-server",
         "!vtsls",
         "!biome",
         "..."
-      ]
+      ],
+      "formatter": {
+        "external": {
+          "command": "node",
+          "arguments": [
+            "./node_modules/oxfmt/bin/oxfmt",
+            "--stdin-filepath",
+            "{buffer_path}",
+            "--config",
+            ".oxfmtrc.json"
+          ]
+        }
+      }
     },
     "YAML": {
-      "language_servers": [
-        "!deno",
-        "!biome"
-      ],
-      "enable_language_server": false
+      "language_servers": ["!deno", "!biome"],
+      "enable_language_server": false,
+      "formatter": {
+        "external": {
+          "command": "node",
+          "arguments": [
+            "./node_modules/oxfmt/bin/oxfmt",
+            "--stdin-filepath",
+            "{buffer_path}",
+            "--config",
+            ".oxfmtrc.json"
+          ]
+        }
+      }
+    },
+    "JSONC": {
+      "formatter": {
+        "external": {
+          "command": "node",
+          "arguments": [
+            "./node_modules/oxfmt/bin/oxfmt",
+            "--stdin-filepath",
+            "{buffer_path}",
+            "--config",
+            ".oxfmtrc.json"
+          ]
+        }
+      }
+    },
+    "CSS": {
+      "formatter": {
+        "external": {
+          "command": "node",
+          "arguments": [
+            "./node_modules/oxfmt/bin/oxfmt",
+            "--stdin-filepath",
+            "{buffer_path}",
+            "--config",
+            ".oxfmtrc.json"
+          ]
+        }
+      }
+    },
+    "Astro": {
+      "formatter": {
+        "external": {
+          "command": "node",
+          "arguments": [
+            "./node_modules/oxfmt/bin/oxfmt",
+            "--stdin-filepath",
+            "{buffer_path}",
+            "--config",
+            ".oxfmtrc.json"
+          ]
+        }
+      }
+    },
+    "Vue.js": {
+      "formatter": {
+        "external": {
+          "command": "node",
+          "arguments": [
+            "./node_modules/oxfmt/bin/oxfmt",
+            "--stdin-filepath",
+            "{buffer_path}",
+            "--config",
+            ".oxfmtrc.json"
+          ]
+        }
+      }
+    },
+    "Svelte": {
+      "formatter": {
+        "external": {
+          "command": "node",
+          "arguments": [
+            "./node_modules/oxfmt/bin/oxfmt",
+            "--stdin-filepath",
+            "{buffer_path}",
+            "--config",
+            ".oxfmtrc.json"
+          ]
+        }
+      }
     }
   },
   "show_wrap_guides": true,
-  "wrap_guides": [
-    80
-  ]
+  "wrap_guides": [80]
 }

@@ -60,9 +60,7 @@ export interface TestMessageQueueOptions {
  * @param options Optional configuration for the test suite.
  * @returns A promise that resolves when all tests pass.
  */
-export default async function testMessageQueue<
-  MQ extends MessageQueue,
->(
+export default async function testMessageQueue<MQ extends MessageQueue>(
   getMessageQueue: () => MQ | Promise<MQ>,
   onFinally: ({
     mq1,
@@ -81,12 +79,18 @@ export default async function testMessageQueue<
   try {
     // Set up message collection and listeners
     const messages: string[] = [];
-    const listening1 = mq1.listen((message: string) => {
-      messages.push(message);
-    }, { signal: controller.signal });
-    const listening2 = mq2.listen((message: string) => {
-      messages.push(message);
-    }, { signal: controller.signal });
+    const listening1 = mq1.listen(
+      (message: string) => {
+        messages.push(message);
+      },
+      { signal: controller.signal },
+    );
+    const listening2 = mq2.listen(
+      (message: string) => {
+        messages.push(message);
+      },
+      { signal: controller.signal },
+    );
 
     // Give listeners time to establish their subscriptions (e.g.,
     // PostgreSQL LISTEN) before enqueueing messages, so that NOTIFY
@@ -99,10 +103,9 @@ export default async function testMessageQueue<
     deepStrictEqual(messages, ["Hello, world!"]);
 
     let started = Date.now();
-    await mq1.enqueue(
-      "Delayed message",
-      { delay: Temporal.Duration.from({ seconds: 3 }) },
-    );
+    await mq1.enqueue("Delayed message", {
+      delay: Temporal.Duration.from({ seconds: 3 }),
+    });
     await waitFor(() => messages.length > 1, 15_000);
     deepStrictEqual(messages, ["Hello, world!", "Delayed message"]);
     ok(
@@ -129,10 +132,9 @@ export default async function testMessageQueue<
         "Delayed batch 1",
         "Delayed batch 2",
       ];
-      await mq1.enqueueMany(
-        delayedBatchMessages,
-        { delay: Temporal.Duration.from({ seconds: 2 }) },
-      );
+      await mq1.enqueueMany(delayedBatchMessages, {
+        delay: Temporal.Duration.from({ seconds: 2 }),
+      });
       await waitFor(
         () => messages.length >= delayedBatchMessages.length,
         15_000,

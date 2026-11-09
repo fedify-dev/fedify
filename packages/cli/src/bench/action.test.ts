@@ -327,10 +327,12 @@ scenarios:
           new Response(
             JSON.stringify({
               subject: url.searchParams.get("resource"),
-              links: [{
-                rel: "self",
-                href: "http://127.0.0.1:3000/users/alice",
-              }],
+              links: [
+                {
+                  rel: "self",
+                  href: "http://127.0.0.1:3000/users/alice",
+                },
+              ],
             }),
             {
               headers: { "content-type": "application/jrd+json" },
@@ -590,17 +592,19 @@ scenarios:
             JSON.stringify({
               version: 1,
               source: "server",
-              scopeMetrics: [{
-                metrics: [
-                  sumMetric("fedify.queue.task.enqueued", triggerCalls),
-                  sumMetric("fedify.queue.task.completed", triggerCalls),
-                  sumMetric("fedify.queue.task.failed", 0),
-                  sumMetric(
-                    "activitypub.delivery.permanent_failure",
-                    triggerCalls,
-                  ),
-                ],
-              }],
+              scopeMetrics: [
+                {
+                  metrics: [
+                    sumMetric("fedify.queue.task.enqueued", triggerCalls),
+                    sumMetric("fedify.queue.task.completed", triggerCalls),
+                    sumMetric("fedify.queue.task.failed", 0),
+                    sumMetric(
+                      "activitypub.delivery.permanent_failure",
+                      triggerCalls,
+                    ),
+                  ],
+                },
+              ],
             }),
             { headers: { "content-type": "application/json" } },
           ),

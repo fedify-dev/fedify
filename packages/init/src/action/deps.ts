@@ -25,25 +25,32 @@ type Deps = Record<string, string>;
  *               message queue descriptions
  * @returns A record of dependencies with their versions
  */
-export const getDependencies = (
-  { initializer, kv, mq, env, testMode, packageManager, webFramework }: Pick<
-    InitCommandData,
-    | "initializer"
-    | "kv"
-    | "mq"
-    | "env"
-    | "packageManager"
-    | "testMode"
-    | "webFramework"
-  >,
-): Deps =>
+export const getDependencies = ({
+  initializer,
+  kv,
+  mq,
+  env,
+  testMode,
+  packageManager,
+  webFramework,
+}: Pick<
+  InitCommandData,
+  | "initializer"
+  | "kv"
+  | "mq"
+  | "env"
+  | "packageManager"
+  | "testMode"
+  | "webFramework"
+>): Deps =>
   pipe(
     {
       "@fedify/fedify": PACKAGE_VERSION,
       "@fedify/vocab": PACKAGE_VERSION,
       "@logtape/logtape": deps["@logtape/logtape"],
-      ...(needsDenoDotenv({ packageManager, env }) &&
-        { "@std/dotenv": deps["@std/dotenv"] }),
+      ...(needsDenoDotenv({ packageManager, env }) && {
+        "@std/dotenv": deps["@std/dotenv"],
+      }),
     },
     merge(initializer.dependencies),
     merge(kv.dependencies),
@@ -64,10 +71,11 @@ const useNpmForFedifyPackages = (deps: Deps): Deps =>
     deps,
     entries,
     map(([name, version]) =>
-      name.startsWith("@fedify/") && name !== "@fedify/lint" &&
-        !version.startsWith("npm:")
-        ? [name, `npm:${name}@${version}`] as const
-        : [name, version] as const
+      name.startsWith("@fedify/") &&
+      name !== "@fedify/lint" &&
+      !version.startsWith("npm:")
+        ? ([name, `npm:${name}@${version}`] as const)
+        : ([name, version] as const),
     ),
     fromEntries,
   );
@@ -84,18 +92,18 @@ const addLocalFedifyDeps = (deps: Deps): Deps =>
   pipe(
     deps,
     entries,
-    map(when(
-      ([name]) => name.includes("@fedify/"),
-      ([name, _version]) => [name, convertFedifyToLocal(name)] as const,
-    )),
+    map(
+      when(
+        ([name]) => name.includes("@fedify/"),
+        ([name, _version]) => [name, convertFedifyToLocal(name)] as const,
+      ),
+    ),
     fromEntries,
   );
 
 const convertFedifyToLocal = (name: string): string =>
-  pipe(
-    name,
-    replace("@fedify/", ""),
-    (pkg) => joinPath(getPackagesPath(), pkg),
+  pipe(name, replace("@fedify/", ""), (pkg) =>
+    joinPath(getPackagesPath(), pkg),
   );
 
 /** Gathers all devDependencies required for the project based on the
@@ -106,12 +114,16 @@ const convertFedifyToLocal = (name: string): string =>
  *               and message queue descriptions
  * @returns A record of devDependencies with their versions
  */
-export const getDevDependencies = (
-  { initializer, kv, mq, packageManager, testMode }: Pick<
-    InitCommandData,
-    "initializer" | "kv" | "mq" | "packageManager" | "testMode"
-  >,
-): Deps =>
+export const getDevDependencies = ({
+  initializer,
+  kv,
+  mq,
+  packageManager,
+  testMode,
+}: Pick<
+  InitCommandData,
+  "initializer" | "kv" | "mq" | "packageManager" | "testMode"
+>): Deps =>
   pipe(
     initializer.devDependencies,
     merge(kv.devDependencies),
@@ -148,35 +160,40 @@ export function* getAddDepsArgs<
  * @param data - Package manager and dependencies to be joined with versions
  * @returns \{ name: `${registry}:${package}@${version}` } for deno
  */
-export const joinDepsReg = (pm: PackageManager) => //
-(dependencies: Deps): Deps =>
-  pipe(
-    dependencies,
-    entries,
-    map(([name, version]): [string, string] => {
-      const cleanName = name.substring(4);
-      // If version already contains a registry prefix (npm: or jsr:), use it as-is
-      // Otherwise, construct the full spec from the name and version
-      const fullSpec = version.startsWith("npm:") || version.startsWith("jsr:")
-        ? version
-        : `${name}@${getPackageVersion(pm, version)}`;
-      return [cleanName, fullSpec];
-    }),
-    fromEntries,
-  );
+export const joinDepsReg =
+  (pm: PackageManager) =>
+  //
+  (dependencies: Deps): Deps =>
+    pipe(
+      dependencies,
+      entries,
+      map(([name, version]): [string, string] => {
+        const cleanName = name.substring(4);
+        // If version already contains a registry prefix (npm: or jsr:), use it as-is
+        // Otherwise, construct the full spec from the name and version
+        const fullSpec =
+          version.startsWith("npm:") || version.startsWith("jsr:")
+            ? version
+            : `${name}@${getPackageVersion(pm, version)}`;
+        return [cleanName, fullSpec];
+      }),
+      fromEntries,
+    );
 
 const getPackageVersion = (pm: PackageManager, version: string) =>
   pm !== "deno" && version.includes("+")
     ? version.substring(0, version.indexOf("+"))
     : version;
 
-const normalizePackageNames = (pm: PackageManager) => (deps: Deps): Deps =>
-  pipe(
-    deps,
-    entries,
-    map(([name, version]) => [getPackageName(pm, name), version] as const),
-    fromEntries,
-  );
+const normalizePackageNames =
+  (pm: PackageManager) =>
+  (deps: Deps): Deps =>
+    pipe(
+      deps,
+      entries,
+      map(([name, version]) => [getPackageName(pm, name), version] as const),
+      fromEntries,
+    );
 
 const getPackageName = (pm: PackageManager, name: string) =>
   pm !== "deno"
@@ -184,6 +201,5 @@ const getPackageName = (pm: PackageManager, name: string) =>
       ? name.replace("npm:", "") // not deno, have npm: prefix, remove it
       : name // not deno, no prefix, keep it
     : name.startsWith("npm:")
-    ? name // deno, have npm: prefix, keep it
-    : `jsr:${name}` // deno, no prefix, add jsr: prefix
-;
+      ? name // deno, have npm: prefix, keep it
+      : `jsr:${name}`; // deno, no prefix, add jsr: prefix

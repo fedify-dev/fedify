@@ -79,9 +79,9 @@ interface BunFetchInit extends RequestInit {
  * @param options The pinner options.
  * @returns The pinner.
  */
-export function createBunPinner(
-  { verifyAddress }: ConnectionPinnerOptions,
-): ConnectionPinner {
+export function createBunPinner({
+  verifyAddress,
+}: ConnectionPinnerOptions): ConnectionPinner {
   // Older Bun versions read proxy variables only at startup, so they are
   // checked once when the pinner is created:
   let proxyWarningPending = ignoresProxyFalse() && hasProxyVariables();
@@ -129,9 +129,10 @@ export function createBunPinner(
           headers,
           body,
           redirect: "manual",
-          signal: signal == null || signal === request.signal
-            ? request.signal
-            : anySignal(signal, request.signal),
+          signal:
+            signal == null || signal === request.signal
+              ? request.signal
+              : anySignal(signal, request.signal),
           proxy: false,
         };
         if (url.protocol === "https:") {
@@ -148,15 +149,15 @@ export function createBunPinner(
       throw lastError;
     },
 
-    release(): void {
-    },
+    release(): void {},
   };
 }
 
 function getTlsOptions(url: URL, hostname: string): BunFetchInit["tls"] {
   const bun = getBun();
   if (
-    url.port !== "" && bun != null &&
+    url.port !== "" &&
+    bun != null &&
     bun.semver.satisfies(bun.version, HOST_HEADER_IDENTITY_RANGE)
   ) {
     throw new TypeError(
@@ -187,9 +188,8 @@ function anySignal(a: AbortSignal, b: AbortSignal): AbortSignal {
 
 function toAddressUrl(url: URL, address: ResolvedAddress): URL {
   const result = new URL(url);
-  result.hostname = address.family === 6
-    ? `[${address.address}]`
-    : address.address;
+  result.hostname =
+    address.family === 6 ? `[${address.address}]` : address.address;
   return result;
 }
 
@@ -215,9 +215,11 @@ function ignoresProxyFalse(): boolean {
 }
 
 function hasProxyVariables(): boolean {
-  const env = (globalThis as {
-    process?: { env?: Record<string, string | undefined> };
-  }).process?.env;
+  const env = (
+    globalThis as {
+      process?: { env?: Record<string, string | undefined> };
+    }
+  ).process?.env;
   if (env == null) return false;
   return PROXY_VARIABLES.some((name) => (env[name] ?? "") !== "");
 }

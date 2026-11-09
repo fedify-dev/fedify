@@ -41,7 +41,7 @@ export default defineConfig({
         ctx.chunks
           .filter((chunk) => /\.d\.(?:c|m)?ts$/.test(chunk.fileName))
           .map((chunk) =>
-            addEmscriptenReference(ctx.options.outDir, chunk.fileName)
+            addEmscriptenReference(ctx.options.outDir, chunk.fileName),
           ),
       );
     },

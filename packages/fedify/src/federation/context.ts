@@ -574,9 +574,7 @@ export interface Context<TContextData> {
    * @since 0.4.0
    */
   getDocumentLoader(
-    identity:
-      | { identifier: string }
-      | { username: string },
+    identity: { identifier: string } | { username: string },
   ): Promise<DocumentLoader>;
 
   /**
@@ -589,9 +587,10 @@ export interface Context<TContextData> {
    * @throws {TypeError} If the key is invalid or unsupported.
    * @since 0.4.0
    */
-  getDocumentLoader(
-    identity: { keyId: URL; privateKey: CryptoKey },
-  ): DocumentLoader;
+  getDocumentLoader(identity: {
+    keyId: URL;
+    privateKey: CryptoKey;
+  }): DocumentLoader;
 
   /**
    * Looks up an ActivityStreams object by its URI (including `acct:` URIs)
@@ -1453,9 +1452,7 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    *
    * [instance actor]: https://swicg.github.io/activitypub-http-signature/#instance-actor
    */
-  getSignedKeyOwner(
-    options: GetKeyOwnerOptions,
-  ): Promise<Actor | null>;
+  getSignedKeyOwner(options: GetKeyOwnerOptions): Promise<Actor | null>;
 
   /**
    * Checks whether the request is signed by an actor who belongs to
@@ -1585,9 +1582,7 @@ export interface InboxContext<TContextData> extends Context<TContextData> {
    * @since 1.0.0
    */
   forwardActivity(
-    forwarder:
-      | { identifier: string }
-      | { username: string },
+    forwarder: { identifier: string } | { username: string },
     recipients: "followers",
     options?: ForwardActivityOptions,
   ): Promise<void>;
@@ -1651,9 +1646,7 @@ export interface OutboxContext<TContextData> extends Context<TContextData> {
    * @since 2.2.0
    */
   forwardActivity(
-    forwarder:
-      | { identifier: string }
-      | { username: string },
+    forwarder: { identifier: string } | { username: string },
     recipients: "followers",
     options?: ForwardActivityOptions,
   ): Promise<void>;
@@ -1702,166 +1695,166 @@ export type ParseUriResult =
    * The case of an actor URI.
    */
   | {
-    readonly type: "actor";
-    readonly identifier: string;
-    /**
-     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
-     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
-     * @since 2.4.0
-     */
-    readonly authority?: string;
-  }
+      readonly type: "actor";
+      readonly identifier: string;
+      /**
+       * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+       * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+       * @since 2.4.0
+       */
+      readonly authority?: string;
+    }
   /**
    * The case of an object URI.
    */
   | {
-    readonly type: "object";
-    readonly class: ConstructorWithTypeId<Object>;
-    readonly typeId: URL;
-    readonly values: Record<string, string>;
-    /**
-     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
-     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
-     * @since 2.4.0
-     */
-    readonly authority?: string;
-  }
+      readonly type: "object";
+      readonly class: ConstructorWithTypeId<Object>;
+      readonly typeId: URL;
+      readonly values: Record<string, string>;
+      /**
+       * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+       * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+       * @since 2.4.0
+       */
+      readonly authority?: string;
+    }
   /**
    * The case of an shared inbox URI.
    */
   | {
-    readonly type: "inbox";
-    readonly identifier: undefined;
-    readonly authority?: undefined;
-  }
+      readonly type: "inbox";
+      readonly identifier: undefined;
+      readonly authority?: undefined;
+    }
   /**
    * The case of an personal inbox URI.
    */
   | {
-    readonly type: "inbox";
-    readonly identifier: string;
-    /**
-     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
-     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
-     * @since 2.4.0
-     */
-    readonly authority?: string;
-  }
+      readonly type: "inbox";
+      readonly identifier: string;
+      /**
+       * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+       * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+       * @since 2.4.0
+       */
+      readonly authority?: string;
+    }
   /**
    * The case of an outbox collection URI.
    */
   | {
-    readonly type: "outbox";
-    readonly identifier: string;
-    /**
-     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
-     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
-     * @since 2.4.0
-     */
-    readonly authority?: string;
-  }
+      readonly type: "outbox";
+      readonly identifier: string;
+      /**
+       * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+       * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+       * @since 2.4.0
+       */
+      readonly authority?: string;
+    }
   /**
    * The case of a following collection URI.
    */
   | {
-    readonly type: "following";
-    readonly identifier: string;
-    /**
-     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
-     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
-     * @since 2.4.0
-     */
-    readonly authority?: string;
-  }
+      readonly type: "following";
+      readonly identifier: string;
+      /**
+       * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+       * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+       * @since 2.4.0
+       */
+      readonly authority?: string;
+    }
   /**
    * The case of a followers collection URI.
    */
   | {
-    readonly type: "followers";
-    readonly identifier: string;
-    /**
-     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
-     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
-     * @since 2.4.0
-     */
-    readonly authority?: string;
-  }
+      readonly type: "followers";
+      readonly identifier: string;
+      /**
+       * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+       * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+       * @since 2.4.0
+       */
+      readonly authority?: string;
+    }
   /**
    * The case of a liked collection URI.
    * @since 0.11.0
    */
   | {
-    readonly type: "liked";
-    readonly identifier: string;
-    /**
-     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
-     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
-     * @since 2.4.0
-     */
-    readonly authority?: string;
-  }
+      readonly type: "liked";
+      readonly identifier: string;
+      /**
+       * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+       * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+       * @since 2.4.0
+       */
+      readonly authority?: string;
+    }
   /**
    * The case of a featured collection URI.
    * @since 0.11.0
    */
   | {
-    readonly type: "featured";
-    readonly identifier: string;
-    /**
-     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
-     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
-     * @since 2.4.0
-     */
-    readonly authority?: string;
-  }
+      readonly type: "featured";
+      readonly identifier: string;
+      /**
+       * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+       * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+       * @since 2.4.0
+       */
+      readonly authority?: string;
+    }
   /**
    * The case of a featured tags collection URI.
    * @since 0.11.0
    */
   | {
-    readonly type: "featuredTags";
-    readonly identifier: string;
-    /**
-     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
-     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
-     * @since 2.4.0
-     */
-    readonly authority?: string;
-  }
+      readonly type: "featuredTags";
+      readonly identifier: string;
+      /**
+       * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+       * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+       * @since 2.4.0
+       */
+      readonly authority?: string;
+    }
   /**
    * The case of a custom collection URI.
    * @since 1.8.0
    */
   | {
-    readonly type: "collection";
-    readonly name: string | symbol;
-    readonly class: ConstructorWithTypeId<Object>;
-    readonly typeId: URL;
-    readonly values: Record<string, string>;
-    /**
-     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
-     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
-     * @since 2.4.0
-     */
-    readonly authority?: string;
-  }
+      readonly type: "collection";
+      readonly name: string | symbol;
+      readonly class: ConstructorWithTypeId<Object>;
+      readonly typeId: URL;
+      readonly values: Record<string, string>;
+      /**
+       * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+       * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+       * @since 2.4.0
+       */
+      readonly authority?: string;
+    }
   /**
    * The case of a custom ordered collection URI.
    * @since 1.8.0
    */
   | {
-    readonly type: "orderedCollection";
-    readonly name: string | symbol;
-    readonly class: ConstructorWithTypeId<Object>;
-    readonly typeId: URL;
-    readonly values: Record<string, string>;
-    /**
-     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
-     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
-     * @since 2.4.0
-     */
-    readonly authority?: string;
-  };
+      readonly type: "orderedCollection";
+      readonly name: string | symbol;
+      readonly class: ConstructorWithTypeId<Object>;
+      readonly typeId: URL;
+      readonly values: Record<string, string>;
+      /**
+       * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+       * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+       * @since 2.4.0
+       */
+      readonly authority?: string;
+    };
 
 /**
  * Options for {@link Context.sendActivity} method.

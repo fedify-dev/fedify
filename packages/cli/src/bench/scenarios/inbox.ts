@@ -126,10 +126,14 @@ export const inboxRunner: ScenarioRunner = {
     // attributed to the window; that residue is bounded by the in-flight count.
     let baseline: ServerSnapshot | null = null;
     let baselineTaken = false;
-    const send = withMeasuredWindowStart(scenario.warmupMs, async () => {
-      baseline = await fetchServerSnapshot(context.target, fetchImpl);
-      baselineTaken = true;
-    }, rawSend);
+    const send = withMeasuredWindowStart(
+      scenario.warmupMs,
+      async () => {
+        baseline = await fetchServerSnapshot(context.target, fetchImpl);
+        baselineTaken = true;
+      },
+      rawSend,
+    );
 
     try {
       await pipeline.prime();
@@ -147,9 +151,10 @@ export const inboxRunner: ScenarioRunner = {
       // Only report server metrics when both ends of the window were captured;
       // a missing baseline cannot be diffed (and falling back to the cumulative
       // snapshot would silently reintroduce warm-up and earlier-scenario load).
-      const server = baselineTaken && baseline != null && end != null
-        ? snapshotToMetrics(diffSnapshots(baseline, end))
-        : null;
+      const server =
+        baselineTaken && baseline != null && end != null
+          ? snapshotToMetrics(diffSnapshots(baseline, end))
+          : null;
       return { ...measurement, server };
     } finally {
       await pipeline.close();
@@ -191,8 +196,8 @@ function validateActivity(scenario: ResolvedScenario): void {
         "activity's object; embedObject: false is not yet supported.",
     );
   }
-  const badObjectType = asList(spec.object?.type).find((type) =>
-    type !== "Note"
+  const badObjectType = asList(spec.object?.type).find(
+    (type) => type !== "Note",
   );
   if (badObjectType != null) {
     throw new Error(

@@ -38,16 +38,9 @@ export interface InteractionControl<
   readonly authorizationTypeId: URL;
   readonly verifyRequest: <TContextData>(
     context: Context<TContextData>,
-    options:
-      & InteractionRequestVerificationOptions<TRequest>
-      & TRequestValidationOptions,
-  ) => Promise<
-    InteractionRequestVerification<
-      TRequest,
-      TInteracting,
-      TTarget
-    >
-  >;
+    options: InteractionRequestVerificationOptions<TRequest> &
+      TRequestValidationOptions,
+  ) => Promise<InteractionRequestVerification<TRequest, TInteracting, TTarget>>;
   readonly evaluatePolicy: <TContextData>(
     context: Context<TContextData>,
     options: InteractionPolicyEvaluationOptions<TContextData, TTarget>,
@@ -83,13 +76,11 @@ export interface InteractionControl<
   ) => Delete;
   readonly recognizeImpolite: (
     source: TImpoliteSource,
-  ) =>
-    | RecognizedImpoliteInteraction<
-      TInteracting,
-      TTarget,
-      TImpoliteSource
-    >
-    | null;
+  ) => RecognizedImpoliteInteraction<
+    TInteracting,
+    TTarget,
+    TImpoliteSource
+  > | null;
   readonly getInteractionKey: (
     input: InteractionKeyInput<TInteracting, TTarget>,
   ) => InteractionKey;
@@ -208,147 +199,152 @@ export type InteractionRequestVerification<
   TTarget extends ASObject,
 > =
   | {
-    readonly verified: true;
-    readonly request: TRequest;
-    readonly requestId: URL;
-    readonly requester: URL;
-    readonly interactingObject: TInteracting;
-    readonly interactingObjectId: URL;
-    readonly interactionTarget: TTarget;
-    readonly interactionTargetId: URL;
-  }
+      readonly verified: true;
+      readonly request: TRequest;
+      readonly requestId: URL;
+      readonly requester: URL;
+      readonly interactingObject: TInteracting;
+      readonly interactingObjectId: URL;
+      readonly interactionTarget: TTarget;
+      readonly interactionTargetId: URL;
+    }
   | {
-    readonly verified: false;
-    readonly failure: InteractionRequestVerificationFailure;
-    readonly request?: TRequest;
-    readonly requestId?: URL;
-  };
+      readonly verified: false;
+      readonly failure: InteractionRequestVerificationFailure;
+      readonly request?: TRequest;
+      readonly requestId?: URL;
+    };
 
 export type InteractionRequestVerificationFailure =
   | {
-    readonly category: "unverifiable";
-    readonly type: "notDereferenceable";
-    readonly url: URL;
-    readonly cause?: unknown;
-    /**
-     * Whether the failure is likely transient, so that verifying again later
-     * could succeed.  Always set by the built-in helpers.
-     * @since 2.5.0
-     */
-    readonly transient?: boolean;
-  }
+      readonly category: "unverifiable";
+      readonly type: "notDereferenceable";
+      readonly url: URL;
+      readonly cause?: unknown;
+      /**
+       * Whether the failure is likely transient, so that verifying again later
+       * could succeed.  Always set by the built-in helpers.
+       * @since 2.5.0
+       */
+      readonly transient?: boolean;
+    }
   | {
-    readonly category: "unverifiable";
-    readonly type: "unauthorizedFetchRequired";
-    readonly url: URL;
-    /**
-     * Whether the failure is likely transient.
-     * @since 2.5.0
-     */
-    readonly transient?: boolean;
-  }
+      readonly category: "unverifiable";
+      readonly type: "unauthorizedFetchRequired";
+      readonly url: URL;
+      /**
+       * Whether the failure is likely transient.
+       * @since 2.5.0
+       */
+      readonly transient?: boolean;
+    }
   | {
-    readonly category: "unverifiable";
-    readonly type: "invalidJsonLd";
-    readonly cause?: unknown;
-    /**
-     * Whether the failure is likely transient.  Always `false` when set by
-     * the built-in helpers.
-     * @since 2.5.0
-     */
-    readonly transient?: boolean;
-  }
+      readonly category: "unverifiable";
+      readonly type: "invalidJsonLd";
+      readonly cause?: unknown;
+      /**
+       * Whether the failure is likely transient.  Always `false` when set by
+       * the built-in helpers.
+       * @since 2.5.0
+       */
+      readonly transient?: boolean;
+    }
   | {
-    readonly category: "invalid";
-    readonly type: "wrongType";
-    readonly expectedType: URL;
-    readonly actualTypes: readonly URL[];
-  }
+      readonly category: "invalid";
+      readonly type: "wrongType";
+      readonly expectedType: URL;
+      readonly actualTypes: readonly URL[];
+    }
   | {
-    readonly category: "invalid";
-    readonly type: "wrongInstrumentType";
-    readonly expectedTypes: readonly URL[];
-    readonly actualTypes: readonly URL[];
-  }
+      readonly category: "invalid";
+      readonly type: "wrongInstrumentType";
+      readonly expectedTypes: readonly URL[];
+      readonly actualTypes: readonly URL[];
+    }
   | {
-    readonly category: "invalid";
-    readonly type: "wrongObjectType";
-    readonly expectedTypes: readonly URL[];
-    readonly actualTypes: readonly URL[];
-  }
+      readonly category: "invalid";
+      readonly type: "wrongObjectType";
+      readonly expectedTypes: readonly URL[];
+      readonly actualTypes: readonly URL[];
+    }
   | {
-    readonly category: "invalid";
-    readonly type:
-      | "missingId"
-      | "missingActor"
-      | "missingObject"
-      | "missingObjectId"
-      | "missingInstrument"
-      | "missingInstrumentId";
-  }
+      readonly category: "invalid";
+      readonly type:
+        | "missingId"
+        | "missingActor"
+        | "missingObject"
+        | "missingObjectId"
+        | "missingInstrument"
+        | "missingInstrumentId";
+    }
   | {
-    readonly category: "invalid";
-    readonly type: "idMismatch" | "objectMismatch" | "instrumentMismatch";
-    readonly expected: URL;
-    readonly actual?: URL;
-  }
+      readonly category: "invalid";
+      readonly type: "idMismatch" | "objectMismatch" | "instrumentMismatch";
+      readonly expected: URL;
+      readonly actual?: URL;
+    }
   | {
-    readonly category: "unauthorized";
-    readonly type: "requesterMismatch";
-    readonly expected: URL;
-    readonly actual?: URL;
-  }
+      readonly category: "unauthorized";
+      readonly type: "requesterMismatch";
+      readonly expected: URL;
+      readonly actual?: URL;
+    }
   | {
-    /**
-     * The URL of the interacting object has a username or a password.
-     * @since 2.5.0
-     */
-    readonly category: "invalid";
-    readonly type: "credentials-in-url";
-    readonly url: URL;
-  }
+      /**
+       * The URL of the interacting object has a username or a password.
+       * @since 2.5.0
+       */
+      readonly category: "invalid";
+      readonly type: "credentials-in-url";
+      readonly url: URL;
+    }
   | {
-    /**
-     * The document of the interacting object, fetched from its ID, is not
-     * acceptable:
-     *
-     *  -  `"credentials"`: it was served from a URL with credentials.
-     *  -  `"id"`: its ID does not match the requested one.
-     *  -  `"type"`: it is not of the expected type.
-     *  -  `"attribution"`: it does not have exactly one `attributedTo` value
-     *     that identifies an actor.
-     *  -  `"decoding"`: it cannot be decoded, e.g., it has a malformed date.
-     * @since 2.5.0
-     */
-    readonly category: "invalid";
-    readonly type: "invalid-interacting-object";
-    readonly reason: "credentials" | "id" | "type" | "attribution" | "decoding";
-    readonly cause?: unknown;
-  }
+      /**
+       * The document of the interacting object, fetched from its ID, is not
+       * acceptable:
+       *
+       *  -  `"credentials"`: it was served from a URL with credentials.
+       *  -  `"id"`: its ID does not match the requested one.
+       *  -  `"type"`: it is not of the expected type.
+       *  -  `"attribution"`: it does not have exactly one `attributedTo` value
+       *     that identifies an actor.
+       *  -  `"decoding"`: it cannot be decoded, e.g., it has a malformed date.
+       * @since 2.5.0
+       */
+      readonly category: "invalid";
+      readonly type: "invalid-interacting-object";
+      readonly reason:
+        | "credentials"
+        | "id"
+        | "type"
+        | "attribution"
+        | "decoding";
+      readonly cause?: unknown;
+    }
   | {
-    /**
-     * The request, as Fedify authenticated it, does not unambiguously have
-     * the given property: it has another type or ID than the request being
-     * verified, its `actor` values differ, or it does not have exactly one
-     * `object` or `instrument` value.
-     * @since 2.5.0
-     */
-    readonly category: "invalid";
-    readonly type: "ambiguous-request";
-    readonly property: "type" | "id" | "actor" | "object" | "instrument";
-  }
+      /**
+       * The request, as Fedify authenticated it, does not unambiguously have
+       * the given property: it has another type or ID than the request being
+       * verified, its `actor` values differ, or it does not have exactly one
+       * `object` or `instrument` value.
+       * @since 2.5.0
+       */
+      readonly category: "invalid";
+      readonly type: "ambiguous-request";
+      readonly property: "type" | "id" | "actor" | "object" | "instrument";
+    }
   | {
-    /**
-     * The requester was not authenticated: the request's actor, or for
-     * a request without an actor, the owner of its interacting object, is not
-     * among the principals of the given authentication evidence, or no
-     * evidence is available.
-     * @since 2.5.0
-     */
-    readonly category: "unauthorized";
-    readonly type: "unauthenticated-requester";
-    readonly requester?: URL;
-  };
+      /**
+       * The requester was not authenticated: the request's actor, or for
+       * a request without an actor, the owner of its interacting object, is not
+       * among the principals of the given authentication evidence, or no
+       * evidence is available.
+       * @since 2.5.0
+       */
+      readonly category: "unauthorized";
+      readonly type: "unauthenticated-requester";
+      readonly requester?: URL;
+    };
 
 export interface InteractionPolicyEvaluationOptions<
   TContextData,
@@ -407,17 +403,17 @@ export type MatchesApprovalCollection<TContextData> = (
 
 export type InteractionPolicyDecision =
   | {
-    readonly result: "automatic";
-    readonly reason: InteractionPolicyMatchReason;
-  }
+      readonly result: "automatic";
+      readonly reason: InteractionPolicyMatchReason;
+    }
   | {
-    readonly result: "manual";
-    readonly reason: InteractionPolicyMatchReason;
-  }
+      readonly result: "manual";
+      readonly reason: InteractionPolicyMatchReason;
+    }
   | {
-    readonly result: "denied";
-    readonly reason: InteractionPolicyDenialReason;
-  };
+      readonly result: "denied";
+      readonly reason: InteractionPolicyDenialReason;
+    };
 
 export type InteractionPolicyMatchReason =
   | { readonly type: "self" }
@@ -431,14 +427,14 @@ export type InteractionPolicyDenialReason =
   | { readonly type: "missingRule" }
   | { readonly type: "noMatch" }
   | {
-    readonly type: "unverifiableCollection";
-    readonly collection: URL;
-    /**
-     * The error thrown while checking the collection.
-     * @since 2.5.0
-     */
-    readonly cause?: unknown;
-  };
+      readonly type: "unverifiableCollection";
+      readonly collection: URL;
+      /**
+       * The error thrown while checking the collection.
+       * @since 2.5.0
+       */
+      readonly cause?: unknown;
+    };
 
 export interface InteractionRequestCreationOptions<
   TInteracting extends ASObject,
@@ -515,96 +511,96 @@ export type InteractionAuthorizationVerification<
   TAuthorization extends ASObject,
 > =
   | {
-    readonly verified: true;
-    readonly authorization: TAuthorization;
-    readonly authorizationId: URL;
-  }
+      readonly verified: true;
+      readonly authorization: TAuthorization;
+      readonly authorizationId: URL;
+    }
   | {
-    readonly verified: false;
-    readonly failure: InteractionAuthorizationVerificationFailure;
-    readonly authorization?: TAuthorization;
-    readonly authorizationId?: URL;
-  };
+      readonly verified: false;
+      readonly failure: InteractionAuthorizationVerificationFailure;
+      readonly authorization?: TAuthorization;
+      readonly authorizationId?: URL;
+    };
 
 export type InteractionAuthorizationVerificationFailure =
   | {
-    readonly category: "unverifiable";
-    readonly type: "notDereferenceable";
-    readonly url: URL;
-    readonly cause?: unknown;
-    /**
-     * Whether the failure is likely transient, so that verifying again later
-     * could succeed.  Always set by the built-in helpers.
-     * @since 2.5.0
-     */
-    readonly transient?: boolean;
-  }
+      readonly category: "unverifiable";
+      readonly type: "notDereferenceable";
+      readonly url: URL;
+      readonly cause?: unknown;
+      /**
+       * Whether the failure is likely transient, so that verifying again later
+       * could succeed.  Always set by the built-in helpers.
+       * @since 2.5.0
+       */
+      readonly transient?: boolean;
+    }
   | {
-    readonly category: "unverifiable";
-    readonly type: "unauthorizedFetchRequired";
-    readonly url: URL;
-    /**
-     * Whether the failure is likely transient.
-     * @since 2.5.0
-     */
-    readonly transient?: boolean;
-  }
+      readonly category: "unverifiable";
+      readonly type: "unauthorizedFetchRequired";
+      readonly url: URL;
+      /**
+       * Whether the failure is likely transient.
+       * @since 2.5.0
+       */
+      readonly transient?: boolean;
+    }
   | {
-    readonly category: "unverifiable";
-    readonly type: "invalidJsonLd";
-    readonly cause?: unknown;
-    /**
-     * Whether the failure is likely transient.  Always `false` when set by
-     * the built-in helpers.
-     * @since 2.5.0
-     */
-    readonly transient?: boolean;
-  }
+      readonly category: "unverifiable";
+      readonly type: "invalidJsonLd";
+      readonly cause?: unknown;
+      /**
+       * Whether the failure is likely transient.  Always `false` when set by
+       * the built-in helpers.
+       * @since 2.5.0
+       */
+      readonly transient?: boolean;
+    }
   | {
-    readonly category: "unauthorized";
-    readonly type: "wrongType";
-    readonly expectedType: URL;
-    readonly actualTypes: readonly URL[];
-  }
+      readonly category: "unauthorized";
+      readonly type: "wrongType";
+      readonly expectedType: URL;
+      readonly actualTypes: readonly URL[];
+    }
   | {
-    readonly category: "unauthorized";
-    readonly type: "missingId" | "missingObjectId" | "missingTargetId";
-  }
+      readonly category: "unauthorized";
+      readonly type: "missingId" | "missingObjectId" | "missingTargetId";
+    }
   | {
-    readonly category: "unauthorized";
-    readonly type: "missingAttribution";
-  }
+      readonly category: "unauthorized";
+      readonly type: "missingAttribution";
+    }
   | {
-    readonly category: "unauthorized";
-    readonly type: "idMismatch" | "objectMismatch" | "targetMismatch";
-    readonly expected: URL;
-    readonly actual?: URL;
-  }
+      readonly category: "unauthorized";
+      readonly type: "idMismatch" | "objectMismatch" | "targetMismatch";
+      readonly expected: URL;
+      readonly actual?: URL;
+    }
   | {
-    readonly category: "unauthorized";
-    readonly type: "attributionMismatch";
-    readonly expected: URL;
-    readonly actual?: URL;
-  }
+      readonly category: "unauthorized";
+      readonly type: "attributionMismatch";
+      readonly expected: URL;
+      readonly actual?: URL;
+    }
   | {
-    readonly category: "unauthorized";
-    readonly type: "originMismatch";
-    readonly expectedOrigin: string;
-    readonly actualOrigin: string;
-  }
+      readonly category: "unauthorized";
+      readonly type: "originMismatch";
+      readonly expectedOrigin: string;
+      readonly actualOrigin: string;
+    }
   | {
-    readonly category: "unauthorized";
-    readonly type: "notAuthentic";
-    readonly detail?: string;
-    readonly cause?: unknown;
-  }
+      readonly category: "unauthorized";
+      readonly type: "notAuthentic";
+      readonly detail?: string;
+      readonly cause?: unknown;
+    }
   | {
-    readonly category: "revoked";
-    readonly type: "deleted";
-    readonly revoker?: URL;
-    readonly revoked?: Temporal.Instant;
-    readonly activity?: Delete;
-  };
+      readonly category: "revoked";
+      readonly type: "deleted";
+      readonly revoker?: URL;
+      readonly revoked?: Temporal.Instant;
+      readonly activity?: Delete;
+    };
 
 export type GetInteractionAuthorizationRevocation<TContextData> = (
   authorizationId: URL,
@@ -627,24 +623,24 @@ export type InteractionAcceptOptions<
   TTarget extends ASObject,
 > =
   | {
-    readonly mode: "polite";
-    readonly id?: URL;
-    readonly actor: URL;
-    readonly request: TRequest | URL;
-    readonly authorization: TAuthorization | URL;
-    readonly to?: URL | readonly URL[];
-    readonly cc?: URL | readonly URL[];
-  }
+      readonly mode: "polite";
+      readonly id?: URL;
+      readonly actor: URL;
+      readonly request: TRequest | URL;
+      readonly authorization: TAuthorization | URL;
+      readonly to?: URL | readonly URL[];
+      readonly cc?: URL | readonly URL[];
+    }
   | {
-    readonly mode: "impolite";
-    readonly id?: URL;
-    readonly actor: URL;
-    readonly interactingObject: TInteracting | URL;
-    readonly interactionTarget: TTarget | URL;
-    readonly authorization: TAuthorization | URL;
-    readonly to?: URL | readonly URL[];
-    readonly cc?: URL | readonly URL[];
-  };
+      readonly mode: "impolite";
+      readonly id?: URL;
+      readonly actor: URL;
+      readonly interactingObject: TInteracting | URL;
+      readonly interactionTarget: TTarget | URL;
+      readonly authorization: TAuthorization | URL;
+      readonly to?: URL | readonly URL[];
+      readonly cc?: URL | readonly URL[];
+    };
 
 export type InteractionRejectOptions<
   TRequest extends Activity,
@@ -652,22 +648,22 @@ export type InteractionRejectOptions<
   TTarget extends ASObject,
 > =
   | {
-    readonly mode: "polite";
-    readonly id?: URL;
-    readonly actor: URL;
-    readonly request: TRequest | URL;
-    readonly to?: URL | readonly URL[];
-    readonly cc?: URL | readonly URL[];
-  }
+      readonly mode: "polite";
+      readonly id?: URL;
+      readonly actor: URL;
+      readonly request: TRequest | URL;
+      readonly to?: URL | readonly URL[];
+      readonly cc?: URL | readonly URL[];
+    }
   | {
-    readonly mode: "impolite";
-    readonly id?: URL;
-    readonly actor: URL;
-    readonly interactingObject: TInteracting | URL;
-    readonly interactionTarget: TTarget | URL;
-    readonly to?: URL | readonly URL[];
-    readonly cc?: URL | readonly URL[];
-  };
+      readonly mode: "impolite";
+      readonly id?: URL;
+      readonly actor: URL;
+      readonly interactingObject: TInteracting | URL;
+      readonly interactionTarget: TTarget | URL;
+      readonly to?: URL | readonly URL[];
+      readonly cc?: URL | readonly URL[];
+    };
 
 export interface InteractionRevocationCreationOptions<
   TAuthorization extends ASObject,

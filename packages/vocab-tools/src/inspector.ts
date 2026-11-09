@@ -9,9 +9,10 @@ export async function* generateInspector(
 ): AsyncIterable<string> {
   const type = types[typeUri];
   yield `
-  protected ${
-    emitOverride(typeUri, types)
-  } _getCustomInspectProxy(): Record<string, unknown> {
+  protected ${emitOverride(
+    typeUri,
+    types,
+  )} _getCustomInspectProxy(): Record<string, unknown> {
   `;
   if (type.extends == null) {
     yield `

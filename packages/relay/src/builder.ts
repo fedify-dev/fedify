@@ -17,9 +17,8 @@ import {
 export const relayBuilder: FederationBuilder<RelayOptions> =
   createFederationBuilder<RelayOptions>();
 
-relayBuilder.setActorDispatcher(
-  "/users/{identifier}",
-  async (ctx, identifier) => {
+relayBuilder
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
     if (identifier !== RELAY_SERVER_ACTOR) return null;
     const keys = await ctx.getActorKeyPairs(identifier);
     return new Application({
@@ -34,48 +33,45 @@ relayBuilder.setActorDispatcher(
 
       assertionMethods: keys.map((k) => k.multikey),
     });
-  },
-)
-  .setKeyPairsDispatcher(
-    async (ctx, identifier) => {
-      if (identifier !== RELAY_SERVER_ACTOR) return [];
+  })
+  .setKeyPairsDispatcher(async (ctx, identifier) => {
+    if (identifier !== RELAY_SERVER_ACTOR) return [];
 
-      const rsaPairJson = await ctx.data.kv.get<
-        { privateKey: JsonWebKey; publicKey: JsonWebKey }
-      >(["keypair", "rsa", identifier]);
-      const ed25519PairJson = await ctx.data.kv.get<
-        { privateKey: JsonWebKey; publicKey: JsonWebKey }
-      >(["keypair", "ed25519", identifier]);
-      if (rsaPairJson == null || ed25519PairJson == null) {
-        const rsaPair = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
-        const ed25519Pair = await generateCryptoKeyPair("Ed25519");
-        await ctx.data.kv.set(["keypair", "rsa", identifier], {
-          privateKey: await exportJwk(rsaPair.privateKey),
-          publicKey: await exportJwk(rsaPair.publicKey),
-        });
-        await ctx.data.kv.set(["keypair", "ed25519", identifier], {
-          privateKey: await exportJwk(ed25519Pair.privateKey),
-          publicKey: await exportJwk(ed25519Pair.publicKey),
-        });
+    const rsaPairJson = await ctx.data.kv.get<{
+      privateKey: JsonWebKey;
+      publicKey: JsonWebKey;
+    }>(["keypair", "rsa", identifier]);
+    const ed25519PairJson = await ctx.data.kv.get<{
+      privateKey: JsonWebKey;
+      publicKey: JsonWebKey;
+    }>(["keypair", "ed25519", identifier]);
+    if (rsaPairJson == null || ed25519PairJson == null) {
+      const rsaPair = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+      const ed25519Pair = await generateCryptoKeyPair("Ed25519");
+      await ctx.data.kv.set(["keypair", "rsa", identifier], {
+        privateKey: await exportJwk(rsaPair.privateKey),
+        publicKey: await exportJwk(rsaPair.publicKey),
+      });
+      await ctx.data.kv.set(["keypair", "ed25519", identifier], {
+        privateKey: await exportJwk(ed25519Pair.privateKey),
+        publicKey: await exportJwk(ed25519Pair.publicKey),
+      });
 
-        return [rsaPair, ed25519Pair];
-      }
-
-      const rsaPair: CryptoKeyPair = {
-        privateKey: await importJwk(rsaPairJson.privateKey, "private"),
-        publicKey: await importJwk(rsaPairJson.publicKey, "public"),
-      };
-      const ed25519Pair: CryptoKeyPair = {
-        privateKey: await importJwk(ed25519PairJson.privateKey, "private"),
-        publicKey: await importJwk(ed25519PairJson.publicKey, "public"),
-      };
       return [rsaPair, ed25519Pair];
-    },
-  );
+    }
 
-async function getFollowerActors(
-  ctx: Context<RelayOptions>,
-): Promise<Actor[]> {
+    const rsaPair: CryptoKeyPair = {
+      privateKey: await importJwk(rsaPairJson.privateKey, "private"),
+      publicKey: await importJwk(rsaPairJson.publicKey, "public"),
+    };
+    const ed25519Pair: CryptoKeyPair = {
+      privateKey: await importJwk(ed25519PairJson.privateKey, "private"),
+      publicKey: await importJwk(ed25519PairJson.publicKey, "public"),
+    };
+    return [rsaPair, ed25519Pair];
+  });
+
+async function getFollowerActors(ctx: Context<RelayOptions>): Promise<Actor[]> {
   const actors: Actor[] = [];
 
   for await (const { key, value } of ctx.data.kv.list(["follower"])) {

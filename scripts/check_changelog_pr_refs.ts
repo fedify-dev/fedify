@@ -81,16 +81,17 @@ export function findIntroducedEntries(
   const before = previous.flatMap(extractEntries);
   const matched = new Set<number>();
   const existing = new Set(
-    [...after.keys()].filter((index) =>
-      after[index].references != null && logged.has(after[index].paragraph)
+    [...after.keys()].filter(
+      (index) =>
+        after[index].references != null && logged.has(after[index].paragraph),
     ),
   );
   if (before.length < 1 && existing.size < 1) return "all";
   for (const key of ["paragraph", "firstLine", "references"] as const) {
     for (const [index, entry] of after.entries()) {
       if (existing.has(index) || entry[key] == null) continue;
-      const origin = before.findIndex((old, i) =>
-        !matched.has(i) && old[key] === entry[key]
+      const origin = before.findIndex(
+        (old, i) => !matched.has(i) && old[key] === entry[key],
       );
       if (origin < 0) continue;
       // The same entry usually appears in several previous revisions:
@@ -189,24 +190,27 @@ function extractEntries(content: string): Entry[] {
   return items.map((lines) => {
     const trimmed = lines.map((line) => line.trim());
     // The first paragraph ends at a blank line or where a nested list starts:
-    const end = trimmed.findIndex((line, index) =>
-      index > 0 && (line === "" || /^(?:[-*+]|\d+[.)]) /.test(line))
+    const end = trimmed.findIndex(
+      (line, index) =>
+        index > 0 && (line === "" || /^(?:[-*+]|\d+[.)]) /.test(line)),
     );
     const collapse = (text: string) => text.replace(/\s+/g, " ").trim();
     const paragraph = collapse(
-      trimmed.slice(0, end < 0 ? undefined : end).join(" ")
+      trimmed
+        .slice(0, end < 0 ? undefined : end)
+        .join(" ")
         .replace(/^[-*+] +/, ""),
     );
     const references = extractTrailingReferences(paragraph);
     return {
       firstLine: collapse(trimmed[0]),
       paragraph,
-      references: references == null
-        ? null
-        : references.toSorted((a, b) =>
-          a.localeCompare(b, "en", { numeric: true })
-        )
-          .join(" "),
+      references:
+        references == null
+          ? null
+          : references
+              .toSorted((a, b) => a.localeCompare(b, "en", { numeric: true }))
+              .join(" "),
     };
   });
 }
@@ -280,26 +284,32 @@ export function checkFragment(
   // Other entries' pull requests are not wrong predictions:
   const cited = new Set(
     selected.flatMap(({ entry }) =>
-      toNumbers(extractTrailingReferences(entry.paragraph) ?? [])
+      toNumbers(extractTrailingReferences(entry.paragraph) ?? []),
     ),
   );
-  const otherPullRequests = parsed.links == null
-    ? []
-    : findLinkedPullRequests(parsed.links)
-      .filter((number) => number !== pullRequest && cited.has(number));
-  const predictionHint = otherPullRequests.length > 0
-    ? `  It links to ${
-      otherPullRequests.map((n) => `#${n}`).join(", ")
-    } instead; if that number was predicted, replace it with ${ref} in both ` +
-      "the links metadata and the trailing references."
-    : "";
+  const otherPullRequests =
+    parsed.links == null
+      ? []
+      : findLinkedPullRequests(parsed.links).filter(
+          (number) => number !== pullRequest && cited.has(number),
+        );
+  const predictionHint =
+    otherPullRequests.length > 0
+      ? `  It links to ${otherPullRequests
+          .map((n) => `#${n}`)
+          .join(
+            ", ",
+          )} instead; if that number was predicted, replace it with ${ref} in both ` +
+        "the links metadata and the trailing references."
+      : "";
 
   const violations: Violation[] = [];
   const linked = parsed.links?.[ref];
   if (linked == null) {
     violations.push({
       path,
-      message: `the links metadata has no entry for '${ref}'.  Add ` +
+      message:
+        `the links metadata has no entry for '${ref}'.  Add ` +
         `'${ref}': ${expectedUrl} under links.${predictionHint}`,
     });
   } else if (linked !== expectedUrl) {
@@ -314,13 +324,17 @@ export function checkFragment(
   if (selected.length < 1) {
     violations.push({ path, message: "the fragment has no list entry." });
   }
-  for (const { entry: { paragraph }, index } of selected) {
+  for (const {
+    entry: { paragraph },
+    index,
+  } of selected) {
     const entry = parsed.entries.length > 1 ? `entry ${index + 1}` : "entry";
     const references = extractTrailingReferences(paragraph);
     if (references == null) {
       violations.push({
         path,
-        message: `the ${entry} has no trailing references.  End its first ` +
+        message:
+          `the ${entry} has no trailing references.  End its first ` +
           `paragraph with the accepted issue and the pull request, e.g., ` +
           `[[#123], [${ref}]].`,
       });
@@ -328,9 +342,11 @@ export function checkFragment(
       violations.push({
         path,
         message:
-          `the trailing references of the ${entry} (${
-            references.map((reference) => `[${reference}]`).join(", ")
-          }) do not include the current pull request.  Add [${ref}] to ` +
+          `the trailing references of the ${entry} (${references
+            .map((reference) => `[${reference}]`)
+            .join(
+              ", ",
+            )}) do not include the current pull request.  Add [${ref}] to ` +
           `them.${predictionHint}`,
       });
     }
@@ -391,17 +407,22 @@ export async function checkChangelogPrRefs(
       ? null
       : await run("show", `${revision}:${path}`);
   };
-  const mergeBase = (await run("merge-base", options.base, options.head))
-    .trim();
+  const mergeBase = (
+    await run("merge-base", options.base, options.head)
+  ).trim();
   // The other parents of the merge commits on the pull request branch, such as
   // the base branch merged in to resolve conflicts:
-  const mergedIn = (await run(
-    "rev-list",
-    "--first-parent",
-    "--merges",
-    "--parents",
-    `${mergeBase}..${options.head}`,
-  )).split("\n").flatMap((line) => line.split(" ").slice(2));
+  const mergedIn = (
+    await run(
+      "rev-list",
+      "--first-parent",
+      "--merges",
+      "--parents",
+      `${mergeBase}..${options.head}`,
+    )
+  )
+    .split("\n")
+    .flatMap((line) => line.split(" ").slice(2));
   const diff = await run(
     "-c",
     "core.quotePath=false",
@@ -415,11 +436,14 @@ export async function checkChangelogPrRefs(
   );
   // Each line is a status followed by the path, or by the old and new paths of
   // a rename:
-  const changes = diff.split("\n")
+  const changes = diff
+    .split("\n")
     .map((line) => line.split("\t"))
-    .filter(([status, ...paths]) =>
-      !status.startsWith("D") && paths.length > 0 &&
-      isFragmentPath(paths[paths.length - 1])
+    .filter(
+      ([status, ...paths]) =>
+        !status.startsWith("D") &&
+        paths.length > 0 &&
+        isFragmentPath(paths[paths.length - 1]),
     )
     .map(([, ...paths]) => ({ path: paths[paths.length - 1], paths }));
   if (changes.length < 1) return { fragments: [], violations: [] };

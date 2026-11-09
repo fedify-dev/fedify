@@ -44,33 +44,43 @@ test("Every registered example has a matching examples/ directory", async () => 
   assert.deepEqual(
     unmatchedExamples,
     [],
-    `Registered examples without a matching directory found: ${
-      unmatchedExamples.join(", ")
-    }`,
+    `Registered examples without a matching directory found: ${unmatchedExamples.join(
+      ", ",
+    )}`,
   );
 });
 
 test("missing server executables fail each selected example and retain the summary", async () => {
   const bin = await mkdtemp(join(tmpdir(), "fedify empty PATH "));
-  const node = process.versions.deno != null || process.versions.bun != null
-    ? "node"
-    : process.execPath;
+  const node =
+    process.versions.deno != null || process.versions.bun != null
+      ? "node"
+      : process.execPath;
   // Resolve Node before hiding PATH so the fixture only loses its pnpm command.
-  const executable = node === "node"
-    ? JSON.parse(new TextDecoder().decode(
-      (await commandOutput("node", [
-        "-p",
-        "JSON.stringify(process.execPath)",
-      ])).stdout,
-    )) as string
-    : node;
+  const executable =
+    node === "node"
+      ? (JSON.parse(
+          new TextDecoder().decode(
+            (
+              await commandOutput("node", [
+                "-p",
+                "JSON.stringify(process.execPath)",
+              ])
+            ).stdout,
+          ),
+        ) as string)
+      : node;
   try {
-    const result = await commandOutput(executable, [
-      "--experimental-strip-types",
-      fileURLToPath(new URL("./mod.ts", import.meta.url)),
-      "express",
-      "koa",
-    ], { env: { PATH: bin } });
+    const result = await commandOutput(
+      executable,
+      [
+        "--experimental-strip-types",
+        fileURLToPath(new URL("./mod.ts", import.meta.url)),
+        "express",
+        "koa",
+      ],
+      { env: { PATH: bin } },
+    );
     const output = new TextDecoder().decode(result.stdout);
     assert.equal(result.code, 1);
     assert.match(output, /\[express\]/);

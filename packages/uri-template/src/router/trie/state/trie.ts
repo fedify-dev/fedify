@@ -6,10 +6,10 @@ import StateNode, { type ExpressionEdge } from "./node.ts";
 type RouteSegment =
   | { readonly kind: "literal"; readonly text: string }
   | {
-    readonly kind: "expression";
-    readonly key: string;
-    readonly operator: Operator;
-  };
+      readonly kind: "expression";
+      readonly key: string;
+      readonly operator: Operator;
+    };
 
 type ExpressionToken = Extract<Token, { readonly kind: "expression" }>;
 
@@ -60,9 +60,11 @@ function* compileSegments(
   }
 }
 
-const expressionKey = (
-  { operator, vars: [{ explode, prefix }] }: ExpressionToken,
-): string => [operator, explode ? "*" : "", prefix ?? ""].join("\0");
+const expressionKey = ({
+  operator,
+  vars: [{ explode, prefix }],
+}: ExpressionToken): string =>
+  [operator, explode ? "*" : "", prefix ?? ""].join("\0");
 
 type Visited<TEntry extends RouteEntry> = Map<StateNode<TEntry>, Set<number>>;
 
@@ -75,7 +77,7 @@ function* stateEntries<TEntry extends RouteEntry>(
   // Reachable entries depend only on this pair, not on earlier captures. The
   // enclosing trie deduplicates and sorts entries before resolving a route.
   let indexes = visited.get(node);
-  if (indexes == null) visited.set(node, indexes = new Set());
+  if (indexes == null) visited.set(node, (indexes = new Set()));
   if (indexes.has(index)) return;
   indexes.add(index);
   if (index === path.length) {
@@ -84,12 +86,7 @@ function* stateEntries<TEntry extends RouteEntry>(
 
   for (const edge of node.literalEdges) {
     if (path.startsWith(edge.text, index)) {
-      yield* stateEntries(
-        edge.node,
-        path,
-        index + edge.text.length,
-        visited,
-      );
+      yield* stateEntries(edge.node, path, index + edge.text.length, visited);
     }
   }
 

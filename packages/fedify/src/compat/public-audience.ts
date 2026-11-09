@@ -44,9 +44,11 @@ function hasPublicCurieInAddressing(
   depth: number = 0,
 ): boolean {
   if (typeof value === "string") {
-    return parentKey != null &&
+    return (
+      parentKey != null &&
       PUBLIC_ADDRESSING_FIELDS.has(parentKey) &&
-      (value === "as:Public" || value === "Public");
+      (value === "as:Public" || value === "Public")
+    );
   }
   // Treat anything deeper than the guard limit as not containing a CURIE:
   // that skips normalization for suspiciously deep documents, which is the
@@ -54,7 +56,7 @@ function hasPublicCurieInAddressing(
   if (depth >= MAX_TRAVERSAL_DEPTH) return false;
   if (Array.isArray(value)) {
     return value.some((item) =>
-      hasPublicCurieInAddressing(item, preserveSecured, parentKey, depth + 1)
+      hasPublicCurieInAddressing(item, preserveSecured, parentKey, depth + 1),
     );
   }
   if (typeof value !== "object" || value == null) return false;
@@ -137,13 +139,14 @@ function rewritePublicAudience(
     // `@context` is never an addressing field, so skip the recursion and
     // keep the reference intact.  Follow.object is handled separately because
     // `object` is not a public-addressing field for other activity types.
-    const rewritten = key === "@context"
-      ? record[key]
-      : record.type === "Follow" &&
-          key === "object" &&
-          (record[key] === "as:Public" || record[key] === "Public")
-      ? PUBLIC_COLLECTION.href
-      : rewritePublicAudience(record[key], preserveSecured, key, depth + 1);
+    const rewritten =
+      key === "@context"
+        ? record[key]
+        : record.type === "Follow" &&
+            key === "object" &&
+            (record[key] === "as:Public" || record[key] === "Public")
+          ? PUBLIC_COLLECTION.href
+          : rewritePublicAudience(record[key], preserveSecured, key, depth + 1);
     if (rewritten !== record[key]) changed = true;
     normalized[key] = rewritten;
   }
@@ -191,11 +194,8 @@ function hasKnownSafeContext(jsonLd: unknown): boolean {
   const record = jsonLd as Record<string, unknown>;
   if (!Object.hasOwn(record, "@context")) return false;
   const ctx = record["@context"];
-  const entries = typeof ctx === "string"
-    ? [ctx]
-    : Array.isArray(ctx)
-    ? ctx
-    : null;
+  const entries =
+    typeof ctx === "string" ? [ctx] : Array.isArray(ctx) ? ctx : null;
   if (entries == null || entries.length === 0) return false;
   let hasAs = false;
   for (const entry of entries) {

@@ -40,16 +40,17 @@ interface WebFingerSubjectAndAliasesOptions {
   contextHost: string;
 }
 
-function getWebFingerSubjectAndAliases(
-  {
-    resourceUrl,
-    actorUri,
-    preferredUsername,
-    acctUsername,
-    host,
-    contextHost,
-  }: WebFingerSubjectAndAliasesOptions,
-): Pick<ResourceDescriptor, "subject" | "aliases"> {
+function getWebFingerSubjectAndAliases({
+  resourceUrl,
+  actorUri,
+  preferredUsername,
+  acctUsername,
+  host,
+  contextHost,
+}: WebFingerSubjectAndAliasesOptions): Pick<
+  ResourceDescriptor,
+  "subject" | "aliases"
+> {
   const aliases: string[] = [];
   let subject = resourceUrl.href;
   if (resourceUrl.protocol != "acct:" && preferredUsername != null) {
@@ -62,14 +63,16 @@ function getWebFingerSubjectAndAliases(
     aliases.push(actorUri.href);
   }
   if (
-    resourceUrl.protocol === "acct:" && host != null &&
+    resourceUrl.protocol === "acct:" &&
+    host != null &&
     host !== contextHost &&
     !resourceUrl.href.endsWith(`@${host}`)
   ) {
     subject = `acct:${preferredUsername ?? acctUsername}@${host}`;
     aliases.push(resourceUrl.href);
     if (
-      preferredUsername != null && preferredUsername !== "" &&
+      preferredUsername != null &&
+      preferredUsername !== "" &&
       preferredUsername !== acctUsername
     ) {
       aliases.push(`acct:${preferredUsername}@${contextHost}`);
@@ -115,15 +118,16 @@ function getCompatibleActorId(actorId: URL, gateway: URL): URL | null {
  * since it is not a valid URI for software that does not support FEP-ef61;
  * the compatible identifier stands for it.
  */
-function getPortableWebFingerSubjectAndAliases(
-  {
-    resourceUrl,
-    compatibleId,
-    preferredUsername,
-    acctUsername,
-    gatewayHost,
-  }: PortableWebFingerSubjectAndAliasesOptions,
-): Pick<ResourceDescriptor, "subject" | "aliases"> {
+function getPortableWebFingerSubjectAndAliases({
+  resourceUrl,
+  compatibleId,
+  preferredUsername,
+  acctUsername,
+  gatewayHost,
+}: PortableWebFingerSubjectAndAliasesOptions): Pick<
+  ResourceDescriptor,
+  "subject" | "aliases"
+> {
   const aliases: string[] = [];
   const add = (alias: string) => {
     if (alias !== subject && !aliases.includes(alias)) aliases.push(alias);
@@ -133,15 +137,15 @@ function getPortableWebFingerSubjectAndAliases(
     // acctUsername is null when the resource did not match user@host and
     // reached the actor alias mapper instead, e.g., acct:alice:
     const username = preferredUsername ?? acctUsername;
-    subject = username == null
-      ? resourceUrl.href
-      : `acct:${username}@${gatewayHost}`;
+    subject =
+      username == null ? resourceUrl.href : `acct:${username}@${gatewayHost}`;
     add(compatibleId.href);
     add(resourceUrl.href);
   } else {
-    subject = preferredUsername == null
-      ? compatibleId.href
-      : `acct:${preferredUsername}@${gatewayHost}`;
+    subject =
+      preferredUsername == null
+        ? compatibleId.href
+        : `acct:${preferredUsername}@${gatewayHost}`;
     add(compatibleId.href);
     if (resourceUrl.protocol === "http:" || resourceUrl.protocol === "https:") {
       add(resourceUrl.href);
@@ -407,16 +411,16 @@ async function handleWebFingerInternal<TContextData>(
       if (result == null) return await onNotFound(request);
       if ("identifier" in result) identifier = result.identifier;
       else {
-        identifier = await mapUsernameToIdentifier(
-          result.username,
-        );
+        identifier = await mapUsernameToIdentifier(result.username);
       }
     } else {
       const portMatch = /:\d+$/.exec(match[2]);
-      const normalizedHost = portMatch == null
-        ? domainToASCII(match[2].toLowerCase())
-        : domainToASCII(match[2].substring(0, portMatch.index).toLowerCase()) +
-          portMatch[0];
+      const normalizedHost =
+        portMatch == null
+          ? domainToASCII(match[2].toLowerCase())
+          : domainToASCII(
+              match[2].substring(0, portMatch.index).toLowerCase(),
+            ) + portMatch[0];
       if (normalizedHost != context.url.host && normalizedHost != host) {
         return await onNotFound(request);
       } else {
@@ -514,22 +518,23 @@ async function handleWebFingerInternal<TContextData>(
     }
   }
 
-  const { subject, aliases } = portable == null
-    ? getWebFingerSubjectAndAliases({
-      resourceUrl,
-      actorUri,
-      preferredUsername: actor.preferredUsername,
-      acctUsername,
-      host,
-      contextHost: context.url.host,
-    })
-    : getPortableWebFingerSubjectAndAliases({
-      resourceUrl,
-      compatibleId: portable.compatibleId,
-      preferredUsername: actor.preferredUsername,
-      acctUsername,
-      gatewayHost: portable.gatewayHost,
-    });
+  const { subject, aliases } =
+    portable == null
+      ? getWebFingerSubjectAndAliases({
+          resourceUrl,
+          actorUri,
+          preferredUsername: actor.preferredUsername,
+          acctUsername,
+          host,
+          contextHost: context.url.host,
+        })
+      : getPortableWebFingerSubjectAndAliases({
+          resourceUrl,
+          compatibleId: portable.compatibleId,
+          preferredUsername: actor.preferredUsername,
+          acctUsername,
+          gatewayHost: portable.gatewayHost,
+        });
   const jrd: ResourceDescriptor = {
     subject,
     aliases,

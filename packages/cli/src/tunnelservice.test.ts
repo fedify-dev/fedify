@@ -40,10 +40,7 @@ test("Fedify tunnel service accepts only allocated public URL hosts", () => {
     "https://0123456789abcdef.fedify.com.es/",
     FEDIFY_TUNNEL_SERVICE.urlPattern,
   );
-  doesNotMatch(
-    "https://short.fedify.com.es",
-    FEDIFY_TUNNEL_SERVICE.urlPattern,
-  );
+  doesNotMatch("https://short.fedify.com.es", FEDIFY_TUNNEL_SERVICE.urlPattern);
   doesNotMatch(
     "https://0123456789abcdef.fedify.com.es.example.com",
     FEDIFY_TUNNEL_SERVICE.urlPattern,
@@ -51,21 +48,8 @@ test("Fedify tunnel service accepts only allocated public URL hosts", () => {
 });
 
 test("Fedify CLI tunnel registry extends localtunnel services", () => {
-  equal(
-    TUNNEL_SERVICE_REGISTRY["serveo.net"],
-    SERVICES["serveo.net"],
-  );
-  equal(
-    TUNNEL_SERVICE_REGISTRY["pinggy.io"],
-    SERVICES["pinggy.io"],
-  );
-  equal(
-    TUNNEL_SERVICE_REGISTRY["fedify.com.es"],
-    FEDIFY_TUNNEL_SERVICE,
-  );
-  deepEqual(TUNNEL_SERVICE_NAMES, [
-    "serveo.net",
-    "pinggy.io",
-    "fedify.com.es",
-  ]);
+  equal(TUNNEL_SERVICE_REGISTRY["serveo.net"], SERVICES["serveo.net"]);
+  equal(TUNNEL_SERVICE_REGISTRY["pinggy.io"], SERVICES["pinggy.io"]);
+  equal(TUNNEL_SERVICE_REGISTRY["fedify.com.es"], FEDIFY_TUNNEL_SERVICE);
+  deepEqual(TUNNEL_SERVICE_NAMES, ["serveo.net", "pinggy.io", "fedify.com.es"]);
 });

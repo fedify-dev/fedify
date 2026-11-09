@@ -9,28 +9,28 @@ import type { Suite } from "../scenario/types.ts";
 import { spawnSyntheticServer } from "../server/synthetic.ts";
 import { failureRunner } from "./failure.ts";
 
-for (
-  const [fault, outcome] of [
-    ["remote-404", "permanent"],
-    ["remote-410", "permanent"],
-    ["slow-inbox", "completed"],
-    ["network-error", "failed"],
-  ] as const
-) {
+for (const [fault, outcome] of [
+  ["remote-404", "permanent"],
+  ["remote-410", "permanent"],
+  ["slow-inbox", "completed"],
+  ["network-error", "failed"],
+] as const) {
   test(`failureRunner - drives ${fault} through the target`, async () => {
     const target = new URL("http://target.test/");
     const suite: Suite = {
       version: 1,
       target: target.href,
-      scenarios: [{
-        name: "failure",
-        type: "failure",
-        fault,
-        sender: "alice",
-        load: { rate: 100 },
-        duration: "25ms",
-        queueDrainTimeout: "1s",
-      }],
+      scenarios: [
+        {
+          name: "failure",
+          type: "failure",
+          fault,
+          sender: "alice",
+          load: { rate: 100 },
+          duration: "25ms",
+          queueDrainTimeout: "1s",
+        },
+      ],
     };
     const scenario = normalizeSuite(suite).scenarios[0];
     let triggerCalls = 0;
@@ -45,12 +45,16 @@ for (
       fetch: (input, init) => {
         const url = new URL(input instanceof Request ? input.url : input);
         if (url.pathname === "/.well-known/fedify/bench/stats") {
-          return Promise.resolve(statsJson(statsSnapshot({
-            enqueued: triggerCalls,
-            completed: outcome === "failed" ? 0 : triggerCalls,
-            failed: outcome === "failed" ? triggerCalls : 0,
-            permanentFailures: outcome === "permanent" ? triggerCalls : 0,
-          })));
+          return Promise.resolve(
+            statsJson(
+              statsSnapshot({
+                enqueued: triggerCalls,
+                completed: outcome === "failed" ? 0 : triggerCalls,
+                failed: outcome === "failed" ? triggerCalls : 0,
+                permanentFailures: outcome === "permanent" ? triggerCalls : 0,
+              }),
+            ),
+          );
         }
         if (url.pathname === "/.well-known/fedify/bench/trigger") {
           triggerCalls++;
@@ -79,16 +83,18 @@ test("failureRunner - uses configured sink base for remote faults", async () => 
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "failure",
-      type: "failure",
-      fault: "remote-404",
-      sender: "alice",
-      sinkBase,
-      load: { rate: 100 },
-      duration: "25ms",
-      queueDrainTimeout: "1s",
-    }],
+    scenarios: [
+      {
+        name: "failure",
+        type: "failure",
+        fault: "remote-404",
+        sender: "alice",
+        sinkBase,
+        load: { rate: 100 },
+        duration: "25ms",
+        queueDrainTimeout: "1s",
+      },
+    ],
   }).scenarios[0];
   let triggerCalls = 0;
   let recipientInbox = "";
@@ -103,12 +109,16 @@ test("failureRunner - uses configured sink base for remote faults", async () => 
     fetch: (input, init) => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/fedify/bench/stats") {
-        return Promise.resolve(statsJson(statsSnapshot({
-          enqueued: triggerCalls,
-          completed: triggerCalls,
-          failed: 0,
-          permanentFailures: triggerCalls,
-        })));
+        return Promise.resolve(
+          statsJson(
+            statsSnapshot({
+              enqueued: triggerCalls,
+              completed: triggerCalls,
+              failed: 0,
+              permanentFailures: triggerCalls,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         triggerCalls++;
@@ -134,16 +144,18 @@ test("failureRunner - gates remote fault sinks before triggering", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "failure",
-      type: "failure",
-      fault: "remote-404",
-      sender: "alice",
-      sinkBase,
-      load: { concurrency: 1 },
-      duration: "25ms",
-      queueDrainTimeout: "1s",
-    }],
+    scenarios: [
+      {
+        name: "failure",
+        type: "failure",
+        fault: "remote-404",
+        sender: "alice",
+        sinkBase,
+        load: { concurrency: 1 },
+        duration: "25ms",
+        queueDrainTimeout: "1s",
+      },
+    ],
   }).scenarios[0];
   let gateCalls = 0;
   let triggerCalls = 0;
@@ -183,16 +195,18 @@ test("failureRunner - shares sink base across remote fault mix", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "failure",
-      type: "failure",
-      fault: ["remote-404", "remote-410"],
-      sender: "alice",
-      sinkBase,
-      load: { rate: 100 },
-      duration: "25ms",
-      queueDrainTimeout: "1s",
-    }],
+    scenarios: [
+      {
+        name: "failure",
+        type: "failure",
+        fault: ["remote-404", "remote-410"],
+        sender: "alice",
+        sinkBase,
+        load: { rate: 100 },
+        duration: "25ms",
+        queueDrainTimeout: "1s",
+      },
+    ],
   }).scenarios[0];
   let triggerCalls = 0;
   const recipientInboxes: string[] = [];
@@ -207,12 +221,16 @@ test("failureRunner - shares sink base across remote fault mix", async () => {
     fetch: (input, init) => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/fedify/bench/stats") {
-        return Promise.resolve(statsJson(statsSnapshot({
-          enqueued: triggerCalls,
-          completed: triggerCalls,
-          failed: 0,
-          permanentFailures: triggerCalls,
-        })));
+        return Promise.resolve(
+          statsJson(
+            statsSnapshot({
+              enqueued: triggerCalls,
+              completed: triggerCalls,
+              failed: 0,
+              permanentFailures: triggerCalls,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         triggerCalls++;
@@ -240,13 +258,15 @@ test("failureRunner.validate - rejects sinkBase for mixed network faults", () =>
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "failure",
-      type: "failure",
-      fault: ["network-error", "remote-404"],
-      sender: "alice",
-      sinkBase: "http://127.0.0.1:29999/",
-    }],
+    scenarios: [
+      {
+        name: "failure",
+        type: "failure",
+        fault: ["network-error", "remote-404"],
+        sender: "alice",
+        sinkBase: "http://127.0.0.1:29999/",
+      },
+    ],
   }).scenarios[0];
 
   assert.throws(
@@ -260,15 +280,17 @@ test("failureRunner - detects network-error retries", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "failure",
-      type: "failure",
-      fault: "network-error",
-      sender: "alice",
-      load: { rate: 100 },
-      duration: "25ms",
-      queueDrainTimeout: "50ms",
-    }],
+    scenarios: [
+      {
+        name: "failure",
+        type: "failure",
+        fault: "network-error",
+        sender: "alice",
+        load: { rate: 100 },
+        duration: "25ms",
+        queueDrainTimeout: "50ms",
+      },
+    ],
   }).scenarios[0];
   let triggerCalls = 0;
   const measurement = await failureRunner.run({
@@ -281,12 +303,16 @@ test("failureRunner - detects network-error retries", async () => {
     fetch: (input) => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/fedify/bench/stats") {
-        return Promise.resolve(statsJson(statsSnapshot({
-          enqueued: triggerCalls * 2,
-          completed: triggerCalls,
-          failed: 0,
-          permanentFailures: 0,
-        })));
+        return Promise.resolve(
+          statsJson(
+            statsSnapshot({
+              enqueued: triggerCalls * 2,
+              completed: triggerCalls,
+              failed: 0,
+              permanentFailures: 0,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         triggerCalls++;
@@ -309,15 +335,17 @@ test("failureRunner - tolerates transient remote fault stats failures", async ()
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "failure",
-      type: "failure",
-      fault: "remote-404",
-      sender: "alice",
-      load: { rate: 100 },
-      duration: "25ms",
-      queueDrainTimeout: "1s",
-    }],
+    scenarios: [
+      {
+        name: "failure",
+        type: "failure",
+        fault: "remote-404",
+        sender: "alice",
+        load: { rate: 100 },
+        duration: "25ms",
+        queueDrainTimeout: "1s",
+      },
+    ],
   }).scenarios[0];
   let statsCalls = 0;
   let triggerCalls = 0;
@@ -339,12 +367,16 @@ test("failureRunner - tolerates transient remote fault stats failures", async ()
             }),
           );
         }
-        return Promise.resolve(statsJson(statsSnapshot({
-          enqueued: triggerCalls,
-          completed: triggerCalls,
-          failed: 0,
-          permanentFailures: statsCalls > 1 ? triggerCalls : 0,
-        })));
+        return Promise.resolve(
+          statsJson(
+            statsSnapshot({
+              enqueued: triggerCalls,
+              completed: triggerCalls,
+              failed: 0,
+              permanentFailures: statsCalls > 1 ? triggerCalls : 0,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         triggerCalls++;
@@ -380,15 +412,17 @@ test("failureRunner - uses abortable remote fault poll sleeps", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
-    scenarios: [{
-      name: "failure",
-      type: "failure",
-      fault: "remote-404",
-      sender: "alice",
-      load: { rate: "1000/s" },
-      duration: "1ms",
-      queueDrainTimeout: "1ms",
-    }],
+    scenarios: [
+      {
+        name: "failure",
+        type: "failure",
+        fault: "remote-404",
+        sender: "alice",
+        load: { rate: "1000/s" },
+        duration: "1ms",
+        queueDrainTimeout: "1ms",
+      },
+    ],
   }).scenarios[0];
   let triggerCalls = 0;
 
@@ -402,12 +436,16 @@ test("failureRunner - uses abortable remote fault poll sleeps", async () => {
     fetch: (input) => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/fedify/bench/stats") {
-        return Promise.resolve(statsJson(statsSnapshot({
-          enqueued: triggerCalls,
-          completed: triggerCalls,
-          failed: 0,
-          permanentFailures: 0,
-        })));
+        return Promise.resolve(
+          statsJson(
+            statsSnapshot({
+              enqueued: triggerCalls,
+              completed: triggerCalls,
+              failed: 0,
+              permanentFailures: 0,
+            }),
+          ),
+        );
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
         triggerCalls++;
@@ -427,11 +465,13 @@ test("failureRunner.validate - requires sender for remote faults", () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "failure",
-      type: "failure",
-      fault: "remote-404",
-    }],
+    scenarios: [
+      {
+        name: "failure",
+        type: "failure",
+        fault: "remote-404",
+      },
+    ],
   }).scenarios[0];
 
   assert.throws(() => failureRunner.validate?.(scenario), /sender/);
@@ -441,11 +481,13 @@ test("failureRunner.validate - rejects unsupported faults", () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "failure",
-      type: "failure",
-      fault: "unknown-fault",
-    }],
+    scenarios: [
+      {
+        name: "failure",
+        type: "failure",
+        fault: "unknown-fault",
+      },
+    ],
   }).scenarios[0];
 
   assert.throws(() => failureRunner.validate?.(scenario), /unsupported/);
@@ -455,13 +497,15 @@ test("failureRunner.validate - rejects invalid explicit inbound inboxes", () => 
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "failure",
-      type: "failure",
-      fault: "invalid-signature",
-      recipient: "http://target.test/users/alice",
-      inbox: "shraed",
-    }],
+    scenarios: [
+      {
+        name: "failure",
+        type: "failure",
+        fault: "invalid-signature",
+        recipient: "http://target.test/users/alice",
+        inbox: "shraed",
+      },
+    ],
   }).scenarios[0];
 
   assert.throws(
@@ -498,22 +542,26 @@ test("failureRunner - discovers inbound failure inboxes once", async () => {
   try {
     const target = new URL(server.url!);
     fleet = await spawnSyntheticServer(
-      await buildFleet([{
-        count: 1,
-        signatureStandards: ["draft-cavage-http-signatures-12"],
-      }]),
+      await buildFleet([
+        {
+          count: 1,
+          signatureStandards: ["draft-cavage-http-signatures-12"],
+        },
+      ]),
     );
     const scenario = normalizeSuite({
       version: 1,
       target: target.href,
-      scenarios: [{
-        name: "bad-signature",
-        type: "failure",
-        fault: "invalid-signature",
-        recipient: new URL("/users/alice", target).href,
-        load: { rate: 100 },
-        duration: "30ms",
-      }],
+      scenarios: [
+        {
+          name: "bad-signature",
+          type: "failure",
+          fault: "invalid-signature",
+          recipient: new URL("/users/alice", target).href,
+          load: { rate: 100 },
+          duration: "30ms",
+        },
+      ],
     }).scenarios[0];
     let malformedSignatureRequests = 0;
     let signedDateRequests = 0;
@@ -587,22 +635,26 @@ test("failureRunner - treats inbound 5xx as target failures", async () => {
   try {
     const target = new URL(server.url!);
     fleet = await spawnSyntheticServer(
-      await buildFleet([{
-        count: 1,
-        signatureStandards: ["draft-cavage-http-signatures-12"],
-      }]),
+      await buildFleet([
+        {
+          count: 1,
+          signatureStandards: ["draft-cavage-http-signatures-12"],
+        },
+      ]),
     );
     const scenario = normalizeSuite({
       version: 1,
       target: target.href,
-      scenarios: [{
-        name: "bad-signature",
-        type: "failure",
-        fault: "invalid-signature",
-        recipient: new URL("/users/alice", target).href,
-        load: { rate: 100 },
-        duration: "50ms",
-      }],
+      scenarios: [
+        {
+          name: "bad-signature",
+          type: "failure",
+          fault: "invalid-signature",
+          recipient: new URL("/users/alice", target).href,
+          load: { rate: 100 },
+          duration: "50ms",
+        },
+      ],
     }).scenarios[0];
     const measurement = await failureRunner.run({
       scenario,
@@ -662,22 +714,26 @@ test("failureRunner - treats unexpected inbound 4xx as target failures", async (
   try {
     const target = new URL(server.url!);
     fleet = await spawnSyntheticServer(
-      await buildFleet([{
-        count: 1,
-        signatureStandards: ["draft-cavage-http-signatures-12"],
-      }]),
+      await buildFleet([
+        {
+          count: 1,
+          signatureStandards: ["draft-cavage-http-signatures-12"],
+        },
+      ]),
     );
     const scenario = normalizeSuite({
       version: 1,
       target: target.href,
-      scenarios: [{
-        name: "bad-signature",
-        type: "failure",
-        fault: "invalid-signature",
-        recipient: new URL("/users/alice", target).href,
-        load: { rate: 100 },
-        duration: "50ms",
-      }],
+      scenarios: [
+        {
+          name: "bad-signature",
+          type: "failure",
+          fault: "invalid-signature",
+          recipient: new URL("/users/alice", target).href,
+          load: { rate: 100 },
+          duration: "50ms",
+        },
+      ],
     }).scenarios[0];
     const measurement = await failureRunner.run({
       scenario,
@@ -689,9 +745,7 @@ test("failureRunner - treats unexpected inbound 4xx as target failures", async (
       fetch: (input) => {
         const url = new URL(input instanceof Request ? input.url : input);
         if (url.pathname === "/missing-inbox") {
-          return Promise.resolve(
-            new Response("not found", { status: 404 }),
-          );
+          return Promise.resolve(new Response("not found", { status: 404 }));
         }
         return Promise.resolve(new Response("not found", { status: 404 }));
       },
@@ -761,17 +815,19 @@ function statsSnapshot(counts: {
   return {
     version: 1,
     source: "server",
-    scopeMetrics: [{
-      metrics: [
-        sum("fedify.queue.task.enqueued", counts.enqueued),
-        sum("fedify.queue.task.completed", counts.completed),
-        sum("fedify.queue.task.failed", counts.failed),
-        sum(
-          "activitypub.delivery.permanent_failure",
-          counts.permanentFailures,
-        ),
-      ],
-    }],
+    scopeMetrics: [
+      {
+        metrics: [
+          sum("fedify.queue.task.enqueued", counts.enqueued),
+          sum("fedify.queue.task.completed", counts.completed),
+          sum("fedify.queue.task.failed", counts.failed),
+          sum(
+            "activitypub.delivery.permanent_failure",
+            counts.permanentFailures,
+          ),
+        ],
+      },
+    ],
   };
 }
 

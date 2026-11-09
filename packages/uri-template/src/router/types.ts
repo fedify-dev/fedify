@@ -136,10 +136,11 @@ export interface MinimalConstraint {
  * The trailing `extends infer R ? R : never` is an identity that forces
  * TypeScript to evaluate the conditional union eagerly.
  */
-export type ConstraintValue<C extends MinimalConstraint> = (
+export type ConstraintValue<C extends MinimalConstraint> =
   | (C extends { multiple: true } ? readonly string[] : string)
-  | (C extends { nullable: true } ? null : never)
-) extends infer R ? R : never;
+  | (C extends { nullable: true } ? null : never) extends infer R
+  ? R
+  : never;
 
 /**
  * Computes the `values` record type from a map of variable constraints.  An

@@ -15,9 +15,7 @@ import type { Federation, FederationFetchOptions } from "@fedify/fedify";
 import { NextResponse } from "next/server";
 
 interface ContextDataFactory<TContextData> {
-  (request: Request):
-    | TContextData
-    | Promise<TContextData>;
+  (request: Request): TContextData | Promise<TContextData>;
 }
 type ErrorHandlers = Omit<FederationFetchOptions<unknown>, "contextData">;
 
@@ -85,25 +83,26 @@ type ErrorHandlers = Omit<FederationFetchOptions<unknown>, "contextData">;
  * };
  * ```
  */
-export const fedifyWith = <TContextData>(
-  federation: Federation<TContextData>,
-  contextDataFactory?: ContextDataFactory<TContextData>,
-  errorHandlers?: Partial<ErrorHandlers>,
-) =>
-(
-  middleware: (request: Request) => unknown =
-    ((_: Request) => NextResponse.next()),
-): (request: Request) => unknown =>
-async (request: Request) => {
-  if (isFederationRequest(request)) {
-    return await integrateFederation(
-      federation,
-      contextDataFactory,
-      errorHandlers,
-    )(request);
-  }
-  return await middleware(request);
-};
+export const fedifyWith =
+  <TContextData>(
+    federation: Federation<TContextData>,
+    contextDataFactory?: ContextDataFactory<TContextData>,
+    errorHandlers?: Partial<ErrorHandlers>,
+  ) =>
+  (
+    middleware: (request: Request) => unknown = (_: Request) =>
+      NextResponse.next(),
+  ): ((request: Request) => unknown) =>
+  async (request: Request) => {
+    if (isFederationRequest(request)) {
+      return await integrateFederation(
+        federation,
+        contextDataFactory,
+        errorHandlers,
+      )(request);
+    }
+    return await middleware(request);
+  };
 
 /**
  * Check if the request should be handled by the {@link Federation} object.
@@ -135,7 +134,8 @@ export const isFederationRequest = (request: Request): boolean =>
  *                    the federation accept regex, `false` otherwise.
  */
 export const hasFederationHeader =
-  (key: string) => (request: Request): boolean => {
+  (key: string) =>
+  (request: Request): boolean => {
     const value = request.headers.get(key);
     return value ? FEDERATION_ACCEPT_REGEX.test(value) : false;
   };
@@ -145,10 +145,7 @@ export const isNodeInfoRequest = (request: Request): boolean => {
   return NODEINFO_PATHS.some((path) => url.pathname.startsWith(path));
 };
 
-const NODEINFO_PATHS = [
-  "/.well-known/nodeinfo",
-  "/.well-known/x-nodeinfo2",
-];
+const NODEINFO_PATHS = ["/.well-known/nodeinfo", "/.well-known/x-nodeinfo2"];
 
 /**
  * Check if the request is an [FEP-ef61] gateway request for a resource
@@ -170,8 +167,10 @@ const NODEINFO_PATHS = [
  */
 export const isHashlinkMediaRequest = (request: Request): boolean => {
   const { pathname } = new URL(request.url);
-  return pathname.startsWith(GATEWAY_PATH_PREFIX) &&
-    HASHLINK_SCHEME_PATTERN.test(pathname.slice(GATEWAY_PATH_PREFIX.length));
+  return (
+    pathname.startsWith(GATEWAY_PATH_PREFIX) &&
+    HASHLINK_SCHEME_PATTERN.test(pathname.slice(GATEWAY_PATH_PREFIX.length))
+  );
 };
 
 // These follow how Federation.fetch() recognizes hashlink media requests:
@@ -200,15 +199,12 @@ export function integrateFederation<TContextData>(
   errorHandlers?: Partial<ErrorHandlers>,
 ): (request: Request) => Promise<Response> {
   return async (request: Request): Promise<Response> =>
-    await federation.fetch(
-      request,
-      {
-        contextData: await contextDataFactory(request),
-        onNotFound,
-        onNotAcceptable,
-        ...errorHandlers,
-      },
-    );
+    await federation.fetch(request, {
+      contextData: await contextDataFactory(request),
+      onNotFound,
+      onNotAcceptable,
+      ...errorHandlers,
+    });
 }
 const onNotFound = () => new Response("Not found", { status: 404 });
 const onNotAcceptable = () =>

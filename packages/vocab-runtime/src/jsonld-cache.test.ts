@@ -65,24 +65,20 @@ test("getPortableActorGateways() limits unmapped terms to portable actors", () =
     "https://www.w3.org/ns/activitystreams#outbox": [],
     "_:gateways": [{ "@value": "https://gateway.example" }],
   };
-  for (
-    const id of [
-      undefined,
-      1,
-      "not an IRI",
-      "https://ordinary.example/actor",
-      "https://gateway.example/.well-known/apgateway/not-a-did/actor",
-      "https://user@gateway.example/.well-known/apgateway/did:key:z6Mkabc/actor",
-    ]
-  ) {
+  for (const id of [
+    undefined,
+    1,
+    "not an IRI",
+    "https://ordinary.example/actor",
+    "https://gateway.example/.well-known/apgateway/not-a-did/actor",
+    "https://user@gateway.example/.well-known/apgateway/did:key:z6Mkabc/actor",
+  ]) {
     strictEqual(getPortableActorGateways({ ...node, "@id": id }), undefined);
   }
-  for (
-    const property of [
-      "http://www.w3.org/ns/ldp#inbox",
-      "https://www.w3.org/ns/activitystreams#outbox",
-    ]
-  ) {
+  for (const property of [
+    "http://www.w3.org/ns/ldp#inbox",
+    "https://www.w3.org/ns/activitystreams#outbox",
+  ]) {
     const nonActor = { ...node };
     delete nonActor[property];
     strictEqual(getPortableActorGateways(nonActor), undefined);
@@ -99,11 +95,13 @@ test("getPortableActorGateways() limits unmapped terms to portable actors", () =
 });
 
 test("isTrustedIriOrigin() trusts same portable IRI origins", () => {
-  ok(isTrustedIriOrigin(
-    {},
-    parseIri("ap://did:key:z6Mkabc/actor"),
-    parseIri("ap+ef61://did:key:z6Mkabc/outbox"),
-  ));
+  ok(
+    isTrustedIriOrigin(
+      {},
+      parseIri("ap://did:key:z6Mkabc/actor"),
+      parseIri("ap+ef61://did:key:z6Mkabc/outbox"),
+    ),
+  );
   ok(
     !isTrustedIriOrigin(
       {},
@@ -111,20 +109,20 @@ test("isTrustedIriOrigin() trusts same portable IRI origins", () => {
       parseIri("ap://did:key:z6Mkdef/outbox"),
     ),
   );
-  ok(isTrustedIriOrigin(
-    { crossOrigin: "trust" },
-    parseIri("ap://did:key:z6Mkabc/actor"),
-    parseIri("ap://did:key:z6Mkdef/outbox"),
-  ));
+  ok(
+    isTrustedIriOrigin(
+      { crossOrigin: "trust" },
+      parseIri("ap://did:key:z6Mkabc/actor"),
+      parseIri("ap://did:key:z6Mkdef/outbox"),
+    ),
+  );
 });
 
 test("normalizeJsonLdIris() normalizes selected JSON-LD IRI positions", () => {
   const iriKeys = new Set(["@id", "https://example.com/ns#ref"]);
   const value = {
     "@id": "ap://did:key:z6Mkabc/object",
-    "https://example.com/ns#ref": [
-      { "@value": "ap://did:key:z6Mkabc/ref" },
-    ],
+    "https://example.com/ns#ref": [{ "@value": "ap://did:key:z6Mkabc/ref" }],
     "https://example.com/ns#text": [
       { "@value": "ap://did:key:z6Mkabc/not-an-iri-position" },
     ],
@@ -146,14 +144,10 @@ test("normalizeJsonLdIris() preserves IRI context in list/set wrappers", () => {
   const value = {
     "https://example.com/ns#ref": [
       {
-        "@list": [
-          { "@value": "ap://did:key:z6Mkabc/listed" },
-        ],
+        "@list": [{ "@value": "ap://did:key:z6Mkabc/listed" }],
       },
       {
-        "@set": [
-          { "@value": "ap://did:key:z6Mkabc/set" },
-        ],
+        "@set": [{ "@value": "ap://did:key:z6Mkabc/set" }],
       },
     ],
   };
@@ -161,14 +155,10 @@ test("normalizeJsonLdIris() preserves IRI context in list/set wrappers", () => {
   deepStrictEqual(normalizeJsonLdIris(value, iriKeys), {
     "https://example.com/ns#ref": [
       {
-        "@list": [
-          { "@value": "ap+ef61://did:key:z6Mkabc/listed" },
-        ],
+        "@list": [{ "@value": "ap+ef61://did:key:z6Mkabc/listed" }],
       },
       {
-        "@set": [
-          { "@value": "ap+ef61://did:key:z6Mkabc/set" },
-        ],
+        "@set": [{ "@value": "ap+ef61://did:key:z6Mkabc/set" }],
       },
     ],
   });
@@ -218,10 +208,7 @@ test("compactJsonLdCache() preserves no-context object shape", async () => {
   const expanded = await jsonld.expand(original);
   const normalized = normalizeJsonLdIris(
     expanded,
-    new Set([
-      "@id",
-      "https://www.w3.org/ns/activitystreams#attributedTo",
-    ]),
+    new Set(["@id", "https://www.w3.org/ns/activitystreams#attributedTo"]),
   );
 
   deepStrictEqual(await compactJsonLdCache(normalized, original), {
@@ -288,10 +275,10 @@ test("compactJsonLdCache() defines no-context prototype-like keys safely", async
     writable: true,
   });
 
-  const compacted = await compactJsonLdCache([normalized], original) as Record<
-    string,
-    unknown
-  >;
+  const compacted = (await compactJsonLdCache(
+    [normalized],
+    original,
+  )) as Record<string, unknown>;
 
   strictEqual(
     globalThis.Object.getOwnPropertyDescriptor(compacted, "__proto__")?.value,
@@ -356,7 +343,7 @@ test("compactJsonLdCache() reuses unchanged unmapped values", async () => {
   };
   const expanded = await jsonld.expand(original);
   const normalized = normalizeJsonLdIris(expanded, new Set(["@id"]));
-  const compacted = await compactJsonLdCache(normalized, original) as {
+  const compacted = (await compactJsonLdCache(normalized, original)) as {
     rootExtra: unknown;
     attachment: { extra: unknown };
   };
@@ -384,7 +371,7 @@ test("compactJsonLdCache() defines prototype-like unmapped keys safely", async (
   });
   const expanded = await jsonld.expand(original);
   const normalized = normalizeJsonLdIris(expanded, new Set(["@id"]));
-  const compacted = await compactJsonLdCache(normalized, original) as Record<
+  const compacted = (await compactJsonLdCache(normalized, original)) as Record<
     string,
     unknown
   >;
@@ -421,7 +408,7 @@ test("compactJsonLdCache() checks prototype-like aliases safely", async () => {
   });
   const expanded = await jsonld.expand(original);
   const normalized = normalizeJsonLdIris(expanded, new Set(["@id"]));
-  const compacted = await compactJsonLdCache(normalized, original) as Record<
+  const compacted = (await compactJsonLdCache(normalized, original)) as Record<
     string,
     unknown
   >;
@@ -432,17 +419,14 @@ test("compactJsonLdCache() checks prototype-like aliases safely", async () => {
   );
   ok(
     protoDescriptor?.value === "Alias represented by the compacted term." ||
-      Array.isArray(protoDescriptor?.value) &&
+      (Array.isArray(protoDescriptor?.value) &&
         protoDescriptor.value.includes(
           "Alias represented by the compacted term.",
-        ),
+        )),
   );
   strictEqual(protoDescriptor?.enumerable, true);
   strictEqual(compacted.id, "ap+ef61://did:key:z6Mkabc/objects/1");
-  strictEqual(
-    globalThis.Object.getPrototypeOf(compacted),
-    Object.prototype,
-  );
+  strictEqual(globalThis.Object.getPrototypeOf(compacted), Object.prototype);
 });
 
 test("compactJsonLdCache() preserves nested contexts", async () => {

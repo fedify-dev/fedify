@@ -41,26 +41,24 @@ const lintTest = (code: string): Diagnostic[] => [
 ];
 
 const testDenoLint = (code: string) =>
-  Deno.lint.runPlugin(
-    denoPlugin,
-    "integration.test.ts",
-    code,
-  ) as Diagnostic[];
+  Deno.lint.runPlugin(denoPlugin, "integration.test.ts", code) as Diagnostic[];
 
 function testEslint(code: string) {
   // For Node.js environment using ESLint flat config
   const linter = new Linter({ configType: "flat" });
 
-  const config = [{
-    files: ["**/*.ts"],
-    plugins: { "@fedify/lint": eslintPlugin },
-    rules: eslintPlugin.configs.recommended.rules,
-    languageOptions: {
-      ecmaVersion: 2022 as const,
-      sourceType: "module" as const,
-      parser,
+  const config = [
+    {
+      files: ["**/*.ts"],
+      plugins: { "@fedify/lint": eslintPlugin },
+      rules: eslintPlugin.configs.recommended.rules,
+      languageOptions: {
+        ecmaVersion: 2022 as const,
+        sourceType: "module" as const,
+        parser,
+      },
     },
-  }];
+  ];
 
   const results = linter.verify(code, config, "integration.test.ts");
 
@@ -99,9 +97,9 @@ function assertNoErrors(code: string) {
   equal(
     diagnostics.length,
     0,
-    `Expected no errors but got: ${
-      diagnostics.map((d) => `${d.id}: ${d.message}`).join(", ")
-    }`,
+    `Expected no errors but got: ${diagnostics
+      .map((d) => `${d.id}: ${d.message}`)
+      .join(", ")}`,
   );
 }
 
@@ -214,10 +212,8 @@ test("Integration: ✅ Complete valid code passes all rules", () => {
   assertNoErrors(COMPLETE_VALID_CODE);
 });
 
-test(
-  "Integration: ✅ outbox-listener-delivery-required - explicit sendActivity",
-  () =>
-    assertNoErrors(`${COMPLETE_VALID_CODE}
+test("Integration: ✅ outbox-listener-delivery-required - explicit sendActivity", () =>
+  assertNoErrors(`${COMPLETE_VALID_CODE}
 
 import { Activity } from "@fedify/vocab";
 
@@ -229,13 +225,10 @@ federation
       new URL("https://example.com/inbox"),
       activity,
     );
-  });`),
-);
+  });`));
 
-test(
-  "Integration: ✅ outbox-listener-delivery-required - explicit forwardActivity",
-  () =>
-    assertNoErrors(`${COMPLETE_VALID_CODE}
+test("Integration: ✅ outbox-listener-delivery-required - explicit forwardActivity", () =>
+  assertNoErrors(`${COMPLETE_VALID_CODE}
 
 import { Activity } from "@fedify/vocab";
 
@@ -247,14 +240,11 @@ federation
       [],
       { skipIfUnsigned: true },
     );
-  });`),
-);
+  });`));
 
-test(
-  "Integration: ❌ outbox-listener-delivery-required - missing delivery",
-  () =>
-    pipe(
-      `${COMPLETE_VALID_CODE}
+test("Integration: ❌ outbox-listener-delivery-required - missing delivery", () =>
+  pipe(
+    `${COMPLETE_VALID_CODE}
 
 import { Activity } from "@fedify/vocab";
 
@@ -263,14 +253,11 @@ federation
   .on(Activity, async (ctx, activity) => {
     console.log(ctx.identifier, activity.id?.href);
   });`,
-      assertHasError("outbox-listener-delivery-required"),
-    ),
-);
+    assertHasError("outbox-listener-delivery-required"),
+  ));
 
-test(
-  "Integration: ✅ outbox-listener-delivery-required - chained authorize/onError",
-  () =>
-    assertNoErrors(`${COMPLETE_VALID_CODE}
+test("Integration: ✅ outbox-listener-delivery-required - chained authorize/onError", () =>
+  assertNoErrors(`${COMPLETE_VALID_CODE}
 
 import { Activity } from "@fedify/vocab";
 
@@ -284,14 +271,11 @@ federation
       new URL("https://example.com/inbox"),
       activity,
     );
-  });`),
-);
+  });`));
 
-test(
-  "Integration: ❌ outbox-listener-delivery-required - chained authorize/onError missing delivery",
-  () =>
-    pipe(
-      `${COMPLETE_VALID_CODE}
+test("Integration: ❌ outbox-listener-delivery-required - chained authorize/onError missing delivery", () =>
+  pipe(
+    `${COMPLETE_VALID_CODE}
 
 import { Activity } from "@fedify/vocab";
 
@@ -302,9 +286,8 @@ federation
   .on(Activity, async (ctx, activity) => {
     console.log(ctx.identifier, activity.id?.href);
   });`,
-      assertHasError("outbox-listener-delivery-required"),
-    ),
-);
+    assertHasError("outbox-listener-delivery-required"),
+  ));
 
 test("Integration: ✅ Actor dispatcher may return null", () =>
   pipe(
@@ -389,205 +372,154 @@ test("Integration: ❌ actor-preferred-username-required - missing preferred-use
 test("Integration: ❌ actor-profile-url-required - missing url property", () =>
   pipe(
     COMPLETE_VALID_CODE,
-    replace(
-      'url: new URL("/@johndoe", ctx.origin),',
-      "// url: REMOVED",
-    ),
+    replace('url: new URL("/@johndoe", ctx.origin),', "// url: REMOVED"),
     assertHasError("actor-profile-url-required"),
   ));
 
-test(
-  "Integration: ✅ actor-profile-url-required - quoted url property",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        'url: new URL("/@johndoe", ctx.origin),',
-        '"url": new URL("/@johndoe", ctx.origin),',
-      ),
-      assertNoErrors,
+test("Integration: ✅ actor-profile-url-required - quoted url property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      'url: new URL("/@johndoe", ctx.origin),',
+      '"url": new URL("/@johndoe", ctx.origin),',
     ),
-);
+    assertNoErrors,
+  ));
 
-test(
-  "Integration: ✅ actor-profile-url-required - computed quoted url property",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        'url: new URL("/@johndoe", ctx.origin),',
-        '["url"]: new URL("/@johndoe", ctx.origin),',
-      ),
-      assertNoErrors,
+test("Integration: ✅ actor-profile-url-required - computed quoted url property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      'url: new URL("/@johndoe", ctx.origin),',
+      '["url"]: new URL("/@johndoe", ctx.origin),',
     ),
-);
+    assertNoErrors,
+  ));
 
-test(
-  "Integration: ❌ actor-profile-url-required - undefined url",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        'url: new URL("/@johndoe", ctx.origin),',
-        "url: undefined,",
-      ),
-      assertHasError("actor-profile-url-required"),
+test("Integration: ❌ actor-profile-url-required - undefined url", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace('url: new URL("/@johndoe", ctx.origin),', "url: undefined,"),
+    assertHasError("actor-profile-url-required"),
+  ));
+
+test("Integration: ❌ actor-profile-url-required - empty urls array", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace('url: new URL("/@johndoe", ctx.origin),', "urls: [],"),
+    assertHasError("actor-profile-url-required"),
+  ));
+
+test("Integration: ❌ actor-inbox-property-required - missing inbox property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "inbox: ctx.getInboxUri(identifier),",
+      "// inbox: ctx.getInboxUri(identifier), // REMOVED",
     ),
-);
+    assertHasError("actor-inbox-property-required"),
+  ));
 
-test(
-  "Integration: ❌ actor-profile-url-required - empty urls array",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        'url: new URL("/@johndoe", ctx.origin),',
-        "urls: [],",
-      ),
-      assertHasError("actor-profile-url-required"),
-    ),
-);
-
-test(
-  "Integration: ❌ actor-inbox-property-required - missing inbox property",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "inbox: ctx.getInboxUri(identifier),",
-        "// inbox: ctx.getInboxUri(identifier), // REMOVED",
-      ),
-      assertHasError("actor-inbox-property-required"),
-    ),
-);
-
-test(
-  "Integration: ❌ actor-shared-inbox-property-required \
-- missing sharedInbox property",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        `endpoints: new Endpoints({
+test("Integration: ❌ actor-shared-inbox-property-required \
+- missing sharedInbox property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      `endpoints: new Endpoints({
         sharedInbox: ctx.getInboxUri(),
       }),`,
-        "// endpoints: REMOVED",
-      ),
-      assertHasError("actor-shared-inbox-property-required"),
+      "// endpoints: REMOVED",
     ),
-);
+    assertHasError("actor-shared-inbox-property-required"),
+  ));
 
-test(
-  "Integration: ❌ actor-following-property-required \
-- missing following property",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "following: ctx.getFollowingUri(identifier),",
-        "// following: ctx.getFollowingUri(identifier), // REMOVED",
-      ),
-      assertHasError("actor-following-property-required"),
+test("Integration: ❌ actor-following-property-required \
+- missing following property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "following: ctx.getFollowingUri(identifier),",
+      "// following: ctx.getFollowingUri(identifier), // REMOVED",
     ),
-);
+    assertHasError("actor-following-property-required"),
+  ));
 
-test(
-  "Integration: ❌ actor-followers-property-required \
-- missing followers property",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "followers: ctx.getFollowersUri(identifier),",
-        "// followers: ctx.getFollowersUri(identifier), // REMOVED",
-      ),
-      assertHasError("actor-followers-property-required"),
+test("Integration: ❌ actor-followers-property-required \
+- missing followers property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "followers: ctx.getFollowersUri(identifier),",
+      "// followers: ctx.getFollowersUri(identifier), // REMOVED",
     ),
-);
+    assertHasError("actor-followers-property-required"),
+  ));
 
-test(
-  "Integration: ❌ actor-outbox-property-required \
-- missing outbox property",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "outbox: ctx.getOutboxUri(identifier),",
-        "// outbox: ctx.getOutboxUri(identifier), // REMOVED",
-      ),
-      assertHasError("actor-outbox-property-required"),
+test("Integration: ❌ actor-outbox-property-required \
+- missing outbox property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "outbox: ctx.getOutboxUri(identifier),",
+      "// outbox: ctx.getOutboxUri(identifier), // REMOVED",
     ),
-);
+    assertHasError("actor-outbox-property-required"),
+  ));
 
-test(
-  "Integration: ❌ actor-liked-property-required \
-- missing liked property",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "liked: ctx.getLikedUri(identifier),",
-        "// liked: ctx.getLikedUri(identifier), // REMOVED",
-      ),
-      assertHasError("actor-liked-property-required"),
+test("Integration: ❌ actor-liked-property-required \
+- missing liked property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "liked: ctx.getLikedUri(identifier),",
+      "// liked: ctx.getLikedUri(identifier), // REMOVED",
     ),
-);
+    assertHasError("actor-liked-property-required"),
+  ));
 
-test(
-  "Integration: ❌ actor-featured-property-required \
-- missing featured property",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "featured: ctx.getFeaturedUri(identifier),",
-        "// featured: ctx.getFeaturedUri(identifier), // REMOVED",
-      ),
-      assertHasError("actor-featured-property-required"),
+test("Integration: ❌ actor-featured-property-required \
+- missing featured property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "featured: ctx.getFeaturedUri(identifier),",
+      "// featured: ctx.getFeaturedUri(identifier), // REMOVED",
     ),
-);
+    assertHasError("actor-featured-property-required"),
+  ));
 
-test(
-  "Integration: ❌ actor-featured-tags-property-required \
-- missing featuredTags property",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "featuredTags: ctx.getFeaturedTagsUri(identifier),",
-        "// featuredTags: ctx.getFeaturedTagsUri(identifier), // REMOVED",
-      ),
-      assertHasError("actor-featured-tags-property-required"),
+test("Integration: ❌ actor-featured-tags-property-required \
+- missing featuredTags property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "featuredTags: ctx.getFeaturedTagsUri(identifier),",
+      "// featuredTags: ctx.getFeaturedTagsUri(identifier), // REMOVED",
     ),
-);
+    assertHasError("actor-featured-tags-property-required"),
+  ));
 
-test(
-  "Integration: ❌ actor-public-key-required \
-- missing publicKey property",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "publicKey: keyPairs[0]?.cryptographicKey,",
-        "// publicKey: keyPairs[0]?.cryptographicKey, // REMOVED",
-      ),
-      assertHasError("actor-public-key-required"),
+test("Integration: ❌ actor-public-key-required \
+- missing publicKey property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "publicKey: keyPairs[0]?.cryptographicKey,",
+      "// publicKey: keyPairs[0]?.cryptographicKey, // REMOVED",
     ),
-);
+    assertHasError("actor-public-key-required"),
+  ));
 
-test(
-  "Integration: ❌ actor-assertion-method-required \
-- missing assertionMethod property",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "assertionMethod: keyPairs[0]?.multikey,",
-        "// assertionMethod: keyPairs[0]?.multikey, // REMOVED",
-      ),
-      assertHasError("actor-assertion-method-required"),
+test("Integration: ❌ actor-assertion-method-required \
+- missing assertionMethod property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "assertionMethod: keyPairs[0]?.multikey,",
+      "// assertionMethod: keyPairs[0]?.multikey, // REMOVED",
     ),
-);
+    assertHasError("actor-assertion-method-required"),
+  ));
 
 // =============================================================================
 // Test: *-mismatch rules (property uses wrong context method)
@@ -603,135 +535,108 @@ test("Integration: ❌ actor-id-mismatch - id uses wrong context method", () =>
     assertHasError("actor-id-mismatch"),
   ));
 
-test(
-  "Integration: ❌ actor-inbox-property-mismatch \
-- inbox uses wrong context method",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "inbox: ctx.getInboxUri(identifier),",
-        "inbox: ctx.getOutboxUri(identifier), // WRONG METHOD",
-      ),
-      assertHasError("actor-inbox-property-mismatch"),
+test("Integration: ❌ actor-inbox-property-mismatch \
+- inbox uses wrong context method", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "inbox: ctx.getInboxUri(identifier),",
+      "inbox: ctx.getOutboxUri(identifier), // WRONG METHOD",
     ),
-);
+    assertHasError("actor-inbox-property-mismatch"),
+  ));
 
-test(
-  "Integration: ❌ actor-shared-inbox-property-mismatch \
-- sharedInbox uses wrong context method",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "sharedInbox: ctx.getInboxUri(),",
-        "sharedInbox: ctx.getOutboxUri(identifier), // WRONG METHOD",
-      ),
-      assertHasError("actor-shared-inbox-property-mismatch"),
+test("Integration: ❌ actor-shared-inbox-property-mismatch \
+- sharedInbox uses wrong context method", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "sharedInbox: ctx.getInboxUri(),",
+      "sharedInbox: ctx.getOutboxUri(identifier), // WRONG METHOD",
     ),
-);
+    assertHasError("actor-shared-inbox-property-mismatch"),
+  ));
 
-test(
-  "Integration: ❌ actor-following-property-mismatch \
-- following uses wrong context method",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "following: ctx.getFollowingUri(identifier),",
-        "following: ctx.getFollowersUri(identifier), // WRONG METHOD",
-      ),
-      assertHasError("actor-following-property-mismatch"),
+test("Integration: ❌ actor-following-property-mismatch \
+- following uses wrong context method", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "following: ctx.getFollowingUri(identifier),",
+      "following: ctx.getFollowersUri(identifier), // WRONG METHOD",
     ),
-);
+    assertHasError("actor-following-property-mismatch"),
+  ));
 
-test(
-  "Integration: ❌ actor-followers-property-mismatch \
-- followers uses wrong context method",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "followers: ctx.getFollowersUri(identifier),",
-        "followers: ctx.getFollowingUri(identifier), // WRONG METHOD",
-      ),
-      assertHasError("actor-followers-property-mismatch"),
+test("Integration: ❌ actor-followers-property-mismatch \
+- followers uses wrong context method", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "followers: ctx.getFollowersUri(identifier),",
+      "followers: ctx.getFollowingUri(identifier), // WRONG METHOD",
     ),
-);
+    assertHasError("actor-followers-property-mismatch"),
+  ));
 
-test(
-  "Integration: ❌ actor-outbox-property-mismatch \
-- outbox uses wrong context method",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "outbox: ctx.getOutboxUri(identifier),",
-        "outbox: ctx.getInboxUri(identifier), // WRONG METHOD",
-      ),
-      assertHasError("actor-outbox-property-mismatch"),
+test("Integration: ❌ actor-outbox-property-mismatch \
+- outbox uses wrong context method", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "outbox: ctx.getOutboxUri(identifier),",
+      "outbox: ctx.getInboxUri(identifier), // WRONG METHOD",
     ),
-);
+    assertHasError("actor-outbox-property-mismatch"),
+  ));
 
-test(
-  "Integration: ❌ actor-liked-property-mismatch \
-- liked uses wrong context method",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "liked: ctx.getLikedUri(identifier),",
-        "liked: ctx.getOutboxUri(identifier), // WRONG METHOD",
-      ),
-      assertHasError("actor-liked-property-mismatch"),
+test("Integration: ❌ actor-liked-property-mismatch \
+- liked uses wrong context method", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "liked: ctx.getLikedUri(identifier),",
+      "liked: ctx.getOutboxUri(identifier), // WRONG METHOD",
     ),
-);
+    assertHasError("actor-liked-property-mismatch"),
+  ));
 
-test(
-  "Integration: ❌ actor-featured-property-mismatch \
-- featured uses wrong context method",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "featured: ctx.getFeaturedUri(identifier),",
-        "featured: ctx.getOutboxUri(identifier), // WRONG METHOD",
-      ),
-      assertHasError("actor-featured-property-mismatch"),
+test("Integration: ❌ actor-featured-property-mismatch \
+- featured uses wrong context method", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "featured: ctx.getFeaturedUri(identifier),",
+      "featured: ctx.getOutboxUri(identifier), // WRONG METHOD",
     ),
-);
+    assertHasError("actor-featured-property-mismatch"),
+  ));
 
-test(
-  "Integration: ❌ actor-featured-tags-property-mismatch \
-- featuredTags uses wrong context method",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "featuredTags: ctx.getFeaturedTagsUri(identifier),",
-        "featuredTags: ctx.getOutboxUri(identifier), // WRONG METHOD",
-      ),
-      assertHasError("actor-featured-tags-property-mismatch"),
+test("Integration: ❌ actor-featured-tags-property-mismatch \
+- featuredTags uses wrong context method", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "featuredTags: ctx.getFeaturedTagsUri(identifier),",
+      "featuredTags: ctx.getOutboxUri(identifier), // WRONG METHOD",
     ),
-);
+    assertHasError("actor-featured-tags-property-mismatch"),
+  ));
 
 // =============================================================================
 // Test: collection-filtering-not-implemented
 // =============================================================================
 
-test(
-  "Integration: ❌ collection-filtering-not-implemented \
-- setFollowersDispatcher without filter parameter",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        "async (_ctx, _identifier, _cursor, _filter) => {",
-        "async (_ctx, _identifier, _cursor) => { // NO FILTER",
-      ),
-      assertHasError("collection-filtering-not-implemented"),
+test("Integration: ❌ collection-filtering-not-implemented \
+- setFollowersDispatcher without filter parameter", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "async (_ctx, _identifier, _cursor, _filter) => {",
+      "async (_ctx, _identifier, _cursor) => { // NO FILTER",
     ),
-);
+    assertHasError("collection-filtering-not-implemented"),
+  ));
 
 // =============================================================================
 // Test: Non-Federation objects should not trigger errors
@@ -763,20 +668,18 @@ test("Integration: ✅ Non-Federation object - custom federation object", () =>
 // Test: Dispatcher not configured - property not required
 // =============================================================================
 
-test(
-  "Integration: ✅ No setFollowingDispatcher - following property not required",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        `      outbox: ctx.getOutboxUri(identifier),
+test("Integration: ✅ No setFollowingDispatcher - following property not required", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      `      outbox: ctx.getOutboxUri(identifier),
       following: ctx.getFollowingUri(identifier),
       followers: ctx.getFollowersUri(identifier),`,
-        `      outbox: ctx.getOutboxUri(identifier),
+      `      outbox: ctx.getOutboxUri(identifier),
       followers: ctx.getFollowersUri(identifier),`,
-      ),
-      replace(
-        `federation.setFollowingDispatcher(
+    ),
+    replace(
+      `federation.setFollowingDispatcher(
   "/users/{identifier}/following",
   async (_ctx, _identifier, _cursor) => {
     return { items: [] };
@@ -784,26 +687,23 @@ test(
 );
 
 `,
-        "",
-      ),
-      assertNoErrors,
+      "",
     ),
-);
+    assertNoErrors,
+  ));
 
-test(
-  "Integration: ✅ No setFollowersDispatcher - followers property not required",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        `      following: ctx.getFollowingUri(identifier),
+test("Integration: ✅ No setFollowersDispatcher - followers property not required", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      `      following: ctx.getFollowingUri(identifier),
       followers: ctx.getFollowersUri(identifier),
       liked: ctx.getLikedUri(identifier),`,
-        `      following: ctx.getFollowingUri(identifier),
+      `      following: ctx.getFollowingUri(identifier),
       liked: ctx.getLikedUri(identifier),`,
-      ),
-      replace(
-        `federation.setFollowersDispatcher(
+    ),
+    replace(
+      `federation.setFollowersDispatcher(
   "/users/{identifier}/followers",
   async (_ctx, _identifier, _cursor, _filter) => {
     return { items: [] };
@@ -811,26 +711,23 @@ test(
 );
 
 `,
-        "",
-      ),
-      assertNoErrors,
+      "",
     ),
-);
+    assertNoErrors,
+  ));
 
-test(
-  "Integration: ✅ No setOutboxDispatcher - outbox property not required",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        `      }),
+test("Integration: ✅ No setOutboxDispatcher - outbox property not required", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      `      }),
       outbox: ctx.getOutboxUri(identifier),
       following: ctx.getFollowingUri(identifier),`,
-        `      }),
+      `      }),
       following: ctx.getFollowingUri(identifier),`,
-      ),
-      replace(
-        `federation.setOutboxDispatcher(
+    ),
+    replace(
+      `federation.setOutboxDispatcher(
   "/users/{identifier}/outbox",
   async (_ctx, _identifier, _cursor) => {
     return { items: [] };
@@ -838,26 +735,23 @@ test(
 );
 
 `,
-        "",
-      ),
-      assertNoErrors,
+      "",
     ),
-);
+    assertNoErrors,
+  ));
 
-test(
-  "Integration: ✅ No setLikedDispatcher - liked property not required",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        `      followers: ctx.getFollowersUri(identifier),
+test("Integration: ✅ No setLikedDispatcher - liked property not required", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      `      followers: ctx.getFollowersUri(identifier),
       liked: ctx.getLikedUri(identifier),
       featured: ctx.getFeaturedUri(identifier),`,
-        `      followers: ctx.getFollowersUri(identifier),
+      `      followers: ctx.getFollowersUri(identifier),
       featured: ctx.getFeaturedUri(identifier),`,
-      ),
-      replace(
-        `federation.setLikedDispatcher(
+    ),
+    replace(
+      `federation.setLikedDispatcher(
   "/users/{identifier}/liked",
   async (_ctx, _identifier, _cursor) => {
     return { items: [] };
@@ -865,26 +759,23 @@ test(
 );
 
 `,
-        "",
-      ),
-      assertNoErrors,
+      "",
     ),
-);
+    assertNoErrors,
+  ));
 
-test(
-  "Integration: ✅ No setFeaturedDispatcher - featured property not required",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        `      liked: ctx.getLikedUri(identifier),
+test("Integration: ✅ No setFeaturedDispatcher - featured property not required", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      `      liked: ctx.getLikedUri(identifier),
       featured: ctx.getFeaturedUri(identifier),
       featuredTags: ctx.getFeaturedTagsUri(identifier),`,
-        `      liked: ctx.getLikedUri(identifier),
+      `      liked: ctx.getLikedUri(identifier),
       featuredTags: ctx.getFeaturedTagsUri(identifier),`,
-      ),
-      replace(
-        `federation.setFeaturedDispatcher(
+    ),
+    replace(
+      `federation.setFeaturedDispatcher(
   "/users/{identifier}/featured",
   async (_ctx, _identifier, _cursor) => {
     return { items: [] };
@@ -892,99 +783,89 @@ test(
 );
 
 `,
-        "",
-      ),
-      assertNoErrors,
+      "",
     ),
-);
+    assertNoErrors,
+  ));
 
-test(
-  "Integration: ✅ No setFeaturedTagsDispatcher \
-- featuredTags property not required",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        `      featured: ctx.getFeaturedUri(identifier),
+test("Integration: ✅ No setFeaturedTagsDispatcher \
+- featuredTags property not required", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      `      featured: ctx.getFeaturedUri(identifier),
       featuredTags: ctx.getFeaturedTagsUri(identifier),
       publicKey: keyPairs[0]?.cryptographicKey,`,
-        `      featured: ctx.getFeaturedUri(identifier),
+      `      featured: ctx.getFeaturedUri(identifier),
       publicKey: keyPairs[0]?.cryptographicKey,`,
-      ),
-      replace(
-        `federation.setFeaturedTagsDispatcher(
+    ),
+    replace(
+      `federation.setFeaturedTagsDispatcher(
   "/users/{identifier}/tags",
   async (_ctx, _identifier, _cursor) => {
     return { items: [] };
   },
 );
 `,
-        "",
-      ),
-      assertNoErrors,
+      "",
     ),
-);
+    assertNoErrors,
+  ));
 
-test(
-  "Integration: ✅ No setInboxListeners - inbox/sharedInbox not required",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        `      summary: "A test actor for comprehensive lint rule validation",
+test("Integration: ✅ No setInboxListeners - inbox/sharedInbox not required", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      `      summary: "A test actor for comprehensive lint rule validation",
       inbox: ctx.getInboxUri(identifier),
       endpoints: new Endpoints({
         sharedInbox: ctx.getInboxUri(),
       }),
       outbox: ctx.getOutboxUri(identifier),`,
-        `      summary: "A test actor for comprehensive lint rule validation",
+      `      summary: "A test actor for comprehensive lint rule validation",
       outbox: ctx.getOutboxUri(identifier),`,
-      ),
-      replace(
-        `federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+    ),
+    replace(
+      `federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
 
 `,
-        "",
-      ),
-      assertNoErrors,
+      "",
     ),
-);
+    assertNoErrors,
+  ));
 
-test(
-  "Integration: ✅ No setKeyPairsDispatcher \
-- publicKey/assertionMethod not required",
-  () =>
-    pipe(
-      COMPLETE_VALID_CODE,
-      replace(
-        `  .setActorDispatcher("/users/{identifier}", \
+test("Integration: ✅ No setKeyPairsDispatcher \
+- publicKey/assertionMethod not required", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      `  .setActorDispatcher("/users/{identifier}", \
 async (ctx, identifier) => {
     const keyPairs = await ctx.getActorKeyPairs(identifier);
     return new Person({`,
-        `  .setActorDispatcher("/users/{identifier}", \
+      `  .setActorDispatcher("/users/{identifier}", \
 async (ctx, identifier) => {
     return new Person({`,
-      ),
-      replace(
-        `      featuredTags: ctx.getFeaturedTagsUri(identifier),
+    ),
+    replace(
+      `      featuredTags: ctx.getFeaturedTagsUri(identifier),
       publicKey: keyPairs[0]?.cryptographicKey,
       assertionMethod: keyPairs[0]?.multikey,
     });`,
-        `      featuredTags: ctx.getFeaturedTagsUri(identifier),
+      `      featuredTags: ctx.getFeaturedTagsUri(identifier),
     });`,
-      ),
-      replace(
-        `  })
+    ),
+    replace(
+      `  })
   .setKeyPairsDispatcher(async (_ctx, _identifier) => []);
 
 federation.setInboxListeners`,
-        `  });
+      `  });
 
 federation.setInboxListeners`,
-      ),
-      assertNoErrors,
     ),
-);
+    assertNoErrors,
+  ));
 
 // =============================================================================
 // Test: Multiple errors in one file
@@ -1000,12 +881,10 @@ test("Integration: ❌ Multiple errors - missing id and inbox", () =>
     toArray,
     (ids) =>
       (() => {
-        for (
-          const ruleName of [
-            "actor-id-required",
-            "actor-inbox-property-required",
-          ]
-        ) {
+        for (const ruleName of [
+          "actor-id-required",
+          "actor-inbox-property-required",
+        ]) {
           ok(
             ids.includes(`${PLUGIN_NAME}/${ruleName}`),
             `Expected ${ruleName} error`,

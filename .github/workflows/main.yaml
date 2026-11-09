@@ -35,6 +35,15 @@ jobs:
     # The harness then runs mise install with its normal postinstall hook.
     - run: mise --no-hooks exec --no-deps node -- node scripts/test_bootstrap.mjs
     - run: mise run test:tooling:no-deno
+    - name: Check repeated formatter worker teardown on Windows
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        for ($attempt = 1; $attempt -le 100; $attempt++) {
+          Write-Host "Formatter process $attempt/100"
+          mise exec -- node --experimental-transform-types --test scripts/formatting.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        }
 
   test:
     runs-on: ubuntu-latest

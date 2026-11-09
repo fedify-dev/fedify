@@ -7,10 +7,10 @@ import { parse, stringifyAsync } from "devalue";
 type TaskCodecDecodeResult<S extends StandardSchemaV1> =
   | { readonly ok: true; readonly value: StandardSchemaV1.InferOutput<S> }
   | {
-    readonly ok: false;
-    readonly phase: "deserialization" | "validation";
-    readonly error: unknown;
-  };
+      readonly ok: false;
+      readonly phase: "deserialization" | "validation";
+      readonly error: unknown;
+    };
 
 /**
  * Serializes and deserializes task payloads for the queue, preserving
@@ -29,10 +29,12 @@ export default class TaskCodec {
     });
 
   deserialize = async (raw: string): Promise<unknown> =>
-    await this.#revive(new Map())(parse(raw, {
-      Vocab: VocabHolder.from,
-      FedifyTemporal: parseTemporal,
-    }));
+    await this.#revive(new Map())(
+      parse(raw, {
+        Vocab: VocabHolder.from,
+        FedifyTemporal: parseTemporal,
+      }),
+    );
 
   /** Validates `data` against `schema`, then serializes it. */
   encode = async <S extends StandardSchemaV1>(
@@ -164,8 +166,10 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 const isObjectPrototype = (proto: unknown): boolean =>
   proto === null || proto === globalThis.Object.prototype;
 
-const isInstanceOf = <T>(cls: Constructor<T>) => (v: unknown): v is T =>
-  v instanceof cls;
+const isInstanceOf =
+  <T>(cls: Constructor<T>) =>
+  (v: unknown): v is T =>
+    v instanceof cls;
 
 function getValueIfSchema(result: StandardSchemaV1.Result<unknown>) {
   assertSchema(result);
@@ -208,7 +212,10 @@ interface VocabWire {
  * the async revive pass can `fromJsonLd()` it back into an instance.
  */
 class VocabHolder implements VocabWire {
-  constructor(readonly kind: VocabKind, readonly jsonLd: unknown) {}
+  constructor(
+    readonly kind: VocabKind,
+    readonly jsonLd: unknown,
+  ) {}
   static from = ({ kind, jsonLd }: VocabWire) => new VocabHolder(kind, jsonLd);
 }
 
@@ -230,20 +237,21 @@ type ClassReviver = (
  * through one type parameter—a correlation the heterogeneous reviver list
  * cannot carry, which previously forced `@ts-ignore` at the dispatch site.
  */
-const classReviver = <TNode extends object, TOut>(
-  filter: (v: unknown) => v is TNode,
-  init: (node: TNode) => TOut | Promise<TOut>,
-  set: (revive: Revive, node: TNode, out: TOut) => void | Promise<void>,
-): ClassReviver =>
-(seen, revive, node) => {
-  if (!filter(node)) return undefined;
-  return (async () => {
-    const out = await init(node);
-    seen.set(node, out);
-    await set(revive, node, out);
-    return out;
-  })();
-};
+const classReviver =
+  <TNode extends object, TOut>(
+    filter: (v: unknown) => v is TNode,
+    init: (node: TNode) => TOut | Promise<TOut>,
+    set: (revive: Revive, node: TNode, out: TOut) => void | Promise<void>,
+  ): ClassReviver =>
+  (seen, revive, node) => {
+    if (!filter(node)) return undefined;
+    return (async () => {
+      const out = await init(node);
+      seen.set(node, out);
+      await set(revive, node, out);
+      return out;
+    })();
+  };
 
 // oxlint-disable-next-line typescript/no-explicit-any
 type Constructor<T> = new (...arg: any[]) => T;

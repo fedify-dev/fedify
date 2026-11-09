@@ -351,22 +351,22 @@ function clampNegativeDelay(delay: Temporal.Duration): Temporal.Duration {
 
 type BenchmarkRelaxation =
   | {
-    readonly protection: "private_address_checks";
-    readonly effect: "disabled";
-    readonly effectiveValue: true;
-  }
+      readonly protection: "private_address_checks";
+      readonly effect: "disabled";
+      readonly effectiveValue: true;
+    }
   | {
-    readonly protection: "http_signature_time_window";
-    readonly effect: "disabled";
-    readonly effectiveValue: false;
-    readonly secureDefaultSeconds: 3600;
-  }
+      readonly protection: "http_signature_time_window";
+      readonly effect: "disabled";
+      readonly effectiveValue: false;
+      readonly secureDefaultSeconds: 3600;
+    }
   | {
-    readonly protection: "http_signature_time_window";
-    readonly effect: "changed";
-    readonly effectiveSeconds: number;
-    readonly secureDefaultSeconds: 3600;
-  };
+      readonly protection: "http_signature_time_window";
+      readonly effect: "changed";
+      readonly effectiveSeconds: number;
+      readonly secureDefaultSeconds: 3600;
+    };
 
 function getBenchmarkRelaxations(
   allowPrivateAddress: boolean,
@@ -412,18 +412,22 @@ function formatBenchmarkRelaxations(
   relaxations: readonly BenchmarkRelaxation[],
 ): string {
   if (relaxations.length < 1) return "no benchmark-only protections relaxed";
-  return relaxations.map((relaxation) => {
-    switch (relaxation.protection) {
-      case "private_address_checks":
-        return "private address checks disabled (allowPrivateAddress=true)";
-      case "http_signature_time_window":
-        if (relaxation.effect === "disabled") {
-          return `HTTP Signature time window disabled (signatureTimeWindow=false)`;
-        }
-        return `HTTP Signature time window set to ${relaxation.effectiveSeconds}s ` +
-          `(secure default: ${relaxation.secureDefaultSeconds}s)`;
-    }
-  }).join("; ");
+  return relaxations
+    .map((relaxation) => {
+      switch (relaxation.protection) {
+        case "private_address_checks":
+          return "private address checks disabled (allowPrivateAddress=true)";
+        case "http_signature_time_window":
+          if (relaxation.effect === "disabled") {
+            return `HTTP Signature time window disabled (signatureTimeWindow=false)`;
+          }
+          return (
+            `HTTP Signature time window set to ${relaxation.effectiveSeconds}s ` +
+            `(secure default: ${relaxation.secureDefaultSeconds}s)`
+          );
+      }
+    })
+    .join("; ");
 }
 
 function getBenchmarkTriggerOptions(
@@ -531,28 +535,34 @@ function recordCircuitBreakerHeldSpanEvent(
 }
 
 function isRemoteContextLoadingFailure(error: unknown): boolean {
-  return error instanceof Error &&
+  return (
+    error instanceof Error &&
     typeof (error as Error & { details?: { code?: unknown } }).details ===
       "object" &&
     (error as Error & { details?: { code?: unknown } }).details != null &&
     (error as Error & { details: { code?: unknown } }).details.code ===
-      "loading remote context failed";
+      "loading remote context failed"
+  );
 }
 
 function isPermanentRemoteContextError(error: unknown): boolean {
   if (!(error instanceof Error) || error.name !== "jsonld.InvalidUrl") {
     return false;
   }
-  const details = (error as Error & {
-    details?: { code?: unknown; url?: unknown };
-  }).details;
+  const details = (
+    error as Error & {
+      details?: { code?: unknown; url?: unknown };
+    }
+  ).details;
   if (details?.code === "invalid remote context") {
     return true;
   }
-  return isRemoteContextLoadingFailure(error) &&
+  return (
+    isRemoteContextLoadingFailure(error) &&
     typeof details?.url === "string" &&
     !URL.canParse(details.url) &&
-    isClearlyMalformedContextReference(details.url);
+    isClearlyMalformedContextReference(details.url)
+  );
 }
 
 function isPermanentInboxParseError(error: unknown): error is Error {
@@ -571,16 +581,19 @@ function isPermanentInboxParseError(error: unknown): error is Error {
   // earlier at the context-loading layer, so any remaining invalid-URL
   // TypeError here comes from sender-controlled ActivityPub IRI fields and stays
   // permanent instead of churning the retry queue.
-  return (error instanceof Error &&
-    (error.name === "UnsafeJsonLdError" ||
-      error instanceof InvalidContextReferenceError ||
-      isPermanentRemoteContextError(error) ||
-      (error.name === "jsonld.SyntaxError" &&
-        !isRemoteContextLoadingFailure(error)))) ||
+  return (
+    (error instanceof Error &&
+      (error.name === "UnsafeJsonLdError" ||
+        error instanceof InvalidContextReferenceError ||
+        isPermanentRemoteContextError(error) ||
+        (error.name === "jsonld.SyntaxError" &&
+          !isRemoteContextLoadingFailure(error)))) ||
     (error instanceof TypeError &&
-      (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:|Invalid FEP-ef61 gateway:)/
-        .test(error.message) ||
-        isInvalidUrlTypeError(error)));
+      (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:|Invalid FEP-ef61 gateway:)/.test(
+        error.message,
+      ) ||
+        isInvalidUrlTypeError(error)))
+  );
 }
 
 type LinkedDataSignatureJsonLdProcessingError = Error & {
@@ -591,22 +604,20 @@ type LinkedDataSignatureJsonLdProcessingError = Error & {
 function hasLinkedDataSignatureJsonLdProcessingError(
   error: LinkedDataSignatureJsonLdProcessingError,
 ): boolean {
-  if (
-    error.message.startsWith("Maximum deep iterations exceeded")
-  ) {
+  if (error.message.startsWith("Maximum deep iterations exceeded")) {
     return true;
   }
-  const cause = error.cause instanceof Error
-    ? error.cause
-    : error.details?.cause;
+  const cause =
+    error.cause instanceof Error ? error.cause : error.details?.cause;
   if (
     error.name === "jsonld.InvalidUrl" &&
     error.details?.code === "loading remote context failed" &&
     cause instanceof Error
   ) {
     return (
-      cause.message.startsWith("Maximum deep iterations exceeded")
-    ) || cause.name.startsWith("jsonld.");
+      cause.message.startsWith("Maximum deep iterations exceeded") ||
+      cause.name.startsWith("jsonld.")
+    );
   }
   return error.name !== "jsonld.InvalidUrl" && error.name.startsWith("jsonld.");
 }
@@ -614,8 +625,9 @@ function hasLinkedDataSignatureJsonLdProcessingError(
 function isLinkedDataSignatureJsonLdProcessingError(
   error: unknown,
 ): error is LinkedDataSignatureJsonLdProcessingError {
-  return error instanceof Error &&
-    hasLinkedDataSignatureJsonLdProcessingError(error);
+  return (
+    error instanceof Error && hasLinkedDataSignatureJsonLdProcessingError(error)
+  );
 }
 
 /**
@@ -624,9 +636,9 @@ function isLinkedDataSignatureJsonLdProcessingError(
  * @since 0.10.0
  * @deprecated Use {@link FederationOptions} instead.
  */
-export interface CreateFederationOptions<TContextData>
-  extends FederationOptions<TContextData> {
-}
+export interface CreateFederationOptions<
+  TContextData,
+> extends FederationOptions<TContextData> {}
 
 /**
  * Configures the task queues for sending and receiving activities.
@@ -769,7 +781,8 @@ export function createFederation<TContextData>(
 
 export class FederationImpl<TContextData>
   extends FederationBuilderImpl<TContextData>
-  implements Federation<TContextData> {
+  implements Federation<TContextData>
+{
   kv: KvStore;
   kvPrefixes: FederationKvPrefixes;
   publicKeyTtl: Temporal.Duration;
@@ -809,25 +822,26 @@ export class FederationImpl<TContextData>
   benchmarkTriggerOptions: BenchmarkTriggerOptions;
   #mediaUploaderNoAuthWarned = false;
   #portableInboxForwardingWarned = false;
-  readonly #queueDepthGaugeSourceId = `fedify-${
-    (++nextQueueDepthGaugeSourceId).toString(36)
-  }`;
+  readonly #queueDepthGaugeSourceId = `fedify-${(++nextQueueDepthGaugeSourceId).toString(
+    36,
+  )}`;
   #queueDepthGaugeEntries: readonly QueueDepthGaugeEntry[] = [];
   #queueDepthGaugeMeterProvider?: MeterProvider;
 
   constructor(options: FederationOptions<TContextData>) {
     super();
-    const benchmarkMode = options.benchmarkMode != null &&
-      options.benchmarkMode !== false;
-    const benchmarkOptions = typeof options.benchmarkMode === "object"
-      ? options.benchmarkMode
-      : {};
-    const hasCustomLoaderFactory = options.documentLoaderFactory != null ||
+    const benchmarkMode =
+      options.benchmarkMode != null && options.benchmarkMode !== false;
+    const benchmarkOptions =
+      typeof options.benchmarkMode === "object" ? options.benchmarkMode : {};
+    const hasCustomLoaderFactory =
+      options.documentLoaderFactory != null ||
       options.contextLoaderFactory != null;
-    const allowPrivateAddress = options.allowPrivateAddress ??
+    const allowPrivateAddress =
+      options.allowPrivateAddress ??
       (benchmarkMode && !hasCustomLoaderFactory ? true : false);
-    const signatureTimeWindow = options.signatureTimeWindow ??
-      (benchmarkMode ? false : { hours: 1 });
+    const signatureTimeWindow =
+      options.signatureTimeWindow ?? (benchmarkMode ? false : { hours: 1 });
     if (options.maxHttpSignatures !== undefined) {
       validateMaxSignatures(options.maxHttpSignatures, "maxHttpSignatures");
     }
@@ -929,7 +943,8 @@ export class FederationImpl<TContextData>
     if (options.origin != null) {
       if (typeof options.origin === "string") {
         if (
-          !URL.canParse(options.origin) || !options.origin.match(/^https?:\/\//)
+          !URL.canParse(options.origin) ||
+          !options.origin.match(/^https?:\/\//)
         ) {
           throw new TypeError(
             `Invalid origin: ${JSON.stringify(options.origin)}`,
@@ -937,7 +952,8 @@ export class FederationImpl<TContextData>
         }
         const origin = new URL(options.origin);
         if (
-          !origin.pathname.match(/^\/*$/) || origin.search !== "" ||
+          !origin.pathname.match(/^\/*$/) ||
+          origin.search !== "" ||
           origin.hash !== ""
         ) {
           throw new TypeError(
@@ -948,7 +964,8 @@ export class FederationImpl<TContextData>
       } else {
         const { handleHost, webOrigin } = options.origin;
         if (
-          !URL.canParse(`https://${handleHost}/`) || handleHost.includes("/")
+          !URL.canParse(`https://${handleHost}/`) ||
+          handleHost.includes("/")
         ) {
           throw new TypeError(
             `Invalid origin.handleHost: ${JSON.stringify(handleHost)}`,
@@ -961,7 +978,8 @@ export class FederationImpl<TContextData>
         }
         const webOriginUrl = new URL(webOrigin);
         if (
-          !webOriginUrl.pathname.match(/^\/*$/) || webOriginUrl.search !== "" ||
+          !webOriginUrl.pathname.match(/^\/*$/) ||
+          webOriginUrl.search !== "" ||
           webOriginUrl.hash !== ""
         ) {
           throw new TypeError(
@@ -974,8 +992,8 @@ export class FederationImpl<TContextData>
         };
       }
     }
-    this.router.trailingSlashInsensitive = options.trailingSlashInsensitive ??
-      false;
+    this.router.trailingSlashInsensitive =
+      options.trailingSlashInsensitive ?? false;
     this._initializeRouter();
     if (options.allowPrivateAddress === true || options.userAgent != null) {
       if (options.documentLoaderFactory != null) {
@@ -1003,8 +1021,8 @@ export class FederationImpl<TContextData>
       options.documentLoaderTimeout == null
         ? options.documentLoaderTimeout
         : Temporal.Duration.from(options.documentLoaderTimeout).total(
-          "millisecond",
-        ),
+            "millisecond",
+          ),
     );
     // The loader factory closures below read `this._meterProvider` at
     // call time, not when they are created.  Factories are only invoked
@@ -1016,12 +1034,10 @@ export class FederationImpl<TContextData>
     const builtinDocumentLoaderFactory: DocumentLoaderFactory = (opts) =>
       kvCache({
         loader: getDocumentLoader({
-          allowPrivateAddress: opts?.allowPrivateAddress ??
-            allowPrivateAddress,
+          allowPrivateAddress: opts?.allowPrivateAddress ?? allowPrivateAddress,
           userAgent: opts?.userAgent ?? userAgent,
-          timeout: opts?.timeout !== undefined
-            ? opts.timeout
-            : documentLoaderTimeout,
+          timeout:
+            opts?.timeout !== undefined ? opts.timeout : documentLoaderTimeout,
         }),
         kv: options.kv,
         prefix: this.kvPrefixes.remoteDocument,
@@ -1031,12 +1047,10 @@ export class FederationImpl<TContextData>
     const builtinContextLoaderFactory: DocumentLoaderFactory = (opts) =>
       kvCache({
         loader: getDocumentLoader({
-          allowPrivateAddress: opts?.allowPrivateAddress ??
-            allowPrivateAddress,
+          allowPrivateAddress: opts?.allowPrivateAddress ?? allowPrivateAddress,
           userAgent: opts?.userAgent ?? userAgent,
-          timeout: opts?.timeout !== undefined
-            ? opts.timeout
-            : documentLoaderTimeout,
+          timeout:
+            opts?.timeout !== undefined ? opts.timeout : documentLoaderTimeout,
         }),
         kv: options.kv,
         prefix: this.kvPrefixes.remoteDocument,
@@ -1062,46 +1076,45 @@ export class FederationImpl<TContextData>
     // semantic, just with a separate instrumentation kind so the metric
     // attributes reflect the call-site intent.
     const resolvedContextLoaderFactory: DocumentLoaderFactory =
-      userContextLoaderFactory ?? userDocumentLoaderFactory ??
-        builtinContextLoaderFactory;
+      userContextLoaderFactory ??
+      userDocumentLoaderFactory ??
+      builtinContextLoaderFactory;
     this.contextLoaderFactory = (opts) =>
-      instrumentDocumentLoader(
-        resolvedContextLoaderFactory(opts),
-        {
-          meterProvider: this._meterProvider,
-          kind: "context",
-          cacheEnabled: (userContextLoaderFactory == null &&
-              userDocumentLoaderFactory == null)
+      instrumentDocumentLoader(resolvedContextLoaderFactory(opts), {
+        meterProvider: this._meterProvider,
+        kind: "context",
+        cacheEnabled:
+          userContextLoaderFactory == null && userDocumentLoaderFactory == null
             ? true
             : undefined,
-        },
-      );
+      });
     this.authenticatedDocumentLoaderFactory = (identity, factoryOpts) =>
       instrumentDocumentLoader(
         userAuthFactory != null
-          // Forward `factoryOpts` so user-supplied factories receive the
-          // per-call `DocumentLoaderFactoryOptions` (allowPrivateAddress,
-          // userAgent) just like they did before this wrapper was added.
-          ? userAuthFactory(identity, factoryOpts)
-          // The built-in default honors per-call `factoryOpts` overrides
-          // the same way `documentLoaderFactory` / `contextLoaderFactory`
-          // do above, falling back to the constructor-level settings when
-          // the caller did not supply an override.
-          : getAuthenticatedDocumentLoader(identity, {
-            allowPrivateAddress: factoryOpts?.allowPrivateAddress ??
-              allowPrivateAddress,
-            userAgent: factoryOpts?.userAgent ?? userAgent,
-            timeout: factoryOpts?.timeout !== undefined
-              ? factoryOpts.timeout
-              : documentLoaderTimeout,
-            specDeterminer: new KvSpecDeterminer(
-              this.kv,
-              this.kvPrefixes.httpMessageSignaturesSpec,
-              options.firstKnock,
-              { specTtl: this.httpMessageSignaturesSpecTtl },
-            ),
-            tracerProvider: this.tracerProvider,
-          }),
+          ? // Forward `factoryOpts` so user-supplied factories receive the
+            // per-call `DocumentLoaderFactoryOptions` (allowPrivateAddress,
+            // userAgent) just like they did before this wrapper was added.
+            userAuthFactory(identity, factoryOpts)
+          : // The built-in default honors per-call `factoryOpts` overrides
+            // the same way `documentLoaderFactory` / `contextLoaderFactory`
+            // do above, falling back to the constructor-level settings when
+            // the caller did not supply an override.
+            getAuthenticatedDocumentLoader(identity, {
+              allowPrivateAddress:
+                factoryOpts?.allowPrivateAddress ?? allowPrivateAddress,
+              userAgent: factoryOpts?.userAgent ?? userAgent,
+              timeout:
+                factoryOpts?.timeout !== undefined
+                  ? factoryOpts.timeout
+                  : documentLoaderTimeout,
+              specDeterminer: new KvSpecDeterminer(
+                this.kv,
+                this.kvPrefixes.httpMessageSignaturesSpec,
+                options.firstKnock,
+                { specTtl: this.httpMessageSignaturesSpecTtl },
+              ),
+              tracerProvider: this.tracerProvider,
+            }),
         {
           meterProvider: this._meterProvider,
           kind: "object",
@@ -1111,26 +1124,28 @@ export class FederationImpl<TContextData>
       );
     this.userAgent = userAgent;
     this.onOutboxError = options.onOutboxError;
-    this.permanentFailureStatusCodes = options.permanentFailureStatusCodes ??
-      [404, 410];
+    this.permanentFailureStatusCodes = options.permanentFailureStatusCodes ?? [
+      404, 410,
+    ];
     this.signatureTimeWindow = signatureTimeWindow;
-    this.maxHttpSignatures = options.maxHttpSignatures ??
-      DEFAULT_MAX_RFC9421_SIGNATURES;
+    this.maxHttpSignatures =
+      options.maxHttpSignatures ?? DEFAULT_MAX_RFC9421_SIGNATURES;
     this.skipSignatureVerification = options.skipSignatureVerification ?? false;
     this.inboxChallengePolicy = options.inboxChallengePolicy;
-    this.outboxRetryPolicy = options.outboxRetryPolicy ??
-      createExponentialBackoffPolicy();
-    this.inboxRetryPolicy = options.inboxRetryPolicy ??
-      createExponentialBackoffPolicy();
-    this.taskRetryPolicy = options.taskRetryPolicy ??
-      createExponentialBackoffPolicy();
+    this.outboxRetryPolicy =
+      options.outboxRetryPolicy ?? createExponentialBackoffPolicy();
+    this.inboxRetryPolicy =
+      options.inboxRetryPolicy ?? createExponentialBackoffPolicy();
+    this.taskRetryPolicy =
+      options.taskRetryPolicy ?? createExponentialBackoffPolicy();
     this.taskQueueResolution = options.taskQueueResolution ?? "fallback";
     this.taskDeduplicationTtl = Temporal.Duration.from(
       options.taskDeduplicationTtl ?? { hours: 1 },
     );
-    this.taskDeduplicationFallback = options.taskDeduplicationFallback ??
-      "open";
-    this.activityTransformers = options.activityTransformers ??
+    this.taskDeduplicationFallback =
+      options.taskDeduplicationFallback ?? "open";
+    this.activityTransformers =
+      options.activityTransformers ??
       getDefaultActivityTransformers<TContextData>();
     this._tracerProvider = options.tracerProvider;
     if (benchmarkMode) {
@@ -1204,9 +1219,11 @@ export class FederationImpl<TContextData>
       keyof FederationQueueOptions,
       MessageQueue | undefined,
     ];
-    const taskQueue = this.taskQueue ??
+    const taskQueue =
+      this.taskQueue ??
       (this.taskQueueResolution === "fallback" ? this.outboxQueue : undefined);
-    const customQueues = this.taskDefinitions.values()
+    const customQueues = this.taskDefinitions
+      .values()
       .map((def): QueueNameMessage => ["task", def.queue]);
     const targets: QueueNameMessage[] = [
       ["inbox", this.inboxQueue],
@@ -1223,10 +1240,9 @@ export class FederationImpl<TContextData>
       this.startedQueues.add(target);
       logger.debug("Starting a {role} queue worker.", { role });
       promises.push(
-        target.listen(
-          (msg) => this.processQueuedTask(ctxData, msg),
-          { signal },
-        ),
+        target.listen((msg) => this.processQueuedTask(ctxData, msg), {
+          signal,
+        }),
       );
     }
     await Promise.all(promises);
@@ -1258,135 +1274,150 @@ export class FederationImpl<TContextData>
     if (message.type !== "task" && message.provenance !== undefined) {
       message = { ...message, provenance };
     }
-    return await withContext({
-      messageId: message.id,
-      inboxRequestId: undefined,
-      ...sourceLogContext(provenance),
-    }, async () => {
-      if (message.type === "fanout") {
-        const observers = this.outboundObservers;
-        const worker = this.#createOutboundWorkerObservation(
-          contextData,
-          message,
-          provenance,
-          observers.onWorker,
-        );
-        const common: QueueTaskCommonAttributes = {
-          role: "fanout",
-          queue: this.fanoutQueue,
-          activityType: message.activityType,
-        };
-        const execute = () =>
-          this.#runWorkerSpan(
-            "activitypub.fanout",
-            { "activitypub.activity.type": message.activityType },
-            extractedContext,
-            this.#instrumentWorkerBody(common, async (span) => {
-              if (message.activityId != null) {
-                span.setAttribute(
-                  "activitypub.activity.id",
-                  message.activityId,
-                );
-              }
-              await this.#listenFanoutMessage(
-                contextData,
-                message,
-                provenance,
-                span,
-                trace.getSpanContext(extractedContext),
-                observers,
-                worker,
-              );
-              return { outcome: "completed" };
-            }, classifyAbortableError),
-            worker,
+    return await withContext(
+      {
+        messageId: message.id,
+        inboxRequestId: undefined,
+        ...sourceLogContext(provenance),
+      },
+      async () => {
+        if (message.type === "fanout") {
+          const observers = this.outboundObservers;
+          const worker = this.#createOutboundWorkerObservation(
+            contextData,
+            message,
+            provenance,
+            observers.onWorker,
           );
-        await (worker == null ? execute() : worker.run(execute));
-      } else if (message.type === "outbox") {
-        const observers = this.outboundObservers;
-        const worker = this.#createOutboundWorkerObservation(
-          contextData,
-          message,
-          provenance,
-          observers.onWorker,
-        );
-        const common: QueueTaskCommonAttributes = {
-          role: "outbox",
-          queue: this.outboxQueue,
-          activityType: message.activityType,
-        };
-        const execute = () =>
-          this.#runWorkerSpan(
-            "activitypub.outbox",
+          const common: QueueTaskCommonAttributes = {
+            role: "fanout",
+            queue: this.fanoutQueue,
+            activityType: message.activityType,
+          };
+          const execute = () =>
+            this.#runWorkerSpan(
+              "activitypub.fanout",
+              { "activitypub.activity.type": message.activityType },
+              extractedContext,
+              this.#instrumentWorkerBody(
+                common,
+                async (span) => {
+                  if (message.activityId != null) {
+                    span.setAttribute(
+                      "activitypub.activity.id",
+                      message.activityId,
+                    );
+                  }
+                  await this.#listenFanoutMessage(
+                    contextData,
+                    message,
+                    provenance,
+                    span,
+                    trace.getSpanContext(extractedContext),
+                    observers,
+                    worker,
+                  );
+                  return { outcome: "completed" };
+                },
+                classifyAbortableError,
+              ),
+              worker,
+            );
+          await (worker == null ? execute() : worker.run(execute));
+        } else if (message.type === "outbox") {
+          const observers = this.outboundObservers;
+          const worker = this.#createOutboundWorkerObservation(
+            contextData,
+            message,
+            provenance,
+            observers.onWorker,
+          );
+          const common: QueueTaskCommonAttributes = {
+            role: "outbox",
+            queue: this.outboxQueue,
+            activityType: message.activityType,
+          };
+          const execute = () =>
+            this.#runWorkerSpan(
+              "activitypub.outbox",
+              {
+                "activitypub.activity.type": message.activityType,
+                "activitypub.activity.retries": message.attempt,
+              },
+              extractedContext,
+              this.#instrumentWorkerBody(
+                common,
+                async (span) => {
+                  if (message.activityId != null) {
+                    span.setAttribute(
+                      "activitypub.activity.id",
+                      message.activityId,
+                    );
+                  }
+                  await this.#listenOutboxMessage(
+                    contextData,
+                    message,
+                    span,
+                    provenance,
+                    observers,
+                    worker,
+                  );
+                  return { outcome: "completed" };
+                },
+                classifyAbortableError,
+              ),
+              worker,
+            );
+          await (worker == null ? execute() : worker.run(execute));
+        } else if (message.type === "inbox") {
+          const common: QueueTaskCommonAttributes = {
+            role: "inbox",
+            queue: this.inboxQueue,
+          };
+          await this.#runWorkerSpan(
+            "activitypub.inbox",
+            { "activitypub.shared_inbox": message.identifier == null },
+            extractedContext,
+            this.#instrumentWorkerBody(
+              common,
+              async (span) => {
+                await this.#listenInboxMessage(
+                  contextData,
+                  message,
+                  span,
+                  provenance,
+                  (activityType) => {
+                    common.activityType = activityType;
+                  },
+                );
+                return { outcome: "completed" };
+              },
+              classifyAbortableError,
+            ),
+          );
+        } else if (message.type === "task") {
+          const registered = this.taskDefinitions.get(message.taskName) != null;
+          const common: QueueTaskCommonAttributes = {
+            role: "task",
+            queue: this.resolveTaskQueue(message.taskName),
+            taskName: registered ? message.taskName : undefined,
+          };
+          await this.#runWorkerSpan(
+            "fedify.task",
             {
-              "activitypub.activity.type": message.activityType,
-              "activitypub.activity.retries": message.attempt,
+              "fedify.task.name": message.taskName,
+              "fedify.task.attempt": message.attempt,
             },
             extractedContext,
-            this.#instrumentWorkerBody(common, async (span) => {
-              if (message.activityId != null) {
-                span.setAttribute(
-                  "activitypub.activity.id",
-                  message.activityId,
-                );
-              }
-              await this.#listenOutboxMessage(
-                contextData,
-                message,
-                span,
-                provenance,
-                observers,
-                worker,
-              );
-              return { outcome: "completed" };
-            }, classifyAbortableError),
-            worker,
+            this.#instrumentWorkerBody(
+              common,
+              () => this.#listenTaskMessage(contextData, message),
+              classifyTaskError,
+            ),
           );
-        await (worker == null ? execute() : worker.run(execute));
-      } else if (message.type === "inbox") {
-        const common: QueueTaskCommonAttributes = {
-          role: "inbox",
-          queue: this.inboxQueue,
-        };
-        await this.#runWorkerSpan(
-          "activitypub.inbox",
-          { "activitypub.shared_inbox": message.identifier == null },
-          extractedContext,
-          this.#instrumentWorkerBody(common, async (span) => {
-            await this.#listenInboxMessage(
-              contextData,
-              message,
-              span,
-              provenance,
-              (activityType) => {
-                common.activityType = activityType;
-              },
-            );
-            return { outcome: "completed" };
-          }, classifyAbortableError),
-        );
-      } else if (message.type === "task") {
-        const registered = this.taskDefinitions.get(message.taskName) != null;
-        const common: QueueTaskCommonAttributes = {
-          role: "task",
-          queue: this.resolveTaskQueue(message.taskName),
-          taskName: registered ? message.taskName : undefined,
-        };
-        await this.#runWorkerSpan(
-          "fedify.task",
-          {
-            "fedify.task.name": message.taskName,
-            "fedify.task.attempt": message.attempt,
-          },
-          extractedContext,
-          this.#instrumentWorkerBody(
-            common,
-            () => this.#listenTaskMessage(contextData, message),
-            classifyTaskError,
-          ),
-        );
-      }
-    });
+        }
+      },
+    );
   }
 
   #createOutboundWorkerObservation(
@@ -1467,42 +1498,46 @@ export class FederationImpl<TContextData>
    * @param run Runs the worker body and resolves to its terminal outcome.
    * @param classifyError Maps a thrown error to a terminal outcome.
    */
-  #instrumentWorkerBody = (
-    common: QueueTaskCommonAttributes,
-    run: (span: Span) => Promise<QueueTaskDispatchResult>,
-    classifyError: (error: unknown) => QueueTaskDispatchResult,
-  ) =>
-  (span: Span) =>
-  async () => {
-    this.metrics.recordQueueTaskStarted(common);
-    this.metrics.incrementQueueTaskInFlight(common);
-    const startedAt = performance.now();
-    let result: QueueTaskDispatchResult = { outcome: "completed" };
-    try {
-      result = await run(span);
-    } catch (e) {
-      result = classifyError(e);
-      throw e;
-    } finally {
-      if (result.outcome === "failed") {
-        if (result.failureReason != null) {
-          span.setAttribute("fedify.task.failure_reason", result.failureReason);
+  #instrumentWorkerBody =
+    (
+      common: QueueTaskCommonAttributes,
+      run: (span: Span) => Promise<QueueTaskDispatchResult>,
+      classifyError: (error: unknown) => QueueTaskDispatchResult,
+    ) =>
+    (span: Span) =>
+    async () => {
+      this.metrics.recordQueueTaskStarted(common);
+      this.metrics.incrementQueueTaskInFlight(common);
+      const startedAt = performance.now();
+      let result: QueueTaskDispatchResult = { outcome: "completed" };
+      try {
+        result = await run(span);
+      } catch (e) {
+        result = classifyError(e);
+        throw e;
+      } finally {
+        if (result.outcome === "failed") {
+          if (result.failureReason != null) {
+            span.setAttribute(
+              "fedify.task.failure_reason",
+              result.failureReason,
+            );
+          }
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            ...(result.error == null ? {} : { message: String(result.error) }),
+          });
         }
-        span.setStatus({
-          code: SpanStatusCode.ERROR,
-          ...(result.error == null ? {} : { message: String(result.error) }),
-        });
+        this.metrics.recordQueueTaskOutcome(
+          common,
+          result.outcome,
+          getDurationMs(startedAt),
+          result.outcome === "failed" ? result.failureReason : undefined,
+        );
+        this.metrics.decrementQueueTaskInFlight(common);
+        span.end();
       }
-      this.metrics.recordQueueTaskOutcome(
-        common,
-        result.outcome,
-        getDurationMs(startedAt),
-        result.outcome === "failed" ? result.failureReason : undefined,
-      );
-      this.metrics.decrementQueueTaskInFlight(common);
-      span.end();
-    }
-  };
+    };
 
   async #listenFanoutMessage(
     data: TContextData,
@@ -1529,9 +1564,10 @@ export class FederationImpl<TContextData>
           privateKey: await importJwk(privateKey, "private"),
         })),
       );
-    const keys: SenderKeyPair[] = worker == null
-      ? await importKeys()
-      : await worker.prepare("key-import", importKeys);
+    const keys: SenderKeyPair[] =
+      worker == null
+        ? await importKeys()
+        : await worker.prepare("key-import", importKeys);
     const parseActivity = () =>
       Activity.fromJsonLd(message.activity, {
         contextLoader: this.contextLoaderFactory({
@@ -1544,24 +1580,22 @@ export class FederationImpl<TContextData>
         }),
         tracerProvider: this.tracerProvider,
       });
-    const activity = worker == null
-      ? await parseActivity()
-      : await worker.prepare("activity-parsing", parseActivity);
+    const activity =
+      worker == null
+        ? await parseActivity()
+        : await worker.prepare("activity-parsing", parseActivity);
     const createContext = () =>
-      this.#createContext(
-        new URL(message.baseUrl),
-        data,
-        {
-          [outboundProvenance]: provenance,
-          documentLoader: this.documentLoaderFactory({
-            allowPrivateAddress: this.allowPrivateAddress,
-            userAgent: this.userAgent,
-          }),
-        },
-      );
-    const context = worker == null
-      ? createContext()
-      : await worker.prepare("context-preparation", createContext);
+      this.#createContext(new URL(message.baseUrl), data, {
+        [outboundProvenance]: provenance,
+        documentLoader: this.documentLoaderFactory({
+          allowPrivateAddress: this.allowPrivateAddress,
+          userAgent: this.userAgent,
+        }),
+      });
+    const context =
+      worker == null
+        ? createContext()
+        : await worker.prepare("context-preparation", createContext);
     worker?.useContext(context);
     const observation = await OutboundBroadcastObservation.resumeFanout(
       context,
@@ -1607,9 +1641,10 @@ export class FederationImpl<TContextData>
         keyId: new URL(keyId),
         privateKey: await importJwk(privateKey, "private"),
       });
-      const pair = worker == null
-        ? await importPair()
-        : await worker.prepare("key-import", importPair);
+      const pair =
+        worker == null
+          ? await importPair()
+          : await worker.prepare("key-import", importPair);
       if (
         rsaKeyPair == null &&
         pair.privateKey.algorithm.name === "RSASSA-PKCS1-v1_5"
@@ -1624,20 +1659,19 @@ export class FederationImpl<TContextData>
     let observationContextLoader: DocumentLoader | undefined;
     const observation = OutboundAttemptObserver.resumeOutbox(
       () =>
-        worker?.getContext() ?? (observationContext ??= new ContextImpl({
+        worker?.getContext() ??
+        (observationContext ??= new ContextImpl({
           [outboundProvenance]: provenance,
           federation: this,
           url: new URL("/", message.baseUrl),
           data: contextData,
           // Observing settlement must not create loaders or perform lookups.
           documentLoader: (...args) =>
-            (observationDocumentLoader ??= this.documentLoaderFactory(
-              loaderOptions,
-            ))(...args),
+            (observationDocumentLoader ??=
+              this.documentLoaderFactory(loaderOptions))(...args),
           contextLoader: (...args) =>
-            (observationContextLoader ??= this.contextLoaderFactory(
-              loaderOptions,
-            ))(...args),
+            (observationContextLoader ??=
+              this.contextLoaderFactory(loaderOptions))(...args),
         })),
       onAttempt,
       message,
@@ -1652,10 +1686,7 @@ export class FederationImpl<TContextData>
         try {
           return [new URL(id)];
         } catch {
-          logger.warn(
-            "Invalid actorId URL in OutboxMessage: {id}",
-            { id },
-          );
+          logger.warn("Invalid actorId URL in OutboxMessage: {id}", { id });
           return [];
         }
       });
@@ -1663,9 +1694,10 @@ export class FederationImpl<TContextData>
     };
     const parseActivity = () => {
       const contextLoader = this.contextLoaderFactory(loaderOptions);
-      const documentLoader = rsaKeyPair == null
-        ? this.documentLoaderFactory(loaderOptions)
-        : this.authenticatedDocumentLoaderFactory(rsaKeyPair, loaderOptions);
+      const documentLoader =
+        rsaKeyPair == null
+          ? this.documentLoaderFactory(loaderOptions)
+          : this.authenticatedDocumentLoaderFactory(rsaKeyPair, loaderOptions);
       return Activity.fromJsonLd(message.activity, {
         contextLoader,
         documentLoader,
@@ -1696,12 +1728,12 @@ export class FederationImpl<TContextData>
       await (worker == null
         ? outboxQueue.enqueue(heldMessage, enqueueOptions)
         : worker.enqueue(
-          "defer",
-          heldMessage,
-          enqueueOptions.delay,
-          () => outboxQueue.enqueue(heldMessage, enqueueOptions),
-          preparationFailures,
-        ));
+            "defer",
+            heldMessage,
+            enqueueOptions.delay,
+            () => outboxQueue.enqueue(heldMessage, enqueueOptions),
+            preparationFailures,
+          ));
       this.metrics.recordQueueTaskEnqueued(
         {
           role: "outbox",
@@ -1727,14 +1759,10 @@ export class FederationImpl<TContextData>
         heldSince,
       });
       if (this.outboxPermanentFailureHandler != null) {
-        const ctx = this.#createContext(
-          new URL(message.baseUrl),
-          contextData,
-          {
-            [outboundProvenance]: provenance,
-            documentLoader: this.documentLoaderFactory(loaderOptions),
-          },
-        );
+        const ctx = this.#createContext(new URL(message.baseUrl), contextData, {
+          [outboundProvenance]: provenance,
+          documentLoader: this.documentLoaderFactory(loaderOptions),
+        });
         try {
           await this.outboxPermanentFailureHandler(ctx, {
             reason: "circuit-breaker-ttl",
@@ -1789,12 +1817,12 @@ export class FederationImpl<TContextData>
     }
     try {
       const parseInbox = () => new URL(message.inbox);
-      const inbox = worker == null
-        ? parseInbox()
-        : await worker.prepare("validation", parseInbox);
-      const circuit = this.outboxQueue == null
-        ? undefined
-        : this.circuitBreaker;
+      const inbox =
+        worker == null
+          ? parseInbox()
+          : await worker.prepare("validation", parseInbox);
+      const circuit =
+        this.outboxQueue == null ? undefined : this.circuitBreaker;
       const remoteHost = getRemoteHost(inbox);
       let decision: CircuitBreakerBeforeSendDecision | undefined;
       if (circuit != null) {
@@ -1830,11 +1858,7 @@ export class FederationImpl<TContextData>
           return;
         }
         if (decision.stateChange != null) {
-          recordCircuitBreakerSpanEvent(
-            span,
-            remoteHost,
-            decision.stateChange,
-          );
+          recordCircuitBreakerSpanEvent(span, remoteHost, decision.stateChange);
         }
       }
       await sendActivity({
@@ -1847,10 +1871,13 @@ export class FederationImpl<TContextData>
         activityType: message.activityType,
         inbox,
         sharedInbox: message.sharedInbox,
-        headers: worker == null
-          ? new Headers(message.headers)
-          : await worker.prepare("request-preparation", () =>
-            new Headers(message.headers)),
+        headers:
+          worker == null
+            ? new Headers(message.headers)
+            : await worker.prepare(
+                "request-preparation",
+                () => new Headers(message.headers),
+              ),
         specDeterminer: new KvSpecDeterminer(
           this.kv,
           this.kvPrefixes.httpMessageSignaturesSpec,
@@ -1875,10 +1902,8 @@ export class FederationImpl<TContextData>
         }
       }
     } catch (error) {
-      const preparationFailures = worker?.recordPreparationFailure(
-        error,
-        message.inbox,
-      ) ?? [];
+      const preparationFailures =
+        worker?.recordPreparationFailure(error, message.inbox) ?? [];
       span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
       const remoteHost = (() => {
         if (error instanceof SendActivityError) {
@@ -1897,19 +1922,19 @@ export class FederationImpl<TContextData>
       let retryAfterDelay: Temporal.Duration | undefined;
       let circuitHold:
         | {
-          delay: Temporal.Duration;
-          heldSince: Temporal.Instant;
-          remoteHost: string;
-          state: "open" | "half-open";
-        }
+            delay: Temporal.Duration;
+            heldSince: Temporal.Instant;
+            remoteHost: string;
+            state: "open" | "half-open";
+          }
         | undefined;
       let circuitDrop:
         | {
-          circuit: CircuitBreaker;
-          remoteHost: string;
-          inbox: URL;
-          heldSince: Temporal.Instant;
-        }
+            circuit: CircuitBreaker;
+            remoteHost: string;
+            inbox: URL;
+            heldSince: Temporal.Instant;
+          }
         | undefined;
       let retryPolicyDelay: Temporal.Duration | null | undefined;
       let policyDelayCalculated = false;
@@ -1925,7 +1950,8 @@ export class FederationImpl<TContextData>
         }
         return retryPolicyDelay;
       };
-      const isPermanentFailure = error instanceof SendActivityError &&
+      const isPermanentFailure =
+        error instanceof SendActivityError &&
         this.permanentFailureStatusCodes.includes(error.statusCode);
       if (
         !isPermanentFailure &&
@@ -1942,19 +1968,20 @@ export class FederationImpl<TContextData>
         try {
           if (error instanceof SendActivityError) {
             const { statusCode } = error;
-            const stateChange = isPermanentFailure || statusCode === 429 ||
-                (statusCode >= 400 && statusCode < 500)
-              ? await this.circuitBreaker.recordReachableFailure(remoteHost)
-              : statusCode >= 500
-              ? await this.circuitBreaker.recordFailure(remoteHost)
-              : undefined;
+            const stateChange =
+              isPermanentFailure ||
+              statusCode === 429 ||
+              (statusCode >= 400 && statusCode < 500)
+                ? await this.circuitBreaker.recordReachableFailure(remoteHost)
+                : statusCode >= 500
+                  ? await this.circuitBreaker.recordFailure(remoteHost)
+                  : undefined;
             if (stateChange != null) {
               recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
             }
           } else if (isTransportDeliveryError(error)) {
-            const stateChange = await this.circuitBreaker.recordFailure(
-              remoteHost,
-            );
+            const stateChange =
+              await this.circuitBreaker.recordFailure(remoteHost);
             if (stateChange != null) {
               recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
             }
@@ -2029,18 +2056,13 @@ export class FederationImpl<TContextData>
       }
 
       // Check if the error is a permanent delivery failure
-      if (
-        isPermanentFailure
-      ) {
+      if (isPermanentFailure) {
         worker?.abandon(
           "permanent-failure",
           [message.inbox],
           preparationFailures,
         );
-        this.metrics.recordPermanentFailure(
-          error.inbox,
-          error.statusCode,
-        );
+        this.metrics.recordPermanentFailure(error.inbox, error.statusCode);
         logger.warn(
           "Permanent delivery failure for activity {activityId} to " +
             "{inbox} ({status}); not retrying.",
@@ -2099,12 +2121,13 @@ export class FederationImpl<TContextData>
           circuitHold.state,
         );
         const circuit = this.circuitBreaker;
-        const holdDelay = retryAfterDelay == null || circuit == null
-          ? circuitHold.delay
-          : circuit.capHeldDelay(
-            circuitHold.heldSince,
-            maxDelay(circuitHold.delay, retryAfterDelay),
-          );
+        const holdDelay =
+          retryAfterDelay == null || circuit == null
+            ? circuitHold.delay
+            : circuit.capHeldDelay(
+                circuitHold.heldSince,
+                maxDelay(circuitHold.delay, retryAfterDelay),
+              );
         await enqueueHeldOutboxMessage(
           holdDelay,
           circuitHold.heldSince,
@@ -2123,7 +2146,8 @@ export class FederationImpl<TContextData>
       }
 
       const policyDelay = getPolicyDelay();
-      const delay = policyDelay == null ? null : retryAfterDelay ?? policyDelay;
+      const delay =
+        policyDelay == null ? null : (retryAfterDelay ?? policyDelay);
       if (delay != null) {
         logger.error(
           "Failed to send activity {activityId} to {inbox} (attempt " +
@@ -2143,12 +2167,12 @@ export class FederationImpl<TContextData>
           await (worker == null
             ? outboxQueue.enqueue(retryMessage, enqueueOptions)
             : worker.enqueue(
-              "retry",
-              retryMessage,
-              enqueueOptions.delay,
-              () => outboxQueue.enqueue(retryMessage, enqueueOptions),
-              preparationFailures,
-            ));
+                "retry",
+                retryMessage,
+                enqueueOptions.delay,
+                () => outboxQueue.enqueue(retryMessage, enqueueOptions),
+                preparationFailures,
+              ));
           this.metrics.recordQueueTaskEnqueued(
             {
               role: "outbox",
@@ -2188,10 +2212,9 @@ export class FederationImpl<TContextData>
       }
       return;
     }
-    logger.info(
-      "Successfully sent activity {activityId} to {inbox}.",
-      { ...logData },
-    );
+    logger.info("Successfully sent activity {activityId} to {inbox}.", {
+      ...logData,
+    });
   }
 
   /**
@@ -2268,15 +2291,15 @@ export class FederationImpl<TContextData>
     let lastError: unknown;
     let lastPermanent: { error: SendActivityError; inbox: URL } | undefined;
     let activity: Activity | undefined;
-    const getActivity = async () => activity ??= await parseActivity();
+    const getActivity = async () => (activity ??= await parseActivity());
     const drop = async (
       circuit: CircuitBreaker,
       remoteHost: string,
       inbox: URL,
       heldSince: Temporal.Instant,
     ) => {
-      const routes = message.gatewayInboxes.filter((route) =>
-        !permanentRoutes.has(route)
+      const routes = message.gatewayInboxes.filter(
+        (route) => !permanentRoutes.has(route),
       );
       worker?.abandon(
         "held-ttl-expired",
@@ -2297,24 +2320,27 @@ export class FederationImpl<TContextData>
     // without asking the circuit breaker, which would otherwise tell:
     const heldSince = parseInstant(message.circuitHeldSince);
     if (
-      circuit != null && heldSince != null &&
+      circuit != null &&
+      heldSince != null &&
       Temporal.Instant.compare(
-          heldSince.add(circuit.options.heldActivityTtl),
-          Temporal.Now.instant(),
-        ) <= 0
+        heldSince.add(circuit.options.heldActivityTtl),
+        Temporal.Now.instant(),
+      ) <= 0
     ) {
       const parseInbox = () => new URL(message.gatewayInboxes[0]);
-      const inbox = worker == null
-        ? parseInbox()
-        : await worker.prepare("validation", parseInbox);
+      const inbox =
+        worker == null
+          ? parseInbox()
+          : await worker.prepare("validation", parseInbox);
       await drop(circuit, getRemoteHost(inbox), inbox, heldSince);
       return;
     }
     for (const inboxHref of message.gatewayInboxes) {
       const parseInbox = () => new URL(inboxHref);
-      const inbox = worker == null
-        ? parseInbox()
-        : await worker.prepare("validation", parseInbox);
+      const inbox =
+        worker == null
+          ? parseInbox()
+          : await worker.prepare("validation", parseInbox);
       const remoteHost = getRemoteHost(inbox);
       const now = Temporal.Now.instant();
       const notBefore = parseInstant(message.gatewayNotBefore?.[inboxHref]);
@@ -2352,11 +2378,7 @@ export class FederationImpl<TContextData>
           });
           continue;
         } else if (decision.stateChange != null) {
-          recordCircuitBreakerSpanEvent(
-            span,
-            remoteHost,
-            decision.stateChange,
-          );
+          recordCircuitBreakerSpanEvent(span, remoteHost, decision.stateChange);
         }
       }
       try {
@@ -2370,30 +2392,33 @@ export class FederationImpl<TContextData>
           activityType: message.activityType,
           inbox,
           sharedInbox: message.sharedInbox,
-          headers: worker == null
-            ? new Headers(message.headers)
-            : await worker.prepare("request-preparation", () =>
-              new Headers(message.headers)),
+          headers:
+            worker == null
+              ? new Headers(message.headers)
+              : await worker.prepare(
+                  "request-preparation",
+                  () => new Headers(message.headers),
+                ),
           specDeterminer,
           meterProvider: this.meterProvider,
           tracerProvider: this.tracerProvider,
         });
       } catch (error) {
-        const preparationFailures = worker?.recordPreparationFailure(
-          error,
-          inboxHref,
-        ) ?? [];
+        const preparationFailures =
+          worker?.recordPreparationFailure(error, inboxHref) ?? [];
         if (preparationFailures.length > 0) {
           preparationFailuresByRoute.set(inboxHref, preparationFailures);
         }
         lastError = error;
-        const isPermanentFailure = error instanceof SendActivityError &&
+        const isPermanentFailure =
+          error instanceof SendActivityError &&
           this.permanentFailureStatusCodes.includes(error.statusCode);
-        let retryAfter = !isPermanentFailure &&
-            error instanceof SendActivityError &&
-            (error.statusCode === 429 || error.statusCode === 503)
-          ? parseRetryAfter(error.responseHeaders)
-          : undefined;
+        let retryAfter =
+          !isPermanentFailure &&
+          error instanceof SendActivityError &&
+          (error.statusCode === 429 || error.statusCode === 503)
+            ? parseRetryAfter(error.responseHeaders)
+            : undefined;
         let retryAt: Temporal.Instant | undefined;
         if (retryAfter != null) {
           try {
@@ -2410,12 +2435,14 @@ export class FederationImpl<TContextData>
           try {
             if (error instanceof SendActivityError) {
               const { statusCode } = error;
-              const stateChange = isPermanentFailure || statusCode === 429 ||
-                  (statusCode >= 400 && statusCode < 500)
-                ? await circuit.recordReachableFailure(remoteHost)
-                : statusCode >= 500
-                ? await circuit.recordFailure(remoteHost)
-                : undefined;
+              const stateChange =
+                isPermanentFailure ||
+                statusCode === 429 ||
+                (statusCode >= 400 && statusCode < 500)
+                  ? await circuit.recordReachableFailure(remoteHost)
+                  : statusCode >= 500
+                    ? await circuit.recordFailure(remoteHost)
+                    : undefined;
               if (stateChange != null) {
                 recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
               }
@@ -2478,9 +2505,10 @@ export class FederationImpl<TContextData>
           );
           survivors.push({
             inbox: inboxHref,
-            holdDelay: retryAfter == null
-              ? postDecision.delay
-              : maxDelay(postDecision.delay, retryAfter),
+            holdDelay:
+              retryAfter == null
+                ? postDecision.delay
+                : maxDelay(postDecision.delay, retryAfter),
             circuitHeld: true,
             postFailure: true,
             notBefore: retryAt,
@@ -2510,10 +2538,10 @@ export class FederationImpl<TContextData>
           );
         }
       }
-      logger.info(
-        "Successfully sent activity {activityId} to {inbox}.",
-        { ...logData, inbox: inboxHref },
-      );
+      logger.info("Successfully sent activity {activityId} to {inbox}.", {
+        ...logData,
+        inbox: inboxHref,
+      });
       return;
     }
     if (lastError != null) {
@@ -2601,14 +2629,15 @@ export class FederationImpl<TContextData>
       attempts: message.attempt,
     });
     if (
-      outboxQueue != null && survivors.every((s) => s.holdDelay != null) &&
+      outboxQueue != null &&
+      survivors.every((s) => s.holdDelay != null) &&
       (policyDelay != null || !survivors.some((s) => s.postFailure))
     ) {
       // Every remaining gateway is held, so the whole delivery waits for the
       // first of them without counting as an attempt:
       let delay = survivors
         .map((s) => s.holdDelay!)
-        .reduce((a, b) => Temporal.Duration.compare(a, b) <= 0 ? a : b);
+        .reduce((a, b) => (Temporal.Duration.compare(a, b) <= 0 ? a : b));
       let heldMessage: OutboxMessage = nextMessage;
       if (survivors.some((s) => s.circuitHeld)) {
         const since = heldSince ?? now;
@@ -2631,14 +2660,14 @@ export class FederationImpl<TContextData>
       await (worker == null
         ? outboxQueue.enqueue(heldMessage, enqueueOptions)
         : worker.enqueue(
-          "defer",
-          heldMessage,
-          enqueueOptions.delay,
-          () => outboxQueue.enqueue(heldMessage, enqueueOptions),
-          survivors.flatMap((route) =>
-            preparationFailuresByRoute.get(route.inbox) ?? []
-          ),
-        ));
+            "defer",
+            heldMessage,
+            enqueueOptions.delay,
+            () => outboxQueue.enqueue(heldMessage, enqueueOptions),
+            survivors.flatMap(
+              (route) => preparationFailuresByRoute.get(route.inbox) ?? [],
+            ),
+          ));
       this.metrics.recordQueueTaskEnqueued(
         {
           role: "outbox",
@@ -2653,7 +2682,8 @@ export class FederationImpl<TContextData>
     // A natively retrying queue replays the original message, so it is left
     // to the queue only if no gateway has to be excluded from the retry:
     if (
-      outboxQueue?.nativeRetrial && !hasRetryAfter &&
+      outboxQueue?.nativeRetrial &&
+      !hasRetryAfter &&
       survivors.length === message.gatewayInboxes.length &&
       globalThis.Object.keys(gatewayNotBefore).length < 1
     ) {
@@ -2668,8 +2698,8 @@ export class FederationImpl<TContextData>
       worker?.abandon(
         outboxQueue == null ? "queue-unavailable" : "retry-policy-declined",
         survivors.map((route) => route.inbox),
-        survivors.flatMap((route) =>
-          preparationFailuresByRoute.get(route.inbox) ?? []
+        survivors.flatMap(
+          (route) => preparationFailuresByRoute.get(route.inbox) ?? [],
         ),
       );
       logger.error(
@@ -2688,7 +2718,7 @@ export class FederationImpl<TContextData>
     // others are skipped then until their own time comes:
     const delay = survivors
       .map((s) => s.holdDelay ?? s.retryAfter ?? policyDelay)
-      .reduce((a, b) => Temporal.Duration.compare(a, b) <= 0 ? a : b);
+      .reduce((a, b) => (Temporal.Duration.compare(a, b) <= 0 ? a : b));
     const retryMessage = {
       ...nextMessage,
       attempt: message.attempt + 1,
@@ -2705,14 +2735,14 @@ export class FederationImpl<TContextData>
     await (worker == null
       ? outboxQueue.enqueue(retryMessage, enqueueOptions)
       : worker.enqueue(
-        "retry",
-        retryMessage,
-        enqueueOptions.delay,
-        () => outboxQueue.enqueue(retryMessage, enqueueOptions),
-        survivors.flatMap((route) =>
-          preparationFailuresByRoute.get(route.inbox) ?? []
-        ),
-      ));
+          "retry",
+          retryMessage,
+          enqueueOptions.delay,
+          () => outboxQueue.enqueue(retryMessage, enqueueOptions),
+          survivors.flatMap(
+            (route) => preparationFailuresByRoute.get(route.inbox) ?? [],
+          ),
+        ));
     this.metrics.recordQueueTaskEnqueued(
       {
         role: "outbox",
@@ -2753,15 +2783,17 @@ export class FederationImpl<TContextData>
         }),
       });
     } else if (
-      message.identifier == null && this.sharedInboxKeyDispatcher != null
+      message.identifier == null &&
+      this.sharedInboxKeyDispatcher != null
     ) {
       const identity = await this.sharedInboxKeyDispatcher(context);
       if (identity != null) {
         context = this.#createContext(baseUrl, ctxData, {
           [outboundProvenance]: provenance,
-          documentLoader: "identifier" in identity || "username" in identity
-            ? await context.getDocumentLoader(identity)
-            : context.getDocumentLoader(identity),
+          documentLoader:
+            "identifier" in identity || "username" in identity
+              ? await context.getDocumentLoader(identity)
+              : context.getDocumentLoader(identity),
         });
       }
     }
@@ -2843,27 +2875,19 @@ export class FederationImpl<TContextData>
               ...message,
               attempt: message.attempt + 1,
             } satisfies InboxMessage;
-            await this.inboxQueue.enqueue(
-              retryMessage,
-              {
-                delay: clampNegativeDelay(delay),
-              },
-            );
+            await this.inboxQueue.enqueue(retryMessage, {
+              delay: clampNegativeDelay(delay),
+            });
             if (activityType != null) {
-              this.metrics
-                .recordQueueTaskEnqueued(
-                  {
-                    role: "inbox",
-                    queue: this.inboxQueue,
-                    activityType,
-                  },
-                  retryMessage.attempt,
-                );
-              recordInboxActivity(
-                this.meterProvider,
-                "retried",
-                activityType,
+              this.metrics.recordQueueTaskEnqueued(
+                {
+                  role: "inbox",
+                  queue: this.inboxQueue,
+                  activityType,
+                },
+                retryMessage.attempt,
               );
+              recordInboxActivity(this.meterProvider, "retried", activityType);
             }
           } else {
             logger.error(
@@ -2893,8 +2917,8 @@ export class FederationImpl<TContextData>
 
         let dispatched:
           | ReturnType<
-            NonNullable<typeof this.inboxListeners>["dispatchWithClass"]
-          >
+              NonNullable<typeof this.inboxListeners>["dispatchWithClass"]
+            >
           | null
           | undefined;
         let parseInput: unknown = undefined;
@@ -2937,17 +2961,18 @@ export class FederationImpl<TContextData>
           }
           if (restored != null) {
             const expandedActivity = deepFreeze(restored.expanded);
-            restoredAuthentication = message.authentication === undefined
-              ? createAuthenticationEvidence({
-                ...getEmptyAuthenticationEvidence(),
-                expandedActivity,
-                baseUrl: restored.baseUrl,
-              })
-              : deserializeAuthentication(
-                message.authentication,
-                expandedActivity,
-                restored.baseUrl,
-              );
+            restoredAuthentication =
+              message.authentication === undefined
+                ? createAuthenticationEvidence({
+                    ...getEmptyAuthenticationEvidence(),
+                    expandedActivity,
+                    baseUrl: restored.baseUrl,
+                  })
+                : deserializeAuthentication(
+                    message.authentication,
+                    expandedActivity,
+                    restored.baseUrl,
+                  );
             if (restoredAuthentication == null) {
               failure = new TypeError(
                 "The queued activity has malformed authentication evidence.",
@@ -2955,7 +2980,8 @@ export class FederationImpl<TContextData>
             }
           }
           if (
-            failure != null || restored == null ||
+            failure != null ||
+            restored == null ||
             restoredAuthentication == null
           ) {
             await reportInboxError(failure);
@@ -3032,31 +3058,32 @@ export class FederationImpl<TContextData>
               (message.ldSignatureVerified == null && hasSignatureField);
             const parseContext = hasSignatureField
               ? {
-                ...context,
-                // Verified LDS replay, fallback-authenticated queue items with a
-                // producer-side normalized cache, and legacy queued LDS
-                // messages may still reference Fedify's built-in signature
-                // contexts at the root after we detach the signature object, so
-                // keep the normalization loader shortcut available whenever a
-                // signature block remains.  Authentication provenance lives in
-                // ldSignatureVerified; normalizedActivity is a separate parse
-                // cache that rolling upgrades and stricter worker loaders may
-                // still depend on.
-                contextLoader: getNormalizationContextLoader(
-                  context.contextLoader,
-                ),
-              }
+                  ...context,
+                  // Verified LDS replay, fallback-authenticated queue items with a
+                  // producer-side normalized cache, and legacy queued LDS
+                  // messages may still reference Fedify's built-in signature
+                  // contexts at the root after we detach the signature object, so
+                  // keep the normalization loader shortcut available whenever a
+                  // signature block remains.  Authentication provenance lives in
+                  // ldSignatureVerified; normalizedActivity is a separate parse
+                  // cache that rolling upgrades and stricter worker loaders may
+                  // still depend on.
+                  contextLoader: getNormalizationContextLoader(
+                    context.contextLoader,
+                  ),
+                }
               : {
-                ...context,
-                contextLoader: wrapContextLoaderForJsonLd(
-                  context.contextLoader,
-                ),
-              };
+                  ...context,
+                  contextLoader: wrapContextLoaderForJsonLd(
+                    context.contextLoader,
+                  ),
+                };
             parseContextLoader = parseContext.contextLoader;
             let normalizedActivity: unknown | undefined;
             if (shouldParseFromNormalizedSignedPayload) {
-              normalizedActivity = message.normalizedActivity ??
-                await compactJsonLd(message.activity, context.contextLoader);
+              normalizedActivity =
+                message.normalizedActivity ??
+                (await compactJsonLd(message.activity, context.contextLoader));
               // Queue backends are trusted in the normal deployment model, but a
               // cached normalized payload should still satisfy the same JSON-LD
               // safety invariants as a freshly compacted one before the worker
@@ -3066,12 +3093,9 @@ export class FederationImpl<TContextData>
             parseInput = shouldParseFromNormalizedSignedPayload
               ? detachSignature(normalizedActivity)
               : hasSignatureField
-              ? detachSignature(message.activity)
-              : message.activity;
-            activity = await Activity.fromJsonLd(
-              parseInput,
-              parseContext,
-            );
+                ? detachSignature(message.activity)
+                : message.activity;
+            activity = await Activity.fromJsonLd(parseInput, parseContext);
           }
           activityType = getTypeId(activity).href;
           span.setAttribute("activitypub.activity.type", activityType);
@@ -3087,10 +3111,12 @@ export class FederationImpl<TContextData>
           // An activity without an actor is processed only if its listener
           // still allows that, and a principal authenticated it under the
           // same rules as when it was received:
-          const actorless = actorPresence === "absent" &&
-            !this.skipSignatureVerification && authentication.verified &&
+          const actorless =
+            actorPresence === "absent" &&
+            !this.skipSignatureVerification &&
+            authentication.verified &&
             this.inboxListeners?.dispatchWithClass(activity)?.options
-                .allowActorless === true &&
+              .allowActorless === true &&
             isActorlessActivityAuthenticated(activity, authentication);
           if (activity.actorId == null && !actorless) {
             logger.error("Missing actor in queued incoming activity.", {
@@ -3107,8 +3133,10 @@ export class FederationImpl<TContextData>
             return;
           }
           if (
-            !this.skipSignatureVerification && !actorless &&
-            activity.id != null && !actorsHaveSameOrigin(activity)
+            !this.skipSignatureVerification &&
+            !actorless &&
+            activity.id != null &&
+            !actorsHaveSameOrigin(activity)
           ) {
             logger.error(
               "The queued activity ({activityId}) and its actors do not " +
@@ -3122,7 +3150,8 @@ export class FederationImpl<TContextData>
             );
             listenerSpan.setStatus({
               code: SpanStatusCode.ERROR,
-              message: `The activity (${activity.id.href}) and its actors ` +
+              message:
+                `The activity (${activity.id.href}) and its actors ` +
                 "do not have the same origin.",
             });
             recordInboxActivity(this.meterProvider, "rejected", activityType);
@@ -3163,11 +3192,7 @@ export class FederationImpl<TContextData>
                   recipient: message.identifier,
                 },
               );
-              recordInboxActivity(
-                this.meterProvider,
-                "rejected",
-                activityType,
-              );
+              recordInboxActivity(this.meterProvider, "rejected", activityType);
               listenerSpan.end();
               return;
             }
@@ -3177,10 +3202,10 @@ export class FederationImpl<TContextData>
           if (
             activity == null &&
             error instanceof RangeError &&
-            await hasMalformedKnownTemporalLiteral(
+            (await hasMalformedKnownTemporalLiteral(
               parseInput,
               parseContextLoader,
-            )
+            ))
           ) {
             // Patch releases must not change parser exception types to signal
             // malformed Temporal literals.  Instead, the queue worker keeps
@@ -3229,15 +3254,12 @@ export class FederationImpl<TContextData>
           return;
         }
         if (dispatched == null) {
-          logger.error(
-            "Unsupported activity type:\n{activity}",
-            {
-              activityId: activity.id?.href,
-              activity: message.activity,
-              recipient: message.identifier,
-              trial: message.attempt,
-            },
-          );
+          logger.error("Unsupported activity type:\n{activity}", {
+            activityId: activity.id?.href,
+            activity: message.activity,
+            recipient: message.identifier,
+            trial: message.attempt,
+          });
           listenerSpan.setStatus({
             code: SpanStatusCode.ERROR,
             message: `Unsupported activity type: ${activityType}`,
@@ -3264,11 +3286,10 @@ export class FederationImpl<TContextData>
               activity,
             );
           } finally {
-            this.metrics
-              .recordInboxProcessingDuration(
-                activityType,
-                getDurationMs(started),
-              );
+            this.metrics.recordInboxProcessingDuration(
+              activityType,
+              getDurationMs(started),
+            );
           }
           recordInboxActivity(this.meterProvider, "processed", activityType);
         } catch (error) {
@@ -3280,14 +3301,11 @@ export class FederationImpl<TContextData>
             ttl: Temporal.Duration.from({ days: 1 }),
           });
         }
-        logger.info(
-          "Activity {activityId} has been processed.",
-          {
-            activityId: activity?.id?.href,
-            activity: message.activity,
-            recipient: message.identifier,
-          },
-        );
+        logger.info("Activity {activityId} has been processed.", {
+          activityId: activity?.id?.href,
+          activity: message.activity,
+          recipient: message.identifier,
+        });
         listenerSpan.end();
       },
     );
@@ -3334,10 +3352,10 @@ export class FederationImpl<TContextData>
         try {
           await def.onError(context, error, data.value);
         } catch (onErrorError) {
-          logger.error(
-            "onError for custom task {taskName} threw:\n{error}",
-            { taskName: message.taskName, error: onErrorError },
-          );
+          logger.error("onError for custom task {taskName} threw:\n{error}", {
+            taskName: message.taskName,
+            error: onErrorError,
+          });
         }
       }
       const queue = this.resolveTaskQueue(def.name);
@@ -3346,8 +3364,9 @@ export class FederationImpl<TContextData>
       // A corrupted `started` must not throw here and abort the retry.
       let elapsedTime = Temporal.Duration.from({ seconds: 0 });
       try {
-        elapsedTime = Temporal.Instant.from(message.started)
-          .until(Temporal.Now.instant());
+        elapsedTime = Temporal.Instant.from(message.started).until(
+          Temporal.Now.instant(),
+        );
       } catch (parseError) {
         logger.error(
           "Custom task {taskName} has an unparsable started time " +
@@ -3475,9 +3494,10 @@ export class FederationImpl<TContextData>
     } = {},
   ): ContextImpl<TContextData> | RequestContextImpl<TContextData> {
     const request = urlOrRequest instanceof Request ? urlOrRequest : null;
-    const url = urlOrRequest instanceof URL
-      ? new URL(urlOrRequest)
-      : new URL(urlOrRequest.url);
+    const url =
+      urlOrRequest instanceof URL
+        ? new URL(urlOrRequest)
+        : new URL(urlOrRequest.url);
     if (request == null) {
       url.pathname = "/";
       url.hash = "";
@@ -3489,8 +3509,8 @@ export class FederationImpl<TContextData>
       url,
       federation: this,
       data: contextData,
-      documentLoader: opts.documentLoader ??
-        this.documentLoaderFactory(loaderOptions),
+      documentLoader:
+        opts.documentLoader ?? this.documentLoaderFactory(loaderOptions),
       contextLoader: this.contextLoaderFactory(loaderOptions),
     };
     if (request == null) return new ContextImpl(ctxOptions);
@@ -3504,15 +3524,17 @@ export class FederationImpl<TContextData>
   }
 
   #getLoaderOptions(origin: URL | string): DocumentLoaderFactoryOptions {
-    origin = typeof origin === "string"
-      ? new URL(origin).origin
-      : origin.origin;
+    origin =
+      typeof origin === "string" ? new URL(origin).origin : origin.origin;
     return {
       allowPrivateAddress: this.allowPrivateAddress,
-      userAgent: typeof this.userAgent === "string" ? this.userAgent : {
-        url: origin,
-        ...this.userAgent,
-      },
+      userAgent:
+        typeof this.userAgent === "string"
+          ? this.userAgent
+          : {
+              url: origin,
+              ...this.userAgent,
+            },
     };
   }
 
@@ -3554,15 +3576,17 @@ export class FederationImpl<TContextData>
       }
       return activity.id.href;
     };
-    const activityId = worker == null
-      ? validateActivity()
-      : await worker.prepare("validation", validateActivity);
+    const activityId =
+      worker == null
+        ? validateActivity()
+        : await worker.prepare("validation", validateActivity);
     observation?.setPhase("serialization");
     const createContextLoader = () =>
       this.contextLoaderFactory(this.#getLoaderOptions(ctx.origin));
-    const contextLoader = worker == null
-      ? createContextLoader()
-      : await worker.prepare("serialization", createContextLoader);
+    const contextLoader =
+      worker == null
+        ? createContextLoader()
+        : await worker.prepare("serialization", createContextLoader);
     // A Linked Data Signature attests authorship, which neither a gateway key
     // nor any key other than the DID's can do for a portable actor's
     // activity; its Object Integrity Proof does that instead:
@@ -3572,7 +3596,8 @@ export class FederationImpl<TContextData>
       for (const { keyId, privateKey } of keys) {
         validateCryptoKey(privateKey, "private");
         if (
-          ldSignable && rsaKey == null &&
+          ldSignable &&
+          rsaKey == null &&
           privateKey.algorithm.name === "RSASSA-PKCS1-v1_5" &&
           !isPortableKeyId(keyId)
         ) {
@@ -3582,9 +3607,10 @@ export class FederationImpl<TContextData>
       return { rsaKey, ldSignable };
     };
     observation?.setPhase("key-resolution");
-    const { rsaKey, ldSignable } = worker == null
-      ? resolveRsaKey()
-      : await worker.prepare("key-resolution", resolveRsaKey);
+    const { rsaKey, ldSignable } =
+      worker == null
+        ? resolveRsaKey()
+        : await worker.prepare("key-resolution", resolveRsaKey);
     // If Object Integrity Proofs were already created before fanout (e.g., in
     // sendActivityInternal()), skip signing to avoid duplicates.
     observation?.setPhase("signing");
@@ -3601,16 +3627,18 @@ export class FederationImpl<TContextData>
           appendToExistingProofs: false,
         },
       );
-    const signed = worker == null
-      ? await signActivity()
-      : await worker.prepare("signing", signActivity);
+    const signed =
+      worker == null
+        ? await signActivity()
+        : await worker.prepare("signing", signActivity);
     activity = signed.activity;
     const { hasProof, proofCreated } = signed;
     observation?.setPhase("serialization");
     const serializeActivity = async () => {
-      let result = !proofCreated && options.activityJsonLd != null
-        ? options.activityJsonLd
-        : await activity.toJsonLd({ format: "compact", contextLoader });
+      let result =
+        !proofCreated && options.activityJsonLd != null
+          ? options.activityJsonLd
+          : await activity.toJsonLd({ format: "compact", contextLoader });
       // Existing proofs are preserved by default because they may have been
       // created over the compact JSON-LD bytes exactly as supplied.  Fedify can
       // safely normalize unsigned activities, proofs it just created, or
@@ -3622,9 +3650,10 @@ export class FederationImpl<TContextData>
       }
       return result;
     };
-    let jsonLd = worker == null
-      ? await serializeActivity()
-      : await worker.prepare("serialization", serializeActivity);
+    let jsonLd =
+      worker == null
+        ? await serializeActivity()
+        : await worker.prepare("serialization", serializeActivity);
     observation?.setPhase("validation");
     const validateProofShape = () =>
       assertSupportedCompoundProofShape(jsonLd, activityId);
@@ -3669,9 +3698,10 @@ export class FederationImpl<TContextData>
           return jsonLd;
         }
       };
-      jsonLd = worker == null
-        ? await signLinkedData()
-        : await worker.prepare("signing", signLinkedData);
+      jsonLd =
+        worker == null
+          ? await signLinkedData()
+          : await worker.prepare("signing", signLinkedData);
     }
     if (!hasProof) {
       logger.warn(
@@ -3706,55 +3736,54 @@ export class FederationImpl<TContextData>
         const delivery = observation?.delivery(inbox);
         let sending: Promise<void>;
         try {
-          const createHeaders = collectionSync == null
-            ? undefined
-            : async () =>
-              new Headers({
-                "Collection-Synchronization":
-                  await buildCollectionSynchronizationHeader(
-                    collectionSync,
-                    inboxes[inbox].actorIds,
-                  ),
-              });
+          const createHeaders =
+            collectionSync == null
+              ? undefined
+              : async () =>
+                  new Headers({
+                    "Collection-Synchronization":
+                      await buildCollectionSynchronizationHeader(
+                        collectionSync,
+                        inboxes[inbox].actorIds,
+                      ),
+                  });
           const sendActivityId = activity.id?.href;
           const activityType = getTypeId(activity).href;
           observation?.setActivity({
             ...(sendActivityId == null ? {} : { id: sendActivityId }),
             type: activityType,
           });
-          sending = sendActivityToInbox(
-            inbox,
-            inboxes[inbox].gatewayInboxes,
-            {
-              attemptStarted: worker == null
+          sending = sendActivityToInbox(inbox, inboxes[inbox].gatewayInboxes, {
+            attemptStarted:
+              worker == null
                 ? undefined
                 : (target) =>
-                  worker.directAttemptStarted(
-                    target,
-                    observation?.continuation(inbox)?.outbound,
-                  ),
-              observation: delivery,
-              allowPrivateAddress: this.allowPrivateAddress,
-              keys,
-              activity: jsonLd,
-              activityId: sendActivityId,
-              activityType,
-              sharedInbox: inboxes[inbox].sharedInbox,
-              headers: createHeaders == null
+                    worker.directAttemptStarted(
+                      target,
+                      observation?.continuation(inbox)?.outbound,
+                    ),
+            observation: delivery,
+            allowPrivateAddress: this.allowPrivateAddress,
+            keys,
+            activity: jsonLd,
+            activityId: sendActivityId,
+            activityType,
+            sharedInbox: inboxes[inbox].sharedInbox,
+            headers:
+              createHeaders == null
                 ? undefined
                 : await (worker == null
-                  ? createHeaders()
-                  : worker.prepare("request-preparation", createHeaders)),
-              specDeterminer: new KvSpecDeterminer(
-                this.kv,
-                this.kvPrefixes.httpMessageSignaturesSpec,
-                this.firstKnock,
-                { specTtl: this.httpMessageSignaturesSpecTtl },
-              ),
-              meterProvider: this.meterProvider,
-              tracerProvider: this.tracerProvider,
-            },
-          );
+                    ? createHeaders()
+                    : worker.prepare("request-preparation", createHeaders)),
+            specDeterminer: new KvSpecDeterminer(
+              this.kv,
+              this.kvPrefixes.httpMessageSignaturesSpec,
+              this.firstKnock,
+              { specTtl: this.httpMessageSignaturesSpecTtl },
+            ),
+            meterProvider: this.meterProvider,
+            tracerProvider: this.tracerProvider,
+          });
         } catch (error) {
           if (delivery != null) await delivery.failed(error);
           throw error;
@@ -3771,17 +3800,18 @@ export class FederationImpl<TContextData>
       await Promise.all(promises);
       return;
     }
-    logger.debug(
-      "Enqueuing activity {activityId} to send later.",
-      { activityId: activity.id!.href, activity: jsonLd },
-    );
+    logger.debug("Enqueuing activity {activityId} to send later.", {
+      activityId: activity.id!.href,
+      activity: jsonLd,
+    });
     observation?.setPhase("key-resolution");
     const keyJwkPairs: SenderKeyJwkPair[] = [];
     for (const { keyId, privateKey } of keys) {
       const exportPrivateKey = () => exportJwk(privateKey);
-      const privateKeyJwk = worker == null
-        ? await exportPrivateKey()
-        : await worker.prepare("key-export", exportPrivateKey);
+      const privateKeyJwk =
+        worker == null
+          ? await exportPrivateKey()
+          : await worker.prepare("key-export", exportPrivateKey);
       keyJwkPairs.push({ keyId: keyId.href, privateKey: privateKeyJwk });
     }
     if (!this.manuallyStartQueue) this._startQueueInternal(ctx.data);
@@ -3796,9 +3826,10 @@ export class FederationImpl<TContextData>
       try {
         const prepareMessage = async () => {
           const { portableInbox, gatewayInboxes } = inboxes[inbox];
-          const messageOrderingKey = orderingKey == null
-            ? undefined
-            : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`;
+          const messageOrderingKey =
+            orderingKey == null
+              ? undefined
+              : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`;
           const messageActivityId = activity.id?.href;
           const messageActivityType = getTypeId(activity).href;
           observation?.setActivity({
@@ -3820,13 +3851,16 @@ export class FederationImpl<TContextData>
             actorIds: [...inboxes[inbox].actorIds],
             started: new Date().toISOString(),
             attempt: 0,
-            headers: collectionSync == null ? {} : {
-              "Collection-Synchronization":
-                await buildCollectionSynchronizationHeader(
-                  collectionSync,
-                  inboxes[inbox].actorIds,
-                ),
-            },
+            headers:
+              collectionSync == null
+                ? {}
+                : {
+                    "Collection-Synchronization":
+                      await buildCollectionSynchronizationHeader(
+                        collectionSync,
+                        inboxes[inbox].actorIds,
+                      ),
+                  },
             orderingKey: messageOrderingKey,
             ...getPortableMessageFields(portableInbox, gatewayInboxes),
             traceContext: carrier,
@@ -3856,23 +3890,23 @@ export class FederationImpl<TContextData>
           const enqueue = () =>
             worker == null
               ? outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
-              : worker.enqueueChildren(
-                [m.message],
-                () =>
+              : worker.enqueueChildren([m.message], () =>
                   outboxQueue.enqueue(m.message, {
                     orderingKey: m.orderingKey,
                   }),
-              );
-          await (observation == null ? enqueue() : observation.enqueue(
-            [{ inbox: m.message.inbox, queueMessageId: m.message.id }],
-            "outbox",
-            enqueue,
-          ));
+                );
+          await (observation == null
+            ? enqueue()
+            : observation.enqueue(
+                [{ inbox: m.message.inbox, queueMessageId: m.message.id }],
+                "outbox",
+                enqueue,
+              ));
           recordOutboxEnqueue(this.meterProvider, outboxQueue, m.message);
         }),
       );
       const errors = promises.flatMap((r) =>
-        r.status === "rejected" ? [(r as PromiseRejectedResult).reason] : []
+        r.status === "rejected" ? [(r as PromiseRejectedResult).reason] : [],
       );
       if (errors.length > 0) {
         logger.error(
@@ -3893,17 +3927,19 @@ export class FederationImpl<TContextData>
           worker == null
             ? outboxQueue.enqueueMany!(messages.map((m) => m.message))
             : worker.enqueueChildren(
-              messages.map((m) => m.message),
-              () => outboxQueue.enqueueMany!(messages.map((m) => m.message)),
-            );
-        await (observation == null ? enqueue() : observation.enqueue(
-          messages.map(({ message }) => ({
-            inbox: message.inbox,
-            queueMessageId: message.id,
-          })),
-          "outbox",
-          enqueue,
-        ));
+                messages.map((m) => m.message),
+                () => outboxQueue.enqueueMany!(messages.map((m) => m.message)),
+              );
+        await (observation == null
+          ? enqueue()
+          : observation.enqueue(
+              messages.map(({ message }) => ({
+                inbox: message.inbox,
+                queueMessageId: message.id,
+              })),
+              "outbox",
+              enqueue,
+            ));
       } catch (error) {
         logger.error(
           "Failed to enqueue activity {activityId} to send later: {error}",
@@ -3922,136 +3958,145 @@ export class FederationImpl<TContextData>
     options: FederationFetchOptions<TContextData>,
   ): Promise<Response> {
     const requestId = getRequestId(request);
-    return withContext({
-      requestId,
-      // Each HTTP ingress owns its current identity; async ancestry is not
-      // evidence that this request came from another inbox request.
-      inboxRequestId: undefined,
-      dispatchId: undefined,
-      sourceInboxRequestId: undefined,
-      sourceRequestId: undefined,
-    }, async () => {
-      const tracer = this._getTracer();
-      const metricState: HttpMetricState = { requestId };
-      const metricStart = performance.now();
-      return await tracer.startActiveSpan(
-        request.method,
-        {
-          kind: SpanKind.SERVER,
-          attributes: {
-            [ATTR_HTTP_REQUEST_METHOD]: request.method,
-            [ATTR_URL_FULL]: request.url,
+    return withContext(
+      {
+        requestId,
+        // Each HTTP ingress owns its current identity; async ancestry is not
+        // evidence that this request came from another inbox request.
+        inboxRequestId: undefined,
+        dispatchId: undefined,
+        sourceInboxRequestId: undefined,
+        sourceRequestId: undefined,
+      },
+      async () => {
+        const tracer = this._getTracer();
+        const metricState: HttpMetricState = { requestId };
+        const metricStart = performance.now();
+        return await tracer.startActiveSpan(
+          request.method,
+          {
+            kind: SpanKind.SERVER,
+            attributes: {
+              [ATTR_HTTP_REQUEST_METHOD]: request.method,
+              [ATTR_URL_FULL]: request.url,
+            },
           },
-        },
-        async (span) => {
-          const spanCtx = span.spanContext();
-          return await withContext(
-            { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
-            () =>
-              this.#observeInboxFetch(metricState, async () => {
-                const logger = getLogger(["fedify", "federation", "http"]);
-                if (span.isRecording()) {
-                  for (const [k, v] of request.headers) {
-                    span.setAttribute(ATTR_HTTP_REQUEST_HEADER(k), [v]);
+          async (span) => {
+            const spanCtx = span.spanContext();
+            return await withContext(
+              { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
+              () =>
+                this.#observeInboxFetch(metricState, async () => {
+                  const logger = getLogger(["fedify", "federation", "http"]);
+                  if (span.isRecording()) {
+                    for (const [k, v] of request.headers) {
+                      span.setAttribute(ATTR_HTTP_REQUEST_HEADER(k), [v]);
+                    }
                   }
-                }
-                let response: Response;
-                try {
-                  response = await this.#fetch(request, {
-                    ...options,
-                    span,
-                    tracer,
-                    metricState,
-                  });
-                  if (metricState.inboxCompletion != null) {
-                    metricState.inboxCompletion.observation.stage = "respond";
-                  }
-                  // Hashlink media responses are not negotiated, and they are
-                  // sent as the application returns them, whose headers may
-                  // even be immutable:
-                  if (
-                    metricState.endpoint !== "hashlink_media" &&
-                    acceptsJsonLd(request)
-                  ) {
-                    response.headers.set("Vary", "Accept");
-                  }
-                } catch (error) {
-                  metricState.inboxCompletion?.observation.project(span, {
-                    type: "exception",
-                    stage: metricState.inboxCompletion.observation.stage,
-                    error,
-                  });
-                  this.metrics
-                    .recordHttpServerRequest(
+                  let response: Response;
+                  try {
+                    response = await this.#fetch(request, {
+                      ...options,
+                      span,
+                      tracer,
+                      metricState,
+                    });
+                    if (metricState.inboxCompletion != null) {
+                      metricState.inboxCompletion.observation.stage = "respond";
+                    }
+                    // Hashlink media responses are not negotiated, and they are
+                    // sent as the application returns them, whose headers may
+                    // even be immutable:
+                    if (
+                      metricState.endpoint !== "hashlink_media" &&
+                      acceptsJsonLd(request)
+                    ) {
+                      response.headers.set("Vary", "Accept");
+                    }
+                  } catch (error) {
+                    metricState.inboxCompletion?.observation.project(span, {
+                      type: "exception",
+                      stage: metricState.inboxCompletion.observation.stage,
+                      error,
+                    });
+                    this.metrics.recordHttpServerRequest(
                       request.method,
                       metricState.endpoint ?? "error",
                       getDurationMs(metricStart),
                       { routeTemplate: metricState.routeTemplate },
                     );
-                  span.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message: `${error}`,
-                  });
-                  span.end();
-                  logger.error(
-                    "An error occurred while serving request " +
-                      "{method} {url}: {error}",
+                    span.setStatus({
+                      code: SpanStatusCode.ERROR,
+                      message: `${error}`,
+                    });
+                    span.end();
+                    logger.error(
+                      "An error occurred while serving request " +
+                        "{method} {url}: {error}",
+                      {
+                        method: request.method,
+                        url: request.url,
+                        error,
+                        ...(metricState.inboxRequest == null
+                          ? {}
+                          : {
+                              inboxRequestId:
+                                metricState.inboxRequest.inboxRequestId,
+                            }),
+                      },
+                    );
+                    throw error;
+                  }
+                  this.metrics.recordHttpServerRequest(
+                    request.method,
+                    metricState.endpoint ?? "error",
+                    getDurationMs(metricStart),
                     {
-                      method: request.method,
-                      url: request.url,
-                      error,
-                      ...(metricState.inboxRequest == null ? {} : {
-                        inboxRequestId: metricState.inboxRequest.inboxRequestId,
-                      }),
+                      statusCode: response.status,
+                      routeTemplate: metricState.routeTemplate,
                     },
                   );
-                  throw error;
-                }
-                this.metrics.recordHttpServerRequest(
-                  request.method,
-                  metricState.endpoint ?? "error",
-                  getDurationMs(metricStart),
-                  {
-                    statusCode: response.status,
-                    routeTemplate: metricState.routeTemplate,
-                  },
-                );
-                if (span.isRecording()) {
-                  span.setAttribute(
-                    ATTR_HTTP_RESPONSE_STATUS_CODE,
-                    response.status,
-                  );
-                  for (const [k, v] of response.headers) {
-                    span.setAttribute(ATTR_HTTP_RESPONSE_HEADER(k), [v]);
+                  if (span.isRecording()) {
+                    span.setAttribute(
+                      ATTR_HTTP_RESPONSE_STATUS_CODE,
+                      response.status,
+                    );
+                    for (const [k, v] of response.headers) {
+                      span.setAttribute(ATTR_HTTP_RESPONSE_HEADER(k), [v]);
+                    }
+                    span.setStatus({
+                      code:
+                        response.status >= 500
+                          ? SpanStatusCode.ERROR
+                          : SpanStatusCode.UNSET,
+                      message: response.statusText,
+                    });
                   }
-                  span.setStatus({
-                    code: response.status >= 500
-                      ? SpanStatusCode.ERROR
-                      : SpanStatusCode.UNSET,
-                    message: response.statusText,
-                  });
-                }
-                span.end();
-                const url = new URL(request.url);
-                const logTpl = "{method} {path}: {status}";
-                const values = {
-                  ...(metricState.inboxRequest == null ? {} : {
-                    inboxRequestId: metricState.inboxRequest.inboxRequestId,
-                  }),
-                  method: request.method,
-                  path: `${url.pathname}${url.search}`,
-                  url: request.url,
-                  status: response.status,
-                };
-                if (response.status >= 500) logger.error(logTpl, values);
-                else if (response.status >= 400) logger.warn(logTpl, values);
-                else logger.info(logTpl, values);
-                return response;
-              }),
-          );
-        },
-      );
-    });
+                  span.end();
+                  const url = new URL(request.url);
+                  const logTpl = "{method} {path}: {status}";
+                  const values = {
+                    ...(metricState.inboxRequest == null
+                      ? {}
+                      : {
+                          inboxRequestId:
+                            metricState.inboxRequest.inboxRequestId,
+                        }),
+                    method: request.method,
+                    path: `${url.pathname}${url.search}`,
+                    url: request.url,
+                    status: response.status,
+                  };
+                  if (response.status >= 500) logger.error(logTpl, values);
+                  else if (response.status >= 400) logger.warn(logTpl, values);
+                  else logger.info(logTpl, values);
+                  return response;
+                }),
+            );
+          },
+        );
+      },
+    );
   }
 
   async #fetch(
@@ -4080,9 +4125,10 @@ export class FederationImpl<TContextData>
     if (route == null) {
       // Routes registered by the application take precedence over the FEP-ef61
       // gateway endpoint, so that existing routes keep working unchanged:
-      const media = this.hashlinkMediaDispatcher == null
-        ? null
-        : parseHashlinkGatewayRequest(url);
+      const media =
+        this.hashlinkMediaDispatcher == null
+          ? null
+          : parseHashlinkGatewayRequest(url);
       if (media != null) {
         return await this.#fetchHashlinkMedia(request, media, {
           onNotFound,
@@ -4102,9 +4148,10 @@ export class FederationImpl<TContextData>
           });
         }
       }
-      const portable = request.method === "GET" || request.method === "HEAD"
-        ? parsePortableGatewayRequest(url)
-        : null;
+      const portable =
+        request.method === "GET" || request.method === "HEAD"
+          ? parsePortableGatewayRequest(url)
+          : null;
       if (portable != null) {
         const response = await this.#fetchPortableObject(request, portable, {
           onNotFound,
@@ -4124,10 +4171,11 @@ export class FederationImpl<TContextData>
     metricState.endpoint = getEndpointCategory(route.name);
     span.updateName(`${request.method} ${route.template}`);
     const routeName = route.name.replace(/:.*$/, "");
-    const source = request.method === "POST" &&
-        (routeName === "inbox" || routeName === "sharedInbox")
-      ? this.#createInboxRequestSource(request, metricState)
-      : undefined;
+    const source =
+      request.method === "POST" &&
+      (routeName === "inbox" || routeName === "sharedInbox")
+        ? this.#createInboxRequestSource(request, metricState)
+        : undefined;
     const provenance = globalThis.Object.freeze(
       source == null
         ? { originatingRequestId: metricState.requestId }
@@ -4145,8 +4193,9 @@ export class FederationImpl<TContextData>
     } catch (error) {
       if (
         request.method !== "POST" ||
-        routeName !== "inbox" && routeName !== "sharedInbox"
-      ) throw error;
+        (routeName !== "inbox" && routeName !== "sharedInbox")
+      )
+        throw error;
       return await this.#reportInboxPreparationError(
         request,
         contextData,
@@ -4256,45 +4305,43 @@ export class FederationImpl<TContextData>
       (routeName === "inbox" || routeName === "sharedInbox")
     ) {
       const recipient = route.values.identifier ?? null;
-      const observation = new InboxObservation({
-        kind: routeName === "inbox" ? "personal" : "shared",
-        recipient,
-      }, source);
+      const observation = new InboxObservation(
+        {
+          kind: routeName === "inbox" ? "personal" : "shared",
+          recipient,
+        },
+        source,
+      );
       this.#setInboxCompletion(metricState, observation, () => context);
-      return await withContext(
-        { inboxRequestId: source!.inboxRequestId },
-        () =>
-          observation.run(
-            async () => {
-              if (routeName === "inbox") {
-                context = this.#createContext(request, contextData, {
-                  [outboundProvenance]: getOutboundProvenance(context),
-                  documentLoader: await context.getDocumentLoader({
-                    identifier: recipient!,
-                  }),
-                });
-              } else if (this.sharedInboxKeyDispatcher != null) {
-                const identity = await this.sharedInboxKeyDispatcher(context);
-                if (identity != null) {
-                  context = this.#createContext(request, contextData, {
-                    [outboundProvenance]: getOutboundProvenance(context),
-                    documentLoader:
-                      "identifier" in identity || "username" in identity
-                        ? await context.getDocumentLoader(identity)
-                        : context.getDocumentLoader(identity),
-                  });
-                }
-              }
-              return await this.#handleInbox(request, {
-                recipient,
-                context,
-                contextData,
-                onNotFound,
-                observation,
+      return await withContext({ inboxRequestId: source!.inboxRequestId }, () =>
+        observation.run(async () => {
+          if (routeName === "inbox") {
+            context = this.#createContext(request, contextData, {
+              [outboundProvenance]: getOutboundProvenance(context),
+              documentLoader: await context.getDocumentLoader({
+                identifier: recipient!,
+              }),
+            });
+          } else if (this.sharedInboxKeyDispatcher != null) {
+            const identity = await this.sharedInboxKeyDispatcher(context);
+            if (identity != null) {
+              context = this.#createContext(request, contextData, {
+                [outboundProvenance]: getOutboundProvenance(context),
+                documentLoader:
+                  "identifier" in identity || "username" in identity
+                    ? await context.getDocumentLoader(identity)
+                    : context.getDocumentLoader(identity),
               });
-            },
-            span,
-          ),
+            }
+          }
+          return await this.#handleInbox(request, {
+            recipient,
+            context,
+            contextData,
+            onNotFound,
+            observation,
+          });
+        }, span),
       );
     }
     switch (routeName) {
@@ -4349,7 +4396,8 @@ export class FederationImpl<TContextData>
             context,
             outboxContextFactory: context.toOutboxContext.bind(context),
             actorDispatcher: this.actorCallbacks?.dispatcher,
-            authorizePredicate: this.outboxAuthorizePredicate ??
+            authorizePredicate:
+              this.outboxAuthorizePredicate ??
               this.outboxCallbacks?.authorizePredicate,
             outboxListeners: this.outboxListeners,
             outboxErrorHandler: this.outboxListenerErrorHandler,
@@ -4391,9 +4439,10 @@ export class FederationImpl<TContextData>
           if (identity != null) {
             context = this.#createContext(request, contextData, {
               [outboundProvenance]: getOutboundProvenance(context),
-              documentLoader: "identifier" in identity || "username" in identity
-                ? await context.getDocumentLoader(identity)
-                : context.getDocumentLoader(identity),
+              documentLoader:
+                "identifier" in identity || "username" in identity
+                  ? await context.getDocumentLoader(identity)
+                  : context.getDocumentLoader(identity),
             });
           }
         }
@@ -4421,18 +4470,18 @@ export class FederationImpl<TContextData>
         return await handleCollection(request, {
           name: "followers",
           identifier: route.values.identifier,
-          uriGetter: baseUrl == null
-            ? context.getFollowersUri.bind(context)
-            : (identifier) => {
-              const uri = context.getFollowersUri(identifier);
-              uri.searchParams.set("base-url", baseUrl!);
-              return uri;
-            },
+          uriGetter:
+            baseUrl == null
+              ? context.getFollowersUri.bind(context)
+              : (identifier) => {
+                  const uri = context.getFollowersUri(identifier);
+                  uri.searchParams.set("base-url", baseUrl!);
+                  return uri;
+                },
           context,
           filter: baseUrl != null ? new URL(baseUrl) : undefined,
-          filterPredicate: baseUrl != null
-            ? getFollowersFilterPredicate(baseUrl)
-            : undefined,
+          filterPredicate:
+            baseUrl != null ? getFollowersFilterPredicate(baseUrl) : undefined,
           collectionCallbacks: this.followersCallbacks,
           tracerProvider: this.tracerProvider,
           meterProvider: this._meterProvider,
@@ -4532,18 +4581,16 @@ export class FederationImpl<TContextData>
       contextData,
       span,
       metricState,
-    }:
-      & Required<
-        Pick<
-          FederationFetchOptions<TContextData>,
-          "onNotFound" | "onNotAcceptable" | "onUnauthorized"
-        >
+    }: Required<
+      Pick<
+        FederationFetchOptions<TContextData>,
+        "onNotFound" | "onNotAcceptable" | "onUnauthorized"
       >
-      & {
-        contextData: TContextData;
-        span: Span;
-        metricState: HttpMetricState;
-      },
+    > & {
+      contextData: TContextData;
+      span: Span;
+      metricState: HttpMetricState;
+    },
   ): Promise<Response> {
     if (portable.type === "malformed") {
       metricState.endpoint = "not_found";
@@ -4560,15 +4607,16 @@ export class FederationImpl<TContextData>
       );
     }
     const route = this.router.route(portable.path);
-    const isActor = route != null &&
+    const isActor =
+      route != null &&
       (route.name === "actor" || route.name.startsWith(ACTOR_ALIAS_PREFIX));
-    const collectionRoute = route == null
-      ? undefined
-      : getCollectionMetricRoute(route.name.replace(/:.*$/, ""));
+    const collectionRoute =
+      route == null
+        ? undefined
+        : getCollectionMetricRoute(route.name.replace(/:.*$/, ""));
     if (
       route == null ||
-      (!isActor && !route.name.startsWith("object:") &&
-        collectionRoute == null)
+      (!isActor && !route.name.startsWith("object:") && collectionRoute == null)
     ) {
       metricState.endpoint = "not_found";
       return await onNotFound(request);
@@ -4614,12 +4662,14 @@ export class FederationImpl<TContextData>
       return await handlePortableObject(request, {
         values: { identifier },
         context,
-        objectDispatcher: actorDispatcher == null
-          ? undefined
-          : (ctx) => actorDispatcher(ctx, identifier),
-        authorizePredicate: authorizePredicate == null
-          ? undefined
-          : (ctx) => authorizePredicate(ctx, identifier),
+        objectDispatcher:
+          actorDispatcher == null
+            ? undefined
+            : (ctx) => actorDispatcher(ctx, identifier),
+        authorizePredicate:
+          authorizePredicate == null
+            ? undefined
+            : (ctx) => authorizePredicate(ctx, identifier),
         canonicalId: portable.canonicalId,
         kind: "actor",
         onUnauthorized,
@@ -4655,14 +4705,12 @@ export class FederationImpl<TContextData>
       onUnauthorized,
       contextData,
       provenance,
-    }:
-      & Required<
-        Pick<
-          FederationFetchOptions<TContextData>,
-          "onNotFound" | "onUnauthorized"
-        >
+    }: Required<
+      Pick<
+        FederationFetchOptions<TContextData>,
+        "onNotFound" | "onUnauthorized"
       >
-      & { contextData: TContextData; provenance: OutboundProvenance },
+    > & { contextData: TContextData; provenance: OutboundProvenance },
   ): Promise<Response> {
     const logger = getLogger(["fedify", "federation", "collection"]);
     const url = new URL(request.url);
@@ -4703,9 +4751,10 @@ export class FederationImpl<TContextData>
         return await reject(resolution.reason, identifier);
       }
       const view = buildPortableCollectionView(resolution.collectionId, url);
-      const handle = routeName === "collection"
-        ? handleCustomCollection
-        : handleOrderedCollection;
+      const handle =
+        routeName === "collection"
+          ? handleCustomCollection
+          : handleOrderedCollection;
       return await handle<
         URL | Object | Link | Recipient,
         string,
@@ -4731,11 +4780,11 @@ export class FederationImpl<TContextData>
       name: string,
       callbacks:
         | CollectionCallbacks<
-          TItem,
-          RequestContext<TContextData>,
-          TContextData,
-          TFilter
-        >
+            TItem,
+            RequestContext<TContextData>,
+            TContextData,
+            TFilter
+          >
         | undefined,
       property: (actor: Actor) => URL | null,
       filter?: {
@@ -4798,11 +4847,13 @@ export class FederationImpl<TContextData>
           "followers",
           this.followersCallbacks,
           (a) => a.followersId,
-          baseUrl == null ? undefined : {
-            value: new URL(baseUrl),
-            predicate: getFollowersFilterPredicate(baseUrl),
-            parameter: ["base-url", baseUrl],
-          },
+          baseUrl == null
+            ? undefined
+            : {
+                value: new URL(baseUrl),
+                predicate: getFollowersFilterPredicate(baseUrl),
+                parameter: ["base-url", baseUrl],
+              },
         );
       }
       case "liked":
@@ -4899,10 +4950,7 @@ export class FederationImpl<TContextData>
     });
     const observation = new InboxObservation(inbox, metricState.inboxRequest);
     this.#setInboxCompletion(metricState, observation, () => context);
-    return await observation.run(
-      () => Promise.reject(error),
-      span,
-    );
+    return await observation.run(() => Promise.reject(error), span);
   }
 
   async #handleInbox(
@@ -4924,13 +4972,13 @@ export class FederationImpl<TContextData>
     },
   ): Promise<Response> {
     if (!this.manuallyStartQueue) this._startQueueInternal(contextData);
-    const inboxContextFactory = context.toInboxContext.bind(context) as
-      & typeof context.toInboxContext
-      & {
-        [rawInboxContextFactorySymbol]?: typeof context.toInboxContext;
-      };
-    inboxContextFactory[rawInboxContextFactorySymbol] = context
-      .toInboxContext.bind(context);
+    const inboxContextFactory = context.toInboxContext.bind(
+      context,
+    ) as typeof context.toInboxContext & {
+      [rawInboxContextFactorySymbol]?: typeof context.toInboxContext;
+    };
+    inboxContextFactory[rawInboxContextFactorySymbol] =
+      context.toInboxContext.bind(context);
     return await handleInbox(request, {
       recipient,
       context,
@@ -4964,21 +5012,19 @@ export class FederationImpl<TContextData>
       contextData,
       span,
       metricState,
-    }:
-      & Required<Pick<FederationFetchOptions<TContextData>, "onNotFound">>
-      & {
-        contextData: TContextData;
-        span: Span;
-        metricState: HttpMetricState;
-      },
+    }: Required<Pick<FederationFetchOptions<TContextData>, "onNotFound">> & {
+      contextData: TContextData;
+      span: Span;
+      metricState: HttpMetricState;
+    },
   ): Promise<Response> {
     const logger = getLogger(["fedify", "federation", "inbox"]);
     if (portable.type === "malformed") {
       metricState.endpoint = "not_found";
-      logger.debug(
-        "Malformed FEP-ef61 gateway inbox request {url}: {error}",
-        { url: request.url, error: portable.error },
-      );
+      logger.debug("Malformed FEP-ef61 gateway inbox request {url}: {error}", {
+        url: request.url,
+        error: portable.error,
+      });
       return new Response("Malformed portable inbox ID.", {
         status: 400,
         headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -4997,14 +5043,12 @@ export class FederationImpl<TContextData>
     const source = this.#createInboxRequestSource(request, metricState);
     let context: RequestContextImpl<TContextData>;
     try {
-      context = withContext(
-        { inboxRequestId: source.inboxRequestId },
-        () =>
-          this.#createContext(request, contextData, {
-            [outboundProvenance]: globalThis.Object.freeze({
-              inboxRequest: source,
-            }),
+      context = withContext({ inboxRequestId: source.inboxRequestId }, () =>
+        this.#createContext(request, contextData, {
+          [outboundProvenance]: globalThis.Object.freeze({
+            inboxRequest: source,
           }),
+        }),
       );
     } catch (error) {
       return await this.#reportInboxPreparationError(
@@ -5016,131 +5060,133 @@ export class FederationImpl<TContextData>
         metricState,
       );
     }
-    const observation = new InboxObservation({
-      kind: "portable",
-      recipient: identifier,
-    }, source);
+    const observation = new InboxObservation(
+      {
+        kind: "portable",
+        recipient: identifier,
+      },
+      source,
+    );
     this.#setInboxCompletion(metricState, observation, () => context);
-    return await withContext(
-      { inboxRequestId: source.inboxRequestId },
-      () =>
-        observation.run(
-          async () => {
-            // The actor is looked up only by its identifier, as for ordinary inbox
-            // deliveries, so that the identifier alone determines the recipient,
-            // also for inbox listeners and queued deliveries:
-            const actor = this.actorCallbacks?.dispatcher == null
-              ? null
-              : await this.actorCallbacks.dispatcher(context, identifier);
-            const localOrigin = context.canonicalOrigin;
-            const resolution = resolvePortableInboxRecipient(
-              actor == null || actor instanceof Tombstone ? null : actor,
-              {
-                authority: portable.portableRequest.authority,
-                canonicalInboxId: portable.canonicalId,
-                localOrigin,
-              },
-            );
-            if (resolution.status === "rejected") {
-              logger.debug(
-                "Not accepting a delivery to the portable inbox {inbox} on behalf " +
-                  "of the actor {identifier}: {reason}.",
-                {
-                  inbox: portable.canonicalId,
-                  identifier,
-                  reason: resolution.reason,
-                },
-              );
-              return await onNotFound(request);
-            }
-            const { recipient } = resolution;
-            // A portable actor does not necessarily have key pairs for authorized
-            // fetch, so fall back to the default document loader without them:
-            if (this.actorCallbacks?.keyPairsDispatcher != null) {
-              context = this.#createContext(request, contextData, {
-                [outboundProvenance]: getOutboundProvenance(context),
-                documentLoader: await context.getDocumentLoader({ identifier }),
-              });
-            }
-            const excludedOrigins = [localOrigin, new URL(request.url).origin];
-            return await this.#handleInbox(request, {
-              recipient: identifier,
-              observation,
-              context,
-              contextData,
-              onNotFound,
-              portableInbox: {
-                recipient,
-                forward: (activity, activityId, activityType, signatures) =>
-                  observeOutboundBroadcast(
-                    context,
-                    this.outboundObservers,
-                    async (observation) => {
-                      observation?.setActivity({
-                        ...(activityId == null ? {} : { id: activityId.href }),
-                        type: activityType,
-                      });
-                      if (this.portableInboxForwarding.maxTargets < 1) {
-                        if (observation != null) {
-                          await observation.skipped("forwarding-disabled");
-                        }
-                        return;
-                      }
-                      if (this.kv.cas == null) {
-                        if (!this.#portableInboxForwardingWarned) {
-                          this.#portableInboxForwardingWarned = true;
-                          logger.warn(
-                            "Activities delivered to FEP-ef61 portable inboxes are not " +
-                              "forwarded to the other gateways, as the key–value store " +
-                              "does not support compare-and-swap (KvStore.cas()), which " +
-                              "is needed to forward each activity at most once.",
-                          );
-                        }
-                        if (observation != null) {
-                          await observation.skipped("forwarding-unavailable");
-                        }
-                        return;
-                      }
-                      await forwardPortableInboxActivity({
-                        provenance: getOutboundProvenance(context),
-                        recipient,
-                        activity,
-                        activityId,
-                        activityType,
-                        excludedOrigins,
-                        baseUrl: context.origin,
-                        kv: this.kv,
-                        kvPrefix: this.kvPrefixes.portableInboxForwarding,
-                        outboxQueue: this.outboxQueue,
-                        startQueue: this.manuallyStartQueue
-                          ? undefined
-                          : () => this._startQueueInternal(contextData),
-                        allowPrivateAddress: this.allowPrivateAddress,
-                        getKeys: () =>
-                          this.#getPortableGatewayKeyPairs(
-                            context,
-                            identifier,
-                            recipient,
-                          ),
-                        specDeterminer: new KvSpecDeterminer(
-                          this.kv,
-                          this.kvPrefixes.httpMessageSignaturesSpec,
-                          this.firstKnock,
-                          { specTtl: this.httpMessageSignaturesSpecTtl },
-                        ),
-                        signatures,
-                        options: this.portableInboxForwarding,
-                        meterProvider: this.meterProvider,
-                        tracerProvider: this.tracerProvider,
-                      }, observation);
-                    },
-                    "portable-replication",
-                  ),
-              },
-            });
+    return await withContext({ inboxRequestId: source.inboxRequestId }, () =>
+      observation.run(async () => {
+        // The actor is looked up only by its identifier, as for ordinary inbox
+        // deliveries, so that the identifier alone determines the recipient,
+        // also for inbox listeners and queued deliveries:
+        const actor =
+          this.actorCallbacks?.dispatcher == null
+            ? null
+            : await this.actorCallbacks.dispatcher(context, identifier);
+        const localOrigin = context.canonicalOrigin;
+        const resolution = resolvePortableInboxRecipient(
+          actor == null || actor instanceof Tombstone ? null : actor,
+          {
+            authority: portable.portableRequest.authority,
+            canonicalInboxId: portable.canonicalId,
+            localOrigin,
           },
-          span,
-        ),
+        );
+        if (resolution.status === "rejected") {
+          logger.debug(
+            "Not accepting a delivery to the portable inbox {inbox} on behalf " +
+              "of the actor {identifier}: {reason}.",
+            {
+              inbox: portable.canonicalId,
+              identifier,
+              reason: resolution.reason,
+            },
+          );
+          return await onNotFound(request);
+        }
+        const { recipient } = resolution;
+        // A portable actor does not necessarily have key pairs for authorized
+        // fetch, so fall back to the default document loader without them:
+        if (this.actorCallbacks?.keyPairsDispatcher != null) {
+          context = this.#createContext(request, contextData, {
+            [outboundProvenance]: getOutboundProvenance(context),
+            documentLoader: await context.getDocumentLoader({ identifier }),
+          });
+        }
+        const excludedOrigins = [localOrigin, new URL(request.url).origin];
+        return await this.#handleInbox(request, {
+          recipient: identifier,
+          observation,
+          context,
+          contextData,
+          onNotFound,
+          portableInbox: {
+            recipient,
+            forward: (activity, activityId, activityType, signatures) =>
+              observeOutboundBroadcast(
+                context,
+                this.outboundObservers,
+                async (observation) => {
+                  observation?.setActivity({
+                    ...(activityId == null ? {} : { id: activityId.href }),
+                    type: activityType,
+                  });
+                  if (this.portableInboxForwarding.maxTargets < 1) {
+                    if (observation != null) {
+                      await observation.skipped("forwarding-disabled");
+                    }
+                    return;
+                  }
+                  if (this.kv.cas == null) {
+                    if (!this.#portableInboxForwardingWarned) {
+                      this.#portableInboxForwardingWarned = true;
+                      logger.warn(
+                        "Activities delivered to FEP-ef61 portable inboxes are not " +
+                          "forwarded to the other gateways, as the key–value store " +
+                          "does not support compare-and-swap (KvStore.cas()), which " +
+                          "is needed to forward each activity at most once.",
+                      );
+                    }
+                    if (observation != null) {
+                      await observation.skipped("forwarding-unavailable");
+                    }
+                    return;
+                  }
+                  await forwardPortableInboxActivity(
+                    {
+                      provenance: getOutboundProvenance(context),
+                      recipient,
+                      activity,
+                      activityId,
+                      activityType,
+                      excludedOrigins,
+                      baseUrl: context.origin,
+                      kv: this.kv,
+                      kvPrefix: this.kvPrefixes.portableInboxForwarding,
+                      outboxQueue: this.outboxQueue,
+                      startQueue: this.manuallyStartQueue
+                        ? undefined
+                        : () => this._startQueueInternal(contextData),
+                      allowPrivateAddress: this.allowPrivateAddress,
+                      getKeys: () =>
+                        this.#getPortableGatewayKeyPairs(
+                          context,
+                          identifier,
+                          recipient,
+                        ),
+                      specDeterminer: new KvSpecDeterminer(
+                        this.kv,
+                        this.kvPrefixes.httpMessageSignaturesSpec,
+                        this.firstKnock,
+                        { specTtl: this.httpMessageSignaturesSpecTtl },
+                      ),
+                      signatures,
+                      options: this.portableInboxForwarding,
+                      meterProvider: this.meterProvider,
+                      tracerProvider: this.tracerProvider,
+                    },
+                    observation,
+                  );
+                },
+                "portable-replication",
+              ),
+          },
+        });
+      }, span),
     );
   }
 
@@ -5179,9 +5225,8 @@ export class FederationImpl<TContextData>
     // for the recipient only if the mapper returns the recipient:
     for (const { cryptographicKey } of keyPairs) {
       const owner = cryptographicKey.ownerId;
-      const canonicalOwner = owner == null
-        ? null
-        : getCanonicalPortableId(owner);
+      const canonicalOwner =
+        owner == null ? null : getCanonicalPortableId(owner);
       if (canonicalOwner === actorId) continue;
       if (canonicalOwner == null) {
         logger.debug(
@@ -5216,13 +5261,11 @@ export class FederationImpl<TContextData>
       contextData,
       span,
       metricState,
-    }:
-      & Required<Pick<FederationFetchOptions<TContextData>, "onNotFound">>
-      & {
-        contextData: TContextData;
-        span: Span;
-        metricState: HttpMetricState;
-      },
+    }: Required<Pick<FederationFetchOptions<TContextData>, "onNotFound">> & {
+      contextData: TContextData;
+      span: Span;
+      metricState: HttpMetricState;
+    },
   ): Promise<Response> {
     metricState.endpoint = "hashlink_media";
     metricState.routeTemplate = HASHLINK_MEDIA_ROUTE_TEMPLATE;
@@ -5288,7 +5331,7 @@ function getFollowersFilterPredicate(
   baseUrl: string,
 ): (item: Recipient) => boolean {
   return (i) =>
-    (i instanceof URL ? i.href : i.id?.href ?? "").startsWith(baseUrl);
+    (i instanceof URL ? i.href : (i.id?.href ?? "")).startsWith(baseUrl);
 }
 
 const ACTOR_COLLECTION_ROUTE_ERRORS = {
@@ -5426,9 +5469,9 @@ function getEndpointCategory(routeName: string): FedifyEndpoint {
 
 function getCollectionMetricRoute(routeName: string):
   | {
-    kind: CollectionMetricKind;
-    dispatcher: CollectionMetricDispatcher;
-  }
+      kind: CollectionMetricKind;
+      dispatcher: CollectionMetricDispatcher;
+    }
   | undefined {
   switch (routeName) {
     case "inbox":
@@ -5504,17 +5547,15 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   readonly invokedFromActorKeyPairsDispatcher?: { identifier: string };
   #codec?: TaskCodec;
 
-  constructor(
-    {
-      url,
-      federation,
-      data,
-      documentLoader,
-      contextLoader,
-      invokedFromActorKeyPairsDispatcher,
-      [outboundProvenance]: provenance = emptyProvenance,
-    }: ContextOptions<TContextData>,
-  ) {
+  constructor({
+    url,
+    federation,
+    data,
+    documentLoader,
+    contextLoader,
+    invokedFromActorKeyPairsDispatcher,
+    [outboundProvenance]: provenance = emptyProvenance,
+  }: ContextOptions<TContextData>) {
     this.url = url;
     // Keep internal symbol metadata enumerable for context spreads, without
     // exposing a computed class field in generated declarations.
@@ -5539,7 +5580,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
    * @internal
    */
   get codec(): TaskCodec {
-    return this.#codec ??= new TaskCodec(this);
+    return (this.#codec ??= new TaskCodec(this));
   }
 
   get #enqueueTasks() {
@@ -5566,16 +5607,23 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     activityType: string,
     metadata?: InboxContextMetadata,
   ): InboxContextImpl<TContextData> {
-    return new InboxContextImpl(recipient, activity, activityId, activityType, {
-      [outboundProvenance]: getOutboundProvenance(this),
-      url: this.url,
-      federation: this.federation,
-      data: this.data,
-      documentLoader: this.documentLoader,
-      contextLoader: this.contextLoader,
-      invokedFromActorKeyPairsDispatcher:
-        this.invokedFromActorKeyPairsDispatcher,
-    }, metadata?.authentication);
+    return new InboxContextImpl(
+      recipient,
+      activity,
+      activityId,
+      activityType,
+      {
+        [outboundProvenance]: getOutboundProvenance(this),
+        url: this.url,
+        federation: this.federation,
+        data: this.data,
+        documentLoader: this.documentLoader,
+        contextLoader: this.contextLoader,
+        invokedFromActorKeyPairsDispatcher:
+          this.invokedFromActorKeyPairsDispatcher,
+      },
+      metadata?.authentication,
+    );
   }
 
   toOutboxContext(
@@ -5644,13 +5692,9 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   }
 
   #getActorPath(identifier: string): string {
-    const path = this.federation.router.build(
-      `${ACTOR_ALIAS_PREFIX}${identifier}`,
-      {},
-    ) ?? this.federation.router.build(
-      "actor",
-      { identifier },
-    );
+    const path =
+      this.federation.router.build(`${ACTOR_ALIAS_PREFIX}${identifier}`, {}) ??
+      this.federation.router.build("actor", { identifier });
     if (path == null) {
       throw new RouterError("No actor dispatcher registered.");
     }
@@ -5720,10 +5764,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   }
 
   getMediaUploaderUri(identifier: string): URL {
-    const path = this.federation.router.build(
-      "mediaUploader",
-      { identifier },
-    );
+    const path = this.federation.router.build("mediaUploader", { identifier });
     if (path == null) {
       throw new RouterError("No media uploader registered.");
     }
@@ -5740,10 +5781,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       }
       return new URL(path, this.canonicalOrigin);
     }
-    const path = this.federation.router.build(
-      "inbox",
-      { identifier },
-    );
+    const path = this.federation.router.build("inbox", { identifier });
     if (path == null) {
       throw new RouterError("No inbox path registered.");
     }
@@ -5869,12 +5907,13 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     const result = this.#parseRoute(route);
     return result == null
       ? null
-      : { ...result, authority: portable.authority } as ParseUriResult;
+      : ({ ...result, authority: portable.authority } as ParseUriResult);
   }
 
-  #parseRoute(
-    route: { name: string; values: Record<string, string> },
-  ): ParseUriResult | null {
+  #parseRoute(route: {
+    name: string;
+    values: Record<string, string>;
+  }): ParseUriResult | null {
     if (route.name === "sharedInbox") {
       return {
         type: "inbox",
@@ -5936,11 +5975,9 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
     const collectionTypes = ["collection", "orderedCollection"] as const;
     const collectionRegex = new RegExp(`^(${collectionTypes.join("|")}):(.*)$`);
-    const match = route.name.match(collectionRegex) as null | [
-      unknown,
-      typeof collectionTypes[number],
-      string,
-    ];
+    const match = route.name.match(collectionRegex) as
+      | null
+      | [unknown, (typeof collectionTypes)[number], string];
     if (match !== null) {
       const [, type] = match;
       const name = this.federation.getCollectionName(route.name);
@@ -6000,9 +6037,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           // FEP-ef61 requires the keys that gateways sign HTTP requests with
           // to be listed in the portable actor's assertionMethod, where
           // verifiers look them up by the keyId of the signature:
-          id: portableActor == null
-            ? new URL(`#multikey-${i}`, owner)
-            : keyPair.keyId,
+          id:
+            portableActor == null
+              ? new URL(`#multikey-${i}`, owner)
+              : keyPair.keyId,
           controller: owner,
           publicKey: keyPair.publicKey,
         }),
@@ -6084,15 +6122,14 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   protected async getRsaKeyPairFromIdentifier(
     identifier: string,
-  ): Promise<CryptoKeyPair & { keyId: URL } | null> {
+  ): Promise<(CryptoKeyPair & { keyId: URL }) | null> {
     const keyPairs = await this.getKeyPairsFromIdentifier(identifier);
     for (const keyPair of keyPairs) {
       const { privateKey } = keyPair;
       if (
         privateKey.algorithm.name === "RSASSA-PKCS1-v1_5" &&
         (privateKey.algorithm as unknown as { hash: { name: string } }).hash
-            .name ===
-          "SHA-256"
+          .name === "SHA-256"
       ) {
         return keyPair;
       }
@@ -6105,20 +6142,13 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   }
 
   getDocumentLoader(
-    identity:
-      | { identifier: string }
-      | { username: string },
+    identity: { identifier: string } | { username: string },
   ): Promise<DocumentLoader>;
   getDocumentLoader(identity: SenderKeyPair): DocumentLoader;
   getDocumentLoader(
-    identity:
-      | SenderKeyPair
-      | { identifier: string }
-      | { username: string },
+    identity: SenderKeyPair | { identifier: string } | { username: string },
   ): DocumentLoader | Promise<DocumentLoader> {
-    if (
-      "identifier" in identity || "username" in identity
-    ) {
+    if ("identifier" in identity || "username" in identity) {
       let identifierPromise: Promise<string | null>;
       if ("username" in identity) {
         const username = identity.username;
@@ -6127,9 +6157,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           identifierPromise = Promise.resolve(username);
         } else {
           const identifier = mapper(this, username);
-          identifierPromise = identifier instanceof Promise
-            ? identifier
-            : Promise.resolve(identifier);
+          identifierPromise =
+            identifier instanceof Promise
+              ? identifier
+              : Promise.resolve(identifier);
         }
       } else {
         identifierPromise = Promise.resolve(identity.identifier);
@@ -6156,8 +6187,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       userAgent: options.userAgent ?? this.federation.userAgent,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
       meterProvider: options.meterProvider ?? this.meterProvider,
-      verifyPortableObject: options.verifyPortableObject ??
-        this.verifyPortableObject,
+      verifyPortableObject:
+        options.verifyPortableObject ?? this.verifyPortableObject,
       // @ts-ignore: `allowPrivateAddress` is not in the type definition.
       allowPrivateAddress: this.federation.allowPrivateAddress,
     });
@@ -6171,8 +6202,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       ...options,
       documentLoader: options.documentLoader ?? this.documentLoader,
       contextLoader: options.contextLoader ?? this.contextLoader,
-      verifyPortableObject: options.verifyPortableObject ??
-        this.verifyPortableObject,
+      verifyPortableObject:
+        options.verifyPortableObject ?? this.verifyPortableObject,
     });
   }
 
@@ -6192,15 +6223,15 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   ): Promise<NodeInfo | JsonValue | undefined> {
     return options.parse === "none"
       ? getNodeInfo(url, {
-        parse: "none",
-        direct: options.direct,
-        userAgent: options?.userAgent ?? this.federation.userAgent,
-      })
+          parse: "none",
+          direct: options.direct,
+          userAgent: options?.userAgent ?? this.federation.userAgent,
+        })
       : getNodeInfo(url, {
-        parse: options.parse,
-        direct: options.direct,
-        userAgent: options?.userAgent ?? this.federation.userAgent,
-      });
+          parse: options.parse,
+          direct: options.direct,
+          userAgent: options?.userAgent ?? this.federation.userAgent,
+        });
   }
 
   lookupWebFinger(
@@ -6270,18 +6301,19 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
             ? "activitypub.outbox"
             : "activitypub.fanout",
           {
-            kind: this.federation.outboxQueue == null || options.immediate
-              ? SpanKind.CLIENT
-              : SpanKind.PRODUCER,
+            kind:
+              this.federation.outboxQueue == null || options.immediate
+                ? SpanKind.CLIENT
+                : SpanKind.PRODUCER,
             attributes: {
               "activitypub.activity.type": activityType,
               "activitypub.activity.to": activity.toIds.map((to) => to.href),
               "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
-              "activitypub.activity.bto": activity.btoIds.map((bto) =>
-                bto.href
+              "activitypub.activity.bto": activity.btoIds.map(
+                (bto) => bto.href,
               ),
-              "activitypub.activity.bcc": activity.bccIds.map((bcc) =>
-                bcc.href
+              "activitypub.activity.bcc": activity.bccIds.map(
+                (bcc) => bcc.href,
               ),
             },
           },
@@ -6354,9 +6386,9 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           );
           if (mapped == null) {
             throw new Error(
-              `No actor found for the given username ${
-                JSON.stringify(username)
-              }.`,
+              `No actor found for the given username ${JSON.stringify(
+                username,
+              )}.`,
             );
           }
           identifier = mapped;
@@ -6406,9 +6438,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         );
       }
       expandedRecipients = [];
-      for await (
-        const recipient of this.getFollowers(identifier)
-      ) {
+      for await (const recipient of this.getFollowers(identifier)) {
         expandedRecipients.push(recipient);
       }
       if (options.syncCollection) {
@@ -6463,10 +6493,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     span?.setAttribute("activitypub.activity.id", transformedActivityId ?? "");
     observation?.setPhase("validation");
     if (activity.actorId == null) {
-      logger.error(
-        "Activity {activityId} to send does not have an actor.",
-        { activity, activityId: activity?.id?.href },
-      );
+      logger.error("Activity {activityId} to send does not have an actor.", {
+        activity,
+        activityId: activity?.id?.href,
+      });
       throw new TypeError(
         "The activity to send must have at least one actor property.",
       );
@@ -6494,15 +6524,19 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         activity,
         actorKeyPairs == null
           ? keys.map(({ keyId, privateKey }) => ({
-            verificationMethod: keyId,
-            privateKey,
-          }))
+              verificationMethod: keyId,
+              privateKey,
+            }))
           : actorKeyPairs.flatMap((kp) =>
-            kp.multikey.id == null ? [] : [{
-              verificationMethod: kp.multikey.id,
-              privateKey: kp.privateKey,
-            }]
-          ),
+              kp.multikey.id == null
+                ? []
+                : [
+                    {
+                      verificationMethod: kp.multikey.id,
+                      privateKey: kp.privateKey,
+                    },
+                  ],
+            ),
         {
           contextLoader: this.contextLoader,
           tracerProvider: this.tracerProvider,
@@ -6549,15 +6583,17 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       );
     }
     if (
-      this.federation.fanoutQueue == null || options.immediate ||
-      options.fanout === "skip" || (options.fanout ?? "auto") === "auto" &&
-        globalThis.Object.keys(inboxes).length < FANOUT_THRESHOLD
+      this.federation.fanoutQueue == null ||
+      options.immediate ||
+      options.fanout === "skip" ||
+      ((options.fanout ?? "auto") === "auto" &&
+        globalThis.Object.keys(inboxes).length < FANOUT_THRESHOLD)
     ) {
       await this.federation.sendActivity(keys, inboxes, activity, {
         ...opts,
         activityJsonLd,
-        normalizeExistingProofs: proofCreated ||
-          options.normalizeExistingProofs,
+        normalizeExistingProofs:
+          proofCreated || options.normalizeExistingProofs,
       });
       return true;
     }
@@ -6588,14 +6624,17 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       baseUrl: this.origin,
       keys: keyJwkPairs,
       inboxes: globalThis.Object.fromEntries(
-        globalThis.Object.entries(inboxes).map((
-          [k, { actorIds, sharedInbox, portableInbox, gatewayInboxes }],
-        ) => [k, {
-          actorIds: [...actorIds],
-          ...observation?.continuation(k),
-          sharedInbox,
-          ...getPortableMessageFields(portableInbox, gatewayInboxes),
-        }]),
+        globalThis.Object.entries(inboxes).map(
+          ([k, { actorIds, sharedInbox, portableInbox, gatewayInboxes }]) => [
+            k,
+            {
+              actorIds: [...actorIds],
+              ...observation?.continuation(k),
+              sharedInbox,
+              ...getPortableMessageFields(portableInbox, gatewayInboxes),
+            },
+          ],
+        ),
       ),
       activity: activityJsonLd,
       activityId,
@@ -6611,19 +6650,19 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     if (observation != null) await observation.prepared("fanout");
     await (observation == null
       ? this.federation.fanoutQueue.enqueue(message, {
-        orderingKey: options.orderingKey,
-      })
+          orderingKey: options.orderingKey,
+        })
       : observation.enqueue(
-        globalThis.Object.keys(inboxes).map((inbox) => ({
-          inbox,
-          queueMessageId: message.id,
-        })),
-        "fanout",
-        () =>
-          this.federation.fanoutQueue!.enqueue(message, {
-            orderingKey: options.orderingKey,
-          }),
-      ));
+          globalThis.Object.keys(inboxes).map((inbox) => ({
+            inbox,
+            queueMessageId: message.id,
+          })),
+          "fanout",
+          () =>
+            this.federation.fanoutQueue!.enqueue(message, {
+              orderingKey: options.orderingKey,
+            }),
+        ));
     getFederationMetrics(this.federation.meterProvider).recordQueueTaskEnqueued(
       {
         role: "fanout",
@@ -6693,9 +6732,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     return tracer.startActiveSpan(
       "activitypub.inbox",
       {
-        kind: this.federation.inboxQueue == null || options.immediate
-          ? SpanKind.INTERNAL
-          : SpanKind.PRODUCER,
+        kind:
+          this.federation.inboxQueue == null || options.immediate
+            ? SpanKind.INTERNAL
+            : SpanKind.PRODUCER,
         attributes: {
           "activitypub.activity.type": getTypeId(activity).href,
         },
@@ -6807,27 +6847,23 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     // A Linked Data Signature is made after the Object Integrity Proofs, so
     // the proofs are verified without it, as for inbox deliveries:
     const document = detachSignature(json);
-    const verified = await verifyObjectDetailed(
-      Activity,
-      document,
-      {
-        contextLoader,
-        documentLoader: options.documentLoader ?? this.documentLoader,
-        meterProvider: this.meterProvider,
-        tracerProvider: options.tracerProvider ?? this.tracerProvider,
-        keyCache,
-      },
-    );
+    const verified = await verifyObjectDetailed(Activity, document, {
+      contextLoader,
+      documentLoader: options.documentLoader ?? this.documentLoader,
+      meterProvider: this.meterProvider,
+      tracerProvider: options.tracerProvider ?? this.tracerProvider,
+      keyCache,
+    });
     if (verified.status !== "verified") {
-      logger.debug(
-        "Object Integrity Proofs are not verified.",
-        { recipient, activity: json },
-      );
+      logger.debug("Object Integrity Proofs are not verified.", {
+        recipient,
+        activity: json,
+      });
       if (activity.id == null) {
-        logger.debug(
-          "Activity is missing an ID; unable to fetch.",
-          { recipient, activity: json },
-        );
+        logger.debug("Activity is missing an ID; unable to fetch.", {
+          recipient,
+          activity: json,
+        });
         return false;
       }
       // The fetched document is taken from the boundary that returns the
@@ -6876,13 +6912,14 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         );
         return false;
       } else if (!(fetched instanceof Activity)) {
-        logger.debug(
-          "Fetched object is not an Activity.",
-          { recipient, activity: await fetched.toJsonLd({ contextLoader }) },
-        );
+        logger.debug("Fetched object is not an Activity.", {
+          recipient,
+          activity: await fetched.toJsonLd({ contextLoader }),
+        });
         return false;
       } else if (
-        fetched.id == null || !isSameObjectId(fetched.id, activity.id)
+        fetched.id == null ||
+        !isSameObjectId(fetched.id, activity.id)
       ) {
         logger.debug(
           "Fetched activity object has a different ID; failed to verify.",
@@ -6902,8 +6939,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       const activityOrigin = getAuthenticationOrigin(fetched.id);
       if (
         activityOrigin == null ||
-        !fetched.actorIds.every((actor) =>
-          getAuthenticationOrigin(actor) === activityOrigin
+        !fetched.actorIds.every(
+          (actor) => getAuthenticationOrigin(actor) === activityOrigin,
         )
       ) {
         logger.debug(
@@ -6947,10 +6984,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         }));
       }
     } else {
-      logger.debug(
-        "Object Integrity Proofs are verified.",
-        { recipient, activity: json },
-      );
+      logger.debug("Object Integrity Proofs are verified.", {
+        recipient,
+        activity: json,
+      });
       activity = verified.object;
       documentSigners = verified.signers.map(toProofPrincipal);
       viewSource = {
@@ -6961,10 +6998,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       };
     }
     if (activity.actorId == null) {
-      logger.debug(
-        "Activity is missing an actor; unable to verify.",
-        { recipient, activity: json },
-      );
+      logger.debug("Activity is missing an actor; unable to verify.", {
+        recipient,
+        activity: json,
+      });
       return false;
     }
     if (activity.id != null && !actorsHaveSameOrigin(activity)) {
@@ -6974,8 +7011,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       );
       return false;
     }
-    const view = fetchedView ??
-      await buildVerifiedActivityView(snapshot, viewSource);
+    const view =
+      fetchedView ?? (await buildVerifiedActivityView(snapshot, viewSource));
     const routeResult = await routeActivity({
       context: this,
       json,
@@ -7008,13 +7045,18 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
       idempotencyStrategy: this.federation.idempotencyStrategy,
     });
-    return routeResult === "alreadyProcessed" || routeResult === "enqueued" ||
-      routeResult === "unsupportedActivity" || routeResult === "success";
+    return (
+      routeResult === "alreadyProcessed" ||
+      routeResult === "enqueued" ||
+      routeResult === "unsupportedActivity" ||
+      routeResult === "success"
+    );
   }
 }
 
-interface RequestContextOptions<TContextData>
-  extends ContextOptions<TContextData> {
+interface RequestContextOptions<
+  TContextData,
+> extends ContextOptions<TContextData> {
   request: Request;
   invokedFromActorDispatcher?: { identifier: string };
   invokedFromObjectDispatcher?: {
@@ -7030,8 +7072,10 @@ interface SignatureCheck {
   owner?: Promise<Actor | null>;
 }
 
-class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
-  implements RequestContext<TContextData> {
+class RequestContextImpl<TContextData>
+  extends ContextImpl<TContextData>
+  implements RequestContext<TContextData>
+{
   readonly #invokedFromActorDispatcher?: { identifier: string };
   readonly #invokedFromObjectDispatcher?: {
     cls: ConstructorWithTypeId<Object>;
@@ -7164,9 +7208,7 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     );
   }
 
-  getActor(
-    identifier: string,
-  ): Promise<Actor | null>;
+  getActor(identifier: string): Promise<Actor | null>;
   getActor(
     identifier: string,
     options: GetActorOptions & { readonly tombstone: "passthrough" },
@@ -7271,7 +7313,8 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     // A tombstone that is an instance of the requested class, e.g., Object or
     // Tombstone itself, is an object of that class, so it is not suppressed:
     if (
-      object instanceof Tombstone && !(object instanceof cls) &&
+      object instanceof Tombstone &&
+      !(object instanceof cls) &&
       options?.tombstone !== "passthrough"
     ) {
       return null;
@@ -7314,19 +7357,20 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     // Only the default loader pair shares persistent keys.  Another pair
     // may have a different view of a key, so a cached negative result from
     // the default loaders must not prevent its independent verification.
-    const keyCache = documentLoader === this.documentLoader &&
-        contextLoader === this.contextLoader
-      ? new KvKeyCache(
-        this.federation.kv,
-        this.federation.kvPrefixes.publicKey,
-        {
-          documentLoader,
-          contextLoader,
-          tracerProvider: options.tracerProvider ?? this.tracerProvider,
-          keyTtl: this.federation.publicKeyTtl,
-        },
-      )
-      : undefined;
+    const keyCache =
+      documentLoader === this.documentLoader &&
+      contextLoader === this.contextLoader
+        ? new KvKeyCache(
+            this.federation.kv,
+            this.federation.kvPrefixes.publicKey,
+            {
+              documentLoader,
+              contextLoader,
+              tracerProvider: options.tracerProvider ?? this.tracerProvider,
+              keyTtl: this.federation.publicKeyTtl,
+            },
+          )
+        : undefined;
     const promise: Promise<CryptographicKey | null> = verifyRequest(
       this.request,
       {
@@ -7339,13 +7383,15 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
         meterProvider: this.meterProvider,
         tracerProvider: options.tracerProvider ?? this.tracerProvider,
       },
-    ).then((key) => {
-      if (key != null) this.#signedKey ??= key;
-      return key;
-    }).catch((error) => {
-      if (check.key === promise) check.key = undefined;
-      throw error;
-    });
+    )
+      .then((key) => {
+        if (key != null) this.#signedKey ??= key;
+        return key;
+      })
+      .catch((error) => {
+        if (check.key === promise) check.key = undefined;
+        throw error;
+      });
     check.key = promise;
     return await promise;
   }
@@ -7388,7 +7434,8 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
           }
           throw error;
         }
-      }).catch((error) => {
+      })
+      .catch((error) => {
         if (check.owner === promise) check.owner = undefined;
         throw error;
       });
@@ -7400,12 +7447,14 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     object: Object,
     options: IsSignedByAudienceOptions = {},
   ): Promise<boolean> {
-    return await isInAudience(object, null) ||
-      await isInAudience(
+    return (
+      (await isInAudience(object, null)) ||
+      (await isInAudience(
         object,
         await this.getSignedKeyOwner(options),
         options,
-      );
+      ))
+    );
   }
 }
 
@@ -7444,9 +7493,10 @@ function forwardActivity<TContextData>(
           ? `activitypub.${loggerCategory}`
           : "activitypub.fanout",
         {
-          kind: ctx.federation.outboxQueue == null || options?.immediate
-            ? SpanKind.CLIENT
-            : SpanKind.PRODUCER,
+          kind:
+            ctx.federation.outboxQueue == null || options?.immediate
+              ? SpanKind.CLIENT
+              : SpanKind.PRODUCER,
           attributes: { "activitypub.activity.type": ctx.activityType },
         },
         async (span) => {
@@ -7495,9 +7545,7 @@ async function forwardActivityInternal<TContextData>(
   observation?.setPhase("sender-resolution");
   let keys: SenderKeyPair[];
   let identifier: string | null = null;
-  if (
-    "identifier" in forwarder || "username" in forwarder
-  ) {
+  if ("identifier" in forwarder || "username" in forwarder) {
     if ("identifier" in forwarder) {
       identifier = forwarder.identifier;
     } else {
@@ -7511,9 +7559,9 @@ async function forwardActivityInternal<TContextData>(
         );
         if (mapped == null) {
           throw new Error(
-            `No actor found for the given username ${
-              JSON.stringify(username)
-            }.`,
+            `No actor found for the given username ${JSON.stringify(
+              username,
+            )}.`,
           );
         }
         identifier = mapped;
@@ -7612,27 +7660,23 @@ async function forwardActivityInternal<TContextData>(
       const delivery = observation?.delivery(inbox);
       let sending: Promise<void>;
       try {
-        sending = sendActivityToInbox(
-          inbox,
-          inboxes[inbox].gatewayInboxes,
-          {
-            observation: delivery,
-            allowPrivateAddress: ctx.federation.allowPrivateAddress,
-            keys,
-            activity: ctx.activity,
-            activityId: ctx.activityId,
-            activityType: ctx.activityType,
-            sharedInbox: inboxes[inbox].sharedInbox,
-            meterProvider: ctx.meterProvider,
-            tracerProvider: ctx.tracerProvider,
-            specDeterminer: new KvSpecDeterminer(
-              ctx.federation.kv,
-              ctx.federation.kvPrefixes.httpMessageSignaturesSpec,
-              ctx.federation.firstKnock,
-              { specTtl: ctx.federation.httpMessageSignaturesSpecTtl },
-            ),
-          },
-        );
+        sending = sendActivityToInbox(inbox, inboxes[inbox].gatewayInboxes, {
+          observation: delivery,
+          allowPrivateAddress: ctx.federation.allowPrivateAddress,
+          keys,
+          activity: ctx.activity,
+          activityId: ctx.activityId,
+          activityType: ctx.activityType,
+          sharedInbox: inboxes[inbox].sharedInbox,
+          meterProvider: ctx.meterProvider,
+          tracerProvider: ctx.tracerProvider,
+          specDeterminer: new KvSpecDeterminer(
+            ctx.federation.kv,
+            ctx.federation.kvPrefixes.httpMessageSignaturesSpec,
+            ctx.federation.firstKnock,
+            { specTtl: ctx.federation.httpMessageSignaturesSpecTtl },
+          ),
+        });
       } catch (error) {
         if (delivery != null) await delivery.failed(error);
         throw error;
@@ -7648,10 +7692,10 @@ async function forwardActivityInternal<TContextData>(
     await Promise.all(promises);
     return true;
   }
-  logger.debug(
-    "Enqueuing activity {activityId} to forward later.",
-    { activityId: ctx.activityId, activity: ctx.activity },
-  );
+  logger.debug("Enqueuing activity {activityId} to forward later.", {
+    activityId: ctx.activityId,
+    activity: ctx.activity,
+  });
   observation?.setPhase("request-preparation");
   if (!ctx.federation.manuallyStartQueue) {
     ctx.federation._startQueueInternal(ctx.data);
@@ -7687,9 +7731,10 @@ async function forwardActivityInternal<TContextData>(
         started,
         attempt: 0,
         headers: {},
-        orderingKey: orderingKey == null
-          ? undefined
-          : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`,
+        orderingKey:
+          orderingKey == null
+            ? undefined
+            : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`,
         ...getPortableMessageFields(portableInbox, gatewayInboxes),
         traceContext: carrier,
       };
@@ -7710,11 +7755,11 @@ async function forwardActivityInternal<TContextData>(
         await (observation == null
           ? outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey })
           : observation.enqueue(
-            [{ inbox: m.message.inbox, queueMessageId: m.message.id }],
-            "outbox",
-            () =>
-              outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey }),
-          ));
+              [{ inbox: m.message.inbox, queueMessageId: m.message.id }],
+              "outbox",
+              () =>
+                outboxQueue.enqueue(m.message, { orderingKey: m.orderingKey }),
+            ));
         recordOutboxEnqueue(
           ctx.federation.meterProvider,
           outboxQueue,
@@ -7723,7 +7768,7 @@ async function forwardActivityInternal<TContextData>(
       }),
     );
     const errors: unknown[] = promises.flatMap((r) =>
-      r.status === "rejected" ? [(r as PromiseRejectedResult).reason] : []
+      r.status === "rejected" ? [(r as PromiseRejectedResult).reason] : [],
     );
     if (errors.length > 0) {
       logger.error(
@@ -7743,13 +7788,13 @@ async function forwardActivityInternal<TContextData>(
       await (observation == null
         ? outboxQueue.enqueueMany(messages.map((m) => m.message))
         : observation.enqueue(
-          messages.map(({ message }) => ({
-            inbox: message.inbox,
-            queueMessageId: message.id,
-          })),
-          "outbox",
-          () => outboxQueue.enqueueMany!(messages.map((m) => m.message)),
-        ));
+            messages.map(({ message }) => ({
+              inbox: message.inbox,
+              queueMessageId: message.id,
+            })),
+            "outbox",
+            () => outboxQueue.enqueueMany!(messages.map((m) => m.message)),
+          ));
     } catch (error) {
       logger.error(
         "Failed to enqueue activity {activityId} to forward later:\n{error}",
@@ -7758,18 +7803,16 @@ async function forwardActivityInternal<TContextData>(
       throw error;
     }
     for (const m of messages) {
-      recordOutboxEnqueue(
-        ctx.federation.meterProvider,
-        outboxQueue,
-        m.message,
-      );
+      recordOutboxEnqueue(ctx.federation.meterProvider, outboxQueue, m.message);
     }
   }
   return true;
 }
 
-export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
-  implements InboxContext<TContextData> {
+export class InboxContextImpl<TContextData>
+  extends ContextImpl<TContextData>
+  implements InboxContext<TContextData>
+{
   readonly recipient: string | null;
   /**
    * The original received activity payload.
@@ -7830,9 +7873,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
     options?: ForwardActivityOptions,
   ): Promise<void>;
   forwardActivity(
-    forwarder:
-      | { identifier: string }
-      | { username: string },
+    forwarder: { identifier: string } | { username: string },
     recipients: "followers",
     options?: ForwardActivityOptions,
   ): Promise<void>;
@@ -7845,13 +7886,16 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
     recipients: Recipient | Recipient[] | "followers",
     options?: ForwardActivityOptions,
   ): Promise<void> {
-    return forwardActivity(this, "inbox", forwarder, recipients, options)
-      .then(() => undefined);
+    return forwardActivity(this, "inbox", forwarder, recipients, options).then(
+      () => undefined,
+    );
   }
 }
 
-export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
-  implements OutboxContext<TContextData> {
+export class OutboxContextImpl<TContextData>
+  extends ContextImpl<TContextData>
+  implements OutboxContext<TContextData>
+{
   readonly #deliveryState: { delivered: boolean };
   readonly identifier: string;
   readonly activity: unknown;
@@ -7904,18 +7948,19 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
             ? "activitypub.outbox"
             : "activitypub.fanout",
           {
-            kind: this.federation.outboxQueue == null || options.immediate
-              ? SpanKind.CLIENT
-              : SpanKind.PRODUCER,
+            kind:
+              this.federation.outboxQueue == null || options.immediate
+                ? SpanKind.CLIENT
+                : SpanKind.PRODUCER,
             attributes: {
               "activitypub.activity.type": activityType,
               "activitypub.activity.to": activity.toIds.map((to) => to.href),
               "activitypub.activity.cc": activity.ccIds.map((cc) => cc.href),
-              "activitypub.activity.bto": activity.btoIds.map((bto) =>
-                bto.href
+              "activitypub.activity.bto": activity.btoIds.map(
+                (bto) => bto.href,
               ),
-              "activitypub.activity.bcc": activity.bccIds.map((bcc) =>
-                bcc.href
+              "activitypub.activity.bcc": activity.bccIds.map(
+                (bcc) => bcc.href,
               ),
             },
           },
@@ -7967,9 +8012,7 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
     options?: ForwardActivityOptions,
   ): Promise<void>;
   forwardActivity(
-    forwarder:
-      | { identifier: string }
-      | { username: string },
+    forwarder: { identifier: string } | { username: string },
     recipients: "followers",
     options?: ForwardActivityOptions,
   ): Promise<void>;
@@ -7982,10 +8025,11 @@ export class OutboxContextImpl<TContextData> extends ContextImpl<TContextData>
     recipients: Recipient | Recipient[] | "followers",
     options?: ForwardActivityOptions,
   ): Promise<void> {
-    return forwardActivity(this, "outbox", forwarder, recipients, options)
-      .then((delivered) => {
+    return forwardActivity(this, "outbox", forwarder, recipients, options).then(
+      (delivered) => {
         if (delivered) this.#deliveryState.delivered = true;
-      });
+      },
+    );
   }
 
   override clone(data: TContextData): OutboxContext<TContextData> {
@@ -8063,13 +8107,13 @@ export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {
     this.specTtl = options.specTtl ?? Temporal.Duration.from({ days: 90 });
   }
 
-  async determineSpec(
-    origin: string,
-  ): Promise<HttpMessageSignaturesSpec> {
-    return await this.kv.get<HttpMessageSignaturesSpec>([
-      ...this.prefix,
-      origin,
-    ]) ?? this.defaultSpec;
+  async determineSpec(origin: string): Promise<HttpMessageSignaturesSpec> {
+    return (
+      (await this.kv.get<HttpMessageSignaturesSpec>([
+        ...this.prefix,
+        origin,
+      ])) ?? this.defaultSpec
+    );
   }
 
   async rememberSpec(
@@ -8117,7 +8161,8 @@ function unauthorized(_request: Request): Response {
  */
 function getRequestId(request: Request): string {
   // First try to get existing trace ID from standard headers:
-  const traceId = request.headers.get("X-Request-Id") ||
+  const traceId =
+    request.headers.get("X-Request-Id") ||
     request.headers.get("X-Correlation-Id") ||
     request.headers.get("Traceparent")?.split("-")[1];
   if (traceId != null) return traceId;

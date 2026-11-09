@@ -14,9 +14,12 @@ const COMPATIBLE_ID_PATH_PATTERN = /^\/\.well-known\/apgateway\//i;
  * [FEP-ef61]: https://w3id.org/fep/ef61
  */
 export function isPortableClaim(id: URL): boolean {
-  return id.protocol === "ap:" || id.protocol === "ap+ef61:" ||
+  return (
+    id.protocol === "ap:" ||
+    id.protocol === "ap+ef61:" ||
     ((id.protocol === "http:" || id.protocol === "https:") &&
-      COMPATIBLE_ID_PATH_PATTERN.test(id.pathname));
+      COMPATIBLE_ID_PATH_PATTERN.test(id.pathname))
+  );
 }
 
 /**
@@ -90,8 +93,10 @@ export function getPropertyValues(
   if (values == null) return [];
   if (!Array.isArray(values)) return [values];
   if (
-    values.length === 1 && values[0] != null &&
-    typeof values[0] === "object" && "@list" in values[0]
+    values.length === 1 &&
+    values[0] != null &&
+    typeof values[0] === "object" &&
+    "@list" in values[0]
   ) {
     const list = (values[0] as { readonly "@list": unknown })["@list"];
     return Array.isArray(list) ? list : [list];
@@ -107,10 +112,7 @@ export function getPropertyValues(
  * @returns The IRI, or `null` if the value is not a node with a non-blank
  *          `@id` that can be resolved.
  */
-export function resolveNodeId(
-  value: unknown,
-  base: URL | null,
-): URL | null {
+export function resolveNodeId(value: unknown, base: URL | null): URL | null {
   if (value == null || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }

@@ -156,10 +156,7 @@ test("Astro Node.js and Bun templates use Prettier for Astro files", async () =>
     );
     equal(initializer.tasks?.lint, "oxlint .");
     equal(initializer.devDependencies?.["prettier"] != null, true);
-    equal(
-      initializer.devDependencies?.["prettier-plugin-astro"] != null,
-      true,
-    );
+    equal(initializer.devDependencies?.["prettier-plugin-astro"] != null, true);
     equal(initializer.devDependencies?.["oxfmt"], undefined);
     equal(initializer.devDependencies?.["oxlint"] != null, true);
     equal(initializer.format?.tool, "prettier");
@@ -187,9 +184,7 @@ test("README.md's web framework list matches the framework registry", async () =
   const missingInMod = readmeSet.difference(modSet);
   const errorMsg = [];
   if (missingInReadme.size > 0) {
-    errorMsg.push(
-      `Missing from README.md: ${[...missingInReadme].join(", ")}`,
-    );
+    errorMsg.push(`Missing from README.md: ${[...missingInReadme].join(", ")}`);
   }
   if (missingInMod.size > 0) {
     errorMsg.push(

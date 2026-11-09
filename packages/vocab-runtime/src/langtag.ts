@@ -8,14 +8,17 @@
  * Generated from the registry with File-Date: 2026-09-17.
  */
 const EXTLANGS: Record<string, string> = {
-  ar: "aao abh abv acm acq acw acx acy adf aeb aec afb ajp apc apd arb arq " +
+  ar:
+    "aao abh abv acm acq acw acx acy adf aeb aec afb ajp apc apd arb arq " +
     "ars ary arz auz avl ayh ayl ayn ayp bbz pga shu ssh",
   kok: "gom knn",
   lv: "ltg lvs",
-  ms: "bjn btj bve bvu coa dup hji jak jax kvb kvr kxd lce lcf liw max meo " +
+  ms:
+    "bjn btj bve bvu coa dup hji jak jax kvb kvr kxd lce lcf liw max meo " +
     "mfa mfb min mqg msi mui orn ors pel pse tmw urk vkk vkt xmm zlm zmi " +
     "zsm",
-  sgn: "ads aed aen afg ajs ase asf asp asq asw bfi bfk bog bqn bqy bvl bzs " +
+  sgn:
+    "ads aed aen afg ajs ase asf asp asq asw bfi bfk bog bqn bqy bvl bzs " +
     "cds csc csd cse csf csg csl csn csq csr csx doq dse dsl dsz dyl ecs " +
     "ehs esl esn eso eth fcs fse fsl fss gds gse gsg gsm gss gus hab haf " +
     "hds hks hos hps hsh hsl icl iks ils inl ins ise isg isr jcs jhs jks " +
@@ -27,13 +30,14 @@ const EXTLANGS: Record<string, string> = {
     "vsv wbs xki xml xms yds ygs yhs ysl ysm zhk zib zsl",
   sw: "swc swh",
   uz: "uzn uzs",
-  zh: "cdo cjy cmn cnp cpx csp czh czo gan hak hnm hsn luh lzh mnp nan sjc " +
+  zh:
+    "cdo cjy cmn cnp cpx csp czh czo gan hak hnm hsn luh lzh mnp nan sjc " +
     "wuu yue",
 };
 
 const EXTLANG_PAIRS: ReadonlySet<string> = new Set(
   Object.entries(EXTLANGS).flatMap(([prefix, extlangs]) =>
-    extlangs.split(" ").map((extlang) => `${prefix}-${extlang}`)
+    extlangs.split(" ").map((extlang) => `${prefix}-${extlang}`),
   ),
 );
 

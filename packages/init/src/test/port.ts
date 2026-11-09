@@ -53,19 +53,27 @@ export async function killProcessOnPort(port: number): Promise<void> {
         windows ? "netstat" : "lsof",
         windows ? ["-ano", "-p", "tcp"] : ["-t", `-i:${port}`, "-sTCP:LISTEN"],
         { timeout: 1000, windowsHide: true },
-        (error, stdout) => error ? reject(error) : resolve(stdout),
+        (error, stdout) => (error ? reject(error) : resolve(stdout)),
       );
     });
     const pids = windows
       ? parseWindowsListeners(output, port)
-      : output.trim().split(/\s+/).filter((pid) => /^\d+$/.test(pid));
+      : output
+          .trim()
+          .split(/\s+/)
+          .filter((pid) => /^\d+$/.test(pid));
     for (const pid of new Set(pids)) {
       if (windows) {
         await new Promise<void>((resolve) => {
-          execFile("taskkill", ["/pid", pid, "/t", "/f"], {
-            timeout: 1000,
-            windowsHide: true,
-          }, () => resolve());
+          execFile(
+            "taskkill",
+            ["/pid", pid, "/t", "/f"],
+            {
+              timeout: 1000,
+              windowsHide: true,
+            },
+            () => resolve(),
+          );
         });
       } else {
         try {
@@ -83,8 +91,10 @@ export async function killProcessOnPort(port: number): Promise<void> {
 export function parseWindowsListeners(output: string, port: number): string[] {
   return output.split(/\r?\n/).flatMap((line) => {
     const [protocol, localAddress, , state, pid] = line.trim().split(/\s+/);
-    return protocol === "TCP" && localAddress?.endsWith(`:${port}`) &&
-        state === "LISTENING" && /^\d+$/.test(pid)
+    return protocol === "TCP" &&
+      localAddress?.endsWith(`:${port}`) &&
+      state === "LISTENING" &&
+      /^\d+$/.test(pid)
       ? [pid]
       : [];
   });
@@ -95,9 +105,10 @@ export function parseWindowsListeners(output: string, port: number): string[] {
  * The socket is held until the returned `release` function is called,
  * eliminating the race window between discovery and actual use.
  */
-export function reservePort(): Promise<
-  { port: number; release: () => Promise<void> }
-> {
+export function reservePort(): Promise<{
+  port: number;
+  release: () => Promise<void>;
+}> {
   return new Promise((resolve, reject) => {
     const server = createServer();
     server.listen(0, () => {

@@ -88,7 +88,8 @@ test("handleNodeInfoJrd()", async () => {
       {
         href: "https://example.com/nodeinfo/2.1",
         rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
-        type: "application/json;" +
+        type:
+          "application/json;" +
           ' profile="http://nodeinfo.diaspora.software/ns/schema/2.1#"',
       },
     ],

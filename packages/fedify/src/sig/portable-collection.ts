@@ -69,8 +69,7 @@ export interface VerifyPortableObjectOptions
     Omit<
       PortableObjectVerifierOptions,
       "documentLoader" | "contextLoader" | "tracerProvider"
-    > {
-}
+    > {}
 
 /**
  * The reason why {@link verifyPortableObject} did not accept a document.
@@ -83,79 +82,79 @@ export interface VerifyPortableObjectOptions
  */
 export type VerifyPortableObjectFailureReason =
   | Exclude<
-    VerifyPortableObjectProofFailureReason,
-    { readonly type: "unsecuredCollection" }
-  >
+      VerifyPortableObjectProofFailureReason,
+      { readonly type: "unsecuredCollection" }
+    >
   | {
-    /**
-     * The unsecured collection was not retrieved from a gateway, i.e., the
-     * document's final URL is missing or is not a compatible identifier for
-     * the same portable collection.
-     */
-    readonly type: "unknownCollectionSource";
-    /** The final URL of the document, if known. */
-    readonly documentUrl: URL | null;
-  }
+      /**
+       * The unsecured collection was not retrieved from a gateway, i.e., the
+       * document's final URL is missing or is not a compatible identifier for
+       * the same portable collection.
+       */
+      readonly type: "unknownCollectionSource";
+      /** The final URL of the document, if known. */
+      readonly documentUrl: URL | null;
+    }
   | {
-    /**
-     * The actor that owns the unsecured collection cannot be determined
-     * unambiguously.
-     */
-    readonly type: "unknownCollectionOwner";
-  }
+      /**
+       * The actor that owns the unsecured collection cannot be determined
+       * unambiguously.
+       */
+      readonly type: "unknownCollectionOwner";
+    }
   | {
-    /** The collection, its pages, or its referrer disagree on its owner. */
-    readonly type: "conflictingCollectionOwners";
-    /** The owner candidates that disagree. */
-    readonly candidates: readonly URL[];
-  }
+      /** The collection, its pages, or its referrer disagree on its owner. */
+      readonly type: "conflictingCollectionOwners";
+      /** The owner candidates that disagree. */
+      readonly candidates: readonly URL[];
+    }
   | {
-    /**
-     * A collection page does not belong to the collection it was reached
-     * from: its `partOf` names another collection, or its cryptographic
-     * origin differs.
-     */
-    readonly type: "collectionPageMismatch";
-    /** The page. */
-    readonly pageId: URL;
-    /** The collection that the page was reached from. */
-    readonly collectionId: URL;
-    /** The mismatching `partOf`, or `null` if the origin differs. */
-    readonly partOf: URL | null;
-  }
+      /**
+       * A collection page does not belong to the collection it was reached
+       * from: its `partOf` names another collection, or its cryptographic
+       * origin differs.
+       */
+      readonly type: "collectionPageMismatch";
+      /** The page. */
+      readonly pageId: URL;
+      /** The collection that the page was reached from. */
+      readonly collectionId: URL;
+      /** The mismatching `partOf`, or `null` if the origin differs. */
+      readonly partOf: URL | null;
+    }
   | {
-    /**
-     * The owner's actor document could not be retrieved or verified, or it
-     * lists no gateways.
-     */
-    readonly type: "collectionOwnerUnavailable";
-    /** The owner candidate. */
-    readonly owner: URL;
-  }
+      /**
+       * The owner's actor document could not be retrieved or verified, or it
+       * lists no gateways.
+       */
+      readonly type: "collectionOwnerUnavailable";
+      /** The owner candidate. */
+      readonly owner: URL;
+    }
   | {
-    /**
-     * The owner's actor document does not list the collection as its
-     * `inbox`, `outbox`, `followers`, `following`, or `liked`.
-     */
-    readonly type: "collectionNotListedByOwner";
-    /** The owner. */
-    readonly owner: URL;
-    /** The collection. */
-    readonly collectionId: URL;
-  }
+      /**
+       * The owner's actor document does not list the collection as its
+       * `inbox`, `outbox`, `followers`, `following`, or `liked`.
+       */
+      readonly type: "collectionNotListedByOwner";
+      /** The owner. */
+      readonly owner: URL;
+      /** The collection. */
+      readonly collectionId: URL;
+    }
   | {
-    /**
-     * The unsecured collection was retrieved from a gateway that its owner
-     * does not list in its `gateways`.
-     */
-    readonly type: "untrustedGateway";
-    /** The owner. */
-    readonly owner: URL;
-    /** The gateway that served the collection. */
-    readonly gateway: URL;
-    /** The owner's gateways. */
-    readonly gateways: readonly URL[];
-  };
+      /**
+       * The unsecured collection was retrieved from a gateway that its owner
+       * does not list in its `gateways`.
+       */
+      readonly type: "untrustedGateway";
+      /** The owner. */
+      readonly owner: URL;
+      /** The gateway that served the collection. */
+      readonly gateway: URL;
+      /** The owner's gateways. */
+      readonly gateways: readonly URL[];
+    };
 
 /**
  * The result of {@link verifyPortableObject}.
@@ -163,44 +162,44 @@ export type VerifyPortableObjectFailureReason =
  */
 export type VerifyPortableObjectResult =
   | {
-    /** Whether the document is accepted. */
-    readonly verified: true;
-    /** The document carries valid Object Integrity Proofs. */
-    readonly method: "proof";
-    /** The public keys used by the verified proofs, in proof order. */
-    readonly keys: readonly Multikey[];
-    /**
-     * Opaque state for verifying the pages of a portable collection.  Do not
-     * inspect it; property accessors pass it back automatically.
-     */
-    readonly collectionContext?: unknown;
-  }
+      /** Whether the document is accepted. */
+      readonly verified: true;
+      /** The document carries valid Object Integrity Proofs. */
+      readonly method: "proof";
+      /** The public keys used by the verified proofs, in proof order. */
+      readonly keys: readonly Multikey[];
+      /**
+       * Opaque state for verifying the pages of a portable collection.  Do not
+       * inspect it; property accessors pass it back automatically.
+       */
+      readonly collectionContext?: unknown;
+    }
   | {
-    /** Whether the document is accepted. */
-    readonly verified: true;
-    /**
-     * The document is an unsecured portable collection served by a gateway
-     * that its owner lists.
-     */
-    readonly method: "gateway";
-    /** The document has no integrity proof. */
-    readonly unsecured: true;
-    /** The actor that owns the collection. */
-    readonly owner: URL;
-    /** The gateway that served the collection. */
-    readonly gateway: URL;
-    /**
-     * Opaque state for verifying the pages of a portable collection.  Do not
-     * inspect it; property accessors pass it back automatically.
-     */
-    readonly collectionContext: unknown;
-  }
+      /** Whether the document is accepted. */
+      readonly verified: true;
+      /**
+       * The document is an unsecured portable collection served by a gateway
+       * that its owner lists.
+       */
+      readonly method: "gateway";
+      /** The document has no integrity proof. */
+      readonly unsecured: true;
+      /** The actor that owns the collection. */
+      readonly owner: URL;
+      /** The gateway that served the collection. */
+      readonly gateway: URL;
+      /**
+       * Opaque state for verifying the pages of a portable collection.  Do not
+       * inspect it; property accessors pass it back automatically.
+       */
+      readonly collectionContext: unknown;
+    }
   | {
-    /** Whether the document is accepted. */
-    readonly verified: false;
-    /** Why the document was not accepted. */
-    readonly reason: VerifyPortableObjectFailureReason;
-  };
+      /** Whether the document is accepted. */
+      readonly verified: false;
+      /** Why the document was not accepted. */
+      readonly reason: VerifyPortableObjectFailureReason;
+    };
 
 interface CollectionOwner {
   readonly id: URL;
@@ -291,7 +290,9 @@ function getExpandedIds(
   const ids: string[] = [];
   for (const value of values) {
     if (
-      value == null || typeof value !== "object" || Array.isArray(value) ||
+      value == null ||
+      typeof value !== "object" ||
+      Array.isArray(value) ||
       typeof (value as Record<string, unknown>)["@id"] !== "string"
     ) {
       return null;
@@ -399,9 +400,10 @@ function resolveChain(
   if (state != null) {
     rootId = state.rootId;
     rootOrigin = state.rootOrigin;
-    const ownerCandidate: OwnerCandidate | null = state.owner == null
-      ? state.ownerCandidate
-      : { id: canonicalize(state.owner.id)! };
+    const ownerCandidate: OwnerCandidate | null =
+      state.owner == null
+        ? state.ownerCandidate
+        : { id: canonicalize(state.owner.id)! };
     if (ownerCandidate == null) {
       return fail({ type: "unknownCollectionOwner" });
     }
@@ -475,15 +477,13 @@ function resolveChain(
 
 function getActorCollectionIds(actor: Actor): string[] {
   const ids: string[] = [];
-  for (
-    const id of [
-      actor.inboxId,
-      actor.outboxId,
-      actor.followersId,
-      actor.followingId,
-      actor.likedId,
-    ]
-  ) {
+  for (const id of [
+    actor.inboxId,
+    actor.outboxId,
+    actor.followersId,
+    actor.followingId,
+    actor.likedId,
+  ]) {
     if (id == null) continue;
     const canonical = canonicalize(id);
     if (canonical != null) ids.push(canonical);
@@ -496,8 +496,8 @@ async function fetchOwner(
   options: VerifyPortableObjectOptions,
 ): Promise<Actor | null> {
   const documentLoader = options.documentLoader ?? getDocumentLoader();
-  const contextLoader: DocumentLoader = options.contextLoader ??
-    getDocumentLoader();
+  const contextLoader: DocumentLoader =
+    options.contextLoader ?? getDocumentLoader();
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   // A compatible identifier is dereferenced as the portable ID it contains,
@@ -522,9 +522,10 @@ async function fetchOwner(
   // accessors; otherwise the owner's own location hints or the gateway of its
   // compatible identifier, and failing that, the hints that the collection
   // was fetched with:
-  const gateways = options.gateways ??
+  const gateways =
+    options.gateways ??
     (inferredGateways != null ||
-        getPortableGatewayCandidates(candidate).length > 0
+    getPortableGatewayCandidates(candidate).length > 0
       ? undefined
       : options.gatewayHints);
   if (options.gateways != null) inferredGateways = undefined;
@@ -572,7 +573,8 @@ async function resolveOwner(
   const candidateUrl = toUrl(candidate.id);
   let actor: Actor | null = null;
   if (
-    candidate.acceptance === "verified" && isActor(candidate.object) &&
+    candidate.acceptance === "verified" &&
+    isActor(candidate.object) &&
     candidate.object.id != null &&
     canonicalize(candidate.object.id) === candidate.id
   ) {
@@ -676,9 +678,8 @@ export async function verifyPortableObject(
     options,
   );
   if (result.verified) {
-    const node = objectType === "collection" && root != null
-      ? describeRoot(root)
-      : null;
+    const node =
+      objectType === "collection" && root != null ? describeRoot(root) : null;
     const chain = node == null ? null : resolveChain(node, options.referrer);
     if (chain == null || !("rootId" in chain)) {
       return { verified: true, method: "proof", keys: result.keys };

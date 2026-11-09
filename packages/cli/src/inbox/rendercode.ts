@@ -20,11 +20,7 @@ export function renderResponse(response: Response): Promise<string> {
       ? getStatusText(response.status)
       : response.statusText
   }`;
-  return renderMessage(
-    code,
-    response.headers,
-    response,
-  );
+  return renderMessage(code, response.headers, response);
 }
 
 async function renderMessage(
@@ -36,9 +32,9 @@ async function renderMessage(
   for (const [key, value] of headers.entries()) {
     code += `${capitalize(key)}: ${value}\n`;
   }
-  const bodyText = await body.text().catch((_) =>
-    "[Failed to decode body; it may be binary.]"
-  );
+  const bodyText = await body
+    .text()
+    .catch((_) => "[Failed to decode body; it may be binary.]");
   code += `\n${bodyText}`;
   return code;
 }

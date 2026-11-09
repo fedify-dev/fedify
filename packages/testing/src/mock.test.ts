@@ -82,7 +82,8 @@ test("MockFederation actor setters support chaining in any order", () => {
     }
   }
   strictEqual(
-    setters.setKeyPairsDispatcher(() => [])
+    setters
+      .setKeyPairsDispatcher(() => [])
       .mapHandle((_ctx, handle) => handle)
       .mapAlias(() => null)
       .authorize(() => true)
@@ -98,38 +99,53 @@ test("MockFederation object setters support chaining authorize", () => {
     "/notes/{id}",
     () => null,
   );
-  strictEqual(setters.authorize(() => true), setters);
+  strictEqual(
+    setters.authorize(() => true),
+    setters,
+  );
   strictEqual(
     setters.authorize(() => true).authorize(() => false),
     setters,
   );
 });
 
-for (
-  const method of [
-    "setInboxDispatcher",
-    "setOutboxDispatcher",
-    "setFollowingDispatcher",
-    "setFollowersDispatcher",
-    "setLikedDispatcher",
-    "setFeaturedDispatcher",
-    "setFeaturedTagsDispatcher",
-    "setCollectionDispatcher",
-    "setOrderedCollectionDispatcher",
-  ] as const
-) {
+for (const method of [
+  "setInboxDispatcher",
+  "setOutboxDispatcher",
+  "setFollowingDispatcher",
+  "setFollowersDispatcher",
+  "setLikedDispatcher",
+  "setFeaturedDispatcher",
+  "setFeaturedTagsDispatcher",
+  "setCollectionDispatcher",
+  "setOrderedCollectionDispatcher",
+] as const) {
   test(`MockFederation.${method} setters support chaining in any order`, () => {
     const federation = createFederation<void>();
-    const setters = method === "setCollectionDispatcher" ||
-        method === "setOrderedCollectionDispatcher"
-      ? federation[method]("notes", Note, "/notes/{identifier}", () => null)
-      : federation[method]("/users/{identifier}/collection", () => null);
-    strictEqual(setters.setCounter(() => 0), setters);
-    strictEqual(setters.setFirstCursor(() => null), setters);
-    strictEqual(setters.setLastCursor(() => null), setters);
-    strictEqual(setters.authorize(() => true), setters);
+    const setters =
+      method === "setCollectionDispatcher" ||
+      method === "setOrderedCollectionDispatcher"
+        ? federation[method]("notes", Note, "/notes/{identifier}", () => null)
+        : federation[method]("/users/{identifier}/collection", () => null);
     strictEqual(
-      setters.authorize(() => true)
+      setters.setCounter(() => 0),
+      setters,
+    );
+    strictEqual(
+      setters.setFirstCursor(() => null),
+      setters,
+    );
+    strictEqual(
+      setters.setLastCursor(() => null),
+      setters,
+    );
+    strictEqual(
+      setters.authorize(() => true),
+      setters,
+    );
+    strictEqual(
+      setters
+        .authorize(() => true)
         .setCounter(() => 0)
         .setFirstCursor(() => null)
         .setLastCursor(() => null)
@@ -137,7 +153,8 @@ for (
       setters,
     );
     strictEqual(
-      setters.setLastCursor(() => null)
+      setters
+        .setLastCursor(() => null)
         .setFirstCursor(() => null)
         .setCounter(() => 0)
         .authorize(() => true)
@@ -315,8 +332,14 @@ test("MockFederation accepts outbound observer registration", () => {
 test("MockFederation accepts inbox request observation registration", () => {
   const federation = createFederation<void>();
   const setters = federation.setInboxListeners("/users/{identifier}/inbox");
-  strictEqual(setters.onRequestFinished(() => {}), setters);
-  strictEqual(setters.on(Create, () => {}), setters);
+  strictEqual(
+    setters.onRequestFinished(() => {}),
+    setters,
+  );
+  strictEqual(
+    setters.on(Create, () => {}),
+    setters,
+  );
 });
 
 test("receiveActivity triggers inbox listeners", async () => {
@@ -330,13 +353,10 @@ test("receiveActivity triggers inbox listeners", async () => {
   // Set up an inbox listener
   mockFederation
     .setInboxListeners("/users/{identifier}/inbox")
-    .on(
-      Create,
-      (_ctx: InboxContext<{ test: string }>, activity: Create) => {
-        receivedActivity = activity;
-        return Promise.resolve();
-      },
-    );
+    .on(Create, (_ctx: InboxContext<{ test: string }>, activity: Create) => {
+      receivedActivity = activity;
+      return Promise.resolve();
+    });
 
   // Create and receive an activity
   const activity = new Create({
@@ -421,15 +441,12 @@ test("postOutboxActivity supports forwardActivity", async () => {
 
   mockFederation
     .setOutboxListeners("/users/{identifier}/outbox")
-    .on(
-      Create,
-      async (ctx: OutboxContext<{ test: string }>) => {
-        await ctx.forwardActivity(
-          { identifier: ctx.identifier },
-          new Person({ id: new URL("https://example.com/users/bob") }),
-        );
-      },
-    );
+    .on(Create, async (ctx: OutboxContext<{ test: string }>) => {
+      await ctx.forwardActivity(
+        { identifier: ctx.identifier },
+        new Person({ id: new URL("https://example.com/users/bob") }),
+      );
+    });
 
   const activity = new Create({
     id: new URL("https://example.com/activities/1"),
@@ -458,16 +475,13 @@ test("postOutboxActivity forwardActivity respects skipIfUnsigned", async () => {
 
   mockFederation
     .setOutboxListeners("/users/{identifier}/outbox")
-    .on(
-      Create,
-      async (ctx: OutboxContext<{ test: string }>) => {
-        await ctx.forwardActivity(
-          { identifier: ctx.identifier },
-          new Person({ id: new URL("https://example.com/users/bob") }),
-          { skipIfUnsigned: true },
-        );
-      },
-    );
+    .on(Create, async (ctx: OutboxContext<{ test: string }>) => {
+      await ctx.forwardActivity(
+        { identifier: ctx.identifier },
+        new Person({ id: new URL("https://example.com/users/bob") }),
+        { skipIfUnsigned: true },
+      );
+    });
 
   const activity = new Create({
     id: new URL("https://example.com/activities/1"),
@@ -479,223 +493,203 @@ test("postOutboxActivity forwardActivity respects skipIfUnsigned", async () => {
   deepStrictEqual(mockFederation.sentActivities.length, 0);
 });
 
-test(
-  "postOutboxActivity forwardActivity treats linked data signatures as signed",
-  async () => {
-    const mockFederation = createFederation<{ test: string }>({
-      contextData: { test: "data" },
-    });
+test("postOutboxActivity forwardActivity treats linked data signatures as signed", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
 
-    mockFederation.setActorDispatcher(
-      "/users/{identifier}",
-      (_ctx, identifier) => {
-        return new Person({
-          id: new URL(`https://example.com/users/${identifier}`),
-        });
-      },
-    );
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
 
-    mockFederation
-      .setOutboxListeners("/users/{identifier}/outbox")
-      .on(
-        Create,
-        async (ctx: OutboxContext<{ test: string }>) => {
-          await ctx.forwardActivity(
-            { identifier: ctx.identifier },
-            new Person({ id: new URL("https://example.com/users/bob") }),
-            { skipIfUnsigned: true },
-          );
-        },
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Create, async (ctx: OutboxContext<{ test: string }>) => {
+      await ctx.forwardActivity(
+        { identifier: ctx.identifier },
+        new Person({ id: new URL("https://example.com/users/bob") }),
+        { skipIfUnsigned: true },
       );
-
-    const signedJson = await signJsonLd(
-      {
-        "@context": "https://www.w3.org/ns/activitystreams",
-        id: "https://example.com/activities/1",
-        type: "Create",
-        actor: "https://example.com/users/alice",
-      },
-      rsaPrivateKey3,
-      rsaPublicKey3.id!,
-      { contextLoader: mockDocumentLoader },
-    );
-    const activity = await Activity.fromJsonLd(signedJson, {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
     });
 
-    await mockFederation.postOutboxActivity("alice", activity);
-
-    deepStrictEqual(mockFederation.sentActivities.length, 1);
-    strictEqual(mockFederation.sentActivities[0].activity, activity);
-    deepStrictEqual(mockFederation.sentActivities[0].rawActivity, signedJson);
-  },
-);
-
-test(
-  "postOutboxActivity forwardActivity treats alternate linked data signature suites as signed",
-  async () => {
-    const mockFederation = createFederation<{ test: string }>({
-      contextData: { test: "data" },
-    });
-
-    mockFederation.setActorDispatcher(
-      "/users/{identifier}",
-      (_ctx, identifier) => {
-        return new Person({
-          id: new URL(`https://example.com/users/${identifier}`),
-        });
-      },
-    );
-
-    mockFederation
-      .setOutboxListeners("/users/{identifier}/outbox")
-      .on(
-        Create,
-        async (ctx: OutboxContext<{ test: string }>) => {
-          await ctx.forwardActivity(
-            { identifier: ctx.identifier },
-            new Person({ id: new URL("https://example.com/users/bob") }),
-            { skipIfUnsigned: true },
-          );
-        },
-      );
-
-    const signedJson = {
+  const signedJson = await signJsonLd(
+    {
       "@context": "https://www.w3.org/ns/activitystreams",
       id: "https://example.com/activities/1",
       type: "Create",
       actor: "https://example.com/users/alice",
-      signature: {
-        type: "Ed25519Signature2020",
-        verificationMethod: {
-          id: "https://example.com/users/alice#main-key",
-        },
-        jws: "signature",
-      },
-    };
-    const activity = await Activity.fromJsonLd(signedJson, {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
-    });
+    },
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+    { contextLoader: mockDocumentLoader },
+  );
+  const activity = await Activity.fromJsonLd(signedJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
 
-    await mockFederation.postOutboxActivity("alice", activity);
+  await mockFederation.postOutboxActivity("alice", activity);
 
-    deepStrictEqual(mockFederation.sentActivities.length, 1);
-    strictEqual(mockFederation.sentActivities[0].activity, activity);
-    deepStrictEqual(mockFederation.sentActivities[0].rawActivity, signedJson);
-  },
-);
+  deepStrictEqual(mockFederation.sentActivities.length, 1);
+  strictEqual(mockFederation.sentActivities[0].activity, activity);
+  deepStrictEqual(mockFederation.sentActivities[0].rawActivity, signedJson);
+});
 
-test(
-  "postOutboxActivity forwardActivity treats expanded proof payloads as signed",
-  async () => {
-    const mockFederation = createFederation<{ test: string }>({
-      contextData: { test: "data" },
-    });
+test("postOutboxActivity forwardActivity treats alternate linked data signature suites as signed", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
 
-    mockFederation.setActorDispatcher(
-      "/users/{identifier}",
-      (_ctx, identifier) => {
-        return new Person({
-          id: new URL(`https://example.com/users/${identifier}`),
-        });
-      },
-    );
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
 
-    mockFederation
-      .setOutboxListeners("/users/{identifier}/outbox")
-      .on(
-        Create,
-        async (ctx: OutboxContext<{ test: string }>) => {
-          await ctx.forwardActivity(
-            { identifier: ctx.identifier },
-            new Person({ id: new URL("https://example.com/users/bob") }),
-            { skipIfUnsigned: true },
-          );
-        },
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Create, async (ctx: OutboxContext<{ test: string }>) => {
+      await ctx.forwardActivity(
+        { identifier: ctx.identifier },
+        new Person({ id: new URL("https://example.com/users/bob") }),
+        { skipIfUnsigned: true },
       );
+    });
 
-    const proofJson = {
-      "@context": "https://www.w3.org/ns/activitystreams",
-      id: "https://example.com/activities/1",
-      type: "Create",
-      actor: "https://example.com/users/alice",
-      "https://w3id.org/security#proof": {
-        "@type": ["https://w3id.org/security#DataIntegrityProof"],
-        "https://w3id.org/security#verificationMethod": [{
+  const signedJson = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    signature: {
+      type: "Ed25519Signature2020",
+      verificationMethod: {
+        id: "https://example.com/users/alice#main-key",
+      },
+      jws: "signature",
+    },
+  };
+  const activity = await Activity.fromJsonLd(signedJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  await mockFederation.postOutboxActivity("alice", activity);
+
+  deepStrictEqual(mockFederation.sentActivities.length, 1);
+  strictEqual(mockFederation.sentActivities[0].activity, activity);
+  deepStrictEqual(mockFederation.sentActivities[0].rawActivity, signedJson);
+});
+
+test("postOutboxActivity forwardActivity treats expanded proof payloads as signed", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Create, async (ctx: OutboxContext<{ test: string }>) => {
+      await ctx.forwardActivity(
+        { identifier: ctx.identifier },
+        new Person({ id: new URL("https://example.com/users/bob") }),
+        { skipIfUnsigned: true },
+      );
+    });
+
+  const proofJson = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://example.com/activities/1",
+    type: "Create",
+    actor: "https://example.com/users/alice",
+    "https://w3id.org/security#proof": {
+      "@type": ["https://w3id.org/security#DataIntegrityProof"],
+      "https://w3id.org/security#verificationMethod": [
+        {
           "@id": "https://example.com/users/alice#main-key",
-        }],
-        "https://w3id.org/security#proofPurpose": [{
-          "@id": "https://w3id.org/security#assertionMethod",
-        }],
-        "https://w3id.org/security#proofValue": [{ "@value": "signature" }],
-      },
-    };
-    const activity = new Create({
-      id: new URL("https://example.com/activities/1"),
-      actor: new URL("https://example.com/users/alice"),
-    });
-    Object.assign(activity, {
-      toJsonLd: () => Promise.resolve(proofJson),
-    });
-
-    await mockFederation.postOutboxActivity("alice", activity);
-
-    deepStrictEqual(mockFederation.sentActivities.length, 1);
-    strictEqual(mockFederation.sentActivities[0].activity, activity);
-    deepStrictEqual(mockFederation.sentActivities[0].rawActivity, proofJson);
-  },
-);
-
-test(
-  "postOutboxActivity forwardActivity skips malformed linked data signatures",
-  async () => {
-    const mockFederation = createFederation<{ test: string }>({
-      contextData: { test: "data" },
-    });
-
-    mockFederation.setActorDispatcher(
-      "/users/{identifier}",
-      (_ctx, identifier) => {
-        return new Person({
-          id: new URL(`https://example.com/users/${identifier}`),
-        });
-      },
-    );
-
-    mockFederation
-      .setOutboxListeners("/users/{identifier}/outbox")
-      .on(
-        Create,
-        async (ctx: OutboxContext<{ test: string }>) => {
-          await ctx.forwardActivity(
-            { identifier: ctx.identifier },
-            new Person({ id: new URL("https://example.com/users/bob") }),
-            { skipIfUnsigned: true },
-          );
         },
+      ],
+      "https://w3id.org/security#proofPurpose": [
+        {
+          "@id": "https://w3id.org/security#assertionMethod",
+        },
+      ],
+      "https://w3id.org/security#proofValue": [{ "@value": "signature" }],
+    },
+  };
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+  Object.assign(activity, {
+    toJsonLd: () => Promise.resolve(proofJson),
+  });
+
+  await mockFederation.postOutboxActivity("alice", activity);
+
+  deepStrictEqual(mockFederation.sentActivities.length, 1);
+  strictEqual(mockFederation.sentActivities[0].activity, activity);
+  deepStrictEqual(mockFederation.sentActivities[0].rawActivity, proofJson);
+});
+
+test("postOutboxActivity forwardActivity skips malformed linked data signatures", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Create, async (ctx: OutboxContext<{ test: string }>) => {
+      await ctx.forwardActivity(
+        { identifier: ctx.identifier },
+        new Person({ id: new URL("https://example.com/users/bob") }),
+        { skipIfUnsigned: true },
       );
+    });
 
-    const activity = await Activity.fromJsonLd(
-      {
-        "@context": "https://www.w3.org/ns/activitystreams",
-        id: "https://example.com/activities/1",
-        type: "Create",
-        actor: "https://example.com/users/alice",
-        signature: { type: "RsaSignature2017" },
-      },
-      {
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
-      },
-    );
+  const activity = await Activity.fromJsonLd(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://example.com/activities/1",
+      type: "Create",
+      actor: "https://example.com/users/alice",
+      signature: { type: "RsaSignature2017" },
+    },
+    {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    },
+  );
 
-    await mockFederation.postOutboxActivity("alice", activity);
+  await mockFederation.postOutboxActivity("alice", activity);
 
-    deepStrictEqual(mockFederation.sentActivities.length, 0);
-  },
-);
+  deepStrictEqual(mockFederation.sentActivities.length, 0);
+});
 
 test("postOutboxActivity prefers the most specific listener", async () => {
   const mockFederation = createFederation<{ test: string }>({
@@ -731,37 +725,36 @@ test("postOutboxActivity prefers the most specific listener", async () => {
   deepStrictEqual(calls, ["Create"]);
 });
 
-test(
-  "postOutboxActivity matches listeners through the prototype chain",
-  async () => {
-    const mockFederation = createFederation<{ test: string }>({
-      contextData: { test: "data" },
+test("postOutboxActivity matches listeners through the prototype chain", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
+      });
+    },
+  );
+  const calls: string[] = [];
+
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(IntransitiveActivity, () => {
+      calls.push("IntransitiveActivity");
     });
 
-    mockFederation
-      .setActorDispatcher("/users/{identifier}", (_ctx, identifier) => {
-        return new Person({
-          id: new URL(`https://example.com/users/${identifier}`),
-        });
-      });
-    const calls: string[] = [];
+  const activity = new Arrive({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
 
-    mockFederation
-      .setOutboxListeners("/users/{identifier}/outbox")
-      .on(IntransitiveActivity, () => {
-        calls.push("IntransitiveActivity");
-      });
+  await mockFederation.postOutboxActivity("alice", activity);
 
-    const activity = new Arrive({
-      id: new URL("https://example.com/activities/1"),
-      actor: new URL("https://example.com/users/alice"),
-    });
-
-    await mockFederation.postOutboxActivity("alice", activity);
-
-    deepStrictEqual(calls, ["IntransitiveActivity"]);
-  },
-);
+  deepStrictEqual(calls, ["IntransitiveActivity"]);
+});
 
 test("postOutboxActivity rejects actor mismatch before dispatch", async () => {
   const mockFederation = createFederation<{ test: string }>({
@@ -953,40 +946,37 @@ test("postOutboxActivity missing owner does not invoke onError", async () => {
   deepStrictEqual(handled, false);
 });
 
-test(
-  "postOutboxActivity accepts the dispatched actor id as the owner",
-  async () => {
-    const mockFederation = createFederation<{ test: string }>({
-      contextData: { test: "data" },
-    });
-    let called = false;
+test("postOutboxActivity accepts the dispatched actor id as the owner", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
+  let called = false;
 
-    mockFederation.setActorDispatcher(
-      "/users/{identifier}",
-      (_ctx, identifier) => {
-        if (identifier !== "alice") return null;
-        return new Person({
-          id: new URL("https://example.com/actors/alice"),
-        });
-      },
-    );
-
-    mockFederation
-      .setOutboxListeners("/users/{identifier}/outbox")
-      .on(Create, () => {
-        called = true;
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      if (identifier !== "alice") return null;
+      return new Person({
+        id: new URL("https://example.com/actors/alice"),
       });
+    },
+  );
 
-    const activity = new Create({
-      id: new URL("https://example.com/activities/1"),
-      actor: new URL("https://example.com/actors/alice"),
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Create, () => {
+      called = true;
     });
 
-    await mockFederation.postOutboxActivity("alice", activity);
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/actors/alice"),
+  });
 
-    deepStrictEqual(called, true);
-  },
-);
+  await mockFederation.postOutboxActivity("alice", activity);
+
+  deepStrictEqual(called, true);
+});
 
 test("postOutboxActivity rejects missing actors before dispatch", async () => {
   const mockFederation = createFederation<{ test: string }>({
@@ -1128,56 +1118,47 @@ test("postOutboxActivity falls back to dispatcher authorize predicate", async ()
   deepStrictEqual(called, false);
 });
 
-test(
-  "postOutboxActivity with matching listener fails fast before auth when contextData is missing",
-  async () => {
-    const mockFederation = createFederation<void>();
-    let authorizeCalled = false;
+test("postOutboxActivity with matching listener fails fast before auth when contextData is missing", async () => {
+  const mockFederation = createFederation<void>();
+  let authorizeCalled = false;
 
-    mockFederation.setActorDispatcher(
-      "/users/{identifier}",
-      () => {
-        throw new Error("actor dispatcher should not run");
-      },
-    );
-    mockFederation
-      .setOutboxDispatcher("/users/{identifier}/outbox", () => ({ items: [] }))
-      .authorize(() => {
-        authorizeCalled = true;
-        return true;
-      });
-    mockFederation
-      .setOutboxListeners("/users/{identifier}/outbox")
-      .on(Create, () => {});
-
-    const activity = new Create({
-      id: new URL("https://example.com/activities/1"),
-      actor: new URL("https://example.com/users/alice"),
+  mockFederation.setActorDispatcher("/users/{identifier}", () => {
+    throw new Error("actor dispatcher should not run");
+  });
+  mockFederation
+    .setOutboxDispatcher("/users/{identifier}/outbox", () => ({ items: [] }))
+    .authorize(() => {
+      authorizeCalled = true;
+      return true;
     });
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Create, () => {});
 
-    await rejects(
-      () => mockFederation.postOutboxActivity("alice", activity),
-      (error) =>
-        error instanceof Error &&
-        error.message.includes(
-          "MockFederation.postOutboxActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before posting activities.",
-        ),
-    );
-    deepStrictEqual(authorizeCalled, false);
-  },
-);
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/alice"),
+  });
+
+  await rejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    (error) =>
+      error instanceof Error &&
+      error.message.includes(
+        "MockFederation.postOutboxActivity(): contextData is not initialized. Please provide contextData through the constructor or call startQueue() before posting activities.",
+      ),
+  );
+  deepStrictEqual(authorizeCalled, false);
+});
 
 test("postOutboxActivity fails fast without outbox listeners", async () => {
   const mockFederation = createFederation<{ test: string }>({
     contextData: { test: "data" },
   });
 
-  mockFederation.setActorDispatcher(
-    "/users/{identifier}",
-    () => {
-      throw new Error("actor dispatcher should not run");
-    },
-  );
+  mockFederation.setActorDispatcher("/users/{identifier}", () => {
+    throw new Error("actor dispatcher should not run");
+  });
 
   const activity = new Create({
     id: new URL("https://example.com/activities/1"),
@@ -1199,8 +1180,9 @@ test("postOutboxActivity with only dispatcher still fails fast", async () => {
     contextData: { test: "data" },
   });
 
-  mockFederation
-    .setOutboxDispatcher("/users/{identifier}/outbox", () => ({ items: [] }));
+  mockFederation.setOutboxDispatcher("/users/{identifier}/outbox", () => ({
+    items: [],
+  }));
 
   const activity = new Create({
     id: new URL("https://example.com/activities/1"),
@@ -1239,43 +1221,40 @@ test("postOutboxActivity without matching listener is a no-op", async () => {
   deepStrictEqual(mockFederation.sentActivities.length, 0);
 });
 
-test(
-  "postOutboxActivity without matching listener still validates ownership",
-  async () => {
-    const mockFederation = createFederation<{ test: string }>({
-      contextData: { test: "data" },
-    });
+test("postOutboxActivity without matching listener still validates ownership", async () => {
+  const mockFederation = createFederation<{ test: string }>({
+    contextData: { test: "data" },
+  });
 
-    mockFederation.setActorDispatcher(
-      "/users/{identifier}",
-      (_ctx, identifier) => {
-        return new Person({
-          id: new URL(`https://example.com/users/${identifier}`),
-        });
-      },
-    );
-
-    mockFederation
-      .setOutboxListeners("/users/{identifier}/outbox")
-      .on(Arrive, () => {
-        throw new Error("listener should not run");
+  mockFederation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) => {
+      return new Person({
+        id: new URL(`https://example.com/users/${identifier}`),
       });
+    },
+  );
 
-    const activity = new Create({
-      id: new URL("https://example.com/activities/1"),
-      actor: new URL("https://example.com/users/bob"),
+  mockFederation
+    .setOutboxListeners("/users/{identifier}/outbox")
+    .on(Arrive, () => {
+      throw new Error("listener should not run");
     });
 
-    await rejects(
-      () => mockFederation.postOutboxActivity("alice", activity),
-      (error) =>
-        error instanceof Error &&
-        error.message.includes(
-          "The activity actor does not match the outbox owner.",
-        ),
-    );
-  },
-);
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/bob"),
+  });
+
+  await rejects(
+    () => mockFederation.postOutboxActivity("alice", activity),
+    (error) =>
+      error instanceof Error &&
+      error.message.includes(
+        "The activity actor does not match the outbox owner.",
+      ),
+  );
+});
 
 test("postOutboxActivity invokes outbox error handler", async () => {
   const mockFederation = createFederation<{ test: string }>({
@@ -1362,10 +1341,9 @@ test("setOutboxDispatcher requires a leading slash", () => {
 
   throws(
     () =>
-      mockFederation.setOutboxDispatcher(
-        "users/{identifier}/outbox",
-        () => ({ items: [] }),
-      ),
+      mockFederation.setOutboxDispatcher("users/{identifier}/outbox", () => ({
+        items: [],
+      })),
     (error) =>
       error instanceof TypeError &&
       error.message.includes("Path must start with a slash."),
@@ -1859,18 +1837,17 @@ test("MockContext.getActor() calls registered actor dispatcher", async () => {
   const mockFederation = createFederation<void>();
 
   // Register actor dispatcher
-  mockFederation.setActorDispatcher(
-    "/users/{identifier}",
-    (ctx, identifier) => {
+  mockFederation
+    .setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
       return new Person({
         id: ctx.getActorUri(identifier),
         preferredUsername: identifier,
         name: `Test User ${identifier}`,
       });
-    },
-  ).mapHandle((_ctx, handle) => handle).mapAlias(() => null).authorize(() =>
-    true
-  );
+    })
+    .mapHandle((_ctx, handle) => handle)
+    .mapAlias(() => null)
+    .authorize(() => true);
 
   const context = mockFederation.createContext(
     new URL("https://example.com"),
@@ -1889,16 +1866,19 @@ test("MockContext.getObject() calls registered object dispatcher", async () => {
   const mockFederation = createFederation<void>();
 
   // Register object dispatcher
-  mockFederation.setObjectDispatcher(
-    Note,
-    "/users/{identifier}/posts/{postId}",
-    (ctx, values) => {
-      return new Note({
-        id: ctx.getObjectUri(Note, values),
-        content: `Post ${values.postId} by ${values.identifier}`,
-      });
-    },
-  ).authorize(() => true).authorize(() => true);
+  mockFederation
+    .setObjectDispatcher(
+      Note,
+      "/users/{identifier}/posts/{postId}",
+      (ctx, values) => {
+        return new Note({
+          id: ctx.getObjectUri(Note, values),
+          content: `Post ${values.postId} by ${values.identifier}`,
+        });
+      },
+    )
+    .authorize(() => true)
+    .authorize(() => true);
 
   const context = mockFederation.createContext(
     new URL("https://example.com"),
@@ -2210,10 +2190,8 @@ test("MockContext uses the injected portable verifier for lookup", async () => {
     null,
   );
   deepStrictEqual(
-    await createFederation<void>().createContext(
-      new URL("https://example.com"),
-      undefined,
-    )
+    await createFederation<void>()
+      .createContext(new URL("https://example.com"), undefined)
       .lookupObject(compatibleId),
     null,
   );
@@ -2341,9 +2319,11 @@ test("MockFederation.fetch() dispatches hashlink media", async () => {
   );
   deepStrictEqual(calls, 1);
   deepStrictEqual(
-    (await federation.fetch(new Request(`${path}/extra`), {
-      contextData: { id: 42 },
-    })).status,
+    (
+      await federation.fetch(new Request(`${path}/extra`), {
+        contextData: { id: 42 },
+      })
+    ).status,
     400,
   );
   deepStrictEqual(calls, 1);
@@ -2388,15 +2368,19 @@ test("MockFederation.fetch() handles hashlink variants and misses", async () => 
   deepStrictEqual(malformedHead.status, 400);
   deepStrictEqual(malformedHead.body, null);
   deepStrictEqual(
-    (await federation.fetch(new Request(`${base}did:key:zabc/notes/1`), {
-      contextData: undefined,
-    })).status,
+    (
+      await federation.fetch(new Request(`${base}did:key:zabc/notes/1`), {
+        contextData: undefined,
+      })
+    ).status,
     404,
   );
   deepStrictEqual(
-    (await createFederation<void>().fetch(new Request(`${base}hl:${digest}`), {
-      contextData: undefined,
-    })).status,
+    (
+      await createFederation<void>().fetch(new Request(`${base}hl:${digest}`), {
+        contextData: undefined,
+      })
+    ).status,
     404,
   );
 });
@@ -2407,19 +2391,20 @@ test("MockFederation.fetch() removes a HEAD response body", async () => {
   );
   let cancelled = false;
   const federation = createFederation<void>();
-  federation.setHashlinkMediaDispatcher(() =>
-    new Response(
-      new ReadableStream({
-        cancel() {
-          cancelled = true;
+  federation.setHashlinkMediaDispatcher(
+    () =>
+      new Response(
+        new ReadableStream({
+          cancel() {
+            cancelled = true;
+          },
+        }),
+        {
+          status: 206,
+          statusText: "Partial Content",
+          headers: { "Content-Type": "text/plain" },
         },
-      }),
-      {
-        status: 206,
-        statusText: "Partial Content",
-        headers: { "Content-Type": "text/plain" },
-      },
-    )
+      ),
   );
   const response = await federation.fetch(
     new Request(`https://example.com/.well-known/apgateway/hl:${digest}`, {
@@ -2513,14 +2498,12 @@ test("MockContext builds portable IDs", async (t) => {
         formatIri(helper(did.replace("did:key:", "DID:KEY:"))),
         `ap+ef61://${did}${path}`,
       );
-      for (
-        const authority of [
-          `${did}/extra`,
-          "https://example.com",
-          `did:key:u${did.slice("did:key:z".length)}`,
-          "did:key:z",
-        ]
-      ) {
+      for (const authority of [
+        `${did}/extra`,
+        "https://example.com",
+        `did:key:u${did.slice("did:key:z".length)}`,
+        "did:key:z",
+      ]) {
         throws(() => helper(authority), TypeError, authority);
       }
     });
@@ -2536,9 +2519,7 @@ test("MockContext.parseUri() recognizes portable IDs on request", async () => {
   const portableIds = [
     parseIri(`ap+ef61://${did}/users/alice`),
     parseIri(`ap://${did}/users/alice?@gateway=https%3A%2F%2Fgw.example`),
-    new URL(
-      `https://gateway.example/.well-known/apgateway/${did}/users/alice`,
-    ),
+    new URL(`https://gateway.example/.well-known/apgateway/${did}/users/alice`),
   ];
   for (const uri of portableIds) {
     deepStrictEqual(context.parseUri(uri), null, uri.href);
@@ -2550,9 +2531,9 @@ test("MockContext.parseUri() recognizes portable IDs on request", async () => {
   }
   const malformed = [
     new URL(
-      `ap+ef61://${
-        encodeURIComponent(`did:key:u${did.slice("did:key:z".length)}`)
-      }/users/alice`,
+      `ap+ef61://${encodeURIComponent(
+        `did:key:u${did.slice("did:key:z".length)}`,
+      )}/users/alice`,
     ),
     new URL(`ap+ef61://${encodeURIComponent(did)}/users/%ZZ`),
     new URL(`ap+ef61://user@${encodeURIComponent(did)}/users/alice`),
@@ -2593,14 +2574,22 @@ test("MockContext.getObject() suppresses tombstones unless passed through", asyn
   const defaultPromise = ctx.getObject(Note, { id: "deleted" });
   const defaultResult: Note | null = await defaultPromise;
   deepStrictEqual(defaultResult, null);
-  const suppressed: Note | null = await ctx.getObject(Note, {
-    id: "deleted",
-  }, { tombstone: "suppress" });
+  const suppressed: Note | null = await ctx.getObject(
+    Note,
+    {
+      id: "deleted",
+    },
+    { tombstone: "suppress" },
+  );
   deepStrictEqual(suppressed, null);
   ok(
-    (await ctx.getObject(Note, { id: "deleted" }, {
-      tombstone: "passthrough",
-    })) instanceof Tombstone,
+    (await ctx.getObject(
+      Note,
+      { id: "deleted" },
+      {
+        tombstone: "passthrough",
+      },
+    )) instanceof Tombstone,
   );
   ok((await ctx.getObject(Note, { id: "1" })) instanceof Note);
   // A tombstone that is an instance of the requested class is returned:
@@ -2615,14 +2604,20 @@ test("MockFederation custom collection setters chain mapPortableOwner()", () => 
     "/users/{identifier}/bookmarks",
     () => ({ items: [] }),
   );
-  strictEqual(setters.mapPortableOwner(() => null), setters);
+  strictEqual(
+    setters.mapPortableOwner(() => null),
+    setters,
+  );
   const ordered = federation.setOrderedCollectionDispatcher(
     "pins",
     Note,
     "/users/{identifier}/pins",
     () => ({ items: [] }),
   );
-  strictEqual(ordered.mapPortableOwner(() => null), ordered);
+  strictEqual(
+    ordered.mapPortableOwner(() => null),
+    ordered,
+  );
   // The other setters return the same setters, so that they chain in any
   // order:
   strictEqual(
@@ -2758,26 +2753,29 @@ for (const passContext of [false, true]) {
     const activity = createLocalFollow();
     const received: Follow[] = [];
     let actor: unknown;
-    federation.setInboxListeners("/users/{identifier}/inbox").on(
-      Follow,
-      async (ctx: InboxContext<Record<string, never>>, follow: Follow) => {
-        received.push(follow);
-        actor = await follow.getActor(passContext ? ctx : {});
-      },
-    ).on(
-      Follow,
-      (_ctx: InboxContext<Record<string, never>>, follow: Follow) => {
-        received.push(follow);
-        return Promise.resolve();
-      },
-    );
+    federation
+      .setInboxListeners("/users/{identifier}/inbox")
+      .on(
+        Follow,
+        async (ctx: InboxContext<Record<string, never>>, follow: Follow) => {
+          received.push(follow);
+          actor = await follow.getActor(passContext ? ctx : {});
+        },
+      )
+      .on(
+        Follow,
+        (_ctx: InboxContext<Record<string, never>>, follow: Follow) => {
+          received.push(follow);
+          return Promise.resolve();
+        },
+      );
     const requests = await withActorFetch(() =>
-      federation.receiveActivity(activity)
+      federation.receiveActivity(activity),
     );
     deepStrictEqual(requests, [localActorUrl]);
     ok(actor instanceof Person);
     deepStrictEqual(actor.id?.href, localActorUrl);
-    ok((received[0]) instanceof Follow);
+    ok(received[0] instanceof Follow);
     notStrictEqual(received[0], activity);
     strictEqual(received[0], received[1]);
     deepStrictEqual(activity.actorId?.href, localActorUrl);
@@ -2798,19 +2796,21 @@ for (const allowPrivateAddress of [undefined, false]) {
     let received: Follow | undefined;
     let document: unknown;
     let contextDocument: unknown;
-    federation.setInboxListeners("/users/{identifier}/inbox").on(
-      Follow,
-      async (ctx: InboxContext<Record<string, never>>, follow: Follow) => {
-        received = follow;
-        document = (await ctx.documentLoader(localActorUrl)).document;
-        contextDocument = (await ctx.contextLoader(localActorUrl)).document;
-        await rejects(
-          () => follow.getActor(),
-          (error) =>
-            error instanceof UrlError && error.message.includes("Localhost"),
-        );
-      },
-    );
+    federation
+      .setInboxListeners("/users/{identifier}/inbox")
+      .on(
+        Follow,
+        async (ctx: InboxContext<Record<string, never>>, follow: Follow) => {
+          received = follow;
+          document = (await ctx.documentLoader(localActorUrl)).document;
+          contextDocument = (await ctx.contextLoader(localActorUrl)).document;
+          await rejects(
+            () => follow.getActor(),
+            (error) =>
+              error instanceof UrlError && error.message.includes("Localhost"),
+          );
+        },
+      );
     const requests = await withActorFetch(async () => {
       await federation.receiveActivity(activity);
       const ctx = federation.createContext(new URL("https://example.com"), {});
@@ -2847,16 +2847,15 @@ test("receiveActivity preserves embedded objects and supports lookup with contex
   });
   let embedded: unknown;
   let actor: unknown;
-  federation.setInboxListeners("/users/{identifier}/inbox").on(
-    Undo,
-    async (ctx: InboxContext<Record<string, never>>, undo: Undo) => {
+  federation
+    .setInboxListeners("/users/{identifier}/inbox")
+    .on(Undo, async (ctx: InboxContext<Record<string, never>>, undo: Undo) => {
       const object = await undo.getObject();
       embedded = object;
       if (object instanceof Follow) actor = await object.getActor(ctx);
-    },
-  );
+    });
   const requests = await withActorFetch(() =>
-    federation.receiveActivity(activity)
+    federation.receiveActivity(activity),
   );
   deepStrictEqual(requests, [localActorUrl]);
   strictEqual(embedded, follow);
@@ -2868,27 +2867,29 @@ test("receiveActivity respects an explicit getter document loader", async () => 
   const federation = createNetworkFederation();
   let actor: unknown;
   const loaderRequests: string[] = [];
-  federation.setInboxListeners("/users/{identifier}/inbox").on(
-    Follow,
-    async (_ctx: InboxContext<Record<string, never>>, follow: Follow) => {
-      actor = await follow.getActor({
-        documentLoader: (url) => {
-          loaderRequests.push(url);
-          return Promise.resolve({
-            contextUrl: null,
-            documentUrl: url,
-            document: {
-              "@context": "https://www.w3.org/ns/activitystreams",
-              id: url,
-              type: "Person",
-            },
-          });
-        },
-      });
-    },
-  );
+  federation
+    .setInboxListeners("/users/{identifier}/inbox")
+    .on(
+      Follow,
+      async (_ctx: InboxContext<Record<string, never>>, follow: Follow) => {
+        actor = await follow.getActor({
+          documentLoader: (url) => {
+            loaderRequests.push(url);
+            return Promise.resolve({
+              contextUrl: null,
+              documentUrl: url,
+              document: {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                id: url,
+                type: "Person",
+              },
+            });
+          },
+        });
+      },
+    );
   const requests = await withActorFetch(() =>
-    federation.receiveActivity(createLocalFollow())
+    federation.receiveActivity(createLocalFollow()),
   );
   deepStrictEqual(requests, []);
   deepStrictEqual(loaderRequests, [localActorUrl]);
@@ -2899,19 +2900,24 @@ test("receiveActivity respects an explicit getter document loader", async () => 
 test("receiveActivity preserves an unconfigured activity's own loaders", async () => {
   const federation = createFederation({ contextData: {} });
   const loader = getDocumentLoader({ allowPrivateAddress: true });
-  const activity = createLocalFollow().clone({}, {
-    documentLoader: loader,
-    contextLoader: loader,
-  });
-  let actor: unknown;
-  federation.setInboxListeners("/users/{identifier}/inbox").on(
-    Follow,
-    async (_ctx: InboxContext<Record<string, never>>, follow: Follow) => {
-      actor = await follow.getActor();
+  const activity = createLocalFollow().clone(
+    {},
+    {
+      documentLoader: loader,
+      contextLoader: loader,
     },
   );
+  let actor: unknown;
+  federation
+    .setInboxListeners("/users/{identifier}/inbox")
+    .on(
+      Follow,
+      async (_ctx: InboxContext<Record<string, never>>, follow: Follow) => {
+        actor = await follow.getActor();
+      },
+    );
   const requests = await withActorFetch(() =>
-    federation.receiveActivity(activity)
+    federation.receiveActivity(activity),
   );
   deepStrictEqual(requests, [localActorUrl]);
   ok(actor instanceof Person);
@@ -2928,10 +2934,9 @@ test("receiveActivity does not clone without listeners or context data", async (
   };
   const requests = await withActorFetch(async () => {
     await federation.receiveActivity(activity);
-    federation.setInboxListeners("/users/{identifier}/inbox").on(
-      Follow,
-      () => Promise.resolve(),
-    );
+    federation
+      .setInboxListeners("/users/{identifier}/inbox")
+      .on(Follow, () => Promise.resolve());
     await rejects(
       () => federation.receiveActivity(activity),
       (error) =>
@@ -2954,14 +2959,16 @@ test("receiveActivity preserves parsed JSON-LD extension properties", async () =
   };
   const activity = await Follow.fromJsonLd(json);
   let receivedJson: unknown;
-  federation.setInboxListeners("/users/{identifier}/inbox").on(
-    Follow,
-    async (_ctx: InboxContext<Record<string, never>>, follow: Follow) => {
-      receivedJson = await follow.toJsonLd();
-    },
-  );
+  federation
+    .setInboxListeners("/users/{identifier}/inbox")
+    .on(
+      Follow,
+      async (_ctx: InboxContext<Record<string, never>>, follow: Follow) => {
+        receivedJson = await follow.toJsonLd();
+      },
+    );
   const requests = await withActorFetch(() =>
-    federation.receiveActivity(activity)
+    federation.receiveActivity(activity),
   );
   deepStrictEqual(requests, []);
   deepStrictEqual(receivedJson, json);

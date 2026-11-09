@@ -41,7 +41,7 @@ const SUPPORTED_FAULTS = [
   "network-error",
 ] as const;
 
-type SupportedFault = typeof SUPPORTED_FAULTS[number];
+type SupportedFault = (typeof SUPPORTED_FAULTS)[number];
 type RemoteFailureFault = Exclude<
   SupportedFault,
   "invalid-signature" | "missing-actor"
@@ -63,17 +63,16 @@ const DRAIN_POLL_MS = 25;
 /** The `failure` scenario runner. */
 export const failureRunner: ScenarioRunner = {
   validate(scenario): void {
-    const faults = scenario.faults.length < 1
-      ? ["remote-404"]
-      : scenario.faults;
+    const faults =
+      scenario.faults.length < 1 ? ["remote-404"] : scenario.faults;
     const remoteFaults = [...new Set(faults.filter(isRemoteFault))];
     for (const fault of faults) {
       if (!isSupportedFault(fault)) {
         throw new Error(
           `Scenario "${scenario.name}": unsupported failure fault ` +
-            `${JSON.stringify(fault)}; supported faults: ${
-              SUPPORTED_FAULTS.join(", ")
-            }.`,
+            `${JSON.stringify(fault)}; supported faults: ${SUPPORTED_FAULTS.join(
+              ", ",
+            )}.`,
         );
       }
     }
@@ -160,9 +159,10 @@ export const failureRunner: ScenarioRunner = {
 };
 
 function faultsOf(context: RunContext): SupportedFault[] {
-  const faults = context.scenario.faults.length < 1
-    ? ["remote-404"]
-    : context.scenario.faults;
+  const faults =
+    context.scenario.faults.length < 1
+      ? ["remote-404"]
+      : context.scenario.faults;
   return faults.map((fault) => {
     if (isSupportedFault(fault)) return fault;
     throw new Error(
@@ -203,8 +203,12 @@ function isInboundFault(
 }
 
 function isRemoteFault(fault: string): fault is RemoteFailureFault {
-  return fault === "remote-404" || fault === "remote-410" ||
-    fault === "slow-inbox" || fault === "network-error";
+  return (
+    fault === "remote-404" ||
+    fault === "remote-410" ||
+    fault === "slow-inbox" ||
+    fault === "network-error"
+  );
 }
 
 async function resolveRemoteFailureTargets(
@@ -214,8 +218,8 @@ async function resolveRemoteFailureTargets(
   const targets = new Map<RemoteFailureFault, RemoteFailureTarget>();
   try {
     const remoteFaults = [...new Set(faults.filter(isRemoteFault))];
-    const liveFaults = remoteFaults.filter((fault) =>
-      fault !== "network-error"
+    const liveFaults = remoteFaults.filter(
+      (fault) => fault !== "network-error",
     );
     if (liveFaults.length > 0) {
       const sink = await spawnSinkServer({
@@ -343,8 +347,7 @@ async function sendRemoteFailure(
     fault,
     clock: context.clock ?? systemClock(),
     signal: context.signal,
-    timeoutMs: context.scenario.queueDrainTimeoutMs ??
-      DEFAULT_DRAIN_TIMEOUT_MS,
+    timeoutMs: context.scenario.queueDrainTimeoutMs ?? DEFAULT_DRAIN_TIMEOUT_MS,
   });
   if (observation == null) {
     return {
@@ -526,9 +529,10 @@ async function signedFailureRequest(
       "The invalid-signature and missing-actor faults require a recipient.",
     );
   }
-  const actor = fault === "missing-actor"
-    ? missingActor(fleet.actors[0], context.target)
-    : fleet.actors[0];
+  const actor =
+    fault === "missing-actor"
+      ? missingActor(fleet.actors[0], context.target)
+      : fleet.actors[0];
   const id = createActivityIdMinter(fleet.url).next();
   const note = new Note({
     id: new URL(`/objects/${crypto.randomUUID()}`, fleet.url),
@@ -586,9 +590,8 @@ function missingActor(actor: SyntheticActor, target: URL): SyntheticActor {
     ...actor,
     id,
     rsaKeyId: actor.rsaKeyId == null ? undefined : new URL("#main-key", id),
-    ed25519KeyId: actor.ed25519KeyId == null
-      ? undefined
-      : new URL("#ed25519-key", id),
+    ed25519KeyId:
+      actor.ed25519KeyId == null ? undefined : new URL("#ed25519-key", id),
   };
 }
 

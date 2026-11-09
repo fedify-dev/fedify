@@ -17,8 +17,9 @@ export default [
     deps: { neverBundle: [/^node:/] },
   }),
   defineConfig({
-    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
-      .map((f) => f.replace(sep, "/")),
+    entry: (await Array.fromAsync(glob(`src/**/*.test.ts`))).map((f) =>
+      f.replace(sep, "/"),
+    ),
     format: ["esm", "cjs"],
     platform: "node",
     outExtensions({ format }) {

@@ -161,54 +161,74 @@ function createContext<TContextData>(
     getLikedUri: getLikedUri ?? throwRouterError,
     getFeaturedUri: getFeaturedUri ?? throwRouterError,
     getFeaturedTagsUri: getFeaturedTagsUri ?? throwRouterError,
-    parseUri: parseUri ?? ((_uri) => {
-      throw new Error("Not implemented");
-    }),
-    getDocumentLoader: getDocumentLoader ?? ((_params) => {
-      throw new Error("Not implemented");
-    }),
+    parseUri:
+      parseUri ??
+      ((_uri) => {
+        throw new Error("Not implemented");
+      }),
+    getDocumentLoader:
+      getDocumentLoader ??
+      ((_params) => {
+        throw new Error("Not implemented");
+      }),
     getActorKeyPairs: getActorKeyPairs ?? ((_handle) => Promise.resolve([])),
-    lookupObject: lookupObject ?? ((uri, options = {}) => {
-      return globalLookupObject(uri, {
-        documentLoader: options.documentLoader ?? documentLoader ??
-          mockDocumentLoader,
-        contextLoader: options.contextLoader ?? contextLoader ??
-          mockDocumentLoader,
-        verifyPortableObject: options.verifyPortableObject ??
-          verifyPortableObject,
-      });
-    }),
-    traverseCollection: traverseCollection ?? ((collection, options = {}) => {
-      return globalTraverseCollection(collection, {
-        documentLoader: options.documentLoader ?? documentLoader ??
-          mockDocumentLoader,
-        contextLoader: options.contextLoader ?? contextLoader ??
-          mockDocumentLoader,
-        verifyPortableObject: options.verifyPortableObject ??
-          verifyPortableObject,
-      });
-    }),
-    lookupNodeInfo: lookupNodeInfo ?? ((_params) => {
-      throw new Error("Not implemented");
-    }),
+    lookupObject:
+      lookupObject ??
+      ((uri, options = {}) => {
+        return globalLookupObject(uri, {
+          documentLoader:
+            options.documentLoader ?? documentLoader ?? mockDocumentLoader,
+          contextLoader:
+            options.contextLoader ?? contextLoader ?? mockDocumentLoader,
+          verifyPortableObject:
+            options.verifyPortableObject ?? verifyPortableObject,
+        });
+      }),
+    traverseCollection:
+      traverseCollection ??
+      ((collection, options = {}) => {
+        return globalTraverseCollection(collection, {
+          documentLoader:
+            options.documentLoader ?? documentLoader ?? mockDocumentLoader,
+          contextLoader:
+            options.contextLoader ?? contextLoader ?? mockDocumentLoader,
+          verifyPortableObject:
+            options.verifyPortableObject ?? verifyPortableObject,
+        });
+      }),
+    lookupNodeInfo:
+      lookupNodeInfo ??
+      ((_params) => {
+        throw new Error("Not implemented");
+      }),
     // Note: Cannot use globalLookupWebFinger from @fedify/fedify/webfinger here
     // because importing from webfinger module causes JSR type analyzer to hang
     // when combined with @opentelemetry/api types (issue #468).
-    lookupWebFinger: lookupWebFinger ?? ((_resource, _options = {}) => {
-      return Promise.resolve(null);
-    }),
-    sendActivity: sendActivity ?? ((_params) => {
-      throw new Error("Not implemented");
-    }),
-    routeActivity: routeActivity ?? ((_params) => {
-      throw new Error("Not implemented");
-    }),
-    enqueueTask: enqueueTask ?? ((_task, _data, _options) => {
-      throw new Error("Not implemented");
-    }),
-    enqueueTaskMany: enqueueTaskMany ?? ((_task, _payloads, _options) => {
-      throw new Error("Not implemented");
-    }),
+    lookupWebFinger:
+      lookupWebFinger ??
+      ((_resource, _options = {}) => {
+        return Promise.resolve(null);
+      }),
+    sendActivity:
+      sendActivity ??
+      ((_params) => {
+        throw new Error("Not implemented");
+      }),
+    routeActivity:
+      routeActivity ??
+      ((_params) => {
+        throw new Error("Not implemented");
+      }),
+    enqueueTask:
+      enqueueTask ??
+      ((_task, _data, _options) => {
+        throw new Error("Not implemented");
+      }),
+    enqueueTaskMany:
+      enqueueTaskMany ??
+      ((_task, _payloads, _options) => {
+        throw new Error("Not implemented");
+      }),
   };
 }
 
@@ -236,7 +256,8 @@ function createRequestContext<TContextData>(
     getObject: args.getObject ?? (() => Promise.resolve(null)),
     getSignedKey: args.getSignedKey ?? (() => Promise.resolve(null)),
     getSignedKeyOwner: args.getSignedKeyOwner ?? (() => Promise.resolve(null)),
-    isSignedByAudience: args.isSignedByAudience ??
+    isSignedByAudience:
+      args.isSignedByAudience ??
       ((object, options) =>
         isSignedByAudience(
           () =>
@@ -246,9 +267,11 @@ function createRequestContext<TContextData>(
           object,
           options?.isMember,
         )),
-    sendActivity: args.sendActivity ?? ((_params) => {
-      throw new Error("Not implemented");
-    }),
+    sendActivity:
+      args.sendActivity ??
+      ((_params) => {
+        throw new Error("Not implemented");
+      }),
   };
 }
 
@@ -277,8 +300,11 @@ function isSameActorId(a: URL, b: URL): boolean {
   const portableA = getPortableIri(a);
   const portableB = getPortableIri(b);
   if (portableA != null || portableB != null) {
-    return portableA != null && portableB != null &&
-      arePortableUrisEqual(portableA, portableB);
+    return (
+      portableA != null &&
+      portableB != null &&
+      arePortableUrisEqual(portableA, portableB)
+    );
   }
   return a.href === b.href;
 }
@@ -315,9 +341,8 @@ async function isSignedByAudience(
  * The authentication evidence of a mock inbox context that is not given one:
  * nothing is authenticated.
  */
-const EMPTY_AUTHENTICATION: InboxContext<unknown>["authentication"] = globalThis
-  .Object
-  .freeze({
+const EMPTY_AUTHENTICATION: InboxContext<unknown>["authentication"] =
+  globalThis.Object.freeze({
     verified: false,
     requestSigners: globalThis.Object.freeze([]),
     documentSigners: globalThis.Object.freeze([]),
@@ -355,7 +380,8 @@ function createInboxContext<TContextData>(
     federation: Federation<TContextData>;
   },
 ): TestInboxContext<TContextData> {
-  const forwardActivity = args.forwardActivity ??
+  const forwardActivity =
+    args.forwardActivity ??
     (((_forwarder: unknown, _recipients: unknown, _options?: unknown) => {
       throw new Error("Not implemented");
     }) as TestInboxContext<TContextData>["forwardActivity"]);
@@ -383,13 +409,15 @@ function createOutboxContext<TContextData>(
     federation: Federation<TContextData>;
   },
 ): TestOutboxContext<TContextData> {
-  const forwardActivity = args.forwardActivity ??
+  const forwardActivity =
+    args.forwardActivity ??
     (((_forwarder: unknown, _recipients: unknown, _options?: unknown) => {
       throw new Error("Not implemented");
     }) as TestOutboxContext<TContextData>["forwardActivity"]);
   return {
     ...createContext(args),
-    clone: args.clone ??
+    clone:
+      args.clone ??
       ((data: TContextData) => createOutboxContext({ ...args, data })),
     identifier: args.identifier,
     hasDeliveredActivity: args.hasDeliveredActivity ?? (() => false),

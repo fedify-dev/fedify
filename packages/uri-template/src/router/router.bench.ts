@@ -40,14 +40,12 @@ Deno.bench(
 );
 
 const runFirstRouteAfterBuild = createRouterFirstRouteAfterBuildBench(Router);
-for (
-  const scenario of [
-    createRoutesPressureTest(),
-    createDeepPrefixRouterTest(),
-    createDynamicRoutesTest(),
-    createInactiveEntriesTest(),
-  ]
-) {
+for (const scenario of [
+  createRoutesPressureTest(),
+  createDeepPrefixRouterTest(),
+  createDynamicRoutesTest(),
+  createInactiveEntriesTest(),
+]) {
   Deno.bench(
     `Router: ${scenario.name}: compile and add routes`,
     runCompileAndAddRoutes(scenario.routeDefinitions, scenario.routeName),

@@ -13,11 +13,13 @@ test("sender payload projects nested compact expanded and proof-bearing blind fi
     bto: [secret],
     object: {
       bcc: [secret],
-      children: [{
-        "as:bto": secret,
-        [`${as}#bcc`]: secret,
-        content: "visible",
-      }],
+      children: [
+        {
+          "as:bto": secret,
+          [`${as}#bcc`]: secret,
+          content: "visible",
+        },
+      ],
       proof: {
         "@context": "https://w3id.org/identity/v1",
         type: "DataIntegrityProof",
@@ -42,13 +44,17 @@ test("sender payload projects nested compact expanded and proof-bearing blind fi
   ok(Object.isFrozen(value.object));
   source.object.children[0].content = "changed";
   ok(JSON.stringify(result.value).includes("visible"));
-  const expanded = projectSenderPayload([{
-    "@type": [`${as}#Create`],
-    [`${as}#object`]: [{
-      [`${as}#bcc`]: [{ "@id": secret }],
-      [`${as}#content`]: [{ "@value": "visible" }],
-    }],
-  }]);
+  const expanded = projectSenderPayload([
+    {
+      "@type": [`${as}#Create`],
+      [`${as}#object`]: [
+        {
+          [`${as}#bcc`]: [{ "@id": secret }],
+          [`${as}#content`]: [{ "@value": "visible" }],
+        },
+      ],
+    },
+  ]);
   ok(expanded.type === "available");
   strictEqual(expanded.redacted, true);
   strictEqual(JSON.stringify(expanded.value).includes(secret), false);
@@ -83,33 +89,31 @@ test("sender payload fails closed without evaluating getters or JSON conversion"
   cycle.object = cycle;
   let deep: unknown = "leaf";
   for (let i = 0; i < 65; i++) deep = { object: deep };
-  for (
-    const source of [
-      { "@context": [as, { private: `${as}#bcc` }], private: secret },
-      {
-        "@context": as,
-        object: {
-          "@context": { as: "https://other.example/" },
-          "as:bcc": secret,
-        },
+  for (const source of [
+    { "@context": [as, { private: `${as}#bcc` }], private: secret },
+    {
+      "@context": as,
+      object: {
+        "@context": { as: "https://other.example/" },
+        "as:bcc": secret,
       },
-      { "@context": [as, "https://unknown.example/context"], private: secret },
-      { "@context": [as, { sensitive: "as:bcc" }], sensitive: secret },
-      {
-        "@context": [as, { toot: `${as}#`, Emoji: "toot:bcc" }],
-        Emoji: secret,
-      },
-      { type: "Create", object: secret },
-      getter,
-      conversion,
-      { "@context": context },
-      cycle,
-      { "@context": as, object: deep },
-      { "@context": as, object: NaN },
-      { "@context": as, object: new Date() },
-      { "@context": as, object: [undefined] },
-    ]
-  ) {
+    },
+    { "@context": [as, "https://unknown.example/context"], private: secret },
+    { "@context": [as, { sensitive: "as:bcc" }], sensitive: secret },
+    {
+      "@context": [as, { toot: `${as}#`, Emoji: "toot:bcc" }],
+      Emoji: secret,
+    },
+    { type: "Create", object: secret },
+    getter,
+    conversion,
+    { "@context": context },
+    cycle,
+    { "@context": as, object: deep },
+    { "@context": as, object: NaN },
+    { "@context": as, object: new Date() },
+    { "@context": as, object: [undefined] },
+  ]) {
     deepStrictEqual(projectSenderPayload(source), {
       stage: "sender-payload",
       type: "unavailable",

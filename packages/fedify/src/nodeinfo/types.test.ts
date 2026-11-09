@@ -15,28 +15,25 @@ test("nodeInfoToJson()", () => {
       localComments: 10000,
     },
   };
-  assertEquals(
-    nodeInfoToJson(validInfo),
-    {
-      "$schema": "http://nodeinfo.diaspora.software/ns/schema/2.1#",
-      version: "2.1",
-      software: {
-        name: "software-name",
-        version: "1.2.3",
-        repository: undefined,
-        homepage: undefined,
-      },
-      protocols: ["activitypub"],
-      services: { inbound: [], outbound: [] },
-      openRegistrations: false,
-      usage: {
-        localComments: 10000,
-        localPosts: 1000,
-        users: { activeHalfyear: 50, activeMonth: 10, total: 100 },
-      },
-      metadata: {},
+  assertEquals(nodeInfoToJson(validInfo), {
+    "$schema": "http://nodeinfo.diaspora.software/ns/schema/2.1#",
+    version: "2.1",
+    software: {
+      name: "software-name",
+      version: "1.2.3",
+      repository: undefined,
+      homepage: undefined,
     },
-  );
+    protocols: ["activitypub"],
+    services: { inbound: [], outbound: [] },
+    openRegistrations: false,
+    usage: {
+      localComments: 10000,
+      localPosts: 1000,
+      users: { activeHalfyear: 50, activeMonth: 10, total: 100 },
+    },
+    metadata: {},
+  });
   assertEquals(
     nodeInfoToJson({
       ...validInfo,

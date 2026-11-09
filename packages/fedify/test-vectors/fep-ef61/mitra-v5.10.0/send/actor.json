@@ -47,9 +47,7 @@
   "id": "https://fedify.example/.well-known/apgateway/did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/actor",
   "type": "Person",
   "inbox": "https://fedify.example/.well-known/apgateway/did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/actor/inbox",
-  "gateways": [
-    "https://fedify.example"
-  ],
+  "gateways": ["https://fedify.example"],
   "assertionMethod": [
     {
       "id": "https://fedify.example/.well-known/apgateway/did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/actor#ed25519-key",

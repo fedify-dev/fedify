@@ -83,13 +83,17 @@ export async function runReadLoad(
   let pipeline: SigningPipeline | null = null;
   if (options.authenticated) {
     let signIndex = 0;
-    pipeline = createSigningPipeline(context.scenario.signing, async () => {
-      const i = signIndex++;
-      return await signGetRequest(
-        unsignedRequest(i),
-        actors[i % actors.length],
-      );
-    }, { total: estimateTotal(context.scenario) });
+    pipeline = createSigningPipeline(
+      context.scenario.signing,
+      async () => {
+        const i = signIndex++;
+        return await signGetRequest(
+          unsignedRequest(i),
+          actors[i % actors.length],
+        );
+      },
+      { total: estimateTotal(context.scenario) },
+    );
   }
 
   let index = 0;
@@ -130,9 +134,10 @@ export async function runReadLoad(
       includeHistogram: true,
     });
     const end = await fetchServerSnapshot(context.target, fetchImpl);
-    const server = baselineTaken && baseline != null && end != null
-      ? snapshotToMetrics(diffSnapshots(baseline, end))
-      : null;
+    const server =
+      baselineTaken && baseline != null && end != null
+        ? snapshotToMetrics(diffSnapshots(baseline, end))
+        : null;
     return { ...measurement, server };
   } finally {
     await pipeline?.close();
@@ -176,10 +181,7 @@ async function signGetRequest(
       "Actor is missing the RSA key required for authenticated fetch signing.",
     );
   }
-  return await signRequest(
-    request,
-    actor.keys.rsa.privateKey,
-    actor.rsaKeyId,
-    { spec: actor.httpStandard },
-  );
+  return await signRequest(request, actor.keys.rsa.privateKey, actor.rsaKeyId, {
+    spec: actor.httpStandard,
+  });
 }

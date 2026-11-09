@@ -50,10 +50,10 @@ async function attempt(
   try {
     const response = withSignals
       ? await pinner.fetch(
-        grant,
-        new Request(url, { signal: new AbortController().signal }),
-        new AbortController().signal,
-      )
+          grant,
+          new Request(url, { signal: new AbortController().signal }),
+          new AbortController().signal,
+        )
       : await pinner.fetch(grant, new Request(url));
     return { case: name, status: response.status, body: await response.text() };
   } catch (error) {
@@ -66,14 +66,12 @@ async function attempt(
 }
 
 const results: TlsChildResult[] = [];
-for (
-  const [name, hostname] of [
-    ["pinned", "pinned-host.invalid"],
-    ["unlisted", "unlisted-host.invalid"],
-    ["unlisted-again", "unlisted-host.invalid"],
-    ["alternate", "alternate-host.invalid"],
-  ] as const
-) {
+for (const [name, hostname] of [
+  ["pinned", "pinned-host.invalid"],
+  ["unlisted", "unlisted-host.invalid"],
+  ["unlisted-again", "unlisted-host.invalid"],
+  ["alternate", "alternate-host.invalid"],
+] as const) {
   results.push(await attempt(name, hostname));
 }
 results.push(await attempt("signals", "pinned-host.invalid", true));
@@ -83,6 +81,6 @@ const output = JSON.stringify({
   results,
 });
 await new Promise<void>((resolve) =>
-  process.stdout.write(`${output}\n`, () => resolve())
+  process.stdout.write(`${output}\n`, () => resolve()),
 );
 process.exit(0);

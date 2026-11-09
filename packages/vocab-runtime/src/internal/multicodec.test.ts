@@ -7,14 +7,14 @@ import {
 } from "./multicodec.ts";
 
 test("getMulticodecPrefix() decodes supported multicodec prefixes", () => {
-  deepStrictEqual(
-    getMulticodecPrefix(Uint8Array.from([0xed, 0x01, 0xaa])),
-    { code: 0xed, prefixLength: 2 },
-  );
-  deepStrictEqual(
-    getMulticodecPrefix(Uint8Array.from([0x85, 0x24, 0xaa])),
-    { code: 0x1205, prefixLength: 2 },
-  );
+  deepStrictEqual(getMulticodecPrefix(Uint8Array.from([0xed, 0x01, 0xaa])), {
+    code: 0xed,
+    prefixLength: 2,
+  });
+  deepStrictEqual(getMulticodecPrefix(Uint8Array.from([0x85, 0x24, 0xaa])), {
+    code: 0x1205,
+    prefixLength: 2,
+  });
 });
 
 test("removeMulticodecPrefix() strips the varint prefix", () => {

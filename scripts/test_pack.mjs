@@ -41,9 +41,15 @@ function links() {
 function packedManifest(path) {
   const tar = gunzipSync(readFileSync(path));
   for (let offset = 0; offset < tar.length;) {
-    const name = tar.subarray(offset, offset + 100).toString().split("\0")[0];
+    const name = tar
+      .subarray(offset, offset + 100)
+      .toString()
+      .split("\0")[0];
     const size = parseInt(
-      tar.subarray(offset + 124, offset + 136).toString().replace(/\0/g, ""),
+      tar
+        .subarray(offset + 124, offset + 136)
+        .toString()
+        .replace(/\0/g, ""),
       8,
     );
     if (!name) break;

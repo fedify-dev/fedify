@@ -73,9 +73,7 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -152,9 +150,7 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -590,9 +586,7 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -1299,12 +1293,7 @@
   ],
   "refresh": "10s",
   "schemaVersion": 41,
-  "tags": [
-    "fedify",
-    "activitypub",
-    "opentelemetry",
-    "prometheus"
-  ],
+  "tags": ["fedify", "activitypub", "opentelemetry", "prometheus"],
   "templating": {
     "list": []
   },

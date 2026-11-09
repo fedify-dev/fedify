@@ -9,11 +9,12 @@ const result = run(initOptions, {
   programName: "@fedify/create",
   description: message`Create a new Fedify project.
 
-Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${
-    optionNames(["-p", "--package-manager"])
-  }, ${optionNames(["-k", "--kv-store"])}, and ${
-    optionNames(["-m", "--message-queue"])
-  }), it will prompt you to select the options interactively.`,
+Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${optionNames(
+    ["-p", "--package-manager"],
+  )}, ${optionNames(["-k", "--kv-store"])}, and ${optionNames([
+    "-m",
+    "--message-queue",
+  ])}), it will prompt you to select the options interactively.`,
   help: "both",
 });
 

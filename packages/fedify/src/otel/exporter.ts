@@ -335,7 +335,8 @@ export class FedifySpanExporter implements SpanExporter {
       if (typeof activity.actor === "string") {
         actorId = activity.actor;
       } else if (
-        activity.actor != null && typeof activity.actor.id === "string"
+        activity.actor != null &&
+        typeof activity.actor.id === "string"
       ) {
         actorId = activity.actor.id;
       }
@@ -365,17 +366,20 @@ export class FedifySpanExporter implements SpanExporter {
           typeof httpSigKeyId === "string" && httpSigKeyId !== ""
             ? httpSigKeyId
             : undefined,
-        httpSignaturesFailureReason: typeof httpSigFailureReason === "string" &&
-            httpSigFailureReason !== ""
-          ? httpSigFailureReason
-          : undefined,
-        httpSignaturesKeyFetchStatus: typeof httpSigKeyFetchStatus === "number"
-          ? httpSigKeyFetchStatus
-          : undefined,
-        httpSignaturesKeyFetchError: typeof httpSigKeyFetchError === "string" &&
-            httpSigKeyFetchError !== ""
-          ? httpSigKeyFetchError
-          : undefined,
+        httpSignaturesFailureReason:
+          typeof httpSigFailureReason === "string" &&
+          httpSigFailureReason !== ""
+            ? httpSigFailureReason
+            : undefined,
+        httpSignaturesKeyFetchStatus:
+          typeof httpSigKeyFetchStatus === "number"
+            ? httpSigKeyFetchStatus
+            : undefined,
+        httpSignaturesKeyFetchError:
+          typeof httpSigKeyFetchError === "string" &&
+          httpSigKeyFetchError !== ""
+            ? httpSigKeyFetchError
+            : undefined,
         ldSignaturesVerified: ldSigVerified === true,
       };
     }
@@ -421,7 +425,8 @@ export class FedifySpanExporter implements SpanExporter {
         if (typeof activity.actor === "string") {
           actorId = activity.actor;
         } else if (
-          activity.actor != null && typeof activity.actor.id === "string"
+          activity.actor != null &&
+          typeof activity.actor.id === "string"
         ) {
           actorId = activity.actor.id;
         }
@@ -444,13 +449,15 @@ export class FedifySpanExporter implements SpanExporter {
         typeof explicitActivityType === "string" && explicitActivityType !== ""
           ? explicitActivityType
           : activityType,
-      activityId: activityId ??
+      activityId:
+        activityId ??
         (typeof explicitActivityId === "string" && explicitActivityId !== ""
           ? explicitActivityId
           : undefined),
-      actorId: typeof explicitActorId === "string" && explicitActorId !== ""
-        ? explicitActorId
-        : actorId,
+      actorId:
+        typeof explicitActorId === "string" && explicitActorId !== ""
+          ? explicitActorId
+          : actorId,
       ...(typeof activityJson === "string" ? { activityJson } : {}),
       timestamp: new Date(
         event.time[0] * 1000 + event.time[1] / 1e6,
@@ -460,9 +467,8 @@ export class FedifySpanExporter implements SpanExporter {
   }
 
   async #storeRecord(record: TraceActivityRecord): Promise<void> {
-    const options: KvStoreSetOptions | undefined = this.#ttl != null
-      ? { ttl: this.#ttl }
-      : undefined;
+    const options: KvStoreSetOptions | undefined =
+      this.#ttl != null ? { ttl: this.#ttl } : undefined;
 
     const key: KvKey = [
       ...this.#keyPrefix,
@@ -513,11 +519,14 @@ export class FedifySpanExporter implements SpanExporter {
   async getRecentTraces(
     options?: GetRecentTracesOptions,
   ): Promise<TraceSummary[]> {
-    const aggregates = new Map<string, {
-      timestamp: string;
-      activityCount: number;
-      activityTypes: string[];
-    }>();
+    const aggregates = new Map<
+      string,
+      {
+        timestamp: string;
+        activityCount: number;
+        activityTypes: string[];
+      }
+    >();
     const traceIdIndex = this.#keyPrefix.length;
 
     for await (const entry of this.#kv.list(this.#keyPrefix)) {

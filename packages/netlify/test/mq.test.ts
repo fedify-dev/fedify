@@ -56,11 +56,7 @@ class NoCasKvStore implements KvStore {
     return this.#store.get<T>(key);
   }
 
-  set(
-    key: KvKey,
-    value: unknown,
-    options?: KvStoreSetOptions,
-  ): Promise<void> {
+  set(key: KvKey, value: unknown, options?: KvStoreSetOptions): Promise<void> {
     return this.#store.set(key, value, options);
   }
 
@@ -109,16 +105,18 @@ describe("NetlifyMessageQueue", () => {
     assert.equal(queue.nativeRetrial, true);
     assert.equal(queue.nativeDeduplication, false);
     assert.equal(queue.atomicEnqueueMany, false);
-    assert.deepEqual(client.calls, [{
-      eventName: "fedify:queue",
-      options: {
-        data: {
-          message,
-          orderingKey: undefined,
-          orderingSequence: undefined,
+    assert.deepEqual(client.calls, [
+      {
+        eventName: "fedify:queue",
+        options: {
+          data: {
+            message,
+            orderingKey: undefined,
+            orderingSequence: undefined,
+          },
         },
       },
-    }]);
+    ]);
   });
 
   it("supports custom event names, delays, and ordering keys", async () => {
@@ -270,15 +268,12 @@ describe("NetlifyMessageQueue", () => {
     client.results.push(failure);
     const queue = new NetlifyMessageQueue({ client });
 
-    await assert.rejects(
-      queue.enqueue(message),
-      (error: unknown) => {
-        assert.ok(error instanceof NetlifyMessageQueueSendError);
-        assert.equal(error.cause, failure);
-        assert.equal(error.orderingSequence, undefined);
-        return true;
-      },
-    );
+    await assert.rejects(queue.enqueue(message), (error: unknown) => {
+      assert.ok(error instanceof NetlifyMessageQueueSendError);
+      assert.equal(error.cause, failure);
+      assert.equal(error.orderingSequence, undefined);
+      return true;
+    });
   });
 
   it("sends many messages concurrently and propagates failures", async () => {

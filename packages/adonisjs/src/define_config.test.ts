@@ -59,18 +59,16 @@ async function resolve(
  * rather than importing one, so a `bindValue` is enough to capture it — and the
  * bare `AppFactory` application has no `logger` binding of its own.
  */
-function bindStubLogger(
-  app: ApplicationService,
-): { warnings: string[]; errors: unknown[] } {
+function bindStubLogger(app: ApplicationService): {
+  warnings: string[];
+  errors: unknown[];
+} {
   const warnings: string[] = [];
   const errors: unknown[] = [];
-  app.container.bindValue(
-    "logger",
-    {
-      warn: (message: string) => void warnings.push(message),
-      error: (details: unknown) => void errors.push(details),
-    } as never,
-  );
+  app.container.bindValue("logger", {
+    warn: (message: string) => void warnings.push(message),
+    error: (details: unknown) => void errors.push(details),
+  } as never);
   return { warnings, errors };
 }
 
@@ -264,10 +262,7 @@ class SlowQueue implements MessageQueue {
   ): Promise<void> {
     this.listening = true;
     await new Promise<void>((resolve) => {
-      options.signal?.addEventListener(
-        "abort",
-        () => setTimeout(resolve, 10),
-      );
+      options.signal?.addEventListener("abort", () => setTimeout(resolve, 10));
     });
     this.stopped = true;
   }
@@ -315,14 +310,17 @@ describe("FedifyProvider", () => {
     // `startQueue()` promise, or AdonisJS tears the rest of the application
     // down -- the database connection above all -- around a job still running.
     const queue = new SlowQueue();
-    const app = await createApp({
-      fedify: defineConfig({
-        origin: "https://example.com",
-        logging: false,
-        queue,
-        queueContextData: () => null as never,
-      }),
-    }, "web");
+    const app = await createApp(
+      {
+        fedify: defineConfig({
+          origin: "https://example.com",
+          logging: false,
+          queue,
+          queueContextData: () => null as never,
+        }),
+      },
+      "web",
+    );
 
     bindStubLogger(app);
 
@@ -350,17 +348,20 @@ describe("FedifyProvider", () => {
     const contextData = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const app = await createApp({
-      fedify: defineConfig({
-        origin: "https://example.com",
-        logging: false,
-        queue,
-        queueContextData: async () => {
-          await contextData;
-          return null as never;
-        },
-      }),
-    }, "web");
+    const app = await createApp(
+      {
+        fedify: defineConfig({
+          origin: "https://example.com",
+          logging: false,
+          queue,
+          queueContextData: async () => {
+            await contextData;
+            return null as never;
+          },
+        }),
+      },
+      "web",
+    );
 
     bindStubLogger(app);
 

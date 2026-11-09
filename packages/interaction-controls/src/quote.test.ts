@@ -344,46 +344,49 @@ test("quoteInteraction can treat missing attribution as the requester", async ()
 });
 
 test("quoteInteraction treats ID-less attributions as missing without fetching", async () => {
-  const quote = await Note.fromJsonLd({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://example.com/contexts/unavailable",
-    ],
-    type: "Note",
-    id: quoteId.href,
-    attributedTo: {
-      "@context": "https://example.com/contexts/unavailable",
-      type: "Person",
-      name: "Anonymous",
+  const quote = await Note.fromJsonLd(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://example.com/contexts/unavailable",
+      ],
+      type: "Note",
+      id: quoteId.href,
+      attributedTo: {
+        "@context": "https://example.com/contexts/unavailable",
+        type: "Person",
+        name: "Anonymous",
+      },
+      quote: targetId.href,
     },
-    quote: targetId.href,
-  }, {
-    documentLoader: failingDocumentLoader,
-    contextLoader: async (url) => {
-      await Promise.resolve();
-      if (url === "https://example.com/contexts/unavailable") {
-        return {
-          contextUrl: null,
-          documentUrl: url,
-          document: {
-            "@context": {
-              quote: {
-                "@id": "https://w3id.org/fep/044f#quote",
-                "@type": "@id",
+    {
+      documentLoader: failingDocumentLoader,
+      contextLoader: async (url) => {
+        await Promise.resolve();
+        if (url === "https://example.com/contexts/unavailable") {
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: {
+              "@context": {
+                quote: {
+                  "@id": "https://w3id.org/fep/044f#quote",
+                  "@type": "@id",
+                },
               },
             },
-          },
-        };
-      } else if (url in preloadedContexts) {
-        return {
-          contextUrl: null,
-          documentUrl: url,
-          document: preloadedContexts[url],
-        };
-      }
-      return assert.fail(`must not fetch ${url}`);
+          };
+        } else if (url in preloadedContexts) {
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: preloadedContexts[url],
+          };
+        }
+        return assert.fail(`must not fetch ${url}`);
+      },
     },
-  });
+  );
   const request = quoteRequest(quote);
 
   const result = await quoteInteraction.verifyRequest(context, {
@@ -523,14 +526,15 @@ test("quoteInteraction leaves clones taken before verification untouched", async
     documentLoader: async (url) => ({
       contextUrl: null,
       documentUrl: url,
-      document: url in preloadedContexts
-        ? preloadedContexts[url]
-        : (assert.equal(url, quoteId.href), await quote.toJsonLd()),
+      document:
+        url in preloadedContexts
+          ? preloadedContexts[url]
+          : (assert.equal(url, quoteId.href), await quote.toJsonLd()),
     }),
   });
 
   assert.equal(result.verified, true);
-  const json = await original.toJsonLd() as Record<string, unknown>;
+  const json = (await original.toJsonLd()) as Record<string, unknown>;
   assert.equal(json.instrument, quoteId.href);
 });
 

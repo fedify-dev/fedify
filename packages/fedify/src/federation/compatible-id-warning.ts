@@ -43,29 +43,32 @@ export function getEmbeddedFirstGateway(
 ): URL | null {
   const owner = getCanonicalPortableId(ownerId);
   if (owner == null) return null;
-  return visitJsonMaps(json, (map) => {
-    const id = parseMapId(map, isJsonMap(json) ? json : null);
-    if (id == null || getCanonicalPortableId(id) !== owner) return;
-    const gateways = map.gateways ??
-      map["https://w3id.org/fep/ef61/gateways"];
-    const first = Array.isArray(gateways)
-      ? gateways[0]
-      : isJsonMap(gateways) && Array.isArray(gateways["@list"])
-      ? gateways["@list"][0]
-      : null;
-    const address = typeof first === "string"
-      ? first
-      : isJsonMap(first)
-      ? first.id ?? first["@id"]
-      : null;
-    if (typeof address !== "string") return;
-    try {
-      const gateway = new URL(address);
-      if (getPortableDid(id) === did && isGatewayUrl(gateway)) return gateway;
-    } catch (error) {
-      if (!(error instanceof TypeError)) throw error;
-    }
-  }) ?? null;
+  return (
+    visitJsonMaps(json, (map) => {
+      const id = parseMapId(map, isJsonMap(json) ? json : null);
+      if (id == null || getCanonicalPortableId(id) !== owner) return;
+      const gateways =
+        map.gateways ?? map["https://w3id.org/fep/ef61/gateways"];
+      const first = Array.isArray(gateways)
+        ? gateways[0]
+        : isJsonMap(gateways) && Array.isArray(gateways["@list"])
+          ? gateways["@list"][0]
+          : null;
+      const address =
+        typeof first === "string"
+          ? first
+          : isJsonMap(first)
+            ? (first.id ?? first["@id"])
+            : null;
+      if (typeof address !== "string") return;
+      try {
+        const gateway = new URL(address);
+        if (getPortableDid(id) === did && isGatewayUrl(gateway)) return gateway;
+      } catch (error) {
+        if (!(error instanceof TypeError)) throw error;
+      }
+    }) ?? null
+  );
 }
 
 function isJsonMap(value: unknown): value is Record<string, unknown> {
@@ -80,16 +83,21 @@ export function warnCompatibleId(
   kind: "object" | "activity",
 ): void {
   if (
-    !isCompatibleEf61Iri(id) || getPortableDid(id) !== did ||
+    !isCompatibleEf61Iri(id) ||
+    getPortableDid(id) !== did ||
     id.origin === gateway.origin
-  ) return;
-  getLogger(["fedify", "federation", kind === "activity" ? "outbox" : "object"])
-    .warn(
-      "The {kind} {id} has an FEP-ef61 compatible identifier on another " +
-        "gateway than its owner's first gateway, {gateway}.  FEP-ef61 " +
-        "requires publishers to use the first gateway in the actor's gateways.",
-      { kind, id: id.href, gateway: gateway.origin },
-    );
+  )
+    return;
+  getLogger([
+    "fedify",
+    "federation",
+    kind === "activity" ? "outbox" : "object",
+  ]).warn(
+    "The {kind} {id} has an FEP-ef61 compatible identifier on another " +
+      "gateway than its owner's first gateway, {gateway}.  FEP-ef61 " +
+      "requires publishers to use the first gateway in the actor's gateways.",
+    { kind, id: id.href, gateway: gateway.origin },
+  );
 }
 
 /** Reads the root ID without dereferencing or expanding the document. */
@@ -115,25 +123,31 @@ export async function warnCompatibleIdsInJson<TContextData>(
     const type = map.type ?? map["@type"];
     const types = Array.isArray(type) ? type : [type];
     if (
-      types.some((t) =>
-        typeof t === "string" &&
-        /(?:^|[#/:])(CryptographicKey|Multikey|JsonWebKey|Key)$/.test(t)
+      types.some(
+        (t) =>
+          typeof t === "string" &&
+          /(?:^|[#/:])(CryptographicKey|Multikey|JsonWebKey|Key)$/.test(t),
       )
-    ) continue;
+    )
+      continue;
     const did = getPortableDid(id);
     if (did == null) continue;
-    const owners = path === "" ? rootOwners : [
-      ...ownerIds(map, "actor", root),
-      ...ownerIds(map, "attributedTo", root),
-      ...rootOwners,
-    ];
+    const owners =
+      path === ""
+        ? rootOwners
+        : [
+            ...ownerIds(map, "actor", root),
+            ...ownerIds(map, "attributedTo", root),
+            ...rootOwners,
+          ];
     for (const ownerId of owners) {
       if (getPortableDid(ownerId) !== did) continue;
       const key = getCanonicalPortableId(ownerId);
       if (key == null) continue;
       let gateway = gateways.get(key);
       if (gateway === undefined) {
-        gateway = getEmbeddedFirstGateway(json, ownerId, did) ??
+        gateway =
+          getEmbeddedFirstGateway(json, ownerId, did) ??
           (context == null
             ? null
             : await getLocalFirstGateway(context, ownerId, did));
@@ -156,11 +170,12 @@ function ownerIds(
   const values = [map[term], map[iri]];
   for (const context of [map["@context"], root?.["@context"]]) {
     for (const [alias, definition] of localContextEntries(context)) {
-      const mapped = typeof definition === "string"
-        ? definition
-        : isJsonMap(definition)
-        ? definition["@id"]
-        : null;
+      const mapped =
+        typeof definition === "string"
+          ? definition
+          : isJsonMap(definition)
+            ? definition["@id"]
+            : null;
       if (mapped === iri || mapped === `as:${term}`) {
         values.push(map[alias]);
       }
@@ -201,11 +216,12 @@ function parseMapId(
   let raw = map["@id"] ?? map.id;
   for (const context of [map["@context"], root?.["@context"]]) {
     for (const [alias, definition] of localContextEntries(context)) {
-      const mapped = typeof definition === "string"
-        ? definition
-        : isJsonMap(definition)
-        ? definition["@id"]
-        : null;
+      const mapped =
+        typeof definition === "string"
+          ? definition
+          : isJsonMap(definition)
+            ? definition["@id"]
+            : null;
       if (mapped === "@id" && typeof map[alias] === "string") {
         raw = map[alias];
         break;
@@ -226,10 +242,12 @@ function visitJsonMaps<T>(
   visit: (map: Record<string, unknown>, path: string) => T | undefined,
 ): T | undefined {
   const seen = new Set<object>();
-  const pending: Array<{ value: unknown; path: string }> = [{
-    value: json,
-    path: "",
-  }];
+  const pending: Array<{ value: unknown; path: string }> = [
+    {
+      value: json,
+      path: "",
+    },
+  ];
   while (pending.length > 0) {
     const { value, path } = pending.pop()!;
     if (value == null || typeof value !== "object" || seen.has(value)) continue;

@@ -52,9 +52,9 @@ export function runnerFor(type: ScenarioType): ScenarioRunner {
     default:
       throw new Error(
         `The "${type}" scenario type is not implemented in this version of ` +
-          `fedify bench; supported types: ${
-            IMPLEMENTED_SCENARIO_TYPES.join(", ")
-          }.`,
+          `fedify bench; supported types: ${IMPLEMENTED_SCENARIO_TYPES.join(
+            ", ",
+          )}.`,
       );
   }
 }

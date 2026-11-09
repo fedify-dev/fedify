@@ -84,10 +84,10 @@ const freezeToken = (token: Token): Token =>
   token.kind === "literal"
     ? Object.freeze({ kind: "literal", text: token.text })
     : Object.freeze({
-      kind: "expression",
-      operator: token.operator,
-      vars: Object.freeze(token.vars.map(freezeVarSpec)),
-    });
+        kind: "expression",
+        operator: token.operator,
+        vars: Object.freeze(token.vars.map(freezeVarSpec)),
+      });
 
 const freezeVarSpec = (varSpec: VarSpec): VarSpec =>
   Object.freeze({
@@ -98,16 +98,19 @@ const freezeVarSpec = (varSpec: VarSpec): VarSpec =>
 
 const defaultReporter: Reporter = () => void 0;
 
-const fillOptions = (
-  { strict, report }: Partial<TemplateOptions>,
-): TemplateOptions => {
+const fillOptions = ({
+  strict,
+  report,
+}: Partial<TemplateOptions>): TemplateOptions => {
   report ??= defaultReporter;
   strict ??= true;
   report = strict ? strictWrapper(report) : report;
   return { strict, report };
 };
 
-const strictWrapper = (reporter: Reporter) => (error: Error): never => {
-  reporter(error);
-  throw error;
-};
+const strictWrapper =
+  (reporter: Reporter) =>
+  (error: Error): never => {
+    reporter(error);
+    throw error;
+  };

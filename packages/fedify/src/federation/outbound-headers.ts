@@ -24,7 +24,8 @@ function snapshotNames(names: readonly string[]): readonly string[] {
   for (const name of names) {
     if (
       typeof name !== "string" ||
-      !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name) || name.includes("*")
+      !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name) ||
+      name.includes("*")
     ) {
       throw new TypeError("Outbound header names must be literal HTTP tokens.");
     }

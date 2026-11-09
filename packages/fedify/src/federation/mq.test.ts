@@ -67,10 +67,9 @@ test("InProcessMessageQueue", async (t) => {
 
     await t.step("enqueue() with delay", async () => {
       const { timers, enqueued } = captureTimers(() =>
-        mq.enqueue(
-          "Delayed message",
-          { delay: Temporal.Duration.from({ seconds: 3 }) },
-        )
+        mq.enqueue("Delayed message", {
+          delay: Temporal.Duration.from({ seconds: 3 }),
+        }),
       );
       await enqueued;
       assertEquals(timers.length, 1);
@@ -120,10 +119,9 @@ test("InProcessMessageQueue", async (t) => {
         (_, i) => `Delayed batch ${i}!`,
       );
       const { timers, enqueued } = captureTimers(() =>
-        mq.enqueueMany(
-          testMessages,
-          { delay: Temporal.Duration.from({ seconds: 2 }) },
-        )
+        mq.enqueueMany(testMessages, {
+          delay: Temporal.Duration.from({ seconds: 2 }),
+        }),
       );
       await enqueued;
       assertEquals(timers.length, 1);
@@ -215,10 +213,13 @@ test("InProcessMessageQueue.getDepth()", async () => {
 
   const messages: string[] = [];
   const controller = new AbortController();
-  const listening = mq.listen((message: string) => {
-    messages.push(message);
-    if (messages.length >= 2) controller.abort();
-  }, { signal: controller.signal });
+  const listening = mq.listen(
+    (message: string) => {
+      messages.push(message);
+      if (messages.length >= 2) controller.abort();
+    },
+    { signal: controller.signal },
+  );
 
   await waitFor(() => messages.length >= 2, 15_000);
   await listening;
@@ -244,10 +245,13 @@ test("InProcessMessageQueue.getDepth() snapshots delayed batches", async () => {
 
   const handled: string[] = [];
   const controller = new AbortController();
-  const listening = mq.listen((message: string) => {
-    handled.push(message);
-    if (handled.length >= 2) controller.abort();
-  }, { signal: controller.signal });
+  const listening = mq.listen(
+    (message: string) => {
+      handled.push(message);
+      if (handled.length >= 2) controller.abort();
+    },
+    { signal: controller.signal },
+  );
 
   await waitFor(() => handled.length >= 2, 15_000);
   await listening;
@@ -267,11 +271,14 @@ test("InProcessMessageQueue.getDepth() excludes in-flight messages", async () =>
   const handlerStarted = new Promise<void>((resolve) => {
     notifyStarted = resolve;
   });
-  const listening = mq.listen(async () => {
-    notifyStarted();
-    await handled;
-    controller.abort();
-  }, { signal: controller.signal });
+  const listening = mq.listen(
+    async () => {
+      notifyStarted();
+      await handled;
+      controller.abort();
+    },
+    { signal: controller.signal },
+  );
 
   try {
     await mq.enqueue("in-flight");
@@ -306,10 +313,13 @@ test("InProcessMessageQueue delayed enqueue uses the internal ready path", async
   });
   const messages: string[] = [];
   const controller = new AbortController();
-  const listening = mq.listen((message: string) => {
-    messages.push(message);
-    controller.abort();
-  }, { signal: controller.signal });
+  const listening = mq.listen(
+    (message: string) => {
+      messages.push(message);
+      controller.abort();
+    },
+    { signal: controller.signal },
+  );
 
   try {
     await mq.enqueue("delayed", {
@@ -343,10 +353,13 @@ test("InProcessMessageQueue delayed enqueueMany uses the internal ready path", a
   });
   const messages: string[] = [];
   const controller = new AbortController();
-  const listening = mq.listen((message: string) => {
-    messages.push(message);
-    if (messages.length >= 2) controller.abort();
-  }, { signal: controller.signal });
+  const listening = mq.listen(
+    (message: string) => {
+      messages.push(message);
+      if (messages.length >= 2) controller.abort();
+    },
+    { signal: controller.signal },
+  );
 
   try {
     await mq.enqueueMany(["first", "second"], {
@@ -431,8 +444,9 @@ test("InProcessMessageQueue orderingKey", async (t) => {
 
 test("MessageQueue.nativeRetrial", async (t) => {
   if (
+    "Deno" in globalThis &&
     // @ts-ignore: Works on Deno
-    "Deno" in globalThis && "openKv" in globalThis.Deno &&
+    "openKv" in globalThis.Deno &&
     // @ts-ignore: Works on Deno
     typeof globalThis.Deno.openKv === "function"
   ) {
@@ -449,26 +463,22 @@ test("MessageQueue.nativeRetrial", async (t) => {
       assert(mq.maxMessageSize < 64 * 1024);
       // Any message whose estimated size fits the limit can be enqueued,
       // however its serialization expands small values:
-      for (
-        const item of [
-          [],
-          {},
-          0.1,
-          "",
-          "é",
-          "한",
-          "x".repeat(100),
-          true,
-          // A long string that is serialized as UTF-16 because of a single
-          // character beyond Latin-1:
-          "a".repeat(1000) + "한",
-        ]
-      ) {
+      for (const item of [
+        [],
+        {},
+        0.1,
+        "",
+        "é",
+        "한",
+        "x".repeat(100),
+        true,
+        // A long string that is serialized as UTF-16 because of a single
+        // character beyond Latin-1:
+        "a".repeat(1000) + "한",
+      ]) {
         const items: unknown[] = [];
         const message = () => ({ type: "inbox", payload: { items } });
-        while (
-          estimateQueuedMessageSize(message()) < mq.maxMessageSize - 64
-        ) {
+        while (estimateQueuedMessageSize(message()) < mq.maxMessageSize - 64) {
           items.push(item);
         }
         items.pop();
@@ -550,40 +560,37 @@ test("ParallelMessageQueue inherits atomicEnqueueMany", () => {
   assertFalse(workers.atomicEnqueueMany);
 });
 
-test(
-  "ParallelMessageQueue forwards deduplicationKey to the wrapped queue",
-  async () => {
-    class RecordingQueue implements MessageQueue {
-      readonly nativeDeduplication = true;
-      readonly singles: (MessageQueueEnqueueOptions | undefined)[] = [];
-      readonly batches: (MessageQueueEnqueueOptions | undefined)[] = [];
-      enqueue(
-        _message: unknown,
-        options?: MessageQueueEnqueueOptions,
-      ): Promise<void> {
-        this.singles.push(options);
-        return Promise.resolve();
-      }
-      enqueueMany(
-        _messages: readonly unknown[],
-        options?: MessageQueueEnqueueOptions,
-      ): Promise<void> {
-        this.batches.push(options);
-        return Promise.resolve();
-      }
-      listen(): Promise<void> {
-        return Promise.resolve();
-      }
+test("ParallelMessageQueue forwards deduplicationKey to the wrapped queue", async () => {
+  class RecordingQueue implements MessageQueue {
+    readonly nativeDeduplication = true;
+    readonly singles: (MessageQueueEnqueueOptions | undefined)[] = [];
+    readonly batches: (MessageQueueEnqueueOptions | undefined)[] = [];
+    enqueue(
+      _message: unknown,
+      options?: MessageQueueEnqueueOptions,
+    ): Promise<void> {
+      this.singles.push(options);
+      return Promise.resolve();
     }
+    enqueueMany(
+      _messages: readonly unknown[],
+      options?: MessageQueueEnqueueOptions,
+    ): Promise<void> {
+      this.batches.push(options);
+      return Promise.resolve();
+    }
+    listen(): Promise<void> {
+      return Promise.resolve();
+    }
+  }
 
-    const inner = new RecordingQueue();
-    const workers = new ParallelMessageQueue(inner, 5);
-    await workers.enqueue({ x: 1 }, { deduplicationKey: "k1" });
-    await workers.enqueueMany([{ x: 1 }, { x: 2 }], { deduplicationKey: "k2" });
-    assertEquals(inner.singles[0]?.deduplicationKey, "k1");
-    assertEquals(inner.batches[0]?.deduplicationKey, "k2");
-  },
-);
+  const inner = new RecordingQueue();
+  const workers = new ParallelMessageQueue(inner, 5);
+  await workers.enqueue({ x: 1 }, { deduplicationKey: "k1" });
+  await workers.enqueueMany([{ x: 1 }, { x: 2 }], { deduplicationKey: "k2" });
+  assertEquals(inner.singles[0]?.deduplicationKey, "k1");
+  assertEquals(inner.batches[0]?.deduplicationKey, "k2");
+});
 
 test(
   "ParallelMessageQueue rejects a deduplicated batch when the wrapped queue " +
@@ -672,8 +679,9 @@ const queues: Record<string, () => Promise<MessageQueue>> = {
   InProcessMessageQueue: () => Promise.resolve(new InProcessMessageQueue()),
 };
 if (
+  "Deno" in globalThis &&
   // @ts-ignore: Works on Deno
-  "Deno" in globalThis && "openKv" in globalThis.Deno &&
+  "openKv" in globalThis.Deno &&
   // @ts-ignore: Works on Deno
   typeof globalThis.Deno.openKv === "function"
 ) {

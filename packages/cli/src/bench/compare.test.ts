@@ -46,22 +46,20 @@ function scenario(
     },
     server: null,
     errors: [],
-    expectations: [{
-      metric: "latency.p95",
-      op: "lt",
-      threshold: 250,
-      unit: "ms",
-      actual: 100,
-      severity: "fail",
-      pass: true,
-    }],
+    expectations: [
+      {
+        metric: "latency.p95",
+        op: "lt",
+        threshold: 250,
+        unit: "ms",
+        actual: 100,
+        severity: "fail",
+        pass: true,
+      },
+    ],
     passed: true,
     runCount: 3,
-    runs: [
-      runResult(90, 100),
-      runResult(100, 100),
-      runResult(110, 100),
-    ],
+    runs: [runResult(90, 100), runResult(100, 100), runResult(110, 100)],
   };
   return { ...base, ...overrides, name: overrides.name ?? base.name };
 }
@@ -215,8 +213,8 @@ test("buildCompareReport - fails regressions outside tolerance and noise", () =>
     startedAt: "2026-06-13T00:00:00.000Z",
     finishedAt: "2026-06-13T00:00:01.000Z",
   });
-  const throughput = compare.comparisons.find((c) =>
-    c.metric === "throughputPerSec"
+  const throughput = compare.comparisons.find(
+    (c) => c.metric === "throughputPerSec",
   );
   assert.ok(throughput);
   assert.strictEqual(throughput.pass, false);
@@ -324,8 +322,8 @@ test("buildCompareReport - passes new head scenarios without a baseline", () => 
     startedAt: "2026-06-13T00:00:00.000Z",
     finishedAt: "2026-06-13T00:00:01.000Z",
   });
-  const newScenario = compare.comparisons.find((comparison) =>
-    comparison.scenario === "new-scenario"
+  const newScenario = compare.comparisons.find(
+    (comparison) => comparison.scenario === "new-scenario",
   );
   assert.ok(newScenario);
   assert.strictEqual(newScenario.metric, "scenario");
@@ -342,22 +340,14 @@ test("buildCompareReport - matches duplicate scenario names by occurrence", () =
       client: {
         latencyMs: { p50: 100, p95: 200, p99: 210, mean: 120, max: 220 },
       },
-      runs: [
-        runResult(200, 100),
-        runResult(200, 100),
-        runResult(200, 100),
-      ],
+      runs: [runResult(200, 100), runResult(200, 100), runResult(200, 100)],
     }),
     scenario({
       name: "duplicate",
       client: {
         latencyMs: { p50: 50, p95: 100, p99: 110, mean: 60, max: 120 },
       },
-      runs: [
-        runResult(100, 100),
-        runResult(100, 100),
-        runResult(100, 100),
-      ],
+      runs: [runResult(100, 100), runResult(100, 100), runResult(100, 100)],
     }),
   ]);
   const head = report([
@@ -366,22 +356,14 @@ test("buildCompareReport - matches duplicate scenario names by occurrence", () =
       client: {
         latencyMs: { p50: 115, p95: 230, p99: 240, mean: 130, max: 250 },
       },
-      runs: [
-        runResult(230, 100),
-        runResult(230, 100),
-        runResult(230, 100),
-      ],
+      runs: [runResult(230, 100), runResult(230, 100), runResult(230, 100)],
     }),
     scenario({
       name: "duplicate",
       client: {
         latencyMs: { p50: 55, p95: 110, p99: 120, mean: 70, max: 130 },
       },
-      runs: [
-        runResult(110, 100),
-        runResult(110, 100),
-        runResult(110, 100),
-      ],
+      runs: [runResult(110, 100), runResult(110, 100), runResult(110, 100)],
     }),
   ]);
   const compare = buildCompareReport({
@@ -393,8 +375,14 @@ test("buildCompareReport - matches duplicate scenario names by occurrence", () =
     startedAt: "2026-06-13T00:00:00.000Z",
     finishedAt: "2026-06-13T00:00:01.000Z",
   });
-  assert.deepEqual(compare.comparisons.map((c) => c.base), [200, 100]);
-  assert.deepEqual(compare.comparisons.map((c) => c.head), [230, 110]);
+  assert.deepEqual(
+    compare.comparisons.map((c) => c.base),
+    [200, 100],
+  );
+  assert.deepEqual(
+    compare.comparisons.map((c) => c.head),
+    [230, 110],
+  );
   assert.ok(compare.comparisons.every((c) => c.pass));
   assert.strictEqual(compare.passed, true);
 });
@@ -406,22 +394,14 @@ test("buildCompareReport - matches reordered scenarios by name and type", () => 
       client: {
         latencyMs: { p50: 50, p95: 100, p99: 110, mean: 60, max: 120 },
       },
-      runs: [
-        runResult(100, 100),
-        runResult(100, 100),
-        runResult(100, 100),
-      ],
+      runs: [runResult(100, 100), runResult(100, 100), runResult(100, 100)],
     }),
     scenario({
       name: "second",
       client: {
         latencyMs: { p50: 100, p95: 200, p99: 210, mean: 120, max: 220 },
       },
-      runs: [
-        runResult(200, 100),
-        runResult(200, 100),
-        runResult(200, 100),
-      ],
+      runs: [runResult(200, 100), runResult(200, 100), runResult(200, 100)],
     }),
   ]);
   const head = report([
@@ -430,22 +410,14 @@ test("buildCompareReport - matches reordered scenarios by name and type", () => 
       client: {
         latencyMs: { p50: 105, p95: 210, p99: 220, mean: 130, max: 230 },
       },
-      runs: [
-        runResult(210, 100),
-        runResult(210, 100),
-        runResult(210, 100),
-      ],
+      runs: [runResult(210, 100), runResult(210, 100), runResult(210, 100)],
     }),
     scenario({
       name: "first",
       client: {
         latencyMs: { p50: 55, p95: 110, p99: 120, mean: 70, max: 130 },
       },
-      runs: [
-        runResult(110, 100),
-        runResult(110, 100),
-        runResult(110, 100),
-      ],
+      runs: [runResult(110, 100), runResult(110, 100), runResult(110, 100)],
     }),
   ]);
   const compare = buildCompareReport({
@@ -457,8 +429,14 @@ test("buildCompareReport - matches reordered scenarios by name and type", () => 
     startedAt: "2026-06-13T00:00:00.000Z",
     finishedAt: "2026-06-13T00:00:01.000Z",
   });
-  assert.deepEqual(compare.comparisons.map((c) => c.base), [200, 100]);
-  assert.deepEqual(compare.comparisons.map((c) => c.head), [210, 110]);
+  assert.deepEqual(
+    compare.comparisons.map((c) => c.base),
+    [200, 100],
+  );
+  assert.deepEqual(
+    compare.comparisons.map((c) => c.head),
+    [210, 110],
+  );
   assert.ok(compare.comparisons.every((c) => c.pass));
 });
 
@@ -468,11 +446,7 @@ test("buildCompareReport - keeps zero-median noise finite", () => {
       client: {
         latencyMs: { p50: 0, p95: 100, p99: 100, mean: 50, max: 100 },
       },
-      runs: [
-        runResult(0, 100),
-        runResult(0, 100),
-        runResult(100, 100),
-      ],
+      runs: [runResult(0, 100), runResult(0, 100), runResult(100, 100)],
     }),
   ]);
   const head = report([
@@ -480,11 +454,7 @@ test("buildCompareReport - keeps zero-median noise finite", () => {
       client: {
         latencyMs: { p50: 0, p95: 120, p99: 120, mean: 60, max: 120 },
       },
-      runs: [
-        runResult(0, 100),
-        runResult(0, 100),
-        runResult(120, 100),
-      ],
+      runs: [runResult(0, 100), runResult(0, 100), runResult(120, 100)],
     }),
   ]);
   const compare = buildCompareReport({
@@ -844,10 +814,14 @@ test("runBenchCompare - stops target and removes worktree on interrupt", async (
     waitReady: (_url, _timeoutMs, signal) => {
       assert.ok(signal);
       return new Promise((_resolve, reject) => {
-        signal.addEventListener("abort", () => {
-          events.push("ready-abort");
-          reject(signal.reason);
-        }, { once: true });
+        signal.addEventListener(
+          "abort",
+          () => {
+            events.push("ready-abort");
+            reject(signal.reason);
+          },
+          { once: true },
+        );
         queueMicrotask(() => signals.emit("SIGINT", "SIGINT"));
       });
     },
@@ -904,10 +878,14 @@ test("runBenchCompare - aborts raced benchmark work on interrupt", async () => {
       assert.ok(signal);
       queueMicrotask(() => signals.emit("SIGTERM", "SIGTERM"));
       return new Promise((_resolve, reject) => {
-        signal.addEventListener("abort", () => {
-          events.push("bench-abort");
-          reject(signal.reason);
-        }, { once: true });
+        signal.addEventListener(
+          "abort",
+          () => {
+            events.push("bench-abort");
+            reject(signal.reason);
+          },
+          { once: true },
+        );
       });
     },
     signalTarget: signals,
@@ -961,10 +939,14 @@ test("runBenchCompare - aborts benchmark work when target exits", async () => {
       assert.ok(signal);
       queueMicrotask(() => rejectExit(new Error("target exited")));
       return new Promise((_resolve, reject) => {
-        signal.addEventListener("abort", () => {
-          events.push("bench-abort");
-          reject(signal.reason);
-        }, { once: true });
+        signal.addEventListener(
+          "abort",
+          () => {
+            events.push("bench-abort");
+            reject(signal.reason);
+          },
+          { once: true },
+        );
       });
     },
   });

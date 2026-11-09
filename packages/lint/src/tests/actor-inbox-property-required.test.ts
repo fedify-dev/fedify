@@ -11,13 +11,7 @@ const ruleName = RULE_IDS.actorInboxPropertyRequired;
 const config = { rule, ruleName };
 
 // Standard required listener rule tests
-runTests(
-  ruleName,
-  createRequiredDispatcherRuleTests("inbox", config),
-);
+runTests(ruleName, createRequiredDispatcherRuleTests("inbox", config));
 
 // Edge case tests
-runTests(
-  ruleName,
-  createRequiredEdgeCaseTests("inbox", config),
-);
+runTests(ruleName, createRequiredEdgeCaseTests("inbox", config));

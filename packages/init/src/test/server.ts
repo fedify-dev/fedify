@@ -23,9 +23,10 @@ export async function waitForServer(
     try {
       const timeoutSignal = AbortSignal.timeout(1000);
       const response = await fetch(url, {
-        signal: signal == null
-          ? timeoutSignal
-          : AbortSignal.any([signal, timeoutSignal]),
+        signal:
+          signal == null
+            ? timeoutSignal
+            : AbortSignal.any([signal, timeoutSignal]),
       });
       const ok = response.ok;
       await response.body?.cancel();
@@ -65,10 +66,10 @@ export async function serverClosure<T>(
   child.stderr!.pipe(errFile, { end: false });
 
   let rejectFailure: (error: Error) => void;
-  const failure = new Promise<never>((_, reject) => rejectFailure = reject);
+  const failure = new Promise<never>((_, reject) => (rejectFailure = reject));
   void failure.catch(() => {});
   const closed = new Promise<void>((resolve) =>
-    child.once("close", () => resolve())
+    child.once("close", () => resolve()),
   );
   child.once("error", (error) => rejectFailure(error));
   child.once("exit", (code, exitSignal) => {
@@ -139,9 +140,10 @@ export async function serverClosure<T>(
   return result!;
 }
 
-function detectPort(
-  child: ChildProcess,
-): { result: Promise<number>; stop: () => void } {
+function detectPort(child: ChildProcess): {
+  result: Promise<number>;
+  stop: () => void;
+} {
   let output = "";
   let timer: ReturnType<typeof setTimeout>;
   let onData: (chunk: Buffer) => void;

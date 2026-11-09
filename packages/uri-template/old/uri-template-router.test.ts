@@ -210,9 +210,12 @@ test(
 );
 
 const runRouteCases = createRouterRouteTest(Router);
-for (
-  const { name, options, routeDefinitions, cases } of routerRouteTestSuites
-) {
+for (const {
+  name,
+  options,
+  routeDefinitions,
+  cases,
+} of routerRouteTestSuites) {
   test(
     `Router.route(): ${name}`,
     { ignore: !isOldTest },
@@ -221,9 +224,12 @@ for (
 }
 
 const runBuildCases = createRouterBuildTest(Router);
-for (
-  const { name, options, routeDefinitions, cases } of routerBuildTestSuites
-) {
+for (const {
+  name,
+  options,
+  routeDefinitions,
+  cases,
+} of routerBuildTestSuites) {
   test(
     `Router.build(): ${name}`,
     { ignore: !isOldTest },

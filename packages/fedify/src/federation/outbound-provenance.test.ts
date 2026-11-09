@@ -103,12 +103,14 @@ test("outbound inbox provenance follows clones, conversions, loaders, sends, and
           events.push(event);
         },
       });
-      federation.setActorDispatcher("/users/{identifier}", () => new Person({}))
+      federation
+        .setActorDispatcher("/users/{identifier}", () => new Person({}))
         .setKeyPairsDispatcher(async (ctx) => {
           await ctx.sendActivity(sender, [], outgoing);
           return [];
         });
-      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      federation
+        .setInboxListeners("/users/{identifier}/inbox", "/inbox")
         .setSharedKeyDispatcher(async (ctx) => {
           await ctx.sendActivity(sender, [], outgoing);
           return sender;
@@ -123,12 +125,9 @@ test("outbound inbox provenance follows clones, conversions, loaders, sends, and
             outgoing.id!.href,
             Create.typeId.href,
           );
-          const inbox = outbox.toInboxContext(
-            null,
-            {},
-            outgoing.id!.href,
-            Create.typeId.href,
-          ).clone(undefined);
+          const inbox = outbox
+            .toInboxContext(null, {}, outgoing.id!.href, Create.typeId.href)
+            .clone(undefined);
           // All derived contexts share a URL object; historical source facts must not.
           ctx.url.host = "changed.example:9443";
           retained = inbox;
@@ -177,8 +176,8 @@ test("outbound inbox provenance follows clones, conversions, loaders, sends, and
       ok(events.some((event) => event.local.host === "changed.example:9443"));
       ok(events.some((event) => event.local.host === "inbox.example:8443"));
       ok(
-        events.some((event) =>
-          "operation" in event && event.operation === "forward"
+        events.some(
+          (event) => "operation" in event && event.operation === "forward",
         ),
       );
       ok(retained);
@@ -189,19 +188,23 @@ test("outbound inbox provenance follows clones, conversions, loaders, sends, and
         reports[0].inboxRequestId,
       );
       // Same-looking Request URLs and programmatic inbox conversion establish no HTTP cause.
-      for (
-        const input of [new URL("https://inbox.example:8443"), post(path, body)]
-      ) {
-        const independent = input instanceof URL
-          ? federation.createContext(input, undefined)
-          : federation.createContext(input, undefined);
+      for (const input of [
+        new URL("https://inbox.example:8443"),
+        post(path, body),
+      ]) {
+        const independent =
+          input instanceof URL
+            ? federation.createContext(input, undefined)
+            : federation.createContext(input, undefined);
         ok(independent instanceof ContextImpl);
-        await independent.toInboxContext(
-          null,
-          body,
-          "https://example.com/manual",
-          Create.typeId.href,
-        ).sendActivity(sender, [], outgoing);
+        await independent
+          .toInboxContext(
+            null,
+            body,
+            "https://example.com/manual",
+            Create.typeId.href,
+          )
+          .sendActivity(sender, [], outgoing);
         deepStrictEqual(events.at(-1)!.provenance, {});
       }
     });
@@ -224,7 +227,8 @@ test("outbound inbox provenance exists before loader preparation fails", async (
       events.push(event);
     },
   });
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .onRequestFinished(async (ctx, report) => {
       reports.push(report);
       await ctx.sendActivity(sender, [], outgoing);
@@ -251,10 +255,13 @@ test("outbound provenance keeps source log labels separate from current request 
   await reset();
   await configure({
     sinks: { buffer: (record) => records.push(record) },
-    loggers: [{ category: [], sinks: ["buffer"], lowestLevel: "info" }, {
-      category: ["logtape", "meta"],
-      sinks: [],
-    }],
+    loggers: [
+      { category: [], sinks: ["buffer"], lowestLevel: "info" },
+      {
+        category: ["logtape", "meta"],
+        sinks: [],
+      },
+    ],
     contextLocalStorage: new AsyncLocalStorage(),
   });
   try {
@@ -266,74 +273,82 @@ test("outbound provenance keeps source log labels separate from current request 
       kv: new MemoryKvStore(),
       skipSignatureVerification: true,
     });
-    federation.setActorDispatcher("/users/{identifier}", async (ctx) => {
-      await ctx.sendActivity(sender, [], outgoing);
-      return new Person({});
-    }).setKeyPairsDispatcher(() => []);
+    federation
+      .setActorDispatcher("/users/{identifier}", async (ctx) => {
+        await ctx.sendActivity(sender, [], outgoing);
+        return new Person({});
+      })
+      .setKeyPairsDispatcher(() => []);
     federation.setOutboundObservers({
       onBroadcast(_ctx, event) {
         events.push(event);
         getLogger(["test", "provenance"]).info("outbound callback");
       },
     });
-    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox").on(
-      Create,
-      async () => {
-        await withContext({
-          sourceInboxRequestId: "ambient-inbox",
-          sourceRequestId: "ambient-source",
-        }, () =>
-          federation.fetch(
-            new Request("https://inbox.example/users/alice?nested=1", {
-              headers: {
-                Accept: "application/activity+json",
-                "X-Request-Id": "nested-request",
-              },
-            }),
-            { contextData: undefined },
-          ));
-      },
-    )
+    federation
+      .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      .on(Create, async () => {
+        await withContext(
+          {
+            sourceInboxRequestId: "ambient-inbox",
+            sourceRequestId: "ambient-source",
+          },
+          () =>
+            federation.fetch(
+              new Request("https://inbox.example/users/alice?nested=1", {
+                headers: {
+                  Accept: "application/activity+json",
+                  "X-Request-Id": "nested-request",
+                },
+              }),
+              { contextData: undefined },
+            ),
+        );
+      })
       .onRequestFinished((ctx, value) => {
         retained = ctx;
         report = value;
         getLogger(["test", "provenance"]).info("inbox callback");
       });
     strictEqual(
-      (await federation.fetch(post("/users/alice/inbox", await payload()), {
-        contextData: undefined,
-      })).status,
+      (
+        await federation.fetch(post("/users/alice/inbox", await payload()), {
+          contextData: undefined,
+        })
+      ).status,
       202,
     );
     ok(retained && report?.inboxRequestId);
-    const ingress = records.find((record) =>
-      record.rawMessage === "inbox callback"
+    const ingress = records.find(
+      (record) => record.rawMessage === "inbox callback",
     );
     ok(ingress);
     strictEqual(ingress.properties.inboxRequestId, report.inboxRequestId);
     strictEqual(ingress.properties.requestId, report.requestId);
-    const nested = records.find((record) =>
-      record.properties.url === "https://inbox.example/users/alice?nested=1" &&
-      record.properties.requestId === "nested-request"
+    const nested = records.find(
+      (record) =>
+        record.properties.url ===
+          "https://inbox.example/users/alice?nested=1" &&
+        record.properties.requestId === "nested-request",
     );
     ok(nested);
     strictEqual(nested.properties.inboxRequestId, undefined);
     strictEqual(nested.properties.sourceInboxRequestId, undefined);
     strictEqual(nested.properties.sourceRequestId, undefined);
-    const original = records.find((record) =>
-      record.properties.url ===
-        "https://inbox.example:8443/users/alice/inbox" &&
-      record.properties.status === 202
+    const original = records.find(
+      (record) =>
+        record.properties.url ===
+          "https://inbox.example:8443/users/alice/inbox" &&
+        record.properties.status === 202,
     );
     ok(original);
     strictEqual(original.properties.inboxRequestId, report.inboxRequestId);
-    await withContext(
-      { requestId: "unrelated-current" },
-      () => retained!.sendActivity(sender, [], outgoing),
+    await withContext({ requestId: "unrelated-current" }, () =>
+      retained!.sendActivity(sender, [], outgoing),
     );
-    const descendant = records.filter((record) =>
-      record.rawMessage === "outbound callback"
-    ).at(-1);
+    const descendant = records
+      .filter((record) => record.rawMessage === "outbound callback")
+      .at(-1);
     ok(descendant);
     strictEqual(descendant.properties.requestId, "unrelated-current");
     strictEqual(descendant.properties.sourceRequestId, report.requestId);
@@ -345,15 +360,18 @@ test("outbound provenance keeps source log labels separate from current request 
       new URL("https://inbox.example"),
       undefined,
     );
-    await withContext({
-      requestId: "independent-current",
-      sourceRequestId: "ambient-source",
-      sourceInboxRequestId: "ambient-inbox",
-    }, () => independent.sendActivity(sender, [], outgoing));
+    await withContext(
+      {
+        requestId: "independent-current",
+        sourceRequestId: "ambient-source",
+        sourceInboxRequestId: "ambient-inbox",
+      },
+      () => independent.sendActivity(sender, [], outgoing),
+    );
     deepStrictEqual(events.at(-1)!.provenance, {});
-    const independentLog = records.filter((record) =>
-      record.rawMessage === "outbound callback"
-    ).at(-1);
+    const independentLog = records
+      .filter((record) => record.rawMessage === "outbound callback")
+      .at(-1);
     ok(independentLog);
     strictEqual(independentLog.properties.requestId, "independent-current");
     strictEqual(independentLog.properties.sourceRequestId, undefined);
@@ -391,12 +409,11 @@ test("outbound provenance does not invent an inbox cause for programmatic routin
       events.push(event);
     },
   });
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox").on(
-    Create,
-    async (ctx) => {
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .on(Create, async (ctx) => {
       await ctx.sendActivity(sender, [], outgoing);
-    },
-  );
+    });
   const ctx = federation.createContext(
     new URL("https://inbox.example"),
     undefined,
@@ -438,9 +455,9 @@ test("outbound provenance retains request labels on gateway dispatchers", async 
         await send(ctx);
         return route === "collection"
           ? new Person({
-            id: parseIri(`ap+ef61://${did}/users/alice`),
-            followers: parseIri(`ap+ef61://${did}/users/alice/followers`),
-          })
+              id: parseIri(`ap+ef61://${did}/users/alice`),
+              followers: parseIri(`ap+ef61://${did}/users/alice/followers`),
+            })
           : null;
       });
       federation.setObjectDispatcher(Note, "/notes/{id}", async (ctx) => {
@@ -458,13 +475,14 @@ test("outbound provenance retains request labels on gateway dispatchers", async 
         await send(ctx);
         return null;
       });
-      const suffix = route === "actor"
-        ? `${did}/users/alice`
-        : route === "object"
-        ? `${did}/notes/1`
-        : route === "collection"
-        ? `${did}/users/alice/followers`
-        : `hl:${digest}`;
+      const suffix =
+        route === "actor"
+          ? `${did}/users/alice`
+          : route === "object"
+            ? `${did}/notes/1`
+            : route === "collection"
+              ? `${did}/users/alice/followers`
+              : `hl:${digest}`;
       const response = await federation.fetch(
         new Request(`https://example.com/.well-known/apgateway/${suffix}`, {
           headers: {
@@ -491,22 +509,23 @@ test("queued provenance survives inbox retries, fanout, and outbox worker recons
   await reset();
   await configure({
     sinks: { buffer: (record) => records.push(record) },
-    loggers: [{ category: [], sinks: ["buffer"], lowestLevel: "info" }, {
-      category: ["logtape", "meta"],
-      sinks: [],
-    }],
+    loggers: [
+      { category: [], sinks: ["buffer"], lowestLevel: "info" },
+      {
+        category: ["logtape", "meta"],
+        sinks: [],
+      },
+    ],
     contextLocalStorage: new AsyncLocalStorage(),
   });
   try {
     // Source propagation covers both retry owners. Legacy absence is
     // independent of retry ownership, so one legacy execution is sufficient.
-    for (
-      const { legacy, native } of [
-        { legacy: false, native: false },
-        { legacy: false, native: true },
-        { legacy: true, native: false },
-      ]
-    ) {
+    for (const { legacy, native } of [
+      { legacy: false, native: false },
+      { legacy: false, native: true },
+      { legacy: true, native: false },
+    ]) {
       await t.step(
         `${legacy ? "legacy" : "source"}: ${
           native ? "native redelivery" : "scheduled retry"
@@ -531,16 +550,16 @@ test("queued provenance survives inbox retries, fanout, and outbox worker recons
             manuallyStartQueue: true,
             queue: { inbox: queue, fanout: queue, outbox: queue },
           });
-          federation.setActorDispatcher(
-            "/users/{identifier}",
-            () => new Person({}),
-          ).setKeyPairsDispatcher(async (ctx) => {
-            await ctx.sendActivity(sender, [], outgoing);
-            return [];
-          });
+          federation
+            .setActorDispatcher("/users/{identifier}", () => new Person({}))
+            .setKeyPairsDispatcher(async (ctx) => {
+              await ctx.sendActivity(sender, [], outgoing);
+              return [];
+            });
           let calls = 0;
           const failure = new Error("retry listener");
-          federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+          federation
+            .setInboxListeners("/users/{identifier}/inbox", "/inbox")
             .setSharedKeyDispatcher(async (ctx) => {
               await ctx.sendActivity(sender, [], outgoing);
               return sender;
@@ -554,27 +573,32 @@ test("queued provenance survives inbox retries, fanout, and outbox worker recons
               await clone.sendActivity(sender, target, outgoing, {
                 fanout: "force",
               });
-              const outbox = ctx.toOutboxContext(
-                "alice",
-                {},
-                outgoing.id!.href,
-                Create.typeId.href,
-              ).clone(undefined);
+              const outbox = ctx
+                .toOutboxContext(
+                  "alice",
+                  {},
+                  outgoing.id!.href,
+                  Create.typeId.href,
+                )
+                .clone(undefined);
               await outbox.sendActivity(sender, target, outgoing, {
                 fanout: "skip",
               });
               await clone.forwardActivity(sender, target, {
                 skipIfUnsigned: false,
               });
-            }).onRequestFinished((_ctx, report) => {
+            })
+            .onRequestFinished((_ctx, report) => {
               reports.push(report);
             });
           // Producer metadata must not depend on observer registration.
           strictEqual(
-            (await federation.fetch(
-              post(native ? "/inbox" : "/users/alice/inbox", await payload()),
-              { contextData: undefined },
-            )).status,
+            (
+              await federation.fetch(
+                post(native ? "/inbox" : "/users/alice/inbox", await payload()),
+                { contextData: undefined },
+              )
+            ).status,
             202,
           );
           const produced = messages[0];
@@ -588,9 +612,7 @@ test("queued provenance survives inbox retries, fanout, and outbox worker recons
             JSON.parse(JSON.stringify(produced.provenance)),
             produced.provenance,
           );
-          const task = JSON.parse(
-            JSON.stringify(produced),
-          ) as typeof produced;
+          const task = JSON.parse(JSON.stringify(produced)) as typeof produced;
           if (legacy) delete (task as { provenance?: unknown }).provenance;
           const expected: OutboundProvenance = task.provenance ?? {};
           federation.setOutboundObservers({
@@ -602,12 +624,15 @@ test("queued provenance survives inbox retries, fanout, and outbox worker recons
             },
           });
           const execute = (message: Message) =>
-            withContext({
-              requestId: "worker-current",
-              inboxRequestId: "unrelated-inbox",
-              sourceInboxRequestId: "ambient-source",
-              sourceRequestId: "ambient-label",
-            }, () => federation.processQueuedTask(undefined, message));
+            withContext(
+              {
+                requestId: "worker-current",
+                inboxRequestId: "unrelated-inbox",
+                sourceInboxRequestId: "ambient-source",
+                sourceRequestId: "ambient-label",
+              },
+              () => federation.processQueuedTask(undefined, message),
+            );
           messages.length = 0;
           const logStart = records.length;
           if (native) {
@@ -628,8 +653,8 @@ test("queued provenance survives inbox retries, fanout, and outbox worker recons
           ok(fanout?.type === "fanout");
           deepStrictEqual(fanout.provenance ?? {}, expected);
           await execute(JSON.parse(JSON.stringify(fanout)));
-          const outgoingTasks = messages.filter((message) =>
-            message.type === "outbox"
+          const outgoingTasks = messages.filter(
+            (message) => message.type === "outbox",
           );
           strictEqual(outgoingTasks.length, 3);
           for (const message of outgoingTasks) {
@@ -656,15 +681,18 @@ test("queued provenance survives inbox retries, fanout, and outbox worker recons
           });
           fetchMock.mockGlobal().post(target.inboxId!.href, 410);
           try {
-            await withContext({
-              requestId: "worker-current",
-              sourceInboxRequestId: "ambient-source",
-              sourceRequestId: "ambient-label",
-            }, () =>
-              consumer.processQueuedTask(undefined, {
-                ...structuredClone(outgoingTasks[0]),
-                baseUrl: "https://worker.example",
-              }));
+            await withContext(
+              {
+                requestId: "worker-current",
+                sourceInboxRequestId: "ambient-source",
+                sourceRequestId: "ambient-label",
+              },
+              () =>
+                consumer.processQueuedTask(undefined, {
+                  ...structuredClone(outgoingTasks[0]),
+                  baseUrl: "https://worker.example",
+                }),
+            );
           } finally {
             fetchMock.hardReset();
           }
@@ -682,10 +710,13 @@ test("queued provenance survives inbox retries, fanout, and outbox worker recons
             events.at(-1)!.local.canonicalOrigin,
             "https://consumer.example",
           );
-          const workerLogs = records.slice(logStart).filter((record) =>
-            record.rawMessage === "queued listener" ||
-            record.rawMessage === "permanent callback"
-          );
+          const workerLogs = records
+            .slice(logStart)
+            .filter(
+              (record) =>
+                record.rawMessage === "queued listener" ||
+                record.rawMessage === "permanent callback",
+            );
           strictEqual(workerLogs.length, 3);
           for (const record of workerLogs) {
             strictEqual(record.properties.requestId, "worker-current");
@@ -727,15 +758,17 @@ test("queued provenance retains a non-inbox HTTP request label without inventing
     return null;
   });
   strictEqual(
-    (await federation.fetch(
-      new Request("https://example.com/users/alice", {
-        headers: {
-          Accept: "application/activity+json",
-          "X-Request-Id": "original-http-label",
-        },
-      }),
-      { contextData: undefined },
-    )).status,
+    (
+      await federation.fetch(
+        new Request("https://example.com/users/alice", {
+          headers: {
+            Accept: "application/activity+json",
+            "X-Request-Id": "original-http-label",
+          },
+        }),
+        { contextData: undefined },
+      )
+    ).status,
     404,
   );
   const message = messages[0];

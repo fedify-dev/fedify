@@ -21,29 +21,37 @@ describe("package exports", () => {
     assert.equal(typeof module.createNetlifyQueueHandler, "function");
   });
 
-  it("accepts the Netlify Blobs Store in the public types", {
-    skip: !canRunTypeScript,
-    timeout: 60_000,
-  }, () => {
-    const require = createRequire(import.meta.url);
-    const tsc = require.resolve("typescript/bin/tsc");
-    const fixture = fileURLToPath(
-      new URL("../fixtures/public-types.ts", import.meta.url),
-    );
+  it(
+    "accepts the Netlify Blobs Store in the public types",
+    {
+      skip: !canRunTypeScript,
+      timeout: 60_000,
+    },
+    () => {
+      const require = createRequire(import.meta.url);
+      const tsc = require.resolve("typescript/bin/tsc");
+      const fixture = fileURLToPath(
+        new URL("../fixtures/public-types.ts", import.meta.url),
+      );
 
-    execFileSync(process.execPath, [
-      tsc,
-      "--noEmit",
-      "--strict",
-      "--types",
-      "node",
-      "--module",
-      "NodeNext",
-      "--moduleResolution",
-      "NodeNext",
-      "--target",
-      "ESNext",
-      fixture,
-    ], { timeout: 55_000 });
-  });
+      execFileSync(
+        process.execPath,
+        [
+          tsc,
+          "--noEmit",
+          "--strict",
+          "--types",
+          "node",
+          "--module",
+          "NodeNext",
+          "--moduleResolution",
+          "NodeNext",
+          "--target",
+          "ESNext",
+          fixture,
+        ],
+        { timeout: 55_000 },
+      );
+    },
+  );
 });

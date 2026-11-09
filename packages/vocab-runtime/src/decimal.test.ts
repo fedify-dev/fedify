@@ -65,15 +65,12 @@ test("parseDecimal() rejects invalid xsd:decimal lexical forms", () => {
   ];
 
   for (const value of values) {
-    throws(
-      () => parseDecimal(value),
-      {
-        name: "TypeError",
-        message: `${
-          JSON.stringify(value)
-        } is not a valid xsd:decimal lexical form.`,
-      },
-    );
+    throws(() => parseDecimal(value), {
+      name: "TypeError",
+      message: `${JSON.stringify(
+        value,
+      )} is not a valid xsd:decimal lexical form.`,
+    });
   }
 });
 

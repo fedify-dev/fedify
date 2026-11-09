@@ -21,9 +21,11 @@ export interface LayoutProps {
 /**
  * Root HTML layout for the debug dashboard.
  */
-export const Layout: FC<PropsWithChildren<LayoutProps>> = (
-  { title, pathPrefix, children },
-) => {
+export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
+  title,
+  pathPrefix,
+  children,
+}) => {
   return (
     <html>
       <head>
@@ -109,9 +111,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = (
             </a>
           </h1>
         </header>
-        <main>
-          {children}
-        </main>
+        <main>{children}</main>
       </body>
     </html>
   );

@@ -52,27 +52,28 @@ test("describeLookupFailure only suggests signing object HTTP 401/403/404", () =
         const error = new FetchError(url, `HTTP ${status}: ${url}`);
         const result = describeLookupFailure({ error, source }, signed);
         assertStringIncludes(result.message, `HTTP ${status}`);
-        const suggests = source === "object" && !signed &&
-          [401, 403, 404].includes(status);
+        const suggests =
+          source === "object" && !signed && [401, 403, 404].includes(status);
         assertEquals(result.suggestsAuthorizedFetch, suggests);
         assertEquals(result.message.includes("--authorized-fetch"), suggests);
       }
     }
   }
   const rawUrl = "HTTP://DNS.EXAMPLE:80";
-  const http = describeLookupFailure({
-    error: new FetchError(rawUrl, `HTTP 500: ${rawUrl}`),
-    source: "object",
-  }, false);
+  const http = describeLookupFailure(
+    {
+      error: new FetchError(rawUrl, `HTTP 500: ${rawUrl}`),
+      source: "object",
+    },
+    false,
+  );
   assertStringIncludes(http.message, "HTTP 500");
   assertEquals(http.message.includes("Could not resolve"), false);
-  for (
-    const error of [
-      new FetchError(url, "HTTP 404: something else"),
-      new Error(`HTTP 404: ${url}`),
-      new FetchError(`${url}?error=: HTTP 404: `, "parse failure"),
-    ]
-  ) {
+  for (const error of [
+    new FetchError(url, "HTTP 404: something else"),
+    new Error(`HTTP 404: ${url}`),
+    new FetchError(`${url}?error=: HTTP 404: `, "parse failure"),
+  ]) {
     assertEquals(
       describeLookupFailure({ error, source: "object" }, false)
         .suggestsAuthorizedFetch,
@@ -82,19 +83,17 @@ test("describeLookupFailure only suggests signing object HTTP 401/403/404", () =
 });
 
 test("describeLookupFailure recognizes DNS causes and preserves other errors", () => {
-  for (
-    const error of [
-      new UrlError("DNS lookup failed", { reason: "dns" }),
-      new TypeError("client error (Connect): dns error: name not known"),
-      new TypeError(
-        "failed to lookup address information: Name or service not known",
-      ),
-      new TypeError("fetch failed", {
-        cause: Object.assign(new Error("getaddrinfo"), { code: "ENOTFOUND" }),
-      }),
-      Object.assign(new Error("getaddrinfo"), { code: "EAI_AGAIN" }),
-    ]
-  ) {
+  for (const error of [
+    new UrlError("DNS lookup failed", { reason: "dns" }),
+    new TypeError("client error (Connect): dns error: name not known"),
+    new TypeError(
+      "failed to lookup address information: Name or service not known",
+    ),
+    new TypeError("fetch failed", {
+      cause: Object.assign(new Error("getaddrinfo"), { code: "ENOTFOUND" }),
+    }),
+    Object.assign(new Error("getaddrinfo"), { code: "EAI_AGAIN" }),
+  ]) {
     const result = describeLookupFailure({ error, source: "object" }, false);
     assertEquals(
       result.message,
@@ -102,21 +101,19 @@ test("describeLookupFailure recognizes DNS causes and preserves other errors", (
     );
     assertEquals(result.suggestsAuthorizedFetch, false);
   }
-  for (
-    const error of [
-      new TypeError("connection refused"),
-      new TypeError("certificate verify failed"),
-      new TypeError("fetch failed", { cause: new Error("ECONNREFUSED") }),
-      new SyntaxError("Unexpected token"),
-      new SyntaxError('Unexpected token d, "dns error" is not valid JSON'),
-      new Error("JSON-LD error", {
-        cause: new SyntaxError(
-          'Unexpected token d, "dns error" is not valid JSON',
-        ),
-      }),
-      new Error("Bad JSON from https://dns.example/object"),
-    ]
-  ) {
+  for (const error of [
+    new TypeError("connection refused"),
+    new TypeError("certificate verify failed"),
+    new TypeError("fetch failed", { cause: new Error("ECONNREFUSED") }),
+    new SyntaxError("Unexpected token"),
+    new SyntaxError('Unexpected token d, "dns error" is not valid JSON'),
+    new Error("JSON-LD error", {
+      cause: new SyntaxError(
+        'Unexpected token d, "dns error" is not valid JSON',
+      ),
+    }),
+    new Error("Bad JSON from https://dns.example/object"),
+  ]) {
     const result = describeLookupFailure({ error, source: "object" }, false);
     assertStringIncludes(result.message, error.message);
     assertEquals(result.suggestsAuthorizedFetch, false);
@@ -134,16 +131,11 @@ test("describeLookupFailure recognizes DNS causes and preserves other errors", (
 });
 
 test("describeLookupFailure escapes terminal controls from remote content", () => {
-  for (
-    const error of [
-      new SyntaxError("Unexpected token \x1b]0;title\x07\x1b[8m"),
-      new TypeError("fetch failed", { cause: new Error("\x9b2J") }),
-      new FetchError(
-        "http://localhost/\x1b",
-        "HTTP 404: http://localhost/\x1b",
-      ),
-    ]
-  ) {
+  for (const error of [
+    new SyntaxError("Unexpected token \x1b]0;title\x07\x1b[8m"),
+    new TypeError("fetch failed", { cause: new Error("\x9b2J") }),
+    new FetchError("http://localhost/\x1b", "HTTP 404: http://localhost/\x1b"),
+  ]) {
     const description = describeLookupFailure(
       { error, source: "object" },
       false,
@@ -151,7 +143,7 @@ test("describeLookupFailure escapes terminal controls from remote content", () =
     assertEquals(
       [...description.message].some((character) => {
         const code = character.charCodeAt(0);
-        return code < 32 || code >= 127 && code <= 159;
+        return code < 32 || (code >= 127 && code <= 159);
       }),
       false,
     );
@@ -246,11 +238,13 @@ test("lookupWithDiagnostics does not infer authorization from invalid JSON-LD", 
 test("lookupWithDiagnostics discards recovered failures and snapshots results", async () => {
   fetchMock.spyGlobal();
   fetchMock.get("begin:https://[2001:db8::1]/.well-known/webfinger", {
-    links: [{
-      rel: "self",
-      type: "application/activity+json",
-      href: "http://localhost/recovered",
-    }],
+    links: [
+      {
+        rel: "self",
+        type: "application/activity+json",
+        href: "http://localhost/recovered",
+      },
+    ],
   });
   const error = new FetchError(
     "https://[2001:db8::1]/object",
@@ -296,10 +290,15 @@ test("lookup diagnostics clears both failures between iterator steps", async () 
 });
 
 test("lookup diagnostics distinguishes blocked destinations from DNS failures", () => {
-  const result = describeLookupFailure({
-    error: new UrlError("Invalid or private address", { reason: "disallowed" }),
-    source: "object",
-  }, false);
+  const result = describeLookupFailure(
+    {
+      error: new UrlError("Invalid or private address", {
+        reason: "disallowed",
+      }),
+      source: "object",
+    },
+    false,
+  );
   assertStringIncludes(result.message, "Invalid or private address");
   assertEquals(result.suggestsAuthorizedFetch, false);
 });

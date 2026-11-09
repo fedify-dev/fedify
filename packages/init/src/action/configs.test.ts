@@ -59,9 +59,7 @@ function createInitData(): InitCommandData {
   return data;
 }
 
-function restoreDeno(
-  originalDeno: unknown,
-) {
+function restoreDeno(originalDeno: unknown) {
   if (originalDeno == null) {
     Reflect.deleteProperty(globalThis, "Deno");
   } else {
@@ -74,13 +72,16 @@ function restoreDeno(
   }
 }
 
-function setDenoVersion(
-  version: { deno: string; v8: string; typescript: string },
-) {
+function setDenoVersion(version: {
+  deno: string;
+  v8: string;
+  typescript: string;
+}) {
   const current = (globalThis as Record<string, unknown>).Deno;
-  const value = current == null || typeof current !== "object"
-    ? { version }
-    : { ...(current as Record<string, unknown>), version };
+  const value =
+    current == null || typeof current !== "object"
+      ? { version }
+      : { ...(current as Record<string, unknown>), version };
   Object.defineProperty(globalThis, "Deno", {
     value,
     configurable: true,
@@ -353,16 +354,14 @@ test("patchFiles omits Oxfmt config for Astro npm projects", async () => {
       "editor.defaultFormatter": "esbenp.prettier-vscode",
       "editor.formatOnSave": true,
     });
-    for (
-      const language of [
-        "[javascript]",
-        "[javascriptreact]",
-        "[json]",
-        "[jsonc]",
-        "[typescript]",
-        "[typescriptreact]",
-      ]
-    ) {
+    for (const language of [
+      "[javascript]",
+      "[javascriptreact]",
+      "[json]",
+      "[jsonc]",
+      "[typescript]",
+      "[typescriptreact]",
+    ]) {
       assert.equal(
         (vscodeSettings[language] as Record<string, unknown>)[
           "editor.defaultFormatter"

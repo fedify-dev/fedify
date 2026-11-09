@@ -25,10 +25,12 @@ test("SqliteKvStore.initialize()", async () => {
   const { db, tableName, store } = getStore();
   try {
     await store.initialize();
-    const result = await db.prepare(`
+    const result = await db
+      .prepare(`
       SELECT name FROM sqlite_master
       WHERE type='table' AND name=?
-    `).get(tableName);
+    `)
+      .get(tableName);
     assert(result !== undefined);
   } finally {
     await store.drop();
@@ -69,10 +71,12 @@ test("SqliteKvStore.set()", async () => {
   try {
     await store.set(["foo", "baz"], "baz");
 
-    const result = db.prepare(`
+    const result = db
+      .prepare(`
       SELECT * FROM ${tableName}
       WHERE key = ?
-    `).all(JSON.stringify(["foo", "baz"])) as {
+    `)
+      .all(JSON.stringify(["foo", "baz"])) as {
       key: string;
       value: string;
       created: number;
@@ -87,10 +91,12 @@ test("SqliteKvStore.set()", async () => {
     await store.set(["foo", "qux"], "qux", {
       ttl: Temporal.Duration.from({ days: 1 }),
     });
-    const result2 = db.prepare(`
+    const result2 = db
+      .prepare(`
       SELECT * FROM ${tableName}
       WHERE key = ?
-    `).all(JSON.stringify(["foo", "qux"])) as {
+    `)
+      .all(JSON.stringify(["foo", "qux"])) as {
       key: string;
       value: string;
       created: number;
@@ -104,10 +110,12 @@ test("SqliteKvStore.set()", async () => {
     );
 
     await store.set(["foo", "quux"], true);
-    const result3 = db.prepare(`
+    const result3 = db
+      .prepare(`
       SELECT * FROM ${tableName}
       WHERE key = ?
-    `).all(JSON.stringify(["foo", "quux"])) as {
+    `)
+      .all(JSON.stringify(["foo", "quux"])) as {
       key: string;
       value: string;
       created: number;
@@ -130,9 +138,11 @@ test("SqliteKvStore.set() - upsert functionality", async () => {
     assert.strictEqual(await store.get(["upsert"]), "initial");
     await store.set(["upsert"], "updated");
     assert.strictEqual(await store.get(["upsert"]), "updated");
-    const result = db.prepare(`
+    const result = db
+      .prepare(`
       SELECT COUNT(*) as count FROM ${tableName} WHERE key = ?
-    `).get(JSON.stringify(["upsert"]));
+    `)
+      .get(JSON.stringify(["upsert"]));
     assert.strictEqual((result as { count: number }).count, 1);
   } finally {
     await store.drop();
@@ -144,10 +154,12 @@ test("SqliteKvStore.delete()", async () => {
   const { db, tableName, store } = getStore();
   try {
     await store.delete(["foo", "qux"]);
-    const result = db.prepare(`
+    const result = db
+      .prepare(`
       SELECT * FROM ${tableName}
       WHERE key = ?
-    `).all(JSON.stringify(["foo", "qux"]));
+    `)
+      .all(JSON.stringify(["foo", "qux"]));
     assert.strictEqual(result.length, 0);
 
     db.prepare(`
@@ -159,10 +171,12 @@ test("SqliteKvStore.delete()", async () => {
       Temporal.Now.instant().epochMilliseconds,
     );
     await store.delete(["foo", "qux"]);
-    const result2 = db.prepare(`
+    const result2 = db
+      .prepare(`
       SELECT * FROM ${tableName}
       WHERE key = ?
-    `).all(JSON.stringify(["foo", "qux"]));
+    `)
+      .all(JSON.stringify(["foo", "qux"]));
     assert.strictEqual(result2.length, 0);
   } finally {
     await store.drop();
@@ -174,10 +188,12 @@ test("SqliteKvStore.drop()", async () => {
   const { db, tableName, store } = getStore();
   try {
     await store.drop();
-    const result = await db.prepare(`
+    const result = await db
+      .prepare(`
       SELECT name FROM sqlite_master
       WHERE type='table' AND name=?
-    `).get(tableName);
+    `)
+      .get(tableName);
     // Bun returns null, Node returns undefined
     assert(result === undefined || result === null);
   } finally {
@@ -270,10 +286,12 @@ test("SqliteKvStore.set() - preserves created timestamp on update", async () => 
   const { db, tableName, store } = getStore();
   try {
     await store.set(["timestamp-test"], "initial");
-    const initialResult = db.prepare(`
+    const initialResult = db
+      .prepare(`
       SELECT created, expires FROM ${tableName}
       WHERE key = ?
-    `).get(JSON.stringify(["timestamp-test"]));
+    `)
+      .get(JSON.stringify(["timestamp-test"]));
 
     const initialCreated = (initialResult as { created: number }).created;
     assert(
@@ -290,10 +308,12 @@ test("SqliteKvStore.set() - preserves created timestamp on update", async () => 
     const ttl = Temporal.Duration.from({ seconds: 30 });
     await store.set(["timestamp-test"], "updated", { ttl });
 
-    const updatedResult = db.prepare(`
+    const updatedResult = db
+      .prepare(`
       SELECT created, expires FROM ${tableName}
       WHERE key = ?
-    `).get(JSON.stringify(["timestamp-test"]));
+    `)
+      .get(JSON.stringify(["timestamp-test"]));
 
     assert.strictEqual(
       (updatedResult as { created: number }).created,
@@ -320,9 +340,7 @@ test("SqliteKvStore.list()", async () => {
     }
 
     assert.strictEqual(entries.length, 3);
-    assert(
-      entries.some((e) => e.key[1] === "a" && e.value === "value-a"),
-    );
+    assert(entries.some((e) => e.key[1] === "a" && e.value === "value-a"));
     assert(entries.some((e) => e.key[1] === "b"));
     assert(entries.some((e) => e.key[1] === "nested"));
   } finally {

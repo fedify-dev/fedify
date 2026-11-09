@@ -60,13 +60,12 @@ const acceptFollows: string[] = [];
 const peers: Record<string, Actor> = {};
 const followers: Record<string, Actor> = {};
 
-type InboxCommand =
-  & InferValue<typeof import("./inbox/command.ts").inboxCommand>
-  & GlobalOptions;
+type InboxCommand = InferValue<
+  typeof import("./inbox/command.ts").inboxCommand
+> &
+  GlobalOptions;
 
-export async function runInbox(
-  command: InboxCommand,
-) {
+export async function runInbox(command: InboxCommand) {
   // Reset module-level state for a clean run
   activities.length = 0;
   acceptFollows.length = 0;
@@ -84,7 +83,7 @@ export async function runInbox(
 
   const authorize = async (ctx: RequestContext<ContextData>) => {
     if (!authorizedFetchEnabled) return true;
-    return await ctx.getSignedKey() != null;
+    return (await ctx.getSignedKey()) != null;
   };
 
   // Instance actor must be public for key fetching per spec
@@ -116,9 +115,10 @@ export async function runInbox(
         id: ctx.getActorUri(identifier),
         preferredUsername: identifier,
         name: identifier === "ia" ? "Instance Actor" : ctx.data.actorName,
-        summary: identifier === "ia"
-          ? "Instance actor for signing requests"
-          : ctx.data.actorSummary,
+        summary:
+          identifier === "ia"
+            ? "Instance actor for signing requests"
+            : ctx.data.actorSummary,
         inbox: ctx.getInboxUri(identifier),
         endpoints: new Endpoints({
           sharedInbox: ctx.getInboxUri(),
@@ -257,14 +257,14 @@ export async function runInbox(
   });
 
   // Create handlers with the configured federation
-  const fetch = createFetchHandler(
-    federation,
-    { actorName: command.actorName, actorSummary: command.actorSummary },
-  );
-  const sendDeleteToPeers = createSendDeleteToPeers(
-    federation,
-    { actorName: command.actorName, actorSummary: command.actorSummary },
-  );
+  const fetch = createFetchHandler(federation, {
+    actorName: command.actorName,
+    actorSummary: command.actorSummary,
+  });
+  const sendDeleteToPeers = createSendDeleteToPeers(federation, {
+    actorName: command.actorName,
+    actorSummary: command.actorSummary,
+  });
 
   const spinner = ora({
     text: "Spinning up an ephemeral ActivityPub server...",
@@ -275,11 +275,9 @@ export async function runInbox(
     ...(command.tunnel && { service: command.tunnelService }),
   });
   spinner.succeed(
-    `The ephemeral ActivityPub server is up and running: ${
-      colors.green(
-        server.url.href,
-      )
-    }`,
+    `The ephemeral ActivityPub server is up and running: ${colors.green(
+      server.url.href,
+    )}`,
   );
   process.on("SIGINT", () => {
     spinner.stop();
@@ -312,9 +310,8 @@ export async function runInbox(
     const documentLoader = await fedCtx.getDocumentLoader({
       identifier: "i",
     });
-    const gateways = command.gateways.length > 0
-      ? { gateways: command.gateways }
-      : {};
+    const gateways =
+      command.gateways.length > 0 ? { gateways: command.gateways } : {};
     for (const uri of command.follow) {
       spinner.text = `Following ${colors.green(uri)}...`;
       const problem = getPortableLookupProblem(uri, command.gateways);
@@ -322,9 +319,9 @@ export async function runInbox(
         spinner.fail(
           problem === "malformed"
             ? `Invalid portable ID: ${colors.red(uri)}`
-            : `The portable ID ${
-              colors.red(uri)
-            } has no @gateway location hints.  Use the --gateway option to follow it.`,
+            : `The portable ID ${colors.red(
+                uri,
+              )} has no @gateway location hints.  Use the --gateway option to follow it.`,
         );
         spinner.start();
         continue;
@@ -427,11 +424,12 @@ async function printActivityEntry(
   table.push(
     { "Request #:": colors.bold(idx.toString()) },
     {
-      "Activity type:": activity == null
-        ? colors.red("failed to parse")
-        : colors.green(
-          `${activity.constructor.name}(${object?.constructor.name})`,
-        ),
+      "Activity type:":
+        activity == null
+          ? colors.red("failed to parse")
+          : colors.green(
+              `${activity.constructor.name}(${object?.constructor.name})`,
+            ),
     },
     {
       "HTTP request:": `${
@@ -440,13 +438,17 @@ async function printActivityEntry(
           : colors.red(request.method)
       } ${url.pathname + url.search}`,
     },
-    ...(response == null ? [] : [{
-      "HTTP response:": `${
-        response.ok
-          ? colors.green(response.status.toString())
-          : colors.red(response.status.toString())
-      } ${response.statusText}`,
-    }]),
+    ...(response == null
+      ? []
+      : [
+          {
+            "HTTP response:": `${
+              response.ok
+                ? colors.green(response.status.toString())
+                : colors.red(response.status.toString())
+            } ${response.statusText}`,
+          },
+        ]),
     { "Details": new URL(`/r/${idx}`, url).href },
   );
 
@@ -464,12 +466,8 @@ const app = new Hono();
 
 app.get("/", (c) => c.redirect("/r"));
 
-app.get(
-  "/r",
-  (c) =>
-    c.html(
-      <ActivityListPage handle={getHandle(c)} entries={activities} />,
-    ),
+app.get("/r", (c) =>
+  c.html(<ActivityListPage handle={getHandle(c)} entries={activities} />),
 );
 
 app.get("/r/:idx{[0-9]+}", (c) => {
@@ -478,8 +476,12 @@ app.get("/r/:idx{[0-9]+}", (c) => {
   const activity = activities[idx];
   if (activity == null) return c.notFound();
   if (
-    tab !== "request" && tab !== "response" && tab !== "raw-activity" &&
-    tab !== "compact-activity" && tab !== "expanded-activity" && tab !== "logs"
+    tab !== "request" &&
+    tab !== "response" &&
+    tab !== "raw-activity" &&
+    tab !== "compact-activity" &&
+    tab !== "expanded-activity" &&
+    tab !== "logs"
   ) {
     return c.notFound();
   }
@@ -505,8 +507,8 @@ function createFetchHandler(
       return app.fetch(request);
     }
 
-    const inboxRequest = pathname === "/inbox" ||
-      pathname.startsWith("/i/inbox");
+    const inboxRequest =
+      pathname === "/inbox" || pathname.startsWith("/i/inbox");
     if (inboxRequest) {
       recordingSink.startRecording();
       // @ts-ignore: Work around `deno publish --dry-run` bug

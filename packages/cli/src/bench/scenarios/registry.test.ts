@@ -14,9 +14,7 @@ test("runnerFor - returns implemented scenario runners", () => {
 });
 
 test("runnerFor - throws for scenario types without a runner", () => {
-  const unimplemented: ScenarioType[] = [
-    "collection",
-  ];
+  const unimplemented: ScenarioType[] = ["collection"];
   for (const type of unimplemented) {
     assert.throws(() => runnerFor(type), /not implemented/);
   }

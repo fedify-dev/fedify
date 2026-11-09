@@ -2,21 +2,10 @@
   {
     "name": "clone keeps existing routes and isolates new routes",
     "routeDefinitions": [
-      [
-        "/users/{name}",
-        "user"
-      ],
-      [
-        "/users/{name}/posts/{postId}",
-        "post"
-      ]
+      ["/users/{name}", "user"],
+      ["/users/{name}/posts/{postId}", "post"]
     ],
-    "clonedRouteDefinitions": [
-      [
-        "/users/{name}/friends",
-        "friends"
-      ]
-    ],
+    "clonedRouteDefinitions": [["/users/{name}/friends", "friends"]],
     "originalRouteCases": [
       {
         "name": "original does not match cloned route",

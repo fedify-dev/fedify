@@ -20,10 +20,7 @@ interface ActorLike extends ASObject {
 }
 
 interface ActorConstructor {
-  new (values: {
-    id: URL;
-    attributionDomains: string[];
-  }): ActorLike;
+  new (values: { id: URL; attributionDomains: string[] }): ActorLike;
   fromJsonLd(
     document: unknown,
     options?: { documentLoader?: DocumentLoader },
@@ -91,12 +88,10 @@ test("attributionDomains single value fast path and compact form", async () => {
 });
 
 test("attributionDomains omitted when missing or empty", async () => {
-  for (
-    const person of [
-      new Person({ id: aliceId }),
-      new Person({ id: aliceId, attributionDomains: [] }),
-    ]
-  ) {
+  for (const person of [
+    new Person({ id: aliceId }),
+    new Person({ id: aliceId, attributionDomains: [] }),
+  ]) {
     const json = record(await person.toJsonLd());
     ok(!("attributionDomains" in json));
   }

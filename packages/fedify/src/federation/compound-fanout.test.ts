@@ -64,11 +64,11 @@ test("fanout delivery keeps an embedded signed child intact", async () => {
     childKeyId,
     { ...options, context, created },
   );
-  const compound = await normalizeOutgoingActivityJsonLd(
+  const compound = (await normalizeOutgoingActivityJsonLd(
     await activity.toJsonLd({ format: "compact", ...options, context }),
     mockDocumentLoader,
     { preserveNestedSecuredDocuments: true },
-  ) as Record<string, unknown>;
+  )) as Record<string, unknown>;
   const securedChild = compound.object as Record<string, unknown>;
   assertEquals(securedChild["@context"], childContext);
 
@@ -91,10 +91,12 @@ test("fanout delivery keeps an embedded signed child intact", async () => {
       type: "fanout",
       id: crypto.randomUUID(),
       baseUrl: "https://example.com",
-      keys: [{
-        keyId: rsaPublicKey2.id!.href,
-        privateKey: await exportJwk(rsaPrivateKey2),
-      }],
+      keys: [
+        {
+          keyId: rsaPublicKey2.id!.href,
+          privateKey: await exportJwk(rsaPrivateKey2),
+        },
+      ],
       inboxes: {
         "https://example.com/inbox": {
           actorIds: ["https://example.com/recipient"],

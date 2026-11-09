@@ -60,11 +60,7 @@ test("redeemPinGrant() rejects grants not issued by issuePinGrant()", () => {
     "string": "grant",
   };
   for (const [name, forgery] of Object.entries(forgeries)) {
-    throws(
-      () => redeemPinGrant(forgery as PinGrant, url),
-      TypeError,
-      name,
-    );
+    throws(() => redeemPinGrant(forgery as PinGrant, url), TypeError, name);
   }
   // The issued grant itself still works:
   ok(redeemPinGrant(issued, url));
@@ -75,15 +71,13 @@ test("redeemPinGrant() rejects URLs of other origins", () => {
     new URL("https://pinned-host.invalid/"),
     addresses,
   );
-  for (
-    const url of [
-      "http://pinned-host.invalid/",
-      "https://other-host.invalid/",
-      "https://sub.pinned-host.invalid/",
-      "https://pinned-host.invalid:8443/",
-      "https://8.8.8.8/",
-    ]
-  ) {
+  for (const url of [
+    "http://pinned-host.invalid/",
+    "https://other-host.invalid/",
+    "https://sub.pinned-host.invalid/",
+    "https://pinned-host.invalid:8443/",
+    "https://8.8.8.8/",
+  ]) {
     throws(() => redeemPinGrant(grant, new URL(url)), TypeError, url);
   }
   // The default port is the same origin:

@@ -10,18 +10,15 @@ const federation = createFederation<void>({
 });
 
 // Add a simple actor
-federation.setActorDispatcher(
-  "/users/{identifier}",
-  (ctx, identifier) => {
-    return new Person({
-      id: ctx.getActorUri(identifier),
-      name: identifier,
-      summary: "This is a summary of the user",
-      preferredUsername: identifier,
-      url: new URL("/", ctx.url),
-    });
-  },
-);
+federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
+  return new Person({
+    id: ctx.getActorUri(identifier),
+    name: identifier,
+    summary: "This is a summary of the user",
+    preferredUsername: identifier,
+    url: new URL("/", ctx.url),
+  });
+});
 
 // Regular application routes
 fastify.get("/", () => {

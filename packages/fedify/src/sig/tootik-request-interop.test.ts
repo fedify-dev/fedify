@@ -4,18 +4,10 @@ import { assert, assertEquals } from "@std/assert";
 import { encodeHex } from "byte-encodings/hex";
 import { createFederation } from "../federation/middleware.ts";
 import { MemoryKvStore } from "../federation/kv.ts";
-import actor from "../../test-vectors/fep-ef61/tootik-v0.25.4/follow/actor.json" with {
-  type: "json",
-};
-import captured from "../../test-vectors/fep-ef61/tootik-v0.25.4/follow/request.json" with {
-  type: "json",
-};
-import metadata from "../../test-vectors/fep-ef61/tootik-v0.25.4/follow/metadata.json" with {
-  type: "json",
-};
-import rawBodies from "../../test-vectors/fep-ef61/tootik-v0.25.4/follow/raw-bodies.json" with {
-  type: "json",
-};
+import actor from "../../test-vectors/fep-ef61/tootik-v0.25.4/follow/actor.json" with { type: "json" };
+import captured from "../../test-vectors/fep-ef61/tootik-v0.25.4/follow/request.json" with { type: "json" };
+import metadata from "../../test-vectors/fep-ef61/tootik-v0.25.4/follow/metadata.json" with { type: "json" };
+import rawBodies from "../../test-vectors/fep-ef61/tootik-v0.25.4/follow/raw-bodies.json" with { type: "json" };
 import { verifyRequestDetailed } from "./http.ts";
 import { doesActorOwnKey } from "./owner.ts";
 import { verifyPortableObjectProof } from "./proof.ts";
@@ -68,18 +60,19 @@ async function deliver(requestBody: string) {
     // HTTP time validation is tested separately at the capture time.
     signatureTimeWindow: false,
   });
-  federation.setActorDispatcher(
-    "/users/{identifier}",
-    (ctx, identifier) =>
+  federation
+    .setActorDispatcher("/users/{identifier}", (ctx, identifier) =>
       identifier === "alice"
         ? new Person({
-          id: ctx.getActorUri(identifier),
-          inbox: ctx.getInboxUri(identifier),
-        })
+            id: ctx.getActorUri(identifier),
+            inbox: ctx.getInboxUri(identifier),
+          })
         : null,
-  ).setKeyPairsDispatcher(() => []);
+    )
+    .setKeyPairsDispatcher(() => []);
   const received: Follow[] = [];
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .on(Follow, (_ctx, follow) => {
       received.push(follow);
     });
@@ -91,14 +84,8 @@ async function deliver(requestBody: string) {
 
 test("tootik v0.25.4 captured Follow verifies its proof and HTTP signature", async () => {
   const actorBody = rawBodies.actorBody;
-  assertEquals(
-    await sha256(body),
-    metadata.requestBodySha256,
-  );
-  assertEquals(
-    await sha256(actorBody),
-    metadata.actorBodySha256,
-  );
+  assertEquals(await sha256(body), metadata.requestBodySha256);
+  assertEquals(await sha256(actorBody), metadata.actorBodySha256);
   assertEquals(JSON.parse(actorBody), actor);
   assertEquals(activity.type, "Follow");
   assertEquals(actor.type, "Person");
@@ -148,10 +135,12 @@ test("tootik v0.25.4 captured Follow rejects signed header and path tampering", 
     false,
   );
   assertEquals(
-    (await verifyRequestDetailed(
-      request(body, `${captured.url}/tampered`),
-      options,
-    )).verified,
+    (
+      await verifyRequestDetailed(
+        request(body, `${captured.url}/tampered`),
+        options,
+      )
+    ).verified,
     false,
   );
 });
@@ -163,10 +152,12 @@ test("tootik v0.25.4 captured Follow rejects a tampered actor proof", async () =
     false,
   );
   assertEquals(
-    (await verifyRequestDetailed(request(), {
-      ...options,
-      documentLoader: loader(tampered),
-    })).verified,
+    (
+      await verifyRequestDetailed(request(), {
+        ...options,
+        documentLoader: loader(tampered),
+      })
+    ).verified,
     false,
   );
 });

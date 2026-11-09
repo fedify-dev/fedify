@@ -44,17 +44,12 @@ export interface ContextSnapshotEntry {
  * the bundled context, along with its hash for diagnostics.
  * @internal
  */
-export type SerializedContextSnapshotEntry =
-  & {
-    readonly policy: EffectiveContextLoaderPolicy;
-    readonly url: string;
-    /** The SHA-256 of the canonical JSON of the whole response. */
-    readonly sha256: string;
-  }
-  & (
-    | { readonly bundled: true }
-    | { readonly response: RemoteDocument }
-  );
+export type SerializedContextSnapshotEntry = {
+  readonly policy: EffectiveContextLoaderPolicy;
+  readonly url: string;
+  /** The SHA-256 of the canonical JSON of the whole response. */
+  readonly sha256: string;
+} & ({ readonly bundled: true } | { readonly response: RemoteDocument });
 
 /**
  * Thrown when replaying an interpretation needs a context response that its
@@ -199,7 +194,7 @@ export async function serializeContextSnapshot(
     const response = normalizeResponse(entry.response);
     const hash = await sha256(response);
     const bundled = getBundledResponse(entry.url);
-    if (bundled != null && await sha256(bundled) === hash) {
+    if (bundled != null && (await sha256(bundled)) === hash) {
       result.push({
         policy: entry.policy,
         url: entry.url,
@@ -221,8 +216,11 @@ export async function serializeContextSnapshot(
 function isRemoteDocument(value: unknown): value is RemoteDocument {
   if (value == null || typeof value !== "object") return false;
   const record = value as Record<string, unknown>;
-  return typeof record.documentUrl === "string" && "document" in record &&
-    (record.contextUrl == null || typeof record.contextUrl === "string");
+  return (
+    typeof record.documentUrl === "string" &&
+    "document" in record &&
+    (record.contextUrl == null || typeof record.contextUrl === "string")
+  );
 }
 
 /**
@@ -244,9 +242,11 @@ export async function deserializeContextSnapshot(
   const result: ContextSnapshotEntry[] = [];
   for (const entry of entries) {
     if (
-      entry == null || typeof entry !== "object" ||
+      entry == null ||
+      typeof entry !== "object" ||
       (entry.policy !== "standard" && entry.policy !== "normalization") ||
-      typeof entry.url !== "string" || typeof entry.sha256 !== "string"
+      typeof entry.url !== "string" ||
+      typeof entry.sha256 !== "string"
     ) {
       throw new ContextSnapshotMissError("(snapshot)", "malformed entry");
     }
@@ -265,7 +265,7 @@ export async function deserializeContextSnapshot(
     // a term the activity does not use; the digest of the expanded activity,
     // which restoreVerifiedActivityView() checks, tells whether the meaning of
     // the activity changed.  Other responses are stored as they were:
-    if (entry.bundled !== true && await sha256(response) !== entry.sha256) {
+    if (entry.bundled !== true && (await sha256(response)) !== entry.sha256) {
       throw new ContextSnapshotMissError(entry.url, "content mismatch");
     }
     result.push({
@@ -351,11 +351,14 @@ export async function expandDocument(
   document: unknown,
   contextLoader: DocumentLoader,
 ): Promise<Record<string, unknown>[]> {
-  // oxlint-disable-next-line typescript/no-explicit-any
-  return await jsonld.expand(document as any, {
-    documentLoader: contextLoader,
+  return (await jsonld.expand(
     // oxlint-disable-next-line typescript/no-explicit-any
-  } as any) as Record<string, unknown>[];
+    document as any,
+    {
+      documentLoader: contextLoader,
+      // oxlint-disable-next-line typescript/no-explicit-any
+    } as any,
+  )) as Record<string, unknown>[];
 }
 
 /**
@@ -417,8 +420,10 @@ export function getPropertyValues(
   if (values == null) return [];
   if (!Array.isArray(values)) return [values];
   if (
-    values.length === 1 && values[0] != null &&
-    typeof values[0] === "object" && "@list" in values[0]
+    values.length === 1 &&
+    values[0] != null &&
+    typeof values[0] === "object" &&
+    "@list" in values[0]
   ) {
     const list = (values[0] as { "@list": unknown })["@list"];
     return Array.isArray(list) ? list : [list];
@@ -517,18 +522,14 @@ export async function buildVerifiedActivityView(
       return loader(url, options);
     }, source.policy),
   );
-  const entries = snapshot.entries().filter((entry) =>
-    entry.policy === source.policy && used.has(entry.url)
-  );
+  const entries = snapshot
+    .entries()
+    .filter((entry) => entry.policy === source.policy && used.has(entry.url));
   const contexts = await serializeContextSnapshot(entries);
   // Every context the document and the recorded contexts refer to has to be
   // one the expansion actually asked for:
   const references = new Set<string>();
-  collectContextReferences(
-    source.document,
-    source.baseUrl?.href,
-    references,
-  );
+  collectContextReferences(source.document, source.baseUrl?.href, references);
   for (const entry of entries) {
     // jsonld.js resolves a context document's references against the URL it
     // asked for, and appends the context its `Link` header gives:
@@ -619,7 +620,8 @@ export function parseSerializedVerifiedActivityView(
     (view.source !== "activity" && view.source !== "normalizedActivity") ||
     (view.baseUrl !== null &&
       (typeof view.baseUrl !== "string" || !URL.canParse(view.baseUrl))) ||
-    !Array.isArray(view.contexts) || typeof view.expandedDigest !== "string"
+    !Array.isArray(view.contexts) ||
+    typeof view.expandedDigest !== "string"
   ) {
     return null;
   }
@@ -658,7 +660,8 @@ export async function restoreVerifiedActivityView(
   const entries = await deserializeContextSnapshot(view.contexts);
   const loader = createSnapshotOnlyLoader(entries, view.policy);
   if (
-    view.source === "normalizedActivity" && message.normalizedActivity == null
+    view.source === "normalizedActivity" &&
+    message.normalizedActivity == null
   ) {
     throw new ContextSnapshotMissError(
       "(normalizedActivity)",
@@ -669,7 +672,7 @@ export async function restoreVerifiedActivityView(
     view.source === "activity" ? message.activity : message.normalizedActivity,
   );
   const expanded = await expandDocument(document, loader);
-  if (await digestExpandedDocument(expanded) !== view.expandedDigest) {
+  if ((await digestExpandedDocument(expanded)) !== view.expandedDigest) {
     throw new ContextSnapshotMissError(
       "(activity)",
       "the interpretation does not match the authenticated one",

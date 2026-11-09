@@ -16,22 +16,17 @@ const test = AMQP_URL ? unitTest : unitTest.skip;
 
 unitTest("AmqpMessageQueue declares non-atomic batch enqueueing", () => {
   const mq = new AmqpMessageQueue({} as ChannelModel);
-  ok(!(mq.atomicEnqueueMany));
+  ok(!mq.atomicEnqueueMany);
 });
 
 class FakeDepthChannel {
   #closed = false;
 
-  constructor(private readonly connection: FakeDepthConnection) {
-  }
+  constructor(private readonly connection: FakeDepthConnection) {}
 
-  on(): void {
-  }
+  on(): void {}
 
-  assertQueue(
-    queue: string,
-    options?: { expires?: number },
-  ): Promise<void> {
+  assertQueue(queue: string, options?: { expires?: number }): Promise<void> {
     if (this.#closed) {
       return Promise.reject(new Error("Channel is closed"));
     }
@@ -93,8 +88,7 @@ class FakeDepthConnection {
   channelCount = 0;
   maxActiveChecks = 0;
 
-  constructor(readonly checkDelayMs: number = 25) {
-  }
+  constructor(readonly checkDelayMs: number = 25) {}
 
   createChannel(): Promise<Channel> {
     this.channelCount++;
@@ -126,7 +120,7 @@ unitTest(
       ready: 0,
       delayed: 3,
     });
-    ok((conn.maxActiveChecks) > (1));
+    ok(conn.maxActiveChecks > 1);
   },
 );
 
@@ -160,7 +154,7 @@ unitTest(
 
     deepStrictEqual(conn.messageCounts.get("delayed_1000"), 1);
     deepStrictEqual(conn.queueExpires.get("delayed_1000"), undefined);
-    ok((conn.channelCount) > (1));
+    ok(conn.channelCount > 1);
   },
 );
 
@@ -303,8 +297,9 @@ test(
       const channel = await conn.createChannel().catch(() => undefined);
       try {
         await channel?.deleteQueue(queue).catch(() => {});
-        await channel?.deleteQueue(`${delayedQueuePrefix}60000`).catch(() => {
-        });
+        await channel
+          ?.deleteQueue(`${delayedQueuePrefix}60000`)
+          .catch(() => {});
       } finally {
         await channel?.close().catch(() => {});
         await conn.close().catch(() => {});
@@ -363,16 +358,19 @@ test(
     const queue = `fedify_queue_${randomSuffix}`;
     const delayedQueuePrefix = `fedify_delayed_${randomSuffix}_`;
     const mq = new AmqpMessageQueue(conn, { queue, delayedQueuePrefix });
-    ok(!(mq.nativeRetrial));
+    ok(!mq.nativeRetrial);
 
     const controller = new AbortController();
     let i = 0;
-    const listening = mq.listen((message: string) => {
-      if (message !== "Hello, world!") return;
-      if (i++ < 1) {
-        throw new Error("Test error to check native retrial");
-      }
-    }, { signal: controller.signal });
+    const listening = mq.listen(
+      (message: string) => {
+        if (message !== "Hello, world!") return;
+        if (i++ < 1) {
+          throw new Error("Test error to check native retrial");
+        }
+      },
+      { signal: controller.signal },
+    );
 
     await mq.enqueue("Hello, world!");
 
@@ -405,12 +403,15 @@ test(
 
     const controller = new AbortController();
     let i = 0;
-    const listening = mq.listen((message: string) => {
-      if (message !== "Hello, world!") return;
-      if (i++ < 1) {
-        throw new Error("Test error to check native retrial");
-      }
-    }, { signal: controller.signal });
+    const listening = mq.listen(
+      (message: string) => {
+        if (message !== "Hello, world!") return;
+        if (i++ < 1) {
+          throw new Error("Test error to check native retrial");
+        }
+      },
+      { signal: controller.signal },
+    );
 
     await mq.enqueue("Hello, world!");
 
@@ -420,6 +421,6 @@ test(
     await listening;
     await conn.close();
 
-    ok(i > (1));
+    ok(i > 1);
   },
 );

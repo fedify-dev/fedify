@@ -54,10 +54,10 @@ test("nested serialization embeds a retained signed representation", async () =>
     actor: new URL("https://example.com/person"),
     object: retainedNote(),
   });
-  const compact = await create.toJsonLd({
+  const compact = (await create.toJsonLd({
     format: "compact",
     ...options,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
 
   // `Create` is not compactable, so this goes through the expand-then-compact
   // path, which would otherwise dissolve the child's own contexts.
@@ -69,7 +69,7 @@ test("nested serialization embeds a retained representation through a compactabl
     id: new URL("https://example.com/notes/wrapper"),
     attachments: [retainedNote()],
   });
-  const compact = await wrapper.toJsonLd(options) as Record<string, unknown>;
+  const compact = (await wrapper.toJsonLd(options)) as Record<string, unknown>;
   deepStrictEqual(compact.attachment, securedNote);
 
   // … and still when a non-compactable ancestor compacts the whole tree.
@@ -77,7 +77,10 @@ test("nested serialization embeds a retained representation through a compactabl
     id: new URL("https://example.com/questions/1"),
     exclusiveOptions: [wrapper],
   });
-  const compacted = await question.toJsonLd(options) as Record<string, unknown>;
+  const compacted = (await question.toJsonLd(options)) as Record<
+    string,
+    unknown
+  >;
   const embeddedWrapper = compacted.oneOf as Record<string, unknown>;
   deepStrictEqual(embeddedWrapper.attachment, securedNote);
 });
@@ -90,10 +93,10 @@ test("nested serialization embeds one retained representation many times", async
     objects: [note, note],
     tags: [note],
   });
-  const compact = await create.toJsonLd({
+  const compact = (await create.toJsonLd({
     format: "compact",
     ...options,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const objects = compact.object as Record<string, unknown>[];
 
   deepStrictEqual(objects.length, 2);
@@ -115,10 +118,10 @@ test("nested serialization embeds a retained representation at any depth", async
       object: retainedNote(),
     }),
   });
-  const compact = await announce.toJsonLd({
+  const compact = (await announce.toJsonLd({
     format: "compact",
     ...options,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const create = compact.object as Record<string, unknown>;
 
   deepStrictEqual(create.object, securedNote);
@@ -130,24 +133,20 @@ test("expanded serialization ignores a retained signed representation", async ()
     actor: new URL("https://example.com/person"),
     object: retainedNote(),
   });
-  const expanded = await create.toJsonLd({
+  const expanded = (await create.toJsonLd({
     format: "expand",
     ...options,
-  }) as Record<string, unknown>[];
+  })) as Record<string, unknown>[];
   const objects = expanded[0][
     "https://www.w3.org/ns/activitystreams#object"
   ] as Record<string, unknown>[];
 
   // An expanded document has no compact representation to preserve, so the
   // child is expanded like any other object.
-  deepStrictEqual(
-    objects[0]["@id"],
-    "https://example.com/notes/1",
-  );
-  deepStrictEqual(
-    objects[0]["@type"],
-    ["https://www.w3.org/ns/activitystreams#Note"],
-  );
+  deepStrictEqual(objects[0]["@id"], "https://example.com/notes/1");
+  deepStrictEqual(objects[0]["@type"], [
+    "https://www.w3.org/ns/activitystreams#Note",
+  ]);
 });
 
 test("a context that could hide a placeholder turns retention off", async () => {
@@ -163,11 +162,11 @@ test("a context that could hide a placeholder turns retention off", async () => 
     // placeholder indistinguishable from an ordinary property value.
     { identifier: "@id" },
   ];
-  const compact = await create.toJsonLd({
+  const compact = (await create.toJsonLd({
     format: "compact",
     context: hostileContext as unknown as (string | Record<string, string>)[],
     ...options,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const embedded = compact.object as Record<string, unknown>;
 
   // Rather than risk corrupting the document, Fedify falls back to ordinary
@@ -183,10 +182,10 @@ test("a clone does not inherit a retained signed representation", async () => {
     actor: new URL("https://example.com/person"),
     object: note.clone({ content: "Changed" }),
   });
-  const compact = await create.toJsonLd({
+  const compact = (await create.toJsonLd({
     format: "compact",
     ...options,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const embedded = compact.object as Record<string, unknown>;
 
   deepStrictEqual(embedded["@context"], undefined);
@@ -202,13 +201,15 @@ test("deepClone() drops retained signed representations at every level", async (
     content: "Retained root only",
   });
   const copied = original.deepClone();
-  const json = await new Create({ object: copied }).toJsonLd(options) as {
+  const json = (await new Create({ object: copied }).toJsonLd(options)) as {
     object: { content?: unknown; object: Record<string, unknown> };
   };
   deepStrictEqual(json.object.content, undefined);
   deepStrictEqual(json.object.object.content, "Hello");
   deepStrictEqual(json.object.object.proof, undefined);
-  const originalJson = await new Create({ object: note }).toJsonLd(options) as {
+  const originalJson = (await new Create({ object: note }).toJsonLd(
+    options,
+  )) as {
     object: unknown;
   };
   deepStrictEqual(originalJson.object, securedNote);
@@ -219,15 +220,16 @@ test("every generated default context keeps placeholders recoverable", async () 
     new (values: { id?: URL | null }): { toJsonLd(): Promise<unknown> };
     readonly typeId: URL;
   }
-  const classes = Object.values(vocab).filter((value) =>
-    typeof value === "function" &&
-    (value as { typeId?: unknown }).typeId instanceof URL
+  const classes = Object.values(vocab).filter(
+    (value) =>
+      typeof value === "function" &&
+      (value as { typeId?: unknown }).typeId instanceof URL,
   ) as unknown as VocabClass[];
   ok(classes.length > 0);
   for (const cls of classes) {
-    const serialized = await new cls({
+    const serialized = (await new cls({
       id: new URL("https://example.com/objects/1"),
-    }).toJsonLd() as Record<string, unknown>;
+    }).toJsonLd()) as Record<string, unknown>;
     ok(
       isMarkerSafeContext(serialized["@context"]),
       `${cls.typeId.href} has a default context that could hide a placeholder`,
@@ -243,7 +245,10 @@ test("a subtype that redefines an inherited property still embeds a retained rep
     id: new URL("https://example.com/collections/1"),
     items: [retainedNote()],
   });
-  const compact = await collection.toJsonLd(options) as Record<string, unknown>;
+  const compact = (await collection.toJsonLd(options)) as Record<
+    string,
+    unknown
+  >;
 
   deepStrictEqual(compact.items, undefined);
   deepStrictEqual(compact.orderedItems, [securedNote]);
@@ -262,11 +267,11 @@ test("a context that shadows the placeholder scheme turns retention off", async 
     // compact IRI and reject it in safe mode.
     { urn: "https://example.com/ns#" },
   ];
-  const compact = await create.toJsonLd({
+  const compact = (await create.toJsonLd({
     format: "compact",
     context: shadowingContext as unknown as (string | Record<string, string>)[],
     ...options,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const embedded = compact.object as Record<string, unknown>;
 
   deepStrictEqual(embedded["@context"], undefined);
@@ -286,11 +291,11 @@ test("a context that aliases `@id` indirectly turns retention off", async () => 
     // without naming the keyword.
     { i: "id", object: "as:object" },
   ];
-  const compact = await create.toJsonLd({
+  const compact = (await create.toJsonLd({
     format: "compact",
     context: indirectContext as unknown as (string | Record<string, string>)[],
     ...options,
-  }) as Record<string, unknown>;
+  })) as Record<string, unknown>;
   const embedded = compact.object as Record<string, unknown>;
 
   deepStrictEqual(embedded["@context"], undefined);

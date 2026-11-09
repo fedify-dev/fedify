@@ -44,10 +44,7 @@ export interface FedifyLoggingOptions {
 /**
  * A Pino log method in its `(mergingObject, message)` form.
  */
-type LogMethod = (
-  properties: Record<string, unknown>,
-  message: string,
-) => void;
+type LogMethod = (properties: Record<string, unknown>, message: string) => void;
 
 /**
  * Maps a LogTape level onto the matching Pino method (`warning` becomes
@@ -140,7 +137,9 @@ export async function configureFedifyLogging(
     sinks: {
       adonisjs: (record: LogRecord) => {
         // The formatter still emits an empty `[]` where the level would go.
-        const message = formatter(record).replace(/^\[\]\s+/, "").trimEnd();
+        const message = formatter(record)
+          .replace(/^\[\]\s+/, "")
+          .trimEnd();
         const fields = toLogFields(record.properties);
 
         const write = logWith(logger, record.level);

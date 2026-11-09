@@ -50,8 +50,9 @@ export default [
   defineConfig({
     entry: [
       "./src/testing/mod.ts",
-      ...(await Array.fromAsync(glob(`src/**/*.test.ts`)))
-        .map((f) => f.replace(sep, "/")),
+      ...(await Array.fromAsync(glob(`src/**/*.test.ts`))).map((f) =>
+        f.replace(sep, "/"),
+      ),
     ],
     deps: {
       neverBundle: (id: string, parentId?: string) => {

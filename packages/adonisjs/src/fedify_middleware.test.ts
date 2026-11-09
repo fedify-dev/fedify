@@ -46,16 +46,14 @@ import {
  * Boots one server per test and tears it down afterwards.
  */
 async function withServer(
-  options:
-    & Omit<
-      FederationServerOptions<null>,
-      "federation" | "contextDataFactory"
-    >
-    & {
-      /** Defaults to {@link createTestFederation}. */
-      federation?: Federation<null>;
-      contextDataFactory?: () => null;
-    },
+  options: Omit<
+    FederationServerOptions<null>,
+    "federation" | "contextDataFactory"
+  > & {
+    /** Defaults to {@link createTestFederation}. */
+    federation?: Federation<null>;
+    contextDataFactory?: () => null;
+  },
 ): Promise<TestServer> {
   const server = await startTestServer<null>({
     federation: options.federation ?? createTestFederation(),
@@ -110,9 +108,9 @@ describe("Fedify middleware", () => {
     const server = await withServer({});
 
     const response = await server.fetch(
-      `/.well-known/webfinger?resource=${
-        encodeURIComponent(`${server.url}/users/alice`)
-      }`,
+      `/.well-known/webfinger?resource=${encodeURIComponent(
+        `${server.url}/users/alice`,
+      )}`,
     );
 
     strictEqual(response.status, 200);
@@ -123,9 +121,8 @@ describe("Fedify middleware", () => {
   it("delegates non-federation requests to AdonisJS", async () => {
     const server = await withServer({
       defineRoutes(router) {
-        router.get(
-          "/hello",
-          ({ response }) => response.send("hello from adonis"),
+        router.get("/hello", ({ response }) =>
+          response.send("hello from adonis"),
         );
       },
     });
@@ -152,12 +149,10 @@ describe("Fedify middleware", () => {
   it("lets AdonisJS serve a shared URL when the client prefers HTML", async () => {
     const server = await withServer({
       defineRoutes(router) {
-        router.get(
-          "/users/:identifier",
-          ({ params, response }) =>
-            response.header("content-type", "text/html").send(
-              `<h1>${params.identifier}</h1>`,
-            ),
+        router.get("/users/:identifier", ({ params, response }) =>
+          response
+            .header("content-type", "text/html")
+            .send(`<h1>${params.identifier}</h1>`),
         );
       },
     });
@@ -180,9 +175,8 @@ describe("Fedify middleware", () => {
   it("keeps the AdonisJS 404 for paths neither side knows", async () => {
     const server = await withServer({
       defineRoutes(router) {
-        router.get(
-          "/hello",
-          ({ response }) => response.send("hello from adonis"),
+        router.get("/hello", ({ response }) =>
+          response.send("hello from adonis"),
         );
       },
     });
@@ -386,10 +380,7 @@ describe("Fedify middleware", () => {
     const server = await withServer({
       afterFedify: {
         handle(ctx: HttpContext) {
-          ctx.response
-            .status(404)
-            .header("Cache-Control", "")
-            .send("not here");
+          ctx.response.status(404).header("Cache-Control", "").send("not here");
         },
       },
     });
@@ -503,10 +494,7 @@ describe("Fedify middleware", () => {
     // import from a module that default-exports nothing.
     throws(
       () =>
-        fedifyMiddleware(
-          undefined as unknown as Federation<null>,
-          () => null,
-        ),
+        fedifyMiddleware(undefined as unknown as Federation<null>, () => null),
       (error: unknown) =>
         error instanceof E_MISSING_FEDERATION &&
         error.message.includes("fedifyMiddleware()"),
@@ -561,13 +549,11 @@ describe("Fedify middleware", () => {
     // this HTML page to an ActivityPub client asking for the same URL.
     const server = await withServer({
       defineRoutes(router) {
-        router.get(
-          "/users/:identifier",
-          ({ params, response }) =>
-            response
-              .header("Vary", "Origin")
-              .header("content-type", "text/html")
-              .send(`<h1>${params.identifier}</h1>`),
+        router.get("/users/:identifier", ({ params, response }) =>
+          response
+            .header("Vary", "Origin")
+            .header("content-type", "text/html")
+            .send(`<h1>${params.identifier}</h1>`),
         );
       },
     });
@@ -648,13 +634,11 @@ describe("Fedify middleware", () => {
     // make the header less honest.
     const server = await withServer({
       defineRoutes(router) {
-        router.get(
-          "/users/:identifier",
-          ({ response }) =>
-            response
-              .header("Vary", "*")
-              .header("content-type", "text/html")
-              .send("<h1>alice</h1>"),
+        router.get("/users/:identifier", ({ response }) =>
+          response
+            .header("Vary", "*")
+            .header("content-type", "text/html")
+            .send("<h1>alice</h1>"),
         );
       },
     });
@@ -704,9 +688,8 @@ describe("Fedify middleware", () => {
     it("delegates to AdonisJS when X-Forwarded-Host carries a list", async () => {
       const server = await withServer({
         defineRoutes(router) {
-          router.get(
-            "/hello",
-            ({ response }) => response.send("hello from adonis"),
+          router.get("/hello", ({ response }) =>
+            response.send("hello from adonis"),
           );
         },
       });
@@ -956,9 +939,8 @@ describe("Fedify middleware", () => {
         ignoreRoutePrefixes: ["/assets/"],
         beforeFedify: captureWarnings(warnings),
         defineRoutes(router) {
-          router.get(
-            "/assets/app.css",
-            ({ response }) => response.send("body {}"),
+          router.get("/assets/app.css", ({ response }) =>
+            response.send("body {}"),
           );
         },
       });
@@ -1004,10 +986,8 @@ describe("Fedify middleware", () => {
           return null;
         },
         defineRoutes(router) {
-          router.get(
-            "/ping",
-            (ctx: HttpContext) =>
-              ctx.response.send(String(ctx.federation.data)),
+          router.get("/ping", (ctx: HttpContext) =>
+            ctx.response.send(String(ctx.federation.data)),
           );
         },
       });
@@ -1078,11 +1058,9 @@ describe("Fedify middleware", () => {
       // answer for a path the application excluded.
       const server = await withServer({ ignoreRoutePrefixes: ["/users/"] });
 
-      const { status } = await fetchRaw(
-        server,
-        `${server.url}/users/alice`,
-        { headers: { Accept: ACTIVITY_PUB_ACCEPT } },
-      );
+      const { status } = await fetchRaw(server, `${server.url}/users/alice`, {
+        headers: { Accept: ACTIVITY_PUB_ACCEPT },
+      });
 
       // AdonisJS does not normalise the absolute form for its own router
       // either, so nothing matches and the request ends as a 404 -- which is
@@ -1199,9 +1177,8 @@ describe("Fedify middleware", () => {
     const server = await startTestServer<undefined>({
       federation: createTestFederation<undefined>(),
       defineRoutes(router) {
-        router.get(
-          "/data",
-          (ctx: HttpContext) => ctx.response.send(String(ctx.federation.data)),
+        router.get("/data", (ctx: HttpContext) =>
+          ctx.response.send(String(ctx.federation.data)),
         );
       },
     });
@@ -1300,9 +1277,10 @@ describe("Fedify middleware", () => {
       const server = await withServer({
         afterFedify: {
           handle(ctx: HttpContext) {
-            ctx.response.status(204).header("x-answered-by", "downstream").send(
-              "",
-            );
+            ctx.response
+              .status(204)
+              .header("x-answered-by", "downstream")
+              .send("");
           },
         },
       });
@@ -1434,9 +1412,9 @@ describe("Fedify middleware", () => {
       strictEqual(response.status, 200);
       ok(
         !response.raw.includes("evil.example"),
-        `Fedify trusted the request line's authority: ${
-          response.raw.slice(-300)
-        }`,
+        `Fedify trusted the request line's authority: ${response.raw.slice(
+          -300,
+        )}`,
       );
       ok(
         response.raw.includes(`"${server.url}/users/alice"`),
@@ -1530,9 +1508,8 @@ describe("Fedify middleware", () => {
       // stop recognising its own routes.
       const server = await withServer({
         defineRoutes(router) {
-          router.get(
-            "/users/:identifier",
-            ({ response }) => response.send("route"),
+          router.get("/users/:identifier", ({ response }) =>
+            response.send("route"),
           );
         },
       });
@@ -1596,9 +1573,8 @@ describe("Fedify middleware", () => {
       // AdonisJS already produced into a 500.
       const server = await withServer({
         defineRoutes(router) {
-          router.get(
-            "/odd",
-            ({ response }) => response.status(700).send("odd"),
+          router.get("/odd", ({ response }) =>
+            response.status(700).send("odd"),
           );
         },
       });
@@ -1636,9 +1612,8 @@ describe("Fedify middleware", () => {
         defineRoutes(router) {
           router.get("/hello", ({ response }) => response.send("hi"));
           // Only alice has a page, so /users/bob reaches the 406 branch.
-          router.get(
-            "/users/alice",
-            ({ response }) => response.send("<p>profile</p>"),
+          router.get("/users/alice", ({ response }) =>
+            response.send("<p>profile</p>"),
           );
         },
       });
@@ -1672,9 +1647,8 @@ describe("Fedify middleware", () => {
       const server = await withServer({
         http2: true,
         defineRoutes(router) {
-          router.get(
-            "/users/:identifier",
-            ({ response }) => response.send("route"),
+          router.get("/users/:identifier", ({ response }) =>
+            response.send("route"),
           );
         },
       });
@@ -1815,10 +1789,8 @@ describe("Fedify middleware", () => {
       // runs, turning a request AdonisJS can answer into a 500.
       const server = await withServer({
         defineRoutes(router) {
-          router.route(
-            "/ping",
-            ["TRACE"],
-            (ctx: HttpContext) => ctx.response.send("route ran"),
+          router.route("/ping", ["TRACE"], (ctx: HttpContext) =>
+            ctx.response.send("route ran"),
           );
         },
       });

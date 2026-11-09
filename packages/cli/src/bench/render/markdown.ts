@@ -56,9 +56,9 @@ function renderScenario(scenario: ScenarioResult): string[] {
   lines.push(`| Throughput | ${formatNumber(scenario.throughputPerSec)}/s |`);
   if (scenario.deliveryThroughputPerSec != null) {
     lines.push(
-      `| Delivery throughput | ${
-        formatNumber(scenario.deliveryThroughputPerSec)
-      }/s |`,
+      `| Delivery throughput | ${formatNumber(
+        scenario.deliveryThroughputPerSec,
+      )}/s |`,
     );
   }
   const l = scenario.client.latencyMs;
@@ -97,9 +97,10 @@ function renderScenario(scenario: ScenarioResult): string[] {
       const tag = e.pass ? "✅" : e.severity === "warn" ? "⚠️" : "❌";
       const unit = metricDisplayUnit(e.metric);
       lines.push(
-        `| \`${e.metric} ${opSymbol(e.op)} ${
-          formatThreshold(e.threshold, e.unit ?? unit)
-        }\` | ${formatActual(e.actual, unit)} | ${tag} |`,
+        `| \`${e.metric} ${opSymbol(e.op)} ${formatThreshold(
+          e.threshold,
+          e.unit ?? unit,
+        )}\` | ${formatActual(e.actual, unit)} | ${tag} |`,
       );
     }
   }

@@ -10,9 +10,11 @@ export const outboundProvenance: unique symbol = Symbol("outboundProvenance");
 export const emptyProvenance: OutboundProvenance = Object.freeze({});
 
 export function getOutboundProvenance(context: object): OutboundProvenance {
-  return (context as { [outboundProvenance]?: OutboundProvenance })[
-    outboundProvenance
-  ] ?? emptyProvenance;
+  return (
+    (context as { [outboundProvenance]?: OutboundProvenance })[
+      outboundProvenance
+    ] ?? emptyProvenance
+  );
 }
 
 export function snapshotLocalContext(
@@ -56,7 +58,8 @@ export function validateDispatchId(
     throw new TypeError("dispatchId must be a string.");
   }
   if (
-    value.length > 1024 || new TextEncoder().encode(value).byteLength > 1024
+    value.length > 1024 ||
+    new TextEncoder().encode(value).byteLength > 1024
   ) {
     throw new RangeError("dispatchId must not exceed 1,024 UTF-8 bytes.");
   }
@@ -86,21 +89,27 @@ export function restoreProvenance(value: unknown): OutboundProvenance {
   if (
     value.originatingRequestId !== undefined &&
     typeof value.originatingRequestId !== "string"
-  ) throw invalid();
+  )
+    throw invalid();
   let inboxRequest: OutboundInboxRequest | undefined;
   if (value.inboxRequest !== undefined) {
     const source = value.inboxRequest;
     if (
-      !record(source) || typeof source.inboxRequestId !== "string" ||
+      !record(source) ||
+      typeof source.inboxRequestId !== "string" ||
       source.inboxRequestId.length < 1 ||
-      typeof source.requestId !== "string" || !record(source.context)
-    ) throw invalid();
+      typeof source.requestId !== "string" ||
+      !record(source.context)
+    )
+      throw invalid();
     const facts = source.context;
     if (
-      typeof facts.origin !== "string" || typeof facts.host !== "string" ||
+      typeof facts.origin !== "string" ||
+      typeof facts.host !== "string" ||
       typeof facts.hostname !== "string" ||
       typeof facts.canonicalOrigin !== "string"
-    ) throw invalid();
+    )
+      throw invalid();
     inboxRequest = Object.freeze({
       inboxRequestId: source.inboxRequestId,
       requestId: source.requestId,
@@ -122,13 +131,13 @@ export function restoreProvenance(value: unknown): OutboundProvenance {
 }
 
 /** Omit absent provenance on legacy and independent producers. */
-export function serializeProvenance(
-  value: OutboundProvenance | undefined,
-): { readonly provenance?: OutboundProvenance } {
+export function serializeProvenance(value: OutboundProvenance | undefined): {
+  readonly provenance?: OutboundProvenance;
+} {
   const provenance = restoreProvenance(value);
   return provenance.dispatchId === undefined &&
-      provenance.inboxRequest == null &&
-      provenance.originatingRequestId == null
+    provenance.inboxRequest == null &&
+    provenance.originatingRequestId == null
     ? {}
     : { provenance };
 }
@@ -141,7 +150,7 @@ export function sourceLogContext(source: OutboundProvenance): {
   return {
     dispatchId: source.dispatchId,
     sourceInboxRequestId: source.inboxRequest?.inboxRequestId,
-    sourceRequestId: source.inboxRequest?.requestId ??
-      source.originatingRequestId,
+    sourceRequestId:
+      source.inboxRequest?.requestId ?? source.originatingRequestId,
   };
 }

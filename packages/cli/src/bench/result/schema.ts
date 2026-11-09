@@ -352,10 +352,7 @@ export const reportSchemaV3 = {
     },
     scenarioResult: {
       ...reportSchemaV2.$defs.scenarioResult,
-      required: [
-        ...reportSchemaV2.$defs.scenarioResult.required,
-        "runCount",
-      ],
+      required: [...reportSchemaV2.$defs.scenarioResult.required, "runCount"],
       properties: {
         ...reportSchemaV2.$defs.scenarioResult.properties,
         runCount: { type: "integer", minimum: 1 },
@@ -365,13 +362,15 @@ export const reportSchemaV3 = {
           items: { $ref: "#/$defs/scenarioRunResult" },
         },
       },
-      allOf: [{
-        if: {
-          required: ["runCount"],
-          properties: { runCount: { minimum: 2 } },
+      allOf: [
+        {
+          if: {
+            required: ["runCount"],
+            properties: { runCount: { minimum: 2 } },
+          },
+          then: { required: ["runs"] },
         },
-        then: { required: ["runs"] },
-      }],
+      ],
     },
   },
 } as const;

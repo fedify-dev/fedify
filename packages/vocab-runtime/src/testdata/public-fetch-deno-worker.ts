@@ -40,13 +40,11 @@ const lookup = (hostname: string) => {
 };
 
 const bodies: string[] = [];
-for (
-  const url of [
-    "https://deno-host.invalid/1",
-    "https://deno-host.invalid/2",
-    "http://deno-host.invalid/3",
-  ]
-) {
+for (const url of [
+  "https://deno-host.invalid/1",
+  "https://deno-host.invalid/2",
+  "http://deno-host.invalid/3",
+]) {
   const session = await openPublicFetch(url, { lookup });
   try {
     const response = await session.fetch(url, { redirect: "follow" });
@@ -56,19 +54,14 @@ for (
   }
 }
 
-(globalThis as unknown as { postMessage(message: unknown): void })
-  .postMessage({
-    calls,
-    hostnames,
-    bodies,
-    logs: records.flatMap((record) =>
-      typeof record.rawMessage === "string" &&
-        record.rawMessage.startsWith("Outbound {protocol} connections are not")
-        ? [[
-          record.level,
-          record.properties.runtime,
-          record.properties.protocol,
-        ]]
-        : []
-    ),
-  });
+(globalThis as unknown as { postMessage(message: unknown): void }).postMessage({
+  calls,
+  hostnames,
+  bodies,
+  logs: records.flatMap((record) =>
+    typeof record.rawMessage === "string" &&
+    record.rawMessage.startsWith("Outbound {protocol} connections are not")
+      ? [[record.level, record.properties.runtime, record.properties.protocol]]
+      : [],
+  ),
+});

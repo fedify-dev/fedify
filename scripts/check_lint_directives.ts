@@ -75,7 +75,8 @@ function addCommentRanges(
     if (
       range.kind !== ts.SyntaxKind.SingleLineCommentTrivia &&
       range.kind !== ts.SyntaxKind.MultiLineCommentTrivia
-    ) continue;
+    )
+      continue;
     comments.set(`${range.pos}:${range.end}`, range);
   }
 }
@@ -112,22 +113,24 @@ export function findProblemsInText(
   const problems: DirectiveProblem[] = [];
   for (const range of comments.values()) {
     const comment = text.slice(range.pos, range.end);
-    const match = comment.match(
-      /^\/\/\s*(oxlint|eslint)-(disable(?:-next-line|-line)?|enable)\b([^\n]*)$/,
-    ) ?? comment.match(
-      /^\/\*\s*(oxlint|eslint)-(disable(?:-next-line|-line)?|enable)\b([\s\S]*?)\*\/$/,
-    );
+    const match =
+      comment.match(
+        /^\/\/\s*(oxlint|eslint)-(disable(?:-next-line|-line)?|enable)\b([^\n]*)$/,
+      ) ??
+      comment.match(
+        /^\/\*\s*(oxlint|eslint)-(disable(?:-next-line|-line)?|enable)\b([\s\S]*?)\*\/$/,
+      );
     if (match == null) continue;
     const line = sourceFile.getLineAndCharacterOfPosition(range.pos).line + 1;
     const directive = `${match[1]}-${match[2]}`;
     const remainder = match[3];
     const reasonIndex = remainder.indexOf(" -- ");
-    const rulesText = reasonIndex === -1
-      ? remainder
-      : remainder.slice(0, reasonIndex);
-    const names = rulesText.trim().split(/[\s,]+/).filter((name) =>
-      name.length > 0
-    );
+    const rulesText =
+      reasonIndex === -1 ? remainder : remainder.slice(0, reasonIndex);
+    const names = rulesText
+      .trim()
+      .split(/[\s,]+/)
+      .filter((name) => name.length > 0);
     if (names.length === 0) {
       problems.push({
         file,
@@ -160,8 +163,12 @@ const GENERATED_SOURCE_FILES = ["packages/vocab/src/vocab.ts"];
 
 function isUnderPath(path: string, base: string): boolean {
   const prefix = base.replace(/\/+$/, "");
-  return prefix === "" || prefix === "." || path === prefix ||
-    path.startsWith(`${prefix}/`);
+  return (
+    prefix === "" ||
+    prefix === "." ||
+    path === prefix ||
+    path.startsWith(`${prefix}/`)
+  );
 }
 
 /** Lists JS/TS files under the given paths, including untracked files. */
@@ -185,14 +192,17 @@ function listFiles(root: string, paths: readonly string[]): string[] {
     { cwd: root, encoding: "utf8", env },
   );
   const files = new Set(
-    output.split("\0").filter((path) =>
-      path.length > 0 &&
-      /\.(?:[cm]?[jt]sx?)$/.test(path) &&
-      !path.endsWith(".snap") &&
-      !path.includes("/__snapshots__/") &&
-      !path.startsWith("scripts/check_lint_directives") &&
-      path !== "examples/cloudflare-workers/worker-configuration.d.ts"
-    ),
+    output
+      .split("\0")
+      .filter(
+        (path) =>
+          path.length > 0 &&
+          /\.(?:[cm]?[jt]sx?)$/.test(path) &&
+          !path.endsWith(".snap") &&
+          !path.includes("/__snapshots__/") &&
+          !path.startsWith("scripts/check_lint_directives") &&
+          path !== "examples/cloudflare-workers/worker-configuration.d.ts",
+      ),
   );
   for (const generated of GENERATED_SOURCE_FILES) {
     if (

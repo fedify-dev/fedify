@@ -114,17 +114,14 @@ function assertAcceptDelivered(
   follow: Follow,
   deliveries: readonly DeliveredRequest[] = aliceDeliveries,
 ): void {
-  const accepts = deliveries.filter(({ body }) =>
-    body.type === "Accept" && body.object?.id === follow.id?.href
+  const accepts = deliveries.filter(
+    ({ body }) => body.type === "Accept" && body.object?.id === follow.id?.href,
   );
   strictEqual(accepts.length, 1, "Expected exactly one Accept for this Follow");
   strictEqual(accepts[0].method, "POST");
   strictEqual(accepts[0].body.actor, "https://relay.example.com/users/relay");
   strictEqual(accepts[0].body.object.type, "Follow");
-  strictEqual(
-    accepts[0].body.object.actor.id,
-    follow.actorId?.href,
-  );
+  strictEqual(accepts[0].body.object.actor.id, follow.actorId?.href);
 }
 
 const nextFetch = globalThis.fetch;
@@ -189,7 +186,7 @@ describe("MastodonRelay", () => {
     const response = await relay.fetch(request);
 
     strictEqual(response.status, 200);
-    const json = await response.json() as any;
+    const json = (await response.json()) as any;
     strictEqual(json.type, "Application");
     strictEqual(json.preferredUsername, "relay");
     strictEqual(json.name, "ActivityPub Relay");
@@ -233,7 +230,7 @@ describe("MastodonRelay", () => {
     const response = await relay.fetch(request);
 
     strictEqual(response.status, 200);
-    const json = await response.json() as any;
+    const json = (await response.json()) as any;
     // The followers dispatcher is configured, verify response structure
     ok(json);
     ok(json.type === "Collection" || json.type === "OrderedCollection");
@@ -258,14 +255,14 @@ describe("MastodonRelay", () => {
     const follower1Id = "https://remote1.example.com/users/alice";
     const follower2Id = "https://remote2.example.com/users/bob";
 
-    await kv.set(
-      ["follower", follower1Id],
-      { actor: await follower1.toJsonLd(), state: "accepted" },
-    );
-    await kv.set(
-      ["follower", follower2Id],
-      { actor: await follower2.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", follower1Id], {
+      actor: await follower1.toJsonLd(),
+      state: "accepted",
+    });
+    await kv.set(["follower", follower2Id], {
+      actor: await follower2.toJsonLd(),
+      state: "accepted",
+    });
 
     const relay = createRelay("mastodon", {
       kv,
@@ -283,7 +280,7 @@ describe("MastodonRelay", () => {
     const response = await relay.fetch(request);
 
     strictEqual(response.status, 200);
-    const json = await response.json() as any;
+    const json = (await response.json()) as any;
     ok(json);
     ok(json.type === "Collection" || json.type === "OrderedCollection");
     // Fedify wraps the items in a collection, check totalItems if available
@@ -304,10 +301,10 @@ describe("MastodonRelay", () => {
     });
 
     // Simulate the relay's internal logic
-    await kv.set(
-      ["follower", followerId],
-      { actor: await follower.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", followerId], {
+      actor: await follower.toJsonLd(),
+      state: "accepted",
+    });
 
     // Verify storage
     const storedActor = await kv.get(["follower", followerId]);
@@ -325,10 +322,10 @@ describe("MastodonRelay", () => {
       inbox: new URL(aliceInbox),
     });
 
-    await kv.set(
-      ["follower", followerId],
-      { actor: await follower.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", followerId], {
+      actor: await follower.toJsonLd(),
+      state: "accepted",
+    });
 
     // Simulate the Undo Follow logic
     await kv.delete(["follower", followerId]);
@@ -353,7 +350,7 @@ describe("MastodonRelay", () => {
     const response = await relay.fetch(request);
 
     strictEqual(response.status, 200);
-    const json = await response.json() as any;
+    const json = (await response.json()) as any;
 
     strictEqual(json.type, "Application");
     strictEqual(json.preferredUsername, "relay");
@@ -387,10 +384,10 @@ describe("MastodonRelay", () => {
         preferredUsername: `user${i + 1}`,
         inbox: new URL(`${followerId}/inbox`),
       });
-      await kv.set(
-        ["follower", followerId],
-        { actor: await actor.toJsonLd(), state: "accepted" },
-      );
+      await kv.set(["follower", followerId], {
+        actor: await actor.toJsonLd(),
+        state: "accepted",
+      });
     }
 
     // Verify all followers are stored
@@ -530,10 +527,10 @@ describe("MastodonRelay", () => {
     });
 
     const followActivityId = "https://remote.example.com/activities/follow/1";
-    await kv.set(
-      ["follower", followerId],
-      { actor: await follower.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", followerId], {
+      actor: await follower.toJsonLd(),
+      state: "accepted",
+    });
 
     const relay = createRelay("mastodon", {
       kv,
@@ -590,10 +587,10 @@ describe("MastodonRelay", () => {
       inbox: new URL(aliceInbox),
     });
 
-    await kv.set(
-      ["follower", followerId],
-      { actor: await follower.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", followerId], {
+      actor: await follower.toJsonLd(),
+      state: "accepted",
+    });
 
     const relay = createRelay("mastodon", {
       kv,
@@ -766,10 +763,10 @@ describe("MastodonRelay", () => {
       preferredUsername: "bob",
       inbox: new URL(followerInbox),
     });
-    await kv.set(
-      ["follower", follower.id!.href],
-      { actor: await follower.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", follower.id!.href], {
+      actor: await follower.toJsonLd(),
+      state: "accepted",
+    });
 
     const relay = createRelay("mastodon", {
       kv,
@@ -944,10 +941,10 @@ describe("MastodonRelay", () => {
         preferredUsername: followerId.split("/").pop(),
         inbox: new URL(`${followerId}/inbox`),
       });
-      await kv.set(
-        ["follower", followerId],
-        { actor: await actor.toJsonLd(), state: "accepted" },
-      );
+      await kv.set(["follower", followerId], {
+        actor: await actor.toJsonLd(),
+        state: "accepted",
+      });
     }
 
     // Verify list returns all followers
@@ -980,10 +977,10 @@ describe("MastodonRelay", () => {
         preferredUsername: followerId.split("/").pop(),
         inbox: new URL(`${followerId}/inbox`),
       });
-      await kv.set(
-        ["follower", followerId],
-        { actor: await actor.toJsonLd(), state: "accepted" },
-      );
+      await kv.set(["follower", followerId], {
+        actor: await actor.toJsonLd(),
+        state: "accepted",
+      });
     }
 
     // Delete one follower
@@ -1012,10 +1009,10 @@ describe("MastodonRelay", () => {
       inbox: new URL(aliceInbox),
     });
 
-    await kv.set(
-      ["follower", followerId],
-      { actor: await follower.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", followerId], {
+      actor: await follower.toJsonLd(),
+      state: "accepted",
+    });
 
     // Verify list returns complete actor data
     for await (const { key, value } of kv.list(["follower"])) {
@@ -1050,14 +1047,14 @@ describe("MastodonRelay", () => {
       inbox: new URL(`${INBOX_PREFIX}3]/users/bob/inbox`),
     });
 
-    await kv.set(
-      ["follower", "https://remote.example.com/users/alice"],
-      { actor: await follower1.toJsonLd(), state: "accepted" },
-    );
-    await kv.set(
-      ["follower", "https://remote.example.com/users/bob"],
-      { actor: await follower2.toJsonLd(), state: "pending" },
-    );
+    await kv.set(["follower", "https://remote.example.com/users/alice"], {
+      actor: await follower1.toJsonLd(),
+      state: "accepted",
+    });
+    await kv.set(["follower", "https://remote.example.com/users/bob"], {
+      actor: await follower2.toJsonLd(),
+      state: "pending",
+    });
 
     // Test listFollowers
     const followers = [];
@@ -1067,28 +1064,28 @@ describe("MastodonRelay", () => {
 
     strictEqual(followers.length, 2);
     ok(
-      followers.some((f) =>
-        f.actorId === "https://remote.example.com/users/alice"
+      followers.some(
+        (f) => f.actorId === "https://remote.example.com/users/alice",
       ),
     );
     ok(
-      followers.some((f) =>
-        f.actorId === "https://remote.example.com/users/bob"
+      followers.some(
+        (f) => f.actorId === "https://remote.example.com/users/bob",
       ),
     );
     ok(followers.some((f) => f.state === "accepted"));
     ok(followers.some((f) => f.state === "pending"));
 
     // Verify actors are properly typed
-    const alice = followers.find((f) =>
-      f.actorId === "https://remote.example.com/users/alice"
+    const alice = followers.find(
+      (f) => f.actorId === "https://remote.example.com/users/alice",
     );
     ok(alice);
     strictEqual(alice.actor.preferredUsername, "alice");
     ok(alice.actor.inboxId);
 
-    const bob = followers.find((f) =>
-      f.actorId === "https://remote.example.com/users/bob"
+    const bob = followers.find(
+      (f) => f.actorId === "https://remote.example.com/users/bob",
     );
     ok(bob);
     strictEqual(bob.actor.preferredUsername, "bob");
@@ -1111,10 +1108,10 @@ describe("MastodonRelay", () => {
       inbox: new URL(aliceInbox),
     });
 
-    await kv.set(
-      ["follower", "https://remote.example.com/users/alice"],
-      { actor: await follower.toJsonLd(), state: "accepted" },
-    );
+    await kv.set(["follower", "https://remote.example.com/users/alice"], {
+      actor: await follower.toJsonLd(),
+      state: "accepted",
+    });
 
     // Test getFollower
     const result = await relay.getFollower(
@@ -1125,10 +1122,7 @@ describe("MastodonRelay", () => {
     strictEqual(result.state, "accepted");
     ok(result.actor);
     strictEqual(result.actor.preferredUsername, "alice");
-    strictEqual(
-      result.actor.inboxId?.href,
-      aliceInbox,
-    );
+    strictEqual(result.actor.inboxId?.href, aliceInbox);
 
     // Test non-existent follower
     const nonExistent = await relay.getFollower(

@@ -398,11 +398,8 @@ export type SharedInboxKeyDispatcher<TContextData> = (
   | { username: string }
   | null
   | Promise<
-    | SenderKeyPair
-    | { identifier: string }
-    | { username: string }
-    | null
-  >;
+      SenderKeyPair | { identifier: string } | { username: string } | null
+    >;
 
 /**
  * A callback that handles errors during outbox processing.
@@ -566,10 +563,7 @@ export type PortableCollectionOwnerMapper<
  * @param values The parameters of the requested URL.
  * @since 1.8.0
  */
-export type CustomCollectionCounter<
-  TParam extends string,
-  TContextData,
-> = (
+export type CustomCollectionCounter<TParam extends string, TContextData> = (
   context: RequestContext<TContextData>,
   values: Record<TParam, string>,
 ) => number | bigint | null | Promise<number | bigint | null>;

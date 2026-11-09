@@ -114,11 +114,10 @@ async function runOpenLoop(
       plan.warmupMs,
       clock,
       samples,
-    )
-      .finally(() => {
-        slots.release();
-        active.delete(dispatched);
-      });
+    ).finally(() => {
+      slots.release();
+      active.delete(dispatched);
+    });
     active.add(dispatched);
   }
   await Promise.all(active);
@@ -157,9 +156,7 @@ async function runClosedLoop(
       }
     }
   }
-  await Promise.all(
-    Array.from({ length: load.concurrency }, () => worker()),
-  );
+  await Promise.all(Array.from({ length: load.concurrency }, () => worker()));
   return { samples, saturated, wallDurationMs: clock.now() - start };
 }
 

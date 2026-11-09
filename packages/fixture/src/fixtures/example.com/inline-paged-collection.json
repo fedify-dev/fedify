@@ -6,8 +6,6 @@
     "type": "CollectionPage",
     "partOf": "https://example.com/inline-paged-collection",
     "next": "https://example.com/inline-paged/a",
-    "items": [
-      { "type": "Note", "content": "Inline first note" }
-    ]
+    "items": [{ "type": "Note", "content": "Inline first note" }]
   }
 }

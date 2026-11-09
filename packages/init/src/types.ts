@@ -10,19 +10,19 @@ import type {
 import type { RequiredNotNull } from "./utils.ts";
 
 /** Supported runtime identifiers: `"deno"`, `"bun"`, `"node"`. */
-export type Runtime = typeof RUNTIME[number];
+export type Runtime = (typeof RUNTIME)[number];
 
 /** Supported package manager identifiers: `"deno"`, `"pnpm"`, `"bun"`, `"yarn"`, `"npm"`. */
-export type PackageManager = typeof PACKAGE_MANAGER[number];
+export type PackageManager = (typeof PACKAGE_MANAGER)[number];
 
 /** Supported web framework identifiers: `"bare-bones"`, `"hono"`, `"nitro"`, `"next"`, `"elysia"`, `"astro"`, `"express"`, `"nuxt"`, `"solidstart"`, `"sveltekit"`. */
-export type WebFramework = typeof WEB_FRAMEWORK[number];
+export type WebFramework = (typeof WEB_FRAMEWORK)[number];
 
 /** Supported message queue identifiers: `"in-process"`, `"redis"`, `"postgres"`, `"mysql"`, `"amqp"`, `"denokv"`. */
-export type MessageQueue = typeof MESSAGE_QUEUE[number];
+export type MessageQueue = (typeof MESSAGE_QUEUE)[number];
 
 /** Supported key-value store identifiers: `"in-memory"`, `"redis"`, `"postgres"`, `"mysql"`, `"denokv"`. */
-export type KvStore = typeof KV_STORE[number];
+export type KvStore = (typeof KV_STORE)[number];
 
 /** A mapping from each {@link MessageQueue} identifier to its description. */
 export type MessageQueues = Record<MessageQueue, MessageQueueDescription>;

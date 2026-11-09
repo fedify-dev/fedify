@@ -46,8 +46,6 @@
   "imports": {
     "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20260511.1",
     "@david/dax": "jsr:@david/dax@^0.46.1",
-    "@dprint/formatter": "jsr:@dprint/formatter@0.6.0",
-    "@dprint/typescript": "npm:@dprint/typescript@0.96.1",
     "@electric-sql/pglite": "npm:@electric-sql/pglite@^0.5.8",
     "@fxts/core": "npm:@fxts/core@^1.21.1",
     "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.3.0",
@@ -96,13 +94,10 @@
     "tsdown": "npm:tsdown@^0.22.0",
     "typescript": "npm:typescript@^6.0.3",
     "cross-spawn": "npm:cross-spawn@^7.0.6",
-    "yaml": "npm:yaml@^2.9.0"
+    "yaml": "npm:yaml@^2.9.0",
+    "oxfmt": "npm:oxfmt@0.76.0"
   },
-  "unstable": [
-    "fs",
-    "kv",
-    "process"
-  ],
+  "unstable": ["fs", "kv", "process"],
   "exclude": [
     "**/pnpm-lock.yaml",
     ".agents/skills/",
@@ -115,23 +110,12 @@
     "pnpm-workspace.yaml",
     "tools/"
   ],
-  "fmt": {
-    "exclude": [
-      "**/*.html",
-      "**/*.md",
-      "**/*.svg",
-      ".playwright-mcp/**"
-    ]
-  },
   "nodeModulesDir": "none",
   "tasks": {
     "cli": "deno task -f @fedify/cli run"
   },
   "test": {
-    "include": [
-      "./packages",
-      "./scripts"
-    ],
+    "include": ["./packages", "./scripts"],
     "exclude": [
       "./packages/adonisjs/**",
       "./packages/elysia/src/fallback.test.ts",

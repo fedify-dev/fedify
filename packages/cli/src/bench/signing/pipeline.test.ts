@@ -10,7 +10,7 @@ function fakeFactory(delayMs = 0): () => Promise<Request> {
         () =>
           resolve(new Request(`http://sink/${counter++}`, { method: "POST" })),
         delayMs,
-      )
+      ),
     );
 }
 
@@ -40,11 +40,15 @@ test("pipeline - buffers and surfaces starvation under a slow signer", async () 
 
 test("pipeline - survives a synchronous factory throw", async () => {
   let calls = 0;
-  const pipeline = createSigningPipeline("pipeline", () => {
-    calls++;
-    if (calls <= 2) throw new Error("sync boom");
-    return Promise.resolve(new Request("http://sink/ok", { method: "POST" }));
-  }, { bufferSize: 1, signers: 1 });
+  const pipeline = createSigningPipeline(
+    "pipeline",
+    () => {
+      calls++;
+      if (calls <= 2) throw new Error("sync boom");
+      return Promise.resolve(new Request("http://sink/ok", { method: "POST" }));
+    },
+    { bufferSize: 1, signers: 1 },
+  );
   const request = await pipeline.next();
   assert.ok(request instanceof Request);
   await pipeline.close();

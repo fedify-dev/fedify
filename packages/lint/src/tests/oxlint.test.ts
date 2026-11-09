@@ -35,8 +35,7 @@ import {
 
 if (oxlintUnavailable) warnOxlintSkipped();
 
-const BAD_CODE =
-  `import { createFederation, InProcessMessageQueue, MemoryKvStore } from "@fedify/fedify";
+const BAD_CODE = `import { createFederation, InProcessMessageQueue, MemoryKvStore } from "@fedify/fedify";
 import { Person } from "@fedify/vocab";
 
 const federation = createFederation<void>({
@@ -67,9 +66,10 @@ test(
     );
 
     const codes = diagnostics.map((d) => d.code ?? "");
-    const matched = codes.some((code) =>
-      code === "@fedify/lint(actor-id-required)" ||
-      code.includes("actor-id-required")
+    const matched = codes.some(
+      (code) =>
+        code === "@fedify/lint(actor-id-required)" ||
+        code.includes("actor-id-required"),
     );
     ok(
       matched,

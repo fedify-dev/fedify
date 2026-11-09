@@ -67,16 +67,18 @@ test("objectRunner - fetches explicit object URLs", async () => {
     const suite: Suite = {
       version: 1,
       target: target.url.href,
-      scenarios: [{
-        name: "object",
-        type: "object",
-        source: [
-          new URL("/objects/1", target.url).href,
-          new URL("/objects/2", target.url).href,
-        ],
-        load: { concurrency: 2 },
-        duration: "80ms",
-      }],
+      scenarios: [
+        {
+          name: "object",
+          type: "object",
+          source: [
+            new URL("/objects/1", target.url).href,
+            new URL("/objects/2", target.url).href,
+          ],
+          load: { concurrency: 2 },
+          duration: "80ms",
+        },
+      ],
     };
     const scenario = normalizeSuite(suite).scenarios[0];
     const measurement = await objectRunner.run({
@@ -102,18 +104,20 @@ test("objectRunner - crawls actor collections before fetching objects", async ()
     const suite: Suite = {
       version: 1,
       target: target.url.href,
-      scenarios: [{
-        name: "object-crawl",
-        type: "object",
-        source: {
-          seed: new URL("/users/alice", target.url).href,
-          collection: "outbox",
-          limit: 1,
-          type: "Note",
+      scenarios: [
+        {
+          name: "object-crawl",
+          type: "object",
+          source: {
+            seed: new URL("/users/alice", target.url).href,
+            collection: "outbox",
+            limit: 1,
+            type: "Note",
+          },
+          load: { concurrency: 1 },
+          duration: "80ms",
         },
-        load: { concurrency: 1 },
-        duration: "80ms",
-      }],
+      ],
     };
     const scenario = normalizeSuite(suite).scenarios[0];
     const measurement = await objectRunner.run({
@@ -137,18 +141,20 @@ test("objectRunner - unwraps activities while crawling object sources", async ()
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
-        type: "Note",
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+          type: "Note",
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   let fetchedObjectUrl = "";
 
@@ -166,23 +172,29 @@ test("objectRunner - unwraps activities while crawling object sources", async ()
         return Promise.resolve(new Response("not found", { status: 404 }));
       }
       if (url.pathname === "/users/alice") {
-        return Promise.resolve(json({
-          id: url.href,
-          outbox: "http://target.test/users/alice/outbox",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            outbox: "http://target.test/users/alice/outbox",
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox") {
-        return Promise.resolve(json({
-          id: url.href,
-          orderedItems: [{
-            type: "Create",
-            id: "http://target.test/activities/create-1",
-            object: {
-              type: "Note",
-              id: "http://target.test/objects/1",
-            },
-          }],
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            orderedItems: [
+              {
+                type: "Create",
+                id: "http://target.test/activities/create-1",
+                object: {
+                  type: "Note",
+                  id: "http://target.test/objects/1",
+                },
+              },
+            ],
+          }),
+        );
       }
       if (url.pathname === "/objects/1") {
         fetchedObjectUrl = url.href;
@@ -200,18 +212,20 @@ test("objectRunner - recursively unwraps nested activities", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
-        type: "Note",
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+          type: "Note",
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   let fetchedObjectUrl = "";
 
@@ -229,27 +243,33 @@ test("objectRunner - recursively unwraps nested activities", async () => {
         return Promise.resolve(new Response("not found", { status: 404 }));
       }
       if (url.pathname === "/users/alice") {
-        return Promise.resolve(json({
-          id: url.href,
-          outbox: "http://target.test/users/alice/outbox",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            outbox: "http://target.test/users/alice/outbox",
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox") {
-        return Promise.resolve(json({
-          id: url.href,
-          orderedItems: [{
-            type: "Announce",
-            id: "http://target.test/activities/announce-1",
-            object: {
-              type: "Create",
-              id: "http://target.test/activities/create-1",
-              object: {
-                type: "Note",
-                id: "http://target.test/objects/1",
+        return Promise.resolve(
+          json({
+            id: url.href,
+            orderedItems: [
+              {
+                type: "Announce",
+                id: "http://target.test/activities/announce-1",
+                object: {
+                  type: "Create",
+                  id: "http://target.test/activities/create-1",
+                  object: {
+                    type: "Note",
+                    id: "http://target.test/objects/1",
+                  },
+                },
               },
-            },
-          }],
-        }));
+            ],
+          }),
+        );
       }
       if (url.pathname === "/objects/1") {
         fetchedObjectUrl = url.href;
@@ -267,18 +287,20 @@ test("objectRunner - selects matching objects from activity arrays", async () =>
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
-        type: "Note",
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+          type: "Note",
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   let fetchedObjectUrl = "";
 
@@ -296,24 +318,30 @@ test("objectRunner - selects matching objects from activity arrays", async () =>
         return Promise.resolve(new Response("not found", { status: 404 }));
       }
       if (url.pathname === "/users/alice") {
-        return Promise.resolve(json({
-          id: url.href,
-          outbox: "http://target.test/users/alice/outbox",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            outbox: "http://target.test/users/alice/outbox",
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox") {
-        return Promise.resolve(json({
-          id: url.href,
-          orderedItems: [{
-            type: "Create",
-            id: "http://target.test/activities/create-1",
-            object: [
-              { type: "Article", id: "http://target.test/objects/article" },
-              "http://target.test/objects/url-only",
-              { type: "Note", id: "http://target.test/objects/note" },
+        return Promise.resolve(
+          json({
+            id: url.href,
+            orderedItems: [
+              {
+                type: "Create",
+                id: "http://target.test/activities/create-1",
+                object: [
+                  { type: "Article", id: "http://target.test/objects/article" },
+                  "http://target.test/objects/url-only",
+                  { type: "Note", id: "http://target.test/objects/note" },
+                ],
+              },
             ],
-          }],
-        }));
+          }),
+        );
       }
       if (url.pathname === "/objects/note") {
         fetchedObjectUrl = url.href;
@@ -331,18 +359,20 @@ test("objectRunner - unwraps fetched activity references before filtering", asyn
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
-        type: "Note",
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+          type: "Note",
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   let fetchedObjectUrl = "";
 
@@ -360,26 +390,32 @@ test("objectRunner - unwraps fetched activity references before filtering", asyn
         return Promise.resolve(new Response("not found", { status: 404 }));
       }
       if (url.pathname === "/users/alice") {
-        return Promise.resolve(json({
-          id: url.href,
-          outbox: "http://target.test/users/alice/outbox",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            outbox: "http://target.test/users/alice/outbox",
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox") {
-        return Promise.resolve(json({
-          id: url.href,
-          orderedItems: ["http://target.test/activities/create-1"],
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            orderedItems: ["http://target.test/activities/create-1"],
+          }),
+        );
       }
       if (url.pathname === "/activities/create-1") {
-        return Promise.resolve(json({
-          id: url.href,
-          type: "Create",
-          object: {
-            type: "Note",
-            id: "http://target.test/objects/1",
-          },
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            type: "Create",
+            object: {
+              type: "Note",
+              id: "http://target.test/objects/1",
+            },
+          }),
+        );
       }
       if (url.pathname === "/objects/1") {
         fetchedObjectUrl = url.href;
@@ -397,18 +433,20 @@ test("objectRunner - skips cyclic fetched activity references", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
-        type: "Note",
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+          type: "Note",
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   let activityFetches = 0;
 
@@ -427,24 +465,30 @@ test("objectRunner - skips cyclic fetched activity references", async () => {
           const request = input instanceof Request ? input : new Request(input);
           const url = new URL(request.url);
           if (url.pathname === "/users/alice") {
-            return Promise.resolve(json({
-              id: url.href,
-              outbox: "http://target.test/users/alice/outbox",
-            }));
+            return Promise.resolve(
+              json({
+                id: url.href,
+                outbox: "http://target.test/users/alice/outbox",
+              }),
+            );
           }
           if (url.pathname === "/users/alice/outbox") {
-            return Promise.resolve(json({
-              id: url.href,
-              orderedItems: ["http://target.test/activities/create-1"],
-            }));
+            return Promise.resolve(
+              json({
+                id: url.href,
+                orderedItems: ["http://target.test/activities/create-1"],
+              }),
+            );
           }
           if (url.pathname === "/activities/create-1") {
             activityFetches++;
-            return Promise.resolve(json({
-              id: url.href,
-              type: "Create",
-              object: "http://target.test/activities/create-1",
-            }));
+            return Promise.resolve(
+              json({
+                id: url.href,
+                type: "Create",
+                object: "http://target.test/activities/create-1",
+              }),
+            );
           }
           return Promise.resolve(new Response("not found", { status: 404 }));
         },
@@ -459,18 +503,20 @@ test("objectRunner - limits deep fetched activity reference chains", async () =>
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
-        type: "Note",
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+          type: "Note",
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   const fetchedActivities: number[] = [];
 
@@ -489,31 +535,38 @@ test("objectRunner - limits deep fetched activity reference chains", async () =>
           const request = input instanceof Request ? input : new Request(input);
           const url = new URL(request.url);
           if (url.pathname === "/users/alice") {
-            return Promise.resolve(json({
-              id: url.href,
-              outbox: "http://target.test/users/alice/outbox",
-            }));
+            return Promise.resolve(
+              json({
+                id: url.href,
+                outbox: "http://target.test/users/alice/outbox",
+              }),
+            );
           }
           if (url.pathname === "/users/alice/outbox") {
-            return Promise.resolve(json({
-              id: url.href,
-              orderedItems: ["http://target.test/activities/0"],
-            }));
+            return Promise.resolve(
+              json({
+                id: url.href,
+                orderedItems: ["http://target.test/activities/0"],
+              }),
+            );
           }
           const match = /^\/activities\/(\d+)$/.exec(url.pathname);
           if (match != null) {
             const index = Number(match[1]);
             fetchedActivities.push(index);
-            return Promise.resolve(json({
-              id: url.href,
-              type: "Create",
-              object: index < 12
-                ? `http://target.test/activities/${index + 1}`
-                : {
-                  type: "Note",
-                  id: "http://target.test/objects/deep",
-                },
-            }));
+            return Promise.resolve(
+              json({
+                id: url.href,
+                type: "Create",
+                object:
+                  index < 12
+                    ? `http://target.test/activities/${index + 1}`
+                    : {
+                        type: "Note",
+                        id: "http://target.test/objects/deep",
+                      },
+              }),
+            );
           }
           if (url.pathname === "/objects/deep") {
             return Promise.resolve(json({ id: url.href, type: "Note" }));
@@ -534,17 +587,19 @@ test("objectRunner - prefers unwrapped object URLs without type filters", async 
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   let fetchedActivity = false;
   let fetchedObject = false;
@@ -563,20 +618,26 @@ test("objectRunner - prefers unwrapped object URLs without type filters", async 
         return Promise.resolve(new Response("not found", { status: 404 }));
       }
       if (url.pathname === "/users/alice") {
-        return Promise.resolve(json({
-          id: url.href,
-          outbox: "http://target.test/users/alice/outbox",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            outbox: "http://target.test/users/alice/outbox",
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox") {
-        return Promise.resolve(json({
-          id: url.href,
-          orderedItems: [{
-            type: "Create",
-            id: "http://target.test/activities/create-1",
-            object: "http://target.test/objects/1",
-          }],
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            orderedItems: [
+              {
+                type: "Create",
+                id: "http://target.test/activities/create-1",
+                object: "http://target.test/objects/1",
+              },
+            ],
+          }),
+        );
       }
       if (url.pathname === "/activities/create-1") {
         fetchedActivity = true;
@@ -599,17 +660,19 @@ test("objectRunner - skips wrapper activities without objects", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   let fetchedActivity = false;
 
@@ -626,19 +689,25 @@ test("objectRunner - skips wrapper activities without objects", async () => {
           const request = input instanceof Request ? input : new Request(input);
           const url = new URL(request.url);
           if (url.pathname === "/users/alice") {
-            return Promise.resolve(json({
-              id: url.href,
-              outbox: "http://target.test/users/alice/outbox",
-            }));
+            return Promise.resolve(
+              json({
+                id: url.href,
+                outbox: "http://target.test/users/alice/outbox",
+              }),
+            );
           }
           if (url.pathname === "/users/alice/outbox") {
-            return Promise.resolve(json({
-              id: url.href,
-              orderedItems: [{
-                type: "Create",
-                id: "http://target.test/activities/create-1",
-              }],
-            }));
+            return Promise.resolve(
+              json({
+                id: url.href,
+                orderedItems: [
+                  {
+                    type: "Create",
+                    id: "http://target.test/activities/create-1",
+                  },
+                ],
+              }),
+            );
           }
           if (url.pathname === "/activities/create-1") {
             fetchedActivity = true;
@@ -656,17 +725,19 @@ test("objectRunner - sends ActivityPub Accept headers during object discovery", 
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   const discoveryAccepts: string[] = [];
 
@@ -685,17 +756,21 @@ test("objectRunner - sends ActivityPub Accept headers during object discovery", 
       }
       if (url.pathname === "/users/alice") {
         discoveryAccepts.push(request.headers.get("accept") ?? "");
-        return Promise.resolve(json({
-          id: url.href,
-          outbox: "http://target.test/users/alice/outbox",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            outbox: "http://target.test/users/alice/outbox",
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox") {
         discoveryAccepts.push(request.headers.get("accept") ?? "");
-        return Promise.resolve(json({
-          id: url.href,
-          orderedItems: ["http://target.test/objects/1"],
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            orderedItems: ["http://target.test/objects/1"],
+          }),
+        );
       }
       if (url.pathname === "/objects/1") {
         return Promise.resolve(json({ id: url.href, type: "Note" }));
@@ -715,18 +790,20 @@ test("objectRunner - dereferences URL-only items for type filters", async () => 
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
-        type: "Note",
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+          type: "Note",
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   const fetched: string[] = [];
 
@@ -744,34 +821,42 @@ test("objectRunner - dereferences URL-only items for type filters", async () => 
         return Promise.resolve(new Response("not found", { status: 404 }));
       }
       if (url.pathname === "/users/alice") {
-        return Promise.resolve(json({
-          id: url.href,
-          outbox: "http://target.test/users/alice/outbox",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            outbox: "http://target.test/users/alice/outbox",
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox") {
-        return Promise.resolve(json({
-          id: url.href,
-          orderedItems: [
-            "http://target.test/objects/article",
-            {
-              type: "Create",
-              object: "http://target.test/objects/note",
-            },
-          ],
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            orderedItems: [
+              "http://target.test/objects/article",
+              {
+                type: "Create",
+                object: "http://target.test/objects/note",
+              },
+            ],
+          }),
+        );
       }
       if (url.pathname === "/objects/article") {
-        return Promise.resolve(json({
-          id: url.href,
-          type: "Article",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            type: "Article",
+          }),
+        );
       }
       if (url.pathname === "/objects/note") {
-        return Promise.resolve(json({
-          id: url.href,
-          type: "Note",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            type: "Note",
+          }),
+        );
       }
       return Promise.resolve(new Response("not found", { status: 404 }));
     },
@@ -786,17 +871,19 @@ test("objectRunner - gates discovery URLs before fetching them", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://public.example/users/alice",
-        collection: "outbox",
-        limit: 1,
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://public.example/users/alice",
+          collection: "outbox",
+          limit: 1,
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
 
   await assert.rejects(
@@ -823,17 +910,19 @@ test("objectRunner - gates collection URLs before crawling them", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
 
   await assert.rejects(
@@ -848,10 +937,12 @@ test("objectRunner - gates collection URLs before crawling them", async () => {
         fetch: (input) => {
           const url = new URL(input instanceof Request ? input.url : input);
           if (url.pathname === "/users/alice") {
-            return Promise.resolve(json({
-              id: url.href,
-              outbox: "http://public.example/outbox",
-            }));
+            return Promise.resolve(
+              json({
+                id: url.href,
+                outbox: "http://public.example/outbox",
+              }),
+            );
           }
           throw new Error("collection fetch should be gated first");
         },
@@ -869,17 +960,19 @@ test("objectRunner - drains failed discovery responses", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   const failed = new Response("forbidden", { status: 403 });
 
@@ -903,17 +996,19 @@ test("objectRunner - reports invalid discovery JSON with URL context", async () 
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
 
   await assert.rejects(
@@ -935,18 +1030,20 @@ test("objectRunner - resolves relative URLs while crawling object sources", asyn
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice/",
-        collection: "outbox",
-        limit: 1,
-        type: "Note",
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice/",
+          collection: "outbox",
+          limit: 1,
+          type: "Note",
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   const fetched: string[] = [];
 
@@ -965,35 +1062,45 @@ test("objectRunner - resolves relative URLs while crawling object sources", asyn
         return Promise.resolve(new Response("not found", { status: 404 }));
       }
       if (url.pathname === "/users/alice/") {
-        return Promise.resolve(json({
-          id: url.href,
-          outbox: "outbox",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            outbox: "outbox",
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox" && url.search === "?page=1") {
-        return Promise.resolve(json({
-          id: url.href,
-          next: "?page=2",
-          orderedItems: [],
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            next: "?page=2",
+            orderedItems: [],
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox" && url.search === "?page=2") {
-        return Promise.resolve(json({
-          id: url.href,
-          orderedItems: [{
-            type: "Create",
-            object: {
-              type: "Note",
-              id: "./objects/relative",
-            },
-          }],
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            orderedItems: [
+              {
+                type: "Create",
+                object: {
+                  type: "Note",
+                  id: "./objects/relative",
+                },
+              },
+            ],
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox") {
-        return Promise.resolve(json({
-          id: url.href,
-          first: "?page=1",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            first: "?page=1",
+          }),
+        );
       }
       if (url.pathname === "/users/alice/objects/relative") {
         return Promise.resolve(json({ id: url.href, type: "Note" }));
@@ -1015,18 +1122,20 @@ test("objectRunner - resolves Link object href values while crawling", async () 
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice/",
-        collection: "outbox",
-        limit: 1,
-        type: "Note",
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice/",
+          collection: "outbox",
+          limit: 1,
+          type: "Note",
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   const fetched: string[] = [];
 
@@ -1045,37 +1154,45 @@ test("objectRunner - resolves Link object href values while crawling", async () 
         return Promise.resolve(new Response("not found", { status: 404 }));
       }
       if (url.pathname === "/users/alice/") {
-        return Promise.resolve(json({
-          id: url.href,
-          outbox: {
-            type: "Link",
-            href: "outbox",
-          },
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            outbox: {
+              type: "Link",
+              href: "outbox",
+            },
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox" && url.search === "?page=1") {
-        return Promise.resolve(json({
-          id: url.href,
-          orderedItems: [{
-            type: "Create",
-            object: {
-              type: "Note",
-              id: {
-                type: "Link",
-                href: "../objects/note",
+        return Promise.resolve(
+          json({
+            id: url.href,
+            orderedItems: [
+              {
+                type: "Create",
+                object: {
+                  type: "Note",
+                  id: {
+                    type: "Link",
+                    href: "../objects/note",
+                  },
+                },
               },
-            },
-          }],
-        }));
+            ],
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox") {
-        return Promise.resolve(json({
-          id: url.href,
-          first: {
-            type: "Link",
-            href: "?page=1",
-          },
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            first: {
+              type: "Link",
+              href: "?page=1",
+            },
+          }),
+        );
       }
       if (url.pathname === "/users/objects/note") {
         return Promise.resolve(json({ id: url.href, type: "Note" }));
@@ -1094,17 +1211,19 @@ test("objectRunner - skips malformed URLs while crawling object sources", async 
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   let fetchedObjectUrl = "";
 
@@ -1122,29 +1241,33 @@ test("objectRunner - skips malformed URLs while crawling object sources", async 
         return Promise.resolve(new Response("not found", { status: 404 }));
       }
       if (url.pathname === "/users/alice") {
-        return Promise.resolve(json({
-          id: url.href,
-          outbox: "http://target.test/users/alice/outbox",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            outbox: "http://target.test/users/alice/outbox",
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox") {
-        return Promise.resolve(json({
-          id: url.href,
-          orderedItems: [
-            "http://[malformed",
-            {
-              type: "Note",
-              id: {
-                type: "Link",
-                href: "http://[malformed",
+        return Promise.resolve(
+          json({
+            id: url.href,
+            orderedItems: [
+              "http://[malformed",
+              {
+                type: "Note",
+                id: {
+                  type: "Link",
+                  href: "http://[malformed",
+                },
               },
-            },
-            {
-              type: "Note",
-              id: "http://target.test/objects/valid",
-            },
-          ],
-        }));
+              {
+                type: "Note",
+                id: "http://target.test/objects/valid",
+              },
+            ],
+          }),
+        );
       }
       if (url.pathname === "/objects/valid") {
         fetchedObjectUrl = url.href;
@@ -1162,17 +1285,19 @@ test("objectRunner - continues after malformed activity object URLs", async () =
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   let fetchedObjectUrl = "";
 
@@ -1190,25 +1315,31 @@ test("objectRunner - continues after malformed activity object URLs", async () =
         return Promise.resolve(new Response("not found", { status: 404 }));
       }
       if (url.pathname === "/users/alice") {
-        return Promise.resolve(json({
-          id: url.href,
-          outbox: "http://target.test/users/alice/outbox",
-        }));
+        return Promise.resolve(
+          json({
+            id: url.href,
+            outbox: "http://target.test/users/alice/outbox",
+          }),
+        );
       }
       if (url.pathname === "/users/alice/outbox") {
-        return Promise.resolve(json({
-          id: url.href,
-          orderedItems: [{
-            type: "Create",
-            object: [
-              "http://[malformed",
+        return Promise.resolve(
+          json({
+            id: url.href,
+            orderedItems: [
               {
-                type: "Note",
-                id: "http://target.test/objects/valid",
+                type: "Create",
+                object: [
+                  "http://[malformed",
+                  {
+                    type: "Note",
+                    id: "http://target.test/objects/valid",
+                  },
+                ],
               },
             ],
-          }],
-        }));
+          }),
+        );
       }
       if (url.pathname === "/objects/valid") {
         fetchedObjectUrl = url.href;
@@ -1226,18 +1357,20 @@ test("objectRunner - caps object source crawl pages", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: "http://target.test/users/alice",
-        collection: "outbox",
-        limit: 1,
-        type: "Note",
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/alice",
+          collection: "outbox",
+          limit: 1,
+          type: "Note",
+        },
+        load: { concurrency: 1 },
+        duration: "25ms",
       },
-      load: { concurrency: 1 },
-      duration: "25ms",
-    }],
+    ],
   }).scenarios[0];
   let pageFetches = 0;
 
@@ -1254,22 +1387,28 @@ test("objectRunner - caps object source crawl pages", async () => {
           const request = input instanceof Request ? input : new Request(input);
           const url = new URL(request.url);
           if (url.pathname === "/users/alice") {
-            return Promise.resolve(json({
-              id: url.href,
-              outbox: "http://target.test/outbox?page=0",
-            }));
+            return Promise.resolve(
+              json({
+                id: url.href,
+                outbox: "http://target.test/outbox?page=0",
+              }),
+            );
           }
           if (url.pathname === "/outbox") {
             pageFetches++;
             const page = Number(url.searchParams.get("page") ?? 0);
-            return Promise.resolve(json({
-              id: url.href,
-              orderedItems: [{
-                type: "Article",
-                id: `http://target.test/articles/${page}`,
-              }],
-              next: `?page=${page + 1}`,
-            }));
+            return Promise.resolve(
+              json({
+                id: url.href,
+                orderedItems: [
+                  {
+                    type: "Article",
+                    id: `http://target.test/articles/${page}`,
+                  },
+                ],
+                next: `?page=${page + 1}`,
+              }),
+            );
           }
           return Promise.resolve(new Response("not found", { status: 404 }));
         },
@@ -1284,11 +1423,13 @@ test("objectRunner.validate - rejects malformed object source URLs", () => {
   const explicit = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object",
-      type: "object",
-      source: "objects/1",
-    }],
+    scenarios: [
+      {
+        name: "object",
+        type: "object",
+        source: "objects/1",
+      },
+    ],
   }).scenarios[0];
   assert.throws(
     () => objectRunner.validate?.(explicit),
@@ -1298,13 +1439,15 @@ test("objectRunner.validate - rejects malformed object source URLs", () => {
   const crawl = normalizeSuite({
     version: 1,
     target: "http://target.test/",
-    scenarios: [{
-      name: "object-crawl",
-      type: "object",
-      source: {
-        seed: ["http://target.test/users/alice", "users/bob"],
+    scenarios: [
+      {
+        name: "object-crawl",
+        type: "object",
+        source: {
+          seed: ["http://target.test/users/alice", "users/bob"],
+        },
       },
-    }],
+    ],
   }).scenarios[0];
   assert.throws(
     () => objectRunner.validate?.(crawl),
@@ -1313,20 +1456,20 @@ test("objectRunner.validate - rejects malformed object source URLs", () => {
 });
 
 test("objectRunner.validate - rejects non-fetchable direct object source URLs", () => {
-  for (
-    const source of [
-      "ftp://target.test/objects/1",
-      "http://user:pass@target.test/objects/1",
-    ]
-  ) {
+  for (const source of [
+    "ftp://target.test/objects/1",
+    "http://user:pass@target.test/objects/1",
+  ]) {
     const scenario = normalizeSuite({
       version: 1,
       target: "http://target.test/",
-      scenarios: [{
-        name: "object",
-        type: "object",
-        source,
-      }],
+      scenarios: [
+        {
+          name: "object",
+          type: "object",
+          source,
+        },
+      ],
     }).scenarios[0];
 
     assert.throws(

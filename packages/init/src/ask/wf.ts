@@ -10,11 +10,14 @@ import webFrameworks from "../webframeworks/mod.ts";
  * @returns A promise resolving to options with a guaranteed webFramework
  */
 const fillWebFramework: //
-  <T extends { webFramework?: WebFramework }>(options: T) => //
-  Promise<T & { webFramework: WebFramework }> = async (options) => //
+<T extends { webFramework?: WebFramework }>(
+  options: T,
+) => //
+Promise<T & { webFramework: WebFramework }> = async (options) =>
+  //
   ({
     ...options,
-    webFramework: options.webFramework ?? await askWebFramework(),
+    webFramework: options.webFramework ?? (await askWebFramework()),
   });
 
 export default fillWebFramework;
@@ -22,6 +25,8 @@ export default fillWebFramework;
 const askWebFramework = () =>
   select<WebFramework>({
     message: "Choose the web framework to use",
-    choices: WEB_FRAMEWORK.map((value) => //
-    ({ name: webFrameworks[value].label, value })),
+    choices: WEB_FRAMEWORK.map((value) =>
+      //
+      ({ name: webFrameworks[value].label, value }),
+    ),
   });

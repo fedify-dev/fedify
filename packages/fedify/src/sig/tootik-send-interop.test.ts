@@ -4,30 +4,14 @@ import { decodeMultibase, importDidKey } from "@fedify/vocab-runtime";
 import { assert, assertEquals } from "@std/assert";
 import { encodeHex } from "byte-encodings/hex";
 import serialize from "json-canon";
-import actor from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/actor.json" with {
-  type: "json",
-};
-import captured from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/request.json" with {
-  type: "json",
-};
-import firstResponse from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/first-response.json" with {
-  type: "json",
-};
-import metadata from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/metadata.json" with {
-  type: "json",
-};
-import processed from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/processed-note.json" with {
-  type: "json",
-};
-import raw from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/raw-bodies.json" with {
-  type: "json",
-};
-import response from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/response.json" with {
-  type: "json",
-};
-import tamperedResponse from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/tampered-response.json" with {
-  type: "json",
-};
+import actor from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/actor.json" with { type: "json" };
+import captured from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/request.json" with { type: "json" };
+import firstResponse from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/first-response.json" with { type: "json" };
+import metadata from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/metadata.json" with { type: "json" };
+import processed from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/processed-note.json" with { type: "json" };
+import raw from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/raw-bodies.json" with { type: "json" };
+import response from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/response.json" with { type: "json" };
+import tamperedResponse from "../../test-vectors/fep-ef61/tootik-v0.25.4/send/tampered-response.json" with { type: "json" };
 import { verifyRequestDetailed } from "./http.ts";
 import { doesActorOwnKey } from "./owner.ts";
 import { verifyPortableObjectProof } from "./proof.ts";

@@ -23,7 +23,8 @@ class PostStore {
     return this.#map.get(id.toString());
   }
   getAll() {
-    return this.#timeline.toReversed()
+    return this.#timeline
+      .toReversed()
       .map((id) => id.toString())
       .map((id) => this.#map.get(id)!)
       .filter((p) => p);

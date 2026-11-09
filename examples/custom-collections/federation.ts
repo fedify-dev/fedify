@@ -40,29 +40,28 @@ const federation = createFederation<void>({
   kv: new MemoryKvStore(),
 });
 
-federation
-  .setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
-    if (identifier !== OWNER) return null;
+federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
+  if (identifier !== OWNER) return null;
 
-    // inbox/outbox are omitted here; use setInboxListeners() and
-    // setOutboxDispatcher() for full ActivityPub actors.
-    return new Person({
-      id: ctx.getActorUri(identifier),
-      preferredUsername: identifier,
-      name: "Alice's bookmarks",
-      summary: "A single-user bookmark log with custom collection examples.",
-      url: new URL(`/users/${identifier}`, ctx.url),
-      followers: ctx.getFollowersUri(identifier),
-      streams: [
-        ctx.getCollectionUri(PUBLIC_BOOKMARKS, { identifier }),
-        ctx.getCollectionUri(TAGGED_BOOKMARKS, {
-          identifier,
-          tag: "activitypub",
-        }),
-        ctx.getCollectionUri(FOLLOWERS_ONLY_BOOKMARKS, { identifier }),
-      ],
-    });
+  // inbox/outbox are omitted here; use setInboxListeners() and
+  // setOutboxDispatcher() for full ActivityPub actors.
+  return new Person({
+    id: ctx.getActorUri(identifier),
+    preferredUsername: identifier,
+    name: "Alice's bookmarks",
+    summary: "A single-user bookmark log with custom collection examples.",
+    url: new URL(`/users/${identifier}`, ctx.url),
+    followers: ctx.getFollowersUri(identifier),
+    streams: [
+      ctx.getCollectionUri(PUBLIC_BOOKMARKS, { identifier }),
+      ctx.getCollectionUri(TAGGED_BOOKMARKS, {
+        identifier,
+        tag: "activitypub",
+      }),
+      ctx.getCollectionUri(FOLLOWERS_ONLY_BOOKMARKS, { identifier }),
+    ],
   });
+});
 
 federation.setFollowersDispatcher(
   "/users/{identifier}/followers",
@@ -89,11 +88,7 @@ federation
     (ctx, values, cursor) => {
       if (values.identifier !== OWNER) return null;
 
-      return collectionBookmarks(
-        ctx,
-        publicBookmarks(),
-        cursor,
-      );
+      return collectionBookmarks(ctx, publicBookmarks(), cursor);
     },
   )
   .setCounter((_ctx, values) => {
@@ -117,11 +112,7 @@ federation
     (ctx, values, cursor) => {
       if (values.identifier !== OWNER) return null;
 
-      return collectionBookmarks(
-        ctx,
-        taggedBookmarks(values.tag),
-        cursor,
-      );
+      return collectionBookmarks(ctx, taggedBookmarks(values.tag), cursor);
     },
   )
   .setCounter((_ctx, values) => {
@@ -145,11 +136,7 @@ federation
     (ctx, values, cursor) => {
       if (values.identifier !== OWNER) return null;
 
-      return collectionBookmarks(
-        ctx,
-        followersOnlyBookmarks(),
-        cursor,
-      );
+      return collectionBookmarks(ctx, followersOnlyBookmarks(), cursor);
     },
   )
   .setCounter((_ctx, values) => {
@@ -180,10 +167,10 @@ function collectionBookmarks(
 } {
   return cursor == null
     ? {
-      items: items.map((bookmark) => toArticle(ctx, bookmark)),
-      nextCursor: null,
-      prevCursor: null,
-    }
+        items: items.map((bookmark) => toArticle(ctx, bookmark)),
+        nextCursor: null,
+        prevCursor: null,
+      }
     : pageBookmarks(ctx, items, cursor);
 }
 
@@ -205,9 +192,8 @@ function pageBookmarks(
     items: items
       .slice(offset, offset + PAGE_SIZE)
       .map((bookmark) => toArticle(ctx, bookmark)),
-    nextCursor: offset + PAGE_SIZE < items.length
-      ? String(offset + PAGE_SIZE)
-      : null,
+    nextCursor:
+      offset + PAGE_SIZE < items.length ? String(offset + PAGE_SIZE) : null,
     prevCursor: offset > 0 ? String(Math.max(0, offset - PAGE_SIZE)) : null,
   };
 }
@@ -219,23 +205,25 @@ function toArticle(ctx: RequestContext<void>, bookmark: Bookmark): Article {
     attribution: ctx.getActorUri(OWNER),
     name: bookmark.title,
     summary: bookmark.note,
-    content: `<p><a href="${escapeHtml(bookmarkUrl.href)}">${
-      escapeHtml(bookmark.title)
-    }</a></p>`,
+    content: `<p><a href="${escapeHtml(bookmarkUrl.href)}">${escapeHtml(
+      bookmark.title,
+    )}</a></p>`,
     mediaType: "text/html",
     url: bookmarkUrl,
     published: bookmark.savedAt,
-    to: bookmark.visibility === "public"
-      ? PUBLIC_COLLECTION
-      : ctx.getFollowersUri(OWNER),
-    tags: bookmark.tags.map((tag) =>
-      new Hashtag({
-        href: ctx.getCollectionUri(TAGGED_BOOKMARKS, {
-          identifier: OWNER,
-          tag: normalizeTag(tag),
+    to:
+      bookmark.visibility === "public"
+        ? PUBLIC_COLLECTION
+        : ctx.getFollowersUri(OWNER),
+    tags: bookmark.tags.map(
+      (tag) =>
+        new Hashtag({
+          href: ctx.getCollectionUri(TAGGED_BOOKMARKS, {
+            identifier: OWNER,
+            tag: normalizeTag(tag),
+          }),
+          name: `#${tag}`,
         }),
-        name: `#${tag}`,
-      })
     ),
   });
 }

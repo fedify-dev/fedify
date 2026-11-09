@@ -1,8 +1,6 @@
 import { test } from "@fedify/fixture";
 import { assertEquals } from "@std/assert";
-import vector from "../../test-vectors/fep-8b32/map-local-create-note.json" with {
-  type: "json",
-};
+import vector from "../../test-vectors/fep-8b32/map-local-create-note.json" with { type: "json" };
 import {
   type CompoundProofDiscoveryLimits,
   discoverCompoundProofDocuments,
@@ -52,11 +50,13 @@ test("discoverCompoundProofDocuments() returns immutable deepest-first candidate
       content: "one",
       proof: { type: "DataIntegrityProof", proofValue: "zInner" },
     },
-    items: [{
-      id: "ap://example.test/objects/2",
-      content: "two",
-      proof: { type: "DataIntegrityProof", proofValue: "zArray" },
-    }],
+    items: [
+      {
+        id: "ap://example.test/objects/2",
+        content: "two",
+        proof: { type: "DataIntegrityProof", proofValue: "zArray" },
+      },
+    ],
     "a/b~c": {
       "@id": "ap://example.test/objects/3",
       proof: { type: "DataIntegrityProof", proofValue: "zEscaped" },
@@ -103,10 +103,7 @@ test("discoverCompoundProofDocuments() returns immutable deepest-first candidate
   assertEquals(result.statistics.proofCount, 4);
 
   input.items[0].content = "mutated after discovery";
-  assertEquals(
-    result.documents[0].securedDocument.content,
-    "two",
-  );
+  assertEquals(result.documents[0].securedDocument.content, "two");
   assertEquals(
     (result.snapshot.items as Record<string, unknown>[])[0].content,
     "two",
@@ -141,17 +138,20 @@ test("discoverCompoundProofDocuments() is independent of member order", () => {
 });
 
 test("discoverCompoundProofDocuments() does not inspect context definitions", () => {
-  const result = discoverCompoundProofDocuments({
-    "@context": {
-      proof: "https://w3id.org/security#proof",
-      portable: {
-        "@id": "ap://did:key:z6MkContext/objects/1",
-        "@context": { proof: "https://example.com/nested-proof" },
+  const result = discoverCompoundProofDocuments(
+    {
+      "@context": {
+        proof: "https://w3id.org/security#proof",
+        portable: {
+          "@id": "ap://did:key:z6MkContext/objects/1",
+          "@context": { proof: "https://example.com/nested-proof" },
+        },
       },
+      id: "https://social.example/objects/1",
+      type: "Note",
     },
-    id: "https://social.example/objects/1",
-    type: "Note",
-  }, limits);
+    limits,
+  );
 
   assertEquals(result.status, "ok");
   if (result.status !== "ok") return;
@@ -183,10 +183,13 @@ test("discoverCompoundProofDocuments() preserves the recorded compound vector", 
 
 test("discoverCompoundProofDocuments() rejects unsupported proof shapes atomically", () => {
   for (const proof of [null, "remote-proof", [{ proofValue: "z" }]]) {
-    const result = discoverCompoundProofDocuments({
-      object: { proof: { proofValue: "valid candidate" } },
-      other: { proof },
-    }, limits);
+    const result = discoverCompoundProofDocuments(
+      {
+        object: { proof: { proofValue: "valid candidate" } },
+        other: { proof },
+      },
+      limits,
+    );
     assertEquals(result, {
       status: "unsupported",
       reason: {
@@ -245,16 +248,14 @@ test("discoverCompoundProofDocuments() rejects values that are not JSON trees", 
   const shared = { proof: {} };
   const symbolKeyed = { [Symbol("hidden")]: { proof: {} } };
 
-  for (
-    const input of [
-      [],
-      { value: undefined },
-      { value: Number.NaN },
-      cyclic,
-      { first: shared, second: shared },
-      symbolKeyed,
-    ]
-  ) {
+  for (const input of [
+    [],
+    { value: undefined },
+    { value: Number.NaN },
+    cyclic,
+    { first: shared, second: shared },
+    symbolKeyed,
+  ]) {
     const result = discoverCompoundProofDocuments(input, limits);
     assertEquals(result.status, "unsupported");
     if (result.status !== "unsupported") continue;
@@ -329,13 +330,11 @@ test("discoverCompoundProofDocuments() rejects non-JSON array properties", () =>
     enumerable: false,
   });
 
-  for (
-    const input of [
-      { items: namedProperty },
-      { items: sparse },
-      { items: nonEnumerableIndex },
-    ]
-  ) {
+  for (const input of [
+    { items: namedProperty },
+    { items: sparse },
+    { items: nonEnumerableIndex },
+  ]) {
     const result = discoverCompoundProofDocuments(input, limits);
     assertEquals(result.status, "unsupported");
     if (result.status !== "unsupported") continue;

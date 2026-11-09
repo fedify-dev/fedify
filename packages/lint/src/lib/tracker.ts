@@ -10,9 +10,7 @@ import type {
 export function trackFederationVariables() {
   const federationVariables = new Set<string>();
 
-  const isFederationObject = (
-    obj: Expression,
-  ): boolean => {
+  const isFederationObject = (obj: Expression): boolean => {
     switch (obj.type) {
       case "Identifier":
         return federationVariables.has(obj.name);
@@ -36,10 +34,7 @@ export function trackFederationVariables() {
       const id = node.id;
 
       if (init?.type === "CallExpression") {
-        if (
-          isCreateFederation(init) &&
-          id.type === "Identifier"
-        ) {
+        if (isCreateFederation(init) && id.type === "Identifier") {
           federationVariables.add(id.name);
         }
       }
@@ -53,8 +48,6 @@ export function trackFederationVariables() {
   };
 }
 
-const isCreateFederation = (
-  node: CallExpression,
-): boolean =>
+const isCreateFederation = (node: CallExpression): boolean =>
   node.callee.type === "Identifier" &&
   /^create(Federation|FederationBuilder)$/i.test(node.callee.name);

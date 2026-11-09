@@ -105,10 +105,7 @@ type ProcessOutput = {
   write(chunk: string | Uint8Array): unknown;
 };
 
-type SpawnTarget = (
-  command: string,
-  options: SpawnOptions,
-) => ChildProcess;
+type SpawnTarget = (command: string, options: SpawnOptions) => ChildProcess;
 
 type BenchRunCompareCommand = BenchRunCommand & {
   readonly explicitCliTarget: boolean;
@@ -167,17 +164,20 @@ export async function runBenchCompare(
   command: BenchCompareCommand,
   deps: RunBenchCompareDeps = {},
 ): Promise<void> {
-  const exit = deps.exit ?? ((code: number) => {
-    process.exitCode = code;
-  });
+  const exit =
+    deps.exit ??
+    ((code: number) => {
+      process.exitCode = code;
+    });
   const writeOutput = deps.writeOutput ?? defaultWriteOutput;
-  const log = deps.log ??
-    ((message: string) => process.stderr.write(`${message}\n`));
+  const log =
+    deps.log ?? ((message: string) => process.stderr.write(`${message}\n`));
   const createWorktree = deps.createWorktree ?? defaultCreateWorktree;
   const removeWorktree = deps.removeWorktree ?? defaultRemoveWorktree;
   const startTarget = deps.startTarget ?? defaultStartTarget;
   const waitReady = deps.waitReady ?? defaultWaitReady;
-  const runBenchInWorktree = deps.runBenchInWorktree ??
+  const runBenchInWorktree =
+    deps.runBenchInWorktree ??
     ((input) => defaultRunBenchInWorktree(input, deps.benchDeps));
   const signalTarget = deps.signalTarget ?? process;
 
@@ -229,10 +229,9 @@ export async function runBenchCompare(
       finishedAt: new Date().toISOString(),
     });
     throwIfInterrupted();
-    await withInterrupt(writeOutput(
-      renderCompareReport(report, command.format),
-      command.output,
-    ));
+    await withInterrupt(
+      writeOutput(renderCompareReport(report, command.format), command.output),
+    );
     throwIfInterrupted();
     return void exit(report.passed ? 0 : 1);
   } catch (error) {
@@ -257,9 +256,9 @@ export async function runBenchCompare(
         await removeWorktree(path);
       } catch (error) {
         log(
-          `Failed to remove benchmark worktree ${path}: ${
-            describeError(error)
-          }`,
+          `Failed to remove benchmark worktree ${path}: ${describeError(
+            error,
+          )}`,
         );
       }
     }
@@ -463,9 +462,10 @@ function compareMetric(
     relativeNoise(baseScenario, metric),
     relativeNoise(headScenario, metric),
   );
-  const regression = base == null || head == null
-    ? null
-    : regressionRatio(base, head, direction, unit);
+  const regression =
+    base == null || head == null
+      ? null
+      : regressionRatio(base, head, direction, unit);
   const allowedRegression = maxRegression + noiseBand;
   return {
     scenario: headScenario.name,
@@ -476,7 +476,8 @@ function compareMetric(
     regression,
     noiseBand,
     allowedRegression,
-    pass: (base == null && head != null) ||
+    pass:
+      (base == null && head != null) ||
       (regression != null && regression <= allowedRegression),
   };
 }
@@ -548,11 +549,13 @@ function latencyValue(
 }
 
 function partialValue(
-  latency: {
-    readonly p50?: number;
-    readonly p95?: number;
-    readonly p99?: number;
-  } | undefined,
+  latency:
+    | {
+        readonly p50?: number;
+        readonly p95?: number;
+        readonly p99?: number;
+      }
+    | undefined,
   field: string,
 ): number | null {
   switch (field) {
@@ -585,7 +588,8 @@ function regressionRatio(
       direction === "lower-is-better" &&
       unit === "ms" &&
       head <= ZERO_BASE_LATENCY_ALLOWANCE_MS
-    ) return 0;
+    )
+      return 0;
     return direction === "higher-is-better" && head > base ? 0 : null;
   }
   return direction === "higher-is-better"
@@ -596,8 +600,8 @@ function regressionRatio(
 function relativeNoise(scenario: ScenarioResult, metric: string): number {
   const values = (scenario.runs ?? [])
     .map((run) => metricValue(run, metric))
-    .filter((value): value is number =>
-      value != null && Number.isFinite(value)
+    .filter(
+      (value): value is number => value != null && Number.isFinite(value),
     );
   if (values.length < 2) return 0;
   const medianValue = median(values);
@@ -642,9 +646,10 @@ function renderCompareText(report: BenchCompareReport): string {
     lines.push(
       `[${comparison.pass ? "PASS" : "FAIL"}] ${comparison.scenario} ` +
         `${comparison.metric}: base ${formatNumberOrNull(comparison.base)}, ` +
-        `head ${formatNumberOrNull(comparison.head)}, regression ${
-          formatNumberOrNull(comparison.regression, formatPercent)
-        }, noise ${formatPercent(comparison.noiseBand)}`,
+        `head ${formatNumberOrNull(comparison.head)}, regression ${formatNumberOrNull(
+          comparison.regression,
+          formatPercent,
+        )}, noise ${formatPercent(comparison.noiseBand)}`,
     );
   }
   lines.push("", `Overall: ${report.passed ? "PASS" : "FAIL"}`);
@@ -666,11 +671,12 @@ function renderCompareMarkdown(report: BenchCompareReport): string {
   ];
   for (const comparison of report.comparisons) {
     lines.push(
-      `| ${comparison.scenario} | \`${comparison.metric}\` | ${
-        formatNumberOrNull(comparison.base)
-      } | ${formatNumberOrNull(comparison.head)} | ${
-        formatNumberOrNull(comparison.regression, formatPercent)
-      } | ${formatPercent(comparison.noiseBand)} | ${
+      `| ${comparison.scenario} | \`${comparison.metric}\` | ${formatNumberOrNull(
+        comparison.base,
+      )} | ${formatNumberOrNull(comparison.head)} | ${formatNumberOrNull(
+        comparison.regression,
+        formatPercent,
+      )} | ${formatPercent(comparison.noiseBand)} | ${
         comparison.pass ? "PASS" : "FAIL"
       } |`,
     );
@@ -830,9 +836,10 @@ function createTargetExitPromise(child: ChildProcess): Promise<never> {
     };
     const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
       child.removeListener("error", onError);
-      const suffix = signal == null
-        ? ` with code ${code ?? "<unknown>"}`
-        : ` from ${signal}`;
+      const suffix =
+        signal == null
+          ? ` with code ${code ?? "<unknown>"}`
+          : ` from ${signal}`;
       reject(
         new Error(
           `Benchmark target process ${child.pid ?? "<unknown>"} exited` +
@@ -851,15 +858,17 @@ export function stopTargetProcess(
   options: StopTargetProcessOptions = {},
 ): Promise<void> {
   const platform = options.platform ?? process.platform;
-  const killWindowsProcessTree = options.killWindowsProcessTree ??
-    defaultKillWindowsProcessTree;
-  const killProcessGroup = options.killProcessGroup ??
-    ((pid, signal) => process.kill(pid, signal));
+  const killWindowsProcessTree =
+    options.killWindowsProcessTree ?? defaultKillWindowsProcessTree;
+  const killProcessGroup =
+    options.killProcessGroup ?? ((pid, signal) => process.kill(pid, signal));
   const forceTimeoutMs = options.forceTimeoutMs ?? 5000;
   const forceKillTimeoutMs = options.forceKillTimeoutMs ?? forceTimeoutMs;
   return new Promise((resolve, reject) => {
     if (
-      child.pid == null || child.exitCode != null || child.signalCode != null
+      child.pid == null ||
+      child.exitCode != null ||
+      child.signalCode != null
     ) {
       resolve();
       return;
@@ -981,8 +990,7 @@ export async function waitReadyUrl(
   deps: WaitReadyUrlDeps = {},
 ): Promise<void> {
   const fetchReady = deps.fetch ?? fetch;
-  const sleep = deps.sleep ??
-    ((ms, signal) => abortableSleep(ms, signal));
+  const sleep = deps.sleep ?? ((ms, signal) => abortableSleep(ms, signal));
   const signal = deps.signal;
   const deadline = Date.now() + timeoutMs;
   let lastError: unknown;

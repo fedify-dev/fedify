@@ -34,10 +34,10 @@ function createMockSpan(options: {
 
   const parentSpanContext: SpanContext | undefined = options.parentSpanId
     ? {
-      traceId,
-      spanId: options.parentSpanId,
-      traceFlags: TraceFlags.SAMPLED,
-    }
+        traceId,
+        spanId: options.parentSpanId,
+        traceFlags: TraceFlags.SAMPLED,
+      }
     : undefined;
 
   return {
@@ -395,12 +395,14 @@ test("FedifySpanExporter", async (t) => {
   for (const withCas of [true, false]) {
     const createStore = (): KvStore => {
       const memory = new MemoryKvStore();
-      return withCas ? memory : {
-        get: memory.get.bind(memory),
-        set: memory.set.bind(memory),
-        delete: memory.delete.bind(memory),
-        list: memory.list.bind(memory),
-      };
+      return withCas
+        ? memory
+        : {
+            get: memory.get.bind(memory),
+            set: memory.set.bind(memory),
+            delete: memory.delete.bind(memory),
+            list: memory.list.bind(memory),
+          };
     };
 
     await t.step(
@@ -441,11 +443,13 @@ test("FedifySpanExporter", async (t) => {
           new FedifySpanExporter(kv),
           new FedifySpanExporter(kv),
         ];
-        await Promise.all(exporters.map((exporter, i) =>
-          exportSpans(exporter, [
-            createOutboundSpan("concurrent-count-trace", `span-${i}`),
-          ])
-        ));
+        await Promise.all(
+          exporters.map((exporter, i) =>
+            exportSpans(exporter, [
+              createOutboundSpan("concurrent-count-trace", `span-${i}`),
+            ]),
+          ),
+        );
         const reader = new FedifySpanExporter(kv);
         assertEquals(
           (await reader.getActivitiesByTraceId("concurrent-count-trace"))
@@ -487,12 +491,14 @@ test("FedifySpanExporter", async (t) => {
           traceId: "ghost-trace",
         });
         const records = await exporter.getActivitiesByTraceId("legacy-trace");
-        assertEquals(await exporter.getRecentTraces(), [{
-          traceId: "legacy-trace",
-          timestamp: records[0].timestamp,
-          activityCount: 1,
-          activityTypes: ["Create"],
-        }]);
+        assertEquals(await exporter.getRecentTraces(), [
+          {
+            traceId: "legacy-trace",
+            timestamp: records[0].timestamp,
+            activityCount: 1,
+            activityTypes: ["Create"],
+          },
+        ]);
         await kv.delete(["fedify", "traces", "legacy-trace", "span-a"]);
         assertEquals(await exporter.getRecentTraces(), []);
       },
@@ -527,10 +533,10 @@ test("FedifySpanExporter", async (t) => {
           span("newer-trace", "only", "Follow", 1700000001),
         ]);
         const recent = await exporter.getRecentTraces();
-        assertEquals(recent.map((summary) => summary.traceId), [
-          "newer-trace",
-          "older-trace",
-        ]);
+        assertEquals(
+          recent.map((summary) => summary.traceId),
+          ["newer-trace", "older-trace"],
+        );
         assertEquals(recent[1], {
           traceId: "older-trace",
           timestamp: new Date(1700000000000).toISOString(),
@@ -559,9 +565,8 @@ test("FedifySpanExporter", async (t) => {
       const traceId = "first-write-discoverable-trace";
 
       await new Promise<void>((resolve) => {
-        exporter.export(
-          [createOutboundSpan(traceId, "span-a")],
-          () => resolve(),
+        exporter.export([createOutboundSpan(traceId, "span-a")], () =>
+          resolve(),
         );
       });
 
@@ -580,15 +585,13 @@ test("FedifySpanExporter", async (t) => {
       const traceId = "query-time-correction-trace";
 
       await new Promise<void>((resolve) => {
-        exporter.export(
-          [createOutboundSpan(traceId, "span-a")],
-          () => resolve(),
+        exporter.export([createOutboundSpan(traceId, "span-a")], () =>
+          resolve(),
         );
       });
       await new Promise<void>((resolve) => {
-        exporter.export(
-          [createOutboundSpan(traceId, "span-b")],
-          () => resolve(),
+        exporter.export([createOutboundSpan(traceId, "span-b")], () =>
+          resolve(),
         );
       });
 
@@ -625,10 +628,7 @@ test("FedifySpanExporter", async (t) => {
       });
 
       let recent = await exporter.getRecentTraces();
-      assertEquals(
-        recent.find((s) => s.traceId === traceId)?.activityCount,
-        2,
-      );
+      assertEquals(recent.find((s) => s.traceId === traceId)?.activityCount, 2);
 
       // Stand in for span-a's record having expired (or otherwise been
       // removed) since it was written: it is no longer returned by
@@ -636,10 +636,7 @@ test("FedifySpanExporter", async (t) => {
       await kv.delete(["fedify", "traces", traceId, "span-a"]);
 
       recent = await exporter.getRecentTraces();
-      assertEquals(
-        recent.find((s) => s.traceId === traceId)?.activityCount,
-        1,
-      );
+      assertEquals(recent.find((s) => s.traceId === traceId)?.activityCount, 1);
     },
   );
 
@@ -655,9 +652,8 @@ test("FedifySpanExporter", async (t) => {
 
       for (let i = 0; i < traceCount; i++) {
         const traceId = `poll-cost-trace-${i}`;
-        const spans = Array.from(
-          { length: recordsPerTrace },
-          (_, j) => createOutboundSpan(traceId, `span-${j}`),
+        const spans = Array.from({ length: recordsPerTrace }, (_, j) =>
+          createOutboundSpan(traceId, `span-${j}`),
         );
         await new Promise<void>((resolve) => {
           exporter.export(spans, () => resolve());
@@ -670,8 +666,9 @@ test("FedifySpanExporter", async (t) => {
       kv.list = async function* (prefix) {
         for await (const entry of originalList(prefix)) {
           entriesRead++;
-          bytesRead +=
-            new TextEncoder().encode(JSON.stringify(entry.value)).byteLength;
+          bytesRead += new TextEncoder().encode(
+            JSON.stringify(entry.value),
+          ).byteLength;
           yield entry;
         }
       };
@@ -710,7 +707,8 @@ test("FedifySpanExporter", async (t) => {
             traceId: `large-inbound-${i}`,
             spanId: "inbound",
             events: [createActivityReceivedEvent({ activityJson })],
-          })),
+          }),
+        ),
       );
       const originalList = kv.list.bind(kv);
       let entriesRead = 0;
@@ -718,8 +716,9 @@ test("FedifySpanExporter", async (t) => {
       kv.list = async function* (prefix) {
         for await (const entry of originalList(prefix)) {
           entriesRead++;
-          bytesRead +=
-            new TextEncoder().encode(JSON.stringify(entry.value)).byteLength;
+          bytesRead += new TextEncoder().encode(
+            JSON.stringify(entry.value),
+          ).byteLength;
           yield entry;
         }
       };
@@ -1020,113 +1019,102 @@ test("FedifySpanExporter", async (t) => {
     },
   );
 
-  await t.step(
-    "extracts actorId from activity with string actor",
-    async () => {
-      const kv = new MemoryKvStore();
-      const exporter = new FedifySpanExporter(kv);
+  await t.step("extracts actorId from activity with string actor", async () => {
+    const kv = new MemoryKvStore();
+    const exporter = new FedifySpanExporter(kv);
 
-      const activityJson = JSON.stringify({
-        "@context": "https://www.w3.org/ns/activitystreams",
-        type: "Create",
-        id: "https://example.com/activities/123",
-        actor: "https://example.com/users/alice",
-        object: { type: "Note", content: "Hello!" },
-      });
+    const activityJson = JSON.stringify({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      id: "https://example.com/activities/123",
+      actor: "https://example.com/users/alice",
+      object: { type: "Note", content: "Hello!" },
+    });
 
-      const span = createMockSpan({
-        traceId: "actor-string-trace",
-        spanId: "span1",
-        name: "activitypub.inbox",
-        events: [createActivityReceivedEvent({ activityJson })],
-      });
+    const span = createMockSpan({
+      traceId: "actor-string-trace",
+      spanId: "span1",
+      name: "activitypub.inbox",
+      events: [createActivityReceivedEvent({ activityJson })],
+    });
 
-      await new Promise<void>((resolve) => {
-        exporter.export([span], () => resolve());
-      });
+    await new Promise<void>((resolve) => {
+      exporter.export([span], () => resolve());
+    });
 
-      const activities = await exporter.getActivitiesByTraceId(
-        "actor-string-trace",
-      );
-      assertEquals(activities.length, 1);
-      assertEquals(activities[0].actorId, "https://example.com/users/alice");
-    },
-  );
+    const activities =
+      await exporter.getActivitiesByTraceId("actor-string-trace");
+    assertEquals(activities.length, 1);
+    assertEquals(activities[0].actorId, "https://example.com/users/alice");
+  });
 
-  await t.step(
-    "extracts actorId from activity with object actor",
-    async () => {
-      const kv = new MemoryKvStore();
-      const exporter = new FedifySpanExporter(kv);
+  await t.step("extracts actorId from activity with object actor", async () => {
+    const kv = new MemoryKvStore();
+    const exporter = new FedifySpanExporter(kv);
 
-      const activityJson = JSON.stringify({
-        "@context": "https://www.w3.org/ns/activitystreams",
-        type: "Create",
-        id: "https://example.com/activities/456",
-        actor: {
-          type: "Person",
-          id: "https://example.com/users/bob",
-          name: "Bob",
-        },
-        object: { type: "Note", content: "Hello!" },
-      });
+    const activityJson = JSON.stringify({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      id: "https://example.com/activities/456",
+      actor: {
+        type: "Person",
+        id: "https://example.com/users/bob",
+        name: "Bob",
+      },
+      object: { type: "Note", content: "Hello!" },
+    });
 
-      const span = createMockSpan({
-        traceId: "actor-object-trace",
-        spanId: "span1",
-        name: "activitypub.inbox",
-        events: [createActivityReceivedEvent({ activityJson })],
-      });
+    const span = createMockSpan({
+      traceId: "actor-object-trace",
+      spanId: "span1",
+      name: "activitypub.inbox",
+      events: [createActivityReceivedEvent({ activityJson })],
+    });
 
-      await new Promise<void>((resolve) => {
-        exporter.export([span], () => resolve());
-      });
+    await new Promise<void>((resolve) => {
+      exporter.export([span], () => resolve());
+    });
 
-      const activities = await exporter.getActivitiesByTraceId(
-        "actor-object-trace",
-      );
-      assertEquals(activities.length, 1);
-      assertEquals(activities[0].actorId, "https://example.com/users/bob");
-    },
-  );
+    const activities =
+      await exporter.getActivitiesByTraceId("actor-object-trace");
+    assertEquals(activities.length, 1);
+    assertEquals(activities[0].actorId, "https://example.com/users/bob");
+  });
 
-  await t.step(
-    "extracts actorId from outbound activity",
-    async () => {
-      const kv = new MemoryKvStore();
-      const exporter = new FedifySpanExporter(kv);
+  await t.step("extracts actorId from outbound activity", async () => {
+    const kv = new MemoryKvStore();
+    const exporter = new FedifySpanExporter(kv);
 
-      const activityJson = JSON.stringify({
-        "@context": "https://www.w3.org/ns/activitystreams",
-        type: "Follow",
-        id: "https://myserver.com/activities/789",
-        actor: "https://myserver.com/users/charlie",
-        object: "https://example.com/users/alice",
-      });
+    const activityJson = JSON.stringify({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Follow",
+      id: "https://myserver.com/activities/789",
+      actor: "https://myserver.com/users/charlie",
+      object: "https://example.com/users/alice",
+    });
 
-      const span = createMockSpan({
-        traceId: "outbound-actor-trace",
-        spanId: "span1",
-        name: "activitypub.send_activity",
-        events: [
-          createActivitySentEvent({
-            activityJson,
-            inboxUrl: "https://example.com/users/alice/inbox",
-          }),
-        ],
-      });
+    const span = createMockSpan({
+      traceId: "outbound-actor-trace",
+      spanId: "span1",
+      name: "activitypub.send_activity",
+      events: [
+        createActivitySentEvent({
+          activityJson,
+          inboxUrl: "https://example.com/users/alice/inbox",
+        }),
+      ],
+    });
 
-      await new Promise<void>((resolve) => {
-        exporter.export([span], () => resolve());
-      });
+    await new Promise<void>((resolve) => {
+      exporter.export([span], () => resolve());
+    });
 
-      const activities = await exporter.getActivitiesByTraceId(
-        "outbound-actor-trace",
-      );
-      assertEquals(activities.length, 1);
-      assertEquals(activities[0].actorId, "https://myserver.com/users/charlie");
-    },
-  );
+    const activities = await exporter.getActivitiesByTraceId(
+      "outbound-actor-trace",
+    );
+    assertEquals(activities.length, 1);
+    assertEquals(activities[0].actorId, "https://myserver.com/users/charlie");
+  });
 
   await t.step(
     "extracts signature verification details for inbound activity",
@@ -1160,9 +1148,8 @@ test("FedifySpanExporter", async (t) => {
         exporter.export([span], () => resolve());
       });
 
-      const activities = await exporter.getActivitiesByTraceId(
-        "sig-details-trace",
-      );
+      const activities =
+        await exporter.getActivitiesByTraceId("sig-details-trace");
       assertEquals(activities.length, 1);
       assertEquals(activities[0].verified, true);
       assertEquals(activities[0].signatureDetails != null, true);
@@ -1174,53 +1161,44 @@ test("FedifySpanExporter", async (t) => {
         activities[0].signatureDetails?.httpSignaturesKeyId,
         "https://example.com/users/alice#main-key",
       );
-      assertEquals(
-        activities[0].signatureDetails?.ldSignaturesVerified,
-        false,
-      );
+      assertEquals(activities[0].signatureDetails?.ldSignaturesVerified, false);
     },
   );
 
-  await t.step(
-    "signature details with LD signatures verified",
-    async () => {
-      const kv = new MemoryKvStore();
-      const exporter = new FedifySpanExporter(kv);
+  await t.step("signature details with LD signatures verified", async () => {
+    const kv = new MemoryKvStore();
+    const exporter = new FedifySpanExporter(kv);
 
-      const activityJson = JSON.stringify({
-        "@context": "https://www.w3.org/ns/activitystreams",
-        type: "Delete",
-        id: "https://example.com/activities/ld-sig-test",
-        actor: "https://example.com/users/alice",
-      });
+    const activityJson = JSON.stringify({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Delete",
+      id: "https://example.com/activities/ld-sig-test",
+      actor: "https://example.com/users/alice",
+    });
 
-      const span = createMockSpan({
-        traceId: "ld-sig-trace",
-        spanId: "span1",
-        name: "activitypub.inbox",
-        events: [
-          createActivityReceivedEvent({
-            activityJson,
-            verified: true,
-            httpSigVerified: false,
-            ldSigVerified: true,
-          }),
-        ],
-      });
+    const span = createMockSpan({
+      traceId: "ld-sig-trace",
+      spanId: "span1",
+      name: "activitypub.inbox",
+      events: [
+        createActivityReceivedEvent({
+          activityJson,
+          verified: true,
+          httpSigVerified: false,
+          ldSigVerified: true,
+        }),
+      ],
+    });
 
-      await new Promise<void>((resolve) => {
-        exporter.export([span], () => resolve());
-      });
+    await new Promise<void>((resolve) => {
+      exporter.export([span], () => resolve());
+    });
 
-      const activities = await exporter.getActivitiesByTraceId("ld-sig-trace");
-      assertEquals(activities.length, 1);
-      assertEquals(
-        activities[0].signatureDetails?.httpSignaturesVerified,
-        false,
-      );
-      assertEquals(activities[0].signatureDetails?.ldSignaturesVerified, true);
-    },
-  );
+    const activities = await exporter.getActivitiesByTraceId("ld-sig-trace");
+    assertEquals(activities.length, 1);
+    assertEquals(activities[0].signatureDetails?.httpSignaturesVerified, false);
+    assertEquals(activities[0].signatureDetails?.ldSignaturesVerified, true);
+  });
 
   await t.step(
     "extracts HTTP signature failure details for inbound activity",
@@ -1256,9 +1234,8 @@ test("FedifySpanExporter", async (t) => {
         exporter.export([span], () => resolve());
       });
 
-      const activities = await exporter.getActivitiesByTraceId(
-        "sig-failure-trace",
-      );
+      const activities =
+        await exporter.getActivitiesByTraceId("sig-failure-trace");
       assertEquals(activities.length, 1);
       assertEquals(
         activities[0].signatureDetails?.httpSignaturesFailureReason,
@@ -1275,35 +1252,30 @@ test("FedifySpanExporter", async (t) => {
     },
   );
 
-  await t.step(
-    "handles activity without actor field",
-    async () => {
-      const kv = new MemoryKvStore();
-      const exporter = new FedifySpanExporter(kv);
+  await t.step("handles activity without actor field", async () => {
+    const kv = new MemoryKvStore();
+    const exporter = new FedifySpanExporter(kv);
 
-      const activityJson = JSON.stringify({
-        "@context": "https://www.w3.org/ns/activitystreams",
-        type: "Delete",
-        id: "https://example.com/activities/no-actor",
-        object: "https://example.com/posts/123",
-      });
+    const activityJson = JSON.stringify({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Delete",
+      id: "https://example.com/activities/no-actor",
+      object: "https://example.com/posts/123",
+    });
 
-      const span = createMockSpan({
-        traceId: "no-actor-trace",
-        spanId: "span1",
-        name: "activitypub.inbox",
-        events: [createActivityReceivedEvent({ activityJson })],
-      });
+    const span = createMockSpan({
+      traceId: "no-actor-trace",
+      spanId: "span1",
+      name: "activitypub.inbox",
+      events: [createActivityReceivedEvent({ activityJson })],
+    });
 
-      await new Promise<void>((resolve) => {
-        exporter.export([span], () => resolve());
-      });
+    await new Promise<void>((resolve) => {
+      exporter.export([span], () => resolve());
+    });
 
-      const activities = await exporter.getActivitiesByTraceId(
-        "no-actor-trace",
-      );
-      assertEquals(activities.length, 1);
-      assertEquals(activities[0].actorId, undefined);
-    },
-  );
+    const activities = await exporter.getActivitiesByTraceId("no-actor-trace");
+    assertEquals(activities.length, 1);
+    assertEquals(activities[0].actorId, undefined);
+  });
 });

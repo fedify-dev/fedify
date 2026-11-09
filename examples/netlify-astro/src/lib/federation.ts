@@ -54,20 +54,18 @@ builder
         await context.data.kv.set(keyPairKey, serialized);
         created = true;
       } else {
-        created = await context.data.kv.cas(
-          keyPairKey,
-          undefined,
-          serialized,
-        );
+        created = await context.data.kv.cas(keyPairKey, undefined, serialized);
       }
       if (created) return [keyPair];
       stored = await context.data.kv.get<StoredKeyPair>(keyPairKey);
       if (stored == null) throw new Error("Failed to persist the actor key.");
     }
-    return [{
-      privateKey: await importJwk(stored.privateKey, "private"),
-      publicKey: await importJwk(stored.publicKey, "public"),
-    }];
+    return [
+      {
+        privateKey: await importJwk(stored.privateKey, "private"),
+        publicKey: await importJwk(stored.publicKey, "public"),
+      },
+    ];
   });
 
 builder

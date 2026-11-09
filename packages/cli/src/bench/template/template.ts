@@ -55,11 +55,7 @@ export function renderTemplates<T>(value: T, context: TemplateContext = {}): T {
   return renderValue(value, context) as T;
 }
 
-function renderValue(
-  value: unknown,
-  ctx: TemplateContext,
-  depth = 0,
-): unknown {
+function renderValue(value: unknown, ctx: TemplateContext, depth = 0): unknown {
   if (depth > MAX_DEPTH) {
     throw new TemplateError("Maximum template nesting depth exceeded.");
   }
@@ -121,10 +117,12 @@ function evalExpr(source: string, ctx: TemplateContext): unknown {
   const call = expr.match(CALL_RE);
   if (call != null) {
     const name = call[1];
-    const helper = FORBIDDEN.has(name) || ctx.helpers == null ||
-        !Object.hasOwn(ctx.helpers, name)
-      ? undefined
-      : ctx.helpers[name];
+    const helper =
+      FORBIDDEN.has(name) ||
+      ctx.helpers == null ||
+      !Object.hasOwn(ctx.helpers, name)
+        ? undefined
+        : ctx.helpers[name];
     if (typeof helper !== "function") {
       throw new TemplateError(`Unknown helper: ${name}.`);
     }
@@ -194,7 +192,8 @@ function resolvePath(
       throw new TemplateError(`Invalid reference: ${path}.`);
     }
     if (
-      current == null || typeof current !== "object" ||
+      current == null ||
+      typeof current !== "object" ||
       !Object.hasOwn(current as Record<string, unknown>, part)
     ) {
       throw new TemplateError(`Unknown reference: ${path}.`);

@@ -113,9 +113,10 @@ export class RedisKvStore implements KvStore {
   constructor(redis: Redis | Cluster, options: RedisKvStoreOptions = {}) {
     this.#redis = redis;
     this.#keyPrefix = options.keyPrefix ?? "fedify::";
-    this.#keyPrefixStr = typeof this.#keyPrefix === "string"
-      ? this.#keyPrefix
-      : new TextDecoder().decode(new Uint8Array(this.#keyPrefix));
+    this.#keyPrefixStr =
+      typeof this.#keyPrefix === "string"
+        ? this.#keyPrefix
+        : new TextDecoder().decode(new Uint8Array(this.#keyPrefix));
     this.#codec = options.codec ?? new JsonCodec();
   }
 
@@ -201,9 +202,9 @@ export class RedisKvStore implements KvStore {
 
   #deserializeKey(redisKey: string): KvKey {
     const suffix = redisKey.slice(this.#keyPrefixStr.length);
-    return suffix.split("::").map((p) =>
-      p.replaceAll("_:", ":")
-    ) as unknown as KvKey;
+    return suffix
+      .split("::")
+      .map((p) => p.replaceAll("_:", ":")) as unknown as KvKey;
   }
 
   /**
@@ -219,9 +220,10 @@ export class RedisKvStore implements KvStore {
       pattern = `${this.#keyPrefixStr}*`;
     } else {
       const prefixKey = this.#serializeKey(prefix);
-      const prefixKeyFullStr = typeof prefixKey === "string"
-        ? prefixKey
-        : new TextDecoder().decode(new Uint8Array(prefixKey));
+      const prefixKeyFullStr =
+        typeof prefixKey === "string"
+          ? prefixKey
+          : new TextDecoder().decode(new Uint8Array(prefixKey));
       exactKey = prefixKey;
       pattern = `${prefixKeyFullStr}::*`;
     }

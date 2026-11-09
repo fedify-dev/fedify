@@ -39,8 +39,7 @@ const BANNED_LOOKUP_REASONS: Record<string, string> = {
 };
 const BANNED_LOOKUP_CASES: LookupCasePattern[] = Object.keys(
   BANNED_LOOKUP_REASONS,
-)
-  .map((key) => key.split(",") as LookupCasePattern);
+).map((key) => key.split(",") as LookupCasePattern);
 
 /**
  * Run servers for all generated apps and test them with the lookup command.
@@ -79,7 +78,8 @@ export const parseLookupCase = (dir: string): LookupCase =>
   dir.split(sep).slice(-4) as LookupCase;
 
 export const matchesLookupCasePattern =
-  (target: LookupCase) => (pattern: LookupCasePattern): boolean =>
+  (target: LookupCase) =>
+  (pattern: LookupCasePattern): boolean =>
     pattern.every((value, index) => value === "*" || value === target[index]);
 
 export const isTestable = (dir: string): boolean =>
@@ -90,9 +90,9 @@ function printSkippedCases(dirs: string[]): void {
     dirs.filter(Boolean).flatMap((dir) =>
       // The curried `join` helper makes this filter/map chain intentional.
       // oxlint-disable-next-line anti-slop/no-array-filter-map
-      BANNED_LOOKUP_CASES
-        .filter(matchesLookupCasePattern(parseLookupCase(dir)))
-        .map(join(","))
+      BANNED_LOOKUP_CASES.filter(
+        matchesLookupCasePattern(parseLookupCase(dir)),
+      ).map(join(",")),
     ),
   );
   if (matchedPatterns.size > 0) {
@@ -149,9 +149,12 @@ async function testApp(dir: string): Promise<boolean> {
     return false;
   });
 
-  printMessage`    Lookup ${result ? "successful" : "failed"} for ${
-    values([wf, pm, kv, mq])
-  }!`;
+  printMessage`    Lookup ${result ? "successful" : "failed"} for ${values([
+    wf,
+    pm,
+    kv,
+    mq,
+  ])}!`;
   if (!result) {
     printMessage`    Check out these files for more details: \
 ${joinPath(dir, "out.txt")} and \

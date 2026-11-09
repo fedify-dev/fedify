@@ -52,10 +52,7 @@ import {
 
 type VocabConstructor<T extends ASObject> = {
   readonly typeId: URL;
-  new (
-    values: Record<string, unknown>,
-    options?: Record<string, unknown>,
-  ): T;
+  new (values: Record<string, unknown>, options?: Record<string, unknown>): T;
   fromJsonLd(
     json: unknown,
     options?: {
@@ -107,13 +104,11 @@ interface ControlConfig<
   readonly defaultMissingPolicy: "automatic" | "denied";
   readonly recognizeImpolite: (
     source: TImpoliteSource,
-  ) =>
-    | RecognizedImpoliteInteraction<
-      TInteracting,
-      TTarget,
-      TImpoliteSource
-    >
-    | null;
+  ) => RecognizedImpoliteInteraction<
+    TInteracting,
+    TTarget,
+    TImpoliteSource
+  > | null;
   readonly getImplicitAutomaticActors?: (
     subject: TTarget,
     options: DereferenceOptions,
@@ -136,26 +131,26 @@ export interface DereferenceOptions {
 
 type RequestValidationFailure =
   | {
-    readonly type: "objectMismatch" | "instrumentMismatch";
-    readonly expected: URL;
-    readonly actual?: URL;
-  }
+      readonly type: "objectMismatch" | "instrumentMismatch";
+      readonly expected: URL;
+      readonly actual?: URL;
+    }
   | {
-    readonly type: "requesterMismatch";
-    readonly expected: URL;
-    readonly actual?: URL;
-  };
+      readonly type: "requesterMismatch";
+      readonly expected: URL;
+      readonly actual?: URL;
+    };
 
 type RuleMatchResult =
   | {
-    readonly result: "matched";
-    readonly reason: InteractionPolicyMatchReason;
-  }
+      readonly result: "matched";
+      readonly reason: InteractionPolicyMatchReason;
+    }
   | {
-    readonly result: "unverifiableCollection";
-    readonly collection: URL;
-    readonly cause: unknown;
-  }
+      readonly result: "unverifiableCollection";
+      readonly collection: URL;
+      readonly cause: unknown;
+    }
   | null;
 
 export function createInteractionControl<
@@ -220,10 +215,10 @@ export function createInteractionControl<
       new Delete({
         id: options.id,
         actor: options.actor,
-        object: options.embedAuthorization &&
-            !(options.authorization instanceof URL)
-          ? createEmbeddedAuthorization(options.authorization, config)
-          : getRequiredId(options.authorization, "authorization"),
+        object:
+          options.embedAuthorization && !(options.authorization instanceof URL)
+            ? createEmbeddedAuthorization(options.authorization, config)
+            : getRequiredId(options.authorization, "authorization"),
         ...audience(options),
       }),
     recognizeImpolite: config.recognizeImpolite,
@@ -246,12 +241,10 @@ export function createInteractionControl<
   };
 }
 
-function audience(
-  options: {
-    readonly to?: URL | readonly URL[];
-    readonly cc?: URL | readonly URL[];
-  },
-): {
+function audience(options: {
+  readonly to?: URL | readonly URL[];
+  readonly cc?: URL | readonly URL[];
+}): {
   readonly to?: URL;
   readonly tos?: URL[];
   readonly cc?: URL;
@@ -263,13 +256,13 @@ function audience(
     ...(to == null
       ? {}
       : Array.isArray(to)
-      ? { tos: to as URL[] }
-      : { to: to as URL }),
+        ? { tos: to as URL[] }
+        : { to: to as URL }),
     ...(cc == null
       ? {}
       : Array.isArray(cc)
-      ? { ccs: cc as URL[] }
-      : { cc: cc as URL }),
+        ? { ccs: cc as URL[] }
+        : { cc: cc as URL }),
   };
 }
 
@@ -299,9 +292,8 @@ function createEmbeddedAuthorization<
     TRequestValidationOptions
   >,
 ): TAuthorization {
-  const { interactingObjectId, interactionTargetId } = authorization as
-    & ASObject
-    & {
+  const { interactingObjectId, interactionTargetId } =
+    authorization as ASObject & {
       readonly interactingObjectId?: URL | null;
       readonly interactionTargetId?: URL | null;
     };
@@ -350,9 +342,8 @@ async function verifyRequest<
   TContextData,
 >(
   context: Context<TContextData>,
-  options:
-    & InteractionRequestVerificationOptions<TRequest>
-    & TRequestValidationOptions,
+  options: InteractionRequestVerificationOptions<TRequest> &
+    TRequestValidationOptions,
   config: ControlConfig<
     TRequest,
     TAuthorization,
@@ -364,9 +355,8 @@ async function verifyRequest<
 ): Promise<InteractionRequestVerification<TRequest, TInteracting, TTarget>> {
   const documentLoader = options.documentLoader ?? context.documentLoader;
   const contextLoader = options.contextLoader ?? documentLoader;
-  const expectedRequestId = options.request instanceof URL
-    ? options.request
-    : null;
+  const expectedRequestId =
+    options.request instanceof URL ? options.request : null;
   const requestResult = await materialize(
     options.request,
     config.requestClass,
@@ -415,18 +405,20 @@ async function verifyRequest<
   }
   // Evidence that authenticated nothing and kept no interpretation, e.g., for
   // an activity queued by an older version of Fedify, is no evidence at all:
-  const authentication = options.authentication == null ||
-      (!options.authentication.verified &&
-        options.authentication.expandedActivity.length < 1)
-    ? undefined
-    : options.authentication;
+  const authentication =
+    options.authentication == null ||
+    (!options.authentication.verified &&
+      options.authentication.expandedActivity.length < 1)
+      ? undefined
+      : options.authentication;
   if (config.authoritativeInteractingObject) {
-    const evidence = authentication != null
-      ? {
-        expanded: authentication.expandedActivity,
-        baseUrl: authentication.baseUrl,
-      }
-      : requestResult.evidence;
+    const evidence =
+      authentication != null
+        ? {
+            expanded: authentication.expandedActivity,
+            baseUrl: authentication.baseUrl,
+          }
+        : requestResult.evidence;
     if (authentication == null && expectedRequestId != null) {
       if (evidence == null) {
         return {
@@ -454,7 +446,8 @@ async function verifyRequest<
       };
     }
     if (
-      authentication != null && request.actorId != null &&
+      authentication != null &&
+      request.actorId != null &&
       !isActorAuthenticated(authentication, request.actorId)
     ) {
       return {
@@ -469,17 +462,20 @@ async function verifyRequest<
       };
     }
   }
-  const targetResult = options.resolvedInteractionTarget != null &&
-      request.objectId != null
-    // The type is checked by isInteractionTarget() below:
-    ? { ok: true as const, value: options.resolvedInteractionTarget as TTarget }
-    : await dereferenceField(
-      request,
-      request.objectId,
-      config.getInteractionTarget,
-      documentLoader,
-      contextLoader,
-    );
+  const targetResult =
+    options.resolvedInteractionTarget != null && request.objectId != null
+      ? // The type is checked by isInteractionTarget() below:
+        {
+          ok: true as const,
+          value: options.resolvedInteractionTarget as TTarget,
+        }
+      : await dereferenceField(
+          request,
+          request.objectId,
+          config.getInteractionTarget,
+          documentLoader,
+          contextLoader,
+        );
   if (!targetResult.ok) {
     return {
       verified: false,
@@ -514,40 +510,40 @@ async function verifyRequest<
     };
   }
   let owner: URL | undefined;
-  const interactingResult = config.authoritativeInteractingObject &&
-      request.instrumentId != null
-    ? await (async () => {
-      const resolution = await resolveAuthoritativeObject(
-        request.instrumentId!,
-        {
-          documentLoader,
-          contextLoader,
-          verifyPortableObject: context.verifyPortableObject,
-          typeId: config.interactingObjectTypes![0],
-          isObject: (object): object is TInteracting =>
-            config.isInteractingObject?.(object) ?? true,
-        },
-      );
-      if (!resolution.ok) {
-        return { ok: false as const, failure: resolution.failure };
-      }
-      owner = resolution.owner;
-      return { ok: true as const, value: resolution.object };
-    })()
-    : options.resolvedInteractingObject != null &&
-        request.instrumentId != null
-    // The type is checked by isInteractingObject() below:
-    ? {
-      ok: true as const,
-      value: options.resolvedInteractingObject as TInteracting,
-    }
-    : await dereferenceField(
-      request,
-      request.instrumentId,
-      config.getInteractingObject,
-      documentLoader,
-      contextLoader,
-    );
+  const interactingResult =
+    config.authoritativeInteractingObject && request.instrumentId != null
+      ? await (async () => {
+          const resolution = await resolveAuthoritativeObject(
+            request.instrumentId!,
+            {
+              documentLoader,
+              contextLoader,
+              verifyPortableObject: context.verifyPortableObject,
+              typeId: config.interactingObjectTypes![0],
+              isObject: (object): object is TInteracting =>
+                config.isInteractingObject?.(object) ?? true,
+            },
+          );
+          if (!resolution.ok) {
+            return { ok: false as const, failure: resolution.failure };
+          }
+          owner = resolution.owner;
+          return { ok: true as const, value: resolution.object };
+        })()
+      : options.resolvedInteractingObject != null &&
+          request.instrumentId != null
+        ? // The type is checked by isInteractingObject() below:
+          {
+            ok: true as const,
+            value: options.resolvedInteractingObject as TInteracting,
+          }
+        : await dereferenceField(
+            request,
+            request.instrumentId,
+            config.getInteractingObject,
+            documentLoader,
+            contextLoader,
+          );
   if (!interactingResult.ok) {
     return {
       verified: false,
@@ -582,8 +578,10 @@ async function verifyRequest<
     };
   }
   if (
-    config.authoritativeInteractingObject && request.actorId == null &&
-    (owner == null || authentication == null ||
+    config.authoritativeInteractingObject &&
+    request.actorId == null &&
+    (owner == null ||
+      authentication == null ||
       !isActorAuthenticated(authentication, owner))
   ) {
     // Without an actor, the requester is the owner of the interacting object,
@@ -592,16 +590,18 @@ async function verifyRequest<
       verified: false,
       request,
       requestId: request.id,
-      failure: authentication == null
-        ? { category: "invalid", type: "missingActor" }
-        : {
-          category: "unauthorized",
-          type: "unauthenticated-requester",
-          ...(owner == null ? {} : { requester: owner }),
-        },
+      failure:
+        authentication == null
+          ? { category: "invalid", type: "missingActor" }
+          : {
+              category: "unauthorized",
+              type: "unauthenticated-requester",
+              ...(owner == null ? {} : { requester: owner }),
+            },
     };
   }
-  const requester = request.actorId ??
+  const requester =
+    request.actorId ??
     (config.authoritativeInteractingObject
       ? owner
       : config.getRequester?.(request, interactingObject, interactionTarget));
@@ -643,19 +643,20 @@ async function verifyRequest<
       verified: false,
       request,
       requestId: request.id,
-      failure: validation.type === "requesterMismatch"
-        ? {
-          category: "unauthorized",
-          type: validation.type,
-          expected: validation.expected,
-          actual: validation.actual,
-        }
-        : {
-          category: "invalid",
-          type: validation.type,
-          expected: validation.expected,
-          actual: validation.actual,
-        },
+      failure:
+        validation.type === "requesterMismatch"
+          ? {
+              category: "unauthorized",
+              type: validation.type,
+              expected: validation.expected,
+              actual: validation.actual,
+            }
+          : {
+              category: "invalid",
+              type: validation.type,
+              expected: validation.expected,
+              actual: validation.actual,
+            },
     };
   }
   return {
@@ -695,21 +696,22 @@ async function verifyAuthorization<
     TRequestValidationOptions
   >,
 ): Promise<InteractionAuthorizationVerification<TAuthorization>> {
-  const authorizationUrl = options.authorization instanceof URL
-    ? options.authorization
-    : null;
+  const authorizationUrl =
+    options.authorization instanceof URL ? options.authorization : null;
   const embeddedAuthorization = authorizationUrl == null;
   const expectedAuthorizationId = options.authorizationId ?? authorizationUrl;
   // An off-origin authorization is acceptable only if the caller vouches for
   // its authenticity:
-  const checkOrigin = !options.allowOffOrigin ||
-    options.verifyAuthenticity == null;
-  const expectedAttribution = options.attributedTo ??
+  const checkOrigin =
+    !options.allowOffOrigin || options.verifyAuthenticity == null;
+  const expectedAttribution =
+    options.attributedTo ??
     (!(options.interactionTarget instanceof URL)
       ? config.getSelfActor(options.interactionTarget)
       : null);
   if (
-    authorizationUrl != null && options.authorizationId != null &&
+    authorizationUrl != null &&
+    options.authorizationId != null &&
     !idsEqual(authorizationUrl, options.authorizationId)
   ) {
     return {
@@ -900,11 +902,10 @@ async function verifyAuthorization<
   const expectedOrigin = getAuthorizationOrigin(expectedAttribution);
   const actualOrigin = getAuthorizationOrigin(authorization.id);
   if (
-    checkOrigin && (
-      expectedOrigin === "null" ||
+    checkOrigin &&
+    (expectedOrigin === "null" ||
       actualOrigin === "null" ||
-      expectedOrigin !== actualOrigin
-    )
+      expectedOrigin !== actualOrigin)
   ) {
     return {
       verified: false,
@@ -1005,14 +1006,14 @@ async function materialize<T extends ASObject>(
   contextLoader: DocumentLoader | undefined,
 ): Promise<
   | {
-    readonly ok: true;
-    readonly object: T;
-    /**
-     * The fetched request's interpretation, if the request was fetched from
-     * the web origin that speaks for it and its actors.
-     */
-    readonly evidence: RequestEvidence | null;
-  }
+      readonly ok: true;
+      readonly object: T;
+      /**
+       * The fetched request's interpretation, if the request was fetched from
+       * the web origin that speaks for it and its actors.
+       */
+      readonly evidence: RequestEvidence | null;
+    }
   | { readonly ok: false; readonly failure: UnverifiableFailure }
 > {
   if (!(value instanceof URL)) {
@@ -1044,8 +1045,10 @@ async function materialize<T extends ASObject>(
     // actors; FEP-ef61 portable objects are never authenticated by where
     // they were fetched from:
     if (
-      documentUrl != null && !isPortableClaim(value) &&
-      !isPortableClaim(documentUrl) && !hasCredentials(documentUrl) &&
+      documentUrl != null &&
+      !isPortableClaim(value) &&
+      !isPortableClaim(documentUrl) &&
+      !hasCredentials(documentUrl) &&
       documentUrl.origin === value.origin
     ) {
       const expanded = await jsonld.expand(
@@ -1056,17 +1059,21 @@ async function materialize<T extends ASObject>(
       );
       const root = getRootNode(expanded);
       const rootId = root == null ? null : resolveNodeId(root, value);
-      const actors = root == null
-        ? []
-        : getPropertyValues(root, AS_ACTOR).map((actor) =>
-          resolveNodeId(actor, value)
-        );
+      const actors =
+        root == null
+          ? []
+          : getPropertyValues(root, AS_ACTOR).map((actor) =>
+              resolveNodeId(actor, value),
+            );
       if (
-        rootId != null && !isPortableClaim(rootId) &&
+        rootId != null &&
+        !isPortableClaim(rootId) &&
         rootId.href === value.href &&
-        actors.every((actor) =>
-          actor != null && !isPortableClaim(actor) &&
-          actor.origin === value.origin
+        actors.every(
+          (actor) =>
+            actor != null &&
+            !isPortableClaim(actor) &&
+            actor.origin === value.origin,
         )
       ) {
         evidence = { expanded, baseUrl: value };
@@ -1153,7 +1160,7 @@ function bindRequest(
   if (
     actors.length !== request.actorIds.length ||
     !actors.every((actor, i) =>
-      sameId(resolveNodeId(actor, base), request.actorIds[i])
+      sameId(resolveNodeId(actor, base), request.actorIds[i]),
     )
   ) {
     return {
@@ -1162,12 +1169,10 @@ function bindRequest(
       property: "actor",
     };
   }
-  for (
-    const [iri, property, missing, id] of [
-      [AS_OBJECT, "object", "missingObject", request.objectId],
-      [AS_INSTRUMENT, "instrument", "missingInstrument", request.instrumentId],
-    ] as const
-  ) {
+  for (const [iri, property, missing, id] of [
+    [AS_OBJECT, "object", "missingObject", request.objectId],
+    [AS_INSTRUMENT, "instrument", "missingInstrument", request.instrumentId],
+  ] as const) {
     const values = getPropertyValues(root, iri);
     if (values.length < 1) return { category: "invalid", type: missing };
     if (values.length !== 1 || !sameId(resolveNodeId(values[0], base), id)) {
@@ -1262,10 +1267,8 @@ async function evaluatePolicy<
     return { result: "manual", reason: manual.reason };
   }
   const broadAutomatic = await matchRule(automaticApprovals, matchOptions);
-  const unverifiableAutomatic = broadAutomatic?.result ===
-      "unverifiableCollection"
-    ? broadAutomatic
-    : null;
+  const unverifiableAutomatic =
+    broadAutomatic?.result === "unverifiableCollection" ? broadAutomatic : null;
   if (broadAutomatic?.result === "matched") {
     return { result: "automatic", reason: broadAutomatic.reason };
   }
@@ -1281,9 +1284,7 @@ async function evaluatePolicy<
   return { result: "denied", reason: { type: "noMatch" } };
 }
 
-function getApprovalRule(
-  rule: InteractionRule | null | undefined,
-): {
+function getApprovalRule(rule: InteractionRule | null | undefined): {
   readonly automaticApprovals: readonly URL[];
   readonly manualApprovals: readonly URL[];
 } | null {
@@ -1317,9 +1318,10 @@ async function matchImplicitAutomaticActors<
   >,
 ): Promise<InteractionPolicyMatchReason | null> {
   if (config.getImplicitAutomaticActors == null) return null;
-  for await (
-    const actor of config.getImplicitAutomaticActors(subject, options)
-  ) {
+  for await (const actor of config.getImplicitAutomaticActors(
+    subject,
+    options,
+  )) {
     if (idsEqual(actor, requester)) {
       return { type: "actor", actor };
     }
@@ -1384,9 +1386,7 @@ async function matchRule<TContextData>(
   options: {
     readonly requester: URL;
     readonly context: Context<TContextData>;
-    readonly matchesApprovalCollection?: MatchesApprovalCollection<
-      TContextData
-    >;
+    readonly matchesApprovalCollection?: MatchesApprovalCollection<TContextData>;
     readonly throwCollectionErrors: boolean;
     readonly actorOnly?: boolean;
   },
@@ -1404,12 +1404,14 @@ async function matchRule<TContextData>(
     }
   }
   if (matchesApprovalCollection != null) {
-    let unverifiable:
-      | { readonly collection: URL; readonly cause: unknown }
-      | null = null;
+    let unverifiable: {
+      readonly collection: URL;
+      readonly cause: unknown;
+    } | null = null;
     for (const entry of entries) {
       if (
-        entry.href === PUBLIC_COLLECTION.href || entry.href === requester.href
+        entry.href === PUBLIC_COLLECTION.href ||
+        entry.href === requester.href
       ) {
         continue;
       }
@@ -1439,9 +1441,10 @@ async function matchRule<TContextData>(
   return null;
 }
 
-function deniedUnverifiableCollection(
-  failure: { readonly collection: URL; readonly cause: unknown },
-): InteractionPolicyDecision {
+function deniedUnverifiableCollection(failure: {
+  readonly collection: URL;
+  readonly cause: unknown;
+}): InteractionPolicyDecision {
   return {
     result: "denied",
     reason: {
@@ -1496,9 +1499,7 @@ function createReject<
   TRequest extends Activity,
   TInteracting extends ASObject,
   TTarget extends ASObject,
->(
-  options: InteractionRejectOptions<TRequest, TInteracting, TTarget>,
-): Reject {
+>(options: InteractionRejectOptions<TRequest, TInteracting, TTarget>): Reject {
   if (options.mode === "polite") {
     return new Reject({
       id: options.id,
@@ -1524,22 +1525,18 @@ export function recognized<
   // function body does not reference it.
   // oxlint-disable-next-line eslint/no-unused-vars
   TRequestValidationOptions extends object,
->(
-  values: {
-    readonly requester: URL | null;
-    readonly interactingObject: TInteracting;
-    readonly interactionTarget?: TTarget;
-    readonly interactionTargetId: URL | null;
-    readonly source: TImpoliteSource;
-    readonly evidence: ImpoliteInteractionEvidence;
-  },
-):
-  | RecognizedImpoliteInteraction<
-    TInteracting,
-    TTarget,
-    TImpoliteSource
-  >
-  | null {
+>(values: {
+  readonly requester: URL | null;
+  readonly interactingObject: TInteracting;
+  readonly interactionTarget?: TTarget;
+  readonly interactionTargetId: URL | null;
+  readonly source: TImpoliteSource;
+  readonly evidence: ImpoliteInteractionEvidence;
+}): RecognizedImpoliteInteraction<
+  TInteracting,
+  TTarget,
+  TImpoliteSource
+> | null {
   if (values.requester == null || values.interactionTargetId == null) {
     return null;
   }

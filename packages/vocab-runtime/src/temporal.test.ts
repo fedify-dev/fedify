@@ -26,10 +26,7 @@ test("isTemporalInstant() rejects unrelated values", () => {
   strictEqual(isTemporalInstant(undefined), false);
   strictEqual(isTemporalInstant("2026-05-14T00:00:00Z"), false);
   strictEqual(isTemporalInstant(new Date()), false);
-  strictEqual(
-    isTemporalInstant(Temporal.Duration.from({ seconds: 1 })),
-    false,
-  );
+  strictEqual(isTemporalInstant(Temporal.Duration.from({ seconds: 1 })), false);
 });
 
 test("isTemporalInstant() rejects bare objects tagged but missing shape", () => {
@@ -60,10 +57,7 @@ test("isTemporalInstant() rejects default Object.prototype.toString", () => {
 });
 
 test("isTemporalDuration() accepts polyfill instances", () => {
-  strictEqual(
-    isTemporalDuration(Temporal.Duration.from({ hours: 1 })),
-    true,
-  );
+  strictEqual(isTemporalDuration(Temporal.Duration.from({ hours: 1 })), true);
 });
 
 test("isTemporalDuration() accepts spec-compliant non-polyfill objects", () => {

@@ -1,14 +1,12 @@
 {
   "tasks": {
-    "check": "deno fmt --check . && deno check",
+    "check": "deno check",
     "dev": "deno run -A npm:vite@^7.1.3 --configLoader native",
     "build": "deno run -A npm:vite@^7.1.3 build --configLoader native",
     "start": "deno serve -A _fresh/server.js",
     "update": "deno run -A -r jsr:@fresh/update ."
   },
-  "exclude": [
-    "**/_fresh/*"
-  ],
+  "exclude": ["**/_fresh/*"],
   "imports": {
     "@/": "./",
     "fresh": "jsr:@fresh/core@^2.1.4",
@@ -44,8 +42,6 @@
       "noscript",
       "template"
     ],
-    "types": [
-      "vite/client"
-    ]
+    "types": ["vite/client"]
   }
 }

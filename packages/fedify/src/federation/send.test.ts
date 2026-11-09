@@ -97,108 +97,93 @@ test("extractInboxes()", () => {
     }),
   ];
   let inboxes = extractInboxes({ recipients });
-  assertEquals(
-    inboxes,
-    {
-      "https://example.com/alice/inbox": {
-        actorIds: new Set(["https://example.com/alice"]),
-        sharedInbox: false,
-      },
-      "https://example.com/app/inbox": {
-        actorIds: new Set(["https://example.com/app"]),
-        sharedInbox: false,
-      },
-      "https://example.org/group/inbox": {
-        actorIds: new Set(["https://example.org/group"]),
-        sharedInbox: false,
-      },
-      "https://example.net/service/inbox": {
-        actorIds: new Set(["https://example.net/service"]),
-        sharedInbox: false,
-      },
+  assertEquals(inboxes, {
+    "https://example.com/alice/inbox": {
+      actorIds: new Set(["https://example.com/alice"]),
+      sharedInbox: false,
     },
-  );
+    "https://example.com/app/inbox": {
+      actorIds: new Set(["https://example.com/app"]),
+      sharedInbox: false,
+    },
+    "https://example.org/group/inbox": {
+      actorIds: new Set(["https://example.org/group"]),
+      sharedInbox: false,
+    },
+    "https://example.net/service/inbox": {
+      actorIds: new Set(["https://example.net/service"]),
+      sharedInbox: false,
+    },
+  });
   inboxes = extractInboxes({ recipients, preferSharedInbox: true });
-  assertEquals(
-    inboxes,
-    {
-      "https://example.com/inbox": {
-        actorIds: new Set([
-          "https://example.com/alice",
-          "https://example.com/app",
-        ]),
-        sharedInbox: true,
-      },
-      "https://example.org/group/inbox": {
-        actorIds: new Set(["https://example.org/group"]),
-        sharedInbox: false,
-      },
-      "https://example.net/inbox": {
-        actorIds: new Set(["https://example.net/service"]),
-        sharedInbox: true,
-      },
+  assertEquals(inboxes, {
+    "https://example.com/inbox": {
+      actorIds: new Set([
+        "https://example.com/alice",
+        "https://example.com/app",
+      ]),
+      sharedInbox: true,
     },
-  );
+    "https://example.org/group/inbox": {
+      actorIds: new Set(["https://example.org/group"]),
+      sharedInbox: false,
+    },
+    "https://example.net/inbox": {
+      actorIds: new Set(["https://example.net/service"]),
+      sharedInbox: true,
+    },
+  });
   inboxes = extractInboxes({
     recipients,
     excludeBaseUris: [new URL("https://foo.bar/")],
   });
-  assertEquals(
-    inboxes,
-    {
-      "https://example.com/alice/inbox": {
-        actorIds: new Set(["https://example.com/alice"]),
-        sharedInbox: false,
-      },
-      "https://example.com/app/inbox": {
-        actorIds: new Set(["https://example.com/app"]),
-        sharedInbox: false,
-      },
-      "https://example.org/group/inbox": {
-        actorIds: new Set(["https://example.org/group"]),
-        sharedInbox: false,
-      },
-      "https://example.net/service/inbox": {
-        actorIds: new Set(["https://example.net/service"]),
-        sharedInbox: false,
-      },
+  assertEquals(inboxes, {
+    "https://example.com/alice/inbox": {
+      actorIds: new Set(["https://example.com/alice"]),
+      sharedInbox: false,
     },
-  );
+    "https://example.com/app/inbox": {
+      actorIds: new Set(["https://example.com/app"]),
+      sharedInbox: false,
+    },
+    "https://example.org/group/inbox": {
+      actorIds: new Set(["https://example.org/group"]),
+      sharedInbox: false,
+    },
+    "https://example.net/service/inbox": {
+      actorIds: new Set(["https://example.net/service"]),
+      sharedInbox: false,
+    },
+  });
   inboxes = extractInboxes({
     recipients,
     excludeBaseUris: [new URL("https://example.com/")],
   });
-  assertEquals(
-    inboxes,
-    {
-      "https://example.org/group/inbox": {
-        actorIds: new Set(["https://example.org/group"]),
-        sharedInbox: false,
-      },
-      "https://example.net/service/inbox": {
-        actorIds: new Set(["https://example.net/service"]),
-        sharedInbox: false,
-      },
+  assertEquals(inboxes, {
+    "https://example.org/group/inbox": {
+      actorIds: new Set(["https://example.org/group"]),
+      sharedInbox: false,
     },
-  );
+    "https://example.net/service/inbox": {
+      actorIds: new Set(["https://example.net/service"]),
+      sharedInbox: false,
+    },
+  });
   inboxes = extractInboxes({
     recipients,
     preferSharedInbox: true,
     excludeBaseUris: [new URL("https://example.com/")],
   });
-  assertEquals(
-    inboxes,
-    {
-      "https://example.org/group/inbox": {
-        actorIds: new Set(["https://example.org/group"]),
-        sharedInbox: false,
-      },
-      "https://example.net/inbox": {
-        actorIds: new Set(["https://example.net/service"]),
-        sharedInbox: true,
-      },
+  assertEquals(inboxes, {
+    "https://example.org/group/inbox": {
+      actorIds: new Set(["https://example.org/group"]),
+      sharedInbox: false,
     },
-  );
+    "https://example.net/inbox": {
+      actorIds: new Set(["https://example.net/service"]),
+      sharedInbox: true,
+    },
+  });
 });
 
 test("sendActivity()", async (t) => {
@@ -206,24 +191,21 @@ test("sendActivity()", async (t) => {
 
   let httpSigVerified: boolean | null = null;
   let request: Request | null = null;
-  fetchMock.post(
-    "https://example.com/inbox",
-    async (cl) => {
-      httpSigVerified = false;
-      request = cl.request!.clone() as Request;
-      const options = {
-        documentLoader: mockDocumentLoader,
-        contextLoader: mockDocumentLoader,
-      };
-      const key = await verifyRequest(request, options);
-      const activity = await Activity.fromJsonLd(await request.json(), options);
-      if (key != null && await doesActorOwnKey(activity, key, options)) {
-        httpSigVerified = true;
-      }
-      if (httpSigVerified) return new Response("", { status: 202 });
-      return new Response("", { status: 401 });
-    },
-  );
+  fetchMock.post("https://example.com/inbox", async (cl) => {
+    httpSigVerified = false;
+    request = cl.request!.clone() as Request;
+    const options = {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    };
+    const key = await verifyRequest(request, options);
+    const activity = await Activity.fromJsonLd(await request.json(), options);
+    if (key != null && (await doesActorOwnKey(activity, key, options))) {
+      httpSigVerified = true;
+    }
+    if (httpSigVerified) return new Response("", { status: 202 });
+    return new Response("", { status: 401 });
+  });
 
   await t.step("success", async () => {
     const activity = {
@@ -257,7 +239,7 @@ test("sendActivity()", async (t) => {
         activity: { ...activity, actor: "https://example.com/person2" },
         keys: [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
         inbox: new URL("https://example.com/inbox"),
-      })
+      }),
     );
     assertFalse(httpSigVerified);
     assertNotEquals(request, null);
@@ -359,10 +341,7 @@ test("sendActivity()", async (t) => {
         "challenge retry connection reset",
       );
 
-      assertEquals(
-        error.url.href,
-        "https://example.com/inbox-challenge-reset",
-      );
+      assertEquals(error.url.href, "https://example.com/inbox-challenge-reset");
       assertEquals(error.cause, failure);
       assertEquals(requestCount, 2);
     },
@@ -534,10 +513,12 @@ test("sendActivity() records OpenTelemetry span events", async (t) => {
       activity,
       activityId: "https://example.com/activity",
       activityType: "https://www.w3.org/ns/activitystreams#Create",
-      keys: [{
-        keyId: new URL("https://example.com/person#key"),
-        privateKey: rsaPrivateKey2,
-      }],
+      keys: [
+        {
+          keyId: new URL("https://example.com/person#key"),
+          privateKey: rsaPrivateKey2,
+        },
+      ],
       inbox: new URL("https://example.com/inbox"),
       tracerProvider,
     });
@@ -608,10 +589,12 @@ function deliveryParams(
     activity: createActivity(activityId),
     activityId,
     activityType: "https://www.w3.org/ns/activitystreams#Create",
-    keys: [{
-      keyId: new URL("https://example.com/person#key"),
-      privateKey: rsaPrivateKey2,
-    }],
+    keys: [
+      {
+        keyId: new URL("https://example.com/person#key"),
+        privateKey: rsaPrivateKey2,
+      },
+    ],
     inbox: new URL(inbox),
     tracerProvider,
   };
@@ -654,10 +637,12 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
                 "https://example.com/inbox-warn",
                 tracerProvider,
               ),
-              keys: [{
-                keyId: ed25519Multikey.id!,
-                privateKey: ed25519PrivateKey,
-              }],
+              keys: [
+                {
+                  keyId: ed25519Multikey.id!,
+                  privateKey: ed25519PrivateKey,
+                },
+              ],
             });
           });
 
@@ -670,15 +655,13 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
           await new Promise<void>((resolve) => {
             fedifyExporter.export([span], () => resolve());
           });
-          const [record] = await fedifyExporter.getActivitiesByTraceId(
-            traceId,
-          );
+          const [record] = await fedifyExporter.getActivitiesByTraceId(traceId);
           assert(record != null);
           assertEquals(record.direction, "outbound");
           assertEquals(record.spanId, spanId);
 
           const warnLog = records.find((r) =>
-            String(r.rawMessage).startsWith("No supported key found to sign")
+            String(r.rawMessage).startsWith("No supported key found to sign"),
           );
           assert(warnLog != null);
           assertEquals(warnLog.properties.spanId, record.spanId);
@@ -737,18 +720,15 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
           const failureLog = records.find((r) =>
             String(r.rawMessage).startsWith(
               "Failed to send activity {activityId} to {inbox} ({status}",
-            )
+            ),
           );
           assert(failureLog != null);
           assertEquals(failureLog.properties.spanId, spanId);
           assertEquals(failureLog.properties.traceId, traceId);
-          assertEquals(
-            failureLog.properties.requestId,
-            outerContext.requestId,
-          );
+          assertEquals(failureLog.properties.requestId, outerContext.requestId);
 
-          const afterLog = records.find((r) =>
-            r.rawMessage === "after failure"
+          const afterLog = records.find(
+            (r) => r.rawMessage === "after failure",
           );
           assert(afterLog != null);
           assertEquals(afterLog.properties.requestId, outerContext.requestId);
@@ -786,8 +766,8 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
           assert(span != null);
           const { spanId } = span.spanContext();
 
-          const afterLog = records.find((r) =>
-            r.rawMessage === "after success"
+          const afterLog = records.find(
+            (r) => r.rawMessage === "after success",
           );
           assert(afterLog != null);
           assertNotEquals(afterLog.properties.spanId, spanId);
@@ -842,13 +822,15 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
 
           const spans = exporter.getSpans("activitypub.send_activity");
           assertEquals(spans.length, 2);
-          const spanA = spans.find((s) =>
-            s.attributes["activitypub.activity.id"] ===
-              "https://example.com/activity/a"
+          const spanA = spans.find(
+            (s) =>
+              s.attributes["activitypub.activity.id"] ===
+              "https://example.com/activity/a",
           );
-          const spanB = spans.find((s) =>
-            s.attributes["activitypub.activity.id"] ===
-              "https://example.com/activity/b"
+          const spanB = spans.find(
+            (s) =>
+              s.attributes["activitypub.activity.id"] ===
+              "https://example.com/activity/b",
           );
           assert(spanA != null && spanB != null);
           assertNotEquals(
@@ -856,25 +838,21 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
             spanB.spanContext().spanId,
           );
 
-          const logA = records.find((r) =>
-            r.properties.activityId === "https://example.com/activity/a" &&
-            String(r.rawMessage).startsWith("Failed to send activity")
+          const logA = records.find(
+            (r) =>
+              r.properties.activityId === "https://example.com/activity/a" &&
+              String(r.rawMessage).startsWith("Failed to send activity"),
           );
-          const logB = records.find((r) =>
-            r.properties.activityId === "https://example.com/activity/b" &&
-            String(r.rawMessage).startsWith("Failed to send activity")
+          const logB = records.find(
+            (r) =>
+              r.properties.activityId === "https://example.com/activity/b" &&
+              String(r.rawMessage).startsWith("Failed to send activity"),
           );
           assert(logA != null && logB != null);
           assertEquals(logA.properties.spanId, spanA.spanContext().spanId);
           assertEquals(logB.properties.spanId, spanB.spanContext().spanId);
-          assertEquals(
-            logA.properties.traceId,
-            spanA.spanContext().traceId,
-          );
-          assertEquals(
-            logB.properties.traceId,
-            spanB.spanContext().traceId,
-          );
+          assertEquals(logA.properties.traceId, spanA.spanContext().traceId);
+          assertEquals(logB.properties.traceId, spanB.spanContext().traceId);
           assertNotEquals(logA.properties.spanId, logB.properties.spanId);
         } finally {
           exporter.clear();
@@ -918,16 +896,19 @@ test("sendActivity() closes the initial session when serialization fails", async
   const failure = new Error("serialization failed");
   const error = await assertRejects(
     () =>
-      sendActivity({
-        activity: {
-          toJSON() {
-            throw failure;
+      sendActivity(
+        {
+          activity: {
+            toJSON() {
+              throw failure;
+            },
           },
+          keys: [],
+          inbox: new URL(url),
+          meterProvider,
         },
-        keys: [],
-        inbox: new URL(url),
-        meterProvider,
-      }, { openHop: hops.openHop }),
+        { openHop: hops.openHop },
+      ),
     Error,
     "serialization failed",
   );
@@ -978,9 +959,7 @@ test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
     );
     assertEquals(sent[0].attributes["activitypub.delivery.success"], true);
 
-    const durations = recorder.getMeasurements(
-      "activitypub.delivery.duration",
-    );
+    const durations = recorder.getMeasurements("activitypub.delivery.duration");
     assertEquals(durations.length, 1);
     assertEquals(durations[0].type, "histogram");
     assertGreaterOrEqual(durations[0].value, 0);
@@ -992,10 +971,7 @@ test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
       durations[0].attributes["activitypub.activity.type"],
       "https://www.w3.org/ns/activitystreams#Create",
     );
-    assertEquals(
-      durations[0].attributes["activitypub.delivery.success"],
-      true,
-    );
+    assertEquals(durations[0].attributes["activitypub.delivery.success"], true);
 
     recorder.clear();
     fetchMock.hardReset();
@@ -1042,9 +1018,7 @@ test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
       "metrics.example",
     );
 
-    const durations = recorder.getMeasurements(
-      "activitypub.delivery.duration",
-    );
+    const durations = recorder.getMeasurements("activitypub.delivery.duration");
     assertEquals(durations.length, 1);
     assertGreaterOrEqual(durations[0].value, 0);
     assertEquals(
@@ -1095,11 +1069,12 @@ test("sendActivity() exports delivery metrics through OpenTelemetry SDK", async 
     });
 
     await meterProvider.forceFlush();
-    const exportedMetrics = exporter.getMetrics()
+    const exportedMetrics = exporter
+      .getMetrics()
       .flatMap((resourceMetrics) => resourceMetrics.scopeMetrics)
       .flatMap((scopeMetrics) => scopeMetrics.metrics);
-    const sent = exportedMetrics.find((metric) =>
-      metric.descriptor.name === "activitypub.delivery.sent"
+    const sent = exportedMetrics.find(
+      (metric) => metric.descriptor.name === "activitypub.delivery.sent",
     );
     assert(sent != null);
     assertEquals(sent.dataPoints.length, 1);
@@ -1117,17 +1092,21 @@ test("sendActivity() exports delivery metrics through OpenTelemetry SDK", async 
 });
 
 for (const signed of [false, true]) {
-  const keys = [{
-    privateKey: signed ? rsaPrivateKey2 : ed25519PrivateKey,
-    keyId: signed ? rsaPublicKey2.id! : ed25519Multikey.id!,
-  }];
+  const keys = [
+    {
+      privateKey: signed ? rsaPrivateKey2 : ed25519PrivateKey,
+      keyId: signed ? rsaPublicKey2.id! : ed25519Multikey.id!,
+    },
+  ];
   test(`sendActivity() validates destinations (signed: ${signed})`, async (t) => {
     const activity = { type: "Create", id: "https://example.com/activity" };
     const publicInbox = "https://8.8.8.8/inbox";
     const privateInbox = "http://127.0.0.1/inbox";
-    for (
-      const target of [privateInbox, "http://169.254.169.254/", "http://[::1]/"]
-    ) {
+    for (const target of [
+      privateInbox,
+      "http://169.254.169.254/",
+      "http://[::1]/",
+    ]) {
       await t.step(`rejects ${target} before fetching`, async () => {
         fetchMock.mockGlobal().catch(202);
         try {
@@ -1165,8 +1144,8 @@ for (const signed of [false, true]) {
                 const calls = fetchMock.callHistory.calls(privateInbox);
                 assertEquals(calls.length, 1);
                 const request = calls[0].request!;
-                const preservesBody = signed || status === 307 ||
-                  status === 308;
+                const preservesBody =
+                  signed || status === 307 || status === 308;
                 assertEquals(request.method, preservesBody ? "POST" : "GET");
                 assertEquals(
                   await request.clone().text(),
@@ -1189,7 +1168,8 @@ for (const signed of [false, true]) {
     await t.step(
       "rejects a private destination after a public redirect",
       async () => {
-        fetchMock.mockGlobal()
+        fetchMock
+          .mockGlobal()
           .route(publicInbox, { status: 307, headers: { Location: "/next" } })
           .route("https://8.8.8.8/next", {
             status: 308,
@@ -1213,8 +1193,8 @@ for (const signed of [false, true]) {
         headers: { Location: publicInbox },
       });
       try {
-        await assertRejects(
-          () => sendActivity({ activity, keys, inbox: new URL(publicInbox) }),
+        await assertRejects(() =>
+          sendActivity({ activity, keys, inbox: new URL(publicInbox) }),
         );
         assert(fetchMock.callHistory.calls().length <= 21);
       } finally {
@@ -1235,23 +1215,21 @@ for (const signed of [false, true]) {
         fetchMock.hardReset();
       }
     });
-    await t.step(
-      "allows relative public redirects",
-      async () => {
-        fetchMock.mockGlobal()
-          .route(publicInbox, { status: 307, headers: { Location: "/next" } })
-          .route("https://8.8.8.8/next", 202);
-        try {
-          await sendActivity({ activity, keys, inbox: new URL(publicInbox) });
-          assertEquals(
-            fetchMock.callHistory.calls("https://8.8.8.8/next").length,
-            1,
-          );
-        } finally {
-          fetchMock.hardReset();
-        }
-      },
-    );
+    await t.step("allows relative public redirects", async () => {
+      fetchMock
+        .mockGlobal()
+        .route(publicInbox, { status: 307, headers: { Location: "/next" } })
+        .route("https://8.8.8.8/next", 202);
+      try {
+        await sendActivity({ activity, keys, inbox: new URL(publicInbox) });
+        assertEquals(
+          fetchMock.callHistory.calls("https://8.8.8.8/next").length,
+          1,
+        );
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
   });
 }
 
@@ -1274,10 +1252,15 @@ for (const signed of [false, true]) {
             assertEquals(hostname, "delivery.invalid");
             if (result === "throws") return Promise.reject(resolverError);
             return Promise.resolve(
-              result === "empty" ? [] : [{
-                address: result === "private" ? "127.0.0.1" : "alias.invalid.",
-                family: 4,
-              }],
+              result === "empty"
+                ? []
+                : [
+                    {
+                      address:
+                        result === "private" ? "127.0.0.1" : "alias.invalid.",
+                      family: 4,
+                    },
+                  ],
             );
           };
           try {
@@ -1289,13 +1272,16 @@ for (const signed of [false, true]) {
               });
             }
             const send = () =>
-              sendActivity({
-                activity,
-                activityType: "https://www.w3.org/ns/activitystreams#Create",
-                meterProvider,
-                keys,
-                inbox: new URL(redirected ? publicInbox : destination),
-              }, { openHop: (url) => openPublicFetch(url, { lookup }) });
+              sendActivity(
+                {
+                  activity,
+                  activityType: "https://www.w3.org/ns/activitystreams#Create",
+                  meterProvider,
+                  keys,
+                  inbox: new URL(redirected ? publicInbox : destination),
+                },
+                { openHop: (url) => openPublicFetch(url, { lookup }) },
+              );
             if (result === "private") {
               const error = await assertRejects(send, UrlError);
               assertEquals(error.reason, "disallowed");
@@ -1312,9 +1298,7 @@ for (const signed of [false, true]) {
             // Initial policy rejections remain outside delivery accounting;
             // redirect policy rejections retain their existing failed metric.
             const expectedCount = result === "private" && !redirected ? 0 : 1;
-            const sent = recorder.getMeasurements(
-              "activitypub.delivery.sent",
-            );
+            const sent = recorder.getMeasurements("activitypub.delivery.sent");
             const durations = recorder.getMeasurements(
               "activitypub.delivery.duration",
             );
@@ -1356,21 +1340,26 @@ const lifecycleActivity = {
 };
 
 const signedKeys = [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }];
-const unsignedKeys = [{
-  privateKey: ed25519PrivateKey,
-  keyId: ed25519Multikey.id!,
-}];
+const unsignedKeys = [
+  {
+    privateKey: ed25519PrivateKey,
+    keyId: ed25519Multikey.id!,
+  },
+];
 
 test("sendActivity() cancels a successful response body", async (t) => {
   for (const signed of [true, false]) {
     await t.step(`signed: ${signed}`, async () => {
       const inbox = "https://example.com/lifecycle/inbox";
       const hops = recordHops(() => ({ status: 202, body: "Accepted" }));
-      await sendActivity({
-        activity: lifecycleActivity,
-        keys: signed ? signedKeys : unsignedKeys,
-        inbox: new URL(inbox),
-      }, { openHop: hops.openHop });
+      await sendActivity(
+        {
+          activity: lifecycleActivity,
+          keys: signed ? signedKeys : unsignedKeys,
+          inbox: new URL(inbox),
+        },
+        { openHop: hops.openHop },
+      );
       assertEquals(hops.events, [
         `open ${inbox}`,
         `fetch #1 ${inbox}`,
@@ -1392,12 +1381,15 @@ test("sendActivity() reads at most 1 KiB of an error response body", async (t) =
       }));
       const error = await assertRejects(
         () =>
-          sendActivity({
-            activity: lifecycleActivity,
-            activityId: lifecycleActivity.id,
-            keys: signed ? signedKeys : unsignedKeys,
-            inbox: new URL(inbox),
-          }, { openHop: hops.openHop }),
+          sendActivity(
+            {
+              activity: lifecycleActivity,
+              activityId: lifecycleActivity.id,
+              keys: signed ? signedKeys : unsignedKeys,
+              inbox: new URL(inbox),
+            },
+            { openHop: hops.openHop },
+          ),
         SendActivityError,
       );
       assertEquals(error.responseBody, "x".repeat(1024) + "… (truncated)");
@@ -1416,20 +1408,26 @@ test("sendActivity() reads at most 1 KiB of an error response body", async (t) =
 });
 
 test("sendActivity() closes each redirect hop before opening the next", async (t) => {
-  for (const [signed, status] of [[true, 307], [false, 308]] as const) {
+  for (const [signed, status] of [
+    [true, 307],
+    [false, 308],
+  ] as const) {
     await t.step(`signed: ${signed}, ${status}`, async () => {
       const inbox = "https://example.com/lifecycle/redirect";
       const next = "https://example.com/lifecycle/redirected";
       const hops = recordHops((request) =>
         request.url === inbox
           ? { status, headers: { Location: next }, body: "Moved" }
-          : { status: 202, body: "Accepted" }
+          : { status: 202, body: "Accepted" },
       );
-      await sendActivity({
-        activity: lifecycleActivity,
-        keys: signed ? signedKeys : unsignedKeys,
-        inbox: new URL(inbox),
-      }, { openHop: hops.openHop });
+      await sendActivity(
+        {
+          activity: lifecycleActivity,
+          keys: signed ? signedKeys : unsignedKeys,
+          inbox: new URL(inbox),
+        },
+        { openHop: hops.openHop },
+      );
       assertEquals(hops.events, [
         `open ${inbox}`,
         `fetch #1 ${inbox}`,
@@ -1476,7 +1474,7 @@ function getCancelFailureUrls(records: readonly LogRecord[]): unknown[] {
   return records.flatMap((r) =>
     r.rawMessage === "Failed to cancel the response body from {url}: {error}"
       ? [r.properties.url]
-      : []
+      : [],
   );
 }
 
@@ -1486,11 +1484,11 @@ test("fetchWithValidatedRedirects() logs a redirect body failing to cancel and f
   const respond = (_: Request, index: number) =>
     index === 1
       ? {
-        status: 302,
-        headers: { Location: next },
-        body: "Found",
-        failCancel: true,
-      }
+          status: 302,
+          headers: { Location: next },
+          body: "Found",
+          failCancel: true,
+        }
       : { status: 202, body: "Accepted" };
 
   await t.step("fetchWithValidatedRedirects()", async () => {
@@ -1522,11 +1520,14 @@ test("fetchWithValidatedRedirects() logs a redirect body failing to cancel and f
     await t.step(`signed sendActivity(): ${signed}`, async () => {
       const hops = recordHops(respond);
       const records = await captureLogs(() =>
-        sendActivity({
-          activity: lifecycleActivity,
-          keys: signed ? signedKeys : unsignedKeys,
-          inbox: new URL(url),
-        }, { openHop: hops.openHop })
+        sendActivity(
+          {
+            activity: lifecycleActivity,
+            keys: signed ? signedKeys : unsignedKeys,
+            inbox: new URL(url),
+          },
+          { openHop: hops.openHop },
+        ),
       );
       assertEquals(hops.events, [
         `open ${url}`,
@@ -1576,11 +1577,14 @@ test("sendActivity() logs a successful response body failing to cancel", async (
         failCancel: true,
       }));
       const records = await captureLogs(() =>
-        sendActivity({
-          activity: lifecycleActivity,
-          keys: signed ? signedKeys : unsignedKeys,
-          inbox: new URL(inbox),
-        }, { openHop: hops.openHop })
+        sendActivity(
+          {
+            activity: lifecycleActivity,
+            keys: signed ? signedKeys : unsignedKeys,
+            inbox: new URL(inbox),
+          },
+          { openHop: hops.openHop },
+        ),
       );
       assertEquals(hops.events, [
         `open ${inbox}`,
@@ -1602,18 +1606,21 @@ test("sendActivity() is not blocked by a body cancellation that never settles", 
       const hops = recordHops((request) =>
         request.url === inbox
           ? {
-            status: 302,
-            headers: { Location: next },
-            body: "Found",
-            hangCancel: true,
-          }
-          : { status: 202, body: "Accepted", hangCancel: true }
+              status: 302,
+              headers: { Location: next },
+              body: "Found",
+              hangCancel: true,
+            }
+          : { status: 202, body: "Accepted", hangCancel: true },
       );
-      await sendActivity({
-        activity: lifecycleActivity,
-        keys: signed ? signedKeys : unsignedKeys,
-        inbox: new URL(inbox),
-      }, { openHop: hops.openHop });
+      await sendActivity(
+        {
+          activity: lifecycleActivity,
+          keys: signed ? signedKeys : unsignedKeys,
+          inbox: new URL(inbox),
+        },
+        { openHop: hops.openHop },
+      );
       assertEquals(hops.events, [
         `open ${inbox}`,
         `fetch #1 ${inbox}`,
@@ -1637,11 +1644,14 @@ test("sendActivity() is not blocked by a body cancellation that never settles", 
     }));
     const error = await assertRejects(
       () =>
-        sendActivity({
-          activity: lifecycleActivity,
-          keys: unsignedKeys,
-          inbox: new URL(inbox),
-        }, { openHop: hops.openHop }),
+        sendActivity(
+          {
+            activity: lifecycleActivity,
+            keys: unsignedKeys,
+            inbox: new URL(inbox),
+          },
+          { openHop: hops.openHop },
+        ),
       SendActivityError,
     );
     assertEquals(error.responseBody, "x".repeat(1024) + "… (truncated)");
@@ -1732,25 +1742,28 @@ function createRecordedResponse(
   const chunkSize = init.chunkSize ?? 256;
   let offset = 0;
   let settled = false;
-  const body = new ReadableStream<Uint8Array>({
-    pull(controller) {
-      if (offset >= bytes.length) {
+  const body = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        if (offset >= bytes.length) {
+          settled = true;
+          events.push(`consumed #${index}`);
+          controller.close();
+          return;
+        }
+        controller.enqueue(bytes.slice(offset, offset + chunkSize));
+        offset += chunkSize;
+      },
+      cancel() {
         settled = true;
-        events.push(`consumed #${index}`);
-        controller.close();
-        return;
-      }
-      controller.enqueue(bytes.slice(offset, offset + chunkSize));
-      offset += chunkSize;
+        events.push(`cancel #${index}${cancelSuffix()}`);
+        if (init.failCancel) throw new Error(`cancel #${index} failed`);
+        // Like a branch of a tee whose other branch is never cancelled:
+        if (init.hangCancel) return new Promise<void>(() => {});
+      },
     },
-    cancel() {
-      settled = true;
-      events.push(`cancel #${index}${cancelSuffix()}`);
-      if (init.failCancel) throw new Error(`cancel #${index} failed`);
-      // Like a branch of a tee whose other branch is never cancelled:
-      if (init.hangCancel) return new Promise<void>(() => {});
-    },
-  }, { highWaterMark: 0 });
+    { highWaterMark: 0 },
+  );
   return {
     response: new Response(body, {
       status: init.status ?? 200,
@@ -1811,7 +1824,7 @@ function recordHops(
             events,
             index,
             await respond(request, index),
-            () => closing ? " by close" : "",
+            () => (closing ? " by close" : ""),
           );
           tracked.push({ ...recorded, index });
           return recorded.response;
@@ -1844,42 +1857,51 @@ test("sendActivity() bounds a stalled diagnostic preview without changing HTTP f
   let cancels = 0;
   let closed = 0;
   let submissions = 0;
-  const body = new ReadableStream<Uint8Array>({
-    pull(controller) {
-      if (reads++ === 0) {
-        controller.enqueue(new TextEncoder().encode("partial error"));
-      }
+  const body = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        if (reads++ === 0) {
+          controller.enqueue(new TextEncoder().encode("partial error"));
+        }
+      },
+      cancel() {
+        cancels++;
+        return new Promise<void>(() => {});
+      },
     },
-    cancel() {
-      cancels++;
-      return new Promise<void>(() => {});
-    },
-  }, { highWaterMark: 0 });
-  const error = await assertRejects(() =>
-    sendActivity({
-      activity: lifecycleActivity,
-      keys: unsignedKeys,
-      inbox,
-    }, {
-      openHop: () =>
-        Promise.resolve({
-          url: inbox,
-          fetch: () => {
-            submissions++;
-            return Promise.resolve(
-              new Response(body, {
-                status: 503,
-                headers: { "Retry-After": "1" },
-              }),
-            );
-          },
-          close: () => {
-            closed++;
-            assertFalse(body.locked);
-            return Promise.resolve();
-          },
-        }),
-    }), SendActivityError);
+    { highWaterMark: 0 },
+  );
+  const error = await assertRejects(
+    () =>
+      sendActivity(
+        {
+          activity: lifecycleActivity,
+          keys: unsignedKeys,
+          inbox,
+        },
+        {
+          openHop: () =>
+            Promise.resolve({
+              url: inbox,
+              fetch: () => {
+                submissions++;
+                return Promise.resolve(
+                  new Response(body, {
+                    status: 503,
+                    headers: { "Retry-After": "1" },
+                  }),
+                );
+              },
+              close: () => {
+                closed++;
+                assertFalse(body.locked);
+                return Promise.resolve();
+              },
+            }),
+        },
+      ),
+    SendActivityError,
+  );
   assertEquals(error.statusCode, 503);
   assertEquals(error.responseBody, "partial error… (timed out)");
   assertEquals(error.responseHeaders.get("Retry-After"), "1");
