@@ -111,6 +111,10 @@ const generatedTerms: Record<string, unknown> = {
     "@type": "@id",
   },
   emojiReactions: { "@id": "fedibird:emojiReactions", "@type": "@id" },
+  contextHistory: {
+    "@id": "https://w3id.org/fep/171b/contextHistory",
+    "@type": "@id",
+  },
 };
 function sameDefinition(value: OutboundJsonValue, expected: unknown): boolean {
   if (value === expected) return true;

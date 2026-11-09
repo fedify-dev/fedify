@@ -1177,7 +1177,8 @@ test("verifyCompoundPortableObjectProofs() exempts ap: keys only of verified act
         actor: apActorId,
         object,
       }),
-      limits,
+      // Nested actor/key proof contexts include vocabulary extension maps.
+      { ...limits, maxMaps: 64 },
       options,
     );
     assert(result.status === "ok", name);

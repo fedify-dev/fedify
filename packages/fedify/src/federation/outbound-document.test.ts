@@ -1,10 +1,25 @@
 import { test } from "@fedify/fixture";
+import { Create, Note } from "@fedify/vocab";
 import { deepStrictEqual, ok, strictEqual, throws } from "node:assert/strict";
 import { projectSenderPayload } from "./outbound-document.ts";
 import { createFederationBuilder, FederationBuilderImpl } from "./builder.ts";
 
 const as = "https://www.w3.org/ns/activitystreams";
 const secret = "https://private.example/recipient";
+
+test("sender payload accepts generated history contexts while redacting blind recipients", async () => {
+  const history = new URL("https://example.com/history");
+  const source = await new Create({
+    btos: [new URL(secret)],
+    object: new Note({ contextHistory: history, bccs: [new URL(secret)] }),
+  }).toJsonLd();
+  const result = projectSenderPayload(source);
+  ok(result.type === "available");
+  strictEqual(result.redacted, true);
+  const json = JSON.stringify(result.value);
+  strictEqual(json.includes(secret), false);
+  ok(json.includes(history.href));
+});
 
 test("sender payload projects nested compact expanded and proof-bearing blind fields", () => {
   const source = {
@@ -100,6 +115,13 @@ test("sender payload fails closed without evaluating getters or JSON conversion"
     },
     { "@context": [as, "https://unknown.example/context"], private: secret },
     { "@context": [as, { sensitive: "as:bcc" }], sensitive: secret },
+    {
+      "@context": [
+        as,
+        { contextHistory: { "@id": `${as}#bcc`, "@type": "@id" } },
+      ],
+      contextHistory: secret,
+    },
     {
       "@context": [as, { toot: `${as}#`, Emoji: "toot:bcc" }],
       Emoji: secret,
