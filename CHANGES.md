@@ -358,6 +358,11 @@ To be released.
 
 ### @fedify/vocab
 
+ -  Added `contextHistory` and `contextHistories` to `Object` subclasses for
+    referencing conversation activity histories as ordered collections, with
+    ID accessors and singular and plural dereferencing methods.  [[#1250] by
+    Jiwon Kwon\]
+
  -  Added `deepClone()` to vocabulary objects to copy nested objects before
     resolving their properties, keeping the source graph unchanged.  Replacement
     values are copied too.  Use `clone()` when a shallow copy is sufficient.
@@ -424,10 +429,14 @@ To be released.
 [#1212]: https://github.com/fedify-dev/fedify/issues/1212
 [#1241]: https://github.com/fedify-dev/fedify/pull/1241
 [#1243]: https://github.com/fedify-dev/fedify/issues/1243
+[#1250]: https://github.com/fedify-dev/fedify/issues/1250
 [#1337]: https://github.com/fedify-dev/fedify/pull/1337
 
 ### @fedify/vocab-runtime
 
+ -  Added a preloaded FEP-171b context so documents using its published context
+    URL can be parsed without fetching the context over the network.
+    [[#1250] by Jiwon Kwon\]
  -  Added `isTransientFetchError()` function, which tells whether an error
     thrown by a document loader is likely transient, such as a network error,
     a timeout, a DNS failure, or an HTTP 5xx, 408, or 429 response, so that
