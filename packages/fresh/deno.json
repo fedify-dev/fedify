@@ -12,7 +12,16 @@
   },
   "exclude": ["dist", "node_modules"],
   "publish": {
-    "exclude": ["**/*.test.ts"]
+    "exclude": [
+      "**/*.test.ts",
+      "**/*.bench.ts",
+      "**/__snapshots__/",
+      "**/__fixtures__/",
+      "**/fixtures/",
+      "**/testdata/",
+      "**/test/",
+      "**/tests/"
+    ]
   },
   "tasks": {
     "check": "deno check src/*.ts",

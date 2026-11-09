@@ -32,6 +32,7 @@ export default [
     },
   }),
   defineConfig({
+    outDir: "dist-tests",
     entry: (await Array.fromAsync(glob(`src/**/*.test.ts`))).map((f) =>
       f.replace(sep, "/"),
     ),

@@ -17,6 +17,7 @@ export default [
     deps: { neverBundle: ["@fedify/vocab"] },
   }),
   defineConfig({
+    outDir: "dist-tests",
     entry: (await Array.fromAsync(glob(`src/**/*.test.ts`))).map((f) =>
       f.replaceAll(sep, "/"),
     ),

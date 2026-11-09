@@ -28,7 +28,18 @@
   },
   "exclude": ["dist", "node_modules"],
   "publish": {
-    "exclude": ["**/*.test.ts", "src/**/testdata/", "tsdown.config.ts"]
+    "exclude": [
+      "**/*.test.ts",
+      "**/*.bench.ts",
+      "**/__snapshots__/",
+      "**/__fixtures__/",
+      "**/fixtures/",
+      "**/testdata/",
+      "**/test/",
+      "**/tests/",
+      "src/**/testdata/",
+      "tsdown.config.ts"
+    ]
   },
   "tasks": {
     "check": "deno check src/*.ts",

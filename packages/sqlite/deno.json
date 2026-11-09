@@ -12,7 +12,18 @@
   },
   "exclude": ["dist", "node_modules", "src/sqlite.bun.ts"],
   "publish": {
-    "exclude": ["**/*.test.ts", "!dist/", "tsdown.config.ts"]
+    "exclude": [
+      "**/*.test.ts",
+      "**/*.bench.ts",
+      "**/__snapshots__/",
+      "**/__fixtures__/",
+      "**/fixtures/",
+      "**/testdata/",
+      "**/test/",
+      "**/tests/",
+      "!dist/",
+      "tsdown.config.ts"
+    ]
   },
   "tasks": {
     "check": "deno check",

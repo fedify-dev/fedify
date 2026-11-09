@@ -15,9 +15,19 @@
     "es-toolkit": "npm:es-toolkit@^1.46.1",
     "fetch-mock": "npm:fetch-mock@^12.5.4"
   },
-  "exclude": ["dist", "node_modules"],
+  "exclude": ["dist", "node_modules", "dist-tests/"],
   "publish": {
-    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
+    "exclude": [
+      "**/*.test.ts",
+      "**/*.bench.ts",
+      "**/__snapshots__/",
+      "**/__fixtures__/",
+      "**/fixtures/",
+      "**/testdata/",
+      "**/test/",
+      "**/tests/",
+      "tsdown.config.ts"
+    ]
   },
   "tasks": {
     "check": "deno check src/*.ts",

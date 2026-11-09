@@ -39,16 +39,25 @@
     "src/cfworkers/runner.ts",
     "src/cfworkers/selftest.ts",
     "src/cfworkers/server.js",
-    "src/cfworkers/server.js.map"
+    "src/cfworkers/server.js.map",
+    "dist-tests/"
   ],
   "publish": {
     "exclude": [
       "**/*.test.ts",
+      "**/*.bench.ts",
+      "**/__snapshots__/",
+      "**/__fixtures__/",
+      "**/fixtures/",
+      "**/testdata/",
+      "**/test/",
+      "**/tests/",
       "src/testing/",
       "tsdown.config.ts",
       "scripts/",
       "test-vectors/",
-      "wrangler.toml"
+      "wrangler.toml",
+      "src/cfworkers/"
     ]
   },
   "tasks": {
@@ -81,11 +90,11 @@
     "pnpm:install": "pnpm install --silent",
     "pnpm:build": "pnpm --filter @fedify/fedify... run build:self",
     "test:node": {
-      "command": "cd dist/ && node --test",
+      "command": "cd dist-tests/ && node --test",
       "dependencies": ["pnpm:build"]
     },
     "test:bun": {
-      "command": "cd dist/ && bun test --timeout 60000",
+      "command": "cd dist-tests/ && bun test --timeout 60000",
       "dependencies": ["pnpm:build"]
     },
     "test:cfworkers": {

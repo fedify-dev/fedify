@@ -13,7 +13,18 @@
     "oxlint": "npm:oxlint@1.90.0"
   },
   "publish": {
-    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
+    "exclude": [
+      "**/*.test.ts",
+      "**/*.bench.ts",
+      "**/__snapshots__/",
+      "**/__fixtures__/",
+      "**/fixtures/",
+      "**/testdata/",
+      "**/test/",
+      "**/tests/",
+      "tsdown.config.ts",
+      "src/lib/test.ts"
+    ]
   },
   "tasks": {
     "test": "deno test --allow-env --allow-read --allow-run --allow-sys --allow-write"

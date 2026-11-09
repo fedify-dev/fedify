@@ -41,7 +41,19 @@
   },
   "files": [
     "dist/",
-    "package.json"
+    "package.json",
+    "!dist/**/*.test.{js,cjs,mjs,ts,cts,mts}",
+    "!dist/**/*.test.d.{ts,cts,mts}",
+    "!dist/**/*.test.*.map",
+    "!dist/**/*.bench.{js,cjs,mjs,ts,cts,mts}",
+    "!dist/**/*.bench.*.map",
+    "!dist/**/*.snap",
+    "!dist/**/__snapshots__/**",
+    "!dist/**/__fixtures__/**",
+    "!dist/**/test/**",
+    "!dist/**/tests/**",
+    "!dist/**/testdata/**",
+    "!dist/**/fixtures/**"
   ],
   "peerDependencies": {
     "@fedify/fedify": "workspace:^",

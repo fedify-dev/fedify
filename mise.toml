@@ -336,6 +336,11 @@ for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
 description = "Check that Deno preserves pnpm links and package packing"
 run = "node scripts/test_pack.mjs"
 
+[tasks."test:package-files"]
+description = "Check JSR and npm packages exclude repository test assets"
+depends = ["build"]
+run = "node scripts/test_package_files.mjs"
+
 [tasks."test:testing:pack"]
 description = "Check @fedify/testing tarballs in isolated Node.js and Bun consumers"
 run = """
