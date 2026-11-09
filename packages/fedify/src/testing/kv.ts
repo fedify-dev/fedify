@@ -155,13 +155,12 @@ export class ManualClockKvStore implements KvStore {
   }
 
   async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
-    const iterator = await this.#serialize(async () => {
+    let { iterator, step } = await this.#serialize(async () => {
       await this.#evictAllExpired();
-      return this.#inner.list(prefix)[Symbol.asyncIterator]();
+      const iterator = this.#inner.list(prefix)[Symbol.asyncIterator]();
+      return { iterator, step: await iterator.next() };
     });
-    while (true) {
-      const step = await this.#serialize(() => iterator.next());
-      if (step.done) return;
+    while (!step.done) {
       let resumed = false;
       try {
         yield step.value;
@@ -175,6 +174,7 @@ export class ManualClockKvStore implements KvStore {
           });
         }
       }
+      step = await this.#serialize(() => iterator.next());
     }
   }
 }

@@ -18,6 +18,7 @@ export const expectedTestNames = [
   "ManualClockKvStore expires an entry at its exact expiration instant",
   "ManualClockKvStore serializes replacement writes and expiry reads",
   "ManualClockKvStore.list() applies the same boundary",
+  "ManualClockKvStore.list() keeps initial eviction and reading together",
   "ManualClockKvStore.list() yields entries before a later backend failure",
   "ManualClockKvStore.list() streams lazily and closes on consumer exits",
   "ManualClockKvStore.list() serializes next() with store writes",

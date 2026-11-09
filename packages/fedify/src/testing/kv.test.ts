@@ -34,6 +34,18 @@ test("ManualClockKvStore serializes replacement writes and expiry reads", async 
   assertEquals(await entries, [{ key: ["key"], value: "new" }]);
 });
 
+test("ManualClockKvStore.list() keeps initial eviction and reading together", async () => {
+  const kv = new ManualClockKvStore();
+  const iterator = kv.list()[Symbol.asyncIterator]();
+  const first = iterator.next();
+  const write = kv.set(["expired"], "value", {
+    ttl: Temporal.Duration.from({ seconds: 0 }),
+  });
+  await write;
+  assertEquals(await first, { done: true, value: undefined });
+  assertEquals(await kv.get(["expired"]), undefined);
+});
+
 test("ManualClockKvStore.list() yields entries before a later backend failure", async () => {
   const prefix: KvKey = ["wanted"];
   class FailingListStore extends MemoryKvStore {
