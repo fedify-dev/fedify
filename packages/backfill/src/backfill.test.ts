@@ -41,6 +41,222 @@ describe("ancestor collection discovery", () => {
     };
   }
 
+  test("anonymous ancestor cycles retain identity during discovery", async () => {
+    let reads = 0;
+    class SelfReply extends Note {
+      override async *getReplyTargets() {
+        reads++;
+        yield this;
+      }
+    }
+    const context = loader();
+    deepStrictEqual(
+      await collect(context, new SelfReply({}), {
+        contextDiscovery: "ancestors",
+        maxDepth: 5,
+      }),
+      [],
+    );
+    strictEqual(reads, 1);
+    deepStrictEqual(context.requests, []);
+  });
+
+  test("anonymous loaded ancestor cycles reuse the same traversal copy", async () => {
+    let serializations = 0;
+    class Parent extends Note {
+      override toJsonLd(...args: Parameters<Note["toJsonLd"]>) {
+        serializations++;
+        return super.toJsonLd(...args);
+      }
+    }
+    const context = loader([
+      [parentId.href, new Parent({ replyTarget: parentId })],
+    ]);
+    deepStrictEqual(
+      await collect(context, new Note({ replyTarget: parentId }), {
+        contextDiscovery: "ancestors",
+        maxDepth: 5,
+      }),
+      [],
+    );
+    strictEqual(serializations, 2);
+    deepStrictEqual(context.requests, [parentId.href]);
+  });
+
+  test("discovery retains the source context loader", async () => {
+    const contextUrl = "https://example.com/custom-context";
+    const contextLoads: string[] = [];
+    class Parent extends Note {
+      override toJsonLd() {
+        return Promise.resolve({
+          "@context": contextUrl,
+          type: "Note",
+          id: parentId.href,
+          conversation: contextId.href,
+        });
+      }
+    }
+    const context = loader([
+      [parentId.href, new Parent({ id: parentId, contexts: [contextId] })],
+      [contextId.href, new Collection({ items: [sibling] })],
+    ]);
+    const results = await collect(
+      context,
+      new Note(
+        { replyTarget: parentId },
+        {
+          contextLoader: (url) => {
+            contextLoads.push(url);
+            strictEqual(url, contextUrl);
+            return Promise.resolve({
+              contextUrl: null,
+              documentUrl: url,
+              document: {
+                "@context": {
+                  id: "@id",
+                  type: "@type",
+                  Note: "https://www.w3.org/ns/activitystreams#Note",
+                  conversation: {
+                    "@id": "https://www.w3.org/ns/activitystreams#context",
+                    "@type": "@id",
+                  },
+                },
+              },
+            });
+          },
+        },
+      ),
+      { contextDiscovery: "ancestors" },
+    );
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id],
+    );
+    ok(contextLoads.includes(contextUrl));
+    deepStrictEqual(context.requests, [parentId.href, contextId.href]);
+  });
+
+  for (const strategies of [
+    ["context-auto", "reply-tree"],
+    ["reply-tree", "context-auto"],
+  ] as const) {
+    test(`discovery cycle skips preserve reply-tree depths with ${strategies.join(" then ")}`, async () => {
+      const context = loader([
+        [parentId.href, new Note({ id: parentId, replyTarget: rootId })],
+        [rootId.href, new Note({ id: rootId })],
+      ]);
+      const results = await collect(
+        context,
+        new Note({ replyTargets: [parentId, rootId] }),
+        { contextDiscovery: "ancestors", strategies },
+      );
+      deepStrictEqual(
+        results.map(({ id, depth }) => [id, depth]),
+        [
+          [parentId, 1],
+          [rootId, 2],
+        ],
+      );
+      deepStrictEqual(context.requests, [parentId.href, rootId.href]);
+    });
+  }
+
+  for (const source of ["seed", "ancestor"] as const) {
+    for (const contextSource of [undefined, "history-first"] as const) {
+      test(`${source} defaults verify embedded portable ancestors with ${contextSource ?? "context"}`, async () => {
+        const sourceId = source === "seed" ? seedId : parentId;
+        const object = await Note.fromJsonLd(
+          {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Note",
+            id: sourceId.href,
+            inReplyTo: {
+              type: "Note",
+              id: "ap://did:key:z6Mkabc/parent",
+              context: contextId.href,
+            },
+          },
+          { verifyPortableObject: () => Promise.resolve({ verified: false }) },
+        );
+        const original = await object.toJsonLd();
+        const context = loader([
+          [parentId.href, object],
+          [contextId.href, new Collection({ items: [sibling] })],
+        ]);
+        const results = await collect(
+          context,
+          source === "seed" ? object : new Note({ replyTarget: parentId }),
+          { contextDiscovery: "ancestors", contextSource },
+        );
+        deepStrictEqual(results, []);
+        strictEqual(context.requests.includes(contextId.href), false);
+        deepStrictEqual(await object.toJsonLd(), original);
+      });
+    }
+  }
+
+  for (const source of ["loaded", "alias", "anonymous", "embedded"] as const) {
+    for (const strategies of [
+      ["context-auto", "reply-tree"],
+      ["reply-tree", "context-auto"],
+    ] as const) {
+      test(`${source} ancestor policy survives ${strategies.join(" then ")} and repeated calls`, async () => {
+        const historyId = "ap+ef61://did%3Akey%3Az6Mkabc/history";
+        const parent = await Note.fromJsonLd(
+          {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/fep/171b",
+            ],
+            type: "Note",
+            ...(source === "anonymous" ? {} : { id: parentId.href }),
+            contextHistory: {
+              type: "OrderedCollection",
+              id: historyId,
+              orderedItems: [{ type: "Note", id: sibling.id!.href }],
+            },
+          },
+          { verifyPortableObject: () => Promise.resolve({ verified: false }) },
+        );
+        const requestedId = source === "alias" ? rootId : parentId;
+        const seed = new Note({
+          replyTarget: source === "embedded" ? parent : requestedId,
+        });
+        const originalSeed = await seed.toJsonLd();
+        const originalParent = await parent.toJsonLd();
+        for (let call = 0; call < 2; call++) {
+          const requests: string[] = [];
+          const results = await collect(
+            {
+              documentLoader: (iri) => {
+                requests.push(iri.href);
+                return Promise.resolve(
+                  iri.href === requestedId.href ? parent : null,
+                );
+              },
+            },
+            seed,
+            {
+              contextDiscovery: "ancestors",
+              contextSource: "history-first",
+              strategies,
+            },
+          );
+          deepStrictEqual(
+            results.map(({ strategy }) => strategy),
+            ["reply-tree"],
+          );
+          deepStrictEqual(
+            requests,
+            source === "embedded" ? [historyId] : [requestedId.href, historyId],
+          );
+          deepStrictEqual(await seed.toJsonLd(), originalSeed);
+          deepStrictEqual(await parent.toJsonLd(), originalParent);
+        }
+      });
+    }
+  }
+
   for (const source of [
     "seed",
     "embedded",

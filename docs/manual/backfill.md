@@ -180,6 +180,10 @@ ancestors and crawl `replies`, configure the `"reply-tree"` strategy. Later
 strategies run in their configured order. Discovery shares the traversal
 controls, caching, and ID deduplication described below.
 
+Per-object loader and portable-object verifier defaults remain effective
+regardless of strategy order. Discovery does not hydrate the seed or loaded
+ancestor objects.
+
 
 Strategies
 ----------

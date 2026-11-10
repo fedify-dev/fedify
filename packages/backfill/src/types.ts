@@ -106,6 +106,8 @@ export interface BackfillOptions<
    * `"reply-tree"` is configured. Discovery shares request and item budgets,
    * document caching, cancellation, and ID deduplication with the configured
    * strategies. If omitted, context strategies make no ancestor requests.
+   * Per-object loader and portable-object verifier defaults are preserved
+   * across strategies without hydrating the seed or loaded ancestors.
    *
    * @since 2.5.0
    */

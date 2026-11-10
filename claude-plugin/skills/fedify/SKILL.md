@@ -345,7 +345,9 @@ strategies can still run. Set `contextDiscovery: "ancestors"` to search
 `maxDepth`. The nearest usable collection wins, with reply-target property
 order breaking ties; a valid empty collection stays selected. Source selection
 applies to each ancestor. Discovery shares traversal limits, caching,
-cancellation, and ID deduplication with configured strategies. Collection
+cancellation, and ID deduplication with configured strategies. Per-object
+loader and verifier defaults remain effective across strategy orders, without
+hydrating the seed or loaded ancestors. Collection
 items retain origin `"collection"` and depth 0; ancestors are yielded only
 with `"reply-tree"`. Without this option, context strategies make no ancestor
 requests. These options do not unwrap
