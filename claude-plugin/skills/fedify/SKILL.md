@@ -324,6 +324,31 @@ in-tree *src/webfinger*.
 
 `fromJsonLd()` and `toJsonLd()` are asynchronous; always `await` them.
 
+In Fedify 2.5.0 and later, `Object` subclasses support FEP-171b history
+references through `contextHistory` or `contextHistories` constructor options
+(`URL` or `Collection` values, including ordered collections and pages). Read
+`contextHistoryId` and `contextHistoryIds` without fetching; use
+`getContextHistory()` and `getContextHistories()` to resolve the first or all
+history collections. Output uses an inline context mapping, and the published
+FEP-171b context is preloaded for input. In `@fedify/backfill`, opt in with
+`contextSource: "history-first"` to read the seed's first history reference.
+Omitting the option keeps the existing `context` source. Absent or unavailable
+history (`null`, an ordinary loader error, or a non-collection result) falls
+back to the first `context` ID, using the remaining request budget. Once a
+history collection is resolved, it stays selected even if empty or no
+items can be yielded. Later history references are not tried, and sources are
+not merged. Portable history references are passed to the configured backfill
+loader for resolution and verification. Existing strategies control post
+extraction; later explicitly configured strategies can still run. This does not
+discover history on ancestors or replay updates and deletions. Histories
+containing only `Add(Create(...))` activities yield nothing and do not trigger
+`context` fallback.
+
+Since Fedify 2.5.0, pass `dereference: false` to vocabulary accessors to read
+embedded or cached objects without fetching references. Singular accessors
+return `null` when fetching is required; plural accessors skip those values.
+Origin and portable-object trust checks still apply. The default is `true`.
+
 `clone()` is shallow: it copies property arrays but shares nested vocabulary
 objects and URLs.  In Fedify 2.5.0 and later, use synchronous `deepClone()` to
 resolve nested properties without hydrating the source's objects.  Replacement

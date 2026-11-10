@@ -18,6 +18,9 @@ defaultContext:
   emojiReactions:
     "@id": "fedibird:emojiReactions"
     "@type": "@id"
+- contextHistory:
+    "@id": "https://w3id.org/fep/171b/contextHistory"
+    "@type": "@id"
 
 properties:
 - pluralName: attachments
@@ -90,6 +93,25 @@ properties:
   range:
   - "https://www.w3.org/ns/activitystreams#Object"
   - "https://www.w3.org/ns/activitystreams#Link"
+
+- pluralName: contextHistories
+  singularName: contextHistory
+  singularAccessor: true
+  compactName: contextHistory
+  uri: "https://w3id.org/fep/171b/contextHistory"
+  description: |
+    Identifies collections of activities related to this object's
+    conversation, as described by [FEP-f228] and [FEP-171b]. A top-level post
+    can reference a conversation's activity history separately from its
+    {@link Object.contextIds | context}, which can reference a collection of
+    posts. Multiple history references are preserved.
+
+    [FEP-f228]: https://w3id.org/fep/f228
+    [FEP-171b]: https://w3id.org/fep/171b
+
+    @since 2.5.0
+  range:
+  - "https://www.w3.org/ns/activitystreams#Collection"
 
 - pluralName: names
   singularName: name

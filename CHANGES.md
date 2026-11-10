@@ -62,6 +62,9 @@ To be released.
     breaking source compatibility for custom implementations. Update custom
     mocks, decorators, and wrappers to implement this method.
     [[#1316], [#1359] by Jiwon Kwon\]
+ -  Added sender payload projection support for the published FEP-171b context,
+    preserving blind-recipient redaction.
+    [[#1250], [#1396] by Jiwon Kwon\]
  -  Added the `activity-origin-mismatch` reason to rejected
     `InboxAuthentication` decisions in `onRequestFinished` reports.  Inbox
     deliveries rejected because the activity's ID does not have the same origin
@@ -97,6 +100,7 @@ To be released.
 [#1177]: https://github.com/fedify-dev/fedify/issues/1177
 [#1205]: https://github.com/fedify-dev/fedify/pull/1205
 [#1234]: https://github.com/fedify-dev/fedify/issues/1234
+[#1250]: https://github.com/fedify-dev/fedify/issues/1250
 [#1264]: https://github.com/fedify-dev/fedify/pull/1264
 [#1289]: https://github.com/fedify-dev/fedify/issues/1289
 [#1290]: https://github.com/fedify-dev/fedify/issues/1290
@@ -106,6 +110,18 @@ To be released.
 [#1328]: https://github.com/fedify-dev/fedify/pull/1328
 [#1353]: https://github.com/fedify-dev/fedify/pull/1353
 [#1359]: https://github.com/fedify-dev/fedify/pull/1359
+[#1396]: https://github.com/fedify-dev/fedify/pull/1396
+
+### @fedify/backfill
+
+ -  Added `contextSource: "history-first"` to backfill options to read the
+    seed's first `contextHistory` collection, falling back to `context` when
+    history is absent or unavailable. A resolved empty history does not trigger
+    fallback, and later history references are not tried. Existing source
+    selection remains the default. Referenced histories use the configured
+    loader, including portable `ap://`, `ap+ef61://`, and FEP-ef61-compatible
+    HTTPS identifiers. Errors cloning embedded history propagate instead of
+    triggering fallback. [[#1250], [#1396] by Jiwon Kwon\]
 
 ### @fedify/cli
 
@@ -358,6 +374,20 @@ To be released.
 
 ### @fedify/vocab
 
+ -  Added a `dereference: false` option to vocabulary object accessors to read
+    embedded or cached objects without fetching references. Existing trust
+    checks still apply; singular accessors return `null` and plural accessors
+    skip values that require fetching. [[#1250], [#1396] by Jiwon Kwon\]
+
+ -  Added `contextHistory` and `contextHistories` to `Object` subclasses for
+    referencing conversation activity histories as collections, including
+    ordered collections and pages, with ID accessors and singular and plural
+    dereferencing methods. The default `@context` of every `Object` subclass
+    includes the `contextHistory` mapping even when the property is absent.
+    This changes compact serialization and can change newly generated proofs
+    and signatures.
+    [[#1250], [#1396] by Jiwon Kwon\]
+
  -  Added `deepClone()` to vocabulary objects to copy nested objects before
     resolving their properties, keeping the source graph unchanged.  Replacement
     values are copied too.  Use `clone()` when a shallow copy is sufficient.
@@ -428,6 +458,9 @@ To be released.
 
 ### @fedify/vocab-runtime
 
+ -  Added a preloaded FEP-171b context so documents using its published context
+    URL can be parsed without fetching the context over the network.
+    [[#1250], [#1396] by Jiwon Kwon\]
  -  Added `isTransientFetchError()` function, which tells whether an error
     thrown by a document loader is likely transient, such as a network error,
     a timeout, a DNS failure, or an HTTP 5xx, 408, or 429 response, so that

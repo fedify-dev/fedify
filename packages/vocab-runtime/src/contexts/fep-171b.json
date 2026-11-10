@@ -1,0 +1,13 @@
+{
+  "@context": {
+    "collectionOf": "https://fediversity.site/apschema#collectionOf",
+    "canReply": {
+      "@id": "https://w3id.org/fep/171b/canReply",
+      "@type": "@id"
+    },
+    "contextHistory": {
+      "@id": "https://w3id.org/fep/171b/contextHistory",
+      "@type": "@id"
+    }
+  }
+}

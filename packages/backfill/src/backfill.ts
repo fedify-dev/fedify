@@ -8,6 +8,7 @@ import {
   OrderedCollection,
   OrderedCollectionPage,
 } from "@fedify/vocab";
+import { fromCompatibleEf61Id } from "@fedify/vocab-runtime";
 
 import type {
   BackfillContext,
@@ -34,6 +35,7 @@ interface RequestBudget {
   readonly signal?: AbortSignal;
   requestCount: number;
   readonly documents: Map<string, Promise<APObject | null>>;
+  conversationCollection?: Promise<BackfillCollection | null>;
 }
 
 type StrategyItem = {
@@ -198,12 +200,16 @@ async function* getContextStrategyItems(
   readonly origin: "collection";
   readonly depth: 0;
 }> {
-  const contextId = note.contextIds[0];
-  if (contextId == null) return;
-  const collection = await loadObject(context, contextId, options, budget, {
-    skipLoaderErrors: true,
-  });
-  if (!isCollection(collection)) return;
+  const collection =
+    options.contextSource === "history-first"
+      ? await (budget.conversationCollection ??= getConversationCollection(
+          context,
+          note,
+          options,
+          budget,
+        ))
+      : await getConversationCollection(context, note, options, budget);
+  if (collection == null) return;
   for await (const object of getCollectionItems(
     context,
     collection,
@@ -228,6 +234,71 @@ async function* getContextStrategyItems(
       }
     }
   }
+}
+
+async function getConversationCollection(
+  context: BackfillContext,
+  note: APObject,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): Promise<BackfillCollection | null> {
+  if (options.contextSource === "history-first") {
+    const history = await getContextHistoryCollection(
+      context,
+      note,
+      options,
+      budget,
+    );
+    if (history != null) return history;
+  }
+  const contextId = note.contextIds[0];
+  if (contextId == null) return null;
+  const collection = await loadObject(context, contextId, options, budget, {
+    skipLoaderErrors: true,
+  });
+  return isCollection(collection) ? collection : null;
+}
+
+/**
+ * Reads accepted embedded history without fetching, or loads the original
+ * reference so backfill controls request budgets and gateway selection.
+ */
+async function getContextHistoryCollection(
+  context: BackfillContext,
+  note: APObject,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): Promise<BackfillCollection | null> {
+  let history: BackfillCollection | null;
+  try {
+    history = await note.getContextHistory({
+      dereference: false,
+      crossOrigin: "trust",
+    });
+  } catch {
+    budget.signal?.throwIfAborted();
+    return null;
+  }
+  if (history != null) {
+    try {
+      return history.deepClone();
+    } catch (error) {
+      budget.signal?.throwIfAborted();
+      throw error;
+    }
+  }
+  const historyId = note.contextHistoryId;
+  if (historyId == null) return null;
+  try {
+    fromCompatibleEf61Id(historyId);
+  } catch {
+    // Malformed compatible identifiers are unavailable history.
+    return null;
+  }
+  const collection = await loadObject(context, historyId, options, budget, {
+    skipLoaderErrors: true,
+  });
+  return isCollection(collection) ? collection : null;
 }
 
 async function* getStrategyItems(

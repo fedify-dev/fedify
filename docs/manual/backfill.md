@@ -50,7 +50,8 @@ Backfilling a conversation
 
 The `backfill()` function accepts a backfill context, a seed object, and
 traversal options.  The context supplies a `documentLoader` for dereferencing
-context collections, collection items, reply targets, and replies collections:
+context and history collections, collection items, reply targets, and replies
+collections:
 
 ~~~~ typescript twoslash
 import { backfill, type BackfillDocumentLoader } from "@fedify/backfill";
@@ -75,13 +76,67 @@ The seed object itself is not yielded.  If the same object appears in a
 discovered collection, it is skipped by ID.
 
 By default, `backfill()` uses the `"context-auto"` strategy.  It expects the
-seed's `context` to dereference to a `Collection`, `OrderedCollection`,
+seed's first `context` ID to dereference to a `Collection`, `OrderedCollection`,
 `CollectionPage`, or `OrderedCollectionPage`.  Ordinary post-like items are
 yielded directly, while supported `Create` activities are unwrapped and their
 objects are yielded.
 
-If the seed has no context, or its context resolves to a non-collection,
-context strategies yield nothing.
+Without history selection, if the seed has no context, or its context resolves
+to a non-collection, context strategies yield nothing.
+
+### Selecting conversation history
+
+*This option is available since Fedify 2.5.0.*
+
+Set `contextSource: "history-first"` to read the first `contextHistory`
+value on the supplied seed. It can be a reference or an embedded collection.
+For example, a seed with history but no `context` can yield posts from supported
+`Create` activities:
+
+~~~~ typescript twoslash
+import { backfill, type BackfillContext } from "@fedify/backfill";
+import { Note } from "@fedify/vocab";
+
+declare const context: BackfillContext;
+// ---cut-before---
+const seed = new Note({
+  contextHistory: new URL("https://example.com/conversations/1/history"),
+});
+for await (const item of backfill(context, seed, {
+  contextSource: "history-first",
+})) {
+  console.log(item.object);
+}
+~~~~
+
+Backfill falls back to the seed's first `context` ID if history is absent or
+unavailable: the lookup returns `null`, the loader throws an ordinary error, or
+the result is not a supported collection. Both embedded and referenced history
+support the collection and page types listed above.
+
+Once a history collection is resolved, it remains selected, even if it
+is empty, has no supported items, or later item or page loads fail. Backfill
+does not try later history values or merge history with `context`. The selected
+source is reused across context strategies within the same traversal.
+
+Backfill does not unwrap `Add` activities. Histories containing only
+`Add(Create(...))` activities yield nothing and do not trigger `context`
+fallback.
+
+An embedded history accepted without dereferencing needs no request;
+referenced items and pages still count. A failed history lookup consumes
+request budget, and context fallback uses the remaining budget and the same
+document cache. If no source can be resolved, context strategies yield nothing.
+
+Referenced history is resolved through the configured `documentLoader`,
+including portable `ap://`, `ap+ef61://`, and FEP-ef61-compatible HTTPS
+references. The loader is responsible for resolving and verifying portable
+objects, as with other objects it returns.
+
+This option chooses the source for the existing context strategies. Later
+explicitly configured strategies, including `"reply-tree"`, can still run.
+It does not discover history on ancestors or replay
+updates and deletions. Omitting the option preserves existing source selection.
 
 
 Strategies
@@ -170,8 +225,8 @@ Traversal controls
 :   Limits the number of yielded objects.  Skipped duplicates do not count.
 
 `maxRequests`
-:   Limits calls to `documentLoader`.  Embedded objects and collections do not
-    count as requests.
+:   Limits calls to `documentLoader`. Embedded objects and collections accepted
+    without fetching do not count as requests.
 
 `maxDepth`
 :   Limits reply-tree traversal and defaults to 10.  Immediate parents and
@@ -198,6 +253,10 @@ Applications that need persistent or shared caching can implement it in the
 provided `documentLoader`.
 
 Failed external dereferences are skipped so other conversation items can still
-be discovered.  Failed loads are not retained in the traversal cache, allowing
-the same IRI to be retried if another traversal path reaches it.  Aborting the
+be discovered. Thrown loader errors are not retained in the traversal cache,
+allowing the same IRI to be retried if another traversal path reaches it.
+A returned `null` is cached for the rest of the traversal. Aborting the
 provided signal stops traversal instead of skipping the request.
+Errors cloning embedded history and errors in interval configuration during
+collection source resolution also propagate. Neither these errors nor
+cancellation trigger source fallback or allow later strategies to continue.

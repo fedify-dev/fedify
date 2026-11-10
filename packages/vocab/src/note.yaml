@@ -30,6 +30,9 @@ defaultContext:
   emojiReactions:
     "@id": "fedibird:emojiReactions"
     "@type": "@id"
+- contextHistory:
+    "@id": "https://w3id.org/fep/171b/contextHistory"
+    "@type": "@id"
 
 properties:
 - singularName: quote

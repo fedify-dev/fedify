@@ -57,8 +57,8 @@ export type BackfillDocumentLoader = (
  */
 export interface BackfillContext {
   /**
-   * Dereferences context collections, collection item IRIs, reply targets,
-   * and replies collections.
+   * Dereferences context and context history collections, collection item IRIs,
+   * reply targets, and replies collections.
    */
   readonly documentLoader: BackfillDocumentLoader;
 }
@@ -74,6 +74,23 @@ export interface BackfillOptions<
   // oxlint-disable-next-line eslint/no-unused-vars
   TObject extends APObject = APObject,
 > {
+  /**
+   * Selects the collection source for context-based strategies.
+   *
+   * If omitted, uses the seed's first `context` ID. Set to `"history-first"`
+   * to try the first `contextHistory` value, falling back to the first `context`
+   * ID when history is absent or unavailable. Unavailable includes a lookup
+   * returning `null`, an ordinary loader error, or a non-collection result.
+   *
+   * A resolved history collection remains selected even if empty or no
+   * supported objects can be yielded. Later history references are not tried,
+   * and history and context collections are not merged. Later explicitly
+   * configured strategies can still run.
+   *
+   * @since 2.5.0
+   */
+  readonly contextSource?: "history-first";
+
   /**
    * Backfill strategies to run.
    *
@@ -108,9 +125,10 @@ export interface BackfillOptions<
   /**
    * Maximum number of calls to {@link BackfillContext.documentLoader}.
    *
-   * Dereferencing the note context, collection item IRIs, reply target IRIs,
-   * replies collection IRIs, and future page IRIs all count as requests across
-   * all strategies.  Embedded objects and collections do not count.
+   * Dereferencing the note context or history, collection item IRIs, reply
+   * target IRIs, replies collection IRIs, and future page IRIs all count as
+   * requests across all strategies. Embedded objects and collections accepted
+   * without fetching do not count.
    */
   readonly maxRequests?: number;
 

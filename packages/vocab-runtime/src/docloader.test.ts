@@ -515,6 +515,29 @@ test("getDocumentLoader()", async (t) => {
     }
   });
 
+  fetchMock.get("https://w3id.org/fep/171b", { status: 502 });
+  await t.step(
+    "preloaded FEP-171b context during a remote outage",
+    async () => {
+      const url = "https://w3id.org/fep/171b";
+      const result = await fetchDocumentLoader(url);
+      deepStrictEqual(result.document, {
+        "@context": {
+          collectionOf: "https://fediversity.site/apschema#collectionOf",
+          canReply: {
+            "@id": "https://w3id.org/fep/171b/canReply",
+            "@type": "@id",
+          },
+          contextHistory: {
+            "@id": "https://w3id.org/fep/171b/contextHistory",
+            "@type": "@id",
+          },
+        },
+      });
+      deepStrictEqual(fetchMock.callHistory.calls(url).length, 0);
+    },
+  );
+
   await t.step("preloaded Mastodon attribution domains", async () => {
     const context = [
       "https://www.w3.org/ns/activitystreams",

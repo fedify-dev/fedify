@@ -226,6 +226,12 @@ test("FEP-6757 objects without license metadata serialize as before", async () =
         },
         emojiReactions: { "@id": "fedibird:emojiReactions", "@type": "@id" },
       },
+      {
+        contextHistory: {
+          "@id": "https://w3id.org/fep/171b/contextHistory",
+          "@type": "@id",
+        },
+      },
     ],
     id: "https://social.example/note/1",
     type: "Note",

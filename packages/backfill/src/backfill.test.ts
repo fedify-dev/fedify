@@ -6,9 +6,12 @@ import {
   Collection,
   CollectionPage,
   Create,
+  Delete,
+  Like,
   Note,
   OrderedCollection,
   OrderedCollectionPage,
+  Update,
 } from "@fedify/vocab";
 
 async function collect(
@@ -18,6 +21,649 @@ async function collect(
 ) {
   return await Array.fromAsync(backfill(context, note, options));
 }
+
+describe("history-first source selection", () => {
+  const historyId = new URL("https://example.com/history");
+  const contextId = new URL("https://example.com/context");
+  const item = new Note({ id: new URL("https://example.com/posts/2") });
+  const contextItem = new Note({ id: new URL("https://example.com/posts/3") });
+
+  for (const abort of [false, true]) {
+    test(`history clone errors ${abort ? "preserve cancellation" : "propagate without fallback"}`, async () => {
+      const controller = new AbortController();
+      const cloneError = new Error("Clone failed");
+      const abortError = new Error("Cancelled during cloning");
+      class History extends OrderedCollection {
+        override clone(): this {
+          if (abort) controller.abort(abortError);
+          throw cloneError;
+        }
+      }
+      const requests: string[] = [];
+      await rejects(
+        collect(
+          {
+            documentLoader: (iri) => {
+              requests.push(iri.href);
+              return Promise.resolve(new Collection({ items: [contextItem] }));
+            },
+          },
+          new Note({ contextHistory: new History({}), contexts: [contextId] }),
+          { contextSource: "history-first", signal: controller.signal },
+        ),
+        (error) => error === (abort ? abortError : cloneError),
+      );
+      deepStrictEqual(requests, []);
+    });
+  }
+
+  test("history accessor errors still fall back to context", async () => {
+    class Seed extends Note {
+      override getContextHistory(): Promise<Collection | null> {
+        return Promise.reject(new Error("History accessor failed"));
+      }
+    }
+    const requests: string[] = [];
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          return Promise.resolve(new Collection({ items: [contextItem] }));
+        },
+      },
+      new Seed({ contextHistory: historyId, contexts: [contextId] }),
+      { contextSource: "history-first" },
+    );
+    deepStrictEqual(requests, [contextId.href]);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [contextItem.id],
+    );
+  });
+
+  for (const scheme of ["ap", "ap+ef61"]) {
+    test(`${scheme} history references reach the backfill loader without a vocabulary verifier`, async () => {
+      const portableHistoryId = `${scheme}://did:key:z6Mkabc/history`;
+      const seed = await Note.fromJsonLd({
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/fep/171b",
+        ],
+        type: "Note",
+        contextHistory: portableHistoryId,
+      });
+      const requests: string[] = [];
+      const results = await collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            return Promise.resolve(
+              new OrderedCollection({
+                items: [new Create({ object: item })],
+              }),
+            );
+          },
+        },
+        seed,
+        { contextSource: "history-first" },
+      );
+      deepStrictEqual(requests, [seed.contextHistoryId!.href]);
+      deepStrictEqual(
+        results.map(({ id }) => id),
+        [item.id],
+      );
+    });
+
+    test(`embedded ${scheme} history is not fetched or replaced by context`, async () => {
+      const history = await OrderedCollection.fromJsonLd({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "OrderedCollection",
+        id: `${scheme}://did:key:z6Mkabc/history`,
+      });
+      const requests: string[] = [];
+      const results = await collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            return Promise.resolve(new Collection({ items: [contextItem] }));
+          },
+        },
+        new Note({ contextHistory: history, contexts: [contextId] }),
+        { contextSource: "history-first" },
+      );
+      deepStrictEqual(requests, []);
+      deepStrictEqual(results, []);
+    });
+  }
+
+  test("history lookups stay local to each backfill call without hydrating the seed", async () => {
+    const seed = new Note({ contextHistory: historyId });
+    const original = await seed.toJsonLd();
+    const requests: string[] = [];
+    for (const post of [item, contextItem]) {
+      const results = await collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            return Promise.resolve(new OrderedCollection({ items: [post] }));
+          },
+        },
+        seed,
+        { contextSource: "history-first" },
+      );
+      strictEqual(results[0].object, post);
+      deepStrictEqual(await seed.toJsonLd(), original);
+    }
+    deepStrictEqual(requests, [historyId.href, historyId.href]);
+  });
+
+  test("compatible HTTPS history references reach the backfill loader without a vocabulary verifier", async () => {
+    const compatibleId = new URL(
+      "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/history",
+    );
+    const seed = await Note.fromJsonLd({
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/fep/171b",
+      ],
+      type: "Note",
+      id: "ap://did:key:z6Mkabc/posts/1",
+      contextHistory: compatibleId.href,
+      context: contextId.href,
+    });
+    const requests: string[] = [];
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          return Promise.resolve(
+            iri.href === compatibleId.href
+              ? new OrderedCollection({ items: [new Create({ object: item })] })
+              : new Collection({ items: [contextItem] }),
+          );
+        },
+      },
+      seed,
+      { contextSource: "history-first" },
+    );
+    deepStrictEqual(requests, [compatibleId.href]);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [item.id],
+    );
+  });
+
+  test("portable history keeps its original gateway hints when passed to the backfill loader", async () => {
+    const seed = await Note.fromJsonLd(
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/fep/171b",
+        ],
+        type: "Note",
+        id: "https://example.com/posts/1",
+        contextHistory:
+          "ap://did:key:z6Mkabc/history?@gateway=https%3A%2F%2Fhinted.example",
+      },
+      { verifyPortableObject: () => Promise.resolve({ verified: false }) },
+    );
+    const requests: string[] = [];
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          return Promise.resolve(new OrderedCollection({ items: [item] }));
+        },
+      },
+      seed,
+      { contextSource: "history-first" },
+    );
+    deepStrictEqual(requests, [seed.contextHistoryId!.href]);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [item.id],
+    );
+  });
+
+  test("malformed compatible history identifiers fall back without being loaded", async () => {
+    const seed = new Note({
+      id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/posts/1"),
+      contextHistory: new URL(
+        "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/history?@gateway=https://other.example",
+      ),
+      contexts: [contextId],
+    });
+    const requests: string[] = [];
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          return Promise.resolve(new Collection({ items: [contextItem] }));
+        },
+      },
+      seed,
+      { contextSource: "history-first" },
+    );
+    deepStrictEqual(requests, [contextId.href]);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [contextItem.id],
+    );
+  });
+
+  test("embedded portable history preserves the seed's verifier policy", async () => {
+    const seed = await Note.fromJsonLd(
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/fep/171b",
+        ],
+        type: "Note",
+        id: "https://example.com/posts/1",
+        contextHistory: {
+          type: "OrderedCollection",
+          id: "ap://did:key:z6Mkabc/history",
+          orderedItems: [{ type: "Note", id: item.id!.href }],
+        },
+      },
+      { verifyPortableObject: () => Promise.resolve({ verified: false }) },
+    );
+    const requests: string[] = [];
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          return Promise.resolve(null);
+        },
+      },
+      seed,
+      { contextSource: "history-first" },
+    );
+    deepStrictEqual(requests, [seed.contextHistoryId!.href]);
+    deepStrictEqual(results, []);
+  });
+
+  for (const activity of [false, true]) {
+    test(`embedded history ${activity ? "Create object" : "item"} hydration stays local to each backfill call`, async () => {
+      const postId = new URL("https://example.com/posts/referenced");
+      const history = new OrderedCollection({
+        items: activity ? [new Create({ object: postId })] : [postId],
+      });
+      const seed = new Note({ contextHistory: history });
+      const requests: string[] = [];
+      for (const content of ["First load", "Second load"]) {
+        const results = await collect(
+          {
+            documentLoader: (iri) => {
+              requests.push(iri.href);
+              return Promise.resolve(new Note({ id: postId, content }));
+            },
+          },
+          seed,
+          { contextSource: "history-first" },
+        );
+        strictEqual(results.length, 1);
+        strictEqual(results[0].object.content, content);
+      }
+      deepStrictEqual(requests, [postId.href, postId.href]);
+    });
+  }
+
+  test("resolved history is traversed without serialization or context loading", async () => {
+    let serializations = 0;
+    let contextLoads = 0;
+    class History extends OrderedCollection {
+      override toJsonLd(...args: Parameters<OrderedCollection["toJsonLd"]>) {
+        serializations++;
+        return super.toJsonLd(...args);
+      }
+    }
+    const history = new History({ items: [item] });
+    const seed = new Note(
+      { contextHistory: historyId },
+      {
+        contextLoader: () => {
+          contextLoads++;
+          throw new Error("Unexpected context lookup");
+        },
+      },
+    );
+    const results = await collect(
+      { documentLoader: () => Promise.resolve(history) },
+      seed,
+      { contextSource: "history-first" },
+    );
+    strictEqual(results[0].object, item);
+    strictEqual(serializations, 0);
+    strictEqual(contextLoads, 0);
+  });
+
+  test("history-only seed reuses paginated Create extraction and metadata", async () => {
+    const seed = new Note({
+      id: new URL("https://example.com/posts/1"),
+      contextHistory: historyId,
+    });
+    const pageId = new URL("https://example.com/history/page");
+    const requests: string[] = [];
+    const items = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          if (iri.href === historyId.href) {
+            return Promise.resolve(new OrderedCollection({ first: pageId }));
+          }
+          if (iri.href === pageId.href) {
+            return Promise.resolve(
+              new OrderedCollectionPage({
+                items: [
+                  new Create({ object: seed }),
+                  new Update({ object: item }),
+                  new Delete({ object: item }),
+                  new Like({ object: item }),
+                  new Create({ object: item.id }),
+                  new Create({ object: item }),
+                  new Create({ object: contextItem }),
+                ],
+              }),
+            );
+          }
+          strictEqual(iri.href, item.id!.href);
+          return Promise.resolve(item);
+        },
+      },
+      seed,
+      { contextSource: "history-first" },
+    );
+    deepStrictEqual(requests, [historyId.href, pageId.href, item.id!.href]);
+    deepStrictEqual(
+      items.map(({ id }) => id),
+      [item.id, contextItem.id],
+    );
+    for (const result of items) {
+      strictEqual(result.strategy, "context-auto");
+      strictEqual(result.origin, "collection");
+      strictEqual(result.depth, 0);
+    }
+  });
+
+  for (const contextSource of [undefined, "history-first"] as const) {
+    test(`source precedence with contextSource ${contextSource}`, async () => {
+      const requested: string[] = [];
+      const results = await collect(
+        {
+          documentLoader: (iri) => {
+            requested.push(iri.href);
+            return Promise.resolve(
+              new OrderedCollection({
+                items:
+                  iri.href === historyId.href
+                    ? [new Create({ object: item })]
+                    : [contextItem],
+              }),
+            );
+          },
+        },
+        new Note({
+          contexts: [contextId],
+          contextHistories: [
+            historyId,
+            new URL("https://example.com/other-history"),
+          ],
+        }),
+        { contextSource },
+      );
+      deepStrictEqual(requested, [
+        contextSource ? historyId.href : contextId.href,
+      ]);
+      deepStrictEqual(
+        results.map(({ id }) => id),
+        [contextSource ? item.id : contextItem.id],
+      );
+    });
+  }
+
+  for (const failure of [
+    "absent",
+    "null",
+    "throw",
+    "reject",
+    "invalid",
+    "empty",
+  ] as const) {
+    test(`${failure} history follows the fallback policy and allows reply-tree`, async () => {
+      const parent = new Note({ id: new URL("https://example.com/parent") });
+      const requests: string[] = [];
+      const results = await collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            if (iri.href === contextId.href) {
+              return Promise.resolve(new Collection({ items: [contextItem] }));
+            }
+            strictEqual(iri.href, historyId.href);
+            if (failure === "throw") throw new Error("Unavailable history");
+            if (failure === "reject")
+              return Promise.reject(new Error("Unavailable history"));
+            return Promise.resolve(
+              failure === "empty"
+                ? new OrderedCollection({})
+                : failure === "invalid"
+                  ? new Note({})
+                  : null,
+            );
+          },
+        },
+        new Note({
+          contexts: [contextId],
+          contextHistories:
+            failure === "absent"
+              ? []
+              : [historyId, new URL("https://example.com/other-history")],
+          replyTarget: parent,
+        }),
+        {
+          contextSource: "history-first",
+          strategies: ["context-auto", "reply-tree"],
+        },
+      );
+      deepStrictEqual(
+        requests,
+        failure === "absent"
+          ? [contextId.href]
+          : failure === "empty"
+            ? [historyId.href]
+            : [historyId.href, contextId.href],
+      );
+      deepStrictEqual(
+        results.map(({ id }) => id),
+        failure === "empty" ? [parent.id] : [contextItem.id, parent.id],
+      );
+    });
+  }
+
+  for (const id of [undefined, historyId]) {
+    test(`embedded history ${id ? "with" : "without"} an ID needs no requests`, async () => {
+      const results = await collect(
+        {
+          documentLoader: () => {
+            throw new Error("Unexpected request");
+          },
+        },
+        new Note({
+          contextHistories: [
+            new OrderedCollection({
+              id,
+              items: [new Create({ object: item })],
+            }),
+            historyId,
+          ],
+        }),
+        {
+          contextSource: "history-first",
+          maxRequests: 0,
+          strategies: ["context-activities"],
+        },
+      );
+      deepStrictEqual(
+        results.map(({ id }) => id),
+        [item.id],
+      );
+      strictEqual(results[0].strategy, "context-activities");
+    });
+  }
+
+  for (const Type of [
+    Collection,
+    CollectionPage,
+    OrderedCollection,
+    OrderedCollectionPage,
+  ]) {
+    test(`embedded ${Type.name} history yields posts without requests`, async () => {
+      const seed = await Note.fromJsonLd(
+        await new Note({
+          contextHistory: new Type({ items: [new Create({ object: item })] }),
+          contexts: [contextId],
+        }).toJsonLd(),
+      );
+      const results = await collect(
+        {
+          documentLoader: () => {
+            throw new Error("Unexpected request");
+          },
+        },
+        seed,
+        { contextSource: "history-first", maxRequests: 0 },
+      );
+      deepStrictEqual(
+        results.map(({ id }) => id),
+        [item.id],
+      );
+    });
+
+    test(`referenced history retains ${Type.name} traversal support`, async () => {
+      const results = await collect(
+        { documentLoader: () => Promise.resolve(new Type({ items: [item] })) },
+        new Note({ contextHistory: historyId }),
+        { contextSource: "history-first", strategies: ["context-objects"] },
+      );
+      deepStrictEqual(
+        results.map(({ id }) => id),
+        [item.id],
+      );
+      strictEqual(results[0].object, item);
+    });
+  }
+
+  test("failed history consumes shared budget while embedded later strategies can run", async () => {
+    const requests: string[] = [];
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          return Promise.reject(new Error("Unavailable"));
+        },
+      },
+      new Note({
+        contextHistory: historyId,
+        contexts: [contextId],
+        replyTarget: item,
+      }),
+      {
+        contextSource: "history-first",
+        maxRequests: 1,
+        strategies: ["context-auto", "reply-tree"],
+      },
+    );
+    deepStrictEqual(requests, [historyId.href]);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [item.id],
+    );
+  });
+
+  test("source selection stays fixed across separated context strategies", async () => {
+    const requests: string[] = [];
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          if (iri.href === historyId.href)
+            return Promise.reject(new Error("Unavailable"));
+          strictEqual(iri.href, contextId.href);
+          return Promise.resolve(
+            new Collection({
+              items: [contextItem, new Create({ object: item })],
+            }),
+          );
+        },
+      },
+      new Note({ contextHistory: historyId, contexts: [contextId] }),
+      {
+        contextSource: "history-first",
+        strategies: ["context-objects", "reply-tree", "context-activities"],
+      },
+    );
+    deepStrictEqual(requests, [historyId.href, contextId.href]);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [contextItem.id, item.id],
+    );
+    deepStrictEqual(
+      results.map(({ strategy }) => strategy),
+      ["context-objects", "context-activities"],
+    );
+  });
+
+  test("interval configuration errors propagate without fallback", async () => {
+    const reason = new Error("Invalid interval");
+    await rejects(
+      collect(
+        {
+          documentLoader: () => {
+            throw new Error("Unexpected request");
+          },
+        },
+        new Note({ contextHistory: historyId, contexts: [contextId] }),
+        {
+          contextSource: "history-first",
+          interval: () => {
+            throw reason;
+          },
+        },
+      ),
+      (error) => error === reason,
+    );
+  });
+
+  test("cancellation during history loading prevents fallback and later strategies", async () => {
+    const controller = new AbortController();
+    const reason = new Error("Stop backfill");
+    const requests: string[] = [];
+    await rejects(
+      collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            controller.abort(reason);
+            return Promise.reject(new Error("Unavailable"));
+          },
+        },
+        new Note({
+          contextHistory: historyId,
+          contexts: [contextId],
+          replyTarget: item,
+        }),
+        {
+          contextSource: "history-first",
+          signal: controller.signal,
+          strategies: ["context-auto", "reply-tree"],
+        },
+      ),
+      (error) => error === reason,
+    );
+    deepStrictEqual(requests, [historyId.href]);
+  });
+});
 
 describe("backfill", () => {
   test("package exports backfill", () => {

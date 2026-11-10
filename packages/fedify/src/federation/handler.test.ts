@@ -79,6 +79,13 @@ import { createFederation } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage } from "./queue.ts";
 
+const CONTEXT_HISTORY_CONTEXT = {
+  contextHistory: {
+    "@id": "https://w3id.org/fep/171b/contextHistory",
+    "@type": "@id",
+  },
+} as const;
+
 const QUOTE_CONTEXT_TERMS = {
   QuoteAuthorization: "https://w3id.org/fep/044f#QuoteAuthorization",
   quote: {
@@ -224,6 +231,7 @@ test("handleActor()", async () => {
         isCat: "misskey:isCat",
         Emoji: "toot:Emoji",
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     id: "https://example.com/users/someone",
     type: "Person",
@@ -328,6 +336,7 @@ test("handleActor()", async () => {
         isCat: "misskey:isCat",
         Emoji: "toot:Emoji",
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     id: "https://example.com/users/someone",
     type: "Person",
@@ -369,6 +378,7 @@ test("handleActor()", async () => {
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
       "https://gotosocial.org/ns",
+      CONTEXT_HISTORY_CONTEXT,
     ],
     id: "https://example.com/users/gone",
     type: "Tombstone",
@@ -501,6 +511,7 @@ test("handleObject()", async () => {
           "@type": "@id",
         },
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     id: "https://example.com/users/someone/notes/123",
     summary: "Hello, world!",
@@ -589,6 +600,7 @@ test("handleObject()", async () => {
           "@type": "@id",
         },
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     id: "https://example.com/users/someone/notes/123",
     summary: "Hello, world!",
@@ -880,6 +892,7 @@ test("handleCollection()", async () => {
         "@type": "@id",
       },
     },
+    CONTEXT_HISTORY_CONTEXT,
   ];
   assertEquals(await response.json(), {
     "@context": [
@@ -904,6 +917,7 @@ test("handleCollection()", async () => {
           "@type": "@id",
         },
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     id: "https://example.com/users/someone",
     type: "OrderedCollection",
@@ -998,6 +1012,7 @@ test("handleCollection()", async () => {
           "@type": "@id",
         },
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     id: "https://example.com/users/someone",
     type: "OrderedCollection",
@@ -1066,6 +1081,7 @@ test("handleCollection()", async () => {
           "@type": "@id",
         },
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     id: "https://example.com/users/someone",
     type: "OrderedCollection",
@@ -1130,6 +1146,7 @@ test("handleCollection()", async () => {
           "@type": "@id",
         },
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     id: "https://example.com/users/someone?cursor=0",
     type: "OrderedCollectionPage",
@@ -1200,6 +1217,7 @@ test("handleCollection()", async () => {
           "@type": "@id",
         },
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     id: "https://example.com/users/someone?cursor=2",
     type: "OrderedCollectionPage",
@@ -3929,6 +3947,7 @@ test("respondWithObject()", async () => {
           "@type": "@id",
         },
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     id: "https://example.com/notes/1",
     type: "Note",
@@ -4369,6 +4388,7 @@ test("respondWithObjectIfAcceptable", async () => {
           "@type": "@id",
         },
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     id: "https://example.com/notes/1",
     type: "Note",
@@ -4542,6 +4562,7 @@ test("handleCustomCollection()", async () => {
         "@type": "@id",
       },
     },
+    CONTEXT_HISTORY_CONTEXT,
   ];
   const CONTEXT = [
     "https://www.w3.org/ns/activitystreams",
@@ -4565,6 +4586,7 @@ test("handleCustomCollection()", async () => {
         "@type": "@id",
       },
     },
+    CONTEXT_HISTORY_CONTEXT,
   ];
   assertEquals(await response.json(), {
     "@context": CONTEXT,

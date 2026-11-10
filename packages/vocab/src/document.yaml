@@ -10,6 +10,9 @@ defaultContext:
 - "https://w3id.org/security/data-integrity/v2"
 - digestMultibase: "https://www.w3.org/ns/credentials/v2#digestMultibase"
 - "https://gotosocial.org/ns"
+- contextHistory:
+    "@id": "https://w3id.org/fep/171b/contextHistory"
+    "@type": "@id"
 
 properties:
 - singularName: width

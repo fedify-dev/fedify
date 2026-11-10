@@ -402,6 +402,13 @@ async function* generateProperty(
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -457,6 +464,7 @@ async function* generateProperty(
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetch${pascalCase(property.singularName)}(v, options);
           if (fetched == null) return null;
@@ -547,6 +555,13 @@ async function* generateProperty(
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -603,6 +618,7 @@ async function* generateProperty(
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetch${pascalCase(property.singularName)}(v, options);
             if (fetched == null) continue;

@@ -2805,6 +2805,12 @@ test("Federation.fetch()", async (t) => {
         "https://www.w3.org/ns/activitystreams",
         "https://w3id.org/security/data-integrity/v1",
         "https://gotosocial.org/ns",
+        {
+          contextHistory: {
+            "@id": "https://w3id.org/fep/171b/contextHistory",
+            "@type": "@id",
+          },
+        },
       ],
       id: "https://example.com/users/gone",
       type: "Tombstone",

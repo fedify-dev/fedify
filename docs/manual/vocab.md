@@ -210,6 +210,58 @@ property.
 [FEP-044f]: https://w3id.org/fep/044f
 
 
+Conversation history references
+-------------------------------
+
+*This section is applicable since Fedify 2.5.0.*
+
+The `contextHistory` property from [FEP-171b] identifies an ordered collection
+of conversation activities. Unlike `context`, which can identify a collection
+of posts, history can include activities such as `Create`, `Update`, and
+`Delete`. All `Object` subclasses, including `Note` and `Article`, support
+history references:
+
+~~~~ typescript twoslash
+import { Note } from "@fedify/vocab";
+
+const note = new Note({
+  id: new URL("https://example.com/posts/1"),
+  contextHistories: [
+    new URL("https://example.com/conversations/1/history"),
+  ],
+});
+
+// Reading IDs does not fetch the referenced collections:
+console.log(note.contextHistoryId);
+console.log(note.contextHistoryIds);
+
+// These accessors resolve references to Collection objects:
+const history = await note.getContextHistory();
+for await (const collection of note.getContextHistories()) {
+  console.log(collection.id);
+}
+~~~~
+
+Use `contextHistory` in a constructor for a single reference or
+`contextHistories` for multiple references; do not supply both together.
+References can be URLs or embedded `Collection` objects, including ordered
+collections and pages. The singular getter resolves the first value; the
+plural getter iterates all values.
+Resolving a collection does not replay its activities or apply updates and
+deletions to posts.
+
+Serialization uses an inline `contextHistory` mapping with the property IRI
+`https://w3id.org/fep/171b/contextHistory` and `@type: @id`. Deserialization
+also accepts the published `https://w3id.org/fep/171b` context, which Fedify
+preloads so reading its definition does not require a network request.
+To use history for conversation backfill, opt in with
+[`contextSource: "history-first"`](./backfill.md#selecting-conversation-history).
+Backfill selects only the first history value; the vocabulary preserves all
+values.
+
+[FEP-171b]: https://w3id.org/fep/171b
+
+
 FEP-ef61 portable objects
 -------------------------
 
@@ -791,6 +843,21 @@ the URI and returns the `Note` object.
 If you only need the object ID without fetching the remote object, you can use
 the `*Id`/`*Ids` accessors instead of dereferencing accessors.  In the same
 manner, both `a.objectId` and `b.objectId` return the equivalent URI.
+
+In Fedify 2.5.0 and later, pass `dereference: false` to inspect embedded or
+previously fetched objects without fetching references. Singular accessors
+return `null` when fetching is required; plural accessors skip those values.
+The default is `true`.
+
+~~~~ typescript twoslash
+import { Create } from "@fedify/vocab";
+declare const activity: Create;
+// ---cut-before---
+const object = await activity.getObject({ dereference: false });
+~~~~
+
+Origin and portable-object trust checks still apply: embedded objects that
+require fetching for verification are skipped.
 
 > [!TIP]
 > Dereferencing accessors take option `documentLoader` to specify the method

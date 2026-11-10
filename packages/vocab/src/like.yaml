@@ -14,4 +14,8 @@ defaultContext:
 - "https://gotosocial.org/ns"
 - toot: "http://joinmastodon.org/ns#"
   Emoji: "toot:Emoji"
+- contextHistory:
+    "@id": "https://w3id.org/fep/171b/contextHistory"
+    "@type": "@id"
+
 properties: []

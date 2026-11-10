@@ -1165,6 +1165,9 @@ importers:
       '@fedify/vocab':
         specifier: workspace:*
         version: link:../vocab
+      '@fedify/vocab-runtime':
+        specifier: workspace:*
+        version: link:../vocab-runtime
     devDependencies:
       tsdown:
         specifier: 'catalog:'

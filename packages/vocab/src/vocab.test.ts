@@ -77,6 +77,13 @@ import {
   Tombstone,
 } from "./vocab.ts";
 
+const CONTEXT_HISTORY_CONTEXT = {
+  contextHistory: {
+    "@id": "https://w3id.org/fep/171b/contextHistory",
+    "@type": "@id",
+  },
+} as const;
+
 const NOTE_QUOTE_CONTEXT = [
   "https://www.w3.org/ns/activitystreams",
   "https://w3id.org/security/data-integrity/v1",
@@ -105,6 +112,7 @@ const NOTE_QUOTE_CONTEXT = [
       "@type": "@id",
     },
   },
+  CONTEXT_HISTORY_CONTEXT,
 ] as const;
 
 const QUOTE_REQUEST_CONTEXT = [
@@ -121,6 +129,7 @@ const QUOTE_REQUEST_CONTEXT = [
       "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
     },
   },
+  CONTEXT_HISTORY_CONTEXT,
 ] as const;
 
 const FEATURE_CONTEXT = [
@@ -128,16 +137,18 @@ const FEATURE_CONTEXT = [
   "https://w3id.org/security/data-integrity/v1",
   "https://gotosocial.org/ns",
   "https://w3id.org/fep/7aa9",
+  CONTEXT_HISTORY_CONTEXT,
 ] as const;
 
 const FEATURED_COLLECTION_CONTEXT = [
-  ...FEATURE_CONTEXT,
+  ...FEATURE_CONTEXT.slice(0, -1),
   {
     Hashtag: "as:Hashtag",
     discoverable: "toot:discoverable",
     sensitive: "as:sensitive",
     toot: "http://joinmastodon.org/ns#",
   },
+  CONTEXT_HISTORY_CONTEXT,
 ] as const;
 
 const DELETE_QUOTE_REQUEST_CONTEXT = [
@@ -171,6 +182,7 @@ const DELETE_QUOTE_REQUEST_CONTEXT = [
       "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
     },
   },
+  CONTEXT_HISTORY_CONTEXT,
 ] as const;
 
 test("new Object()", () => {
@@ -359,6 +371,7 @@ test("Object.toJsonLd()", async () => {
           "@type": "@id",
         },
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     type: "Object",
     name: "Test",
@@ -1999,6 +2012,7 @@ test({
         "https://w3id.org/security/v1",
         "https://w3id.org/security/data-integrity/v1",
         "https://gotosocial.org/ns",
+        CONTEXT_HISTORY_CONTEXT,
       ],
       type: "Activity",
       object: {
@@ -2524,6 +2538,7 @@ test("Person.toJsonLd()", async () => {
         value: "schema:value",
         Emoji: "toot:Emoji",
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     alsoKnownAs: "https://example.com/alias",
     type: "Person",
@@ -2545,6 +2560,7 @@ test("Tombstone.toJsonLd() serializes formerType", async () => {
         "https://www.w3.org/ns/activitystreams",
         "https://w3id.org/security/data-integrity/v1",
         "https://gotosocial.org/ns",
+        CONTEXT_HISTORY_CONTEXT,
       ],
       id: "https://example.com/users/alice",
       type: "Tombstone",
@@ -3329,6 +3345,7 @@ test("InteractionPolicy.canFeature", async () => {
         toot: "http://joinmastodon.org/ns#",
         value: "schema:value",
       },
+      CONTEXT_HISTORY_CONTEXT,
     ],
     type: "Person",
     id: "https://example.com/users/alice",
@@ -3677,6 +3694,7 @@ test("Collection.toJsonLd() compacts embedded QuoteRequest", async () => {
             "@type": "@id",
           },
         },
+        CONTEXT_HISTORY_CONTEXT,
       ],
       items: {
         "@context": QUOTE_REQUEST_CONTEXT,
@@ -3897,6 +3915,7 @@ test("Place.fromJsonLd()", async () => {
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/data-integrity/v1",
       "https://gotosocial.org/ns",
+      CONTEXT_HISTORY_CONTEXT,
     ],
     type: "Place",
     name: "Fresno Area",
