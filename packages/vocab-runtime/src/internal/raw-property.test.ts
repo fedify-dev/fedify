@@ -562,6 +562,31 @@ test("expanded DAG validation preserves role checks for shared objects", async (
   strictEqual(calls, 1);
 });
 
+test("expanded raw values reject processor-incompatible keys and identifiers", async () => {
+  let calls = 0;
+  const target = {
+    [RAW_PROPERTY_WRITE_PROTOCOL]() {
+      calls++;
+      return Promise.resolve(this);
+    },
+  };
+  for (const node of [
+    { "https://example.com/\u00a0x": [{ "@value": 1 }] },
+    { "https://example.com/\u2003x": [] },
+    { "@id": "@foo" },
+  ])
+    for (const value of [node, { "@included": [node] }])
+      await rejects(
+        writeRawPropertyValues(
+          target,
+          { "https://example.com/ext": [value] },
+          "test",
+        ),
+        TypeError,
+      );
+  strictEqual(calls, 0);
+});
+
 test("included subjects reject pure references before shared validation or dispatch", async () => {
   let calls = 0;
   const target = {
@@ -573,6 +598,19 @@ test("included subjects reject pure references before shared validation or dispa
   const iri = "https://example.com/ext";
   const property = "https://example.com/property";
   const reference = { "@id": "https://example.com/reference" };
+  for (const emptyMembers of [
+    { "@type": [] },
+    { "@reverse": {} },
+    { "@type": [], "@reverse": {} },
+  ])
+    await rejects(
+      writeRawPropertyValues(
+        target,
+        { [iri]: [{ "@included": [{ ...reference, ...emptyMembers }] }] },
+        "test",
+      ),
+      TypeError,
+    );
   for (const sharedArray of [false, true]) {
     for (const otherRole of ["@graph", "@reverse", property]) {
       for (const reverse of [false, true]) {
@@ -604,10 +642,13 @@ test("included subjects reject pure references before shared validation or dispa
     { "@graph": [reference] },
     { "@reverse": { [property]: [reference] } },
     { "@included": [{ ...reference, [property]: [{ "@value": "subject" }] }] },
+    { "@included": [{ ...reference, [property]: [] }] },
+    { "@included": [{ ...reference, "@graph": [] }] },
+    { "@included": [{ ...reference, "@included": [] }] },
     { "@value": { "@included": [reference] }, "@type": "@json" },
   ])
     await writeRawPropertyValues(target, { [iri]: [node] }, "test");
-  strictEqual(calls, 4);
+  strictEqual(calls, 7);
 });
 
 test("JSON copying isolates received paths only when sharing is disabled", () => {

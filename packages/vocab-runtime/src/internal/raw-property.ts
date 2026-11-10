@@ -650,7 +650,17 @@ function validateExpandedValues(values: readonly unknown[]): void {
           subject != null &&
           typeof subject === "object" &&
           Object.hasOwn(subject, "@id") &&
-          Object.keys(subject).length === 1
+          Object.entries(subject).every(
+            ([key, child]) =>
+              key === "@id" ||
+              // Expansion removes these empty members, leaving a reference.
+              (key === "@type" && Array.isArray(child) && child.length === 0) ||
+              (key === "@reverse" &&
+                child != null &&
+                typeof child === "object" &&
+                !Array.isArray(child) &&
+                Object.keys(child).length === 0),
+          )
         )
           fail();
       }
@@ -662,10 +672,13 @@ function validateExpandedValues(values: readonly unknown[]): void {
     for (const child of value as unknown[])
       pending.push({ value: child, nodeOnly });
   };
-  const expandedKey = (key: string): boolean =>
+  const expandedIri = (key: string): boolean =>
     key.startsWith("_:") ||
     (SCHEME_PATTERN.test(key) &&
       isIriSyntax(key.substring(key.indexOf(":") + 1)));
+  const expandedKey = (key: string): boolean =>
+    // The processor drops IRI properties containing Unicode whitespace.
+    !/\s/.test(key) && expandedIri(key);
   while (pending.length > 0) {
     const { value, nodeOnly } = pending.pop()!;
     if (value == null || typeof value !== "object" || Array.isArray(value))
@@ -731,10 +744,11 @@ function validateExpandedValues(values: readonly unknown[]): void {
     for (const [key, child] of Object.entries(node)) {
       if (key === "@id" || key === "@index") {
         if (typeof child !== "string") fail();
+        if (key === "@id" && /^@[a-zA-Z]+$/.test(child as string)) fail();
       } else if (key === "@type") {
         if (
           !Array.isArray(child) ||
-          child.some((type) => typeof type !== "string" || !expandedKey(type))
+          child.some((type) => typeof type !== "string" || !expandedIri(type))
         )
           fail();
       } else if (key === "@graph" || key === "@included") {

@@ -32,6 +32,53 @@ const DC_LICENSE = "http://purl.org/dc/terms/license";
 const SCHEMA_LICENSE = "https://schema.org/license";
 const options = { contextLoader: mockDocumentLoader };
 
+test("withRawProperty() rejects processor-incompatible keys and identifiers", async () => {
+  for (const node of [
+    { "https://example.com/\u00a0x": [{ "@value": 1 }] },
+    { "https://example.com/\u2003x": [] },
+    { "@id": "@foo", [OTHER]: [] },
+  ])
+    for (const value of [node, { "@included": [node] }])
+      await rejects(withRawProperty(new Note({}), EXT, [value]), TypeError);
+});
+
+test("withRawProperty() preserves relative at-identifiers and Unicode node types", async () => {
+  for (const value of [
+    { "@id": "@alice/post" },
+    { "@id": "@alice#post" },
+    { "@id": "@alice-123" },
+    { "@type": ["https://example.com/\u00a0Type"] },
+  ]) {
+    const written = await withRawProperty(new Note({}), EXT, [value]);
+    deepStrictEqual((await expanded(written))[EXT], [value]);
+    await written.toJsonLd({ ...options, format: "compact" });
+  }
+});
+
+test("withRawProperty() validates included subjects after empty metadata removal", async () => {
+  const reference = { "@id": "https://example.com/reference" };
+  for (const emptyMembers of [
+    { "@type": [] },
+    { "@reverse": {} },
+    { "@type": [], "@reverse": {} },
+  ])
+    await rejects(
+      withRawProperty(new Note({}), EXT, [
+        { "@included": [{ ...reference, ...emptyMembers }] },
+      ]),
+      TypeError,
+    );
+  for (const survivingMembers of [
+    { [OTHER]: [] },
+    { "@graph": [] },
+    { "@included": [] },
+  ]) {
+    const values = [{ "@included": [{ ...reference, ...survivingMembers }] }];
+    const written = await withRawProperty(new Note({}), EXT, values);
+    deepStrictEqual((await expanded(written))[EXT], values);
+  }
+});
+
 async function expanded(object: Note | Create | OrderedCollection) {
   const values = (await object.toJsonLd({
     ...options,
