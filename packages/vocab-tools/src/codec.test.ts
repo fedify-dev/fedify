@@ -510,3 +510,62 @@ test("absolute IRIs are read from nodes and plain literals without a base", asyn
     },
   );
 });
+
+test("aliases declared only on a superclass take the subclass's encoder", async () => {
+  const property = (extra: Partial<PropertySchema>) =>
+    ({
+      singularName: "value",
+      pluralName: "values",
+      uri: `${NS}value`,
+      compactName: "value",
+      description: "A value.",
+      range: [`${XSD}string`],
+      ...extra,
+    }) as PropertySchema;
+  const types: Record<string, TypeSchema> = {
+    [`${NS}Base`]: {
+      name: "Base",
+      uri: `${NS}Base`,
+      compactName: "Base",
+      entity: false,
+      description: "A base.",
+      defaultContext: [AS, CONTEXT] as unknown as TypeSchema["defaultContext"],
+      properties: [
+        property({
+          redundantProperties: [{ uri: `${NS}first`, compactName: "first" }],
+        }),
+      ],
+    },
+    [`${NS}Sub`]: {
+      name: "Sub",
+      uri: `${NS}Sub`,
+      compactName: "Sub",
+      extends: `${NS}Base`,
+      entity: false,
+      description: "A subclass declaring the property again as a list.",
+      defaultContext: [AS, CONTEXT] as unknown as TypeSchema["defaultContext"],
+      properties: [property({ container: "list" } as Partial<PropertySchema>)],
+    },
+  };
+  const source = (await Array.fromAsync(generateClasses(types))).join("");
+  const resolved = source.replace(
+    /from\s+"([^"]+)"/g,
+    (_, specifier: string) =>
+      `from ${JSON.stringify(import.meta.resolve(specifier))}`,
+  );
+  const dir = await mkdtemp(join(tmpdir(), "fedify-codec-"));
+  try {
+    const file = join(dir, "fixture.mts");
+    await writeFile(file, resolved);
+    const { Sub, getRawPropertyValues } = await import(
+      pathToFileURL(file).href
+    );
+    const sub = new Sub({ values: ["a", "b"] });
+    deepStrictEqual(
+      await getRawPropertyValues(sub, `${NS}first`),
+      await getRawPropertyValues(sub, `${NS}value`),
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

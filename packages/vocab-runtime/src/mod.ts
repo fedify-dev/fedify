@@ -78,6 +78,13 @@ export {
   type PropertyPreprocessor,
   type PropertyPreprocessorContext,
 } from "./preprocessor.ts";
+export type {
+  RawListObject,
+  RawNodeObject,
+  RawPropertyValue,
+  RawValueObject,
+  VocabularyObject,
+} from "./vocabulary-object.ts";
 export {
   arePortableUrisEqual,
   canonicalizePortableUri,

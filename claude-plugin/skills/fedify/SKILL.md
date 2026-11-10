@@ -336,6 +336,16 @@ overrides: `deepClone()` snapshots the existing indices of large sparse arrays.
 Entries added during copying are not visited, so their nested objects may
 remain shared.  Copying preserves array length and holes.
 
+To read a property that has no typed accessor, such as an application's
+extension, use `getRawPropertyValues(object, propertyIri)` or
+`getRawPropertyValue()` from `@fedify/vocab` (Fedify 2.5.0 and later) instead
+of digging through `toJsonLd()` output.  Pass the full property IRI, never a
+compact IRI like `as:content` or a term; prefixes are not expanded.  The
+results are untyped expanded JSON-LD values, unverified like any received
+data, so validate them before use.  For properties Fedify does support, the
+functions return the current typed values encoded back, not the received
+document.
+
 > [!WARNING]
 > `crossOrigin: "trust"` on vocabulary deserialization trusts embedded
 > objects without re-fetching.  Treat it as you would

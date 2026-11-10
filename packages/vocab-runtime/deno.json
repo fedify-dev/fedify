@@ -6,6 +6,7 @@
     ".": "./src/mod.ts",
     "./internal/jsonld-cache": "./src/internal/jsonld-cache.ts",
     "./internal/portable-dereference": "./src/internal/portable-dereference.ts",
+    "./internal/raw-property": "./src/internal/raw-property.ts",
     "./internal/signed-representation": "./src/internal/signed-representation.ts",
     "./internal": "./src/internal.ts",
     "./jsonld": "./src/jsonld.ts",

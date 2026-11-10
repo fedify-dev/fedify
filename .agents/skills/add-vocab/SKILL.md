@@ -63,6 +63,12 @@ The `@fedify/vocab-tools` snapshots are stored separately for Deno, Node.js,
 and Bun.  Always update all three with the aggregate task when generated output
 changes; do not update only one runtime's snapshot.
 
+Adding a property also changes what `getRawPropertyValues()` returns for its
+IRI and for its `redundantProperties` aliases: they stop being retained as
+unsupported properties and are encoded from the typed values instead.  Mention
+this in the changelog entry when applications may already be reading the
+property through that function.
+
 
 YAML file format
 ----------------

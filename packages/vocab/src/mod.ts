@@ -69,5 +69,10 @@ export type {
   PortableObjectVerifierOptions,
   PropertyPreprocessor,
   PropertyPreprocessorContext,
+  RawListObject,
+  RawNodeObject,
+  RawPropertyValue,
+  RawValueObject,
   RemoteDocument,
+  VocabularyObject,
 } from "@fedify/vocab-runtime";
