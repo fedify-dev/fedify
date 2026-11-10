@@ -1,5 +1,5 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
-import { CryptographicKey } from "@fedify/vocab";
+import { Create, CryptographicKey, Note } from "@fedify/vocab";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/assert-equals";
@@ -548,6 +548,160 @@ test("verifyJsonLd()", async () => {
     contextLoader: mockDocumentLoader,
   });
   assertFalse(verified2);
+});
+
+test("verifyJsonLd() tolerates unmapped document and signature properties", async () => {
+  const options = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  const canonize = (input: unknown) =>
+    jsonld.canonize(input, {
+      format: "application/n-quads",
+      documentLoader: mockDocumentLoader,
+      safe: false,
+    });
+  // Keep the captured Mastodon signature: these added properties contribute
+  // nothing to the signed graph, independently of Fedify's signing code.
+  const withQuote = {
+    ...document,
+    object: { ...document.object, quoteUri: "https://example.com/quoted" },
+  };
+  const sigOptions = {
+    "@context": "https://w3id.org/identity/v1",
+    creator: signature.creator,
+    created: signature.created,
+  };
+  const extraOption = { quoteUri: "https://example.com/quoted" };
+  assertEquals(await canonize(withQuote), await canonize(document));
+  assertEquals(
+    await canonize({ ...sigOptions, ...extraOption }),
+    await canonize(sigOptions),
+  );
+  for (const input of [withQuote, { ...sigOptions, ...extraOption }]) {
+    await assertRejects(
+      () =>
+        jsonld.canonize(input, {
+          format: "application/n-quads",
+          documentLoader: mockDocumentLoader,
+          safe: true,
+        }),
+      Error,
+      "Safe mode validation error.",
+    );
+  }
+  const expectedKey = await verifySignature(testVector, options);
+  assertInstanceOf(expectedKey, CryptographicKey);
+  for (
+    const signed of [
+      { ...withQuote, signature },
+      { ...document, signature: { ...signature, ...extraOption } },
+      { ...withQuote, signature: { ...signature, ...extraOption } },
+    ]
+  ) {
+    assertEquals(await verifySignature(signed, options), expectedKey);
+    assert(await verifyJsonLd(signed, options));
+  }
+  const tampered = {
+    ...withQuote,
+    object: { ...withQuote.object, content: "<p>Forged</p>" },
+    signature,
+  };
+  assertEquals(await verifySignature(tampered, options), null);
+  assertFalse(await verifyJsonLd(tampered, options));
+});
+
+test("verifyJsonLd() rejects relative IRIs despite unmapped properties", async () => {
+  const options = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  const canonize = (input: unknown) =>
+    jsonld.canonize(input, {
+      format: "application/n-quads",
+      documentLoader: mockDocumentLoader,
+      safe: false,
+    });
+  const withRelativeUrl = {
+    ...document,
+    object: { ...document.object, url: [document.object.url, "/evil"] },
+  };
+  // RDF drops the relative URL, but the vocabulary parser resolves it.  A
+  // blanket safe:false would authenticate this altered interpretation.
+  const activity = await Create.fromJsonLd(withRelativeUrl, options);
+  const note = await activity.getObject(options);
+  assertInstanceOf(note, Note);
+  assertEquals(note.urls.map((url) => url instanceof URL ? url.href : null), [
+    document.object.url,
+    "https://activitypub.academy/evil",
+  ]);
+  for (
+    const input of [
+      withRelativeUrl,
+      { ...document, "https://example.com/extension": { "@id": "relative" } },
+    ]
+  ) {
+    assertEquals(await canonize(input), await canonize(document));
+    for (const extra of [{}, { quoteUri: "https://example.com/quoted" }]) {
+      const signed = { ...input, ...extra, signature };
+      assertEquals(await verifySignature(signed, options), null);
+      assertFalse(await verifyJsonLd(signed, options));
+    }
+  }
+  // A mapped option with a relative value is dropped from the options graph
+  // too, but must remain rejected alongside an unmapped option.
+  const relativeOptions = {
+    ...testVector,
+    signature: {
+      ...signature,
+      nonce: { "@id": "relative" },
+      quoteUri: "https://example.com/quoted",
+    },
+  };
+  const sigOptions = {
+    "@context": "https://w3id.org/identity/v1",
+    creator: signature.creator,
+    created: signature.created,
+  };
+  assertEquals(
+    await canonize({
+      ...sigOptions,
+      nonce: relativeOptions.signature.nonce,
+      quoteUri: relativeOptions.signature.quoteUri,
+    }),
+    await canonize(sigOptions),
+  );
+  assertEquals(await verifySignature(relativeOptions, options), null);
+  assertFalse(await verifyJsonLd(relativeOptions, options));
+});
+
+test("signing still rejects unmapped properties", async () => {
+  const input = { ...document, quoteUri: "https://example.com/quoted" };
+  const options = { contextLoader: mockDocumentLoader };
+  await assertRejects(
+    () => createSignature(input, rsaPrivateKey3, rsaPublicKey3.id!, options),
+    Error,
+    "Safe mode validation error.",
+  );
+  await assertRejects(
+    () => signJsonLd(input, rsaPrivateKey3, rsaPublicKey3.id!, options),
+    Error,
+    "Safe mode validation error.",
+  );
+});
+
+test("verification still rejects malformed JSON-LD", async () => {
+  const malformed = { ...testVector, "@context": 42 };
+  const options = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  assertEquals(await verifySignature(malformed, options), null);
+  const error = await assertRejects(
+    () => verifyJsonLd(malformed, options),
+    Error,
+  );
+  assertEquals(error.name, "jsonld.SyntaxError");
 });
 
 test("compactJsonLd() with restrictive context loader", async () => {
@@ -1293,11 +1447,17 @@ test("verifyJsonLd() rejects unsafe JSON-LD keywords", async () => {
   ];
 
   for (const [keyword, jsonLd] of cases) {
-    await assertRejects(
-      () => verifyJsonLd(jsonLd, options),
-      UnsafeJsonLdError,
-      `Unsupported JSON-LD keyword: ${keyword}.`,
-    );
+    for (const extra of [{}, { quoteUri: "https://example.com/quoted" }]) {
+      await assertRejects(
+        () =>
+          verifyJsonLd(
+            { ...jsonLd as Record<string, unknown>, ...extra },
+            options,
+          ),
+        UnsafeJsonLdError,
+        `Unsupported JSON-LD keyword: ${keyword}.`,
+      );
+    }
   }
 });
 

@@ -1016,6 +1016,9 @@ export interface VerifySignatureOptions {
 
 /**
  * Verifies Linked Data Signatures of the given JSON-LD document.
+ * Unmapped properties discarded during JSON-LD processing are tolerated, but
+ * their values are not authenticated by the signature.  Other unsafe
+ * canonicalization warnings, including relative IRIs, remain rejected.
  * @param jsonLd The JSON-LD document to verify.
  * @param options Options for verifying the signature.
  * @returns The public key that signed the document or `null` if the signature
@@ -1058,7 +1061,7 @@ export async function verifySignature(
   delete sigOpts.signatureValue;
   let sigOptsHash: string;
   try {
-    sigOptsHash = await hashJsonLd(sigOpts, options.contextLoader);
+    sigOptsHash = await hashJsonLd(sigOpts, options.contextLoader, "verify");
   } catch (error) {
     logger.warn(
       "Failed to verify; failed to hash the signature options: {signatureOptions}\n{error}",
@@ -1070,7 +1073,7 @@ export async function verifySignature(
   delete document.signature;
   let docHash: string;
   try {
-    docHash = await hashJsonLd(document, options.contextLoader);
+    docHash = await hashJsonLd(document, options.contextLoader, "verify");
   } catch (error) {
     logger.warn(
       "Failed to verify; failed to hash the document: {document}\n{error}",
@@ -1136,6 +1139,8 @@ export interface VerifyJsonLdOptions extends VerifySignatureOptions {
  * Signatures.  If the document is signed, this function verifies the signature
  * and checks if the document is attributed to the owner of the public key.
  * If the document is not signed, this function returns `false`.
+ * Unmapped properties discarded during JSON-LD processing are not
+ * authenticated, even when verification succeeds.
  * @param jsonLd The JSON-LD document to verify.
  * @param options Options for verifying the document.
  * @returns `true` if the document is authentic; `false` otherwise.
@@ -1247,13 +1252,41 @@ async function verifyJsonLdInternal(
   );
 }
 
+const tolerableVerificationWarnings = new Set([
+  "blank node predicate",
+  "invalid property",
+]);
+
+function handleVerificationEvent({ event, next }: {
+  event: { level: string; code: string };
+  next: () => void;
+}): void {
+  // These unmapped properties are dropped by both RDF conversion and the
+  // vocabulary parser.  Other warnings, especially relative IRIs that the
+  // parser may resolve, can hide changes to fields the application interprets.
+  if (
+    event.level === "warning" && !tolerableVerificationWarnings.has(event.code)
+  ) {
+    throw new TypeError(
+      `Unsafe JSON-LD canonicalization warning: ${event.code}`,
+    );
+  }
+  next();
+}
+
 async function hashJsonLd(
   jsonLd: unknown,
   contextLoader: DocumentLoader | undefined,
+  mode: "sign" | "verify" = "sign",
 ): Promise<string> {
   const canon = await jsonld.canonize(jsonLd, {
     format: "application/n-quads",
     documentLoader: contextLoader ?? getDocumentLoader(),
+    // jsonld's safe handler runs before custom handlers.  Replace it only on
+    // verification so senders can sign graphs with unmapped properties, while
+    // outbound signing continues to reject every unsafe warning.
+    safe: mode === "sign",
+    eventHandler: mode === "verify" ? handleVerificationEvent : undefined,
   });
   const encoder = new TextEncoder();
   const hash = await crypto.subtle.digest("SHA-256", encoder.encode(canon));
