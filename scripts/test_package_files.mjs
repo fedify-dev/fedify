@@ -1,7 +1,7 @@
 // Check the publisher's actual file lists, rather than duplicating its glob rules.
 // Run through mise after building; lifecycle hooks are skipped while packing.
 import { ok } from "node:assert/strict";
-import { checkExports } from "./package_exports.mjs";
+import { checkExports, parseTarFileList } from "./package_exports.mjs";
 import spawn from "cross-spawn";
 import {
   existsSync,
@@ -121,11 +121,7 @@ try {
         existsSync(tarball),
         `${manifest.name}: tarball not found: ${tarball}`,
       );
-      const files = run("tar", ["-tzf", tarball])
-        .trim()
-        .split("\n")
-        .filter((file) => !file.endsWith("/"))
-        .map((file) => file.replace(/^package\//, ""));
+      const files = parseTarFileList(run("tar", ["-tzf", tarball]));
       checkFiles(manifest.name, files);
       checkExports(manifest.name, files, manifest, cwd);
       if (directory === "init") {
