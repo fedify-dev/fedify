@@ -530,7 +530,8 @@ To be released.
     objects are serialized.  Known properties use the most-derived typed
     decoder, and writes reject duplicate destinations, invalid scalar ranges,
     multiple values for functional properties, or unrepresentable values
-    without modifying the source.  Compact JSON-LD output also preserves graph
+    without modifying the source.  Validation also covers child objects decoded
+    by preprocessors.  Compact JSON-LD output also preserves graph
     members and proof references in ordinary vocabulary objects.
     [[#1355], [#1420]]
  -  Fixed generated accessors decoding embedded objects that have their own

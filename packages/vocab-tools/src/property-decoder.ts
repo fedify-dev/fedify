@@ -44,6 +44,11 @@ function* generatePreprocessorBlock(
             tracerProvider: options.tracerProvider,
             verifyPortableObject: options.verifyPortableObject,
             baseUrl: ${baseUrlExpr},
+            // Child decoding must validate the supplied expanded values before
+            // JSON-LD expansion can discard malformed input.
+            ...(isRawPropertyWrite(options)
+              ? { _rawPropertyWrite: true, _expanded: true }
+              : {}),
           });
           if (_result instanceof Error) throw _result;
           if (_result !== undefined) {

@@ -695,28 +695,152 @@ test("withRawProperty() decodes proof graphs and asynchronous keys", async () =>
 });
 
 test("withRawProperty() normalizes preprocessed nodes and publishes their extensions", async () => {
-  const written = await withRawProperty(new Note({}), `${AS}#icon`, [
-    {
-      "@type": [`${AS}#Link`],
-      [`${AS}#href`]: [{ "@id": "https://example.com/icon.png" }],
-      [`${AS}#mediaType`]: [{ "@value": "image/png" }],
-      [EXT]: [{ "@value": "authored" }],
-    },
-  ]);
-  const icon = await written.getIcon();
-  ok(icon instanceof Image);
-  strictEqual(icon.url?.href, "https://example.com/icon.png");
-  strictEqual(icon.mediaType, "image/png");
-  deepStrictEqual(await getRawPropertyValues(icon, EXT), [
-    { "@value": "authored" },
-  ]);
-  const raw = await getRawPropertyValues(written, `${AS}#icon`);
-  deepStrictEqual((raw[0] as Record<string, unknown>)[EXT], [
-    { "@value": "authored" },
-  ]);
-  const json = await expanded(written);
-  const [child] = json[`${AS}#icon`] as Record<string, unknown>[];
-  deepStrictEqual(child[EXT], [{ "@value": "authored" }]);
+  for (const property of ["icon", "image"]) {
+    const written = await withRawProperty(new Note({}), `${AS}#${property}`, [
+      {
+        "@type": [`${AS}#Link`],
+        [`${AS}#href`]: [{ "@id": "https://example.com/icon.png" }],
+        [`${AS}#mediaType`]: [{ "@value": "image/png" }],
+        [`${AS}#width`]: [
+          {
+            "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
+            "@value": 32,
+          },
+        ],
+        [EXT]: [{ "@value": "authored" }],
+      },
+    ]);
+    const image =
+      property === "icon" ? await written.getIcon() : await written.getImage();
+    ok(image instanceof Image);
+    strictEqual(image.url?.href, "https://example.com/icon.png");
+    strictEqual(image.mediaType, "image/png");
+    strictEqual(image.width, 32);
+    deepStrictEqual(await getRawPropertyValues(image, EXT), [
+      { "@value": "authored" },
+    ]);
+    const raw = await getRawPropertyValues(written, `${AS}#${property}`);
+    deepStrictEqual((raw[0] as Record<string, unknown>)[EXT], [
+      { "@value": "authored" },
+    ]);
+    const json = await expanded(written);
+    const [child] = json[`${AS}#${property}`] as Record<string, unknown>[];
+    deepStrictEqual(child[EXT], [{ "@value": "authored" }]);
+  }
+});
+
+test("withRawProperty() keeps Link-to-Image preprocessing strict through nested writes", async () => {
+  const originalImage = new Image({
+    url: new URL("https://example.com/original.png"),
+    mediaType: "image/png",
+    width: 16,
+  });
+  const child = await withRawProperty(
+    new Note({
+      content: "original child",
+      icon: originalImage,
+      image: originalImage,
+    }),
+    EXT,
+    [{ "@value": "original child extension" }],
+  );
+  const source = await withRawProperty(
+    new Create({
+      content: "original parent",
+      object: child,
+    }),
+    EXT,
+    [{ "@value": "original parent extension" }],
+  );
+  const before = await expanded(source);
+  for (const property of ["icon", "image"]) {
+    for (const invalid of [
+      {
+        [`${AS}#mediaType`]: [
+          { "@id": "https://example.com/not-a-media-type" },
+        ],
+      },
+      // Empty nodes pass the expanded-input validator, but are not strings.
+      { [`${AS}#mediaType`]: [{}] },
+      {
+        [`${AS}#href`]: [
+          { "@id": "https://example.com/first.png" },
+          { "@id": "https://example.com/second.png" },
+        ],
+      },
+      ...[-1, 1.5].map((width) => ({
+        [`${AS}#width`]: [
+          {
+            "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
+            "@value": width,
+          },
+        ],
+      })),
+    ]) {
+      const link = {
+        "@type": [`${AS}#Link`],
+        [`${AS}#href`]: [{ "@id": "https://example.com/replacement.png" }],
+        [OTHER]: [{ "@value": "supplied extension" }],
+        ...invalid,
+      };
+      await rejects(
+        withRawProperty(child, `${AS}#${property}`, [link]),
+        TypeError,
+      );
+      await rejects(
+        withRawProperties(source, [
+          [`${AS}#content`, [{ "@value": "changed parent" }]],
+          [EXT, [{ "@value": "changed extension" }]],
+          [
+            `${AS}#object`,
+            [
+              {
+                "@type": [`${AS}#Note`],
+                [`${AS}#content`]: [{ "@value": "changed child" }],
+                [`${AS}#${property}`]: [link],
+              },
+            ],
+          ],
+        ]),
+        TypeError,
+      );
+      strictEqual(source.content, "original parent");
+      strictEqual(await source.getObject(), child);
+      strictEqual(child.content, "original child");
+      strictEqual(await child.getIcon(), originalImage);
+      strictEqual(await child.getImage(), originalImage);
+      deepStrictEqual(await getRawPropertyValues(source, EXT), [
+        { "@value": "original parent extension" },
+      ]);
+      deepStrictEqual(await getRawPropertyValues(child, EXT), [
+        { "@value": "original child extension" },
+      ]);
+      deepStrictEqual(await getRawPropertyValues(originalImage, OTHER), []);
+      deepStrictEqual(await expanded(source), before);
+
+      if (`${AS}#mediaType` in invalid || `${AS}#href` in invalid) {
+        const received = await Note.fromJsonLd(
+          {
+            "@type": [`${AS}#Note`],
+            [`${AS}#${property}`]: [link],
+          },
+          options,
+        );
+        const image =
+          property === "icon"
+            ? await received.getIcon()
+            : await received.getImage();
+        ok(image instanceof Image);
+        strictEqual(
+          image.url?.href,
+          `${AS}#href` in invalid
+            ? "https://example.com/first.png"
+            : "https://example.com/replacement.png",
+        );
+        strictEqual(image.mediaType, null);
+      }
+    }
+  }
 });
 
 test("withRawProperty() resets changed object trust and preserves untouched children", async () => {

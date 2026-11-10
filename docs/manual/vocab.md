@@ -1692,7 +1692,9 @@ preprocessor, as `fromJsonLd()` does.  A supplied value that cannot be
 decoded is rejected instead of silently discarded.  Decoded scalar values
 must satisfy the same range checks as constructor arguments, and a functional
 property accepts at most one value.  These checks also apply to supplied
-nested objects; ordinary `fromJsonLd()` decoding remains lenient.  When a later
+nested objects, including children decoded by preprocessors.  For example,
+a `Link` converted to an `Image` must still contain valid known fields.
+Ordinary `fromJsonLd()` preprocessing remains lenient.  When a later
 Fedify version adds support for an extension, the same write call uses this
 typed decoding path.
 
