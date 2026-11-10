@@ -1,4 +1,4 @@
-import { deepStrictEqual } from "node:assert/strict";
+import { deepStrictEqual, rejects } from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
   copyFile,
@@ -78,6 +78,13 @@ it("returns no imports for an absent or empty dist directory", async () => {
     deepStrictEqual(await discoverTestImports(baseDir), []);
     await mkdir(join(baseDir, "dist"));
     deepStrictEqual(await discoverTestImports(baseDir), []);
+  });
+});
+
+it("rejects when dist is a file instead of a directory", async () => {
+  await withFixture(async (baseDir) => {
+    await writeFile(join(baseDir, "dist"), "");
+    await rejects(() => discoverTestImports(baseDir), { code: "ENOTDIR" });
   });
 });
 
