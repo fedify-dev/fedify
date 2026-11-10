@@ -50,10 +50,6 @@ first:
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/sqlite
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/sqlite
 ~~~~
@@ -68,6 +64,10 @@ yarn add @fedify/sqlite
 
 ~~~~ bash [Bun]
 bun add @fedify/sqlite
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/sqlite
 ~~~~
 
 :::
@@ -156,10 +156,6 @@ first:
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/redis
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/redis
 ~~~~
@@ -174,6 +170,10 @@ yarn add @fedify/redis
 
 ~~~~ bash [Bun]
 bun add @fedify/redis
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/redis
 ~~~~
 
 :::
@@ -216,10 +216,6 @@ package first:
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/postgres
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/postgres
 ~~~~
@@ -234,6 +230,10 @@ yarn add @fedify/postgres
 
 ~~~~ bash [Bun]
 bun add @fedify/postgres
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/postgres
 ~~~~
 
 :::
@@ -369,10 +369,6 @@ To use the [`PgliteKvStore`], install the *@fedify/pglite* package and PGlite:
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/pglite npm:@electric-sql/pglite
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/pglite @electric-sql/pglite
 ~~~~
@@ -387,6 +383,10 @@ yarn add @fedify/pglite @electric-sql/pglite
 
 ~~~~ bash [Bun]
 bun add @fedify/pglite @electric-sql/pglite
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/pglite npm:@electric-sql/pglite
 ~~~~
 
 :::
@@ -438,10 +438,6 @@ first:
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/mysql
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/mysql mysql2
 ~~~~
@@ -456,6 +452,10 @@ yarn add @fedify/mysql mysql2
 
 ~~~~ bash [Bun]
 bun add @fedify/mysql mysql2
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/mysql
 ~~~~
 
 :::
@@ -551,10 +551,6 @@ package first:
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/cfworkers
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/cfworkers
 ~~~~
@@ -569,6 +565,10 @@ yarn add @fedify/cfworkers
 
 ~~~~ bash [Bun]
 bun add @fedify/cfworkers
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/cfworkers
 ~~~~
 
 :::
@@ -628,10 +628,6 @@ To use the [`NetlifyBlobsKvStore`], you need to install *@fedify/netlify* and
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/netlify npm:@netlify/blobs
-~~~~
-
 ~~~~ bash [npm]
 npm add @fedify/netlify @netlify/blobs
 ~~~~
@@ -646,6 +642,10 @@ yarn add @fedify/netlify @netlify/blobs
 
 ~~~~ bash [Bun]
 bun add @fedify/netlify @netlify/blobs
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/netlify npm:@netlify/blobs
 ~~~~
 
 :::

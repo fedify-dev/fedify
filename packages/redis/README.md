@@ -3,8 +3,8 @@
 @fedify/redis: Redis drivers for Fedify
 =======================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 
 This package provides [Fedify]'s [`KvStore`] and [`MessageQueue`]
 implementations for Redis:
@@ -38,10 +38,10 @@ const federation = createFederation({
 });
 ~~~~
 
-[JSR badge]: https://jsr.io/badges/@fedify/redis
-[JSR]: https://jsr.io/@fedify/redis
 [npm badge]: https://img.shields.io/npm/v/@fedify/redis?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/redis
+[JSR badge]: https://jsr.io/badges/@fedify/redis
+[JSR]: https://jsr.io/@fedify/redis
 [Fedify]: https://fedify.dev/
 [`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
 [`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue
@@ -53,9 +53,9 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/redis  # Deno
 npm  add     @fedify/redis  # npm
 pnpm add     @fedify/redis  # pnpm
 yarn add     @fedify/redis  # Yarn
 bun  add     @fedify/redis  # Bun
+deno add jsr:@fedify/redis  # Deno
 ~~~~

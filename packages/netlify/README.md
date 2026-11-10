@@ -3,8 +3,8 @@
 @fedify/netlify: Run Fedify with Netlify blobs and async workloads
 ==================================================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 [![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 *This package is available since Fedify 2.4.0.*
@@ -17,10 +17,10 @@ Function into their consumer.
 
 The initial release targets Netlify Functions, not Netlify Edge Functions.
 
-[JSR badge]: https://jsr.io/badges/@fedify/netlify
-[JSR]: https://jsr.io/@fedify/netlify
 [npm badge]: https://img.shields.io/npm/v/@fedify/netlify?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/netlify
+[JSR badge]: https://jsr.io/badges/@fedify/netlify
+[JSR]: https://jsr.io/@fedify/netlify
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
 [@fedify@hackers.pub]: https://hackers.pub/@fedify
 [Fedify]: https://fedify.dev/
@@ -36,11 +36,11 @@ Installation
 For queue-only usage, install the package with Netlify Async Workloads:
 
 ~~~~ sh
-deno add jsr:@fedify/netlify npm:@netlify/async-workloads  # Deno
 npm  add     @fedify/netlify @netlify/async-workloads     # npm
 pnpm add     @fedify/netlify @netlify/async-workloads     # pnpm
 yarn add     @fedify/netlify @netlify/async-workloads     # Yarn
 bun  add     @fedify/netlify @netlify/async-workloads     # Bun
+deno add jsr:@fedify/netlify npm:@netlify/async-workloads  # Deno
 ~~~~
 
 
@@ -50,11 +50,11 @@ Usage
 To use `NetlifyBlobsKvStore`, also install Netlify Blobs:
 
 ~~~~ sh
-deno add npm:@netlify/blobs  # Deno
 npm  add     @netlify/blobs  # npm
 pnpm add     @netlify/blobs  # pnpm
 yarn add     @netlify/blobs  # Yarn
 bun  add     @netlify/blobs  # Bun
+deno add npm:@netlify/blobs  # Deno
 ~~~~
 
 Create one store and queue for both the web application and the workload
@@ -101,11 +101,11 @@ same CAS-capable ordering storage.  Install `@fedify/postgres`,
 `@netlify/database`, and `postgres` in addition to the base dependencies:
 
 ~~~~ sh
-deno add jsr:@fedify/postgres npm:@netlify/database npm:postgres  # Deno
 npm  add     @fedify/postgres @netlify/database postgres          # npm
 pnpm add     @fedify/postgres @netlify/database postgres          # pnpm
 yarn add     @fedify/postgres @netlify/database postgres          # Yarn
 bun  add     @fedify/postgres @netlify/database postgres          # Bun
+deno add jsr:@fedify/postgres npm:@netlify/database npm:postgres  # Deno
 ~~~~
 
 Then replace the `kv` declaration from the main example:

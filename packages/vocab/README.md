@@ -3,18 +3,18 @@
 @fedify/vocab: ActivityPub vocabulary for Fedify
 ================================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 
 This package provides a collection of type-safe objects that represent the
 [Activity Vocabulary] and vendor-specific extensions for the [Fedify] framework.
 It is the core vocabulary library that powers ActivityPub object handling in
 Fedify applications.
 
-[JSR badge]: https://jsr.io/badges/@fedify/vocab
-[JSR]: https://jsr.io/@fedify/vocab
 [npm badge]: https://img.shields.io/npm/v/@fedify/vocab?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/vocab
+[JSR badge]: https://jsr.io/badges/@fedify/vocab
+[JSR]: https://jsr.io/@fedify/vocab
 [Activity Vocabulary]: https://www.w3.org/TR/activitystreams-vocabulary/
 [Fedify]: https://fedify.dev/
 
@@ -35,11 +35,11 @@ Installation
 ------------
 
 ~~~~ bash
-deno add jsr:@fedify/vocab # Deno
 npm add @fedify/vocab # npm
 pnpm add @fedify/vocab # pnpm
 yarn add @fedify/vocab # Yarn
 bun add @fedify/vocab # Bun
+deno add jsr:@fedify/vocab # Deno
 ~~~~
 
 

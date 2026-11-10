@@ -3,8 +3,8 @@
 @fedify/hono: Integrate Fedify with Hono
 ========================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 [![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 *This package is available since Fedify 1.9.0.*
@@ -26,10 +26,10 @@ const app = new Hono();
 app.use(federation(fedi, (ctx) => "context data"));
 ~~~~
 
-[JSR badge]: https://jsr.io/badges/@fedify/hono
-[JSR]: https://jsr.io/@fedify/hono
 [npm badge]: https://img.shields.io/npm/v/@fedify/hono?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/hono
+[JSR badge]: https://jsr.io/badges/@fedify/hono
+[JSR]: https://jsr.io/@fedify/hono
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
 [@fedify@hackers.pub]: https://hackers.pub/@fedify
 [Fedify]: https://fedify.dev/
@@ -59,9 +59,9 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/hono  # Deno
 npm  add     @fedify/hono  # npm
 pnpm add     @fedify/hono  # pnpm
 yarn add     @fedify/hono  # Yarn
 bun  add     @fedify/hono  # Bun
+deno add jsr:@fedify/hono  # Deno
 ~~~~

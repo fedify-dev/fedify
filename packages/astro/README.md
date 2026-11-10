@@ -3,8 +3,8 @@
 @fedify/astro: Integrate Fedify with `Astro`
 ============================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 [![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 *This package is available since Fedify 2.1.0.*
@@ -68,10 +68,10 @@ export const onRequest = sequence(
 );
 ~~~~
 
-[JSR badge]: https://jsr.io/badges/@fedify/astro
-[JSR]: https://jsr.io/@fedify/astro
 [npm badge]: https://img.shields.io/npm/v/@fedify/astro?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/astro
+[JSR badge]: https://jsr.io/badges/@fedify/astro
+[JSR]: https://jsr.io/@fedify/astro
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
 [@fedify@hackers.pub]: https://hackers.pub/@fedify
 [Fedify]: https://fedify.dev/
@@ -175,9 +175,9 @@ Installation
 ------------
 
 ~~~~ sh
-deno add npm:@fedify/astro  # Deno
 npm  add     @fedify/astro  # npm
 pnpm add     @fedify/astro  # pnpm
 yarn add     @fedify/astro  # Yarn
 bun  add     @fedify/astro  # Bun
+deno add npm:@fedify/astro  # Deno
 ~~~~

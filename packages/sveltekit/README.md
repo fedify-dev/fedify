@@ -3,8 +3,8 @@
 @fedify/sveltekit: Integrate Fedify with SvelteKit
 ==================================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 [![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 *This package is available since Fedify 1.9.0.*
@@ -27,10 +27,10 @@ export const handle = fedifyHook(federation, (req) => "context data");
 
 Put the above code in your *hooks.server.ts* file.
 
-[JSR badge]: https://jsr.io/badges/@fedify/sveltekit
-[JSR]: https://jsr.io/@fedify/sveltekit
 [npm badge]: https://img.shields.io/npm/v/@fedify/sveltekit?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/sveltekit
+[JSR badge]: https://jsr.io/badges/@fedify/sveltekit
+[JSR]: https://jsr.io/@fedify/sveltekit
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
 [@fedify@hackers.pub]: https://hackers.pub/@fedify
 [Fedify]: https://fedify.dev/
@@ -60,9 +60,9 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/sveltekit  # Deno
 npm  add     @fedify/sveltekit  # npm
 pnpm add     @fedify/sveltekit  # pnpm
 yarn add     @fedify/sveltekit  # Yarn
 bun  add     @fedify/sveltekit  # Bun
+deno add jsr:@fedify/sveltekit  # Deno
 ~~~~

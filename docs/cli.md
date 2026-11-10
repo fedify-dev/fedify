@@ -242,7 +242,7 @@ project.  It will ask you a few questions to set up the project:
 
  -  Web framework: Bare-bones, [Hono], [Elysia], [Express], [Nitro], [Next.js],
     or [Astro]
- -  Package manager: [Deno], [Bun], [npm], [pnpm], or [Yarn]
+ -  Package manager: [npm], [pnpm], [Yarn], [Bun], or [Deno]
  -  Message queue: In-Process, [Redis], [PostgreSQL], [AMQP] (e.g., [RabbitMQ]),
     or [Deno KV] (deprecated; if Deno)
  -  Key–value store: In-Memory, [Redis], [PostgreSQL], or [Deno KV]
@@ -286,11 +286,11 @@ interactive prompts:
 You can specify the package manager by using the `-p`/`--package-manager`
 option.  The available options are:
 
- -  `deno`: [Deno]
- -  `pnpm`: [pnpm]
- -  `bun`: [Bun]
- -  `yarn`: [Yarn]
  -  `npm`: [npm]
+ -  `pnpm`: [pnpm]
+ -  `yarn`: [Yarn]
+ -  `bun`: [Bun]
+ -  `deno`: [Deno]
 
 ### `-w`/`--web-framework`: Web framework
 

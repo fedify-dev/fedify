@@ -3,8 +3,8 @@
 @fedify/debugger: Embedded ActivityPub debug dashboard for Fedify
 =================================================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 [![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 *This package is available since Fedify 2.0.0.*
@@ -40,10 +40,10 @@ the inner federation object, including with framework integrations such as
 For more details on configuration, authentication, dashboard pages, and
 advanced setup, see the [Debugging section] of the Fedify manual.
 
-[JSR badge]: https://jsr.io/badges/@fedify/debugger
-[JSR]: https://jsr.io/@fedify/debugger
 [npm badge]: https://img.shields.io/npm/v/@fedify/debugger?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/debugger
+[JSR badge]: https://jsr.io/badges/@fedify/debugger
+[JSR]: https://jsr.io/@fedify/debugger
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
 [@fedify@hackers.pub]: https://hackers.pub/@fedify
 [`@fedify/hono`]: https://jsr.io/@fedify/hono
@@ -55,9 +55,9 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/debugger  # Deno
 npm  add     @fedify/debugger  # npm
 pnpm add     @fedify/debugger  # pnpm
 yarn add     @fedify/debugger  # Yarn
 bun  add     @fedify/debugger  # Bun
+deno add jsr:@fedify/debugger  # Deno
 ~~~~

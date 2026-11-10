@@ -7,8 +7,8 @@ This package provides the shared test infrastructure used by every package in
 the [Fedify] monorepo.  It bundles three things that are needed by virtually
 every test file:
 
-1.  A `test()` function that runs the same test code on Deno, Node.js, and
-    Bun (and forwards the registrations to a Cloudflare Workers harness).
+1.  A `test()` function that runs the same test code on Node.js, Bun, and
+    Deno (and forwards the registrations to a Cloudflare Workers harness).
 2.  A `mockDocumentLoader()` that resolves ActivityPub/JSON-LD documents from
     on-disk JSON fixtures instead of making real HTTP requests.
 3.  A `TestSpanExporter` for asserting on OpenTelemetry spans recorded by the
@@ -101,7 +101,7 @@ test("nested steps", async (t) => {
 ~~~~
 
 The callback context deliberately exposes only `name`, `origin`, and `step()`,
-which are implemented consistently by Deno, Node.js, Bun, and the Cloudflare
+which are implemented consistently by Node.js, Bun, Deno, and the Cloudflare
 Workers harness.  Runtime-specific context APIs such as Deno's
 `assertSnapshot()` are not part of this wrapper.  Use the runtime's native test
 API when a test intentionally depends on one of those APIs.

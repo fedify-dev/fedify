@@ -3,8 +3,8 @@
 @fedify/relay: ActivityPub relay for Fedify
 ===========================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 [![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 *This package is available since Fedify 2.0.0.*
@@ -16,10 +16,10 @@ forward activities between federated instances.
 For comprehensive documentation on building and operating relay servers,
 see the [*Relay server* section in the Fedify manual][manual].
 
-[JSR badge]: https://jsr.io/badges/@fedify/relay
-[JSR]: https://jsr.io/@fedify/relay
 [npm badge]: https://img.shields.io/npm/v/@fedify/relay?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/relay
+[JSR badge]: https://jsr.io/badges/@fedify/relay
+[JSR]: https://jsr.io/@fedify/relay
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
 [@fedify@hackers.pub]: https://hackers.pub/@fedify
 [Fedify]: https://fedify.dev/
@@ -79,10 +79,6 @@ Installation
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@fedify/relay
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/relay
 ~~~~
@@ -97,6 +93,10 @@ yarn add @fedify/relay
 
 ~~~~ sh [Bun]
 bun add @fedify/relay
+~~~~
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/relay
 ~~~~
 
 :::

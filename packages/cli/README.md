@@ -3,18 +3,18 @@
 `fedify`: the CLI toolchain for Fedify and debugging ActivityPub
 ================================================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 [![GitHub Releases][GitHub Releases badge]][GitHub Releases]
 
 The `fedify` is a CLI toolchain for Fedify and debugging ActivityPub-enabled
 federated server apps.  Although it is primarily designed for developers who use
 [Fedify], it can be used with any ActivityPub-enabled server.
 
-[JSR badge]: https://jsr.io/badges/@fedify/cli
-[JSR]: https://jsr.io/@fedify/cli
 [npm badge]: https://img.shields.io/npm/v/@fedify/cli?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/cli
+[JSR badge]: https://jsr.io/badges/@fedify/cli
+[JSR]: https://jsr.io/@fedify/cli
 [GitHub Releases badge]: https://img.shields.io/github/v/release/fedify-dev/fedify?sort=semver&logo=github
 [GitHub Releases]: https://github.com/fedify-dev/fedify/releases
 [Fedify]: https://fedify.dev/

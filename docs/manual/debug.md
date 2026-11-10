@@ -21,10 +21,6 @@ Installation
 
 ::: code-group
 
-~~~~ bash [Deno]
-deno add jsr:@fedify/debugger
-~~~~
-
 ~~~~ bash [npm]
 npm install @fedify/debugger
 ~~~~
@@ -39,6 +35,10 @@ yarn add @fedify/debugger
 
 ~~~~ bash [Bun]
 bun add @fedify/debugger
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/debugger
 ~~~~
 
 :::
