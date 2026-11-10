@@ -21,3 +21,4 @@ t2.ts
 plan.md
 plans/
 .playwright-mcp/
+.devcontainer/devcontainer-lock.json

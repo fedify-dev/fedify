@@ -3,7 +3,7 @@
 # that intentionally ship an older mise and don't need this tooling (e.g. the
 # Netlify build for the static schema site) opt out by setting
 # MISE_IGNORED_CONFIG_PATHS to this file's path; see schema/netlify.toml.
-min_version = "2026.6.12"
+min_version = "2026.11.6"
 
 [settings]
 # Required by the [deps] dependency providers below, which are still an
@@ -175,12 +175,12 @@ sources = [
   # Everything under src/, not just *.ts(x): some packages copy non-TypeScript
   # assets into dist (e.g. @fedify/init's templates and @fedify/fixture's JSON
   # fixtures), and those are real build inputs too.
-  "packages/{adonisjs,amqp,astro,backfill,cfworkers,cli,create,debugger,denokv,elysia,express,fastify,fedify,fixture,fresh,h3,hono,init,interaction-controls,koa,lint,mysql,nestjs,netlify,next,nuxt,pglite,postgres,redis,relay,solidstart,sqlite,sveltekit,testing,uri-template,vocab-runtime,vocab-tools,vocab,webfinger}/src/**/*",
+  "packages/*/src/**/*",
   "packages/*/tsdown.config.ts",
   "packages/*/package.json",
   "packages/*/deno.json",
 ]
-outputs = ["packages/{adonisjs,amqp,astro,backfill,cfworkers,cli,create,debugger,elysia,express,fastify,fedify,fixture,h3,hono,init,interaction-controls,koa,lint,mysql,nestjs,netlify,next,nuxt,pglite,postgres,redis,relay,solidstart,sqlite,sveltekit,testing,uri-template,vocab,vocab-runtime,vocab-tools,webfinger}/dist/**/*"]
+outputs = ["packages/*/dist/**/*"]
 run = "pnpm --recursive --filter='!./examples/**' run build:self"
 
 [tasks.prepare-each]
