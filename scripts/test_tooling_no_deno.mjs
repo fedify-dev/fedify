@@ -5,6 +5,7 @@ import {
   mkdir,
   mkdtemp,
   readdir,
+  readFile,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -81,6 +82,41 @@ try {
     });
     if (result.error) throw result.error;
     assert.equal(result.status, 0, `mise run ${args.join(" ")}`);
+  }
+  if (profile[0] === "--workers") {
+    // A mise build prepares this source and can hide a missing prerequisite in
+    // the direct package command. Exercise that command with its output absent.
+    const vocabulary = join(root, "packages", "vocab", "src", "vocab.ts");
+    const original = await readFile(vocabulary);
+    try {
+      await rm(vocabulary);
+      console.log(
+        "\nChecking direct Workers command without generated vocabulary",
+      );
+      const direct = spawnSync(
+        "mise",
+        [
+          "--no-hooks",
+          "exec",
+          "--no-deps",
+          "--",
+          "pnpm",
+          "--filter",
+          "@fedify/fedify",
+          "test:cfworkers",
+        ],
+        { cwd: root, env, stdio: "inherit" },
+      );
+      if (direct.error) throw direct.error;
+      assert.equal(
+        direct.status,
+        0,
+        "direct Workers command prepares vocabulary",
+      );
+      assert.deepEqual(await readFile(vocabulary), original);
+    } finally {
+      await writeFile(vocabulary, original);
+    }
   }
   if (profile.length === 0) {
     const invalid = spawnSync(
