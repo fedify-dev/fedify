@@ -178,6 +178,7 @@
     ],
     "exclude": [
       "./packages/init/src/templates/**",
+      "./packages/next/**",
       "packages/elysia/src/**/*.test.ts",
       "packages/nestjs/src/**/*.test.ts"
     ]

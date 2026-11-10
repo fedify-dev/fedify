@@ -13,8 +13,8 @@ export default fedifyWith(federation)(
 */
 )
 
-// This config needs because middleware process only requests with the
-// "Accept" header matching the federation accept regex.
+// Run middleware for federation media types and NodeInfo paths, including
+// NodeInfo documents fetched with "Accept: application/json" or "*/*".
 // More details: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional
 export const config = {
   runtime: "nodejs",
@@ -41,5 +41,6 @@ export const config = {
     },
     { source: "/.well-known/nodeinfo" },
     { source: "/.well-known/x-nodeinfo2" },
+    { source: "/nodeinfo/:path*" },
   ],
 };
