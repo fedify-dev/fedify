@@ -66,6 +66,13 @@ To be released.
     `2024-02-31T10:00.5Z`, are now treated as malformed instead of being
     accepted with `closed` discarded.
     [[#1339], [#1347] by ChanHaeng Lee\]
+ -  Fixed incoming Linked Data Signatures without a `created` field being
+    treated as unsigned.  Valid `RsaSignature2017` signatures without that field
+    now verify through the JSON-LD APIs and inbox, including queued inbox
+    processing, and are forwarded when `skipIfUnsigned` is enabled.
+    Malformed signature objects now produce a debug log with
+    their property names.  Outgoing signatures still include `created`.
+    [[#1406], [#1413]]
  -  Fixed the fanout worker never starting when the `fanout` queue was the only
     configured queue.  `Federation.startQueue()` returned without calling
     `fanoutQueue.listen()`, so fanout messages were enqueued but never
@@ -86,7 +93,9 @@ To be released.
 [#1391]: https://github.com/fedify-dev/fedify/pull/1391
 [#1392]: https://github.com/fedify-dev/fedify/pull/1392
 [#1405]: https://github.com/fedify-dev/fedify/issues/1405
+[#1406]: https://github.com/fedify-dev/fedify/issues/1406
 [#1411]: https://github.com/fedify-dev/fedify/pull/1411
+[#1413]: https://github.com/fedify-dev/fedify/pull/1413
 
 ### @fedify/vocab
 

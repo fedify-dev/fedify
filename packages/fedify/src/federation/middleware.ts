@@ -66,7 +66,6 @@ import {
   compactJsonLd,
   detachSignature,
   getNormalizationContextLoader,
-  hasSignature,
   hasVerifiableSignature,
   InvalidContextReferenceError,
   isClearlyMalformedContextReference,
@@ -3407,7 +3406,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
     } else {
       keys = [forwarder];
     }
-    if (!hasSignature(this.activity)) {
+    if (!hasVerifiableSignature(this.activity)) {
       let hasProof: boolean;
       try {
         const activity = await Activity.fromJsonLd(this.activity, this);

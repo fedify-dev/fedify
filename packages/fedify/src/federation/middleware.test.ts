@@ -7354,6 +7354,78 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
   fetchMock.hardReset();
 });
 
+test("InboxContextImpl.forwardActivity() without created", async (t) => {
+  for (const immediate of [true, false]) {
+    await t.step(
+      immediate ? "immediate delivery" : "queued delivery",
+      async () => {
+        const delivered: unknown[] = [];
+        const queued: Message[] = [];
+        fetchMock.spyGlobal();
+        fetchMock.post("https://example.com/inbox", async (call) => {
+          delivered.push(await call.request!.json());
+          return new Response(null, { status: 202 });
+        });
+        try {
+          const federation = new FederationImpl<void>({
+            kv: new MemoryKvStore(),
+            allowPrivateAddress: true,
+            manuallyStartQueue: true,
+            queue: {
+              outbox: {
+                enqueue(message) {
+                  queued.push(message);
+                  return Promise.resolve();
+                },
+                async listen() {},
+              },
+            },
+          });
+          const activity = structuredClone(ldSignatureWithoutCreated);
+          assert(
+            await verifyJsonLd(activity, {
+              documentLoader: mockDocumentLoader,
+              contextLoader: mockDocumentLoader,
+            }),
+          );
+          const ctx = new InboxContextImpl(
+            null,
+            activity,
+            activity.id,
+            "https://www.w3.org/ns/activitystreams#Create",
+            {
+              data: undefined,
+              federation,
+              url: new URL("https://example.com/"),
+              documentLoader: mockDocumentLoader,
+              contextLoader: mockDocumentLoader,
+            },
+          );
+          await ctx.forwardActivity(
+            [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+            {
+              id: new URL("https://example.com/recipient"),
+              inboxId: new URL("https://example.com/inbox"),
+            },
+            { skipIfUnsigned: true, immediate },
+          );
+          if (immediate) {
+            assertEquals(delivered, [activity]);
+            assertEquals(queued, []);
+          } else {
+            assertEquals(delivered, []);
+            assertEquals(queued.length, 1);
+            assertEquals(queued[0].type, "outbox");
+            assertEquals((queued[0] as OutboxMessage).activity, activity);
+          }
+        } finally {
+          fetchMock.hardReset();
+        }
+      },
+    );
+  }
+});
+
 test("KvSpecDeterminer", async (t) => {
   await t.step("should use default spec when not found in KV", async () => {
     const kv = new MemoryKvStore();
