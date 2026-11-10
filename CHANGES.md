@@ -28,6 +28,12 @@ To be released.
     `SharedInboxKeyDispatcher` take a type parameter that defaults to
     `CryptoKey`, so code that reads a key pair or calls a dispatcher keeps the
     narrower type.  [[#554], [#1391]]
+ -  Fixed Linked Data Signature verification rejecting documents with unmapped
+    extension properties, such as an undefined `quoteUri`, that the sender's
+    JSON-LD processor discards.  Discarded properties are not authenticated by
+    the signature.  Outbound signing still rejects lossy input, and verification
+    continues to reject relative IRIs and unsafe graph structures.
+    [[#1405], [#1411]]
  -  Fixed Linked Data Signatures being emitted with a JSON-LD context that no
     longer resolves.  The attached `signature` object now uses
     `https://w3id.org/security/v1` instead of
@@ -79,6 +85,8 @@ To be released.
 [#1390]: https://github.com/fedify-dev/fedify/pull/1390
 [#1391]: https://github.com/fedify-dev/fedify/pull/1391
 [#1392]: https://github.com/fedify-dev/fedify/pull/1392
+[#1405]: https://github.com/fedify-dev/fedify/issues/1405
+[#1411]: https://github.com/fedify-dev/fedify/pull/1411
 
 ### @fedify/vocab
 
