@@ -1,0 +1,9 @@
+[
+  {
+    "label": "Check TypeScript types",
+    "command": "mise",
+    "args": ["run", "check:types"],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "allow_concurrent_runs": false
+  }
+]

@@ -202,7 +202,6 @@ depends = [
   "check:fmt",
   "check:lint",
   "check:types",
-  "check:types:deno",
   "check:md",
   "check-versions",
   "check:workspace-protocol",
@@ -215,14 +214,13 @@ depends = [
 ]
 run = "sacho check"
 
+[tasks."check:all"]
+description = "Check code quality including Deno compatibility"
+depends = ["check", "codegen:check:deno", "check:types:deno"]
+
 [tasks."check:node-modules"]
 description = "Check that Deno leaves pnpm's node_modules directories alone"
-run = '''
-if ! jq -e '.nodeModulesDir == "none"' deno.json > /dev/null; then
-  echo 'Set nodeModulesDir to "none" so Deno preserves pnpm workspace links.'
-  exit 1
-fi
-'''
+run = "node scripts/check_node_modules.mjs"
 
 [tasks."check:fmt"]
 description = "Check code formatting with Oxfmt"
@@ -338,18 +336,27 @@ run = "node scripts/test_pack.mjs"
 
 [tasks."test:package-files"]
 description = "Check JSR and npm packages exclude repository test assets"
+depends = ["test:package-files:npm", "test:package-files:jsr"]
+
+[tasks."test:package-files:npm"]
+description = "Check npm package files and exports without Deno"
 depends = ["build"]
-run = """
-node --test scripts/package_exports.test.mjs
-node scripts/test_package_files.mjs
-"""
+run = ["node --test scripts/package_exports.test.mjs", "node scripts/test_package_files.mjs --npm"]
+
+[tasks."test:package-files:jsr"]
+description = "Check JSR package files and exports"
+depends = ["deno:cache"]
+run = "node scripts/test_package_files.mjs --jsr"
+
+[tasks."test:npm-pack"]
+description = "Check serialized npm packing with lifecycle hooks enabled"
+depends = ["build"]
+run = "node scripts/test_npm_pack.mjs"
 
 [tasks."test:testing:pack"]
 description = "Check @fedify/testing tarballs in isolated Node.js and Bun consumers"
-run = """
-pnpm --filter @fedify/testing build
-node scripts/test_testing_pack.mjs
-"""
+depends = ["build"]
+run = "node scripts/test_testing_pack.mjs"
 
 [tasks."test:deno"]
 depends = ["deno:cache", "build"]
@@ -376,15 +383,21 @@ shell = "nu -c"
 run = "pnpm run --recursive --parallel --filter '!{docs}' --config.enable-pre-post-scripts=false test:bun"
 
 [tasks.test]
-description = "Run the test suite across all environments (Deno, Node.js, Bun)"
+description = "Run checks and the package test suite using Node.js"
+depends = ["check", "test:node"]
+
+[tasks."test:all"]
+description = "Run checks and compatibility suites across all supported runtimes"
 depends = [
-  "check",
+  "check:all",
   "test:deno",
   "test:node",
   "test:bun",
   "test:astro-compat",
   "test:sveltekit-compat",
   "test:temporal-polyfill",
+  "test:pack",
+  "test:testing:pack",
 ]
 
 [tasks."test:temporal-polyfill"]
@@ -402,8 +415,8 @@ run = '''
 let pkgs = ($env.usage_packages | split row " " | where ($it | is-not-empty))
 mise run prepare-each ...$pkgs
 for pkg in $pkgs {
+  mise run check-each $pkg
   if ($"packages/($pkg)/deno.json" | path exists) {
-    mise run check-each $pkg
     print $"Running Deno tests for package: ($pkg)"
     deno task --filter $"@fedify/($pkg)" test
   }
@@ -413,6 +426,23 @@ for pkg in $pkgs {
     print $"Running Bun tests for package: ($pkg)"
     pnpm --filter $"@fedify/($pkg)" test:bun
   }
+}
+'''
+
+[tasks."test-each:node"]
+description = "Check and test selected packages using Node.js"
+env = { FEDIFY_REQUIRE_OXLINT_TESTS = "1" }
+usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
+shell = "nu -c"
+run = '''
+let pkgs = ($env.usage_packages | split row " " | where ($it | is-not-empty))
+mise run prepare-each ...$pkgs
+for pkg in $pkgs {
+  if not ($"packages/($pkg)/package.json" | path exists) {
+    error make {msg: $"($pkg) has no Node.js package; use test-each for Deno-only packages"}
+  }
+  mise run check-each $pkg
+  pnpm --filter $"@fedify/($pkg)" test
 }
 '''
 
@@ -444,7 +474,7 @@ depends = ["build"]
 run = "node --experimental-transform-types packages/init/src/test/mod.ts test-init"
 
 # Snapshot updates
-# Note: vocab uses @std/testing/snapshot which only works on Deno
+# vocab keeps Deno.inspect() snapshots; vocab-tools has snapshots for every runtime.
 # vocab-tools has separate snapshots for each runtime
 [tasks."test:deno:update_snapshots"]
 depends = ["deno:cache"]
@@ -495,14 +525,19 @@ run = "deno task -f @fedify/fedify bench"
 
 # CLI and utilities
 [tasks.cli]
+depends = ["build"]
+description = "Run the local Fedify CLI using Node.js"
+run = "node --disable-warning=ExperimentalWarning packages/cli/dist/mod.js"
+
+[tasks."cli:deno"]
 depends = ["deno:cache"]
-description = "Run the Fedify CLI tool"
+description = "Run the local Fedify CLI source using Deno"
 run = "deno task -f @fedify/cli run"
 
 [tasks.tunnel]
-depends = ["deno:cache"]
-description = "Tunnel port with the Fedify CLI"
-run = "deno task -f @fedify/cli run tunnel"
+depends = ["build"]
+description = "Tunnel port with the local Node.js Fedify CLI"
+run = "node --disable-warning=ExperimentalWarning packages/cli/dist/mod.js tunnel"
 
 [tasks.update-init-deps]
 description = "Update third-party dependency versions in fedify init templates"
@@ -529,7 +564,7 @@ mise run fmt
 
 [tasks."test:tooling"]
 description = "Test Node.js maintenance scripts and harness utilities"
-run = 'node --experimental-transform-types --test "scripts/*.test.ts" "scripts/*.test.mjs" "examples/test-examples/*.test.ts" "packages/init/src/harness.test.ts" "packages/cli/scripts/compile.test.ts"'
+run = 'node --experimental-transform-types --test "scripts/*.test.ts" "scripts/*.test.mjs" "examples/test-examples/*.test.ts" "packages/init/src/harness.test.ts" "packages/cli/scripts/compile.test.ts" "packages/fedify/scripts/pack-skills.test.mjs"'
 
 [tasks."generate:packages-table"]
 description = "Generate package tables and links for release announcements"

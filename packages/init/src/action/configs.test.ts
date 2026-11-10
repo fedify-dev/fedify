@@ -263,22 +263,28 @@ test("patchFiles creates Oxfmt and Oxlint configs for npm projects", async () =>
   }
 });
 
-test("patchFiles keeps generated Deno federation file formatted", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "fedify-init-deno-fmt-"));
+test(
+  "patchFiles keeps generated Deno federation file formatted",
+  {
+    skip: !("Deno" in globalThis),
+  },
+  async () => {
+    const dir = await mkdtemp(join(tmpdir(), "fedify-init-deno-fmt-"));
 
-  try {
-    const data = await createDenoInitData(dir);
-    await patchFiles(data);
+    try {
+      const data = await createDenoInitData(dir);
+      await patchFiles(data);
 
-    await execFileAsync("deno", [
-      "fmt",
-      "--check",
-      join(dir, "src", "federation.ts"),
-    ]);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-});
+      await execFileAsync("deno", [
+        "fmt",
+        "--check",
+        join(dir, "src", "federation.ts"),
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  },
+);
 
 test("patchFiles adds framework-specific Oxc ignore patterns", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fedify-init-next-oxc-"));

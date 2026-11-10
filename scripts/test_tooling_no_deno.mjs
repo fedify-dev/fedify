@@ -38,32 +38,39 @@ try {
     FEDIFY_DENO_INVOCATIONS: calls,
     PATH: `${bin}${delimiter}${process.env.PATH}`,
   };
-  const tasks = [
-    ["check:fmt"],
-    ["check-each", "fedify"],
-    ["check:lint"],
-    ["check:types"],
-    ["check:types", "--", "fedify", "vocab"],
-    ["check-versions"],
-    ["check:fixture-usage"],
-    ["check:workspace-protocol"],
-    ["test:tooling"],
-    ["test:temporal-polyfill"],
-    ["generate:packages-table", "--", "--format=table", "2.5.0"],
-    [
-      "test:init",
-      "--",
-      "-w",
-      "hono",
-      "-p",
-      "npm",
-      "-k",
-      "in-memory",
-      "-m",
-      "in-process",
-      "--no-hyd-run",
-    ],
-  ];
+  const profile = process.argv.slice(2);
+  assert.ok(
+    profile.length === 0 ||
+      (profile.length === 1 && profile[0] === "--default-test"),
+    "expected --default-test or no arguments",
+  );
+  const tasks =
+    profile.length > 0
+      ? [["test"]]
+      : [
+          ["check"],
+          ["test:package-files:npm"],
+          ["test:npm-pack"],
+          ["cli", "--", "--help"],
+          ["tunnel", "--", "--help"],
+          ["check-each", "fedify"],
+          ["check:types", "--", "fedify", "vocab"],
+          ["test:temporal-polyfill"],
+          ["generate:packages-table", "--", "--format=table", "2.5.0"],
+          [
+            "test:init",
+            "--",
+            "-w",
+            "hono",
+            "-p",
+            "npm",
+            "-k",
+            "in-memory",
+            "-m",
+            "in-process",
+            "--no-hyd-run",
+          ],
+        ];
   for (const args of tasks) {
     console.log(`\nChecking without Deno: mise run ${args.join(" ")}`);
     const result = spawnSync("mise", ["run", ...args], {
@@ -73,6 +80,24 @@ try {
     });
     if (result.error) throw result.error;
     assert.equal(result.status, 0, `mise run ${args.join(" ")}`);
+  }
+  if (profile.length === 0) {
+    const invalid = spawnSync(
+      "mise",
+      ["run", "cli", "--", "fedify-no-such-command"],
+      {
+        cwd: root,
+        env,
+        encoding: "utf8",
+      },
+    );
+    assert.ifError(invalid.error);
+    assert.notEqual(
+      invalid.status,
+      0,
+      "CLI must forward invalid arguments and fail",
+    );
+    assert.match(invalid.stderr, /fedify-no-such-command/);
   }
   assert.deepEqual(await readdir(cache), [], "no Deno cache was prepared");
   assert.equal(

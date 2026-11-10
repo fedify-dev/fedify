@@ -1,5 +1,5 @@
 {
-  "deno.enable": true,
+  "deno.enable": false,
   "deno.lint": false,
   "deno.unstable": true,
   "editor.detectIndentation": false,
@@ -13,8 +13,8 @@
   "yaml.format.enable": false,
   "yaml.hover": true,
   "yaml.schemas": {
-    "src/codegen/schema.yaml": "/src/vocab/*.yaml",
-    "https://json-schema.org/draft/2020-12/schema": "/src/codegen/schema.yaml"
+    "packages/vocab-tools/src/schema.yaml": "/packages/vocab/src/*.yaml",
+    "https://json-schema.org/draft/2020-12/schema": "/packages/vocab-tools/src/schema.yaml"
   },
   "yaml.validate": true,
   "[javascript]": {
