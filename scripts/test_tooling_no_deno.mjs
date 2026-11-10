@@ -41,12 +41,13 @@ try {
   const profile = process.argv.slice(2);
   assert.ok(
     profile.length === 0 ||
-      (profile.length === 1 && profile[0] === "--default-test"),
-    "expected --default-test or no arguments",
+      (profile.length === 1 &&
+        ["--default-test", "--workers"].includes(profile[0])),
+    "expected --default-test, --workers, or no arguments",
   );
   const tasks =
     profile.length > 0
-      ? [["test"]]
+      ? [[profile[0] === "--workers" ? "test:cfworkers" : "test"]]
       : [
           ["check"],
           ["test:package-files:npm"],

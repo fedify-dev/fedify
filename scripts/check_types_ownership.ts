@@ -64,11 +64,6 @@ export const OWNERSHIP: readonly Ownership[] = [
     reason: "Runs on Deno to compile the standalone CLI executables.",
   },
   {
-    path: "packages/fedify/scripts/discover_tests.ts",
-    owner: DENO_CHECK,
-    reason: "Runs on Deno and imports @std/fs and @std/path.",
-  },
-  {
     path: "packages/fedify/scripts/generate-map-local-vector.ts",
     owner: DENO_CHECK,
     reason: "Runs on Deno and uses Deno's file system APIs.",

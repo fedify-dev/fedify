@@ -376,6 +376,11 @@ env = { FEDIFY_REQUIRE_OXLINT_TESTS = "1" }
 shell = "nu -c"
 run = "pnpm run --recursive --parallel --workspace-concurrency=4 --filter '!{docs}' --config.enable-pre-post-scripts=false test"
 
+[tasks."test:cfworkers"]
+description = "Run the full Cloudflare Workers suite and harness selftests"
+depends = ["build"]
+run = "pnpm --filter @fedify/fedify test:cfworkers"
+
 [tasks."test:bun"]
 description = "Run the test suite using Bun"
 depends = ["build"]
@@ -564,7 +569,7 @@ mise run fmt
 
 [tasks."test:tooling"]
 description = "Test Node.js maintenance scripts and harness utilities"
-run = 'node --experimental-transform-types --test "scripts/*.test.ts" "scripts/*.test.mjs" "examples/test-examples/*.test.ts" "packages/init/src/harness.test.ts" "packages/cli/scripts/compile.test.ts" "packages/fedify/scripts/pack-skills.test.mjs"'
+run = 'node --experimental-transform-types --test "scripts/*.test.ts" "scripts/*.test.mjs" "examples/test-examples/*.test.ts" "packages/init/src/harness.test.ts" "packages/cli/scripts/compile.test.ts" "packages/fedify/scripts/pack-skills.test.mjs" "packages/fedify/scripts/discover_tests.test.ts"'
 
 [tasks."generate:packages-table"]
 description = "Generate package tables and links for release announcements"

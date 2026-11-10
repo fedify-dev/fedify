@@ -471,7 +471,8 @@ runs every supported runtime; `test-each:node` is the Node.js-only alternative.
 `check-each fresh denokv` and `bench` require Deno as well.  Run
 `mise run test:package-files` separately for npm and JSR file and export
 validation. The Workers suite is an additional gate, run with
-`mise exec -- deno task -f @fedify/fedify test:cfworkers`.
+`mise run test:cfworkers`.  Its CI job also verifies that Deno is never
+invoked and its cache remains empty.
 
 For local service-backed verification, run the runtime suites one at a time
 with their service URLs configured.  Lifecycle packing rebuilds shared
@@ -612,11 +613,15 @@ mise exec -- deno publish --dry-run --allow-slow-types
 Shared Fedify tests still use `@std/assert` through their declared npm
 compatibility package; these assertions run on Node.js and Bun as well as Deno.
 The vocabulary generator already has separate Node.js, Bun, and Deno snapshots.
-`@std/testing/snapshot` remains for Deno's snapshot format and `Deno.inspect()`
-assertions, which have no meaning on Node.js.  Deno cache preparation and
-standalone CLI compilation retain `@std/fs` and `@std/path`.  Keep these
-imports until their Deno-specific consumers no longer need them; changing the
-default runtime must not drop assertions or alter path handling.
+`@std/testing/snapshot` remains for Deno's snapshot format.  Tests for
+`Deno.inspect()` also use it and run only on Deno.  Workers test discovery uses
+`node:fs/promises` and `node:path` in place of `@std/fs` and `@std/path`.
+Deno cache preparation and standalone CLI compilation still use `@std/path`,
+so its import-map entry stays.  The unused `@std/fs` entry is left for the
+dependency cleanup in [issue #1284].  Changing the default runtime must not
+drop assertions or alter path handling.
+
+[issue #1284]: https://github.com/fedify-dev/fedify/issues/1284
 
 
 Dependencies

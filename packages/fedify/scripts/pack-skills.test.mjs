@@ -15,7 +15,19 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
-import { test } from "node:test";
+import { test as nodeTest } from "node:test";
+
+// Preserve full coverage when subprocesses are granted, without requiring
+// broader permissions from the package-level Deno test task.
+const subprocessAllowed =
+  !("Deno" in globalThis) ||
+  (
+    await globalThis.Deno.permissions.query({
+      name: "run",
+      command: process.execPath,
+    })
+  ).state === "granted";
+const test = subprocessAllowed ? nodeTest : nodeTest.skip;
 
 function fixture(t, representation = "symlink") {
   const root = mkdtempSync(join(tmpdir(), "fedify-skills-"));
