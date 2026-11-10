@@ -273,6 +273,7 @@ async function discoverConversationCollection(
         options,
         budget,
         visitedObjectIds,
+        options.contextSource === "history-first",
       )) {
         budget.signal?.throwIfAborted();
         if (!isContextPostObject(target)) continue;
@@ -528,14 +529,17 @@ async function* getReplyTargets(
   options: BackfillOptions,
   budget: RequestBudget,
   skipIds?: ReadonlySet<string>,
+  preserveLoadedObjects = false,
 ): AsyncIterable<APObject | Link> {
   let budgetError: MaxRequestsExceeded | undefined;
+  const loadedObjects = new Map<string, APObject>();
   try {
     for await (const target of object.getReplyTargets({
       // Skip vocabulary-level failures per target rather than closing the
       // iterator before its remaining reply targets can be explored.
       suppressError: true,
       documentLoader: async (url) => {
+        loadedObjects.clear();
         if (budgetError != null) throw budgetError;
         try {
           return await loadCollectionItemDocument(
@@ -544,6 +548,11 @@ async function* getReplyTargets(
             options,
             budget,
             skipIds,
+            preserveLoadedObjects
+              ? (object, document) => {
+                  loadedObjects.set(JSON.stringify(document), object);
+                }
+              : undefined,
           );
         } catch (error) {
           // The vocabulary accessor can suppress budget errors too. Retain
@@ -556,7 +565,15 @@ async function* getReplyTargets(
     })) {
       budget.signal?.throwIfAborted();
       if (budgetError != null) throw budgetError;
-      yield target;
+      // The accessor still performs its trust checks. Match its accepted
+      // document to the loader object so history keeps that object's policy.
+      // Match the document rather than the ID: ancestors can be anonymous,
+      // and a failed parse can leave an embedded sibling as the next result.
+      yield loadedObjects.size === 0
+        ? target
+        : (loadedObjects.get(JSON.stringify(await target.toJsonLd())) ??
+          target);
+      loadedObjects.clear();
     }
     budget.signal?.throwIfAborted();
     if (budgetError != null) throw budgetError;
@@ -759,6 +776,7 @@ async function loadCollectionItemDocument(
   options: BackfillOptions,
   budget: RequestBudget,
   skipIds?: ReadonlySet<string>,
+  onLoaded?: (object: APObject, document: unknown) => void,
 ) {
   let object: APObject | null;
   try {
@@ -773,10 +791,12 @@ async function loadCollectionItemDocument(
     return skippedCollectionItemDocument(url);
   }
   if (object == null) return skippedCollectionItemDocument(url);
+  const document = await object.toJsonLd();
+  onLoaded?.(object, document);
   return {
     contextUrl: null,
     documentUrl: url,
-    document: await object.toJsonLd(),
+    document,
   };
 }
 

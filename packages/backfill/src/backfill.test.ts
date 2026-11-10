@@ -41,6 +41,144 @@ describe("ancestor collection discovery", () => {
     };
   }
 
+  for (const source of [
+    "seed",
+    "embedded",
+    "loaded",
+    "alias",
+    "anonymous",
+  ] as const) {
+    test(`${source} ancestors preserve their portable history policy`, async () => {
+      const historyId = "ap+ef61://did%3Akey%3Az6Mkabc/history";
+      const parent = await Note.fromJsonLd(
+        {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/fep/171b",
+          ],
+          type: "Note",
+          ...(source === "anonymous" ? {} : { id: parentId.href }),
+          contextHistory: {
+            type: "OrderedCollection",
+            id: historyId,
+            orderedItems: [{ type: "Note", id: sibling.id!.href }],
+          },
+        },
+        { verifyPortableObject: () => Promise.resolve({ verified: false }) },
+      );
+      const requestedId = source === "alias" ? rootId : parentId;
+      const requests: string[] = [];
+      const results = await collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            return Promise.resolve(
+              iri.href === requestedId.href ? parent : null,
+            );
+          },
+        },
+        source === "seed"
+          ? parent
+          : new Note({
+              replyTarget: source === "embedded" ? parent : requestedId,
+            }),
+        { contextDiscovery: "ancestors", contextSource: "history-first" },
+      );
+      deepStrictEqual(results, []);
+      deepStrictEqual(
+        requests,
+        source === "seed" || source === "embedded"
+          ? [historyId]
+          : [requestedId.href, historyId],
+      );
+    });
+  }
+
+  test("a rejected loaded ancestor does not replace an embedded sibling", async () => {
+    class InvalidAncestor extends Note {
+      override toJsonLd() {
+        return Promise.resolve({
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Note",
+          id: 42,
+        });
+      }
+    }
+    const context = loader([
+      [parentId.href, new InvalidAncestor({ contexts: [rootId] })],
+      [contextId.href, new Collection({ items: [sibling] })],
+    ]);
+    const results = await collect(
+      context,
+      new Note({
+        replyTargets: [parentId, new Note({ contexts: [contextId] })],
+      }),
+      { contextDiscovery: "ancestors", contextSource: "history-first" },
+    );
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id],
+    );
+    deepStrictEqual(context.requests, [parentId.href, contextId.href]);
+  });
+
+  test("loaded ancestor history hydration stays local to each backfill call", async () => {
+    const postId = new URL("https://example.com/post");
+    const parent = new Note({
+      id: parentId,
+      contextHistory: new OrderedCollection({ items: [postId] }),
+    });
+    const seed = new Note({ replyTarget: parentId });
+    const original = await parent.toJsonLd();
+    for (const content of ["First load", "Second load"]) {
+      const requests: string[] = [];
+      const results = await collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            return Promise.resolve(
+              iri.href === parentId.href
+                ? parent
+                : new Note({ id: postId, content }),
+            );
+          },
+        },
+        seed,
+        { contextDiscovery: "ancestors", contextSource: "history-first" },
+      );
+      strictEqual(results[0].object.content, content);
+      deepStrictEqual(requests, [parentId.href, postId.href]);
+      deepStrictEqual(await parent.toJsonLd(), original);
+    }
+  });
+
+  test("loaded ancestor history clone errors propagate", async () => {
+    const error = new Error("cannot clone history");
+    class History extends OrderedCollection {
+      override deepClone(): this {
+        throw error;
+      }
+    }
+    const context = loader([
+      [
+        parentId.href,
+        new Note({
+          id: parentId,
+          contextHistory: new History({}),
+          contexts: [contextId],
+        }),
+      ],
+    ]);
+    await rejects(
+      collect(context, new Note({ replyTarget: parentId }), {
+        contextDiscovery: "ancestors",
+        contextSource: "history-first",
+      }),
+      (caught) => caught === error,
+    );
+    deepStrictEqual(context.requests, [parentId.href]);
+  });
+
   test("discovers a root collection at maxDepth without yielding ancestors", async () => {
     const context = loader([
       [parentId.href, new Note({ id: parentId, replyTarget: rootId })],
