@@ -7,6 +7,22 @@ import { createFederationBuilder, FederationBuilderImpl } from "./builder.ts";
 const as = "https://www.w3.org/ns/activitystreams";
 const secret = "https://private.example/recipient";
 
+test("sender payload accepts the published history context while redacting blind recipients", () => {
+  const history = "https://example.com/history";
+  const result = projectSenderPayload({
+    "@context": [as, "https://w3id.org/fep/171b"],
+    type: "Note",
+    contextHistory: history,
+    bto: [secret],
+    bcc: [secret],
+  });
+  ok(result.type === "available");
+  strictEqual(result.redacted, true);
+  const json = JSON.stringify(result.value);
+  strictEqual(json.includes(secret), false);
+  ok(json.includes(history));
+});
+
 test("sender payload accepts generated history contexts while redacting blind recipients", async () => {
   const history = new URL("https://example.com/history");
   const source = await new Create({

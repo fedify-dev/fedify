@@ -19,6 +19,7 @@ const contextCandidates = [
   "https://w3id.org/security/v1",
   "https://w3id.org/identity/v1",
   "https://gotosocial.org/ns",
+  "https://w3id.org/fep/171b",
   "https://w3id.org/security/data-integrity/v1",
   "https://w3id.org/security/data-integrity/v2",
 ];

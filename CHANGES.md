@@ -111,7 +111,7 @@ To be released.
 
  -  Added `contextSource: "history-first"` to backfill options to read the
     seed's first `contextHistory` collection, falling back to `context` when
-    history is absent or unavailable. A valid empty history does not trigger
+    history is absent or unavailable. A resolved empty history does not trigger
     fallback, and later history references are not tried. Existing source
     selection remains the default. [[#1250], [#1396] by Jiwon Kwon\]
 
@@ -375,8 +375,9 @@ To be released.
     skip values that require fetching. [[#1250], [#1396] by Jiwon Kwon\]
 
  -  Added `contextHistory` and `contextHistories` to `Object` subclasses for
-    referencing conversation activity histories as ordered collections, with
-    ID accessors and singular and plural dereferencing methods.
+    referencing conversation activity histories as collections, including
+    ordered collections and pages, with ID accessors and singular and plural
+    dereferencing methods.
     [[#1250], [#1396] by Jiwon Kwon\]
 
  -  Added `deepClone()` to vocabulary objects to copy nested objects before
