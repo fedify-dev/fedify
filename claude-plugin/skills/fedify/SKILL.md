@@ -480,13 +480,16 @@ its internals.  For trace persistence, `@fedify/fedify/otel` exports
 On Cloudflare Workers, use `SimpleSpanProcessor` and configure the exporter's
 `waitUntil` option (since 2.5.0) with a request-aware callback, or create the
 exporter per request with `ctx.waitUntil.bind(ctx)`.  A shared exporter must
-not retain one request's execution context.  After awaiting
-`federation.fetch()`, pass `tracerProvider.forceFlush()` to `ctx.waitUntil()`
-before returning the response to cover processor-side pending work, including
-asynchronous resource attributes.  Batch timers alone do not keep an invocation
-alive.  The exporter's `forceFlush()` and `shutdown()` wait for export attempts
-already started; storage failures are logged and reported through the export
-callback.
+not retain one request's execution context.  In a `finally` block around
+`await federation.fetch()`, pass `tracerProvider.forceFlush()` to
+`ctx.waitUntil()` so the flush is scheduled on both success and failure.
+With `SimpleSpanProcessor`, this also covers pending asynchronous resource
+attributes.  In `@opentelemetry/sdk-trace-base` 2.7.1, a batch already waiting
+for resource attributes can be missed by a later provider flush, so do not rely
+on that flush with `BatchSpanProcessor`.  Batch timers alone do not keep an
+invocation alive.  The exporter's `forceFlush()` and `shutdown()` wait for
+export attempts already started; storage failures are logged and reported
+through the export callback.
 
 > [!CAUTION]
 > Initialize the OpenTelemetry SDK *before* importing Fedify.  Later

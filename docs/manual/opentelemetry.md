@@ -1325,8 +1325,8 @@ The callback only protects work once the processor calls the exporter.  With
 pending asynchronous resource attributes, even `SimpleSpanProcessor` can defer
 that call.  `BatchSpanProcessor` buffers spans, and its timer cannot be relied
 on to run after the response.  To cover processor-side pending work, pass
-`tracerProvider.forceFlush()` to `ctx.waitUntil()` after awaiting
-`federation.fetch()` and before returning the response:
+`tracerProvider.forceFlush()` to `ctx.waitUntil()` in a `finally` block around
+`federation.fetch()`.  This schedules the flush even if request handling fails:
 
 ~~~~ typescript twoslash
 import type { Federation } from "@fedify/fedify";
@@ -1337,14 +1337,23 @@ declare const request: Request;
 declare const ctx: { waitUntil(promise: Promise<void>): void };
 // ---cut-before---
 async function handleRequest(): Promise<Response> {
-  const response = await federation.fetch(request, { contextData: undefined });
-  ctx.waitUntil(tracerProvider.forceFlush());
-  return response;
+  try {
+    return await federation.fetch(request, { contextData: undefined });
+  } finally {
+    ctx.waitUntil(tracerProvider.forceFlush());
+  }
 }
 ~~~~
 
-This explicit flush also supports batch processors.  Calling
-`exporter.forceFlush()` instead waits for exports already handed to the
+Use `SimpleSpanProcessor` together with the `finally` flush above.  In
+`@opentelemetry/sdk-trace-base` 2.7.1,
+`BatchSpanProcessor` can remove a batch from its buffer before waiting for
+asynchronous resource attributes.  A later provider flush does not wait for
+that in-progress batch, and the exporter's `waitUntil` callback has not yet
+been called.  An explicit flush therefore cannot reliably protect those
+exports from invocation termination.
+
+`exporter.forceFlush()` only waits for exports already handed to the
 exporter, plus any that start while it waits.  It completes when the exporter
 becomes idle, so continuous exports can keep it pending.
 
