@@ -1508,7 +1508,8 @@ but they get the values differently:
     copy replaces other values.  Relative references in them are not resolved
     against the document's base, because Fedify cannot tell which of an unknown
     property's values are meant to be IRIs; resolve them yourself if the
-    property calls for it.
+    property calls for it.  Outgoing serialization can still normalize relative
+    identifiers; see [*Serialization and copies*](#serialization-and-copies).
  -  For a property that the object's class has an accessor for, including an
     alternative IRI that Fedify reads for the same property, the values are
     the current typed values encoded back into expanded JSON-LD.
@@ -1647,15 +1648,27 @@ rejects without changing the source.
 Only unsupported properties explicitly written through these functions are
 added to outgoing JSON-LD.  Writing one property on a received object does
 not publish its other retained extensions.  Those other values remain
-available through the read functions.  Existing objects that have never
-used a writer keep their previous serialization behavior.
+available through the read functions.  Without a write, default serialization
+can still return a cached original document with its received extensions.
 
 Written extensions survive `clone()`, `deepClone()`, and embedding in a
 parent.  Unknown properties in an expanded child supplied to a supported
 object-valued property are also enabled for outgoing serialization.
-Unchanged shared children keep their own publication state.  Default and
-expanded output preserve written properties; a custom compaction context
-can give their full IRIs shorter terms.
+Unchanged shared children keep their own publication state.  Default,
+compact, and expanded output preserve written properties, including graph
+members that are bare references or empty nodes.  A
+custom compaction context can give their full IRIs shorter terms.
+Graph and proof references are also preserved when ordinary vocabulary
+objects are serialized in compact form without a raw-property write.
+
+Unknown values are stored and returned by raw reads exactly as written,
+without resolving relative `@id` values.  Outgoing JSON-LD processing can
+normalize those identifiers.  For example, `""` and `"."` become `"/"`,
+`"../up"` becomes `"up"`, `"./a"` becomes `"a"`, and `"a/../b"` becomes
+`"b"`.  A network-path reference such as `"//host/x"` stays unchanged in
+expanded output but becomes `"x"` in compact output, losing its authority.
+These changes can alter which resource a recipient resolves.  Use absolute
+`@id` values for stable identity in published JSON-LD.
 
 Every successful call returns a fresh shallow copy, including an empty
 batch or removal of a missing property.  Nested vocabulary objects and URLs

@@ -448,7 +448,9 @@ To be released.
     cloning and serialization inside parent objects; unrelated received
     extensions are not newly forwarded.  Copies discard cached and retained
     signed representations, so sign changed objects again when needed.
-    [[#1355]]
+    Compact JSON-LD output also preserves graph members and proof
+    references in ordinary vocabulary objects.
+    [[#1355], [#1420]]
 
  -  Fixed accessors of objects decoded by `fromJsonLd()` returning wrong
     values for embedded objects that have their own `@context`.  Such an
@@ -527,7 +529,9 @@ To be released.
     another generated module.  Written extensions are included when nested
     objects are serialized.  Known properties use the most-derived typed
     decoder, and writes reject duplicate destinations or unrepresentable
-    values without modifying the source.  [[#1355]]
+    values without modifying the source.  Compact JSON-LD output also
+    preserves graph members and proof references in ordinary vocabulary
+    objects.  [[#1355], [#1420]]
  -  Fixed generated accessors decoding embedded objects that have their own
     `@context` again without the enclosing document's context, which could
     return objects of another class, drop property values, or pick objects

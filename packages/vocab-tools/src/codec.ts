@@ -249,7 +249,7 @@ export async function* generateEncoder(
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   `;
   if (hasExtraContexts) {
@@ -265,6 +265,7 @@ export async function* generateEncoder(
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -291,9 +292,11 @@ export async function* generateEncoder(
           compacted.${compactName} != null) {
         if (Array.isArray(compacted.${compactName})) {
           for (const element of compacted.${compactName}) {
-            element["@context"] = docContext;
+            if (element != null && typeof element === "object") {
+              element["@context"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.${compactName} === "object") {
          compacted.${compactName}["@context"] = docContext;
         }
       }

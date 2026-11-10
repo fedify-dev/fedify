@@ -24126,7 +24126,7 @@ get licenses(): (URL)[] {
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -24138,6 +24138,7 @@ get licenses(): (URL)[] {
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -24149,9 +24150,11 @@ get licenses(): (URL)[] {
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -29046,7 +29049,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -29058,6 +29061,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -29069,9 +29073,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -31104,7 +31110,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -31116,6 +31122,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -31127,9 +31134,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -37173,7 +37182,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -37185,6 +37194,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -37196,9 +37206,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -38574,7 +38586,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -38586,6 +38598,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -38597,9 +38610,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -39618,7 +39633,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -39630,6 +39645,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -40815,7 +40831,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -40827,6 +40843,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -42811,7 +42828,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -42823,6 +42840,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -42834,9 +42852,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -43607,7 +43627,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -43619,6 +43639,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -43630,9 +43651,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -45285,7 +45308,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -45297,6 +45320,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -46985,7 +47009,7 @@ get manualApprovals(): (URL)[] {
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -46997,6 +47021,7 @@ get manualApprovals(): (URL)[] {
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -48990,7 +49015,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -49002,6 +49027,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -49013,9 +49039,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -49785,7 +49813,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -49797,6 +49825,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -49808,9 +49837,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -51629,7 +51660,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -51641,6 +51672,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -51652,9 +51684,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -52424,7 +52458,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -52436,6 +52470,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -52447,9 +52482,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -54267,7 +54304,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -54279,6 +54316,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -54290,9 +54328,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -55062,7 +55102,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -55074,6 +55114,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -55085,9 +55126,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -57867,7 +57910,7 @@ get urls(): ((URL | Link))[] {
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -57879,6 +57922,7 @@ get urls(): ((URL | Link))[] {
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -60264,7 +60308,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -60276,6 +60320,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -60287,9 +60332,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -61056,7 +61103,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -61068,6 +61115,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -61079,9 +61127,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -69344,7 +69394,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -69356,6 +69406,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -69367,9 +69418,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -71964,7 +72017,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -71976,6 +72029,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -71987,9 +72041,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -73068,7 +73124,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -73080,6 +73136,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -73091,9 +73148,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -75068,7 +75127,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -75080,6 +75139,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -75091,9 +75151,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -76223,7 +76285,7 @@ get endpoints(): (URL)[] {
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -76235,6 +76297,7 @@ get endpoints(): (URL)[] {
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -76826,7 +76889,7 @@ endpoints?: (URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -76838,6 +76901,7 @@ endpoints?: (URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -78744,7 +78808,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -78756,6 +78820,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -80822,7 +80887,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -80834,6 +80899,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -82714,7 +82780,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -82726,6 +82792,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -83981,7 +84048,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -83993,6 +84060,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -84004,9 +84072,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -85259,7 +85329,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -85271,6 +85341,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -87118,7 +87189,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -87130,6 +87201,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -88912,7 +88984,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -88924,6 +88996,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -88935,9 +89008,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -89830,7 +89905,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -89842,6 +89917,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -89853,9 +89929,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -90425,7 +90503,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -90437,6 +90515,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -90448,9 +90527,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -91015,7 +91096,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -91027,6 +91108,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -91038,9 +91120,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -104165,7 +104249,7 @@ get attributionDomains(): (string)[] {
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -104177,6 +104261,7 @@ get attributionDomains(): (string)[] {
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -104188,9 +104273,11 @@ get attributionDomains(): (string)[] {
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -107241,7 +107328,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -107253,6 +107340,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -107264,9 +107352,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -107843,7 +107933,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -107855,6 +107945,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -107866,9 +107957,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -109896,7 +109989,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -109908,6 +110001,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -109919,9 +110013,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -111293,7 +111389,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -111305,6 +111401,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -111316,9 +111413,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -112133,7 +112232,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -112145,6 +112244,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -112156,9 +112256,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -112722,7 +112824,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -112734,6 +112836,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -112745,9 +112848,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -113317,7 +113422,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -113329,6 +113434,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -113340,9 +113446,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -115771,7 +115879,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -115783,6 +115891,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -115794,9 +115903,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -116659,7 +116770,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -116671,6 +116782,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -116682,9 +116794,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -117248,7 +117362,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -117260,6 +117374,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -117271,9 +117386,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -117835,7 +117952,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -117847,6 +117964,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -117858,9 +117976,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -119869,7 +119989,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -119881,6 +120001,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -120997,7 +121118,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -121009,6 +121130,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -121020,9 +121142,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -121587,7 +121711,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -121599,6 +121723,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -121610,9 +121735,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -122178,7 +122305,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -122190,6 +122317,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -122201,9 +122329,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -135328,7 +135458,7 @@ get attributionDomains(): (string)[] {
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -135340,6 +135470,7 @@ get attributionDomains(): (string)[] {
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -135351,9 +135482,11 @@ get attributionDomains(): (string)[] {
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -141085,7 +141218,7 @@ get licenses(): (URL)[] {
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -141097,6 +141230,7 @@ get licenses(): (URL)[] {
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -142484,7 +142618,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -142496,6 +142630,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -143062,7 +143197,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -143074,6 +143209,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -143085,9 +143221,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -143652,7 +143790,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -143664,6 +143802,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -143675,9 +143814,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -144245,7 +144386,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -144257,6 +144398,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -144268,9 +144410,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -144834,7 +144978,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -144846,6 +144990,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -144857,9 +145002,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -145423,7 +145570,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -145435,6 +145582,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -145446,9 +145594,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -146012,7 +146162,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -146024,6 +146174,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -146035,9 +146186,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -146599,7 +146752,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -146611,6 +146764,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -146622,9 +146776,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -147143,7 +147299,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -147155,6 +147311,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -147722,7 +147879,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -147734,6 +147891,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -147745,9 +147903,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -149777,7 +149937,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -149789,6 +149949,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -149800,9 +149961,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -151561,7 +151724,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -151573,6 +151736,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -151584,9 +151748,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -164897,7 +165063,7 @@ get attributionDomains(): (string)[] {
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -164909,6 +165075,7 @@ get attributionDomains(): (string)[] {
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -164920,9 +165087,11 @@ get attributionDomains(): (string)[] {
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -167972,7 +168141,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -167984,6 +168153,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -167995,9 +168165,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -181122,7 +181294,7 @@ get attributionDomains(): (string)[] {
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -181134,6 +181306,7 @@ get attributionDomains(): (string)[] {
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -181145,9 +181318,11 @@ get attributionDomains(): (string)[] {
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -185270,7 +185445,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -185282,6 +185457,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -185293,9 +185469,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -186965,7 +187143,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -186977,6 +187155,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -186988,9 +187167,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -190690,7 +190871,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -190702,6 +190883,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -190713,9 +190895,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -191931,7 +192115,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -191943,6 +192127,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -191954,9 +192139,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -192520,7 +192707,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -192532,6 +192719,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -192543,9 +192731,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -195467,7 +195657,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -195479,6 +195669,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -195490,9 +195681,11 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -196365,7 +196558,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -196377,6 +196570,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -196388,9 +196582,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -209515,7 +209711,7 @@ get attributionDomains(): (string)[] {
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -209527,6 +209723,7 @@ get attributionDomains(): (string)[] {
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -209538,9 +209735,11 @@ get attributionDomains(): (string)[] {
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -213137,7 +213336,7 @@ get contents(): ((string | LanguageString))[] {
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -213149,6 +213348,7 @@ get contents(): ((string | LanguageString))[] {
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -213890,7 +214090,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -213902,6 +214102,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -213913,9 +214114,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -214479,7 +214682,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -214491,6 +214694,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -214502,9 +214706,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -215542,7 +215748,7 @@ get formerTypes(): ($EntityType)[] {
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -215554,6 +215760,7 @@ get formerTypes(): ($EntityType)[] {
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -215565,9 +215772,11 @@ get formerTypes(): ($EntityType)[] {
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -216320,7 +216529,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -216332,6 +216541,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -216343,9 +216553,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -216914,7 +217126,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -216926,6 +217138,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -216937,9 +217150,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -217506,7 +217721,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -217518,6 +217733,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -217529,9 +217745,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -218095,7 +218313,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -218107,6 +218325,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -218118,9 +218337,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }
@@ -218683,7 +218904,7 @@ instruments?: (Object | URL)[];}
     let compacted = await jsonld.compact(
       values,
       docContext,
-      { documentLoader: options.contextLoader },
+      { documentLoader: options.contextLoader, keepFreeFloatingNodes: true },
     );
   
     if (options.context == null) {
@@ -218695,6 +218916,7 @@ instruments?: (Object | URL)[];}
         docContext = [...currentContexts, ...additionalContexts];
         compacted = await jsonld.compact(values, docContext, {
           documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
         });
       }
     }
@@ -218706,9 +218928,11 @@ instruments?: (Object | URL)[];}
           compacted.proof != null) {
         if (Array.isArray(compacted.proof)) {
           for (const element of compacted.proof) {
-            element[\\"@context\\"] = docContext;
+            if (element != null && typeof element === \\"object\\") {
+              element[\\"@context\\"] = docContext;
+            }
           }
-        } else {
+        } else if (typeof compacted.proof === \\"object\\") {
          compacted.proof[\\"@context\\"] = docContext;
         }
       }

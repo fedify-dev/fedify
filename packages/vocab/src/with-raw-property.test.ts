@@ -8,6 +8,7 @@ import {
   strictEqual,
 } from "node:assert/strict";
 import {
+  CollectionPage,
   Create,
   DataIntegrityProof,
   Endpoints,
@@ -17,6 +18,7 @@ import {
   Multikey,
   Note,
   OrderedCollection,
+  OrderedCollectionPage,
   Person,
   Place,
   type RawPropertyValue,
@@ -52,6 +54,46 @@ test("withRawProperty() preserves relative at-identifiers and Unicode node types
     const written = await withRawProperty(new Note({}), EXT, [value]);
     deepStrictEqual((await expanded(written))[EXT], [value]);
     await written.toJsonLd({ ...options, format: "compact" });
+  }
+});
+
+test("withRawProperty() keeps raw relative IDs exact while output normalizes them", async () => {
+  for (const [input, expandedId, compactId] of [
+    ["", "/", "/"],
+    [".", "/", "/"],
+    ["../up", "up", "up"],
+    ["./a", "a", "a"],
+    ["a/../b", "b", "b"],
+    ["//host/x", "//host/x", "x"],
+    ["a/b", "a/b", "a/b"],
+    ["/abs", "/abs", "/abs"],
+    ["?q=1", "?q=1", "?q=1"],
+    ["#frag", "#frag", "#frag"],
+    ["@alice/post", "@alice/post", "@alice/post"],
+    ["@alice#post", "@alice#post", "@alice#post"],
+    ["@alice-123", "@alice-123", "@alice-123"],
+  ]) {
+    for (const source of [
+      new Note({}),
+      new Note({ id: new URL("https://example.com/notes/publication") }),
+    ]) {
+      const values = [{ "@id": input }];
+      const written = await withRawProperty(source, EXT, values);
+      deepStrictEqual(await getRawPropertyValues(written, EXT), values);
+      deepStrictEqual((await expanded(written))[EXT], [{ "@id": expandedId }]);
+      for (const serializationOptions of [
+        options,
+        { ...options, format: "compact" as const },
+      ]) {
+        const compacted = await written.toJsonLd(serializationOptions);
+        const reparsed = await Note.fromJsonLd(compacted, options);
+        deepStrictEqual(await getRawPropertyValues(reparsed, EXT), [
+          { "@id": compactId },
+        ]);
+        deepStrictEqual(await getRawPropertyValues(written, EXT), values);
+      }
+      deepStrictEqual(await getRawPropertyValues(source, EXT), []);
+    }
   }
 });
 
@@ -966,6 +1008,112 @@ test("withRawProperty() serializes graph and reverse references, included subjec
     ok(EXT in json);
     await written.toJsonLd(options);
     if ("@value" in value) deepStrictEqual(json[EXT], [value]);
+  }
+});
+
+for (const [label, values] of [
+  [
+    "bare reference",
+    [{ "@graph": [{ "@id": "https://example.com/reference" }] }],
+  ],
+  ["empty node", [{ "@graph": [{}] }]],
+  [
+    "named mixed graph",
+    [
+      {
+        "@id": "https://example.com/graph",
+        "@graph": [
+          { "@id": "https://example.com/reference" },
+          {
+            "@id": "https://example.com/subject",
+            [OTHER]: [{ "@value": "Subject" }],
+          },
+        ],
+      },
+    ],
+  ],
+  [
+    "nested graph property",
+    [
+      {
+        "@id": "https://example.com/nested",
+        [OTHER]: [
+          { "@graph": [{ "@id": "https://example.com/reference" }, {}] },
+        ],
+      },
+    ],
+  ],
+] as const) {
+  test(`withRawProperty() keeps compact graph publication: ${label}`, async () => {
+    const written = await withRawProperty(
+      new Note({
+        id: new URL("https://example.com/notes/publication"),
+      }),
+      EXT,
+      values,
+    );
+    deepStrictEqual(await getRawPropertyValues(written, EXT), values);
+    deepStrictEqual((await expanded(written))[EXT], values);
+    const parent = new Create({
+      id: new URL("https://example.com/activities/publication"),
+      object: written,
+    });
+    for (const serializationOptions of [
+      options,
+      { ...options, format: "compact" as const },
+      {
+        ...options,
+        format: "compact" as const,
+        context: [AS, { extension: EXT }],
+      },
+    ]) {
+      const compacted = await written.toJsonLd(serializationOptions);
+      const reparsed = await Note.fromJsonLd(compacted, options);
+      deepStrictEqual(await getRawPropertyValues(reparsed, EXT), values);
+      const compactedParent = await parent.toJsonLd(serializationOptions);
+      const reparsedParent = await Create.fromJsonLd(compactedParent, options);
+      const child = await reparsedParent.getObject({ crossOrigin: "trust" });
+      ok(child instanceof Note);
+      deepStrictEqual(await getRawPropertyValues(child, EXT), values);
+    }
+  });
+}
+
+test("withRawProperty() compacts authored graphs alongside proof references", async () => {
+  const reference = "https://example.com/proofs/remote";
+  const values = [
+    { "@graph": [{ "@id": "https://example.com/reference" }, {}] },
+  ];
+  for (const Page of [CollectionPage, OrderedCollectionPage]) {
+    const source = new Page({
+      proofs: [
+        new URL(reference),
+        new DataIntegrityProof({ cryptosuite: "eddsa-jcs-2022" }),
+      ],
+    });
+    const written = await withRawProperty(source, EXT, values);
+    for (const serializationOptions of [
+      options,
+      { ...options, format: "compact" as const },
+    ]) {
+      const compacted = (await written.toJsonLd(
+        serializationOptions,
+      )) as Record<string, unknown>;
+      const proofs = Array.isArray(compacted.proof)
+        ? compacted.proof
+        : [compacted.proof];
+      ok(proofs.includes(reference));
+      const embedded = proofs.find(
+        (proof) => proof != null && typeof proof === "object",
+      );
+      ok(embedded != null);
+      deepStrictEqual(
+        (embedded as Record<string, unknown>)["@context"],
+        compacted["@context"],
+      );
+      const reparsed = await Page.fromJsonLd(compacted, options);
+      deepStrictEqual(await getRawPropertyValues(reparsed, EXT), values);
+    }
   }
 });
 
