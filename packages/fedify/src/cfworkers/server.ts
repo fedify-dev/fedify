@@ -5,6 +5,7 @@ import "./imports.ts";
 import { testDefinitions as fixtureTestDefinitions } from
   "../../../vocab-runtime/src/portable-workers.test.ts";
 import "../../../vocab/src/portable-lookup.test.ts";
+import "../../../vocab/src/with-raw-property.test.ts";
 import { expectedTestNames } from "./expected-tests.ts";
 import { createTestWorker } from "./runner.ts";
 import { selfTests } from "./selftest.ts";

@@ -9,12 +9,15 @@ import {
   type CryptographicKey,
   DataIntegrityProof,
   Document,
+  getRawPropertyValues,
   Multikey,
   Note,
   Place,
   PUBLIC_COLLECTION,
   Translation,
+  withRawProperty,
 } from "@fedify/vocab";
+import { getRetainedSignedRepresentation } from "@fedify/vocab-runtime/internal/signed-representation";
 import {
   decodeMultibase,
   encodeMultibase,
@@ -3426,6 +3429,78 @@ test("verifyObject() does not trust compatible-ID actors by web origin", async (
     ),
     null,
   );
+});
+
+test("raw property writes discard signed documents and can be signed again", async () => {
+  const extension = "https://example.com/vocab#extension";
+  const note = await withRawProperty(
+    new Note({
+      id: parseIri(`ap+ef61://${portableDid}/objects/raw-properties`),
+      attribution: parseIri(`ap+ef61://${portableDid}/actor`),
+      content: "A note with an extension",
+    }),
+    extension,
+    [{ "@value": "original" }],
+  );
+  const options = {
+    contextLoader: mockDocumentLoader,
+    context: portableContext,
+  };
+  const signed = await signObject(
+    note,
+    ed25519PrivateKey,
+    portableKeyId,
+    options,
+  );
+  const secured = getRetainedSignedRepresentation(signed);
+  assert(secured != null);
+  const verification = {
+    contextLoader: mockDocumentLoader,
+    documentLoader() {
+      throw new Error("did:key verification must not fetch documents");
+    },
+  };
+  assertInstanceOf(await verifyObject(Note, secured, verification), Note);
+
+  const changed = await withRawProperty(signed, extension, [
+    { "@value": "changed" },
+  ]);
+  assertEquals(getRetainedSignedRepresentation(changed), undefined);
+  assertEquals(getRetainedSignedRepresentation(signed), secured);
+  assertEquals(await getRawPropertyValues(signed, extension), [
+    { "@value": "original" },
+  ]);
+  const changedJson = await changed.toJsonLd({ format: "compact", ...options });
+  assertEquals(await verifyObject(Note, changedJson, verification), null);
+
+  const parent = new Create({ object: changed });
+  const expandedParent = await parent.toJsonLd({ format: "expand" });
+  assert(Array.isArray(expandedParent));
+  const embedded = (expandedParent[0] as Record<string, unknown>)[
+    "https://www.w3.org/ns/activitystreams#object"
+  ] as Record<string, unknown>[];
+  assertEquals(embedded[0][extension], [{ "@value": "changed" }]);
+
+  const resigned = await signObject(
+    changed.clone({ proofs: [] }),
+    ed25519PrivateKey,
+    portableKeyId,
+    options,
+  );
+  const resignedDocument = getRetainedSignedRepresentation(resigned);
+  assert(resignedDocument != null);
+  const verified = await verifyObject(Note, resignedDocument, verification);
+  assertInstanceOf(verified, Note);
+  assertEquals(await getRawPropertyValues(verified, extension), [
+    { "@value": "changed" },
+  ]);
+
+  // An unchanged signed child keeps its exact secured representation.
+  const preserved = await new Create({ object: signed }).toJsonLd();
+  assert(
+    preserved != null && typeof preserved === "object" && "object" in preserved,
+  );
+  assertEquals(preserved.object, secured);
 });
 
 test("signObject() preserves FEP-22cd contexts through proof verification", async () => {

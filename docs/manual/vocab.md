@@ -1502,12 +1502,13 @@ but they get the values differently:
 
  -  For a property that the object's class has no accessor for, the values
     are the ones retained when the object was decoded by `fromJsonLd()`.
-    Objects constructed locally have none.  The retained values are shared
-    with copies made by `clone()` and `deepClone()`, even when the copy
-    replaces other values.  Relative references in them are not resolved
-    against the document's base, because Fedify cannot tell which of an
-    unknown property's values are meant to be IRIs; resolve them yourself if
-    the property calls for it.
+    Objects constructed locally have none until an application writes them
+    with [`withRawProperty()`](#writing-raw-properties).  The retained values
+    are shared with copies made by `clone()` and `deepClone()`, even when the
+    copy replaces other values.  Relative references in them are not resolved
+    against the document's base, because Fedify cannot tell which of an unknown
+    property's values are meant to be IRIs; resolve them yourself if the
+    property calls for it.
  -  For a property that the object's class has an accessor for, including an
     alternative IRI that Fedify reads for the same property, the values are
     the current typed values encoded back into expanded JSON-LD.
@@ -1519,8 +1520,9 @@ under an alternative IRI are returned for the canonical one as well.  The
 values also reflect what happened to the object after it was decoded:
 replacements made by `clone()`, and objects that [property hydration] fetched
 and cached in place of embedded ones.  Encoding a property whose values are
-nested objects does not include the unknown properties of those nested
-objects; read them from the nested objects themselves.
+nested objects includes their explicitly written extension properties, but
+omits properties retained only from incoming JSON-LD; read those from the
+nested objects themselves.
 
 Whether a property is supported depends on the class of the object, not on
 the vocabulary as a whole.  A `Person` has no accessor for `Question`'s
@@ -1564,20 +1566,177 @@ carries a secret, such as a capability token, avoid logging the values.
 *[IRI]: Internationalized Resource Identifier
 
 
+Writing raw properties
+----------------------
+
+*This API is available since Fedify 2.5.0.*
+
+Use `withRawProperty()` to attach an extension to an outgoing object without
+adding a typed accessor.  It returns a new object of the same concrete class
+and leaves the original unchanged:
+
+~~~~ typescript twoslash
+import { Create, Note, withRawProperty } from "@fedify/vocab";
+
+const note = new Note({ content: "My morning run" });
+const outgoing = await withRawProperty(
+  note,
+  "https://w3id.org/quantpub#structuredUrl",
+  [{ "@id": "https://example.com/runs/1?token=abc" }],
+);
+
+const create = new Create({ object: outgoing });
+const json = await create.toJsonLd();
+// The embedded Note includes the extension, using its full IRI.
+~~~~
+
+The values use the same [expanded JSON-LD shapes](#value-shapes) that
+`getRawPropertyValues()` returns.  The writer names count properties, while
+the reader names count values: `withRawProperty()` replaces all values of
+one property.  Both writers are asynchronous because decoding a supported
+property can involve nested objects or cryptographic keys.
+
+### Batch writes and removal
+
+Use `withRawProperties()` to replace several properties in one call:
+
+~~~~ typescript twoslash
+import { Note, withRawProperties } from "@fedify/vocab";
+const note = new Note({ content: "My morning run" });
+// ---cut-before---
+const updated = await withRawProperties(note, {
+  "https://www.w3.org/ns/activitystreams#content": [{ "@value": "Updated run" }],
+  "https://w3id.org/quantpub#structuredUrl": undefined,
+});
+~~~~
+
+An empty array, `null`, or `undefined` removes the property.  A missing
+record key leaves it untouched; a present key with `undefined` removes it.
+The third argument of `withRawProperty()` is required, so omitting it is an
+error rather than a removal.
+
+Empty list and graph objects are values, not removal inputs.  A typed field
+that cannot represent one rejects the write.  A supported property also
+rejects a list or graph wrapper unless its schema declares that container.
+
+The batch function also accepts an iterable of `[propertyIri, values]`
+pairs, including a `Map`.  Iterable keys can be strings or `URL` objects:
+
+~~~~ typescript twoslash
+import { Note, withRawProperties } from "@fedify/vocab";
+const note = new Note({});
+// ---cut-before---
+const updated = await withRawProperties(note, [
+  [new URL("https://w3id.org/quantpub#structuredUrl"), [
+    { "@id": "https://example.com/runs/2" },
+  ]],
+] as const);
+~~~~
+
+Property IRIs follow the [same validation and matching rules](#property-iris)
+as reads.  An existing exact retained key takes precedence over a normalized
+spelling.  A new unsupported key uses the normalized URL spelling when
+available.  Two entries that resolve to the same destination, including a
+supported property's canonical IRI and alias, make the whole call reject
+with `TypeError`.  Values and `URL` keys are copied before asynchronous
+decoding starts.  If any entry is invalid or cannot be decoded, the call
+rejects without changing the source.
+
+### Serialization and copies
+
+Only unsupported properties explicitly written through these functions are
+added to outgoing JSON-LD.  Writing one property on a received object does
+not publish its other retained extensions.  Those other values remain
+available through the read functions.  Existing objects that have never
+used a writer keep their previous serialization behavior.
+
+Written extensions survive `clone()`, `deepClone()`, and embedding in a
+parent.  Unknown properties in an expanded child supplied to a supported
+object-valued property are also enabled for outgoing serialization.
+Unchanged shared children keep their own publication state.  Default and
+expanded output preserve written properties; a custom compaction context
+can give their full IRIs shorter terms.
+
+Every successful call returns a fresh shallow copy, including an empty
+batch or removal of a missing property.  Nested vocabulary objects and URLs
+in unchanged typed properties are shared, as with `clone()`.  Raw input is
+copied and stored immutably, and mutating a read or serialization result
+does not change the stored extension.
+
+Supply expanded value, node, or list objects containing plain JSON.  Compact
+terms, structural `@context` entries, cyclic structures, sparse arrays, and
+non-JSON values are rejected.  An `@json` literal's `@value` is opaque JSON,
+so keys such as `@context` inside it are ordinary data.  Deep JSON literals
+can be stored and read without recursive copying; serialization and decoding
+typed children still have the existing JSON-LD processor's depth limits.
+
+### Supported properties and trust
+
+A supported IRI, including an alias, is decoded into its typed field rather
+than stored separately.  Typed accessors and raw reads therefore use the
+same values.  Decoding can normalize values or apply a property's
+preprocessor, as `fromJsonLd()` does.  A supplied value that cannot be
+decoded is rejected instead of silently discarded.  When a later Fedify
+version adds support for an extension, the same write call uses this typed
+decoding path.
+
+This is not an exact expanded JSON-LD round trip for typed fields.  Decoding
+can normalize lexical forms and omit metadata such as `@direction` and node
+`@index`, as with raw reads of typed values.  A decoded child uses its
+selected vocabulary class's type, so additional `@type` entries are not
+preserved.  A typed string field also discards an explicit literal datatype:
+for example, writing
+`{ "@value": "5", "@type": "http://www.w3.org/2001/XMLSchema#integer" }` to
+`Note`'s `content` yields the plain string `"5"`.
+
+For generated classes that redeclare the same IRI in their inheritance
+chain, the most-derived declaration is authoritative.  A raw write clears
+the shadowed fields before assigning that declaration.  A differently
+named accessor for a shadowed field consequently returns its empty value;
+canonical and alias raw reads use the most-derived field.
+
+Changed object-valued properties start with the same untrusted state as
+decoded incoming data, so accessors may fetch or verify them.  Unchanged
+properties retain their existing trust state.  The copy drops cached
+JSON-LD, retained signed representations, and positive verification evidence;
+it keeps provenance restrictions that also apply to ordinary clones.
+
+Proof properties remain ordinary data.  A proof over changed data must not
+be reused.  To sign an updated object, clear old proof values first, since
+`signObject()` appends proofs:
+
+~~~~ typescript twoslash
+import { signObject } from "@fedify/fedify/sig";
+import { Note, withRawProperty } from "@fedify/vocab";
+declare const received: Note;
+declare const privateKey: CryptoKey;
+declare const keyId: URL;
+// ---cut-before---
+const unsigned = received.clone({ proofs: [] });
+const updated = await withRawProperty(
+  unsigned,
+  "https://w3id.org/quantpub#structuredUrl",
+  [{ "@id": "https://example.com/runs/2" }],
+);
+const signed = await signObject(updated, privateKey, keyId);
+~~~~
+
+
 Extending the vocabulary
 ------------------------
 
-To read a property that Fedify does not support, you do not need to extend
-the vocabulary: see [*Reading unsupported
-properties*](#reading-unsupported-properties).
+To read or write a property without a typed accessor, use the
+[raw read functions](#reading-unsupported-properties) or
+[raw write functions](#writing-raw-properties).  Extending the vocabulary is
+needed when you want additional types or typed accessors.
 
 While Fedify's vocabulary API offers many advantages, it has a limitation due to
 its implementation through code generation: it is difficult to extend with
 custom types or custom properties that are not included in the Activity
 Vocabulary and major vendor extensions provided by Fedify.  This means that
-adding custom types or properties at runtime is challenging, and if you want to
-add new types or properties, you need to contribute to the Fedify upstream
-repository.
+adding custom types or typed properties at runtime is challenging, and if you
+want to add them to the built-in vocabulary, you need to contribute to the
+Fedify upstream repository.
 
 Fortunately, Fedify's vocabulary API is very open to external contributions,
 and technically, adding new types or properties to the vocabulary API is not

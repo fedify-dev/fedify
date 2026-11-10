@@ -1,4 +1,5 @@
-import { getFieldName } from "./field.ts";
+import { generatePropertyDecoder } from "./property-decoder.ts";
+import { generateField, getFieldName } from "./field.ts";
 import {
   isNonFunctionalProperty,
   type PropertySchema,
@@ -65,7 +66,135 @@ type RawPropertyEncoder = (
 
 interface RawPropertyDescriptor {
   readonly canonicalIri: string;
+  readonly aliases: readonly string[];
   readonly encode: RawPropertyEncoder;
+  decode(values: readonly unknown[], options: RawPropertyDecodeOptions): Promise<unknown[]>;
+  assign(object: object, values: unknown[]): void;
+  validate(object: object): void;
+}
+
+interface RawPropertyDecodeOptions {
+  documentLoader?: DocumentLoader;
+  contextLoader?: DocumentLoader;
+  tracerProvider?: TracerProvider;
+  verifyPortableObject?: PortableObjectVerifier;
+  baseUrl?: URL;
+  _rawPropertyWrite?: boolean;
+}
+
+function isRawPropertyWrite(options: object): boolean {
+  return "_rawPropertyWrite" in options && options._rawPropertyWrite === true;
+}
+
+const rawPropertyBrands = new Map<object, (object: object) => void>();
+
+const publishedRawProperties = new WeakMap<object, ReadonlySet<string>>();
+
+function publishSuppliedRawProperties(object: unknown, node: unknown): void {
+  if (object == null || typeof object !== "object" || node == null || typeof node !== "object") return;
+  const retained = retainedRawProperties.get(object);
+  publishedRawProperties.set(object, new Set(globalThis.Object.keys(node).filter(
+    key => retained != null && globalThis.Object.hasOwn(retained, key),
+  )));
+}
+
+function publishedRawPropertyValues(object: object): Record<string, unknown[]> {
+  const values: Record<string, unknown[]> = {};
+  const retained = retainedRawProperties.get(object);
+  for (const iri of publishedRawProperties.get(object) ?? []) {
+    if (retained != null && globalThis.Object.hasOwn(retained, iri)) {
+      values[iri] = copyJsonValue(retained[iri]) as unknown[];
+    }
+  }
+  return values;
+}
+
+function rawPropertySlots(object: object): RawPropertyDescriptor[] {
+  const slots = new Set<RawPropertyDescriptor>();
+  let prototype: object | null = globalThis.Object.getPrototypeOf(object);
+  while (prototype != null) {
+    for (const descriptor of rawPropertyDescriptors.get(prototype)?.values() ?? []) slots.add(descriptor);
+    prototype = globalThis.Object.getPrototypeOf(prototype);
+  }
+  return [...slots];
+}
+
+async function isolatePreprocessedRawPropertyObject(source: object, node: unknown): Promise<object> {
+  const method = (source as Record<symbol, unknown>)[RAW_PROPERTY_WRITE_PROTOCOL];
+  if (typeof method !== "function") throw new TypeError("The preprocessor returned a vocabulary object without raw write support.");
+  return await method.call(source, [], node) as object;
+}
+
+function isolateRawPropertyObject(source: object): object {
+  const descriptor = getDeepCloneDescriptor(source);
+  if (descriptor == null) throw new TypeError("Unsupported generated vocabulary object.");
+  const result = descriptor.create(source);
+  if (result == null || typeof result !== "object" || result === source ||
+      globalThis.Object.getPrototypeOf(result) !== globalThis.Object.getPrototypeOf(source)) {
+    throw new TypeError("clone() must return a fresh instance with the same prototype.");
+  }
+  let prototype: object | null = globalThis.Object.getPrototypeOf(source);
+  while (prototype != null) {
+    rawPropertyBrands.get(prototype)?.(result);
+    prototype = globalThis.Object.getPrototypeOf(prototype);
+  }
+  // Each closure checks the private brand, including shadowed superclass slots.
+  for (const slot of rawPropertySlots(source)) slot.validate(result);
+  copyPortableProvenance(source, result);
+  copyRawProperties(source, result);
+  invalidateCachedJsonLd(result);
+  clearRetainedSignedRepresentation(result);
+  return result;
+}
+
+async function writeRawProperties(
+  source: object,
+  entries: readonly RawPropertyWriteEntry[],
+  options: RawPropertyDecodeOptions,
+): Promise<object> {
+  const retained = retainedRawProperties.get(source);
+  const destinations = new Set<string>();
+  const resolved = entries.map(entry => {
+    let iri = entry.candidates[entry.candidates.length - 1];
+    let descriptor: RawPropertyDescriptor | undefined;
+    for (const candidate of entry.candidates) {
+      descriptor = getRawPropertyDescriptor(source, candidate);
+      if (descriptor != null || (retained != null && globalThis.Object.hasOwn(retained, candidate))) {
+        iri = descriptor?.canonicalIri ?? candidate;
+        break;
+      }
+    }
+    if (destinations.has(iri)) throw new TypeError("Duplicate raw property destination: " + iri);
+    destinations.add(iri);
+    return { iri, descriptor, values: entry.values };
+  });
+  // All source state is captured before the first decoder can suspend.
+  const result = isolateRawPropertyObject(source);
+  const unknown: Record<string, readonly unknown[]> = { ...retained };
+  const published = new Set(publishedRawProperties.get(source));
+  const slots = rawPropertySlots(source);
+  const decoded: { iri: string; descriptor: RawPropertyDescriptor; values: unknown[] }[] = [];
+  for (const entry of resolved) {
+    if (entry.descriptor != null) {
+      decoded.push({ iri: entry.iri, descriptor: entry.descriptor, values:
+        entry.values.length === 0 ? [] : await entry.descriptor.decode(entry.values, options) });
+    } else if (entry.values.length === 0) {
+      delete unknown[entry.iri];
+      published.delete(entry.iri);
+    } else {
+      unknown[entry.iri] = entry.values;
+      published.add(entry.iri);
+    }
+  }
+  for (const entry of decoded) {
+    for (const slot of slots) {
+      if (slot.canonicalIri === entry.iri) slot.assign(result, []);
+    }
+    entry.descriptor.assign(result, entry.values);
+  }
+  retainedRawProperties.set(result, globalThis.Object.freeze(unknown));
+  publishedRawProperties.set(result, published);
+  return result;
 }
 
 // Unknown properties retained while decoding, keyed by the decoded object:
@@ -99,7 +228,34 @@ function getRawPropertyDescriptor(
   return undefined;
 }
 
+function rawPropertyInputValues(
+  object: object,
+  canonicalIri: string,
+  values: Record<string, unknown>,
+): unknown {
+  const canonical = values[canonicalIri];
+  if (globalThis.Array.isArray(canonical) && canonical.length > 0) return canonical;
+  // Schema order, from the effective declaration to its ancestors, decides
+  // alias precedence. Supplied object key order must never change decoding.
+  let prototype: object | null = globalThis.Object.getPrototypeOf(object);
+  while (prototype != null) {
+    const descriptor = rawPropertyDescriptors.get(prototype)?.get(canonicalIri);
+    if (descriptor?.canonicalIri === canonicalIri) {
+      for (const iri of descriptor.aliases) {
+        const value = values[iri];
+        if (globalThis.Array.isArray(value) && value.length > 0 &&
+            getRawPropertyDescriptor(object, iri)?.canonicalIri === canonicalIri) return value;
+      }
+    }
+    prototype = globalThis.Object.getPrototypeOf(prototype);
+  }
+  return canonical;
+}
+
 function copyRawProperties(source: object, destination: object): void {
+  const published = publishedRawProperties.get(source);
+  if (published == null) publishedRawProperties.delete(destination);
+  else publishedRawProperties.set(destination, published);
   const retained = retainedRawProperties.get(source);
   if (retained == null) retainedRawProperties.delete(destination);
   else retainedRawProperties.set(destination, retained);
@@ -348,7 +504,9 @@ async function expandReceivedJsonLd(
   // The embedded objects get the documents as they are in one copy of the
   // whole document, rather than a copy each, which would copy a document as
   // many times as there are documents around it:
-  const received = candidates.length > 0 ? copyJsonValue(json) : undefined;
+  // Distinct decoded children expose their cached documents through toJsonLd(),
+  // so repeated source references must become independently mutable copies here.
+  const received = candidates.length > 0 ? copyJsonValue(json, false, false) : undefined;
   const documents = received == null ? [] : collectEmbeddedDocuments(received);
   if (documents.length < 1) {
     return {
@@ -544,6 +702,55 @@ async function readRawProperty(
 }
 
 /**
+ * Returns a fresh copy with one expanded JSON-LD property replaced or removed.
+ * Known properties use their typed decoder; unknown properties are explicitly
+ * published on serialization. Unrelated received extensions remain read-only.
+ * The required values argument removes the property when null, undefined, or
+ * empty. Hidden verification evidence is not inherited by the copy.
+ * @param object The generated vocabulary object to copy.
+ * @param propertyIri The full property IRI.
+ * @param values Expanded JSON-LD values, or a removal value.
+ * @returns A new object of the same concrete type.
+ * @throws {TypeError} For malformed inputs or unrepresentable known values.
+ * @since 2.5.0
+ */
+export function withRawProperty<T extends VocabularyObject>(
+  object: T,
+  propertyIri: string | URL,
+  values: readonly RawPropertyValue[] | null | undefined,
+): Promise<T> {
+  if (arguments.length < 3) return Promise.reject(new TypeError("withRawProperty() requires a values argument."));
+  return writeRawPropertyValues(object, [[propertyIri, values]], "withRawProperty");
+}
+
+/**
+ * Atomically replaces or removes expanded JSON-LD properties in a fresh copy.
+ * Inputs are snapshotted before asynchronous decoding. Duplicate destinations,
+ * including known aliases, reject the entire batch. Empty batches still copy.
+ * See {@link withRawProperty} for publication and verification behavior.
+ * @param object The generated vocabulary object to copy.
+ * @param entries A record or iterable of property IRI and value pairs.
+ * @returns A new object of the same concrete type.
+ * @throws {TypeError} For malformed inputs, duplicates, or unrepresentable values.
+ * @since 2.5.0
+ */
+export function withRawProperties<T extends VocabularyObject>(
+  object: T,
+  entries: Readonly<Record<string, readonly RawPropertyValue[] | null | undefined>>,
+): Promise<T>;
+export function withRawProperties<T extends VocabularyObject>(
+  object: T,
+  entries: Iterable<readonly [string | URL, readonly RawPropertyValue[] | null | undefined]>,
+): Promise<T>;
+export function withRawProperties<T extends VocabularyObject>(
+  object: T,
+  entries: Readonly<Record<string, readonly RawPropertyValue[] | null | undefined>> |
+    Iterable<readonly [string | URL, readonly RawPropertyValue[] | null | undefined]>,
+): Promise<T> {
+  return writeRawPropertyValues(object, entries, "withRawProperties");
+}
+
+/**
  * Gets the values of a property of a vocabulary object in expanded JSON-LD,
  * looking the property up by its full IRI.  This works for properties that
  * have no typed accessor as well as for those that do.
@@ -555,7 +762,8 @@ async function readRawProperty(
  *
  *  -  For a property that the object's class has no accessor for, the result
  *     is the values retained when the object was decoded by \`fromJsonLd()\`.
- *     Objects constructed locally have none.
+ *     Objects constructed locally have none unless raw values were explicitly
+ *     written with {@link withRawProperty} or {@link withRawProperties}.
  *  -  For a property that the class has an accessor for, including a
  *     redundant alias of such a property, the result is the current typed
  *     values encoded back into expanded JSON-LD.  It reflects \`clone()\`
@@ -668,12 +876,37 @@ export function getKnownPropertyIris(
 export async function* generateRawPropertyDescriptors(
   typeUri: string,
   types: Record<string, TypeSchema>,
+  moduleVarNames: ReadonlyMap<string, string>,
 ): AsyncIterable<string> {
   const type = types[typeUri];
   if (type.extends != null && type.properties.length < 1) return;
   yield "static {\n";
   if (type.extends == null) {
     yield `
+    rawPropertyBrands.set(this.prototype, (object: object) => {
+      void (object as ${type.name}).#documentLoader;
+    });
+    globalThis.Object.defineProperty(this.prototype, RAW_PROPERTY_WRITE_PROTOCOL, {
+      value: async function (this: ${type.name}, entries: readonly RawPropertyWriteEntry[], preprocessedNode?: unknown): Promise<object> {
+        // Reading these private fields also validates the root private brand.
+        const options = {
+          documentLoader: this.#documentLoader,
+          contextLoader: this.#contextLoader,
+          tracerProvider: this.#tracerProvider,
+          verifyPortableObject: this.#verifyPortableObject,
+          baseUrl: this.#_baseUrl,
+          _rawPropertyWrite: true,
+        };
+        const result = await writeRawProperties(this, entries, options);
+        if (preprocessedNode != null) {
+          retainPreprocessedRawProperties(result, preprocessedNode);
+          publishSuppliedRawProperties(result, preprocessedNode);
+        }
+        return result;
+      },
+      configurable: true,
+      writable: true,
+    });
     globalThis.Object.defineProperty(this.prototype, RAW_PROPERTY_PROTOCOL, {
       value: function (
         this: ${type.name},
@@ -702,9 +935,34 @@ export async function* generateRawPropertyDescriptors(
     for (const code of generateExpandedPropertyElement(property, types)) {
       element += code;
     }
+    const decoder = [
+      ...generatePropertyDecoder(
+        property,
+        types,
+        await getFieldName(property.uri, ""),
+        "inputValues",
+        moduleVarNames,
+      ),
+    ].join("");
     yield `
     descriptor = {
       canonicalIri: ${JSON.stringify(property.uri)},
+      aliases: ${JSON.stringify((property.redundantProperties ?? []).map((alias) => alias.uri))},
+      validate(object: object): void { void (object as ${type.name}).${await getFieldName(property.uri)}; },
+      assign(object: object, values: unknown[]): void {
+        (object as ${type.name}).${await getFieldName(property.uri)} = values as never;
+        ${areAllScalarTypes(property.range, types) ? "" : `(object as ${type.name}).${await getFieldName(property.uri, "#_trust")} = new Set();`}
+      },
+      ${decoder.includes("await") ? "" : "// oxlint-disable-next-line require-await"}
+      async decode(input: readonly unknown[], options: RawPropertyDecodeOptions): Promise<unknown[]> {
+        ${await generateField(property, types, "const ")}
+        // deno-lint-ignore no-explicit-any
+        const inputValues = input as any[];
+        let shouldCacheJsonLd = true;
+        ${decoder}
+        void shouldCacheJsonLd;
+        return ${await getFieldName(property.uri, "")};
+      },
       ${
         // Scalar encoders are mostly synchronous, but some are not:
         element.includes("await")
