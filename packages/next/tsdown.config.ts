@@ -17,6 +17,7 @@ export default [
     entry: ["src/index.test.ts"],
     outDir: "dist-tests",
     dts: false,
+    shims: true,
     platform: "node",
     format: ["cjs"],
     deps: { neverBundle: ["@fedify/fixture"] },

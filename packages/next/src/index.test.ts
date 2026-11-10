@@ -1,18 +1,41 @@
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
 import { test } from "@fedify/fixture";
 import { strict as assert } from "node:assert";
-import { fedifyWith, isFederationRequest, isNodeInfoRequest } from "./index.ts";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
+
+// Next.js normally installs this global during server startup.  Initialize it
+// before loading Next.js so its matcher testing utilities use the real storage.
+if (!("AsyncLocalStorage" in globalThis)) {
+  Object.assign(globalThis, { AsyncLocalStorage });
+}
+const integration = import("./index.ts");
+
+type MatcherConfig = Parameters<
+  typeof import("next/experimental/testing/server.js").unstable_doesMiddlewareMatch
+>[0]["config"];
 
 const origin = "https://example.com";
 const accepts = ["application/json", "*/*", null];
 
+/** Create a request while preserving the absent-Accept regression case. */
 function request(path: string, accept: string | null): Request {
   return new Request(`${origin}${path}`, {
     headers: accept == null ? {} : { Accept: accept },
   });
 }
 
-test("NodeInfo paths are recognized without federation media types", () => {
+/** Load the real config literal without importing the example application's code. */
+function readMatcherConfig(path: string): MatcherConfig {
+  const source = readFileSync(new URL(path, import.meta.url), "utf8");
+  const match = source.match(/export const config = (\{[\s\S]*?\n\});/);
+  assert.ok(match, `Missing standalone config in ${path}`);
+  return runInNewContext(`(${match[1]})`) as MatcherConfig;
+}
+
+test("NodeInfo paths are recognized without federation media types", async () => {
+  const { isNodeInfoRequest, isFederationRequest } = await integration;
   for (const accept of accepts) {
     for (
       const path of [
@@ -48,7 +71,8 @@ test("NodeInfo paths are recognized without federation media types", () => {
   }
 });
 
-test("Federation media types are still recognized on other paths", () => {
+test("Federation media types are still recognized on other paths", async () => {
+  const { isFederationRequest } = await integration;
   for (const header of ["Accept", "Content-Type"]) {
     for (
       const value of [
@@ -72,6 +96,7 @@ test("Federation media types are still recognized on other paths", () => {
 
 for (const accept of accepts) {
   test(`fedifyWith serves NodeInfo with Accept: ${accept ?? "(absent)"}`, async () => {
+    const { fedifyWith } = await integration;
     const federation = createFederation<void>({ kv: new MemoryKvStore() });
     federation.setNodeInfoDispatcher("/nodeinfo/2.1", () => ({
       software: { name: "example", version: "1.0.0" },
@@ -135,6 +160,7 @@ for (const accept of accepts) {
 }
 
 test("NodeInfo prefix requests reach Fedify even without a dispatcher", async () => {
+  const { fedifyWith } = await integration;
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
   let fallbackCalls = 0;
   const fallback = () => {
@@ -162,3 +188,55 @@ test("NodeInfo prefix requests reach Fedify even without a dispatcher", async ()
   }
   assert.equal(fallbackCalls, 0);
 });
+
+for (
+  const path of [
+    "../../../examples/next-integration/proxy.ts",
+    "../../init/src/templates/next/middleware.ts.tpl",
+  ]
+) {
+  test(`Actual matcher forwards NodeInfo discovery and documents: ${path}`, async () => {
+    const { unstable_doesMiddlewareMatch } = await import(
+      "next/experimental/testing/server.js"
+    );
+    const { fedifyWith } = await integration;
+    const config = readMatcherConfig(path);
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    federation.setNodeInfoDispatcher("/nodeinfo/2.1", () => ({
+      software: { name: "example", version: "1.0.0" },
+      protocols: ["activitypub"],
+      usage: { users: { total: 1 }, localPosts: 0, localComments: 0 },
+    }));
+    const middleware = fedifyWith(federation)(() => {
+      assert.fail("NodeInfo requests must not reach the application fallback");
+    });
+
+    for (const accept of accepts) {
+      for (const route of ["/.well-known/nodeinfo", "/nodeinfo/2.1"]) {
+        const req = request(route, accept);
+        assert.equal(
+          unstable_doesMiddlewareMatch({
+            config,
+            url: req.url,
+            headers: Object.fromEntries(req.headers),
+          }),
+          true,
+          `${path}: ${route}, Accept: ${accept ?? "(absent)"}`,
+        );
+        const response = await middleware(req) as Response;
+        assert.equal(response.status, 200);
+        const body = await response.json();
+        if (route === "/.well-known/nodeinfo") {
+          assert.equal(body.links[0].href, `${origin}/nodeinfo/2.1`);
+        } else {
+          assert.equal(body.version, "2.1");
+          assert.equal(body.software.name, "example");
+        }
+      }
+    }
+    assert.equal(
+      unstable_doesMiddlewareMatch({ config, url: `${origin}/about` }),
+      false,
+    );
+  });
+}
