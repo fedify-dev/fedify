@@ -89,7 +89,8 @@ to a non-collection, context strategies yield nothing.
 *This option is available since Fedify 2.5.0.*
 
 Set `contextSource: "history-first"` to read the first `contextHistory`
-value on the supplied seed. It can be a reference or an embedded collection.
+value on the supplied seed. It can be a reference or an embedded
+`OrderedCollection`.
 For example, a seed with history but no `context` can yield posts from supported
 `Create` activities:
 
@@ -111,18 +112,24 @@ for await (const item of backfill(context, seed, {
 
 Backfill falls back to the seed's first `context` ID if history is absent or
 unavailable: the lookup returns `null`, the loader throws an ordinary error, or
-the result is not a supported collection. Both sources support the collection
-and page types listed above.
+the result is not a supported collection. Context and history references can
+resolve to any of the collection and page types listed above.
+
+An embedded `OrderedCollection` can contain embedded pages, including
+`OrderedCollectionPage`. Using a `Collection`, `CollectionPage`, or
+`OrderedCollectionPage` directly as the embedded history is rejected when
+constructing or parsing the seed, before backfill runs. These vocabulary
+validation errors do not trigger fallback.
 
 Once a valid history collection is resolved, it remains selected, even if it
 is empty, has no supported items, or later item or page loads fail. Backfill
 does not try later history values or merge history with `context`. The selected
 source is reused across context strategies within the same traversal.
 
-An embedded history collection itself needs no request; referenced items and
-pages still count. A failed history lookup consumes request budget, and context
-fallback uses the remaining budget and the same document cache. If no source
-can be resolved, context strategies yield nothing.
+An embedded history accepted without dereferencing needs no request;
+referenced items and pages still count. A failed history lookup consumes
+request budget, and context fallback uses the remaining budget and the same
+document cache. If no source can be resolved, context strategies yield nothing.
 
 Referenced history is resolved through the configured `documentLoader`,
 including portable `ap://` and `ap+ef61://` references. The loader is

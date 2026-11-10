@@ -6946,6 +6946,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -6997,6 +7004,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAttachment(v, options);
             if (fetched == null) continue;
@@ -7400,6 +7408,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -7450,6 +7465,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAttribution(v, options);
           if (fetched == null) return null;
@@ -7525,6 +7541,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -7576,6 +7599,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAttribution(v, options);
             if (fetched == null) continue;
@@ -7918,6 +7942,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -7968,6 +7999,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAudience(v, options);
           if (fetched == null) return null;
@@ -8042,6 +8074,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -8093,6 +8132,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAudience(v, options);
             if (fetched == null) continue;
@@ -8483,6 +8523,13 @@ get contents(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -8534,6 +8581,7 @@ get contents(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchContext(v, options);
             if (fetched == null) continue;
@@ -8884,6 +8932,13 @@ get contents(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -8934,6 +8989,7 @@ get contents(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchContextHistory(v, options);
           if (fetched == null) return null;
@@ -9050,6 +9106,13 @@ get contents(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -9101,6 +9164,7 @@ get contents(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchContextHistory(v, options);
             if (fetched == null) continue;
@@ -9532,6 +9596,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -9583,6 +9654,7 @@ get names(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchGenerator(v, options);
             if (fetched == null) continue;
@@ -9951,6 +10023,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -10001,6 +10080,7 @@ get names(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchIcon(v, options);
           if (fetched == null) return null;
@@ -10076,6 +10156,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -10127,6 +10214,7 @@ get names(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchIcon(v, options);
             if (fetched == null) continue;
@@ -10495,6 +10583,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -10545,6 +10640,7 @@ get names(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchImage(v, options);
           if (fetched == null) return null;
@@ -10620,6 +10716,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -10671,6 +10774,7 @@ get names(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchImage(v, options);
             if (fetched == null) continue;
@@ -11028,6 +11132,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -11078,6 +11189,7 @@ get names(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchReplyTarget(v, options);
           if (fetched == null) return null;
@@ -11152,6 +11264,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -11203,6 +11322,7 @@ get names(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchReplyTarget(v, options);
             if (fetched == null) continue;
@@ -11560,6 +11680,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -11610,6 +11737,7 @@ get names(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchLocation(v, options);
           if (fetched == null) return null;
@@ -11684,6 +11812,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -11735,6 +11870,7 @@ get names(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchLocation(v, options);
             if (fetched == null) continue;
@@ -12091,6 +12227,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -12141,6 +12284,7 @@ get names(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchPreview(v, options);
           if (fetched == null) return null;
@@ -12214,6 +12358,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -12265,6 +12416,7 @@ get names(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchPreview(v, options);
             if (fetched == null) continue;
@@ -12620,6 +12772,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -12670,6 +12829,7 @@ get names(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchReplies(v, options);
           if (fetched == null) return null;
@@ -13013,6 +13173,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -13063,6 +13230,7 @@ get names(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchShares(v, options);
           if (fetched == null) return null;
@@ -13406,6 +13574,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -13456,6 +13631,7 @@ get names(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchLikes(v, options);
           if (fetched == null) return null;
@@ -13793,6 +13969,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -13843,6 +14026,7 @@ get names(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchEmojiReactions(v, options);
           if (fetched == null) return null;
@@ -14236,6 +14420,13 @@ get summaries(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -14287,6 +14478,7 @@ get summaries(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchTag(v, options);
             if (fetched == null) continue;
@@ -14663,6 +14855,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -14713,6 +14912,7 @@ get urls(): ((URL | Link))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchTo(v, options);
           if (fetched == null) return null;
@@ -14787,6 +14987,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -14838,6 +15045,7 @@ get urls(): ((URL | Link))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchTo(v, options);
             if (fetched == null) continue;
@@ -15180,6 +15388,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -15230,6 +15445,7 @@ get urls(): ((URL | Link))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchBto(v, options);
           if (fetched == null) return null;
@@ -15304,6 +15520,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -15355,6 +15578,7 @@ get urls(): ((URL | Link))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchBto(v, options);
             if (fetched == null) continue;
@@ -15697,6 +15921,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -15747,6 +15978,7 @@ get urls(): ((URL | Link))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchCc(v, options);
           if (fetched == null) return null;
@@ -15821,6 +16053,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -15872,6 +16111,7 @@ get urls(): ((URL | Link))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchCc(v, options);
             if (fetched == null) continue;
@@ -16214,6 +16454,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -16264,6 +16511,7 @@ get urls(): ((URL | Link))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchBcc(v, options);
           if (fetched == null) return null;
@@ -16338,6 +16586,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -16389,6 +16644,7 @@ get urls(): ((URL | Link))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchBcc(v, options);
             if (fetched == null) continue;
@@ -16794,6 +17050,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -16844,6 +17107,7 @@ get urls(): ((URL | Link))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchProof(v, options);
           if (fetched == null) return null;
@@ -16917,6 +17181,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -16968,6 +17239,7 @@ get urls(): ((URL | Link))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchProof(v, options);
             if (fetched == null) continue;
@@ -17349,6 +17621,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -17399,6 +17678,7 @@ get urls(): ((URL | Link))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchLikeAuthorization(v, options);
           if (fetched == null) return null;
@@ -17736,6 +18016,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -17786,6 +18073,7 @@ get urls(): ((URL | Link))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchReplyAuthorization(v, options);
           if (fetched == null) return null;
@@ -18123,6 +18411,13 @@ get urls(): ((URL | Link))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -18173,6 +18468,7 @@ get urls(): ((URL | Link))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAnnounceAuthorization(v, options);
           if (fetched == null) return null;
@@ -25188,6 +25484,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -25238,6 +25541,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchQuote(v, options);
           if (fetched == null) return null;
@@ -25598,6 +25902,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -25648,6 +25959,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchQuoteAuthorization(v, options);
           if (fetched == null) return null;
@@ -28172,6 +28484,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -28222,6 +28541,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchActor(v, options);
           if (fetched == null) return null;
@@ -28297,6 +28617,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -28348,6 +28675,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchActor(v, options);
             if (fetched == null) continue;
@@ -28691,6 +29019,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -28741,6 +29076,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchObject(v, options);
           if (fetched == null) return null;
@@ -28816,6 +29152,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -28867,6 +29210,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchObject(v, options);
             if (fetched == null) continue;
@@ -29213,6 +29557,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -29263,6 +29614,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchTarget(v, options);
           if (fetched == null) return null;
@@ -29341,6 +29693,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -29392,6 +29751,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchTarget(v, options);
             if (fetched == null) continue;
@@ -29735,6 +30095,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -29785,6 +30152,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchResult(v, options);
           if (fetched == null) return null;
@@ -29860,6 +30228,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -29911,6 +30286,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchResult(v, options);
             if (fetched == null) continue;
@@ -30255,6 +30631,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -30305,6 +30688,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchOrigin(v, options);
           if (fetched == null) return null;
@@ -30381,6 +30765,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -30432,6 +30823,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchOrigin(v, options);
             if (fetched == null) continue;
@@ -30774,6 +31166,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -30824,6 +31223,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInstrument(v, options);
           if (fetched == null) return null;
@@ -30898,6 +31298,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -30949,6 +31356,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchInstrument(v, options);
             if (fetched == null) continue;
@@ -35429,6 +35837,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -35479,6 +35894,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInteractingObject(v, options);
           if (fetched == null) return null;
@@ -35815,6 +36231,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -35865,6 +36288,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInteractionTarget(v, options);
           if (fetched == null) return null;
@@ -40626,6 +41050,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -40676,6 +41107,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInteractingObject(v, options);
           if (fetched == null) return null;
@@ -41012,6 +41444,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -41062,6 +41501,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInteractionTarget(v, options);
           if (fetched == null) return null;
@@ -43004,6 +43444,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -43054,6 +43501,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInteractingObject(v, options);
           if (fetched == null) return null;
@@ -43390,6 +43838,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -43440,6 +43895,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInteractionTarget(v, options);
           if (fetched == null) return null;
@@ -45381,6 +45837,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -45431,6 +45894,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInteractingObject(v, options);
           if (fetched == null) return null;
@@ -45767,6 +46231,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -45817,6 +46288,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInteractionTarget(v, options);
           if (fetched == null) return null;
@@ -48405,6 +48877,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -48455,6 +48934,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchTranslator(v, options);
           if (fetched == null) return null;
@@ -48533,6 +49013,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -48584,6 +49071,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchTranslator(v, options);
             if (fetched == null) continue;
@@ -50451,6 +50939,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -50501,6 +50996,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInteractingObject(v, options);
           if (fetched == null) return null;
@@ -50836,6 +51332,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -50886,6 +51389,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInteractionTarget(v, options);
           if (fetched == null) return null;
@@ -53849,6 +54353,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -53899,6 +54410,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchCurrent(v, options);
           if (fetched == null) return null;
@@ -54236,6 +54748,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -54286,6 +54805,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFirst(v, options);
           if (fetched == null) return null;
@@ -54623,6 +55143,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -54673,6 +55200,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchLast(v, options);
           if (fetched == null) return null;
@@ -55024,6 +55552,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -55075,6 +55610,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchItem(v, options);
             if (fetched == null) continue;
@@ -55416,6 +55952,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -55466,6 +56009,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchLikesOf(v, options);
           if (fetched == null) return null;
@@ -55802,6 +56346,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -55852,6 +56403,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchSharesOf(v, options);
           if (fetched == null) return null;
@@ -56188,6 +56740,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -56238,6 +56797,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchRepliesOf(v, options);
           if (fetched == null) return null;
@@ -56574,6 +57134,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -56624,6 +57191,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInboxOf(v, options);
           if (fetched == null) return null;
@@ -56960,6 +57528,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -57010,6 +57585,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchOutboxOf(v, options);
           if (fetched == null) return null;
@@ -57346,6 +57922,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -57396,6 +57979,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFollowersOf(v, options);
           if (fetched == null) return null;
@@ -57732,6 +58316,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -57782,6 +58373,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFollowingOf(v, options);
           if (fetched == null) return null;
@@ -58118,6 +58710,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -58168,6 +58767,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchLikedOf(v, options);
           if (fetched == null) return null;
@@ -60842,6 +61442,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -60893,6 +61500,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchItem(v, options);
             if (fetched == null) continue;
@@ -63119,6 +63727,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -63169,6 +63784,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeaturedObject(v, options);
           if (fetched == null) return null;
@@ -63506,6 +64122,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -63556,6 +64179,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeatureAuthorization(v, options);
           if (fetched == null) return null;
@@ -66578,6 +67202,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -66628,6 +67259,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchVerificationMethod(v, options);
           if (fetched == null) return null;
@@ -68279,6 +68911,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -68329,6 +68968,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchOwner(v, options);
           if (fetched == null) return null;
@@ -69881,6 +70521,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -69931,6 +70578,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchController(v, options);
           if (fetched == null) return null;
@@ -80709,6 +81357,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -80759,6 +81414,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchPublicKey(v, options);
           if (fetched == null) return null;
@@ -80831,6 +81487,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -80882,6 +81545,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchPublicKey(v, options);
             if (fetched == null) continue;
@@ -81226,6 +81890,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -81276,6 +81947,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAssertionMethod(v, options);
           if (fetched == null) return null;
@@ -81352,6 +82024,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -81403,6 +82082,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAssertionMethod(v, options);
             if (fetched == null) continue;
@@ -81817,6 +82497,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -81867,6 +82554,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInbox(v, options);
           if (fetched == null) return null;
@@ -82227,6 +82915,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -82277,6 +82972,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchOutbox(v, options);
           if (fetched == null) return null;
@@ -82617,6 +83313,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -82667,6 +83370,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFollowing(v, options);
           if (fetched == null) return null;
@@ -83010,6 +83714,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -83060,6 +83771,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFollowers(v, options);
           if (fetched == null) return null;
@@ -83401,6 +84113,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -83451,6 +84170,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchLiked(v, options);
           if (fetched == null) return null;
@@ -83790,6 +84510,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -83840,6 +84567,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeatured(v, options);
           if (fetched == null) return null;
@@ -84179,6 +84907,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -84229,6 +84964,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeaturedTags(v, options);
           if (fetched == null) return null;
@@ -84565,6 +85301,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -84615,6 +85358,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeaturedCollections(v, options);
           if (fetched == null) return null;
@@ -84950,6 +85694,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -85001,6 +85752,7 @@ get gateways(): (URL)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchStream(v, options);
             if (fetched == null) continue;
@@ -85487,6 +86239,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -85537,6 +86296,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchSuccessor(v, options);
           if (fetched == null) return null;
@@ -85936,6 +86696,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -85986,6 +86753,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAlias(v, options);
           if (fetched == null) return null;
@@ -86062,6 +86830,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -86113,6 +86888,7 @@ get attributionDomains(): (string)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAlias(v, options);
             if (fetched == null) continue;
@@ -86457,6 +87233,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -86507,6 +87290,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchService(v, options);
           if (fetched == null) return null;
@@ -86583,6 +87367,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -86634,6 +87425,7 @@ get attributionDomains(): (string)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchService(v, options);
             if (fetched == null) continue;
@@ -92115,6 +92907,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -92165,6 +92964,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchQuote(v, options);
           if (fetched == null) return null;
@@ -92525,6 +93325,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -92575,6 +93382,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchQuoteAuthorization(v, options);
           if (fetched == null) return null;
@@ -96950,6 +97758,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -97000,6 +97815,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchPartOf(v, options);
           if (fetched == null) return null;
@@ -97335,6 +98151,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -97385,6 +98208,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchNext(v, options);
           if (fetched == null) return null;
@@ -97721,6 +98545,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -97771,6 +98602,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchPrev(v, options);
           if (fetched == null) return null;
@@ -107233,6 +108065,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -107283,6 +108122,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchPublicKey(v, options);
           if (fetched == null) return null;
@@ -107355,6 +108195,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -107406,6 +108253,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchPublicKey(v, options);
             if (fetched == null) continue;
@@ -107750,6 +108598,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -107800,6 +108655,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAssertionMethod(v, options);
           if (fetched == null) return null;
@@ -107876,6 +108732,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -107927,6 +108790,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAssertionMethod(v, options);
             if (fetched == null) continue;
@@ -108341,6 +109205,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -108391,6 +109262,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInbox(v, options);
           if (fetched == null) return null;
@@ -108751,6 +109623,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -108801,6 +109680,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchOutbox(v, options);
           if (fetched == null) return null;
@@ -109141,6 +110021,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -109191,6 +110078,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFollowing(v, options);
           if (fetched == null) return null;
@@ -109534,6 +110422,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -109584,6 +110479,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFollowers(v, options);
           if (fetched == null) return null;
@@ -109925,6 +110821,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -109975,6 +110878,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchLiked(v, options);
           if (fetched == null) return null;
@@ -110314,6 +111218,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -110364,6 +111275,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeatured(v, options);
           if (fetched == null) return null;
@@ -110703,6 +111615,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -110753,6 +111672,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeaturedTags(v, options);
           if (fetched == null) return null;
@@ -111089,6 +112009,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -111139,6 +112066,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeaturedCollections(v, options);
           if (fetched == null) return null;
@@ -111474,6 +112402,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -111525,6 +112460,7 @@ get gateways(): (URL)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchStream(v, options);
             if (fetched == null) continue;
@@ -112011,6 +112947,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -112061,6 +113004,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchSuccessor(v, options);
           if (fetched == null) return null;
@@ -112460,6 +113404,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -112510,6 +113461,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAlias(v, options);
           if (fetched == null) return null;
@@ -112586,6 +113538,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -112637,6 +113596,7 @@ get attributionDomains(): (string)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAlias(v, options);
             if (fetched == null) continue;
@@ -112981,6 +113941,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -113031,6 +113998,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchService(v, options);
           if (fetched == null) return null;
@@ -113107,6 +114075,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -113158,6 +114133,7 @@ get attributionDomains(): (string)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchService(v, options);
             if (fetched == null) continue;
@@ -118394,6 +119370,13 @@ get names(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -118445,6 +119428,7 @@ get names(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchPreview(v, options);
             if (fetched == null) continue;
@@ -126307,6 +127291,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -126357,6 +127348,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchQuote(v, options);
           if (fetched == null) return null;
@@ -126717,6 +127709,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -126767,6 +127766,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchQuoteAuthorization(v, options);
           if (fetched == null) return null;
@@ -128274,6 +129274,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -128325,6 +129332,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchItem(v, options);
             if (fetched == null) continue;
@@ -132293,6 +133301,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -132343,6 +133358,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchPublicKey(v, options);
           if (fetched == null) return null;
@@ -132415,6 +133431,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -132466,6 +133489,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchPublicKey(v, options);
             if (fetched == null) continue;
@@ -132810,6 +133834,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -132860,6 +133891,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAssertionMethod(v, options);
           if (fetched == null) return null;
@@ -132936,6 +133968,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -132987,6 +134026,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAssertionMethod(v, options);
             if (fetched == null) continue;
@@ -133401,6 +134441,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -133451,6 +134498,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInbox(v, options);
           if (fetched == null) return null;
@@ -133811,6 +134859,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -133861,6 +134916,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchOutbox(v, options);
           if (fetched == null) return null;
@@ -134201,6 +135257,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -134251,6 +135314,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFollowing(v, options);
           if (fetched == null) return null;
@@ -134594,6 +135658,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -134644,6 +135715,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFollowers(v, options);
           if (fetched == null) return null;
@@ -134985,6 +136057,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -135035,6 +136114,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchLiked(v, options);
           if (fetched == null) return null;
@@ -135374,6 +136454,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -135424,6 +136511,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeatured(v, options);
           if (fetched == null) return null;
@@ -135763,6 +136851,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -135813,6 +136908,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeaturedTags(v, options);
           if (fetched == null) return null;
@@ -136149,6 +137245,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -136199,6 +137302,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeaturedCollections(v, options);
           if (fetched == null) return null;
@@ -136534,6 +137638,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -136585,6 +137696,7 @@ get gateways(): (URL)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchStream(v, options);
             if (fetched == null) continue;
@@ -137071,6 +138183,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -137121,6 +138240,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchSuccessor(v, options);
           if (fetched == null) return null;
@@ -137520,6 +138640,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -137570,6 +138697,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAlias(v, options);
           if (fetched == null) return null;
@@ -137646,6 +138774,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -137697,6 +138832,7 @@ get attributionDomains(): (string)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAlias(v, options);
             if (fetched == null) continue;
@@ -138041,6 +139177,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -138091,6 +139234,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchService(v, options);
           if (fetched == null) return null;
@@ -138167,6 +139311,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -138218,6 +139369,7 @@ get attributionDomains(): (string)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchService(v, options);
             if (fetched == null) continue;
@@ -145630,6 +146782,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -145680,6 +146839,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchPublicKey(v, options);
           if (fetched == null) return null;
@@ -145752,6 +146912,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -145803,6 +146970,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchPublicKey(v, options);
             if (fetched == null) continue;
@@ -146147,6 +147315,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -146197,6 +147372,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAssertionMethod(v, options);
           if (fetched == null) return null;
@@ -146273,6 +147449,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -146324,6 +147507,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAssertionMethod(v, options);
             if (fetched == null) continue;
@@ -146738,6 +147922,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -146788,6 +147979,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInbox(v, options);
           if (fetched == null) return null;
@@ -147148,6 +148340,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -147198,6 +148397,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchOutbox(v, options);
           if (fetched == null) return null;
@@ -147538,6 +148738,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -147588,6 +148795,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFollowing(v, options);
           if (fetched == null) return null;
@@ -147931,6 +149139,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -147981,6 +149196,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFollowers(v, options);
           if (fetched == null) return null;
@@ -148322,6 +149538,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -148372,6 +149595,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchLiked(v, options);
           if (fetched == null) return null;
@@ -148711,6 +149935,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -148761,6 +149992,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeatured(v, options);
           if (fetched == null) return null;
@@ -149100,6 +150332,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -149150,6 +150389,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeaturedTags(v, options);
           if (fetched == null) return null;
@@ -149486,6 +150726,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -149536,6 +150783,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeaturedCollections(v, options);
           if (fetched == null) return null;
@@ -149871,6 +151119,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -149922,6 +151177,7 @@ get gateways(): (URL)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchStream(v, options);
             if (fetched == null) continue;
@@ -150408,6 +151664,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -150458,6 +151721,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchSuccessor(v, options);
           if (fetched == null) return null;
@@ -150857,6 +152121,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -150907,6 +152178,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAlias(v, options);
           if (fetched == null) return null;
@@ -150983,6 +152255,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -151034,6 +152313,7 @@ get attributionDomains(): (string)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAlias(v, options);
             if (fetched == null) continue;
@@ -151378,6 +152658,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -151428,6 +152715,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchService(v, options);
           if (fetched == null) return null;
@@ -151504,6 +152792,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -151555,6 +152850,7 @@ get attributionDomains(): (string)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchService(v, options);
             if (fetched == null) continue;
@@ -157287,6 +158583,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -157337,6 +158640,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchDescribes(v, options);
           if (fetched == null) return null;
@@ -159072,6 +160376,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -159123,6 +160434,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchExclusiveOption(v, options);
             if (fetched == null) continue;
@@ -159465,6 +160777,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -159516,6 +160835,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchInclusiveOption(v, options);
             if (fetched == null) continue;
@@ -159889,6 +161209,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -159939,6 +161266,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchQuote(v, options);
           if (fetched == null) return null;
@@ -160299,6 +161627,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -160349,6 +161684,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchQuoteAuthorization(v, options);
           if (fetched == null) return null;
@@ -163539,6 +164875,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -163589,6 +164932,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchSubject(v, options);
           if (fetched == null) return null;
@@ -163925,6 +165269,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -163975,6 +165326,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchObject(v, options);
           if (fetched == null) return null;
@@ -164048,6 +165400,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -164099,6 +165458,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchObject(v, options);
             if (fetched == null) continue;
@@ -164442,6 +165802,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -164492,6 +165859,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchRelationship(v, options);
           if (fetched == null) return null;
@@ -164567,6 +165935,13 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -164618,6 +165993,7 @@ rawPropertyDescriptors.set(this.prototype, descriptors);
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchRelationship(v, options);
             if (fetched == null) continue;
@@ -169285,6 +170661,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -169335,6 +170718,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchPublicKey(v, options);
           if (fetched == null) return null;
@@ -169407,6 +170791,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -169458,6 +170849,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchPublicKey(v, options);
             if (fetched == null) continue;
@@ -169802,6 +171194,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -169852,6 +171251,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAssertionMethod(v, options);
           if (fetched == null) return null;
@@ -169928,6 +171328,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -169979,6 +171386,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAssertionMethod(v, options);
             if (fetched == null) continue;
@@ -170393,6 +171801,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -170443,6 +171858,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchInbox(v, options);
           if (fetched == null) return null;
@@ -170803,6 +172219,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -170853,6 +172276,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchOutbox(v, options);
           if (fetched == null) return null;
@@ -171193,6 +172617,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -171243,6 +172674,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFollowing(v, options);
           if (fetched == null) return null;
@@ -171586,6 +173018,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -171636,6 +173075,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFollowers(v, options);
           if (fetched == null) return null;
@@ -171977,6 +173417,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -172027,6 +173474,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchLiked(v, options);
           if (fetched == null) return null;
@@ -172366,6 +173814,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -172416,6 +173871,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeatured(v, options);
           if (fetched == null) return null;
@@ -172755,6 +174211,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -172805,6 +174268,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeaturedTags(v, options);
           if (fetched == null) return null;
@@ -173141,6 +174605,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -173191,6 +174662,7 @@ get gateways(): (URL)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchFeaturedCollections(v, options);
           if (fetched == null) return null;
@@ -173526,6 +174998,13 @@ get gateways(): (URL)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -173577,6 +175056,7 @@ get gateways(): (URL)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchStream(v, options);
             if (fetched == null) continue;
@@ -174063,6 +175543,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -174113,6 +175600,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchSuccessor(v, options);
           if (fetched == null) return null;
@@ -174512,6 +176000,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -174562,6 +176057,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchAlias(v, options);
           if (fetched == null) return null;
@@ -174638,6 +176134,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -174689,6 +176192,7 @@ get attributionDomains(): (string)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchAlias(v, options);
             if (fetched == null) continue;
@@ -175033,6 +176537,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, returns only embedded or cached objects accepted
+           * by existing trust checks, or \`null\` when fetching is required.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -175083,6 +176594,7 @@ get attributionDomains(): (string)[] {
           }
         }
         if (v instanceof URL) {
+          if (options.dereference === false) return null;
           const fetched =
             await this.#fetchService(v, options);
           if (fetched == null) return null;
@@ -175159,6 +176671,13 @@ get attributionDomains(): (string)[] {
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
+          /**
+           * Whether to fetch referenced objects. Defaults to \`true\`.
+           * If \`false\`, yields only embedded or cached objects accepted
+           * by existing trust checks, skipping values that require fetching.
+           * @since 2.5.0
+           */
+          dereference?: boolean;
           verifyPortableObject?: PortableObjectVerifier;
           /**
            * Whether objects that this call newly fetches use the
@@ -175210,6 +176729,7 @@ get attributionDomains(): (string)[] {
             }
           }
           if (v instanceof URL) {
+            if (options.dereference === false) continue;
             const fetched =
               await this.#fetchService(v, options);
             if (fetched == null) continue;

@@ -446,7 +446,7 @@ To be released.
 
  -  Added a preloaded FEP-171b context so documents using its published context
     URL can be parsed without fetching the context over the network.
-    [[#1250] by Jiwon Kwon\]
+    [[#1250], [#1396] by Jiwon Kwon\]
  -  Added `isTransientFetchError()` function, which tells whether an error
     thrown by a document loader is likely transient, such as a network error,
     a timeout, a DNS failure, or an HTTP 5xx, 408, or 429 response, so that

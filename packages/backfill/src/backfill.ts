@@ -259,51 +259,34 @@ async function getConversationCollection(
   return isCollection(collection) ? collection : null;
 }
 
+/**
+ * Reads accepted embedded history without fetching, or loads the original
+ * reference so backfill controls request budgets and gateway selection.
+ */
 async function getContextHistoryCollection(
   context: BackfillContext,
   note: APObject,
   options: BackfillOptions,
   budget: RequestBudget,
 ): Promise<BackfillCollection | null> {
-  const unresolvedReference = new Error(
-    "History reference requires backfill loading",
-  );
-  let historyId: URL | undefined;
   try {
-    // Preserve verifier defaults and isolate embedded history hydration from
-    // the supplied seed. For a reference, stop the vocabulary accessor before
-    // fetching so the backfill loader can return objects directly, without a
-    // JSON-LD serialization and parsing round trip.
-    return await note.deepClone().getContextHistory({
+    const history = await note.deepClone().getContextHistory({
+      dereference: false,
       crossOrigin: "trust",
-      documentLoader: (url) => {
-        historyId = new URL(url);
-        throw unresolvedReference;
-      },
     });
-  } catch (error) {
-    if (error !== unresolvedReference) {
-      budget.signal?.throwIfAborted();
-      // Vocabulary dereferencing can require a portable-object verifier
-      // before it calls documentLoader. Let the configured backfill loader
-      // resolve and verify that reference instead.
-      const reference = note.contextHistoryId;
-      try {
-        if (
-          reference == null ||
-          (reference.protocol !== "ap:" &&
-            reference.protocol !== "ap+ef61:" &&
-            fromCompatibleEf61Id(reference) == null)
-        )
-          return null;
-      } catch {
-        // Malformed compatible identifiers are unavailable history.
-        return null;
-      }
-      historyId = reference;
-    }
+    if (history != null) return history;
+  } catch {
+    budget.signal?.throwIfAborted();
+    return null;
   }
+  const historyId = note.contextHistoryId;
   if (historyId == null) return null;
+  try {
+    fromCompatibleEf61Id(historyId);
+  } catch {
+    // Malformed compatible identifiers are unavailable history.
+    return null;
+  }
   const collection = await loadObject(context, historyId, options, budget, {
     skipLoaderErrors: true,
   });

@@ -140,6 +140,38 @@ describe("history-first source selection", () => {
     );
   });
 
+  test("portable history keeps its original gateway hints when passed to the backfill loader", async () => {
+    const seed = await Note.fromJsonLd(
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/fep/171b",
+        ],
+        type: "Note",
+        id: "https://example.com/posts/1",
+        contextHistory:
+          "ap://did:key:z6Mkabc/history?@gateway=https%3A%2F%2Fhinted.example",
+      },
+      { verifyPortableObject: () => Promise.resolve({ verified: false }) },
+    );
+    const requests: string[] = [];
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          return Promise.resolve(new OrderedCollection({ items: [item] }));
+        },
+      },
+      seed,
+      { contextSource: "history-first" },
+    );
+    deepStrictEqual(requests, [seed.contextHistoryId!.href]);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [item.id],
+    );
+  });
+
   test("malformed compatible history identifiers fall back without being loaded", async () => {
     const seed = new Note({
       id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/posts/1"),

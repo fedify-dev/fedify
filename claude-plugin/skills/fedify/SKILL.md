@@ -343,6 +343,13 @@ Existing strategies control post extraction; later explicitly configured
 strategies can still run. This does not discover history on ancestors, unwrap
 `Add` activities, or replay updates and deletions.
 
+In Fedify 2.5.0 and later, vocabulary dereferencing accessors accept
+`dereference: false` to return only embedded or cached objects accepted by
+existing origin and portable-object trust checks. Singular accessors return
+`null` when fetching is required; plural accessors skip those values. Omitting
+the option keeps normal fetching behavior. ID getters and scalar properties
+are unchanged.
+
 `clone()` is shallow: it copies property arrays but shares nested vocabulary
 objects and URLs.  In Fedify 2.5.0 and later, use synchronous `deepClone()` to
 resolve nested properties without hydrating the source's objects.  Replacement
