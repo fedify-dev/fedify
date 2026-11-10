@@ -84,6 +84,10 @@ To be released.
     and other containers remain rejected.  This keeps portable actors that
     publish container terms such as Mastodon's `attributionDomains`
     verifiable.  [[#1234], [#1353]]
+ -  Fixed `FedifySpanExporter.forceFlush()` and `shutdown()` returning before
+    pending trace writes finish.  Added a `waitUntil` exporter option to keep
+    serverless invocations alive for each export attempt; use it with
+    `SimpleSpanProcessor` on Cloudflare Workers.  [[#1382], [#1415]]
  -  Fixed log entries emitted during an individual outbound activity delivery
     or inbound activity processing carrying the enclosing HTTP request's or
     queue worker's `traceId`/`spanId` instead of the delivery or processing
@@ -110,7 +114,9 @@ To be released.
 [#1328]: https://github.com/fedify-dev/fedify/pull/1328
 [#1353]: https://github.com/fedify-dev/fedify/pull/1353
 [#1359]: https://github.com/fedify-dev/fedify/pull/1359
+[#1382]: https://github.com/fedify-dev/fedify/issues/1382
 [#1396]: https://github.com/fedify-dev/fedify/pull/1396
+[#1415]: https://github.com/fedify-dev/fedify/pull/1415
 
 ### @fedify/backfill
 

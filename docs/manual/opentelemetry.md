@@ -1281,6 +1281,86 @@ const federation = createFederation<void>({
 
 :::
 
+### Keeping serverless exports alive
+
+*The `waitUntil` option is available since Fedify 2.5.0.*
+
+`FedifySpanExporter` writes asynchronously.  On Cloudflare Workers, pass a
+`waitUntil` callback so an invocation can stay alive while its trace records
+are written.  Use `SimpleSpanProcessor` to start exporting when each span ends.
+The exporter calls the callback synchronously from `export()` with a promise
+that fulfills after that export attempt and its result callback finish.
+Storage failures are logged and reported to the processor; the lifetime promise
+does not reject.  Exceptions thrown by the callback are logged and ignored.
+
+For a request-scoped exporter, pass the current execution context's bound
+`ctx.waitUntil()` method:
+
+~~~~ typescript twoslash
+import type { KvStore } from "@fedify/fedify";
+declare const kv: KvStore;
+declare const ctx: { waitUntil(promise: Promise<void>): void };
+// ---cut-before---
+import { FedifySpanExporter } from "@fedify/fedify/otel";
+import {
+  BasicTracerProvider,
+  SimpleSpanProcessor,
+} from "@opentelemetry/sdk-trace-base";
+
+// Create these inside the request handler and pass tracerProvider to Fedify.
+const exporter = new FedifySpanExporter(kv, {
+  waitUntil: ctx.waitUntil.bind(ctx),
+});
+const tracerProvider = new BasicTracerProvider({
+  spanProcessors: [new SimpleSpanProcessor(exporter)],
+});
+~~~~
+
+A shared exporter needs a callback that finds the current invocation, such as
+`waitUntil()` imported from `cloudflare:workers`.  Do not keep one request's
+bound `ctx.waitUntil()` in a shared exporter.  The callback must not log
+through a LogTape sink that uses the same callback, since that can recurse.
+
+The callback only protects work once the processor calls the exporter.  With
+pending asynchronous resource attributes, even `SimpleSpanProcessor` can defer
+that call.  `BatchSpanProcessor` buffers spans, and its timer cannot be relied
+on to run after the response.  To cover processor-side pending work, pass
+`tracerProvider.forceFlush()` to `ctx.waitUntil()` after awaiting
+`federation.fetch()` and before returning the response:
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+import type { BasicTracerProvider } from "@opentelemetry/sdk-trace-base";
+declare const federation: Federation<void>;
+declare const tracerProvider: BasicTracerProvider;
+declare const request: Request;
+declare const ctx: { waitUntil(promise: Promise<void>): void };
+// ---cut-before---
+async function handleRequest(): Promise<Response> {
+  const response = await federation.fetch(request, { contextData: undefined });
+  ctx.waitUntil(tracerProvider.forceFlush());
+  return response;
+}
+~~~~
+
+This explicit flush also supports batch processors.  Calling
+`exporter.forceFlush()` instead waits for exports already handed to the
+exporter, plus any that start while it waits.  It completes when the exporter
+becomes idle, so continuous exports can keep it pending.
+
+On Node.js and other long-lived runtimes, stop accepting requests, await
+`tracerProvider.forceFlush()`, then await `tracerProvider.shutdown()` during
+graceful shutdown.  The exporter's `shutdown()` also waits for pending export
+attempts.  The exporter's `forceFlush()` and `shutdown()` do not reject for a
+failed storage attempt.
+
+Lifetime extension is subject to the platform's limits.  For HTTP-triggered
+Workers,
+[`waitUntil()` allows up to 30 seconds after the invocation ends][workers-waituntil],
+shared across the request's calls.  It does not guarantee durable delivery.
+
+[workers-waituntil]: https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil
+
 ### Querying stored traces
 
 The `FedifySpanExporter` provides methods to query stored trace data:
@@ -1334,6 +1414,13 @@ Each `TraceActivityRecord` contains:
 ### Configuration options
 
 The `FedifySpanExporter` constructor accepts the following options:
+
+`waitUntil`
+:   A callback invoked synchronously for each export with a never-rejecting
+    completion promise.  Use it to extend the current serverless invocation's
+    lifetime; see
+    [Keeping serverless exports alive](#keeping-serverless-exports-alive).
+    Available since Fedify 2.5.0.
 
 `ttl`
 :   The time-to-live for stored trace data.  If not specified, data will be

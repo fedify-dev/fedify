@@ -6,7 +6,12 @@ import type {
   SpanStatus,
 } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode, TraceFlags } from "@opentelemetry/api";
+import { ExportResultCode } from "@opentelemetry/core";
 import type { ReadableSpan, TimedEvent } from "@opentelemetry/sdk-trace-base";
+import {
+  BasicTracerProvider,
+  SimpleSpanProcessor,
+} from "@opentelemetry/sdk-trace-base";
 import { assert, assertEquals } from "@std/assert";
 import {
   type KvKey,
@@ -15,6 +20,313 @@ import {
   MemoryKvStore,
 } from "../federation/kv.ts";
 import { FedifySpanExporter } from "./exporter.ts";
+
+function createGatedStore() {
+  const kv = new MemoryKvStore();
+  const set = kv.set.bind(kv);
+  const writes: ReturnType<typeof Promise.withResolvers<void>>[] = [];
+  kv.set = async (key, value, options) => {
+    const gate = Promise.withResolvers<void>();
+    writes.push(gate);
+    await gate.promise;
+    await set(key, value, options);
+  };
+  return { kv, writes };
+}
+
+// Cross a task boundary so all promise reactions can run, without relying on
+// how many microtasks the exporter or SDK happens to use.
+async function checkpoint(): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+}
+
+function createExportSpan(spanId = "0123456789abcdef"): ReadableSpan {
+  return createMockSpan({
+    spanId,
+    events: [
+      createActivitySentEvent({ inboxUrl: "https://example.com/inbox" }),
+    ],
+  });
+}
+
+test("FedifySpanExporter lifecycle waits for pending writes", async (t) => {
+  for (const method of ["forceFlush", "shutdown"] as const) {
+    await t.step(method, async () => {
+      const { kv, writes } = createGatedStore();
+      const exporter = new FedifySpanExporter(kv);
+      const results: number[] = [];
+      exporter.export([createExportSpan()], ({ code }) => results.push(code));
+      let settled = false;
+      const completion = exporter[method]().then(() => {
+        settled = true;
+      });
+      try {
+        await checkpoint();
+        assertEquals(settled, false);
+        assertEquals(results, []);
+        writes[0].resolve();
+        await completion;
+        assertEquals(results, [ExportResultCode.SUCCESS]);
+        assertEquals((await exporter.getRecentTraces()).length, 1);
+      } finally {
+        for (const write of writes) write.resolve();
+        await completion;
+      }
+    });
+  }
+});
+
+test("FedifySpanExporter drains exports added during a flush", async () => {
+  const { kv, writes } = createGatedStore();
+  const exporter = new FedifySpanExporter(kv);
+  const results: number[] = [];
+  const notify = ({ code }: { code: ExportResultCode }) => results.push(code);
+  exporter.export([createExportSpan("first")], notify);
+  let settled = false;
+  const completion = exporter.forceFlush().then(() => {
+    settled = true;
+  });
+  exporter.export([createExportSpan("second")], notify);
+  try {
+    writes[0].resolve();
+    await checkpoint();
+    assertEquals(results, [ExportResultCode.SUCCESS]);
+    assertEquals(settled, false);
+    writes[1].resolve();
+    await completion;
+    assertEquals(results, [ExportResultCode.SUCCESS, ExportResultCode.SUCCESS]);
+    assertEquals((await exporter.getRecentTraces())[0].activityCount, 2);
+  } finally {
+    for (const write of writes) write.resolve();
+    await completion;
+  }
+});
+
+test("FedifySpanExporter waits for failed exports and pending siblings", async () => {
+  const { kv, writes } = createGatedStore();
+  const lifetimes: Promise<void>[] = [];
+  const exporter = new FedifySpanExporter(kv, {
+    waitUntil: (promise) => {
+      lifetimes.push(promise);
+    },
+  });
+  const results: number[] = [];
+  exporter.export(
+    [createExportSpan("failed"), createExportSpan("pending")],
+    ({ code }) => results.push(code),
+  );
+  assertEquals(lifetimes.length, 1);
+  let settled = false;
+  const completion = lifetimes[0].then(() => {
+    settled = true;
+  });
+  try {
+    writes[0].reject(new Error("KV unavailable"));
+    await checkpoint();
+    assertEquals(settled, false);
+    assertEquals(results, []);
+    writes[1].resolve();
+    await completion;
+    await exporter.forceFlush();
+    assertEquals(results, [ExportResultCode.FAILED]);
+
+    exporter.export([createExportSpan("recovered")], ({ code }) =>
+      results.push(code),
+    );
+    assertEquals(lifetimes.length, 2);
+    writes[2].resolve();
+    await exporter.forceFlush();
+    await lifetimes[1];
+    assertEquals(results, [ExportResultCode.FAILED, ExportResultCode.SUCCESS]);
+    assertEquals((await exporter.getRecentTraces())[0].activityCount, 2);
+  } finally {
+    for (const write of writes) write.resolve();
+    await exporter.forceFlush();
+  }
+});
+
+test("FedifySpanExporter registers a tracked lifetime synchronously", async () => {
+  const { kv, writes } = createGatedStore();
+  const lifetimes: Promise<void>[] = [];
+  let reentrantFlush: Promise<void> | undefined;
+  const exporter = new FedifySpanExporter(kv, {
+    waitUntil(promise) {
+      lifetimes.push(promise);
+      reentrantFlush = exporter.forceFlush();
+    },
+  });
+  const results: number[] = [];
+  exporter.export([createExportSpan()], ({ code }) => results.push(code));
+  assertEquals(lifetimes.length, 1);
+  let lifetimeSettled = false;
+  let flushSettled = false;
+  const lifetime = lifetimes[0].then(() => {
+    lifetimeSettled = true;
+  });
+  const flush = reentrantFlush!.then(() => {
+    flushSettled = true;
+  });
+  try {
+    await checkpoint();
+    assertEquals(lifetimeSettled, false);
+    assertEquals(flushSettled, false);
+    writes[0].resolve();
+    await Promise.all([lifetime, flush]);
+    assertEquals(results, [ExportResultCode.SUCCESS]);
+  } finally {
+    for (const write of writes) write.resolve();
+    await Promise.all([lifetime, flush]);
+  }
+});
+
+test("FedifySpanExporter contains callback exceptions", async (t) => {
+  for (const fail of [false, true]) {
+    await t.step(
+      `throwing result callback, storage failure=${fail}`,
+      async () => {
+        const { kv, writes } = createGatedStore();
+        const lifetimes: Promise<void>[] = [];
+        const exporter = new FedifySpanExporter(kv, {
+          waitUntil: (promise) => {
+            lifetimes.push(promise);
+          },
+        });
+        const results: number[] = [];
+        exporter.export([createExportSpan()], ({ code }) => {
+          results.push(code);
+          throw new Error("Callback failed");
+        });
+        if (fail) writes[0].reject(new Error("KV unavailable"));
+        else writes[0].resolve();
+        await lifetimes[0];
+        await exporter.forceFlush();
+        assertEquals(results, [
+          fail ? ExportResultCode.FAILED : ExportResultCode.SUCCESS,
+        ]);
+      },
+    );
+  }
+
+  await t.step("throwing waitUntil leaves the export tracked", async () => {
+    const { kv, writes } = createGatedStore();
+    const exporter = new FedifySpanExporter(kv, {
+      waitUntil() {
+        throw new Error("Request context unavailable");
+      },
+    });
+    const results: number[] = [];
+    exporter.export([createExportSpan()], ({ code }) => results.push(code));
+    let settled = false;
+    const completion = exporter.forceFlush().then(() => {
+      settled = true;
+    });
+    try {
+      await checkpoint();
+      assertEquals(settled, false);
+      writes[0].resolve();
+      await completion;
+      assertEquals(results, [ExportResultCode.SUCCESS]);
+      assertEquals((await exporter.getRecentTraces()).length, 1);
+    } finally {
+      for (const write of writes) write.resolve();
+      await completion;
+    }
+  });
+});
+
+test("FedifySpanExporter protects SimpleSpanProcessor writes", async () => {
+  const { kv, writes } = createGatedStore();
+  const lifetimes: Promise<void>[] = [];
+  const exporter = new FedifySpanExporter(kv, {
+    waitUntil: (promise) => {
+      lifetimes.push(promise);
+    },
+  });
+  const provider = new BasicTracerProvider({
+    spanProcessors: [new SimpleSpanProcessor(exporter)],
+  });
+  const span = provider.getTracer("test").startSpan("activity");
+  span.addEvent("activitypub.activity.sent", {
+    "activitypub.inbox.url": "https://example.com/inbox",
+  });
+  span.end();
+  assertEquals(lifetimes.length, 1);
+  assertEquals(writes.length, 1);
+  let settled = false;
+  const shutdown = provider.shutdown().then(() => {
+    settled = true;
+  });
+  try {
+    await checkpoint();
+    assertEquals(settled, false);
+    writes[0].resolve();
+    await shutdown;
+    await lifetimes[0];
+    assertEquals((await exporter.getRecentTraces()).length, 1);
+  } finally {
+    for (const write of writes) write.resolve();
+    await shutdown;
+  }
+});
+
+test("FedifySpanExporter provider flush includes deferred resource attributes", async () => {
+  const { kv, writes } = createGatedStore();
+  const resourceReady = Promise.withResolvers<void>();
+  const lifetimes: Promise<void>[] = [];
+  const exporter = new FedifySpanExporter(kv, {
+    waitUntil: (promise) => {
+      lifetimes.push(promise);
+    },
+  });
+  const resource = {
+    attributes: {},
+    asyncAttributesPending: true,
+    getRawAttributes: () => [],
+    async waitForAsyncAttributes() {
+      await resourceReady.promise;
+      this.asyncAttributesPending = false;
+    },
+    merge() {
+      return this;
+    },
+  };
+  const provider = new BasicTracerProvider({
+    resource,
+    spanProcessors: [new SimpleSpanProcessor(exporter)],
+  });
+  const span = provider.getTracer("test").startSpan("activity");
+  span.addEvent("activitypub.activity.sent", {
+    "activitypub.inbox.url": "https://example.com/inbox",
+  });
+  span.end();
+  assertEquals(lifetimes.length, 0);
+  assertEquals(writes.length, 0);
+  // The caller can pass this promise to ctx.waitUntil before the SDK has
+  // called the exporter.  Exporter-only flushing would return too early.
+  let settled = false;
+  const flush = provider.forceFlush().then(() => {
+    settled = true;
+  });
+  try {
+    await checkpoint();
+    assertEquals(settled, false);
+    resourceReady.resolve();
+    await checkpoint();
+    assertEquals(lifetimes.length, 1);
+    assertEquals(writes.length, 1);
+    assertEquals(settled, false);
+    writes[0].resolve();
+    await flush;
+    await lifetimes[0];
+    assertEquals((await exporter.getRecentTraces()).length, 1);
+  } finally {
+    resourceReady.resolve();
+    await checkpoint();
+    for (const write of writes) write.resolve();
+    await flush;
+    await provider.shutdown();
+  }
+});
 
 function createMockSpan(options: {
   traceId?: string;
