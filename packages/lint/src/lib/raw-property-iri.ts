@@ -29,7 +29,19 @@ interface Scope {
   bindings: Map<string, Binding>;
 }
 
-const functions = new Set(["getRawPropertyValues", "getRawPropertyValue"]);
+const functions = new Set([
+  "getRawPropertyValues",
+  "getRawPropertyValue",
+  "withRawProperty",
+  "withRawProperties",
+]);
+const expressionWrappers = new Set([
+  "TSAsExpression",
+  "TSSatisfiesExpression",
+  "TSNonNullExpression",
+  "TSTypeAssertion",
+  "ParenthesizedExpression",
+]);
 const prefixes: Readonly<Record<string, string>> = {
   as: "https://www.w3.org/ns/activitystreams#",
   dcterms: "http://purl.org/dc/terms/",
@@ -49,6 +61,34 @@ function ast(value: unknown): Ast | undefined {
     typeof (value as Ast).type === "string"
     ? (value as Ast)
     : undefined;
+}
+function unwrap(node: Ast | undefined): Ast | undefined {
+  while (node && expressionWrappers.has(node.type)) node = ast(node.expression);
+  return node;
+}
+function primitivePropertyKey(node: Ast): string | undefined {
+  if (node.type !== "Literal" || node.regex != null) return;
+  if (typeof node.value === "bigint") return String(node.value);
+  // Some providers expose BigInt literals as value: null plus metadata.
+  // Convert the metadata before the null case, without losing precision.
+  if (typeof node.bigint === "string") {
+    try {
+      return String(BigInt(node.bigint.replaceAll("_", "")));
+    } catch {
+      return;
+    }
+  }
+  if (typeof node.value === "number") {
+    // Deno can expose separated numeric literals as NaN; retain valid
+    // overflow values such as Infinity when recovering their source text.
+    const value =
+      Number.isNaN(node.value) && typeof node.raw === "string"
+        ? Number(node.raw.replaceAll("_", ""))
+        : node.value;
+    return Number.isNaN(value) ? undefined : String(value);
+  }
+  if (node.value === null || typeof node.value === "boolean")
+    return String(node.value);
 }
 function name(value: unknown): string | undefined {
   const node = ast(value);
@@ -341,6 +381,7 @@ export function checkRawPropertyIris(
     seen = new Set<Ast>(),
     bound = false,
   ): { value: string; literal: Ast } | undefined {
+    node = unwrap(node);
     if (!node || seen.has(node)) return;
     seen.add(node);
     if (node.type === "Literal" && typeof node.value === "string") {
@@ -392,9 +433,12 @@ export function checkRawPropertyIris(
       return { ...known, value: new URL(known.value).href };
     }
   }
-  function check(node: Ast): void {
-    const known = staticString(node);
+  function check(
+    node: Ast,
+    known: { value: string; literal?: Ast } | undefined = staticString(node),
+  ): void {
     if (!known) return;
+    const expression = unwrap(node)!;
     const value = known.value;
     const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(value);
     const rest = scheme == null ? "" : value.slice(scheme[0].length);
@@ -441,12 +485,90 @@ export function checkRawPropertyIris(
         replacement,
         // Never suggest changing a const declaration shared by other uses.
         suggestionNode:
-          known.literal === node ||
-          (node.type === "NewExpression" &&
-            (node.arguments as unknown[])[0] === known.literal)
+          known.literal != null &&
+          (known.literal === expression ||
+            (expression.type === "NewExpression" &&
+              unwrap(ast((expression.arguments as unknown[])[0])) ===
+                known.literal))
             ? (known.literal as unknown as Node)
             : undefined,
       });
+    }
+  }
+  function isGlobalIteratorProperty(property: Ast): boolean {
+    if (property.type !== "Property") return false;
+    // Member-expression keys must be computed, even when Deno reports
+    // computed: false for an object method.
+    const member = unwrap(ast(property.key));
+    if (member?.type !== "MemberExpression") return false;
+    const object = unwrap(ast(member.object));
+    if (
+      object?.type !== "Identifier" ||
+      object.name !== "Symbol" ||
+      lookup(scopes.get(object), "Symbol") != null
+    )
+      return false;
+    return (
+      (member.computed
+        ? staticString(ast(member.property))?.value
+        : name(member.property)) === "iterator"
+    );
+  }
+  function checkEntries(argument: Ast): void {
+    const entries = unwrap(argument);
+    if (entries?.type === "ObjectExpression") {
+      const properties = entries.properties as Ast[];
+      // The runtime treats objects with Symbol.iterator as iterables;
+      // their ordinary string fields are not record entries.
+      if (properties.some(isGlobalIteratorProperty)) return;
+      for (const property of properties) {
+        if (property.type !== "Property") continue;
+        const key = ast(property.key);
+        if (!key) continue;
+        // Deno loses whether an identifier method/accessor key is computed.
+        // Wrapped keys keep that distinction, so skip only bare identifiers.
+        if (
+          key.type === "Identifier" &&
+          (property.method || property.kind !== "init")
+        )
+          continue;
+        const expression = unwrap(key)!;
+        // This syntax sets the record's prototype rather than an own key.
+        // Computed, shorthand, method, and accessor forms create own keys.
+        if (
+          !property.computed &&
+          !property.shorthand &&
+          !property.method &&
+          property.kind === "init" &&
+          name(expression) === "__proto__"
+        )
+          continue;
+        const primitive = primitivePropertyKey(expression);
+        if (!property.computed && key.type === "Identifier") {
+          // Object keys, including shorthand keys, are text rather than a
+          // reference to a potentially unrelated same-named binding.
+          check(key, { value: expression.name as string });
+        } else if (primitive != null) {
+          check(key, { value: primitive });
+        } else {
+          check(key);
+        }
+      }
+    } else if (entries?.type === "ArrayExpression") {
+      for (const element of entries.elements as unknown[]) {
+        const entry = unwrap(ast(element));
+        if (entry?.type !== "ArrayExpression") continue;
+        const pair = entry.elements as unknown[];
+        if (
+          pair.length !== 2 ||
+          pair.some(
+            (item) => item == null || ast(item)?.type === "SpreadElement",
+          )
+        )
+          continue;
+        const key = ast(pair[0]);
+        if (key) check(key);
+      }
     }
   }
   for (const call of calls) {
@@ -469,6 +591,9 @@ export function checkRawPropertyIris(
     }
     if (!functionName || !functions.has(functionName)) continue;
     const argument = ast((call.arguments as unknown[])[1]);
-    if (argument) check(argument);
+    if (argument) {
+      if (functionName === "withRawProperties") checkEntries(argument);
+      else check(argument);
+    }
   }
 }

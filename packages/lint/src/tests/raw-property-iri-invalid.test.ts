@@ -8,6 +8,9 @@ import { oxlintUnavailable, runOxlint } from "../lib/oxlint.ts";
 
 const ruleName = "raw-property-iri-invalid";
 const setup = 'import { getRawPropertyValues as read } from "@fedify/vocab";';
+const writeSetup = 'import { withRawProperty as write } from "@fedify/vocab";';
+const batchSetup =
+  'import { withRawProperties as batch } from "@fedify/vocab";';
 const cases: [string, string, string?][] = [
   ...[
     "",
@@ -368,7 +371,555 @@ cases.push(
     "must be a full",
   ],
 );
-for (const [label, code, expectedError] of cases) {
+const writerCases: [string, string, string?][] = [
+  [
+    "singular writer bare term",
+    `${writeSetup} write(obj, "content", []);`,
+    "must be a full",
+  ],
+  [
+    "singular writer compact prefix",
+    `${writeSetup} write(obj, "as:content", []);`,
+    "non-HTTP scheme",
+  ],
+  [
+    "singular writer other scheme",
+    `${writeSetup} write(obj, "urn:example:property", []);`,
+    "non-HTTP scheme",
+  ],
+  [
+    "singular writer valid IRI",
+    `${writeSetup} write(obj, "https://example/p", []);`,
+  ],
+  [
+    "singular writer direct import",
+    'import { withRawProperty } from "@fedify/vocab"; withRawProperty(obj, "content", undefined);',
+    "must be a full",
+  ],
+  [
+    "singular writer const chain",
+    `${writeSetup} const iri = "content"; const key = iri; write(obj, key, []);`,
+    "must be a full",
+  ],
+  [
+    "singular writer template",
+    `${writeSetup} write(obj, \`as:content\`, []);`,
+    "non-HTTP scheme",
+  ],
+  [
+    "singular writer inline URL",
+    `${writeSetup} write(obj, new URL("as:content"), []);`,
+    "non-HTTP scheme",
+  ],
+  [
+    "singular writer normalized URL",
+    `${writeSetup} write(obj, new URL("https://example/a b"), []);`,
+  ],
+  [
+    "singular writer mutable URL constant",
+    `${writeSetup} const iri = new URL("about:blank"); iri.href = "https://example/p"; write(obj, iri, []);`,
+  ],
+  [
+    "singular writer shadowed URL",
+    `${writeSetup} function f(URL) { write(obj, new URL("content"), []); }`,
+  ],
+  [
+    "singular writer dynamic argument",
+    `${writeSetup} write(obj, getIri(), []);`,
+  ],
+  [
+    "singular writer ignores values",
+    `${writeSetup} write(obj, "https://example/p", [{ "@value": "as:content" }]);`,
+  ],
+  [
+    "singular writer namespace",
+    'import * as vocab from "@fedify/vocab"; vocab.withRawProperty(obj, "content", []);',
+    "must be a full",
+  ],
+  [
+    "singular writer computed namespace",
+    'import * as vocab from "@fedify/vocab"; vocab["withRawProperty"](obj, "as:content", []);',
+    "non-HTTP scheme",
+  ],
+  [
+    "batch writer direct import",
+    'import { withRawProperties } from "@fedify/vocab"; withRawProperties(obj, { "content": undefined });',
+    "must be a full",
+  ],
+  [
+    "batch writer namespace",
+    'import * as vocab from "@fedify/vocab"; vocab.withRawProperties(obj, { "content": [] });',
+    "must be a full",
+  ],
+  [
+    "batch writer computed namespace",
+    'import * as vocab from "@fedify/vocab"; vocab["withRawProperties"](obj, [["content", []]]);',
+    "must be a full",
+  ],
+  [
+    "batch writer quoted key",
+    `${batchSetup} batch(obj, { "as:content": [] });`,
+    "non-HTTP scheme",
+  ],
+  [
+    "batch writer valid key",
+    `${batchSetup} batch(obj, { "https://example/p": [] });`,
+  ],
+  [
+    "batch writer identifier key ignores binding",
+    `${batchSetup} const content = "https://example/p"; batch(obj, { content: [] });`,
+    "must be a full",
+  ],
+  [
+    "batch writer shorthand key ignores binding",
+    `${batchSetup} const content = "https://example/p"; batch(obj, { content });`,
+    "must be a full",
+  ],
+  [
+    "batch writer numeric key",
+    `${batchSetup} batch(obj, { 42: [] });`,
+    "must be a full",
+  ],
+  [
+    "batch writer computed numeric key",
+    `${batchSetup} batch(obj, { [42]: [] });`,
+    "must be a full",
+  ],
+  [
+    "batch writer review r1 prototype setter",
+    `${batchSetup} batch(obj, { __proto__: null });`,
+  ],
+  [
+    "batch writer review r1 quoted prototype setter",
+    `${batchSetup} batch(obj, { "__proto__": null });`,
+  ],
+  [
+    "batch writer review r1 escaped prototype setter",
+    `${batchSetup} batch(obj, { "__pr\\u006fto__": null });`,
+  ],
+  [
+    "batch writer review r1 prototype setter and own key",
+    `${batchSetup} batch(obj, { __proto__: null, content: [] });`,
+    'Raw property IRI "content"',
+  ],
+  [
+    "batch writer review r1 computed prototype key",
+    `${batchSetup} batch(obj, { ["__proto__"]: [] });`,
+    'Raw property IRI "__proto__"',
+  ],
+  [
+    "batch writer review r1 shorthand prototype key",
+    `${batchSetup} const __proto__ = []; batch(obj, { __proto__ });`,
+    'Raw property IRI "__proto__"',
+  ],
+  [
+    "batch writer review r1 prototype method key",
+    `${batchSetup} batch(obj, { __proto__() { return []; } });`,
+  ],
+  [
+    "batch writer review r1 quoted prototype method key",
+    `${batchSetup} batch(obj, { "__proto__"() { return []; } });`,
+    'Raw property IRI "__proto__"',
+  ],
+  [
+    "batch writer review r1 prototype getter key",
+    `${batchSetup} batch(obj, { get __proto__() { return []; } });`,
+  ],
+  [
+    "batch writer review r1 prototype setter accessor key",
+    `${batchSetup} batch(obj, { set __proto__(value) {} });`,
+  ],
+  ...[
+    ["1n", "1"],
+    ["0x10n", "16"],
+    ["0b101n", "5"],
+    ["1_000n", "1000"],
+    ["9007199254740993n", "9007199254740993"],
+  ].map(([literal, value]): [string, string, string] => [
+    `batch writer review r1 BigInt key ${literal}`,
+    `${batchSetup} batch(obj, { ${literal}: [] });`,
+    `Raw property IRI "${value}"`,
+  ]),
+  ...[
+    ["true", "true"],
+    ["false", "false"],
+    ["null", "null"],
+    ["(42 as const)!", "42"],
+    ["(0x10n satisfies bigint)!", "16"],
+    ["<boolean>true", "true"],
+    ["(null as null)!", "null"],
+  ].map(([expression, value]): [string, string, string] => [
+    `batch writer review r1 computed primitive ${expression}`,
+    `${batchSetup} batch(obj, { [${expression}]: [] });`,
+    `Raw property IRI "${value}"`,
+  ]),
+  [
+    "batch writer review r1 stored primitive remains ignored",
+    `${batchSetup} const key = true; batch(obj, { [key]: [] });`,
+  ],
+  [
+    "batch writer review r1 computed primitive call remains ignored",
+    `${batchSetup} batch(obj, { [BigInt(1)]: [] });`,
+  ],
+  ...[
+    ["1_000", "1000"],
+    ["0x1_0", "16"],
+    ["0b10_10", "10"],
+    ["0o1_0", "8"],
+    ["1_000.5", "1000.5"],
+    ["1.2_5", "1.25"],
+    ["1_0e2_0", "1e+21"],
+    ["1e9_99", "Infinity"],
+    ["1e999", "Infinity"],
+  ].flatMap(([literal, value]): [string, string, string][] => [
+    [
+      `batch writer review r2 numeric key ${literal}`,
+      `${batchSetup} batch(obj, { ${literal}: [] });`,
+      `Raw property IRI "${value}"`,
+    ],
+    [
+      `batch writer review r2 computed numeric key ${literal}`,
+      `${batchSetup} batch(obj, { [${literal}]: [] });`,
+      `Raw property IRI "${value}"`,
+    ],
+  ]),
+  ...[
+    ["(1_000 as const)!", "1000"],
+    ["(0x1_0 satisfies number)!", "16"],
+    ["<number>1_000.5", "1000.5"],
+    ["(1_0e2_0)!", "1e+21"],
+  ].map(([expression, value]): [string, string, string] => [
+    `batch writer review r2 wrapped numeric key ${expression}`,
+    `${batchSetup} batch(obj, { [${expression}]: [] });`,
+    `Raw property IRI "${value}"`,
+  ]),
+  [
+    "batch writer computed literal key",
+    `${batchSetup} batch(obj, { ["as:content"]: [] });`,
+    "non-HTTP scheme",
+  ],
+  [
+    "batch writer computed template key",
+    `${batchSetup} batch(obj, { [\`as:content\`]: [] });`,
+    "non-HTTP scheme",
+  ],
+  [
+    "batch writer computed const key",
+    `${batchSetup} const iri = "as:content"; const key = iri; batch(obj, { [key]: [] });`,
+    "non-HTTP scheme",
+  ],
+  [
+    "batch writer inline URL key",
+    `${batchSetup} batch(obj, { [new URL("as:content")]: [] });`,
+    "non-HTTP scheme",
+  ],
+  [
+    "batch writer computed const shadow",
+    `${batchSetup} const iri = "content"; function f(iri) { batch(obj, { [iri]: [] }); }`,
+  ],
+  [
+    "batch writer dynamic computed key",
+    `${batchSetup} batch(obj, { [getIri()]: [] });`,
+  ],
+  [
+    "batch writer ignores spread keys",
+    `${batchSetup} batch(obj, { ...entries });`,
+  ],
+  [
+    "batch writer checks explicit keys beside spread",
+    `${batchSetup} batch(obj, { ...entries, "as:content": [] });`,
+    "non-HTTP scheme",
+  ],
+  [
+    "batch writer ignores raw value keys",
+    `${batchSetup} batch(obj, { "https://example/p": [{ "as:content": [] }] });`,
+  ],
+  [
+    "batch writer review r3 global iterator",
+    `${batchSetup} batch(obj, { content: [], *[Symbol.iterator]() { yield ["https://example/p", []] as const; } });`,
+  ],
+  [
+    "batch writer review r3 computed global iterator",
+    `${batchSetup} batch(obj, { content: [], *[Symbol["iterator"]]() { yield ["https://example/p", []] as const; } });`,
+  ],
+  [
+    "batch writer review r3 wrapped iterator member",
+    `${batchSetup} batch(obj, { content: [], *[(Symbol.iterator as typeof Symbol.iterator)!]() { yield ["https://example/p", []] as const; } });`,
+  ],
+  [
+    "batch writer review r3 wrapped global Symbol",
+    `${batchSetup} batch(obj, { content: [], *[(Symbol as SymbolConstructor).iterator]() { yield ["https://example/p", []] as const; } });`,
+  ],
+  [
+    "batch writer review r3 wrapped computed iterator name",
+    `${batchSetup} batch(obj, { content: [], *[Symbol[("iterator" as const)!]]() { yield ["https://example/p", []] as const; } });`,
+  ],
+  [
+    "batch writer review r3 iterator data property",
+    `${batchSetup} batch(obj, { content: [], [Symbol.iterator]: function* () { yield ["https://example/p", []] as const; } });`,
+  ],
+  [
+    "batch writer review r3 shadowed Symbol parameter",
+    `${batchSetup} function f(Symbol) { batch(obj, { content: [], *[Symbol.iterator]() { yield ["https://example/p", []] as const; } }); }`,
+    'Raw property IRI "content"',
+  ],
+  [
+    "batch writer review r3 local Symbol binding",
+    `${batchSetup} const Symbol = { iterator: "https://example/p" }; batch(obj, { content: [], *[Symbol.iterator]() { yield ["https://example/p", []] as const; } });`,
+    'Raw property IRI "content"',
+  ],
+  [
+    "batch writer review r3 async iterator is not a sync iterator",
+    `${batchSetup} batch(obj, { content: [], async *[Symbol.asyncIterator]() { yield ["https://example/p", []] as const; } });`,
+    'Raw property IRI "content"',
+  ],
+  [
+    "batch writer review r3 generator entries are not analyzed",
+    `${batchSetup} batch(obj, { content: [], *[Symbol.iterator]() { yield ["content", []] as const; } });`,
+  ],
+  ...[
+    "content() {}",
+    "get content() { return []; }",
+    "set content(value) {}",
+  ].map((member): [string, string] => [
+    `batch writer review r4 ambiguous identifier ${member}`,
+    `${batchSetup} batch(obj, { ${member} });`,
+  ]),
+  ...["https://example/p", "as:content"].flatMap((iri): [string, string][] => [
+    [
+      `batch writer review r4 ambiguous computed method ${iri}`,
+      `${batchSetup} const K = ${JSON.stringify(iri)}; batch(obj, { [K]() {} });`,
+    ],
+    [
+      `batch writer review r4 ambiguous computed getter ${iri}`,
+      `${batchSetup} const K = ${JSON.stringify(iri)}; batch(obj, { get [K]() { return []; } });`,
+    ],
+    [
+      `batch writer review r4 ambiguous computed setter ${iri}`,
+      `${batchSetup} const K = ${JSON.stringify(iri)}; batch(obj, { set [K](value) {} });`,
+    ],
+  ]),
+  ...["K as string", "K satisfies string", "K!", "<string>K"].map(
+    (expression): [string, string, string] => [
+      `batch writer review r4 wrapped identifier method ${expression}`,
+      `${batchSetup} const K = "as:content"; batch(obj, { [${expression}]() {} });`,
+      'Raw property IRI "as:content"',
+    ],
+  ),
+  [
+    "batch writer review r4 wrapped full IRI method",
+    `${batchSetup} const K = "https://example/p"; batch(obj, { [K!]() {} });`,
+  ],
+  [
+    "batch writer review r4 wrapped identifier getter",
+    `${batchSetup} const K = "as:content"; batch(obj, { get [(K as string)!]() { return []; } });`,
+    'Raw property IRI "as:content"',
+  ],
+  [
+    "batch writer review r4 wrapped identifier setter",
+    `${batchSetup} const K = "as:content"; batch(obj, { set [(K satisfies string)!](value) {} });`,
+    'Raw property IRI "as:content"',
+  ],
+  [
+    "batch writer review r4 literal method",
+    `${batchSetup} batch(obj, { "as:content"() {} });`,
+    'Raw property IRI "as:content"',
+  ],
+  [
+    "batch writer review r4 literal getter",
+    `${batchSetup} batch(obj, { get "as:content"() { return []; } });`,
+    'Raw property IRI "as:content"',
+  ],
+  [
+    "batch writer review r4 template method",
+    `${batchSetup} batch(obj, { [\`as:content\`]() {} });`,
+    'Raw property IRI "as:content"',
+  ],
+  [
+    "batch writer review r4 full IRI template method",
+    `${batchSetup} batch(obj, { [\`https://example/p\`]() {} });`,
+  ],
+  [
+    "batch writer review r4 wrapped numeric method",
+    `${batchSetup} batch(obj, { [(42 as const)!]() {} });`,
+    'Raw property IRI "42"',
+  ],
+  [
+    "batch writer stored record",
+    `${batchSetup} const entries = { "content": [] } as const; batch(obj, entries);`,
+  ],
+  [
+    "batch writer stored array",
+    `${batchSetup} const entries = [["content", []]] as const; batch(obj, entries);`,
+  ],
+  [
+    "batch writer inline Map",
+    `${batchSetup} batch(obj, new Map([["content", []]]));`,
+  ],
+  ["batch writer generator", `${batchSetup} batch(obj, entries());`],
+  [
+    "batch writer tuple term",
+    `${batchSetup} batch(obj, [["content", []]]);`,
+    "must be a full",
+  ],
+  [
+    "batch writer tuple prefix",
+    `${batchSetup} batch(obj, [["as:content", null]]);`,
+    "non-HTTP scheme",
+  ],
+  [
+    "batch writer valid tuple",
+    `${batchSetup} batch(obj, [["https://example/p", undefined]]);`,
+  ],
+  [
+    "batch writer tuple constant",
+    `${batchSetup} const iri = "as:content"; batch(obj, [[iri, []]]);`,
+    "non-HTTP scheme",
+  ],
+  [
+    "batch writer tuple URL",
+    `${batchSetup} batch(obj, [[new URL("as:content"), []]]);`,
+    "non-HTTP scheme",
+  ],
+  [
+    "batch writer normalized tuple URL",
+    `${batchSetup} batch(obj, [[new URL("https://example/a b"), []]]);`,
+  ],
+  [
+    "batch writer mutable URL tuple key",
+    `${batchSetup} const iri = new URL("about:blank"); batch(obj, [[iri, []]]);`,
+  ],
+  [
+    "batch writer dynamic tuple key",
+    `${batchSetup} batch(obj, [[getIri(), []]]);`,
+  ],
+  [
+    "batch writer ignores outer spread",
+    `${batchSetup} batch(obj, [...entries]);`,
+  ],
+  [
+    "batch writer checks explicit tuple beside spread",
+    `${batchSetup} batch(obj, [...entries, ["as:content", []]]);`,
+    "non-HTTP scheme",
+  ],
+  [
+    "batch writer ignores tuple spread",
+    `${batchSetup} batch(obj, [[...entry]]);`,
+  ],
+  [
+    "batch writer ignores spread tuple tail",
+    `${batchSetup} batch(obj, [["content", ...values]]);`,
+  ],
+  ["batch writer ignores tuple holes", `${batchSetup} batch(obj, [[, []]]);`],
+  [
+    "batch writer ignores malformed tuple",
+    `${batchSetup} batch(obj, [["content", [], null]]);`,
+  ],
+  [
+    "batch writer ignores values in tuple",
+    `${batchSetup} batch(obj, [["https://example/p", "as:content"]]);`,
+  ],
+  [
+    "singular writer parameter shadow",
+    `${writeSetup} function f(write) { write(obj, "content", []); }`,
+  ],
+  [
+    "batch writer destructured parameter shadow",
+    `${batchSetup} function f({ batch }) { batch(obj, { content: [] }); }`,
+  ],
+  [
+    "batch writer hoisted shadow",
+    `${batchSetup} function f() { batch(obj, { content: [] }); var batch; }`,
+  ],
+  [
+    "batch writer namespace shadow",
+    'import * as vocab from "@fedify/vocab"; function f(vocab) { vocab.withRawProperties(obj, { content: [] }); }',
+  ],
+  [
+    "batch writer inside namespace",
+    `${batchSetup} namespace N { batch(obj, { content: [] }); }`,
+  ],
+  [
+    "batch writer enum initializer",
+    `${batchSetup} enum E { V = (batch(obj, { content: [] }), 0) }`,
+  ],
+  [
+    "batch writer opaque namespace binding",
+    `${batchSetup} namespace batch {} batch(obj, { content: [] });`,
+  ],
+  [
+    "batch writer switch discriminant",
+    `${batchSetup} const iri = "https://example/p"; switch (batch(obj, { [iri]: [] })) { case 0: const iri = "content"; }`,
+  ],
+  [
+    "singular writer helper alias ignored",
+    `${writeSetup} const alias = write; alias(obj, "content", []);`,
+  ],
+  [
+    "batch writer destructured helper ignored",
+    'import * as vocab from "@fedify/vocab"; const { withRawProperties: batch } = vocab; batch(obj, { content: [] });',
+  ],
+  [
+    "writer type import",
+    'import type { withRawProperty } from "@fedify/vocab"; withRawProperty(obj, "content", []);',
+  ],
+  [
+    "writer other module",
+    'import { withRawProperties } from "other-vocab"; withRawProperties(obj, { content: [] });',
+  ],
+  [
+    "reader wrapped constant",
+    `${setup} const iri = "as:content" as const; read(obj, iri!);`,
+    "non-HTTP scheme",
+  ],
+  ...[
+    '"as:content" as const',
+    '"as:content" satisfies string',
+    '("as:content")!',
+    '<string>"as:content"',
+  ].map((expression): [string, string, string] => [
+    `singular writer wrapper ${expression}`,
+    `${writeSetup} write(obj, ${expression}, []);`,
+    "non-HTTP scheme",
+  ]),
+  ...[
+    '{ "as:content": [] } as const',
+    '{ "as:content": [] } satisfies Entries',
+    '({ "as:content": [] })!',
+    '<Entries>{ "as:content": [] }',
+  ].map((expression): [string, string, string] => [
+    `batch writer object wrapper ${expression}`,
+    `${batchSetup} batch(obj, ${expression});`,
+    "non-HTTP scheme",
+  ]),
+  ...[
+    '[["as:content", []] as const] as const',
+    '[["as:content", []] satisfies Pair] satisfies Entries',
+    '([( ["as:content", []] )!])!',
+    '<Entries>[<Pair>["as:content", []]]',
+  ].map((expression): [string, string, string] => [
+    `batch writer tuple wrapper ${expression}`,
+    `${batchSetup} batch(obj, ${expression});`,
+    "non-HTTP scheme",
+  ]),
+  ...[
+    "jsr:@fedify/vocab@^2.5.0",
+    "npm:@fedify/vocab@2.5.0",
+    "@fedify/fedify/vocab",
+  ].flatMap((source): [string, string, string][] => [
+    [
+      `writer module ${source}`,
+      `import { withRawProperty as write } from ${JSON.stringify(source)}; write(obj, "content", []);`,
+      "must be a full",
+    ],
+    [
+      `batch module ${source}`,
+      `import { withRawProperties as batch } from ${JSON.stringify(source)}; batch(obj, { content: [] });`,
+      "must be a full",
+    ],
+  ]),
+];
+for (const [label, code, expectedError] of [...cases, ...writerCases]) {
   test(
     `${ruleName}: ${label}`,
     lintTest({ rule, ruleName, code, federationSetup: "", expectedError }),
@@ -500,3 +1051,196 @@ test("ESLint: every well-known prefix expands to its full IRI", () => {
     undefined,
   );
 });
+
+test("ESLint: writer suggestions replace only use-site literals", () => {
+  for (const [code, expectedSource] of [
+    [`${writeSetup} write(obj, "as:content" as const, []);`, '"as:content"'],
+    [`${batchSetup} batch(obj, { "as:content": [] });`, '"as:content"'],
+    [`${batchSetup} batch(obj, { [\`as:content\`]: [] });`, "`as:content`"],
+    [
+      `${batchSetup} batch(obj, ([["as:content" as const, []] satisfies Pair] as const)!);`,
+      '"as:content"',
+    ],
+    [
+      `${writeSetup} write(obj, new URL(("as:content" as const)!), []);`,
+      '"as:content"',
+    ],
+  ]) {
+    const [diagnostic] = verify(code);
+    assert.equal(diagnostic.messageId, "nonHttp");
+    assert.equal(diagnostic.fix, undefined);
+    assert.equal(diagnostic.suggestions?.length, 1);
+    const fix = diagnostic.suggestions![0].fix;
+    assert.equal(code.slice(fix.range[0], fix.range[1]), expectedSource);
+    assert.equal(fix.text, '"https://www.w3.org/ns/activitystreams#content"');
+    assert.equal(
+      verify(code.slice(0, fix.range[0]) + fix.text + code.slice(fix.range[1]))
+        .length,
+      0,
+    );
+  }
+});
+
+test("ESLint: writer constants and identifier keys receive no rewrite", () => {
+  for (const [code, value] of [
+    [
+      `${writeSetup} const iri = "as:content"; write(obj, iri!, []);`,
+      "as:content",
+    ],
+    [
+      `${writeSetup} const iri = "as:content"; write(obj, new URL(iri), []);`,
+      "as:content",
+    ],
+    [
+      `${batchSetup} const iri = "as:content"; batch(obj, { [iri]: [] });`,
+      "as:content",
+    ],
+    [
+      `${batchSetup} const iri = "as:content"; batch(obj, [[iri, []]]);`,
+      "as:content",
+    ],
+    [
+      `${batchSetup} const content = "https://example/p"; batch(obj, { content: [] });`,
+      "content",
+    ],
+    [
+      `${batchSetup} const content = "https://example/p"; batch(obj, { content });`,
+      "content",
+    ],
+    [`${batchSetup} batch(obj, { 42: [] });`, "42"],
+  ]) {
+    const diagnostics = verify(code);
+    assert.equal(diagnostics.length, 1);
+    assert.ok(diagnostics[0].message.includes(`"${value}"`));
+    assert.equal(diagnostics[0].fix, undefined);
+    assert.equal(diagnostics[0].suggestions, undefined);
+  }
+});
+
+test("ESLint: each explicit writer key has its own diagnostic", () => {
+  for (const code of [
+    `${batchSetup} batch(obj, { "as:content": [], "content": [] });`,
+    `${batchSetup} batch(obj, [["as:content", []], ["content", []]]);`,
+  ]) {
+    const diagnostics = verify(code);
+    assert.deepEqual(
+      diagnostics.map((diagnostic) => diagnostic.messageId),
+      ["nonHttp", "invalid"],
+    );
+    assert.equal(diagnostics[0].suggestions?.length, 1);
+    assert.equal(diagnostics[1].suggestions, undefined);
+  }
+});
+
+test("ESLint: primitive record keys use exact strings without rewrites", () => {
+  for (const [label, code, expectedError] of writerCases) {
+    if (
+      expectedError == null ||
+      (!label.startsWith("batch writer review r1 BigInt key ") &&
+        !label.startsWith("batch writer review r1 computed primitive ") &&
+        !label.startsWith("batch writer review r2 "))
+    )
+      continue;
+    const diagnostics = verify(code);
+    assert.equal(diagnostics.length, 1, label);
+    assert.ok(diagnostics[0].message.includes(expectedError), label);
+    assert.equal(diagnostics[0].fix, undefined, label);
+    assert.equal(diagnostics[0].suggestions, undefined, label);
+  }
+});
+
+test("ESLint: configured vocabulary modules include writer imports", () => {
+  for (const code of [
+    'import { withRawProperty as write } from "other-vocab"; write(obj, "content", []);',
+    'import { withRawProperties as batch } from "other-vocab"; batch(obj, { content: [] });',
+  ]) {
+    assert.equal(verify(code).length, 0);
+    assert.equal(
+      verify(code, { modules: ["other-vocab"] })[0].messageId,
+      "invalid",
+    );
+  }
+});
+
+test(
+  "Oxlint: writer keys and wrappers use the built plugin",
+  { skip: oxlintUnavailable },
+  () => {
+    const labels = new Set([
+      "singular writer bare term",
+      "singular writer compact prefix",
+      "singular writer mutable URL constant",
+      "batch writer computed namespace",
+      "batch writer quoted key",
+      "batch writer identifier key ignores binding",
+      "batch writer shorthand key ignores binding",
+      "batch writer numeric key",
+      "batch writer computed const key",
+      "batch writer stored record",
+      "batch writer stored array",
+      "batch writer dynamic computed key",
+      "batch writer destructured parameter shadow",
+      "batch writer namespace shadow",
+    ]);
+    for (const [label, code, expectedError] of writerCases) {
+      if (
+        !labels.has(label) &&
+        !label.startsWith("batch writer tuple wrapper ") &&
+        !label.startsWith("batch writer review r1 ") &&
+        !label.startsWith("batch writer review r2 ") &&
+        !label.startsWith("batch writer review r3 ") &&
+        !label.startsWith("batch writer review r4 ")
+      )
+        continue;
+      const result = runOxlint(code, {
+        categories: { correctness: "off" },
+        rules: { [`@fedify/lint/${ruleName}`]: "warn" },
+      });
+      const diagnostics = result.diagnostics.filter((diagnostic) =>
+        diagnostic.code?.includes(ruleName),
+      );
+      assert.equal(
+        diagnostics.length,
+        expectedError == null ? 0 : 1,
+        `${label}\n${result.stdout}\n${result.stderr}`,
+      );
+      if (expectedError != null)
+        assert.ok(
+          diagnostics[0].message?.includes(expectedError),
+          `${label}\n${result.stdout}`,
+        );
+    }
+  },
+);
+
+test(
+  "Oxlint: writer imports honor configured vocabulary modules",
+  { skip: oxlintUnavailable },
+  () => {
+    for (const [source, options, expected] of [
+      ["@fedify/vocab", {}, 1],
+      ["other-vocab", {}, 0],
+      ["other-vocab", { modules: ["other-vocab"] }, 1],
+    ] as const) {
+      for (const call of [
+        'withRawProperty(obj, "content", []);',
+        "withRawProperties(obj, { content: [] });",
+      ]) {
+        const result = runOxlint(
+          `import { withRawProperty, withRawProperties } from ${JSON.stringify(source)}; ${call}`,
+          {
+            categories: { correctness: "off" },
+            rules: { [`@fedify/lint/${ruleName}`]: ["warn", options] },
+          },
+        );
+        assert.equal(
+          result.diagnostics.filter((diagnostic) =>
+            diagnostic.code?.includes(ruleName),
+          ).length,
+          expected,
+          result.stdout + result.stderr,
+        );
+      }
+    }
+  },
+);
