@@ -6,7 +6,7 @@ runs:
   steps:
   - uses: jdx/mise-action@v4
     with:
-      version: 2026.6.12
+      version: 2026.11.6
   # Install project dependencies (Node codegen and `pnpm install`,
   # whose `prepare` lifecycle script builds all packages) via mise's deps
   # providers.  See the [deps.*] sections in mise.toml.
