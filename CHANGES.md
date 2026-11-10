@@ -120,7 +120,8 @@ To be released.
     fallback, and later history references are not tried. Existing source
     selection remains the default. Referenced histories use the configured
     loader, including portable `ap://`, `ap+ef61://`, and FEP-ef61-compatible
-    HTTPS identifiers. [[#1250], [#1396] by Jiwon Kwon\]
+    HTTPS identifiers. Errors cloning embedded history propagate instead of
+    triggering fallback. [[#1250], [#1396] by Jiwon Kwon\]
 
 ### @fedify/cli
 

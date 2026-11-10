@@ -269,15 +269,23 @@ async function getContextHistoryCollection(
   options: BackfillOptions,
   budget: RequestBudget,
 ): Promise<BackfillCollection | null> {
+  let history: BackfillCollection | null;
   try {
-    const history = await note.getContextHistory({
+    history = await note.getContextHistory({
       dereference: false,
       crossOrigin: "trust",
     });
-    if (history != null) return history.deepClone();
   } catch {
     budget.signal?.throwIfAborted();
     return null;
+  }
+  if (history != null) {
+    try {
+      return history.deepClone();
+    } catch (error) {
+      budget.signal?.throwIfAborted();
+      throw error;
+    }
   }
   const historyId = note.contextHistoryId;
   if (historyId == null) return null;

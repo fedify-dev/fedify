@@ -28,6 +28,59 @@ describe("history-first source selection", () => {
   const item = new Note({ id: new URL("https://example.com/posts/2") });
   const contextItem = new Note({ id: new URL("https://example.com/posts/3") });
 
+  for (const abort of [false, true]) {
+    test(`history clone errors ${abort ? "preserve cancellation" : "propagate without fallback"}`, async () => {
+      const controller = new AbortController();
+      const cloneError = new Error("Clone failed");
+      const abortError = new Error("Cancelled during cloning");
+      class History extends OrderedCollection {
+        override clone(): this {
+          if (abort) controller.abort(abortError);
+          throw cloneError;
+        }
+      }
+      const requests: string[] = [];
+      await rejects(
+        collect(
+          {
+            documentLoader: (iri) => {
+              requests.push(iri.href);
+              return Promise.resolve(new Collection({ items: [contextItem] }));
+            },
+          },
+          new Note({ contextHistory: new History({}), contexts: [contextId] }),
+          { contextSource: "history-first", signal: controller.signal },
+        ),
+        (error) => error === (abort ? abortError : cloneError),
+      );
+      deepStrictEqual(requests, []);
+    });
+  }
+
+  test("history accessor errors still fall back to context", async () => {
+    class Seed extends Note {
+      override getContextHistory(): Promise<Collection | null> {
+        return Promise.reject(new Error("History accessor failed"));
+      }
+    }
+    const requests: string[] = [];
+    const results = await collect(
+      {
+        documentLoader: (iri) => {
+          requests.push(iri.href);
+          return Promise.resolve(new Collection({ items: [contextItem] }));
+        },
+      },
+      new Seed({ contextHistory: historyId, contexts: [contextId] }),
+      { contextSource: "history-first" },
+    );
+    deepStrictEqual(requests, [contextId.href]);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [contextItem.id],
+    );
+  });
+
   for (const scheme of ["ap", "ap+ef61"]) {
     test(`${scheme} history references reach the backfill loader without a vocabulary verifier`, async () => {
       const portableHistoryId = `${scheme}://did:key:z6Mkabc/history`;

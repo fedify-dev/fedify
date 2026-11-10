@@ -257,6 +257,6 @@ be discovered. Thrown loader errors are not retained in the traversal cache,
 allowing the same IRI to be retried if another traversal path reaches it.
 A returned `null` is cached for the rest of the traversal. Aborting the
 provided signal stops traversal instead of skipping the request.
-Errors in interval configuration during collection source resolution also
-propagate. Neither these errors nor cancellation trigger source fallback or
-allow later strategies to continue.
+Errors cloning embedded history and errors in interval configuration during
+collection source resolution also propagate. Neither these errors nor
+cancellation trigger source fallback or allow later strategies to continue.
