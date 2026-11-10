@@ -55,12 +55,15 @@
   },
   "devDependencies": {
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@fedify/fixture": "workspace:*"
   },
   "scripts": {
     "build:self": "tsdown",
     "build": "pnpm --filter @fedify/next... run build:self",
     "prepack": "pnpm build",
-    "prepublish": "pnpm build"
+    "prepublish": "pnpm build",
+    "test": "pnpm build:self && node --test dist-tests/index.test.cjs",
+    "test:bun": "bun test ./src/index.test.ts"
   }
 }
