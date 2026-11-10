@@ -9,6 +9,7 @@ import {
   getDataCheck,
   getDecoder,
   getTypeNames,
+  getTypeGuards,
   skipsUnparsable,
 } from "./type.ts";
 
@@ -196,6 +197,11 @@ export function* generatePropertyDecoder(
         continue;
       }
     `;
+  yield `
+      if (isRawPropertyWrite(options) && !(${getTypeGuards(property.range, types, "decoded")})) {
+        throw new TypeError("Decoded raw property value is outside the property's range.");
+      }
+    `;
   if (cacheCheck != null)
     yield `
       if (!${cacheCheck}) {
@@ -207,4 +213,11 @@ export function* generatePropertyDecoder(
       ${variable}.push(decoded);
     `;
   yield `\n    }\n`;
+  if (!isNonFunctionalProperty(property)) {
+    yield `
+      if (isRawPropertyWrite(options) && ${variable}.length > 1) {
+        throw new TypeError("A functional property accepts at most one value.");
+      }
+    `;
+  }
 }

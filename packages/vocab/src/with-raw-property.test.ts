@@ -8,6 +8,7 @@ import {
   strictEqual,
 } from "node:assert/strict";
 import {
+  Collection,
   CollectionPage,
   Create,
   DataIntegrityProof,
@@ -121,7 +122,7 @@ test("withRawProperty() validates included subjects after empty metadata removal
   }
 });
 
-async function expanded(object: Note | Create | OrderedCollection) {
+async function expanded(object: Note | Create | Collection) {
   const values = (await object.toJsonLd({
     ...options,
     format: "expand",
@@ -1359,4 +1360,95 @@ test("withRawProperty() preserves subclass identity and generic result types", a
     withRawProperty(source, EXT);
   }
   void checkRequiredArgument;
+});
+
+test("withRawProperty() enforces numeric scalar ranges without tightening incoming decoding", async () => {
+  const iri = `${AS}#totalItems`;
+  const datatype = "http://www.w3.org/2001/XMLSchema#nonNegativeInteger";
+  const original = new Collection({ totalItems: 7 });
+  for (const value of [-1, 1.5]) {
+    const values = [{ "@value": value, "@type": datatype }];
+    await rejects(withRawProperty(original, iri, values), TypeError);
+    await rejects(
+      withRawProperties(original, {
+        [EXT]: [{ "@value": "changed" }],
+        [iri]: values,
+      }),
+      TypeError,
+    );
+    strictEqual(original.totalItems, 7);
+    deepStrictEqual(await getRawPropertyValues(original, EXT), []);
+    const incoming = await Collection.fromJsonLd(
+      {
+        "@type": [`${AS}#Collection`],
+        [iri]: values,
+      },
+      options,
+    );
+    strictEqual(incoming.totalItems, value);
+    await rejects(
+      withRawProperty(new Create({}), `${AS}#object`, [
+        {
+          "@type": [`${AS}#Collection`],
+          [iri]: values,
+        },
+      ]),
+      TypeError,
+    );
+  }
+  for (const value of [0, 4]) {
+    const changed = await withRawProperty(original, iri, [
+      { "@value": value, "@type": datatype },
+    ]);
+    strictEqual(changed.totalItems, value);
+    deepStrictEqual((await expanded(changed))[iri], [
+      { "@value": value, "@type": datatype },
+    ]);
+  }
+});
+
+test("withRawProperty() rejects multiple functional values without tightening incoming decoding", async () => {
+  const iri = `${AS}#accuracy`;
+  const values = [1, 2].map((value) => ({
+    "@value": value,
+    "@type": "http://www.w3.org/2001/XMLSchema#float",
+  }));
+  const original = new Place({ accuracy: 7 });
+  await rejects(withRawProperty(original, iri, values), TypeError);
+  await rejects(
+    withRawProperties(original, {
+      [EXT]: [{ "@value": "changed" }],
+      [iri]: values,
+    }),
+    TypeError,
+  );
+  strictEqual(original.accuracy, 7);
+  deepStrictEqual(await getRawPropertyValues(original, EXT), []);
+  await rejects(
+    withRawProperty(new Create({}), `${AS}#object`, [
+      {
+        "@type": [`${AS}#Place`],
+        [iri]: values,
+      },
+    ]),
+    TypeError,
+  );
+  const incoming = await Place.fromJsonLd(
+    {
+      "@type": [`${AS}#Place`],
+      [iri]: values,
+    },
+    options,
+  );
+  strictEqual(incoming.accuracy, 1);
+  deepStrictEqual(await getRawPropertyValues(incoming, iri), values);
+  const changed = await withRawProperty(original, iri, [values[1]]);
+  strictEqual(changed.accuracy, 2);
+  const removed = await withRawProperty(original, iri, []);
+  strictEqual(removed.accuracy, null);
+  const note = await withRawProperty(new Note({}), `${AS}#content`, [
+    { "@value": "first" },
+    { "@value": "second" },
+  ]);
+  deepStrictEqual(note.contents, ["first", "second"]);
 });

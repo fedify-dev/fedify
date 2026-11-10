@@ -1689,9 +1689,12 @@ A supported IRI, including an alias, is decoded into its typed field rather
 than stored separately.  Typed accessors and raw reads therefore use the
 same values.  Decoding can normalize values or apply a property's
 preprocessor, as `fromJsonLd()` does.  A supplied value that cannot be
-decoded is rejected instead of silently discarded.  When a later Fedify
-version adds support for an extension, the same write call uses this typed
-decoding path.
+decoded is rejected instead of silently discarded.  Decoded scalar values
+must satisfy the same range checks as constructor arguments, and a functional
+property accepts at most one value.  These checks also apply to supplied
+nested objects; ordinary `fromJsonLd()` decoding remains lenient.  When a later
+Fedify version adds support for an extension, the same write call uses this
+typed decoding path.
 
 This is not an exact expanded JSON-LD round trip for typed fields.  Decoding
 can normalize lexical forms and omit metadata such as `@direction` and node

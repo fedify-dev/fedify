@@ -206,6 +206,147 @@ test("raw writer clears shadowed slots and uses only the effective decoder", asy
   }
 });
 
+test("writer does not decode a subclass canonical IRI as a superclass alias", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-raw-claimed-alias-"));
+  try {
+    for (const compatible of [false, true]) {
+      const { Base, Sub, Leaf, Holder, withRawProperty } = await generate(
+        {
+          [NS + "Base"]: type("Base", [
+            property("value", {
+              redundantProperties: [
+                { uri: NS + "alias", compactName: "alias" },
+                { uri: NS + "inheritedAlias", compactName: "inheritedAlias" },
+              ],
+            }),
+          ]),
+          [NS + "Sub"]: type(
+            "Sub",
+            [
+              property("alias", {
+                singularName: "claimedValue",
+                pluralName: "claimedValues",
+                range: [XSD + (compatible ? "string" : "anyURI")],
+                redundantProperties: [
+                  { uri: NS + "ownAlias", compactName: "ownAlias" },
+                ],
+              }),
+            ],
+            "Base",
+          ),
+          [NS + "Leaf"]: type("Leaf", [], "Sub"),
+          [NS + "Holder"]: type("Holder", [
+            property("child", { range: [NS + "Sub"] }),
+          ]),
+        },
+        join(dir, `${compatible ? "compatible" : "incompatible"}.mts`),
+      );
+      const raw = compatible
+        ? [{ "@value": "claimed" }]
+        : [{ "@id": NS + "claimed" }];
+      const expected = compatible ? ["claimed"] : [new URL(NS + "claimed")];
+      for (const Child of [Sub, Leaf]) {
+        for (const iri of ["alias", "ownAlias"]) {
+          const source = new Child({ values: ["original"] });
+          const direct = await withRawProperty(source, NS + iri, raw);
+          deepStrictEqual(direct.values, ["original"]);
+          deepStrictEqual(direct.claimedValues, expected);
+          deepStrictEqual(source.claimedValues, []);
+          const nested = await withRawProperty(new Holder({}), NS + "child", [
+            {
+              "@type": [Child.name === "Sub" ? NS + "Sub" : NS + "Leaf"],
+              [NS + iri]: raw,
+            },
+          ]);
+          deepStrictEqual(nested.childs[0].values, []);
+          deepStrictEqual(nested.childs[0].claimedValues, expected);
+        }
+        const inherited = await withRawProperty(new Holder({}), NS + "child", [
+          {
+            "@type": [Child.name === "Sub" ? NS + "Sub" : NS + "Leaf"],
+            [NS + "inheritedAlias"]: [{ "@value": "inherited" }],
+          },
+        ]);
+        deepStrictEqual(inherited.childs[0].values, ["inherited"]);
+        deepStrictEqual(inherited.childs[0].claimedValues, []);
+      }
+      // Incoming decoding keeps its historical fallback, even when both
+      // compatible fields consume the same IRI.
+      const incoming = await Sub.fromJsonLd({
+        "@type": [NS + "Sub"],
+        [NS + "alias"]: raw,
+      });
+      deepStrictEqual(incoming.values, compatible ? ["claimed"] : []);
+      deepStrictEqual(incoming.claimedValues, expected);
+      const base = await Base.fromJsonLd({
+        "@type": [NS + "Base"],
+        [NS + "alias"]: [{ "@value": "base alias" }],
+      });
+      deepStrictEqual(base.values, ["base alias"]);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("writer validates decoded integer ranges for direct and nested fields", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-raw-integer-"));
+  try {
+    for (const union of [false, true]) {
+      const { Node, Holder, withRawProperty } = await generate(
+        {
+          [NS + "Node"]: type("Node", [
+            property("value", {
+              range: union
+                ? [XSD + "integer", XSD + "nonNegativeInteger"]
+                : [XSD + "integer"],
+            }),
+          ]),
+          [NS + "Holder"]: type("Holder", [
+            property("child", { range: [NS + "Node"] }),
+          ]),
+        },
+        join(dir, `${union ? "union" : "integer"}.mts`),
+      );
+      const source = new Node({ values: [1] });
+      const holder = new Holder({ childs: [source] });
+      const fractional = [{ "@value": 1.5, "@type": XSD + "integer" }];
+      const integer = [{ "@value": -2, "@type": XSD + "integer" }];
+      await rejects(
+        withRawProperty(source, NS + "value", fractional),
+        TypeError,
+      );
+      await rejects(
+        withRawProperty(holder, NS + "child", [
+          {
+            "@type": [NS + "Node"],
+            [NS + "value"]: fractional,
+          },
+        ]),
+        TypeError,
+      );
+      deepStrictEqual(source.values, [1]);
+      strictEqual(holder.childs[0], source);
+      const changed = await withRawProperty(source, NS + "value", integer);
+      deepStrictEqual(changed.values, [-2]);
+      const nested = await withRawProperty(holder, NS + "child", [
+        {
+          "@type": [NS + "Node"],
+          [NS + "value"]: integer,
+        },
+      ]);
+      deepStrictEqual(nested.childs[0].values, [-2]);
+      const incoming = await Node.fromJsonLd({
+        "@type": [NS + "Node"],
+        [NS + "value"]: fractional,
+      });
+      deepStrictEqual(incoming.values, [1.5]);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("raw writer honors valid custom clones and rejects incompatible results", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fedify-raw-clone-"));
   try {

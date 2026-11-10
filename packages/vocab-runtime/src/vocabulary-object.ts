@@ -85,7 +85,8 @@ export interface RawListObject {
  * Writes accept plain, acyclic JSON with expanded property keys and array
  * values; structural contexts and compact terms are not expanded. JSON
  * literals keep their entire `@value` as opaque JSON, including null.
- * Non-JSON values, accessors, sparse arrays, and non-finite numbers reject.
+ * The writers reject non-JSON values, accessors, sparse arrays, and
+ * non-finite numbers.
  * Narrow it with the `in` operator, e.g., `"@value" in value`.
  * @since 2.5.0
  */

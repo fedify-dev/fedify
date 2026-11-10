@@ -570,7 +570,8 @@ export async function* generateDecoder(
     if (property.redundantProperties != null) {
       for (const prop of property.redundantProperties) {
         yield `
-        if (${arrayVariable} == null || ${arrayVariable}.length < 1) {
+        if (!isRawPropertyWrite(options) &&
+            (${arrayVariable} == null || ${arrayVariable}.length < 1)) {
           ${arrayVariable} = values[${JSON.stringify(prop.uri)}];
         }
         `;

@@ -8,7 +8,8 @@ links:
     without defining typed accessors, including properties on objects from
     another generated module.  Written extensions are included when nested
     objects are serialized.  Known properties use the most-derived typed
-    decoder, and writes reject duplicate destinations or unrepresentable
-    values without modifying the source.  Compact JSON-LD output also
-    preserves graph members and proof references in ordinary vocabulary
-    objects.  [[#1355], [#1420]]
+    decoder, and writes reject duplicate destinations, invalid scalar ranges,
+    multiple values for functional properties, or unrepresentable values
+    without modifying the source.  Compact JSON-LD output also preserves graph
+    members and proof references in ordinary vocabulary objects.
+    [[#1355], [#1420]]
