@@ -127,8 +127,8 @@ export interface BackfillOptions<
    *
    * Dereferencing the note context or history, collection item IRIs, reply
    * target IRIs, replies collection IRIs, and future page IRIs all count as
-   * requests across all strategies.  Embedded objects and collections do not
-   * count.
+   * requests across all strategies. Embedded objects and collections accepted
+   * without fetching do not count.
    */
   readonly maxRequests?: number;
 

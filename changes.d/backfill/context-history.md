@@ -7,4 +7,6 @@ links:
     seed's first `contextHistory` collection, falling back to `context` when
     history is absent or unavailable. A resolved empty history does not trigger
     fallback, and later history references are not tried. Existing source
-    selection remains the default. [[#1250], [#1396] by Jiwon Kwon]
+    selection remains the default. Referenced histories use the configured
+    loader, including portable `ap://`, `ap+ef61://`, and FEP-ef61-compatible
+    HTTPS identifiers. [[#1250], [#1396] by Jiwon Kwon]

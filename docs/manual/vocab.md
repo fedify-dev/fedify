@@ -235,7 +235,7 @@ const note = new Note({
 console.log(note.contextHistoryId);
 console.log(note.contextHistoryIds);
 
-// These accessors resolve references to OrderedCollection objects:
+// These accessors resolve references to Collection objects:
 const history = await note.getContextHistory();
 for await (const collection of note.getContextHistories()) {
   console.log(collection.id);
@@ -244,8 +244,9 @@ for await (const collection of note.getContextHistories()) {
 
 Use `contextHistory` in a constructor for a single reference or
 `contextHistories` for multiple references; do not supply both together.
-References can be URLs or embedded `OrderedCollection` objects. The singular
-getter resolves the first value; the plural getter iterates all values.
+References can be URLs or embedded `Collection` objects, including ordered
+collections and pages. The singular getter resolves the first value; the
+plural getter iterates all values.
 Resolving a collection does not replay its activities or apply updates and
 deletions to posts.
 

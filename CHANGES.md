@@ -118,7 +118,9 @@ To be released.
     seed's first `contextHistory` collection, falling back to `context` when
     history is absent or unavailable. A resolved empty history does not trigger
     fallback, and later history references are not tried. Existing source
-    selection remains the default. [[#1250], [#1396] by Jiwon Kwon\]
+    selection remains the default. Referenced histories use the configured
+    loader, including portable `ap://`, `ap+ef61://`, and FEP-ef61-compatible
+    HTTPS identifiers. [[#1250], [#1396] by Jiwon Kwon\]
 
 ### @fedify/cli
 
@@ -379,7 +381,10 @@ To be released.
  -  Added `contextHistory` and `contextHistories` to `Object` subclasses for
     referencing conversation activity histories as collections, including
     ordered collections and pages, with ID accessors and singular and plural
-    dereferencing methods.
+    dereferencing methods. The default `@context` of every `Object` subclass
+    includes the `contextHistory` mapping even when the property is absent.
+    This changes compact serialization and can change newly generated proofs
+    and signatures.
     [[#1250], [#1396] by Jiwon Kwon\]
 
  -  Added `deepClone()` to vocabulary objects to copy nested objects before

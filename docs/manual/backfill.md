@@ -129,9 +129,9 @@ request budget, and context fallback uses the remaining budget and the same
 document cache. If no source can be resolved, context strategies yield nothing.
 
 Referenced history is resolved through the configured `documentLoader`,
-including portable `ap://` and `ap+ef61://` references. The loader is
-responsible for resolving and verifying portable objects, as with other objects
-it returns.
+including portable `ap://`, `ap+ef61://`, and FEP-ef61-compatible HTTPS
+references. The loader is responsible for resolving and verifying portable
+objects, as with other objects it returns.
 
 This option chooses the source for the existing context strategies. Later
 explicitly configured strategies, including `"reply-tree"`, can still run.
@@ -225,8 +225,8 @@ Traversal controls
 :   Limits the number of yielded objects.  Skipped duplicates do not count.
 
 `maxRequests`
-:   Limits calls to `documentLoader`.  Embedded objects and collections do not
-    count as requests.
+:   Limits calls to `documentLoader`. Embedded objects and collections accepted
+    without fetching do not count as requests.
 
 `maxDepth`
 :   Limits reply-tree traversal and defaults to 10.  Immediate parents and
@@ -253,8 +253,9 @@ Applications that need persistent or shared caching can implement it in the
 provided `documentLoader`.
 
 Failed external dereferences are skipped so other conversation items can still
-be discovered.  Failed loads are not retained in the traversal cache, allowing
-the same IRI to be retried if another traversal path reaches it.  Aborting the
+be discovered. Thrown loader errors are not retained in the traversal cache,
+allowing the same IRI to be retried if another traversal path reaches it.
+A returned `null` is cached for the rest of the traversal. Aborting the
 provided signal stops traversal instead of skipping the request.
 Errors in interval configuration during collection source resolution also
 propagate. Neither these errors nor cancellation trigger source fallback or
