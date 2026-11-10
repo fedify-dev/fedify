@@ -465,6 +465,28 @@ describe("history-first source selection", () => {
     OrderedCollection,
     OrderedCollectionPage,
   ]) {
+    test(`embedded ${Type.name} history yields posts without requests`, async () => {
+      const seed = await Note.fromJsonLd(
+        await new Note({
+          contextHistory: new Type({ items: [new Create({ object: item })] }),
+          contexts: [contextId],
+        }).toJsonLd(),
+      );
+      const results = await collect(
+        {
+          documentLoader: () => {
+            throw new Error("Unexpected request");
+          },
+        },
+        seed,
+        { contextSource: "history-first", maxRequests: 0 },
+      );
+      deepStrictEqual(
+        results.map(({ id }) => id),
+        [item.id],
+      );
+    });
+
     test(`referenced history retains ${Type.name} traversal support`, async () => {
       const results = await collect(
         { documentLoader: () => Promise.resolve(new Type({ items: [item] })) },

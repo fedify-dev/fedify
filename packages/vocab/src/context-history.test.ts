@@ -3,10 +3,13 @@ import type { DocumentLoader } from "@fedify/vocab-runtime";
 import { deepStrictEqual, ok, strictEqual } from "node:assert/strict";
 import {
   Article,
+  Collection,
+  CollectionPage,
   Create,
   Note,
   Object as VocabularyObject,
   OrderedCollection,
+  OrderedCollectionPage,
   Person,
 } from "./vocab.ts";
 
@@ -127,26 +130,35 @@ test("contextHistory and context retain separate canonical properties", async ()
   );
 });
 
-test("contextHistory serializes embedded ordered collections", async () => {
-  const item = new Create({ id: new URL("https://example.com/activities/1") });
-  const history = new OrderedCollection({ id: historyIds[0], items: [item] });
-  const note = new Note({
-    id: new URL("https://example.com/posts/1"),
-    contextHistory: history,
-  });
-  for (const format of [undefined, "compact"] as const) {
-    const json = await note.toJsonLd({ format });
-    const restored = await Note.fromJsonLd(json, {
-      documentLoader: (url) => {
-        throw new Error(`Unexpected fetch: ${url}`);
-      },
+for (const Type of [
+  Collection,
+  CollectionPage,
+  OrderedCollection,
+  OrderedCollectionPage,
+]) {
+  test(`contextHistory serializes embedded ${Type.name}`, async () => {
+    const item = new Create({
+      id: new URL("https://example.com/activities/1"),
     });
-    const collection = await restored.getContextHistory();
-    ok(collection instanceof OrderedCollection);
-    deepStrictEqual(collection.id, historyIds[0]);
-    deepStrictEqual(collection.itemIds, [item.id]);
-  }
-});
+    const history = new Type({ id: historyIds[0], items: [item] });
+    const note = new Note({
+      id: new URL("https://example.com/posts/1"),
+      contextHistory: history,
+    });
+    for (const format of [undefined, "compact"] as const) {
+      const json = await note.toJsonLd({ format });
+      const restored = await Note.fromJsonLd(json, {
+        documentLoader: (url) => {
+          throw new Error(`Unexpected fetch: ${url}`);
+        },
+      });
+      const collection = await restored.getContextHistory();
+      ok(collection instanceof Type);
+      deepStrictEqual(collection.id, historyIds[0]);
+      deepStrictEqual(collection.itemIds, [item.id]);
+    }
+  });
+}
 
 for (const context of [
   inlineContext,

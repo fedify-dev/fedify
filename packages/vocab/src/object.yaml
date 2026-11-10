@@ -100,7 +100,7 @@ properties:
   compactName: contextHistory
   uri: "https://w3id.org/fep/171b/contextHistory"
   description: |
-    Identifies ordered collections of activities related to this object's
+    Identifies collections of activities related to this object's
     conversation, as described by [FEP-f228] and [FEP-171b]. A top-level post
     can reference a conversation's activity history separately from its
     {@link Object.contextIds | context}, which can reference a collection of
@@ -111,7 +111,7 @@ properties:
 
     @since 2.5.0
   range:
-  - "https://www.w3.org/ns/activitystreams#OrderedCollection"
+  - "https://www.w3.org/ns/activitystreams#Collection"
 
 - pluralName: names
   singularName: name

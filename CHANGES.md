@@ -369,6 +369,11 @@ To be released.
 
 ### @fedify/vocab
 
+ -  Added a `dereference: false` option to vocabulary object accessors to read
+    embedded or cached objects without fetching references. Existing trust
+    checks still apply; singular accessors return `null` and plural accessors
+    skip values that require fetching. [[#1250], [#1396] by Jiwon Kwon\]
+
  -  Added `contextHistory` and `contextHistories` to `Object` subclasses for
     referencing conversation activity histories as ordered collections, with
     ID accessors and singular and plural dereferencing methods.

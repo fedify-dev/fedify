@@ -846,7 +846,7 @@ manner, both `a.objectId` and `b.objectId` return the equivalent URI.
 In Fedify 2.5.0 and later, pass `dereference: false` to inspect embedded or
 previously fetched objects without fetching references. Singular accessors
 return `null` when fetching is required; plural accessors skip those values.
-The default is `true`, preserving normal fetching behavior.
+The default is `true`.
 
 ~~~~ typescript twoslash
 import { Create } from "@fedify/vocab";
@@ -855,9 +855,8 @@ declare const activity: Create;
 const object = await activity.getObject({ dereference: false });
 ~~~~
 
-Existing origin and portable-object trust checks still apply. An embedded
-object that requires dereferencing and verification is skipped rather than
-trusted. The option does not affect ID getters or scalar properties.
+Origin and portable-object trust checks still apply: embedded objects that
+require fetching for verification are skipped.
 
 > [!TIP]
 > Dereferencing accessors take option `documentLoader` to specify the method
