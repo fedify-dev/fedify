@@ -124,9 +124,10 @@ Backfill does not unwrap `Add` activities. Histories containing only
 fallback.
 
 An embedded history accepted without dereferencing needs no request;
-referenced items and pages still count. A failed history lookup consumes request budget, and context
-fallback uses the remaining budget and the same document cache. If no source
-can be resolved on the seed, context strategies yield nothing unless
+referenced items and pages still count. A failed history lookup consumes
+request budget, and context fallback uses the remaining budget and the same
+document cache. If no source can be resolved on the seed, context strategies
+yield nothing unless
 [ancestor discovery](#discovering-collections-through-ancestors) is enabled.
 
 Referenced history is resolved through the configured `documentLoader`,
