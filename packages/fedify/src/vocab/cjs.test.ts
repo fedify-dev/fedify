@@ -12,7 +12,7 @@ test(
   },
   () => {
     const require = createRequire(import.meta.url);
-    const vocab = require("./mod.cjs");
+    const vocab = require("@fedify/fedify/vocab");
     strictEqual(typeof vocab.Object, "function");
     strictEqual(typeof vocab.Update, "function");
   },
@@ -26,10 +26,10 @@ test(
   () => {
     const originalTemporal = globalThis.Temporal;
     const require = createRequire(import.meta.url);
-    const fedify = require("../mod.cjs");
-    const federation = require("../federation/mod.cjs");
-    const sig = require("../sig/mod.cjs");
-    const utils = require("../utils/mod.cjs");
+    const fedify = require("@fedify/fedify");
+    const federation = require("@fedify/fedify/federation");
+    const sig = require("@fedify/fedify/sig");
+    const utils = require("@fedify/fedify/utils");
 
     strictEqual(typeof fedify.createFederation, "function");
     strictEqual(typeof federation.InProcessMessageQueue, "function");

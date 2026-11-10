@@ -1,6 +1,7 @@
 import $ from "@david/dax";
 import { dirname, join } from "@std/path";
 import metadata from "../deno.json" with { type: "json" };
+import { compileWithDownloadRetries } from "./compile.ts";
 
 type OS = "linux" | "macos" | "windows";
 type Arch = "x86_64" | "aarch64";
@@ -24,16 +25,58 @@ async function compile(os: OS, arch: Arch, into: string): Promise<void> {
   if (!target) {
     throw new Error(`Unsupported os/arch: ${os}/${arch}`);
   }
-  await $`deno compile --allow-all --include=${join(
-    "..",
-    "init",
-    "src",
-    "templates",
-  )} --node-modules-dir=none --target=${target} --output=${into} ${join(
-    dirname(import.meta.dirname!),
-    "src",
-    "mod.ts",
-  )}`;
+  await compileWithDownloadRetries(async () => {
+    const child = new Deno.Command(Deno.execPath(), {
+      args: [
+        "compile",
+        "--allow-all",
+        `--include=${join("..", "init", "src", "templates")}`,
+        "--node-modules-dir=none",
+        `--target=${target}`,
+        `--output=${into}`,
+        join(dirname(import.meta.dirname!), "src", "mod.ts"),
+      ],
+      stdout: "inherit",
+      stderr: "piped",
+    }).spawn();
+    try {
+      const decoder = new TextDecoder();
+      let stderr = "";
+      for await (const chunk of child.stderr) {
+        let offset = 0;
+        while (offset < chunk.length) {
+          const written = await Deno.stderr.write(chunk.subarray(offset));
+          if (written === 0)
+            throw new Error("Cannot write CLI compiler diagnostic");
+          offset += written;
+        }
+        // Keep enough of the final diagnostic to classify the failure, without
+        // retaining the complete dependency listing from concurrent compilers.
+        stderr = (stderr + decoder.decode(chunk, { stream: true })).slice(
+          -65_536,
+        );
+      }
+      stderr += decoder.decode();
+      const status = await child.status;
+      return { ...status, stderr };
+    } catch (error) {
+      try {
+        child.kill("SIGKILL");
+      } catch (killError) {
+        if (
+          !(killError instanceof Deno.errors.NotFound) &&
+          !(killError instanceof Deno.errors.BadResource)
+        ) {
+          throw new AggregateError(
+            [error, killError],
+            "Cannot stop CLI compiler",
+          );
+        }
+      }
+      await child.status;
+      throw error;
+    }
+  }, target);
 }
 
 async function pack(os: OS, arch: Arch): Promise<void> {

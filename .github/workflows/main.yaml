@@ -312,6 +312,7 @@ jobs:
       working-directory: ${{ github.workspace }}/packages/fedify/
     - run: mise run codegen
     - run: deno publish --dry-run --allow-slow-types
+    - run: mise run test:package-files
     - run: pnpm publish --recursive --dry-run --no-git-checks --ignore-scripts
 
   # ===========================================================================

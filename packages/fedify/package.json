@@ -30,7 +30,20 @@
   "type": "module",
   "files": [
     "dist",
-    "skills"
+    "skills",
+    "!dist/**/*.test.{js,cjs,mjs,ts,cts,mts}",
+    "!dist/**/*.test.d.{ts,cts,mts}",
+    "!dist/**/*.test.*.map",
+    "!dist/**/*.bench.{js,cjs,mjs,ts,cts,mts}",
+    "!dist/**/*.bench.d.{ts,cts,mts}",
+    "!dist/**/*.bench.*.map",
+    "!dist/**/*.snap",
+    "!dist/**/__snapshots__/**",
+    "!dist/**/__fixtures__/**",
+    "!dist/**/test/**",
+    "!dist/**/tests/**",
+    "!dist/**/testdata/**",
+    "!dist/**/fixtures/**"
   ],
   "agents": {
     "skills": [
@@ -175,9 +188,9 @@
     "postpack": "node scripts/pack-skills.mjs post",
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
-    "test": "cd dist/ && node --test",
+    "test": "cd dist-tests/ && node --test",
     "pretest:bun": "pnpm build",
-    "test:bun": "cd dist/ && bun test --timeout 60000",
+    "test:bun": "cd dist-tests/ && bun test --timeout 60000",
     "test:cfworkers": "deno task codegen && wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx scripts/check_cfworkers.ts && node --import=tsx src/cfworkers/client.ts"
   }
 }

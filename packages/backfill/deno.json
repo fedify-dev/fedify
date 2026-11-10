@@ -5,9 +5,20 @@
   "exports": {
     ".": "./src/mod.ts"
   },
-  "exclude": ["dist/", "node_modules/"],
+  "exclude": ["dist/", "node_modules/", "dist-tests/"],
   "publish": {
-    "exclude": ["**/*.test.ts", "tsdown.config.ts"]
+    "exclude": [
+      "**/*.test.ts",
+      "**/*.bench.ts",
+      "**/*.bench.d.*",
+      "**/__snapshots__/",
+      "**/__fixtures__/",
+      "**/fixtures/",
+      "**/testdata/",
+      "**/test/",
+      "**/tests/",
+      "tsdown.config.ts"
+    ]
   },
   "tasks": {
     "check": "deno check src/**/*.ts",

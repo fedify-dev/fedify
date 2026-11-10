@@ -48,6 +48,7 @@ export default [
     deps: { neverBundle: [/^node:/] },
   }),
   defineConfig({
+    outDir: "dist-tests",
     entry: [
       "./src/testing/mod.ts",
       ...(await Array.fromAsync(glob(`src/**/*.test.ts`))).map((f) =>

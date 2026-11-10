@@ -15,8 +15,15 @@
   "exclude": ["dist", "node_modules"],
   "publish": {
     "exclude": [
-      "**/*.bench.ts",
       "**/*.test.ts",
+      "**/*.bench.ts",
+      "**/*.bench.d.*",
+      "**/__snapshots__/",
+      "**/__fixtures__/",
+      "**/fixtures/",
+      "**/testdata/",
+      "**/test/",
+      "**/tests/",
       "old/",
       "src/tests/",
       "summary.txt",
