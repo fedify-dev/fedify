@@ -62,6 +62,9 @@ To be released.
     breaking source compatibility for custom implementations. Update custom
     mocks, decorators, and wrappers to implement this method.
     [[#1316], [#1359] by Jiwon Kwon\]
+ -  Added sender payload projection support for the published FEP-171b context,
+    preserving blind-recipient redaction.
+    [[#1250], [#1396] by Jiwon Kwon\]
  -  Added the `activity-origin-mismatch` reason to rejected
     `InboxAuthentication` decisions in `onRequestFinished` reports.  Inbox
     deliveries rejected because the activity's ID does not have the same origin
@@ -97,6 +100,7 @@ To be released.
 [#1177]: https://github.com/fedify-dev/fedify/issues/1177
 [#1205]: https://github.com/fedify-dev/fedify/pull/1205
 [#1234]: https://github.com/fedify-dev/fedify/issues/1234
+[#1250]: https://github.com/fedify-dev/fedify/issues/1250
 [#1264]: https://github.com/fedify-dev/fedify/pull/1264
 [#1289]: https://github.com/fedify-dev/fedify/issues/1289
 [#1290]: https://github.com/fedify-dev/fedify/issues/1290
@@ -106,6 +110,7 @@ To be released.
 [#1328]: https://github.com/fedify-dev/fedify/pull/1328
 [#1353]: https://github.com/fedify-dev/fedify/pull/1353
 [#1359]: https://github.com/fedify-dev/fedify/pull/1359
+[#1396]: https://github.com/fedify-dev/fedify/pull/1396
 
 ### @fedify/backfill
 
@@ -114,9 +119,6 @@ To be released.
     history is absent or unavailable. A resolved empty history does not trigger
     fallback, and later history references are not tried. Existing source
     selection remains the default. [[#1250], [#1396] by Jiwon Kwon\]
-
-[#1250]: https://github.com/fedify-dev/fedify/issues/1250
-[#1396]: https://github.com/fedify-dev/fedify/pull/1396
 
 ### @fedify/cli
 
