@@ -67,6 +67,7 @@ import {
   detachSignature,
   getNormalizationContextLoader,
   hasSignature,
+  hasVerifiableSignature,
   InvalidContextReferenceError,
   isClearlyMalformedContextReference,
   isInvalidUrlTypeError,
@@ -1058,7 +1059,7 @@ export class FederationImpl<TContextData>
         let parseInput: unknown = undefined;
         let parseContextLoader = context.contextLoader;
         try {
-          const hasSignatureField = hasSignature(message.activity);
+          const hasSignatureField = hasVerifiableSignature(message.activity);
           const shouldParseFromNormalizedSignedPayload =
             message.ldSignatureVerified === true ||
             message.normalizedActivity != null ||

@@ -1,6 +1,7 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import { Create, CryptographicKey, Note } from "@fedify/vocab";
 import jsonld from "@fedify/vocab-runtime/jsonld";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertFalse } from "@std/assert/assert-false";
@@ -8,6 +9,7 @@ import { assertInstanceOf } from "@std/assert/assert-instance-of";
 import { assertRejects } from "@std/assert/assert-rejects";
 import { assertThrows } from "@std/assert/assert-throws";
 import { encodeBase64 } from "byte-encodings/base64";
+import { ldSignatureWithoutCreated } from "../testing/ld-signature.ts";
 import {
   ed25519Multikey,
   ed25519PrivateKey,
@@ -21,7 +23,10 @@ import {
   attachSignature,
   compactJsonLd,
   createSignature,
+  describeSignatureShape,
   detachSignature,
+  hasSignature,
+  hasVerifiableSignature,
   isInvalidUrlTypeError,
   type Signature,
   signJsonLd,
@@ -151,6 +156,8 @@ test("createSignature()", async () => {
   const sig = await createSignature(doc, rsaPrivateKey2, rsaPublicKey2.id!, {
     contextLoader: mockDocumentLoader,
   });
+  assertEquals(typeof sig.created, "string");
+  assert(hasSignature(attachSignature(doc, sig)));
   assertEquals(sig["@context"], "https://w3id.org/security/v1");
   const key = await verifySignature(attachSignature(doc, sig), {
     documentLoader: mockDocumentLoader,
@@ -184,6 +191,8 @@ test("signJsonLd()", async () => {
   const signed = await signJsonLd(doc, rsaPrivateKey3, rsaPublicKey3.id!, {
     contextLoader: mockDocumentLoader,
   });
+  assert(hasSignature(signed));
+  assertEquals(typeof signed.signature.created, "string");
   const verified = await verifyJsonLd(signed, {
     documentLoader: mockDocumentLoader,
     contextLoader: mockDocumentLoader,
@@ -702,6 +711,177 @@ test("verification still rejects malformed JSON-LD", async () => {
     Error,
   );
   assertEquals(error.name, "jsonld.SyntaxError");
+});
+
+test("Linked Data verification without created", async (t) => {
+  const options = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  await t.step("verifies the independently signed options", async () => {
+    assertFalse(hasSignature(ldSignatureWithoutCreated));
+    assertEquals(
+      await verifySignature(ldSignatureWithoutCreated, options),
+      rsaPublicKey3,
+    );
+    assert(await verifyJsonLd(ldSignatureWithoutCreated, options));
+  });
+  await t.step(
+    "uses normalization contexts with a restrictive loader",
+    async () => {
+      assert(
+        await verifyJsonLd(ldSignatureWithoutCreated, {
+          ...options,
+          contextLoader: async (url) => {
+            if (
+              url !== "https://w3id.org/security/v1" &&
+              url !== "https://w3id.org/security/data-integrity/v1"
+            ) return await mockDocumentLoader(url);
+            throw new Error(`Unexpected context: ${url}`);
+          },
+        }),
+      );
+    },
+  );
+  await t.step(
+    "rejects tampering with the signed timestamp or content",
+    async () => {
+      const inserted = {
+        ...ldSignatureWithoutCreated,
+        signature: {
+          ...ldSignatureWithoutCreated.signature,
+          created: "2024-09-12T16:50:46Z",
+        },
+      };
+      const removed = structuredClone(testVector);
+      Reflect.deleteProperty(removed.signature, "created");
+      const changed = structuredClone(testVector);
+      changed.signature.created = "2024-09-13T16:50:46Z";
+      const changedContent = structuredClone(ldSignatureWithoutCreated);
+      changedContent.object.content = "tampered";
+      for (const doc of [inserted, removed, changed, changedContent]) {
+        assertEquals(await verifySignature(doc, options), null);
+        assertFalse(await verifyJsonLd(doc, options));
+      }
+    },
+  );
+  await t.step("still rejects graph restructuring", async () => {
+    const { signature, ...document } = ldSignatureWithoutCreated;
+    await assertRejects(
+      () =>
+        verifyJsonLd({
+          "@context": document["@context"],
+          "@graph": [document],
+          signature,
+        }, options),
+      UnsafeJsonLdError,
+      "Unsupported JSON-LD keyword: @graph.",
+    );
+  });
+});
+
+test("Linked Data verification distinguishes malformed and absent signatures", async () => {
+  const signature = {
+    type: "RsaSignature2017",
+    creator: "https://example.com/private-creator-sentinel#key",
+    signatureValue: "private-signature-sentinel",
+  };
+  assert(hasVerifiableSignature({ signature }));
+  assertFalse(hasSignature({ signature }));
+  for (const created of ["2024-09-12T16:50:46Z", "not a date", ""]) {
+    const doc = { signature: { ...signature, created } };
+    assert(hasVerifiableSignature(doc));
+    assert(hasSignature(doc));
+  }
+  const malformed: unknown[] = [
+    null,
+    [],
+    "signature",
+    {},
+    { ...signature, type: "OtherSignature" },
+    { ...signature, type: ["RsaSignature2017"] },
+    { ...signature, creator: {} },
+    { ...signature, signatureValue: 1 },
+    ...[undefined, null, 123, {}, []].map((created) => ({
+      ...signature,
+      created,
+    })),
+  ];
+  const records: LogRecord[] = [];
+  await configure({
+    sinks: { buffer: (record) => records.push(record) },
+    loggers: [
+      {
+        category: ["fedify", "sig", "ld"],
+        sinks: ["buffer"],
+        lowestLevel: "debug",
+      },
+      { category: ["logtape", "meta"], sinks: [] },
+    ],
+    reset: true,
+  });
+  let keyLoads = 0;
+  const options = {
+    documentLoader: (url: string) => {
+      keyLoads++;
+      return mockDocumentLoader(url);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  try {
+    for (const value of malformed) {
+      const doc = { signature: value };
+      assertFalse(hasVerifiableSignature(doc));
+      assertEquals(await verifySignature(doc, options), null);
+    }
+    assertEquals(keyLoads, 0);
+    assertEquals(records.length, malformed.length);
+    for (const record of records) {
+      assertEquals(record.level, "debug");
+      assertFalse(JSON.stringify(record).includes(signature.creator));
+      assertFalse(JSON.stringify(record).includes(signature.signatureValue));
+    }
+    assertEquals(records.at(-1)?.properties, {
+      signatureKind: "object",
+      signatureProperties: ["created", "creator", "signatureValue", "type"],
+      signaturePropertyCount: 4,
+    });
+    for (const absent of [null, [], 1, {}, { type: "Create" }]) {
+      assertEquals(await verifySignature(absent, options), null);
+      assertFalse(hasVerifiableSignature(absent));
+      assertEquals(describeSignatureShape(absent), null);
+    }
+    assertEquals(records.length, malformed.length);
+    // A parseable malformed signature also gets one diagnostic through the API.
+    assertFalse(
+      await verifyJsonLd({
+        ...ldSignatureWithoutCreated,
+        signature: { ...signature, created: 123 },
+      }, options),
+    );
+    assertEquals(records.length, malformed.length + 1);
+    assertEquals(keyLoads, 0);
+  } finally {
+    await reset();
+  }
+  const manyProperties = globalThis.Object.fromEntries(
+    Array.from(
+      { length: 30 },
+      (_, i) => [`field${i}`.padEnd(200, "x"), "secret"],
+    ),
+  );
+  const shape = describeSignatureShape({ signature: manyProperties });
+  assertEquals(shape?.signaturePropertyCount, 30);
+  assertEquals(shape?.signatureProperties.length, 20);
+  assert(shape?.signatureProperties.every((name) => name.length === 80));
+  assertEquals(
+    describeSignatureShape({ signature: null })?.signatureKind,
+    "null",
+  );
+  assertEquals(
+    describeSignatureShape({ signature: [] })?.signatureKind,
+    "array",
+  );
 });
 
 test("compactJsonLd() with restrictive context loader", async () => {
