@@ -71,7 +71,8 @@ To be released.
     now verify through the JSON-LD APIs and inbox, including queued inbox
     processing, and are forwarded when `skipIfUnsigned` is enabled.
     Malformed signature objects now produce a debug log with
-    their property names.  Outgoing signatures still include `created`.
+    their property names.  Invalid creator URLs now fail verification without
+    throwing an exception.  Outgoing signatures still include `created`.
     [[#1406], [#1413]]
  -  Fixed the fanout worker never starting when the `fanout` queue was the only
     configured queue.  `Federation.startQueue()` returned without calling

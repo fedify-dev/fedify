@@ -1104,8 +1104,15 @@ export async function verifySignature(
     );
     return null;
   }
+  let creator: URL;
+  try {
+    creator = new URL(sig.creator);
+  } catch {
+    logger.debug("Failed to verify; signature creator is not a valid URL.");
+    return null;
+  }
   const { key, cached } = await fetchKey(
-    new URL(sig.creator),
+    creator,
     CryptographicKey,
     options,
   );
@@ -1162,7 +1169,7 @@ export async function verifySignature(
       { keyId: sig.creator, ...sig },
     );
     const { key } = await fetchKey(
-      new URL(sig.creator),
+      creator,
       CryptographicKey,
       {
         ...options,

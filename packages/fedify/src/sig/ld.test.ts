@@ -780,6 +780,33 @@ test("Linked Data verification without created", async (t) => {
   });
 });
 
+test("Linked Data verification rejects malformed creator URLs", async () => {
+  let keyLoads = 0;
+  const options = {
+    documentLoader: (url: string) => {
+      keyLoads++;
+      return mockDocumentLoader(url);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  for (const creator of ["not a URL", "", "/keys/main", "https://["]) {
+    for (const withCreated of [false, true]) {
+      const input = {
+        ...ldSignatureWithoutCreated,
+        signature: {
+          ...ldSignatureWithoutCreated.signature,
+          creator,
+          ...(withCreated ? { created: "2024-09-12T16:50:46Z" } : {}),
+        },
+      };
+      assert(hasVerifiableSignature(input));
+      assertEquals(await verifySignature(input, options), null);
+      assertFalse(await verifyJsonLd(input, options));
+    }
+  }
+  assertEquals(keyLoads, 0);
+});
+
 test("Linked Data verification distinguishes malformed and absent signatures", async () => {
   const signature = {
     type: "RsaSignature2017",
