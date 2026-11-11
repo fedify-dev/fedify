@@ -124,7 +124,7 @@ To be released.
     nearest usable conversation collection through `inReplyTo` ancestors when
     the seed has none. Discovery respects `maxDepth`, shares traversal budgets
     and caching, and preserves the loaded ancestor's portable history
-    verification policy. [[#1252] by Jiwon Kwon\]
+    verification policy. [[#1252], [#1416] by Jiwon Kwon\]
  -  Added `contextSource: "history-first"` to backfill options to read the
     seed's first `contextHistory` collection, falling back to `context` when
     history is absent or unavailable. A resolved empty history does not trigger
@@ -132,9 +132,10 @@ To be released.
     selection remains the default. Referenced histories use the configured
     loader, including portable `ap://`, `ap+ef61://`, and FEP-ef61-compatible
     HTTPS identifiers. Errors cloning embedded history propagate instead of
-    triggering fallback. [[#1250], [#1396] by Jiwon Kwon\]
+    triggering fallback. [[#1250], [#1396], [#1416] by Jiwon Kwon\]
 
 [#1252]: https://github.com/fedify-dev/fedify/issues/1252
+[#1416]: https://github.com/fedify-dev/fedify/pull/1416
 
 ### @fedify/cfworkers
 

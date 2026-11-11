@@ -23,6 +23,30 @@ async function collect(
   return await Array.fromAsync(backfill(context, note, options));
 }
 
+test("reply-tree skips malformed targets without ancestor discovery", async () => {
+  class MalformedNote extends Note {
+    override toJsonLd() {
+      return Promise.resolve({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Note",
+        id: 42,
+      });
+    }
+  }
+  const parent = new Note({ id: new URL("https://example.com/parent") });
+  const results = await collect(
+    { documentLoader: () => Promise.resolve(new MalformedNote({})) },
+    new Note({
+      replyTargets: [new URL("https://example.com/malformed"), parent],
+    }),
+    { strategies: ["reply-tree"] },
+  );
+  deepStrictEqual(
+    results.map(({ id }) => id),
+    [parent.id],
+  );
+});
+
 test("ancestor discovery budget exhaustion allows later reply-tree", async () => {
   const parent = new Note({
     id: new URL("https://example.com/parent"),

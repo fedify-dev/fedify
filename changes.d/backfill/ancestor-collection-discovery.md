@@ -7,4 +7,6 @@ links:
     nearest usable conversation collection through `inReplyTo` ancestors when
     the seed has none. Discovery respects `maxDepth`, shares traversal budgets
     and caching, and preserves the loaded ancestor's portable history
-    verification policy. [[#1252], [#1416] by Jiwon Kwon]
+    verification policy. Reply-tree traversal also continues after individual
+    reply-target parsing failures, even when ancestor discovery is disabled.
+    [[#1252], [#1416] by Jiwon Kwon]
