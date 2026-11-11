@@ -9,4 +9,5 @@ links:
     and caching, and preserves the loaded ancestor's portable history
     verification policy. Reply-tree traversal also continues after individual
     reply-target parsing failures, even when ancestor discovery is disabled.
+    Reply-target lookups now propagate `interval` configuration errors.
     [[#1252], [#1416] by Jiwon Kwon]

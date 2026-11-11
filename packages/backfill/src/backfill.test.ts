@@ -23,6 +23,68 @@ async function collect(
   return await Array.fromAsync(backfill(context, note, options));
 }
 
+describe("interval configuration errors", () => {
+  for (const source of [
+    "ancestor discovery",
+    "reply-tree",
+    "context collection",
+  ]) {
+    const reference = new URL("https://example.com/referenced");
+    const options: Parameters<typeof backfill>[2] =
+      source === "ancestor discovery"
+        ? { contextDiscovery: "ancestors" }
+        : source === "reply-tree"
+          ? { strategies: ["reply-tree"] }
+          : {};
+    const seed = () =>
+      source === "context collection"
+        ? new Note({ contexts: [reference] })
+        : new Note({ replyTargets: [reference, new Note({})] });
+
+    test(`${source} propagates the original interval callback error`, async () => {
+      const error = new Error("invalid interval configuration");
+      let requests = 0;
+      await rejects(
+        collect(
+          {
+            documentLoader: () => {
+              requests++;
+              return Promise.resolve(null);
+            },
+          },
+          seed(),
+          {
+            ...options,
+            interval: () => {
+              throw error;
+            },
+          },
+        ),
+        (caught) => caught === error,
+      );
+      strictEqual(requests, 0);
+    });
+
+    test(`${source} propagates invalid interval strings`, async () => {
+      let requests = 0;
+      await rejects(
+        collect(
+          {
+            documentLoader: () => {
+              requests++;
+              return Promise.resolve(null);
+            },
+          },
+          seed(),
+          { ...options, interval: "not-a-duration" },
+        ),
+        Error,
+      );
+      strictEqual(requests, 0);
+    });
+  }
+});
+
 test("reply-tree skips malformed targets without ancestor discovery", async () => {
   class MalformedNote extends Note {
     override toJsonLd() {

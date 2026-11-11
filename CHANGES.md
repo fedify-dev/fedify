@@ -124,7 +124,9 @@ To be released.
     nearest usable conversation collection through `inReplyTo` ancestors when
     the seed has none. Discovery respects `maxDepth`, shares traversal budgets
     and caching, and preserves the loaded ancestor's portable history
-    verification policy. [[#1252], [#1416] by Jiwon Kwon\]
+    verification policy. Reply-tree traversal also continues after individual
+    reply-target parsing failures, even when ancestor discovery is disabled.
+    [[#1252], [#1416] by Jiwon Kwon\]
  -  Added `contextSource: "history-first"` to backfill options to read the
     seed's first `contextHistory` collection, falling back to `context` when
     history is absent or unavailable. A resolved empty history does not trigger

@@ -31,6 +31,18 @@ const DEFAULT_MAX_DEPTH = 10;
  */
 export class MaxRequestsExceeded extends Error {}
 
+class IntervalConfigurationError extends Error {}
+
+/** Errors that must escape unavailable-document handling. */
+function isTraversalError(
+  error: unknown,
+): error is MaxRequestsExceeded | IntervalConfigurationError {
+  return (
+    error instanceof MaxRequestsExceeded ||
+    error instanceof IntervalConfigurationError
+  );
+}
+
 interface RequestBudget {
   readonly signal?: AbortSignal;
   requestCount: number;
@@ -144,6 +156,7 @@ export async function* backfill<TObject extends APObject = APObject>(
       }
     }
   } catch (error) {
+    if (error instanceof IntervalConfigurationError) throw error.cause;
     if (error instanceof MaxRequestsExceeded) return;
     throw error;
   }
@@ -547,7 +560,10 @@ async function* getReplyTargets(
   budget: RequestBudget,
   skipIds?: ReadonlySet<string>,
 ): AsyncIterable<APObject | Link> {
-  let budgetError: MaxRequestsExceeded | undefined;
+  let traversalError:
+    | MaxRequestsExceeded
+    | IntervalConfigurationError
+    | undefined;
   const loadedObjects = new Map<string, APObject>();
   try {
     for await (const target of object.getReplyTargets({
@@ -556,7 +572,7 @@ async function* getReplyTargets(
       suppressError: true,
       documentLoader: async (url) => {
         loadedObjects.clear();
-        if (budgetError != null) throw budgetError;
+        if (traversalError != null) throw traversalError;
         try {
           return await loadCollectionItemDocument(
             context,
@@ -577,16 +593,16 @@ async function* getReplyTargets(
             },
           );
         } catch (error) {
-          // The vocabulary accessor can suppress budget errors too. Retain
-          // them so it cannot continue with an embedded sibling afterward.
-          if (error instanceof MaxRequestsExceeded) budgetError = error;
+          // Retain traversal errors across vocabulary error suppression so
+          // invalid configuration cannot continue with an embedded sibling.
+          if (isTraversalError(error)) traversalError = error;
           throw error;
         }
       },
       crossOrigin: "trust",
     })) {
       budget.signal?.throwIfAborted();
-      if (budgetError != null) throw budgetError;
+      if (traversalError != null) throw traversalError;
       // Record provenance only after the vocabulary accessor accepts a target.
       // Keep it across strategy passes, including targets cached by reply-tree.
       // Match documents rather than IDs to support anonymous targets and avoid
@@ -601,9 +617,9 @@ async function* getReplyTargets(
       yield target;
     }
     budget.signal?.throwIfAborted();
-    if (budgetError != null) throw budgetError;
+    if (traversalError != null) throw traversalError;
   } catch (error) {
-    if (error instanceof MaxRequestsExceeded) throw error;
+    if (isTraversalError(error)) throw error;
     budget.signal?.throwIfAborted();
   }
 }
@@ -644,7 +660,7 @@ async function getRepliesCollection(
       crossOrigin: "trust",
     });
   } catch (error) {
-    if (error instanceof MaxRequestsExceeded) throw error;
+    if (isTraversalError(error)) throw error;
     budget.signal?.throwIfAborted();
     return null;
   }
@@ -785,7 +801,7 @@ async function* getCollectionItems(
           ? await current.getFirst(pageOptions)
           : await page.getNext(pageOptions);
     } catch (error) {
-      if (error instanceof MaxRequestsExceeded) throw error;
+      if (isTraversalError(error)) throw error;
       budget.signal?.throwIfAborted();
       return;
     }
@@ -811,7 +827,7 @@ async function getCreateActivityObject(
       crossOrigin: "trust",
     });
   } catch (error) {
-    if (error instanceof MaxRequestsExceeded) throw error;
+    if (isTraversalError(error)) throw error;
     budget.signal?.throwIfAborted();
     return null;
   }
@@ -843,7 +859,7 @@ async function loadCollectionItemDocument(
       throwOnBudgetExceeded: true,
     });
   } catch (error) {
-    if (error instanceof MaxRequestsExceeded) throw error;
+    if (isTraversalError(error)) throw error;
     budget.signal?.throwIfAborted();
     if (!skipUnavailable) throw error;
     return skippedCollectionItemDocument(url);
@@ -898,7 +914,14 @@ async function loadObject(
     return null;
   }
 
-  await waitForInterval(options, budget);
+  try {
+    await waitForInterval(options, budget);
+  } catch (error) {
+    budget.signal?.throwIfAborted();
+    throw new IntervalConfigurationError("Invalid backfill interval", {
+      cause: error,
+    });
+  }
   budget.signal?.throwIfAborted();
 
   budget.requestCount++;
