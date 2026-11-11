@@ -23,6 +23,33 @@ async function collect(
   return await Array.fromAsync(backfill(context, note, options));
 }
 
+test("ancestor discovery budget exhaustion allows later reply-tree", async () => {
+  const parent = new Note({
+    id: new URL("https://example.com/parent"),
+    replyTarget: new URL("https://example.com/root"),
+  });
+  let requests = 0;
+  const results = await collect(
+    {
+      documentLoader: () => {
+        requests++;
+        return Promise.resolve(null);
+      },
+    },
+    new Note({ replyTarget: parent }),
+    {
+      contextDiscovery: "ancestors",
+      strategies: ["context-auto", "reply-tree"],
+      maxRequests: 0,
+    },
+  );
+  deepStrictEqual(
+    results.map(({ id }) => id),
+    [parent.id],
+  );
+  strictEqual(requests, 0);
+});
+
 describe("portable ancestor collection discovery", () => {
   for (const scheme of ["ap", "ap+ef61"]) {
     test(`discovers a collection through verified ${scheme} ancestors`, async () => {

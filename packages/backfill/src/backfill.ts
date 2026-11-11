@@ -270,40 +270,46 @@ async function discoverConversationCollection(
   let frontier = [note];
   // Finish each depth before exploring parents so a farther collection
   // cannot take precedence over a nearer reply target's collection.
-  for (
-    let depth = 1;
-    depth <= (options.maxDepth ?? DEFAULT_MAX_DEPTH);
-    depth++
-  ) {
-    const next: APObject[] = [];
-    for (const object of frontier) {
-      for await (const parsedTarget of getReplyTargets(
-        context,
-        object,
-        options,
-        budget,
-        visitedObjectIds,
-      )) {
-        budget.signal?.throwIfAborted();
-        const target = getDiscoveryReplyTarget(parsedTarget, budget);
-        if (!isContextPostObject(target)) continue;
-        if (
-          !visitReplyTreeObject(target, { visitedObjectIds, visitedObjects })
-        ) {
-          continue;
-        }
-        const collection = await getConversationCollection(
+  try {
+    for (
+      let depth = 1;
+      depth <= (options.maxDepth ?? DEFAULT_MAX_DEPTH);
+      depth++
+    ) {
+      const next: APObject[] = [];
+      for (const object of frontier) {
+        for await (const parsedTarget of getReplyTargets(
           context,
-          target,
+          object,
           options,
           budget,
-        );
-        if (collection != null) return collection;
-        next.push(target);
+          visitedObjectIds,
+        )) {
+          budget.signal?.throwIfAborted();
+          const target = getDiscoveryReplyTarget(parsedTarget, budget);
+          if (!isContextPostObject(target)) continue;
+          if (
+            !visitReplyTreeObject(target, { visitedObjectIds, visitedObjects })
+          ) {
+            continue;
+          }
+          const collection = await getConversationCollection(
+            context,
+            target,
+            options,
+            budget,
+          );
+          if (collection != null) return collection;
+          next.push(target);
+        }
       }
+      if (next.length === 0) return null;
+      frontier = next;
     }
-    if (next.length === 0) return null;
-    frontier = next;
+  } catch (error) {
+    budget.signal?.throwIfAborted();
+    if (!(error instanceof MaxRequestsExceeded)) throw error;
+    // Later strategies may still use embedded objects without more requests.
   }
   return null;
 }
