@@ -126,6 +126,7 @@ To be released.
     and caching, and preserves the loaded ancestor's portable history
     verification policy. Reply-tree traversal also continues after individual
     reply-target parsing failures, even when ancestor discovery is disabled.
+    Reply-target lookups now propagate `interval` configuration errors.
     [[#1252], [#1416] by Jiwon Kwon\]
  -  Added `contextSource: "history-first"` to backfill options to read the
     seed's first `contextHistory` collection, falling back to `context` when
