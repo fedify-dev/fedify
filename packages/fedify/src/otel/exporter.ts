@@ -162,6 +162,21 @@ export interface FedifySpanExporterOptions {
    * Defaults to `["fedify", "traces"]`.
    */
   readonly keyPrefix?: KvKey;
+
+  /**
+   * Keeps each export alive after the current serverless invocation ends.
+   * Called synchronously from {@link FedifySpanExporter.export} with a promise
+   * that fulfills after the export attempt and its result callback finish,
+   * even if either fails.  Exceptions thrown by this hook are logged and ignored.
+   * The platform's execution limits still apply.
+   *
+   * Use a request-aware callback for a shared exporter, or create the exporter
+   * per request before passing a bound `ctx.waitUntil`.  Do not log through a
+   * LogTape sink that uses this same hook, which could cause recursion.
+   *
+   * @since 2.5.0
+   */
+  readonly waitUntil?: (promise: Promise<void>) => void;
 }
 
 /**
@@ -227,6 +242,8 @@ export class FedifySpanExporter implements SpanExporter {
   readonly #kv: KvStore;
   readonly #ttl?: Temporal.Duration;
   readonly #keyPrefix: KvKey;
+  readonly #waitUntil?: (promise: Promise<void>) => void;
+  readonly #inFlight: Set<Promise<void>> = new Set();
 
   /**
    * Creates a new FedifySpanExporter.
@@ -238,6 +255,7 @@ export class FedifySpanExporter implements SpanExporter {
     this.#kv = kv;
     this.#ttl = options?.ttl;
     this.#keyPrefix = options?.keyPrefix ?? ["fedify", "traces"];
+    this.#waitUntil = options?.waitUntil;
   }
 
   /**
@@ -250,15 +268,39 @@ export class FedifySpanExporter implements SpanExporter {
     spans: ReadableSpan[],
     resultCallback: (result: { code: ExportResultCode }) => void,
   ): void {
-    this.#exportAsync(spans)
-      .then(() => resultCallback({ code: ExportResultCode.SUCCESS }))
-      .catch((error) => {
-        getLogger(["fedify", "otel", "exporter"]).error(
-          "Failed to export spans to KvStore: {error}",
-          { error },
-        );
-        resultCallback({ code: ExportResultCode.FAILED });
+    const completion = this.#exportAsync(spans)
+      .then(
+        () => ExportResultCode.SUCCESS,
+        (error) => {
+          this.#logError("Failed to export spans to KvStore: {error}", error);
+          return ExportResultCode.FAILED;
+        },
+      )
+      .then((code) => {
+        try {
+          resultCallback({ code });
+        } catch (error) {
+          this.#logError("Span export result callback threw: {error}", error);
+        }
+      })
+      .then(() => {
+        this.#inFlight.delete(completion);
       });
+    this.#inFlight.add(completion);
+    try {
+      this.#waitUntil?.(completion);
+    } catch (error) {
+      this.#logError("Span export waitUntil callback threw: {error}", error);
+    }
+  }
+
+  #logError(message: string, error: unknown): void {
+    try {
+      getLogger(["fedify", "otel", "exporter"]).error(message, { error });
+    } catch {
+      // Diagnostics must not prevent result notification or reject the
+      // lifetime promise, even if a configured logging sink throws.
+    }
   }
 
   async #exportAsync(spans: ReadableSpan[]): Promise<void> {
@@ -568,17 +610,22 @@ export class FedifySpanExporter implements SpanExporter {
   }
 
   /**
-   * Forces the exporter to flush any buffered data.
-   * This is a no-op because we write directly to the KvStore without buffering.
+   * Waits for pending export attempts and their result callbacks to settle.
+   * Includes exports started while waiting, until the exporter becomes idle.
+   * Storage failures are logged and reported through the export callback;
+   * they do not reject this promise.  This only covers exports already passed
+   * to this exporter, not spans still buffered by a span processor.
    */
   async forceFlush(): Promise<void> {
-    // No-op: data is written directly to KvStore without buffering
+    while (this.#inFlight.size > 0) {
+      await Promise.allSettled([...this.#inFlight]);
+    }
   }
 
   /**
-   * Shuts down the exporter.
+   * Waits for pending exports to settle before shutdown.
    */
   async shutdown(): Promise<void> {
-    // No cleanup needed
+    await this.forceFlush();
   }
 }
