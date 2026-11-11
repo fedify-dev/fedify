@@ -1773,9 +1773,11 @@ test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
   });
 
   await t.step("too many redirections", async () => {
-    const recorder = recordHops(() => ({
+    const recorder = recordHops((url) => ({
       status: 302,
-      headers: { Location: "/.well-known/nodeinfo" },
+      headers: {
+        Location: `?hop=${Number(url.searchParams.get("hop") ?? 0) + 1}`,
+      },
       body: "redirecting",
     }));
     assertEquals(
@@ -1792,6 +1794,50 @@ test("getNodeInfo() closes each hop after cleaning up its body", async (t) => {
       recorder.events.filter((e) => e.startsWith("cancel ")).length,
       5,
     );
+    recorder.assertInvariants();
+  });
+
+  await t.step("self-redirect cycle", async () => {
+    const recorder = recordHops(() => ({
+      status: 302,
+      headers: { Location: "/.well-known/nodeinfo#another-fragment" },
+      body: "redirecting",
+    }));
+    assertEquals(
+      await getNodeInfoInternal("https://example.com/", {}, {
+        openHop: recorder.openHop,
+      }),
+      undefined,
+    );
+    assertEquals(recorder.events, [
+      `open ${wellKnown}`,
+      `fetch ${wellKnown} #1`,
+      "cancel #1",
+      `close ${wellKnown}`,
+    ]);
+    recorder.assertInvariants();
+  });
+
+  await t.step("two-URL redirect cycle", async () => {
+    const recorder = recordHops((url) => ({
+      status: 302,
+      headers: {
+        Location: url.href === wellKnown
+          ? "/.well-known/nodeinfo2"
+          : "/.well-known/nodeinfo",
+      },
+      body: "redirecting",
+    }));
+    assertEquals(
+      await getNodeInfoInternal("https://example.com/", {}, {
+        openHop: recorder.openHop,
+      }),
+      undefined,
+    );
+    assertEquals(recorder.events.filter((e) => e.startsWith("open ")), [
+      `open ${wellKnown}`,
+      `open ${wellKnown2}`,
+    ]);
     recorder.assertInvariants();
   });
 

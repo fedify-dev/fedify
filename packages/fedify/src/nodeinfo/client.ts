@@ -85,6 +85,7 @@ export async function fetchPublicUrl<T>(
       ));
   let current = url instanceof URL ? url : new URL(url);
   let redirected = 0;
+  const visited = new Set<string>([redirectKey(current)]);
   while (true) {
     signal?.throwIfAborted();
     let session: PublicFetchSession;
@@ -150,8 +151,24 @@ export async function fetchPublicUrl<T>(
       );
       return null;
     }
+    const key = redirectKey(next);
+    if (visited.has(key)) {
+      logger.error("Redirect cycle while fetching NodeInfo: {url}.", {
+        url: next.href,
+      });
+      return null;
+    }
+    visited.add(key);
     current = next;
   }
+}
+
+function redirectKey(url: URL): string {
+  // Fragments are not sent in HTTP requests, so they cannot make a repeated
+  // redirect target distinct.
+  const withoutFragment = new URL(url);
+  withoutFragment.hash = "";
+  return withoutFragment.href;
 }
 
 /**
