@@ -90,6 +90,108 @@ export function lookupAllAddresses(
 }
 
 /**
+ * Serializes lookups started by the returned function.  A pending caller can
+ * abort before its lookup starts.  Once `dns.lookup()` has started, it cannot
+ * be cancelled, so its slot remains occupied until the underlying lookup
+ * settles, even if its caller aborts.  This bounds the number of outstanding
+ * getaddrinfo calls made by users of this function.
+ * @internal
+ */
+export function createBoundedLookup(
+  lookup: LookupAllAddresses,
+): (
+  hostname: string,
+  signal?: AbortSignal,
+) => Promise<readonly ResolvedAddress[]> {
+  let active = false;
+  const waiting = new Set<{
+    signal?: AbortSignal;
+    resolve: () => void;
+    reject: (reason: unknown) => void;
+    onAbort: () => void;
+  }>();
+
+  function release(): void {
+    active = false;
+    while (waiting.size > 0) {
+      const next = waiting.values().next().value!;
+      waiting.delete(next);
+      next.signal?.removeEventListener("abort", next.onAbort);
+      if (next.signal?.aborted) {
+        next.reject(next.signal.reason);
+        continue;
+      }
+      active = true;
+      next.resolve();
+      break;
+    }
+  }
+
+  function acquire(signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
+    if (!active) {
+      active = true;
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve, reject) => {
+      const entry = {
+        signal,
+        resolve,
+        reject,
+        onAbort() {
+          if (!waiting.delete(entry)) return;
+          signal?.removeEventListener("abort", entry.onAbort);
+          reject(signal?.reason);
+        },
+      };
+      waiting.add(entry);
+      signal?.addEventListener("abort", entry.onAbort, { once: true });
+      if (signal?.aborted) entry.onAbort();
+    });
+  }
+
+  return async (hostname, signal) => {
+    await acquire(signal);
+    let started = false;
+    try {
+      signal?.throwIfAborted();
+      const pending = lookup(hostname);
+      started = true;
+      // Releasing the slot on caller abort would let another getaddrinfo call
+      // start while the first is still using the libuv thread pool.
+      pending.then(release, release);
+      if (signal == null) return await pending;
+      let onAbort: (() => void) | undefined;
+      const aborted = new Promise<never>((_, reject) => {
+        onAbort = () => reject(signal.reason);
+        signal.addEventListener("abort", onAbort, { once: true });
+        if (signal.aborted) onAbort();
+      });
+      try {
+        return await Promise.race([pending, aborted]);
+      } finally {
+        if (onAbort != null) signal.removeEventListener("abort", onAbort);
+      }
+    } finally {
+      if (!started) release();
+    }
+  };
+}
+
+/**
+ * A process-wide bounded variant of {@link lookupAllAddresses} for explicit
+ * NodeInfo lookups.  It preserves the operating system's name resolution while
+ * limiting those lookups to one in-flight `dns.lookup()` call.
+ * @internal
+ */
+export const lookupAllAddressesBounded: (
+  hostname: string,
+  signal?: AbortSignal,
+) => Promise<readonly ResolvedAddress[]> = createBoundedLookup(
+  lookupAllAddresses,
+);
+
+/**
  * The result of {@link parsePublicUrl}.
  * @internal
  */

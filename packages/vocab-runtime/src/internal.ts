@@ -12,3 +12,5 @@ export {
   withPublicFetch,
 } from "./public-fetch.ts";
 export { asCryptoKey } from "./crypto-key.ts";
+export { lookupAllAddressesBounded } from "./url.ts";
+export { detectRuntime } from "./pinners/mod.ts";

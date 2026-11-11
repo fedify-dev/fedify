@@ -4,6 +4,8 @@ import {
   UrlError,
 } from "@fedify/vocab-runtime";
 import {
+  detectRuntime,
+  lookupAllAddressesBounded,
   openPublicFetch,
   type PublicFetchSession,
 } from "@fedify/vocab-runtime/internal";
@@ -72,7 +74,15 @@ export async function fetchPublicUrl<T>(
 ): Promise<T | null> {
   const openHop = deps.openHop ??
     ((hopUrl: string, signal?: AbortSignal) =>
-      openPublicFetch(hopUrl, { signal }));
+      openPublicFetch(
+        hopUrl,
+        detectRuntime() === "node"
+          ? {
+            signal,
+            lookup: (hostname) => lookupAllAddressesBounded(hostname, signal),
+          }
+          : { signal },
+      ));
   let current = url instanceof URL ? url : new URL(url);
   let redirected = 0;
   while (true) {

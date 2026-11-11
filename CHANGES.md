@@ -101,6 +101,7 @@ To be released.
     redirects, and the document body as one operation.  Pass a `timeout` value
     in milliseconds to allow more time, or `null` to disable the limit; a
     timed-out lookup returns `undefined`.
+    An optional `signal` can cancel the lookup, even with `timeout: null`.
     [[GHSA-64hq-2hgr-q4pm]]
 
 [mastodon/mastodon\#41640]: https://github.com/mastodon/mastodon/issues/41640

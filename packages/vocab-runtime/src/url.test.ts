@@ -1,6 +1,7 @@
 import { deepStrictEqual, ok, rejects, strictEqual, throws } from "node:assert";
 import { test } from "node:test";
 import {
+  createBoundedLookup,
   expandIPv6Address,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
@@ -8,6 +9,87 @@ import {
   validateLookupAddresses,
   validatePublicUrl,
 } from "./url.ts";
+
+function deferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+  reject: (reason: unknown) => void;
+} {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+
+const publicAddress = [{ address: "93.184.215.14", family: 4 }];
+
+test("bounded DNS lookup aborts queued callers without starting work", async () => {
+  const first = deferred<readonly { address: string; family: number }[]>();
+  const calls: string[] = [];
+  const lookup = createBoundedLookup((hostname) => {
+    calls.push(hostname);
+    return hostname === "first.example"
+      ? first.promise
+      : Promise.resolve(publicAddress);
+  });
+  const running = lookup("first.example");
+  await Promise.resolve();
+  const controller = new AbortController();
+  const queued = lookup("second.example", controller.signal);
+  await Promise.resolve();
+  deepStrictEqual(calls, ["first.example"]);
+  const reason = new Error("No longer needed");
+  controller.abort(reason);
+  await rejects(queued, (error) => error === reason);
+  first.resolve(publicAddress);
+  deepStrictEqual(await running, publicAddress);
+  deepStrictEqual(await lookup("third.example"), publicAddress);
+  deepStrictEqual(calls, ["first.example", "third.example"]);
+});
+
+test("bounded DNS lookup holds its slot until an aborted lookup settles", async () => {
+  const first = deferred<readonly { address: string; family: number }[]>();
+  const calls: string[] = [];
+  const lookup = createBoundedLookup((hostname) => {
+    calls.push(hostname);
+    return hostname === "first.example"
+      ? first.promise
+      : Promise.resolve(publicAddress);
+  });
+  const controller = new AbortController();
+  const running = lookup("first.example", controller.signal);
+  await Promise.resolve();
+  const queued = lookup("second.example");
+  const reason = new Error("Timed out");
+  controller.abort(reason);
+  await rejects(running, (error) => error === reason);
+  deepStrictEqual(calls, ["first.example"]);
+  first.resolve(publicAddress);
+  deepStrictEqual(await queued, publicAddress);
+  deepStrictEqual(calls, ["first.example", "second.example"]);
+});
+
+test("bounded DNS lookup releases its slot after a lookup error", async () => {
+  const first = deferred<readonly { address: string; family: number }[]>();
+  const calls: string[] = [];
+  const lookup = createBoundedLookup((hostname) => {
+    calls.push(hostname);
+    return hostname === "first.example"
+      ? first.promise
+      : Promise.resolve(publicAddress);
+  });
+  const running = lookup("first.example");
+  await Promise.resolve();
+  const queued = lookup("second.example");
+  const reason = new Error("DNS failed");
+  first.reject(reason);
+  await rejects(running, (error) => error === reason);
+  deepStrictEqual(await queued, publicAddress);
+  deepStrictEqual(calls, ["first.example", "second.example"]);
+});
 
 test("UrlError reason is independent of its cause", () => {
   const cause = new Error("Underlying failure");
