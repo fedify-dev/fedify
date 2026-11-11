@@ -496,6 +496,7 @@ describe("WorkersD1KvStore", () => {
     expect(expired.filter((r) => r).length).toBe(1);
   });
 
+  // This test processes 2,500 rows, so it needs more than Vitest's 5 s default.
   it("list() fetches up to 1,000 entries per query", async () => {
     const spy = new D1Spy(env.D1);
     const store = new WorkersD1KvStore(spy);
@@ -533,7 +534,7 @@ describe("WorkersD1KvStore", () => {
     before = spy.queries.length;
     expect((await collect(store.list())).length).toBe(2000);
     expect(spy.queries.length - before).toBe(3);
-  });
+  }, 15_000);
 
   it("list() limits the size of each query result", async () => {
     const spy = new D1Spy(env.D1);
