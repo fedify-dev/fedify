@@ -568,6 +568,47 @@ describe("ancestor collection discovery", () => {
     deepStrictEqual(context.requests, [parentId.href, contextId.href]);
   });
 
+  test("failed parses preserve an identical embedded target's verifier", async () => {
+    const document = {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/fep/171b",
+      ],
+      type: "Note",
+      id: parentId.href,
+      contextHistory: {
+        type: "OrderedCollection",
+        id: "ap+ef61://did:key:z6Mkabc/history",
+        orderedItems: [{ type: "Note", id: sibling.id!.href }],
+      },
+    };
+    const embedded = await Note.fromJsonLd(document, {
+      verifyPortableObject: () => Promise.resolve({ verified: false }),
+    });
+    const source = (await Note.fromJsonLd(document)).deepClone();
+    let contextLoads = 0;
+    const results = await collect(
+      {
+        documentLoader: (iri) =>
+          Promise.resolve(iri.href === parentId.href ? source : null),
+      },
+      new Note(
+        { replyTargets: [parentId, embedded] },
+        {
+          // Only the fetched document needs parsing; the embedded target
+          // is already typed and must retain its own verifier.
+          contextLoader: () => {
+            contextLoads++;
+            throw new Error("Context unavailable");
+          },
+        },
+      ),
+      { contextDiscovery: "ancestors", contextSource: "history-first" },
+    );
+    ok(contextLoads > 0);
+    deepStrictEqual(results, []);
+  });
+
   test("loaded ancestor history hydration stays local to each backfill call", async () => {
     const postId = new URL("https://example.com/post");
     const parent = new Note({

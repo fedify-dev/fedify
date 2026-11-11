@@ -565,7 +565,20 @@ async function* getReplyTargets(
     | IntervalConfigurationError
     | undefined;
   const loadedObjects = new Map<string, APObject>();
+  const embeddedTargets = new WeakSet<APObject | Link>();
   try {
+    if (budget.discovery != null) {
+      // A suppressed parse failure does not yield an iteration to clear its
+      // loaded source. Identify existing targets before fetching so identical
+      // embedded or cached objects cannot inherit that failed source's defaults.
+      for await (const target of object.getReplyTargets({
+        dereference: false,
+        crossOrigin: "trust",
+      })) {
+        budget.signal?.throwIfAborted();
+        embeddedTargets.add(target);
+      }
+    }
     for await (const target of object.getReplyTargets({
       // Skip vocabulary-level failures per target rather than closing the
       // iterator before its remaining reply targets can be explored.
@@ -607,7 +620,11 @@ async function* getReplyTargets(
       // Keep it across strategy passes, including targets cached by reply-tree.
       // Match documents rather than IDs to support anonymous targets and avoid
       // substituting failed loads for embedded siblings.
-      if (loadedObjects.size > 0 && target instanceof APObject) {
+      if (
+        loadedObjects.size > 0 &&
+        target instanceof APObject &&
+        !embeddedTargets.has(target)
+      ) {
         const source = loadedObjects.get(
           JSON.stringify(await target.toJsonLd()),
         );
