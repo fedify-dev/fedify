@@ -9,8 +9,9 @@ links:
     signature nonces, need strong consistency, which Workers KV does not
     provide.  `WorkersD1KvStore` is strongly consistent and supports `cas()`,
     so features that need atomic updates no longer fall back to non-atomic
-    code paths.  It is now the recommended `KvStore` for Cloudflare Workers;
-    consider migrating from `WorkersKvStore`.
+    code paths or become unavailable, as forwarding to FEP-ef61 portable
+    inboxes does with Workers KV.  It is now the recommended `KvStore` for
+    Cloudflare Workers; consider migrating from `WorkersKvStore`.
     [[#1135], [#1360] by Beiyan Yunyi]
 
     Pass the `D1Database` binding itself, since D1 sessions can read stale

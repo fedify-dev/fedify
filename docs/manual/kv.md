@@ -627,8 +627,10 @@ CREATE TABLE IF NOT EXISTS fedify_kv (
 CREATE INDEX IF NOT EXISTS idx_fedify_kv_expires ON fedify_kv (expires);
 ~~~~
 
-Expired entries are never returned.  Each write also purges a bounded number
-of expired entries from the table, so the table does not grow without limit.
+Expired entries are never returned.  Every `~KvStore.set()` and every
+`~KvStore.cas()` that writes also purges up to 100 expired entries from the
+table, so expired entries do not pile up while the store is in use.  Entries
+set without a TTL never expire and stay until they are deleted.
 
 > [!WARNING]
 > Pass the `D1Database` binding itself (e.g., `env.DB`) to get strongly
@@ -687,8 +689,9 @@ persistent storage with fast reads for Cloudflare Workers environments.
 However, Workers KV is tuned for read-heavy workloads and is eventually
 consistent, while Fedify writes to its key–value store about as often as it
 reads from it.  It also does not support `~KvStore.cas()`, so some features
-fall back to non-atomic code paths.  For new Cloudflare Workers deployments,
-prefer [`WorkersD1KvStore`].
+fall back to non-atomic code paths, and others, such as forwarding activities
+to the other gateways of [FEP-ef61] portable inboxes, are unavailable.  For new
+Cloudflare Workers deployments, prefer [`WorkersD1KvStore`].
 
 Best for
 :   Existing Cloudflare Workers applications that already use Workers KV.
@@ -730,6 +733,7 @@ export default {
 > section](./federation.md#builder-pattern-for-structuring) for details.
 
 [`WorkersKvStore`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersKvStore
+[FEP-ef61]: https://w3id.org/fep/ef61
 
 ### `NetlifyBlobsKvStore`
 

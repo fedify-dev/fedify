@@ -31,8 +31,8 @@ const delay = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 interface D1SpyOptions {
-  /** Milliseconds to delay a query or batch before sending it. */
-  readonly delay?: (queries: readonly string[]) => number;
+  /** A hook that runs, and can hold, a query or batch before sending it. */
+  readonly gate?: (queries: readonly string[]) => Promise<void> | void;
   /** Whether to fail a batch instead of sending it, by its statements. */
   readonly failBatch?: (queries: readonly string[]) => boolean;
 }
@@ -86,7 +86,7 @@ class D1Spy implements WorkersD1DatabaseLike {
 
   async send(queries: string[]): Promise<void> {
     this.queries.push(...queries);
-    await delay(this.options.delay?.(queries) ?? 0);
+    await this.options.gate?.(queries);
   }
 
   async batch(
@@ -419,21 +419,29 @@ describe("WorkersD1KvStore", () => {
   it("cas() does not match an entry that expires while in flight", async () => {
     // Regression test: the expiration must be checked against the time the
     // statement runs, not the time the Worker sent it.
+    const key = ["in-flight"] as const;
+    const store = new WorkersD1KvStore(env.D1);
+    let liveAtGate: boolean | undefined;
+    let absentObserved: boolean | undefined;
     const delayed = new WorkersD1KvStore(
       new D1Spy(env.D1, {
-        delay: (queries) =>
-          queries.some((q) => q.trimStart().startsWith("UPDATE")) ? 600 : 0,
+        async gate(queries) {
+          if (!queries.some((q) => q.trimStart().startsWith("UPDATE"))) return;
+          // The entry must still be live when the CAS is sent:
+          liveAtGate = (await store.get(key)) !== undefined;
+          // Hold the CAS until D1's clock passes the expiration, and let
+          // another reader observe the entry as absent meanwhile:
+          while ((await store.get(key)) !== undefined) await delay(50);
+          absentObserved = await store.cas(key, undefined, undefined);
+        },
       }),
     );
-    const store = new WorkersD1KvStore(env.D1);
     await store.initialize();
-    await insertRaw(["in-flight"], "old", Date.now() + 300);
-    const swap = delayed.cas(["in-flight"], "old", "new");
-    await delay(400);
-    expect(await store.get(["in-flight"])).toBeUndefined();
-    expect(await store.cas(["in-flight"], undefined, undefined)).toBe(true);
-    expect(await swap).toBe(false);
-    expect(await store.get(["in-flight"])).toBeUndefined();
+    await insertRaw(key, "old", Date.now() + 500);
+    expect(await delayed.cas(key, "old", "new")).toBe(false);
+    expect(liveAtGate).toBe(true);
+    expect(absentObserved).toBe(true);
+    expect(await store.get(key)).toBeUndefined();
   });
 
   it("cas() with an explicit TTL on update", async () => {
@@ -488,23 +496,58 @@ describe("WorkersD1KvStore", () => {
     expect(expired.filter((r) => r).length).toBe(1);
   });
 
-  it("list() fetches entries in bounded batches", async () => {
+  it("list() fetches up to 1,000 entries per query", async () => {
     const spy = new D1Spy(env.D1);
     const store = new WorkersD1KvStore(spy);
+    await store.initialize();
     const keys = Array.from(
-      { length: 45 },
-      (_, i) => ["paged", `${i}`.padStart(2, "0")] as const,
+      { length: 2500 },
+      (_, i) => ["paged", `${i}`.padStart(4, "0")] as const,
     );
-    for (const key of keys) await store.set(key, key[1]);
+    for (let i = 0; i < keys.length; i += 500) {
+      await env.D1.batch(
+        keys.slice(i, i + 500).map((key) =>
+          env.D1.prepare(
+            "INSERT INTO fedify_kv (key, value, expires) VALUES (?, ?, NULL)",
+          ).bind(JSON.stringify(key), JSON.stringify(key[1])),
+        ),
+      );
+    }
     await store.set(["paged-other"], "other");
     await store.set(["other"], "other");
 
-    const before = spy.queries.length;
+    let before = spy.queries.length;
     const entries = await collect(store.list(["paged"]));
     expect(entries).toEqual(keys.map((key) => ({ key, value: key[1] })));
-    // 45 entries in batches of 20:
+    // 2,500 entries in pages of 1,000, without a query to find the end:
     expect(spy.queries.length - before).toBe(3);
-    expect((await collect(store.list())).length).toBe(47);
+
+    before = spy.queries.length;
+    expect((await collect(store.list())).length).toBe(2502);
+    expect(spy.queries.length - before).toBe(3);
+
+    // A page that ends exactly at the row limit needs one more query:
+    await store.delete(["paged-other"]);
+    await store.delete(["other"]);
+    for (const key of keys.slice(2000)) await store.delete(key);
+    before = spy.queries.length;
+    expect((await collect(store.list())).length).toBe(2000);
+    expect(spy.queries.length - before).toBe(3);
+  });
+
+  it("list() limits the size of each query result", async () => {
+    const spy = new D1Spy(env.D1);
+    const store = new WorkersD1KvStore(spy);
+    // About 1.9 MB each, so 8 MiB fits five of them per query:
+    const value = "x".repeat(1_900_000);
+    const keys = Array.from({ length: 6 }, (_, i) => ["large", `${i}`] as const);
+    for (const key of keys) await store.set(key, value);
+
+    const before = spy.queries.length;
+    const entries = await collect(store.list(["large"]));
+    expect(entries.map((e) => e.key)).toEqual(keys);
+    expect(entries.every((e) => e.value === value)).toBe(true);
+    expect(spy.queries.length - before).toBe(2);
   });
 
   it("list() handles escaped, Unicode, and numeric-looking prefixes", async () => {

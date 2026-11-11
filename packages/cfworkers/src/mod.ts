@@ -283,9 +283,12 @@ export interface WorkersD1DatabaseLike {
  */
 export interface WorkersD1KvStoreOptions {
   /**
-   * The table name to use for the key–value store.
-   * Only letters, digits, and underscores are allowed, and names starting
-   * with `sqlite_` or `_cf_` are reserved by SQLite and D1.
+   * The table name to use for the key–value store.  It must be 1 to 64
+   * characters long, consist of ASCII letters, digits, and underscores, and
+   * not start with a digit.  Names starting with `sqlite_` or `_cf_`
+   * (case-insensitively) are reserved by SQLite and D1, so they are rejected
+   * too.  The store also creates an index named `idx_<tableName>_expires`,
+   * so no other table or index may have that name.
    * `"fedify_kv"` by default.
    * @default `"fedify_kv"`
    */
@@ -313,10 +316,18 @@ const D1_NOW = "CAST(unixepoch('subsec') * 1000 AS INTEGER)";
 
 /**
  * The maximum number of rows to fetch per query in
- * {@link WorkersD1KvStore.list}.  D1 rows can be up to 2 MB each, so this
- * keeps a page well under D1's 50 MB limit on query results.
+ * {@link WorkersD1KvStore.list}.  Large pages keep ordinary scans within
+ * D1's limit on queries per Worker invocation (50 on the Free plan).
  */
-const D1_LIST_BATCH_SIZE = 20;
+const D1_LIST_PAGE_ROWS = 1000;
+
+/**
+ * The approximate maximum number of bytes of keys and values to fetch per
+ * query in {@link WorkersD1KvStore.list}.  A page stops at the first row that
+ * starts beyond this budget, so with D1 rows of up to 2 MB, a page stays well
+ * under D1's 50 MB limit on query results.
+ */
+const D1_LIST_PAGE_BYTES = 8 * 1024 * 1024;
 
 /**
  * The maximum number of expired rows to delete per write.
@@ -381,7 +392,8 @@ export class WorkersD1KvStore implements KvStore {
    * @param db The Cloudflare D1 binding.  A D1 session is also accepted, but
    *           it only provides sequential consistency.
    * @param options Options for the key–value store.
-   * @throws {TypeError} If the table name is invalid or reserved.
+   * @throws {TypeError} If the table name does not follow the rules
+   *                     described in {@link WorkersD1KvStoreOptions.tableName}.
    */
   constructor(
     db: WorkersD1DatabaseLike,
@@ -607,24 +619,49 @@ export class WorkersD1KvStore implements KvStore {
       cursor = JSON.stringify(prefix).slice(0, -1);
       upperBound = cursor.slice(0, -1) + "#";
     }
+    // Each page takes up to D1_LIST_PAGE_ROWS rows, but stops at the first
+    // row that starts beyond D1_LIST_PAGE_BYTES.  The sizes are computed
+    // without buffering the values, which are then fetched by key.  Every row
+    // carries the number of rows the page would have had without the byte
+    // budget, which tells whether the range is exhausted:
     const statement = this.#db.prepare(`
-      SELECT key, value FROM "${this.#tableName}"
-      WHERE key > ?1 AND key < ?2
-        AND (expires IS NULL OR expires > ${D1_NOW})
-      ORDER BY key
-      LIMIT ${D1_LIST_BATCH_SIZE}
+      WITH page AS (
+        SELECT key, octet_length(key) + octet_length(value) AS size
+        FROM "${this.#tableName}"
+        WHERE key > ?1 AND key < ?2
+          AND (expires IS NULL OR expires > ${D1_NOW})
+        ORDER BY key
+        LIMIT ${D1_LIST_PAGE_ROWS}
+      ), sized AS (
+        SELECT
+          key,
+          size,
+          SUM(size) OVER (ORDER BY key ROWS UNBOUNDED PRECEDING) AS total,
+          COUNT(*) OVER () AS page_rows
+        FROM page
+      )
+      SELECT t.key, t.value, sized.page_rows
+      FROM sized JOIN "${this.#tableName}" AS t ON t.key = sized.key
+      WHERE sized.total - sized.size < ${D1_LIST_PAGE_BYTES}
+      ORDER BY t.key
     `);
     while (true) {
       const { results } = await statement
         .bind(cursor, upperBound)
-        .all<{ key: string; value: string }>();
+        .all<{ key: string; value: string; page_rows: number }>();
       for (const row of results) {
         yield {
           key: JSON.parse(row.key) as KvKey,
           value: JSON.parse(row.value),
         };
       }
-      if (results.length < D1_LIST_BATCH_SIZE) break;
+      if (
+        results.length < 1 ||
+        (results[0].page_rows < D1_LIST_PAGE_ROWS &&
+          results.length >= results[0].page_rows)
+      ) {
+        break;
+      }
       cursor = results[results.length - 1].key;
     }
   }
