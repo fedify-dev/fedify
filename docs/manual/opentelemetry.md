@@ -1481,4 +1481,6 @@ The following `KvStore` implementations support the required operations:
  -  `PostgresKvStore` from *@fedify/postgres* (supports `list()`)
  -  `SqliteKvStore` from *@fedify/sqlite* (supports `list()`)
  -  `DenoKvStore` from *@fedify/denokv* (supports both `list()` and `cas()`)
+ -  `WorkersD1KvStore` from *@fedify/cfworkers* (supports both `list()` and
+    `cas()`)
  -  `WorkersKvStore` from *@fedify/cfworkers* (supports `list()`)

@@ -39,8 +39,9 @@ const DEPRECATION_MESSAGE =
 const STORE_DEPRECATION_MESSAGE =
   "The `DenoKvStore` class from `@fedify/denokv` is deprecated and will be " +
   "removed in Fedify 3.0.0.  Use `SqliteKvStore` from `@fedify/sqlite` for " +
-  "local or single-node deployments, or `PostgresKvStore`, `RedisKvStore`, " +
-  "`MysqlKvStore`, or `WorkersKvStore` for production.  " +
+  "local or single-node deployments, `PostgresKvStore`, `RedisKvStore`, " +
+  "or `MysqlKvStore` for production, or `WorkersD1KvStore` from " +
+  "`@fedify/cfworkers` on Cloudflare Workers.  " +
   DEPRECATION_MESSAGE;
 
 const QUEUE_DEPRECATION_MESSAGE =
@@ -59,9 +60,10 @@ const QUEUE_DEPRECATION_MESSAGE =
  *             down.  Fedify keeps supporting `@fedify/denokv` throughout the
  *             2.x series, but this class will be removed in Fedify 3.0.0.
  *             Use `SqliteKvStore` from `@fedify/sqlite` for local or
- *             single-node deployments, or `PostgresKvStore`,
- *             `RedisKvStore`, `MysqlKvStore`, or `WorkersKvStore` for
- *             production deployments.  See
+ *             single-node deployments, `PostgresKvStore`, `RedisKvStore`,
+ *             or `MysqlKvStore` for production deployments, or
+ *             `WorkersD1KvStore` from `@fedify/cfworkers` on Cloudflare
+ *             Workers.  See
  *             <https://github.com/fedify-dev/fedify/issues/1336> for details.
  */
 export class DenoKvStore implements KvStore {
