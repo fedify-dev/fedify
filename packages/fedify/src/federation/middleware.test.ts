@@ -40,6 +40,7 @@ import {
 } from "../sig/ld.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import { signObject, verifyObject } from "../sig/proof.ts";
+import { ldSignatureWithoutCreated } from "../testing/ld-signature.ts";
 import {
   ed25519Multikey,
   ed25519PrivateKey,
@@ -2814,6 +2815,60 @@ test("ContextImpl.sendActivity() reports automatic queue startup failures", asyn
       await reset();
     }
   });
+});
+
+test("queued Linked Data signatures without created use normalization contexts", async (t) => {
+  for (const legacy of [false, true]) {
+    await t.step(
+      legacy ? "legacy compacted payload" : "verified normalized cache",
+      async () => {
+        const normalized = await compactJsonLd(
+          ldSignatureWithoutCreated,
+          mockDocumentLoader,
+        );
+        const raw = legacy
+          ? normalized
+          : structuredClone(ldSignatureWithoutCreated);
+        const federation = new FederationImpl<void>({
+          kv: new MemoryKvStore(),
+          contextLoaderFactory: () => async (url) => {
+            if (
+              url === "https://www.w3.org/ns/activitystreams" ||
+              url === "https://w3id.org/identity/v1"
+            ) return await mockDocumentLoader(url);
+            throw new Error(`Unexpected context: ${url}`);
+          },
+        });
+        let deliveries = 0;
+        let receivedRaw: unknown;
+        federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+          .on(Create, (ctx, activity) => {
+            deliveries++;
+            receivedRaw = (ctx as unknown as { activity: unknown }).activity;
+            assertEquals(activity.id?.href, ldSignatureWithoutCreated.id);
+          });
+        await federation.processQueuedTask(
+          undefined,
+          {
+            type: "inbox",
+            id: crypto.randomUUID(),
+            baseUrl: "https://example.com",
+            activity: raw,
+            ...(legacy ? {} : {
+              normalizedActivity: normalized,
+              ldSignatureVerified: true,
+            }),
+            started: new Date().toISOString(),
+            attempt: 0,
+            identifier: null,
+            traceContext: {},
+          } satisfies InboxMessage,
+        );
+        assertEquals(deliveries, 1);
+        assertEquals(receivedRaw, raw);
+      },
+    );
+  }
 });
 
 test("FederationImpl.processQueuedTask()", async (t) => {
@@ -7297,6 +7352,78 @@ test("InboxContextImpl.forwardActivity()", async (t) => {
   });
 
   fetchMock.hardReset();
+});
+
+test("InboxContextImpl.forwardActivity() without created", async (t) => {
+  for (const immediate of [true, false]) {
+    await t.step(
+      immediate ? "immediate delivery" : "queued delivery",
+      async () => {
+        const delivered: unknown[] = [];
+        const queued: Message[] = [];
+        fetchMock.spyGlobal();
+        fetchMock.post("https://example.com/inbox", async (call) => {
+          delivered.push(await call.request!.json());
+          return new Response(null, { status: 202 });
+        });
+        try {
+          const federation = new FederationImpl<void>({
+            kv: new MemoryKvStore(),
+            allowPrivateAddress: true,
+            manuallyStartQueue: true,
+            queue: {
+              outbox: {
+                enqueue(message) {
+                  queued.push(message);
+                  return Promise.resolve();
+                },
+                async listen() {},
+              },
+            },
+          });
+          const activity = structuredClone(ldSignatureWithoutCreated);
+          assert(
+            await verifyJsonLd(activity, {
+              documentLoader: mockDocumentLoader,
+              contextLoader: mockDocumentLoader,
+            }),
+          );
+          const ctx = new InboxContextImpl(
+            null,
+            activity,
+            activity.id,
+            "https://www.w3.org/ns/activitystreams#Create",
+            {
+              data: undefined,
+              federation,
+              url: new URL("https://example.com/"),
+              documentLoader: mockDocumentLoader,
+              contextLoader: mockDocumentLoader,
+            },
+          );
+          await ctx.forwardActivity(
+            [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+            {
+              id: new URL("https://example.com/recipient"),
+              inboxId: new URL("https://example.com/inbox"),
+            },
+            { skipIfUnsigned: true, immediate },
+          );
+          if (immediate) {
+            assertEquals(delivered, [activity]);
+            assertEquals(queued, []);
+          } else {
+            assertEquals(delivered, []);
+            assertEquals(queued.length, 1);
+            assertEquals(queued[0].type, "outbox");
+            assertEquals((queued[0] as OutboxMessage).activity, activity);
+          }
+        } finally {
+          fetchMock.hardReset();
+        }
+      },
+    );
+  }
 });
 
 test("KvSpecDeterminer", async (t) => {

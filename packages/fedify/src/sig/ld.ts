@@ -952,6 +952,59 @@ interface SignedJsonLd {
   signature: Signature;
 }
 
+interface VerifiableSignature {
+  type: "RsaSignature2017";
+  creator: string;
+  created?: string;
+  signatureValue: string;
+}
+
+/** @internal */
+export function hasVerifiableSignature(
+  jsonLd: unknown,
+): jsonLd is { signature: VerifiableSignature } {
+  if (
+    typeof jsonLd !== "object" || jsonLd == null || Array.isArray(jsonLd) ||
+    !("signature" in jsonLd)
+  ) return false;
+  const signature = jsonLd.signature;
+  if (
+    typeof signature !== "object" || signature == null ||
+    Array.isArray(signature)
+  ) return false;
+  return "type" in signature && signature.type === "RsaSignature2017" &&
+    "creator" in signature && typeof signature.creator === "string" &&
+    (!("created" in signature) || typeof signature.created === "string") &&
+    "signatureValue" in signature &&
+    typeof signature.signatureValue === "string";
+}
+
+/** @internal */
+export function describeSignatureShape(jsonLd: unknown): {
+  signatureKind: string;
+  signatureProperties: string[];
+  signaturePropertyCount: number;
+} | null {
+  if (
+    typeof jsonLd !== "object" || jsonLd == null || !("signature" in jsonLd)
+  ) return null;
+  const signature = jsonLd.signature;
+  const properties = typeof signature === "object" && signature != null
+    ? globalThis.Object.keys(signature)
+    : [];
+  return {
+    signatureKind: signature == null
+      ? String(signature)
+      : Array.isArray(signature)
+      ? "array"
+      : typeof signature,
+    signatureProperties: properties.sort().slice(0, 20).map((p) =>
+      p.slice(0, 80)
+    ),
+    signaturePropertyCount: properties.length,
+  };
+}
+
 /**
  * Checks if the given JSON-LD document has a Linked Data Signature.
  * @param jsonLd The JSON-LD document to check.
@@ -1029,7 +1082,17 @@ export async function verifySignature(
   jsonLd: unknown,
   options: VerifySignatureOptions = {},
 ): Promise<CryptographicKey | null> {
-  if (!hasSignature(jsonLd)) return null;
+  if (!hasVerifiableSignature(jsonLd)) {
+    const shape = describeSignatureShape(jsonLd);
+    if (shape != null) {
+      logger.debug(
+        "Linked Data Signature has an unsupported shape: {signatureKind}; " +
+          "properties: {signatureProperties}.",
+        shape,
+      );
+    }
+    return null;
+  }
   const sig = jsonLd.signature;
   let signature: Uint8Array;
   try {
@@ -1041,8 +1104,15 @@ export async function verifySignature(
     );
     return null;
   }
+  let creator: URL;
+  try {
+    creator = new URL(sig.creator);
+  } catch {
+    logger.debug("Failed to verify; signature creator is not a valid URL.");
+    return null;
+  }
   const { key, cached } = await fetchKey(
-    new URL(sig.creator),
+    creator,
     CryptographicKey,
     options,
   );
@@ -1099,7 +1169,7 @@ export async function verifySignature(
       { keyId: sig.creator, ...sig },
     );
     const { key } = await fetchKey(
-      new URL(sig.creator),
+      creator,
       CryptographicKey,
       {
         ...options,
@@ -1171,14 +1241,15 @@ async function verifyJsonLdInternal(
     "ld_signatures.verify",
     async (span) => {
       try {
-        const verificationOptions = hasSignature(jsonLd)
+        const hasLdSignature = hasVerifiableSignature(jsonLd);
+        const verificationOptions = hasLdSignature
           ? {
             ...options,
             contextLoader: getNormalizationContextLoader(options.contextLoader),
           }
           : options;
         const compacted = compact
-          ? hasSignature(jsonLd)
+          ? hasLdSignature
             ? await compactJsonLd(jsonLd, options.contextLoader)
             : jsonLd
           : jsonLd;

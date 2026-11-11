@@ -66,7 +66,7 @@ import {
   compactJsonLd,
   detachSignature,
   getNormalizationContextLoader,
-  hasSignature,
+  hasVerifiableSignature,
   InvalidContextReferenceError,
   isClearlyMalformedContextReference,
   isInvalidUrlTypeError,
@@ -1058,7 +1058,7 @@ export class FederationImpl<TContextData>
         let parseInput: unknown = undefined;
         let parseContextLoader = context.contextLoader;
         try {
-          const hasSignatureField = hasSignature(message.activity);
+          const hasSignatureField = hasVerifiableSignature(message.activity);
           const shouldParseFromNormalizedSignedPayload =
             message.ldSignatureVerified === true ||
             message.normalizedActivity != null ||
@@ -3406,7 +3406,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
     } else {
       keys = [forwarder];
     }
-    if (!hasSignature(this.activity)) {
+    if (!hasVerifiableSignature(this.activity)) {
       let hasProof: boolean;
       try {
         const activity = await Activity.fromJsonLd(this.activity, this);

@@ -28,9 +28,10 @@ import metadata from "../../deno.json" with { type: "json" };
 import { verifyRequest } from "../sig/http.ts";
 import {
   compactJsonLd,
+  describeSignatureShape,
   detachSignature,
   getNormalizationContextLoader,
-  hasSignature,
+  hasVerifiableSignature,
   InvalidContextReferenceError,
   isClearlyMalformedContextReference,
   isInvalidUrlTypeError,
@@ -702,7 +703,17 @@ async function handleInboxInternal<TContextData>(
   }
   const keyCache = new KvKeyCache(kv, kvPrefixes.publicKey, ctx);
   const jsonWithoutSig = detachSignature(json);
-  const hasLdSignature = hasSignature(json);
+  const hasLdSignature = hasVerifiableSignature(json);
+  if (!hasLdSignature) {
+    const shape = describeSignatureShape(json);
+    if (shape != null) {
+      logger.debug(
+        "Linked Data Signature has an unsupported shape: {signatureKind}; " +
+          "properties: {signatureProperties}.",
+        shape,
+      );
+    }
+  }
   const canAttemptAlternateAuthAfterLdSignatureFailure =
     skipSignatureVerification ||
     hasHttpSignatureHeaders(request) ||
