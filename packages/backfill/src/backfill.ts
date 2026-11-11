@@ -8,7 +8,7 @@ import {
   OrderedCollection,
   OrderedCollectionPage,
 } from "@fedify/vocab";
-import { fromCompatibleEf61Id } from "@fedify/vocab-runtime";
+import { fromCompatibleEf61Id, parseIri } from "@fedify/vocab-runtime";
 
 import type {
   BackfillContext,
@@ -827,7 +827,7 @@ async function loadCollectionItemDocument(
 ) {
   let object: APObject | null;
   try {
-    const iri = new URL(url);
+    const iri = parseIri(url);
     if (skipIds?.has(iri.href)) {
       if (!skipUnavailable)
         throw new Error(`Reply target already visited: ${url}`);

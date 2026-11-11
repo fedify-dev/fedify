@@ -13,6 +13,7 @@ import {
   OrderedCollectionPage,
   Update,
 } from "@fedify/vocab";
+import { parseIri, type PortableObjectVerifier } from "@fedify/vocab-runtime";
 
 async function collect(
   context: BackfillContext,
@@ -21,6 +22,122 @@ async function collect(
 ) {
   return await Array.fromAsync(backfill(context, note, options));
 }
+
+describe("portable ancestor collection discovery", () => {
+  for (const scheme of ["ap", "ap+ef61"]) {
+    test(`discovers a collection through verified ${scheme} ancestors`, async () => {
+      const prefix = `${scheme}://did:key:z6Mkabc`;
+      const parentId = parseIri(`${prefix}/parent`);
+      const rootId = parseIri(`${prefix}/root`);
+      const contextId = new URL("https://example.com/context");
+      const siblingId = new URL("https://example.com/sibling");
+      let verifications = 0;
+      const verifyPortableObject: PortableObjectVerifier = () => {
+        verifications++;
+        return Promise.resolve({ verified: true });
+      };
+      const seed = await Note.fromJsonLd(
+        {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Note",
+          id: `${prefix}/seed`,
+          inReplyTo: `${prefix}/parent`,
+        },
+        { verifyPortableObject },
+      );
+      const documents = new Map<string, Note | Collection>([
+        [
+          parentId.href,
+          new Note(
+            { id: parentId, replyTarget: rootId },
+            { verifyPortableObject },
+          ),
+        ],
+        [
+          rootId.href,
+          new Note(
+            { id: rootId, contexts: [contextId] },
+            { verifyPortableObject },
+          ),
+        ],
+        [contextId.href, new Collection({ items: [siblingId] })],
+        [siblingId.href, new Note({ id: siblingId })],
+      ]);
+      const requests: string[] = [];
+      const results = await collect(
+        {
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            return Promise.resolve(documents.get(iri.href) ?? null);
+          },
+        },
+        seed,
+        { contextDiscovery: "ancestors", maxDepth: 2, maxRequests: 4 },
+      );
+      deepStrictEqual(
+        results.map(({ id }) => id),
+        [siblingId],
+      );
+      strictEqual(results[0].origin, "collection");
+      strictEqual(results[0].strategy, "context-auto");
+      strictEqual(results[0].depth, 0);
+      strictEqual(verifications, 2);
+      deepStrictEqual(requests, [
+        parentId.href,
+        rootId.href,
+        contextId.href,
+        siblingId.href,
+      ]);
+    });
+  }
+});
+
+describe("anonymous ancestor cycle discovery", () => {
+  for (const cycleLength of [1, 2]) {
+    test(`stops a ${cycleLength}-node cycle after one failed context lookup per ancestor`, async () => {
+      const firstId = new URL("https://example.com/ancestor-a");
+      const secondId = new URL("https://example.com/ancestor-b");
+      const contextId = new URL("https://example.com/context");
+      const seed = new Note({ replyTarget: firstId });
+      const original = await seed.toJsonLd();
+      const targets = new Map([
+        [firstId.href, cycleLength === 1 ? firstId : secondId],
+        [secondId.href, firstId],
+      ]);
+      const expectedRequests =
+        cycleLength === 1
+          ? [firstId.href, contextId.href]
+          : [firstId.href, contextId.href, secondId.href, contextId.href];
+
+      for (let call = 0; call < 2; call++) {
+        const requests: string[] = [];
+        const results = await collect(
+          {
+            documentLoader: (iri) => {
+              requests.push(iri.href);
+              const replyTarget = targets.get(iri.href);
+              if (replyTarget != null) {
+                return Promise.resolve(
+                  new Note({
+                    replyTarget,
+                    contexts: [contextId],
+                  }),
+                );
+              }
+              strictEqual(iri.href, contextId.href);
+              return Promise.reject(new Error("context unavailable"));
+            },
+          },
+          seed,
+          { contextDiscovery: "ancestors", maxDepth: 8 },
+        );
+        deepStrictEqual(results, []);
+        deepStrictEqual(requests, expectedRequests);
+        deepStrictEqual(await seed.toJsonLd(), original);
+      }
+    });
+  }
+});
 
 describe("ancestor collection discovery", () => {
   const seedId = new URL("https://example.com/seed");
