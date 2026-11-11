@@ -74,6 +74,14 @@ To be released.
     their property names.  Invalid creator URLs now fail verification without
     throwing an exception.  Outgoing signatures still include `created`.
     [[#1406], [#1413]]
+ -  Fixed singleton `attachment` values being serialized as objects in actor,
+    object, and collection responses, which caused Mastodon to ignore a single
+    profile field.  Served responses and newly generated activity deliveries
+    now preserve attachment arrays when the JSON-LD context permits it.
+    Documents containing existing proofs or Linked Data signatures are left
+    unchanged by the compatibility rewrite.  New normalized deliveries are
+    signed over the same JSON used for queueing and transport.
+    [[#1421], [#1422], [mastodon/mastodon\#41640]]
  -  Fixed the fanout worker never starting when the `fanout` queue was the only
     configured queue.  `Federation.startQueue()` returned without calling
     `fanoutQueue.listen()`, so fanout messages were enqueued but never
@@ -82,6 +90,7 @@ To be released.
     configure only `queue: { fanout: ... }` no longer need to add an unused
     `inbox` or `outbox` queue to make fanout delivery work.  [[#1389], [#1392]]
 
+[mastodon/mastodon\#41640]: https://github.com/mastodon/mastodon/issues/41640
 [#554]: https://github.com/fedify-dev/fedify/issues/554
 [#664]: https://github.com/fedify-dev/fedify/issues/664
 [#1339]: https://github.com/fedify-dev/fedify/issues/1339
@@ -97,6 +106,8 @@ To be released.
 [#1406]: https://github.com/fedify-dev/fedify/issues/1406
 [#1411]: https://github.com/fedify-dev/fedify/pull/1411
 [#1413]: https://github.com/fedify-dev/fedify/pull/1413
+[#1421]: https://github.com/fedify-dev/fedify/issues/1421
+[#1422]: https://github.com/fedify-dev/fedify/pull/1422
 
 ### @fedify/next
 

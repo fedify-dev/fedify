@@ -50,6 +50,10 @@ import {
   ATTR_URL_FULL,
 } from "@opentelemetry/semantic-conventions";
 import metadata from "../../deno.json" with { type: "json" };
+import {
+  prepareActivityJsonLd,
+  signActivityJsonLd,
+} from "../compat/delivery-jsonld.ts";
 import { getDefaultActivityTransformers } from "../compat/transformers.ts";
 import type { ActivityTransformer } from "../compat/types.ts";
 import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
@@ -1405,23 +1409,39 @@ export class FederationImpl<TContextData>
       proofCreated = true;
       break;
     }
-    if (!proofCreated) {
-      for (const { keyId, privateKey } of keys) {
-        if (privateKey.algorithm.name === "Ed25519") {
-          activity = await signObject(activity, privateKey, keyId, {
-            contextLoader,
-            tracerProvider: this.tracerProvider,
-          });
-          proofCreated = true;
+    const prepared = !proofCreated && options.activityJsonLd == null
+      ? await prepareActivityJsonLd(activity, contextLoader)
+      : undefined;
+    let jsonLd: unknown;
+    if (prepared != null) {
+      const signingKeys = keys.filter(({ privateKey }) =>
+        privateKey.algorithm.name === "Ed25519"
+      );
+      const signed = await signActivityJsonLd(activity, prepared, signingKeys, {
+        tracerProvider: this.tracerProvider,
+      });
+      activity = signed.activity;
+      jsonLd = signed.jsonLd;
+      proofCreated = signingKeys.length > 0;
+    } else {
+      if (!proofCreated) {
+        for (const { keyId, privateKey } of keys) {
+          if (privateKey.algorithm.name === "Ed25519") {
+            activity = await signObject(activity, privateKey, keyId, {
+              contextLoader,
+              tracerProvider: this.tracerProvider,
+            });
+            proofCreated = true;
+          }
         }
       }
+      jsonLd = options.activityJsonLd != null
+        ? detachSignature(options.activityJsonLd)
+        : await activity.toJsonLd({
+          format: "compact",
+          contextLoader,
+        });
     }
-    let jsonLd = options.activityJsonLd != null
-      ? detachSignature(options.activityJsonLd)
-      : await activity.toJsonLd({
-        format: "compact",
-        contextLoader,
-      });
     if (rsaKey == null) {
       logger.warn(
         "No supported key found to create a Linked Data signature for " +
@@ -2750,20 +2770,42 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           activity = activity.clone({ proofs: [] });
         }
       }
-      let proofAdded = false;
-      for (const kp of actorKeyPairs) {
-        if (
-          kp.privateKey.algorithm.name !== "Ed25519" ||
-          kp.multikey.id == null
-        ) continue;
-        activity = await signObject(activity, kp.privateKey, kp.multikey.id, {
-          contextLoader,
-          tracerProvider: this.tracerProvider,
-        });
-        proofAdded = true;
+      const prepared = willSign
+        ? await prepareActivityJsonLd(activity, contextLoader)
+        : undefined;
+      if (prepared != null) {
+        // Every key signs the same normalized JSON before it enters fanout.
+        const signingKeys = actorKeyPairs.flatMap((kp) =>
+          kp.privateKey.algorithm.name === "Ed25519" && kp.multikey.id != null
+            ? [{ privateKey: kp.privateKey, keyId: kp.multikey.id }]
+            : []
+        );
+        const signed = await signActivityJsonLd(
+          activity,
+          prepared,
+          signingKeys,
+          {
+            tracerProvider: this.tracerProvider,
+          },
+        );
+        activity = signed.activity;
+        activityJsonLd = signed.jsonLd;
+      } else {
+        let proofAdded = false;
+        for (const kp of actorKeyPairs) {
+          if (
+            kp.privateKey.algorithm.name !== "Ed25519" ||
+            kp.multikey.id == null
+          ) continue;
+          activity = await signObject(activity, kp.privateKey, kp.multikey.id, {
+            contextLoader,
+            tracerProvider: this.tracerProvider,
+          });
+          proofAdded = true;
+        }
+        // The captured JSON-LD predates a new proof, if one was added.
+        if (proofAdded) activityJsonLd = undefined;
       }
-      // The captured JSON-LD predates a new proof, if one was added.
-      if (proofAdded) activityJsonLd = undefined;
     }
     const opts: SendActivityInternalOptions<TContextData> = {
       context: this,
