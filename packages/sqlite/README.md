@@ -1,15 +1,15 @@
 @fedify/sqlite: SQLite drivers for Fedify
 =========================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 
 This package provides a SQLite-based [`KvStore`] implementation for [Fedify].
 
-[JSR badge]: https://jsr.io/badges/@fedify/sqlite
-[JSR]: https://jsr.io/@fedify/sqlite
 [npm badge]: https://img.shields.io/npm/v/@fedify/sqlite?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/sqlite
+[JSR badge]: https://jsr.io/badges/@fedify/sqlite
+[JSR]: https://jsr.io/@fedify/sqlite
 [`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
 [Fedify]: https://fedify.dev/
 

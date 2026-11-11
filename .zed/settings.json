@@ -1,21 +1,10 @@
 {
-  "lsp": {
-    "deno": {
-      "settings": {
-        "deno": {
-          "enable": true,
-          "lint": false,
-          "unstable": true
-        }
-      }
-    }
-  },
   "ensure_final_newline_on_save": true,
   "format_on_save": "on",
   "formatter": "language_server",
   "languages": {
     "JSON": {
-      "language_servers": ["deno", "!biome"],
+      "language_servers": ["!deno", "!biome", "..."],
       "formatter": {
         "external": {
           "command": "node",
@@ -30,13 +19,7 @@
       }
     },
     "JavaScript": {
-      "language_servers": [
-        "deno",
-        "!typescript-language-server",
-        "!vtsls",
-        "!biome",
-        "..."
-      ],
+      "language_servers": ["!deno", "!biome", "..."],
       "formatter": {
         "external": {
           "command": "node",
@@ -66,13 +49,7 @@
       ]
     },
     "TypeScript": {
-      "language_servers": [
-        "deno",
-        "!typescript-language-server",
-        "!vtsls",
-        "!biome",
-        "..."
-      ],
+      "language_servers": ["!deno", "!biome", "..."],
       "formatter": {
         "external": {
           "command": "node",
@@ -87,13 +64,7 @@
       }
     },
     "TSX": {
-      "language_servers": [
-        "deno",
-        "!typescript-language-server",
-        "!vtsls",
-        "!biome",
-        "..."
-      ],
+      "language_servers": ["!deno", "!biome", "..."],
       "formatter": {
         "external": {
           "command": "node",

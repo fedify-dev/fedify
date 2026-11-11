@@ -53,7 +53,7 @@ Workflow
 6.  Run `mise run codegen` to generate TypeScript classes
 7.  Run `mise run test:update_snapshots` to update the Deno, Node.js, and Bun
     snapshots
-8.  Run `mise run check` to verify everything compiles
+8.  Run `mise run check:all` to verify Node.js and Deno compilation
 9.  Ask the user to review the YAML definition and generated code carefully
     before committing
 

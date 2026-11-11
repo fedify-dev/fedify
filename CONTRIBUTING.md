@@ -108,11 +108,11 @@ Development environment
 
 Fedify is a TypeScript monorepo.  Node.js runs dependency installation, code
 generation, builds, the default type check, linting, Oxfmt formatting,
-maintenance scripts, and test harnesses. The local CLI task still uses Deno.
-Supported packages are tested on Deno, Node.js, and Bun.  [mise] installs the
-required tool versions and runs repository tasks.  Install mise before
-bootstrapping; it provisions Node.js and the tools declared in *mise.toml*, so
-Node.js needs no separate installation.
+maintenance scripts, test harnesses, package tests, and the local CLI.
+Supported packages are tested on Node.js, Bun, and Deno.  The [mise] tool
+installs the required tool versions and runs repository tasks.  Install mise
+before bootstrapping; it provisions Node.js and the tools declared in
+*mise.toml*, so Node.js needs no separate installation.
 
 Run these commands after cloning the repository:
 
@@ -131,13 +131,14 @@ workflow tasks also prepare this cache automatically.  You normally need to
 run `mise install` only once per checkout.
 
 Install or refresh the pre-commit hook explicitly with
-`mise run hooks:install`.
+`mise run hooks:install`.  The hook runs the Node.js-only `check` task.
+Run `mise run check:all` explicitly for Deno type and generated-code checks.
 
 To bootstrap without installing Deno, set `MISE_DISABLE_TOOLS=deno` before
 running `mise install` (for example, `$env:MISE_DISABLE_TOOLS = "deno"` in
-PowerShell).  Deno is still needed for Deno compatibility tasks and the local
-CLI task. Formatting, linting, and the default type check run on Node.js
-without Deno.
+PowerShell).  The default `check`, `test`, and `cli` tasks and npm packaging
+run without Deno.  Deno is needed for explicit compatibility checks, JSR
+validation and publishing, and standalone CLI compilation.
 
 Run development workflows through mise.  Do not call `npm` or `pnpm` directly
 for repository tasks.  Start by inspecting the available commands:
@@ -151,14 +152,22 @@ Use `mise run <task>` to run a task.  For example:
 
 ~~~~ bash
 mise run check
-mise run test:deno
+mise run test
 ~~~~
 
-The recommended editor is [Visual Studio Code] with the [Oxc extension] and
-[Deno extension].  Other editors can use Oxfmt for formatting and Deno's
-language server for type diagnostics.  The editor's Deno language server
-checks code the way `mise run check:types:deno` does, which can differ from
-the default type check described in “Type checking” below.
+The recommended editor is [Visual Studio Code] (VS Code) with the
+[Oxc extension]. VS Code and Zed use their TypeScript language server by
+default.  In both editors, the repository's *Check TypeScript types* task runs
+`mise run check:types` with the repository's runtime-specific configurations.
+Language servers do not automatically find *tsconfig.check.json*, so
+inferred-project diagnostics can differ from that check.  Run the task for
+authoritative repository diagnostics.
+
+For Deno-specific work, optionally install the [Deno extension], enable it
+locally with `deno.enable` or `deno.enablePaths`, and run `mise run deno:cache`.
+In Zed, opt into the `deno` language server in local settings.  The Deno
+language server's diagnostics follow `mise run check:types:deno`, which can
+differ from the default check.
 
 [mise]: https://mise.jdx.dev/
 [Visual Studio Code]: https://code.visualstudio.com/
@@ -234,13 +243,13 @@ mise run check:types:deno
 The first command caches workspace exports for Deno and its language server;
 the second checks generated vocabulary formatting and Deno types; the third
 type-checks the Deno workspace with `deno check`, including Deno-only code.
-Tasks that use Deno, including `check`, `cli`, and `test:deno`, prepare the
-cache automatically.  The Node.js initializer and example harnesses prepare it
-only when selected Deno targets need workspace imports.  Run
-`mise run deno:cache` explicitly before using `mise run --skip-deps` with a
-Deno task, since that option omits task dependencies. The existing Deno
-`compile` tasks still generate vocabulary, but no longer cache or type-check it
-as a side effect.
+Deno tasks, including `check:all`, `cli:deno`, and `test:deno`, prepare the
+cache automatically.  The default `check`, `test`, and `cli` tasks do not.  The
+Node.js initializer and example harnesses prepare it only when selected Deno
+targets need workspace imports.  Run `mise run deno:cache` explicitly before
+using `mise run --skip-deps` with a Deno task, since that option omits task
+dependencies. The existing Deno `compile` tasks still generate vocabulary, but
+no longer cache or type-check it as a side effect.
 
 ### Formatting
 
@@ -258,9 +267,9 @@ unreleased changelog.  The generated vocabulary is checked explicitly because
 Git ignores it; `mise run codegen` formats it.
 
 The VS Code and Zed settings use the local Oxfmt installation for formatting
-and keep Deno's language server for type diagnostics.  They do not sort imports
-on save.  See [*FORMATTING.md*][formatting] for formatting ownership and the
-reviewed migration differences.
+and offer the *Check TypeScript types* task for repository diagnostics.
+They do not sort imports on save.  See [*FORMATTING.md*][formatting] for
+formatting ownership and the reviewed migration differences.
 
 [formatting]: FORMATTING.md
 
@@ -336,14 +345,19 @@ stale entry fails the check.
 
 ### Running the CLI
 
-Use the `cli` task to run the local Fedify CLI through Deno:
+Use the `cli` task to build and run the local Fedify CLI with Node.js:
 
 ~~~~ bash
 mise run cli -- lookup @fedify@hackers.pub
 ~~~~
 
-The released CLI is also tested on Node.js and Bun.  The local `cli` task is a
-quick development path, not a replacement for the multi-runtime tests.
+The task runs from the repository root: relative initialization paths and
+*.fedify.toml* discovery start there.  `mise run tunnel -- --help` uses the same
+Node.js entry point.  To run the TypeScript source with Deno from the CLI
+package directory, use `mise run cli:deno -- <arguments>`.
+
+The released CLI remains tested across supported runtimes.  Local CLI tasks
+do not replace those compatibility tests.
 
 
 Implementation guidelines
@@ -425,34 +439,49 @@ conventions.
 Testing
 -------
 
-Add tests for new behavior and regression tests for bug fixes.  Prefer a
-focused Deno test while developing because Deno runs the TypeScript sources
-directly.  Use in-memory stores unless the test is specifically exercising a
-database adapter:
+Add tests for new behavior and regression tests for bug fixes.  Use the
+Node.js package tests while developing, and in-memory stores unless the test
+specifically exercises a database adapter:
 
 ~~~~ bash
-mise run test:deno path/to/file.test.ts --filter "test name"
+mise run test-each:node fedify vocab
 ~~~~
 
-Use `test:node` or `test:bun` instead when the behavior is specific to one of
-those runtimes.  Once the change is stable, run the affected package suites in
-all supported runtimes:
+For a focused source test under Deno, use
+`mise run test:deno path/to/file.test.ts --filter "test name"`.  Once the change
+is stable, run the affected package suites in all supported runtimes:
 
 ~~~~ bash
 mise run test-each fedify vocab
 ~~~~
 
-Run the repository-wide suite before a release or when the change has broad
-effects:
+The default `mise run test` runs quality checks and all Node.js package tests
+without Deno.  Run the full compatibility suite before a release or when a
+change has broad effects:
 
 ~~~~ bash
-mise run test
+mise run check:all
+mise run test:all
 ~~~~
+
+`test:all` retains the Node.js, Bun, and Deno suites, Astro and SvelteKit
+compatibility checks, Temporal packaging, Deno workspace-link checks, and
+isolated testing-package consumers.  `test-each` also requires Deno because it
+runs every supported runtime; `test-each:node` is the Node.js-only alternative.
+`check-each fresh denokv` and `bench` require Deno as well.  Run
+`mise run test:package-files` separately for npm and JSR file and export
+validation. The Workers suite is an additional gate, run with
+`mise run test:cfworkers`.  Its CI job also verifies that Deno is never
+invoked and its cache remains empty.
+
+For local service-backed verification, run the runtime suites one at a time
+with their service URLs configured.  Lifecycle packing rebuilds shared
+packages, so run it separately from suites reading their build output.
 
 ### Updating vocabulary snapshots
 
 Changes to `@fedify/vocab-tools` or the vocabulary YAML schemas can affect the
-generated output recorded in snapshots.  Update the Deno, Node.js, and Bun
+generated output recorded in snapshots.  Update the Node.js, Bun, and Deno
 snapshots together from the repository root:
 
 ~~~~ bash
@@ -551,6 +580,48 @@ Maintenance script and harness regression tests run on Node.js with:
 ~~~~ bash
 mise run test:tooling
 ~~~~
+
+### npm and JSR validation
+
+Check npm contents and the lifecycle-enabled publishing path without Deno:
+
+~~~~ bash
+mise run test:package-files:npm
+mise run test:npm-pack
+~~~~
+
+The lifecycle check packs all packages serially and verifies that packaged
+skills are present and skill symlinks or link text files are restored.  Use
+`mise run test:tooling:no-deno` to run the default checks, local CLI, npm
+validation, and a Node.js initializer smoke test with Deno blocked and an empty
+cache.  The task's `--default-test` profile runs the default Node.js suite with
+Deno blocked, inheriting configured database and message-queue URLs:
+
+~~~~ bash
+mise run test:tooling:no-deno -- --default-test
+~~~~
+
+JSR file checks and the typed publishing dry run remain explicit:
+
+~~~~ bash
+mise run test:package-files:jsr
+mise exec -- deno publish --dry-run --allow-slow-types
+~~~~
+
+### Remaining Deno standard-library dependencies
+
+Shared Fedify tests still use `@std/assert` through their declared npm
+compatibility package; these assertions run on Node.js and Bun as well as Deno.
+The vocabulary generator already has separate Node.js, Bun, and Deno snapshots.
+`@std/testing/snapshot` remains for Deno's snapshot format.  Tests for
+`Deno.inspect()` also use it and run only on Deno.  Workers test discovery uses
+`node:fs/promises` and `node:path` in place of `@std/fs` and `@std/path`.
+Deno cache preparation and standalone CLI compilation still use `@std/path`,
+so its import-map entry stays.  The unused `@std/fs` entry is left for the
+dependency cleanup in [issue #1284].  Changing the default runtime must not
+drop assertions or alter path handling.
+
+[issue #1284]: https://github.com/fedify-dev/fedify/issues/1284
 
 
 Dependencies
@@ -972,8 +1043,8 @@ Run the repository-wide checks when a change crosses package boundaries or is
 ready for release:
 
 ~~~~ bash
-mise run check
-mise run test
+mise run check:all
+mise run test:all
 ~~~~
 
 Do not submit hypothetical code.  Verify the behavior in every environment

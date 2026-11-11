@@ -3,8 +3,8 @@
 @fedify/h3: Integrate Fedify with h3
 ====================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 [![Matrix][Matrix badge]][Matrix]
 [![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
@@ -36,10 +36,10 @@ app.use(router);
 > If you don't do this, Fedify will not be able to respond with a proper error
 > status code when a content negotiation fails.
 
-[JSR badge]: https://jsr.io/badges/@fedify/h3
-[JSR]: https://jsr.io/@fedify/h3
 [npm badge]: https://img.shields.io/npm/v/@fedify/h3?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/h3
+[JSR badge]: https://jsr.io/badges/@fedify/h3
+[JSR]: https://jsr.io/@fedify/h3
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org
 [Matrix]: https://matrix.to/#/#fedify:matrix.org
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg

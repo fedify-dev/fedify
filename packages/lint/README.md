@@ -3,8 +3,8 @@
 @fedify/lint: Lint plugins for Fedify
 =====================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 [![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 *This package is available since Fedify 2.0.0.*
@@ -23,10 +23,10 @@ The plugin includes rules that check for:
  -  Collection filtering implementation
  -  Full property IRIs for raw-property helpers (`raw-property-iri-invalid`)
 
-[JSR badge]: https://jsr.io/badges/@fedify/lint
-[JSR]: https://jsr.io/@fedify/lint
 [npm badge]: https://img.shields.io/npm/v/@fedify/lint?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/lint
+[JSR badge]: https://jsr.io/badges/@fedify/lint
+[JSR]: https://jsr.io/@fedify/lint
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
 [@fedify@hackers.pub]: https://hackers.pub/@fedify
 [ESLint]: https://eslint.org/
@@ -174,10 +174,6 @@ Installation
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add jsr:@fedify/lint
-~~~~
-
 ~~~~ sh [npm]
 npm add -D @fedify/lint
 ~~~~
@@ -192,6 +188,10 @@ yarn add -D @fedify/lint
 
 ~~~~ sh [Bun]
 bun add -D @fedify/lint
+~~~~
+
+~~~~ sh [Deno]
+deno add jsr:@fedify/lint
 ~~~~
 
 :::

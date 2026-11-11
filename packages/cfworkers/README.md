@@ -3,8 +3,8 @@
 @fedify/cfworkers: Adapt Fedify with Cloudflare Workers
 =======================================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 [![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 *This package is available since Fedify 1.9.0.*
@@ -50,10 +50,10 @@ export default {
 }>;
 ~~~~
 
-[JSR badge]: https://jsr.io/badges/@fedify/cfworkers
-[JSR]: https://jsr.io/@fedify/cfworkers
 [npm badge]: https://img.shields.io/npm/v/@fedify/cfworkers?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/cfworkers
+[JSR badge]: https://jsr.io/badges/@fedify/cfworkers
+[JSR]: https://jsr.io/@fedify/cfworkers
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
 [@fedify@hackers.pub]: https://hackers.pub/@fedify
 [Fedify]: https://fedify.dev/
@@ -119,9 +119,9 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/cfworkers  # Deno
 npm  add     @fedify/cfworkers  # npm
 pnpm add     @fedify/cfworkers  # pnpm
 yarn add     @fedify/cfworkers  # Yarn
 bun  add     @fedify/cfworkers  # Bun
+deno add jsr:@fedify/cfworkers  # Deno
 ~~~~

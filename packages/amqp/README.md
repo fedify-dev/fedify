@@ -3,8 +3,8 @@
 @fedify/amqp: AMQP/RabbitMQ driver for Fedify
 =============================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 
 > [!NOTE]
 >
@@ -40,10 +40,10 @@ new AmqpMessageQueue(await connect("amqp://localhost"), {
 
 For more details, please refer to the docs of [`AmqpMessageQueueOptions`].
 
-[JSR badge]: https://jsr.io/badges/@fedify/amqp
-[JSR]: https://jsr.io/@fedify/amqp
 [npm badge]: https://img.shields.io/npm/v/@fedify/amqp?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/amqp
+[JSR badge]: https://jsr.io/badges/@fedify/amqp
+[JSR]: https://jsr.io/@fedify/amqp
 [RabbitMQ]: https://www.rabbitmq.com/
 [Fedify]: https://fedify.dev/
 [`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue
@@ -55,9 +55,9 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/amqp  # Deno
 npm  add     @fedify/amqp  # npm
 pnpm add     @fedify/amqp  # pnpm
 yarn add     @fedify/amqp  # Yarn
 bun  add     @fedify/amqp  # Bun
+deno add jsr:@fedify/amqp  # Deno
 ~~~~

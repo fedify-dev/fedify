@@ -5,13 +5,13 @@
 @fedify/프레임워크: Integrate Fedify with 프레임워크
 ====================================================
 
-<!-- If JSR is supported -->
-
-[![JSR][JSR badge]][JSR]
-
 <!-- If NPM is supported -->
 
 [![npm][npm badge]][npm]
+
+<!-- If JSR is supported -->
+
+[![JSR][JSR badge]][JSR]
 
 <!-- Default -->
 
@@ -38,9 +38,6 @@ Installation
 <!-- Remove scripts from unsupported runtimes. -->
 
 ~~~~ bash
-deno add jsr:@fedify/프레임워크 # If JSR is supported (Have `deno.json(c)`)
-deno add npm:@fedify/프레임워크 # If JSR is not supported (No `deno.json(c)`)
-# or
 npm add @fedify/프레임워크
 # or
 pnpm add @fedify/프레임워크
@@ -48,6 +45,9 @@ pnpm add @fedify/프레임워크
 yarn add @fedify/프레임워크
 # or
 bun add @fedify/프레임워크
+# or
+deno add jsr:@fedify/프레임워크 # If JSR is supported (Have `deno.json(c)`)
+deno add npm:@fedify/프레임워크 # If JSR is not supported (No `deno.json(c)`)
 ~~~~
 
 

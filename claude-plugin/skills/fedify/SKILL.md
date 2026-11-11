@@ -20,7 +20,7 @@ Fedify skill
 ============
 
 Fedify is a TypeScript library for ActivityPub server applications.  It
-works across Deno, Node.js, and Bun.  The library takes care of the fiddly
+works across Node.js, Bun, and Deno.  The library takes care of the fiddly
 parts of the fediverse (HTTP Signatures, Object Integrity Proofs,
 WebFinger, NodeInfo, JSON-LD, delivery queues) so application code can
 stay focused on dispatchers and activity handlers.

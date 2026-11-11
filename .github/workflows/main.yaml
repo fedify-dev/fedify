@@ -22,6 +22,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     env:
       MISE_DISABLE_TOOLS: deno
     steps:
@@ -45,7 +46,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
 
-  test:
+  test-deno:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -191,6 +192,7 @@ jobs:
         ports:
         - 3306:3306
     env:
+      MISE_DISABLE_TOOLS: deno
       AMQP_URL: amqp://guest:guest@localhost:5672
       MYSQL_URL: mysql://root:mysql@localhost:3306/fedify
       POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres
@@ -200,7 +202,7 @@ jobs:
     - uses: ./.github/actions/setup-mise
     - name: Enable RabbitMQ consistent hash exchange plugin
       run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
-    - run: mise run --skip-deps test:node
+    - run: mise run test:tooling:no-deno -- --default-test
       env:
         AMQP_ORDERING_TEST: "true"
 
@@ -254,6 +256,7 @@ jobs:
         ports:
         - 3306:3306
     env:
+      MISE_DISABLE_TOOLS: deno
       AMQP_URL: amqp://guest:guest@localhost:5672
       MYSQL_URL: mysql://root:mysql@localhost:3306/fedify
       POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres
@@ -269,14 +272,17 @@ jobs:
 
   test-cfworkers:
     runs-on: ubuntu-latest
+    env:
+      MISE_DISABLE_TOOLS: deno
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
-    - run: deno task test:cfworkers
-      working-directory: ${{ github.workspace }}/packages/fedify/
+    - run: mise run test:tooling:no-deno -- --workers
 
   test-temporal-polyfill:
     runs-on: ubuntu-latest
+    env:
+      MISE_DISABLE_TOOLS: deno
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
@@ -284,6 +290,8 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+    env:
+      MISE_DISABLE_TOOLS: deno
     steps:
     - uses: actions/checkout@v6
       with:
@@ -303,17 +311,28 @@ jobs:
   release-test:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: read
+    env:
+      MISE_DISABLE_TOOLS: deno
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
     - run: '[[ "$(jq -r .version deno.json)" = "$(jq -r .version package.json)" ]]'
       working-directory: ${{ github.workspace }}/packages/fedify/
+    - run: mise run test:package-files:npm
+    - run: pnpm publish --recursive --dry-run --no-git-checks --ignore-scripts
+
+  release-test-jsr:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - uses: actions/checkout@v6
+    - uses: ./.github/actions/setup-mise
     - run: mise run codegen
     - run: deno publish --dry-run --allow-slow-types
-    - run: mise run test:package-files
-    - run: pnpm publish --recursive --dry-run --no-git-checks --ignore-scripts
+    - run: mise run test:package-files:jsr
 
   # ===========================================================================
   # PR-only jobs: Validate CLI and docs build
@@ -321,7 +340,7 @@ jobs:
 
   build-cli-pr:
     if: github.event_name == 'pull_request'
-    needs: [release-test]
+    needs: [release-test, release-test-jsr]
     runs-on: namespace-profile-linux-amd64-32gb
     steps:
     - uses: actions/checkout@v6
@@ -342,6 +361,8 @@ jobs:
     if: github.event_name == 'pull_request'
     needs: [release-test]
     runs-on: ubuntu-latest
+    env:
+      MISE_DISABLE_TOOLS: deno
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
@@ -365,6 +386,8 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       short_version: ${{ steps.version.outputs.short_version }}
+    env:
+      MISE_DISABLE_TOOLS: deno
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
@@ -383,7 +406,7 @@ jobs:
 
   build-cli:
     if: github.event_name == 'push'
-    needs: [test, test-node, test-bun, test-cfworkers, test-temporal-polyfill, lint, release-test, determine-version]
+    needs: [bootstrap, test-deno, test-node, test-bun, test-cfworkers, test-temporal-polyfill, lint, release-test, release-test-jsr, determine-version]
     runs-on: namespace-profile-linux-amd64-32gb
     steps:
     - uses: actions/checkout@v6
@@ -403,8 +426,10 @@ jobs:
 
   build-packages:
     if: github.event_name == 'push'
-    needs: [test, test-node, test-bun, test-cfworkers, test-temporal-polyfill, lint, release-test, determine-version]
+    needs: [bootstrap, test-deno, test-node, test-bun, test-cfworkers, test-temporal-polyfill, lint, release-test, release-test-jsr, determine-version]
     runs-on: ubuntu-latest
+    env:
+      MISE_DISABLE_TOOLS: deno
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
@@ -427,7 +452,7 @@ jobs:
 
   publish-jsr:
     if: github.event_name == 'push'
-    needs: [test, test-node, test-bun, test-cfworkers, test-temporal-polyfill, lint, release-test, determine-version]
+    needs: [bootstrap, test-deno, test-node, test-bun, test-cfworkers, test-temporal-polyfill, lint, release-test, release-test-jsr, determine-version]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -546,6 +571,7 @@ jobs:
       deployments: write
       statuses: write
     env:
+      MISE_DISABLE_TOOLS: deno
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     environment:
       name: github-pages

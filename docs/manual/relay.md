@@ -23,10 +23,6 @@ First, install the *@fedify/relay* package.
 
 ::: code-group
 
-~~~~ sh [Deno]
-deno add @fedify/relay
-~~~~
-
 ~~~~ sh [npm]
 npm add @fedify/relay @hono/node-server
 ~~~~
@@ -41,6 +37,10 @@ yarn add @fedify/relay @hono/node-server
 
 ~~~~ sh [Bun]
 bun add @fedify/relay
+~~~~
+
+~~~~ sh [Deno]
+deno add @fedify/relay
 ~~~~
 
 :::

@@ -3,8 +3,8 @@
 @fedify/backfill: ActivityPub backfill for Fedify
 =================================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 [![Follow @fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 *This package is available since Fedify 2.3.0.*
@@ -17,10 +17,10 @@ or `OrderedCollectionPage`.  It can also use an opt-in reply-tree strategy to
 walk `inReplyTo` ancestors and `replies` descendants when context collections
 are unavailable or incomplete.
 
-[JSR badge]: https://jsr.io/badges/@fedify/backfill
-[JSR]: https://jsr.io/@fedify/backfill
 [npm badge]: https://img.shields.io/npm/v/@fedify/backfill?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/backfill
+[JSR badge]: https://jsr.io/badges/@fedify/backfill
+[JSR]: https://jsr.io/@fedify/backfill
 [@fedify@hackers.pub badge]: https://fedi-badge.deno.dev/@fedify@hackers.pub/followers.svg
 [@fedify@hackers.pub]: https://hackers.pub/@fedify
 [Fedify]: https://fedify.dev/
@@ -31,11 +31,11 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/backfill
 npm  add     @fedify/backfill
 pnpm add     @fedify/backfill
 yarn add     @fedify/backfill
 bun  add     @fedify/backfill
+deno add jsr:@fedify/backfill
 ~~~~
 
 

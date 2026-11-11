@@ -3,8 +3,8 @@
 @fedify/pglite: PGlite driver for Fedify
 ========================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 
 This package provides [`PgliteKvStore`], a PGlite-backed implementation of
 Fedify's [`KvStore`]:
@@ -30,10 +30,10 @@ back horizontally scaled workers.  This package does not provide a message
 queue because those constraints cannot preserve ordering or delivery during a
 rolling restart.  See [PGlite issue #489] and [PGlite pull request #892].
 
-[JSR badge]: https://jsr.io/badges/@fedify/pglite
-[JSR]: https://jsr.io/@fedify/pglite
 [npm badge]: https://img.shields.io/npm/v/@fedify/pglite?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/pglite
+[JSR badge]: https://jsr.io/badges/@fedify/pglite
+[JSR]: https://jsr.io/@fedify/pglite
 [`PgliteKvStore`]: https://jsr.io/@fedify/pglite/doc/~/PgliteKvStore
 [`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
 [PGlite issue #489]: https://github.com/electric-sql/pglite/issues/489#issuecomment-2587892190
@@ -44,9 +44,9 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/pglite npm:@electric-sql/pglite  # Deno
 npm  add     @fedify/pglite @electric-sql/pglite      # npm
 pnpm add     @fedify/pglite @electric-sql/pglite      # pnpm
 yarn add     @fedify/pglite @electric-sql/pglite      # Yarn
 bun  add     @fedify/pglite @electric-sql/pglite      # Bun
+deno add jsr:@fedify/pglite npm:@electric-sql/pglite  # Deno
 ~~~~

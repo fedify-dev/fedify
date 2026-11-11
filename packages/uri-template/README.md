@@ -3,17 +3,17 @@
 @fedify/uri-template: Round-trip RFC 6570 URI Template library
 ==============================================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 
 This package provides an [RFC 6570] URI Template implementation that performs
 both expansion and pattern matching with round-trip verification.  It is part of
 the [Fedify] framework but can be used independently.
 
-[JSR badge]: https://jsr.io/badges/@fedify/uri-template
-[JSR]: https://jsr.io/@fedify/uri-template
 [npm badge]: https://img.shields.io/npm/v/@fedify/uri-template?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/uri-template
+[JSR badge]: https://jsr.io/badges/@fedify/uri-template
+[JSR]: https://jsr.io/@fedify/uri-template
 [RFC 6570]: https://datatracker.ietf.org/doc/html/rfc6570
 [Fedify]: https://fedify.dev/
 
@@ -302,9 +302,9 @@ Installation
 ------------
 
 ~~~~ bash
-deno add jsr:@fedify/uri-template  # Deno
 npm  add     @fedify/uri-template  # npm
 pnpm add     @fedify/uri-template  # pnpm
 yarn add     @fedify/uri-template  # Yarn
 bun  add     @fedify/uri-template  # Bun
+deno add jsr:@fedify/uri-template  # Deno
 ~~~~

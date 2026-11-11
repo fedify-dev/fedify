@@ -13,6 +13,8 @@ permissions:
 jobs:
   test-sveltekit-compat:
     runs-on: ubuntu-latest
+    env:
+      MISE_DISABLE_TOOLS: deno
     steps:
     - uses: actions/checkout@v6
       with:
@@ -34,6 +36,8 @@ jobs:
     strategy:
       matrix:
         runtime: [node, deno, bun]
+    env:
+      MISE_DISABLE_TOOLS: ${{ matrix.runtime != 'deno' && 'deno' || '' }}
     steps:
     - uses: actions/checkout@v6
       with:

@@ -5,6 +5,7 @@ import {
   mkdir,
   mkdtemp,
   readdir,
+  readFile,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -38,32 +39,40 @@ try {
     FEDIFY_DENO_INVOCATIONS: calls,
     PATH: `${bin}${delimiter}${process.env.PATH}`,
   };
-  const tasks = [
-    ["check:fmt"],
-    ["check-each", "fedify"],
-    ["check:lint"],
-    ["check:types"],
-    ["check:types", "--", "fedify", "vocab"],
-    ["check-versions"],
-    ["check:fixture-usage"],
-    ["check:workspace-protocol"],
-    ["test:tooling"],
-    ["test:temporal-polyfill"],
-    ["generate:packages-table", "--", "--format=table", "2.5.0"],
-    [
-      "test:init",
-      "--",
-      "-w",
-      "hono",
-      "-p",
-      "npm",
-      "-k",
-      "in-memory",
-      "-m",
-      "in-process",
-      "--no-hyd-run",
-    ],
-  ];
+  const profile = process.argv.slice(2);
+  assert.ok(
+    profile.length === 0 ||
+      (profile.length === 1 &&
+        ["--default-test", "--workers"].includes(profile[0])),
+    "expected --default-test, --workers, or no arguments",
+  );
+  const tasks =
+    profile.length > 0
+      ? [[profile[0] === "--workers" ? "test:cfworkers" : "test"]]
+      : [
+          ["check"],
+          ["test:package-files:npm"],
+          ["test:npm-pack"],
+          ["cli", "--", "--help"],
+          ["tunnel", "--", "--help"],
+          ["check-each", "fedify"],
+          ["check:types", "--", "fedify", "vocab"],
+          ["test:temporal-polyfill"],
+          ["generate:packages-table", "--", "--format=table", "2.5.0"],
+          [
+            "test:init",
+            "--",
+            "-w",
+            "hono",
+            "-p",
+            "npm",
+            "-k",
+            "in-memory",
+            "-m",
+            "in-process",
+            "--no-hyd-run",
+          ],
+        ];
   for (const args of tasks) {
     console.log(`\nChecking without Deno: mise run ${args.join(" ")}`);
     const result = spawnSync("mise", ["run", ...args], {
@@ -73,6 +82,59 @@ try {
     });
     if (result.error) throw result.error;
     assert.equal(result.status, 0, `mise run ${args.join(" ")}`);
+  }
+  if (profile[0] === "--workers") {
+    // A mise build prepares this source and can hide a missing prerequisite in
+    // the direct package command. Exercise that command with its output absent.
+    const vocabulary = join(root, "packages", "vocab", "src", "vocab.ts");
+    const original = await readFile(vocabulary);
+    try {
+      await rm(vocabulary);
+      console.log(
+        "\nChecking direct Workers command without generated vocabulary",
+      );
+      const direct = spawnSync(
+        "mise",
+        [
+          "--no-hooks",
+          "exec",
+          "--no-deps",
+          "--",
+          "pnpm",
+          "--filter",
+          "@fedify/fedify",
+          "test:cfworkers",
+        ],
+        { cwd: root, env, stdio: "inherit" },
+      );
+      if (direct.error) throw direct.error;
+      assert.equal(
+        direct.status,
+        0,
+        "direct Workers command prepares vocabulary",
+      );
+      assert.deepEqual(await readFile(vocabulary), original);
+    } finally {
+      await writeFile(vocabulary, original);
+    }
+  }
+  if (profile.length === 0) {
+    const invalid = spawnSync(
+      "mise",
+      ["run", "cli", "--", "fedify-no-such-command"],
+      {
+        cwd: root,
+        env,
+        encoding: "utf8",
+      },
+    );
+    assert.ifError(invalid.error);
+    assert.notEqual(
+      invalid.status,
+      0,
+      "CLI must forward invalid arguments and fail",
+    );
+    assert.match(invalid.stderr, /fedify-no-such-command/);
   }
   assert.deepEqual(await readdir(cache), [], "no Deno cache was prepared");
   assert.equal(

@@ -1,8 +1,8 @@
 @fedify/init: Project initializer for Fedify
 ============================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 
 This package provides the project initialization functionality for [Fedify],
 an ActivityPub server framework.  It scaffolds new Fedify project directories
@@ -12,10 +12,10 @@ and message queues.
 This package powers the `fedify init` command in the [`@fedify/cli`] toolchain,
 and can also be used as a standalone library.
 
-[JSR badge]: https://jsr.io/badges/@fedify/init
-[JSR]: https://jsr.io/@fedify/init
 [npm badge]: https://img.shields.io/npm/v/@fedify/init?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/init
+[JSR badge]: https://jsr.io/badges/@fedify/init
+[JSR]: https://jsr.io/@fedify/init
 [Fedify]: https://fedify.dev/
 [`@fedify/cli`]: https://jsr.io/@fedify/cli
 
@@ -27,7 +27,7 @@ The initializer supports the following project configurations:
 
  -  **Web frameworks**: Bare-bones, [Astro], [Elysia], [Express], [Hono],
     [Next.js], [Nitro], [Nuxt], [SolidStart], [SvelteKit]
- -  **Package managers**: Deno, pnpm, Bun, Yarn, npm
+ -  **Package managers**: npm, pnpm, Yarn, Bun, Deno
  -  **Key-value stores**: In-Memory, Redis, PostgreSQL, Deno KV (deprecated;
     Deno only)
  -  **Message queues**: In-Process, Redis, PostgreSQL, AMQP, Deno KV
@@ -48,11 +48,11 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/init  # Deno
 npm  add     @fedify/init  # npm
 pnpm add     @fedify/init  # pnpm
 yarn add     @fedify/init  # Yarn
 bun  add     @fedify/init  # Bun
+deno add jsr:@fedify/init  # Deno
 ~~~~
 
 

@@ -3,8 +3,8 @@
 @fedify/mysql: MySQL/MariaDB drivers for Fedify
 ===============================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 
 This package provides [Fedify]'s [`KvStore`] and [`MessageQueue`]
 implementations for MySQL/MariaDB:
@@ -25,10 +25,10 @@ const federation = createFederation({
 });
 ~~~~
 
-[JSR badge]: https://jsr.io/badges/@fedify/mysql
-[JSR]: https://jsr.io/@fedify/mysql
 [npm badge]: https://img.shields.io/npm/v/@fedify/mysql?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/mysql
+[JSR badge]: https://jsr.io/badges/@fedify/mysql
+[JSR]: https://jsr.io/@fedify/mysql
 [Fedify]: https://fedify.dev/
 [`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
 [`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue
@@ -40,9 +40,9 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/mysql              # Deno
 npm  add     @fedify/mysql mysql2       # npm
 pnpm add     @fedify/mysql mysql2       # pnpm
 yarn add     @fedify/mysql mysql2       # Yarn
 bun  add     @fedify/mysql mysql2       # Bun
+deno add jsr:@fedify/mysql              # Deno
 ~~~~

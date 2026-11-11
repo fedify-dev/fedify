@@ -11,10 +11,6 @@ Installation
 ------------
 
 ~~~~ bash
-deno add @fedify/vocab-runtime
-~~~~
-
-~~~~ bash
 npm install @fedify/vocab-runtime
 ~~~~
 
@@ -24,4 +20,8 @@ pnpm add @fedify/vocab-runtime
 
 ~~~~ bash
 yarn add @fedify/vocab-runtime
+~~~~
+
+~~~~ bash
+deno add @fedify/vocab-runtime
 ~~~~

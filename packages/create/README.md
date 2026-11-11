@@ -31,7 +31,7 @@ Supported options
 The tool supports the same project configurations as `fedify init`:
 
  -  **Web frameworks**: [Hono], [Nitro], [Next.js], [Elysia], [Express]
- -  **Package managers**: Deno, pnpm, Bun, Yarn, npm
+ -  **Package managers**: npm, pnpm, Yarn, Bun, Deno
  -  **Key-value stores**: Redis, PostgreSQL, Deno KV (deprecated; Deno only)
  -  **Message queues**: Redis, PostgreSQL, AMQP, Deno KV (deprecated; Deno
     only)

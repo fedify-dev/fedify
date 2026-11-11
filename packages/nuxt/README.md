@@ -3,8 +3,8 @@
 @fedify/nuxt: Integrate Fedify with Nuxt
 ========================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 [![Matrix][Matrix badge]][Matrix]
 [![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
@@ -15,10 +15,10 @@ Supported framework versions:
  -  Nuxt 4.x
  -  Nitro 2.x (Nuxt 4 runtime)
 
-[JSR badge]: https://jsr.io/badges/@fedify/nuxt
-[JSR]: https://jsr.io/@fedify/nuxt
 [npm badge]: https://img.shields.io/npm/v/@fedify/nuxt?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/nuxt
+[JSR badge]: https://jsr.io/badges/@fedify/nuxt
+[JSR]: https://jsr.io/@fedify/nuxt
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org
 [Matrix]: https://matrix.to/#/#fedify:matrix.org
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
@@ -31,8 +31,6 @@ Installation
 ------------
 
 ~~~~ bash
-deno add jsr:@fedify/nuxt
-# or
 npm add @fedify/nuxt
 # or
 pnpm add @fedify/nuxt
@@ -40,6 +38,8 @@ pnpm add @fedify/nuxt
 yarn add @fedify/nuxt
 # or
 bun add @fedify/nuxt
+# or
+deno add jsr:@fedify/nuxt
 ~~~~
 
 

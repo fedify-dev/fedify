@@ -88,14 +88,11 @@ checks the entire block including the hidden fixture.
 ### Code groups
 
 Use code groups to show the same content for different package managers
-or environments:
+or environments.  When showing equivalent runtimes or package managers, list
+Node.js and its package managers first.
 
 ~~~~~ markdown
 ::: code-group
-
-~~~~ bash [Deno]
-deno add jsr:@fedify/fedify
-~~~~
 
 ~~~~ bash [npm]
 npm add @fedify/fedify
@@ -103,6 +100,10 @@ npm add @fedify/fedify
 
 ~~~~ bash [pnpm]
 pnpm add @fedify/fedify
+~~~~
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/fedify
 ~~~~
 
 :::

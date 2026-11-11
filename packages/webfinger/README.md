@@ -3,17 +3,17 @@
 @fedify/webfinger: WebFinger client library for ActivityPub
 ===========================================================
 
-[![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
+[![JSR][JSR badge]][JSR]
 
 This package provides a WebFinger client implementation for looking up
 ActivityPub actors and other resources in the fediverse.  It is part of the
 [Fedify] framework but can be used independently.
 
-[JSR badge]: https://jsr.io/badges/@fedify/webfinger
-[JSR]: https://jsr.io/@fedify/webfinger
 [npm badge]: https://img.shields.io/npm/v/@fedify/webfinger?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/webfinger
+[JSR badge]: https://jsr.io/badges/@fedify/webfinger
+[JSR]: https://jsr.io/@fedify/webfinger
 [Fedify]: https://fedify.dev/
 
 
@@ -34,11 +34,11 @@ Installation
 ------------
 
 ~~~~ bash
-deno add jsr:@fedify/webfinger  # Deno
 npm add @fedify/webfinger       # npm
 pnpm add @fedify/webfinger      # pnpm
 yarn add @fedify/webfinger      # Yarn
 bun add @fedify/webfinger       # Bun
+deno add jsr:@fedify/webfinger  # Deno
 ~~~~
 
 

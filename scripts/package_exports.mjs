@@ -15,6 +15,15 @@ function exportTargets(value) {
   return value == null ? [] : Object.values(value).flatMap(exportTargets);
 }
 
+/** Parse archive entries printed by tar on Unix or Windows. */
+export function parseTarFileList(output) {
+  return output
+    .trim()
+    .split(/\r?\n/)
+    .filter((file) => !file.endsWith("/"))
+    .map((file) => file.replace(/^package\//, ""));
+}
+
 /** Check build targets and packed exports, allowing only known build defects. */
 export function checkExports(name, files, manifest, builtDirectory) {
   for (const target of new Set(exportTargets(manifest.exports))) {

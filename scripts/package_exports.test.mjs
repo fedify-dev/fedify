@@ -1,9 +1,9 @@
-import { doesNotThrow, throws } from "node:assert/strict";
+import { deepStrictEqual, doesNotThrow, throws } from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { checkExports } from "./package_exports.mjs";
+import { checkExports, parseTarFileList } from "./package_exports.mjs";
 
 function withBuild(run) {
   const root = mkdtempSync(join(tmpdir(), "fedify-export-check-"));
@@ -86,6 +86,34 @@ test("checks string and named binary targets", () => {
     });
     doesNotThrow(() =>
       checkExports("@fedify/example", ["dist/cli.js"], { bin }),
+    );
+  }
+});
+
+test("parses tar file lists with Unix and Windows line endings", () => {
+  const entries = [
+    "package/",
+    "package/dist/",
+    "package/package.json",
+    "package/dist/index.d.ts",
+    "package/dist/index.js",
+  ];
+  for (const newline of ["\n", "\r\n"]) {
+    const files = parseTarFileList(entries.join(newline) + newline);
+    deepStrictEqual(files, [
+      "package.json",
+      "dist/index.d.ts",
+      "dist/index.js",
+    ]);
+    doesNotThrow(() =>
+      checkExports("@fedify/example", files, {
+        exports: {
+          ".": {
+            types: "./dist/index.d.ts",
+            import: "./dist/index.js",
+          },
+        },
+      }),
     );
   }
 });

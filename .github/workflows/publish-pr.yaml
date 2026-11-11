@@ -59,6 +59,8 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       short_version: ${{ steps.version.outputs.short_version }}
+    env:
+      MISE_DISABLE_TOOLS: deno
     steps:
     - uses: actions/checkout@v6
       with:
@@ -82,6 +84,8 @@ jobs:
     outputs:
       packages_table: ${{ steps.packages-table.outputs.table }}
       packages_links: ${{ steps.packages-table.outputs.links }}
+    env:
+      MISE_DISABLE_TOOLS: deno
     steps:
     - uses: actions/checkout@v6
       with:
@@ -274,6 +278,7 @@ jobs:
     permissions:
       contents: read
     env:
+      MISE_DISABLE_TOOLS: deno
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     outputs:
       deployment_url: ${{ steps.wrangler.outputs.deployment-url }}

@@ -14,10 +14,6 @@ Installation
 ------------
 
 ~~~~ bash
-deno add @fedify/testing
-~~~~
-
-~~~~ bash
 npm install @fedify/testing
 ~~~~
 
@@ -27,6 +23,10 @@ pnpm add @fedify/testing
 
 ~~~~ bash
 yarn add @fedify/testing
+~~~~
+
+~~~~ bash
+deno add @fedify/testing
 ~~~~
 
 

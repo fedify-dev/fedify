@@ -31,9 +31,11 @@ Deno-only packages prepare the Deno cache before their type check.
 
 The VS Code and Zed settings use the project-local Oxfmt installation.  Make
 sure the Node.js that mise provisions is on the editor's `PATH`.  Deno's
-language server remains enabled for type diagnostics, and save actions do not
-reorder imports.  Use `oxfmt-ignore` for an intentional JavaScript or
-TypeScript layout exception.
+language server is optional for Deno-specific work; the default TypeScript
+language server does not automatically discover *tsconfig.check.json*.  Run
+the editor's *Check TypeScript types* task for repository diagnostics.  Save
+actions do not reorder imports.  Use `oxfmt-ignore` for an intentional
+JavaScript or TypeScript layout exception.
 
 
 Formatting ownership

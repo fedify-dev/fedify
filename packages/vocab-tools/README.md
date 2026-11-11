@@ -11,10 +11,6 @@ Installation
 ------------
 
 ~~~~ bash
-deno add @fedify/vocab-tools
-~~~~
-
-~~~~ bash
 npm install @fedify/vocab-tools
 ~~~~
 
@@ -24,6 +20,10 @@ pnpm add @fedify/vocab-tools
 
 ~~~~ bash
 yarn add @fedify/vocab-tools
+~~~~
+
+~~~~ bash
+deno add @fedify/vocab-tools
 ~~~~
 
 
@@ -36,7 +36,7 @@ Run development tasks from the repository root with [mise].
 
 ### Updating snapshots
 
-The code generator has separate output snapshots for Deno, Node.js, and Bun.
+The code generator has separate output snapshots for Node.js, Bun, and Deno.
 When a change affects generated output, update all three from the repository
 root:
 
