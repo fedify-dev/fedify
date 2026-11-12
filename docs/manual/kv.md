@@ -640,6 +640,31 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+Since Fedify 2.5.0, `MysqlKvStore` implements `AtomicKvStore`, with atomic
+snapshots and conditional batches across keys in one primary database/table.
+It uses InnoDB transactions with explicit `REPEATABLE READ`, including for
+single-key reads and CAS.  Use `getMany()` for a snapshot and `casMany()` to
+compare every expectation before committing all replacements or deletions.
+A mismatch returns `false`; reread and re-evaluate before retrying.
+
+The adapter validates its InnoDB schema even with `initialized: true`, which
+skips DDL but requires metadata visibility.  Use the default schema, a normal
+mysql2 pool with `autocommit` enabled and default object/type decoding, and the
+same fixed-offset or UTC session `time_zone` across clients.  Caller-owned
+transactions, replica routing, `NO_BACKSLASH_ESCAPES`, custom decoding, and
+schema changes during use are unsupported.  Values use JSON conversion and
+decoded structural equality; `set(key, undefined)` rejects.  Batches have at
+most 1,000 input entries, and serialized keys at most 768 Unicode code points.
+TTLs are truncated to safe integer microseconds, approximately ±285 years;
+omitting a replacement TTL clears its previous expiry.
+
+Deadlocks and MariaDB snapshot conflicts retry with fresh comparisons, up to
+five total attempts.  Other backend failures reject, and a lost commit
+response can leave the outcome unknown.  Cleanup runs after commit; its
+failures are logged, while logical expiry always applies.  See the
+[package README]
+for schema, codec, clock, cleanup and resource restrictions.
+
 [`MysqlKvStore`]: https://jsr.io/@fedify/mysql/doc/kv/~/MysqlKvStore
 
 ### `DenoKvStore` (Deno only)
@@ -1026,9 +1051,6 @@ from `list()` too.  `set()` and `setMany()` reject `undefined` on an
 `AtomicKvStore`; skip the write to preserve the former no-op, or use `delete()`
 or `deleteMany()` for unconditional removal.  For conditional removal, use
 `cas()` or `casMany()` with `newValue: undefined` and omit the TTL.
-These stronger rules do not change legacy ordinary stores: for example, MySQL
-currently treats
-`set(key, undefined)` as a no-op.
 
 Each set or conditional entry can supply its own `options.ttl`:
 
@@ -1085,7 +1107,7 @@ check or an operation receipt before repeating effects.
 
 ### Current support
 
-`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, and `PgliteKvStore`
+`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`, and `MysqlKvStore`
 implement `AtomicKvStore` in their documented scopes.  Existing single-key CAS
 support does not imply atomic multi-key support.  The linked issues track
 separate adapter implementations:
@@ -1097,7 +1119,7 @@ separate adapter implementations:
 | `RedisKvStore`        | No              | Planned in [#1365].                                                                               |
 | `PgliteKvStore`       | Yes             | Since 2.5.0; one normal PGlite owner and table, JSONB comparison.                                 |
 | `SqliteKvStore`       | Yes             | One configured table/database; writable handles, JSON values; see [SQLite scope](#sqlitekvstore). |
-| `MysqlKvStore`        | No              | Planned in [#1368].                                                                               |
+| `MysqlKvStore`        | Yes             | InnoDB; one primary database/table, up to 1,000 entries per operation.                            |
 | `DenoKvStore`         | No              | No atomic adapter child issue; deprecated since 2.5.0.                                            |
 | `NetlifyBlobsKvStore` | No              | Single-key CAS only; no atomic adapter child issue.                                               |
 | `WorkersKvStore`      | No              | No CAS; cannot implement this contract with Workers KV.                                           |
@@ -1105,7 +1127,6 @@ separate adapter implementations:
 
 [PR #1360]: https://github.com/fedify-dev/fedify/pull/1360
 [#1365]: https://github.com/fedify-dev/fedify/issues/1365
-[#1368]: https://github.com/fedify-dev/fedify/issues/1368
 [#1379]: https://github.com/fedify-dev/fedify/issues/1379
 
 
