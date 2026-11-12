@@ -9,7 +9,10 @@ import {
   OrderedCollectionPage,
 } from "@fedify/vocab";
 import { fromCompatibleEf61Id, parseIri } from "@fedify/vocab-runtime";
-import { copyPortableProvenance } from "@fedify/vocab-runtime/internal/portable-dereference";
+import {
+  copyPortableProvenance,
+  isUnverifiedPortableClaim,
+} from "@fedify/vocab-runtime/internal/portable-dereference";
 
 import type {
   BackfillContext,
@@ -572,6 +575,9 @@ async function* getReplyTargets(
     | IntervalConfigurationError
     | undefined;
   const loadedObjects = new Map<string, APObject>();
+  const observesGeneratedCache =
+    object.getReplyTargets === APObject.prototype.getReplyTargets;
+  let replyTargetIdsBeforeLoad: readonly URL[] | undefined;
   try {
     for await (const target of object.getReplyTargets({
       // Skip vocabulary-level failures per target rather than closing the
@@ -579,6 +585,10 @@ async function* getReplyTargets(
       suppressError: true,
       documentLoader: async (url) => {
         loadedObjects.clear();
+        replyTargetIdsBeforeLoad =
+          budget.discovery == null || !observesGeneratedCache
+            ? undefined
+            : object.replyTargetIds;
         if (traversalError != null) throw traversalError;
         try {
           return await loadCollectionItemDocument(
@@ -621,10 +631,24 @@ async function* getReplyTargets(
       // Keep it across strategy passes, including targets cached by reply-tree.
       // Match documents rather than IDs to support anonymous targets.
       if (loadedObjects.size > 0 && target instanceof APObject) {
-        const source = loadedObjects.get(
-          JSON.stringify(await target.toJsonLd()),
-        );
-        if (source != null) budget.discovery?.sources.set(target, source);
+        // A successful fetch changes cached URL identities, unless the target
+        // is an unverified portable claim. Otherwise, discard the stale source.
+        // Custom accessors keep their existing behavior pending exact association:
+        // https://github.com/fedify-dev/fedify/issues/1423
+        const previousIds = replyTargetIdsBeforeLoad;
+        const currentIds = observesGeneratedCache ? object.replyTargetIds : [];
+        const fetched =
+          !observesGeneratedCache ||
+          isUnverifiedPortableClaim(target) ||
+          (previousIds != null &&
+            (currentIds.length !== previousIds.length ||
+              currentIds.some((id, i) => id !== previousIds[i])));
+        if (fetched) {
+          const source = loadedObjects.get(
+            JSON.stringify(await target.toJsonLd()),
+          );
+          if (source != null) budget.discovery?.sources.set(target, source);
+        }
       }
       loadedObjects.clear();
       yield target;

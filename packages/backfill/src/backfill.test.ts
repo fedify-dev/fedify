@@ -631,50 +631,117 @@ describe("ancestor collection discovery", () => {
     deepStrictEqual(context.requests, [parentId.href, historyId.href]);
   });
 
-  test("failed parses preserve an identical embedded target's verifier", async () => {
-    const historyId = parseIri("ap+ef61://did:key:z6Mkabc/history");
-    const document = {
-      "@context": [
-        "https://www.w3.org/ns/activitystreams",
-        "https://w3id.org/fep/171b",
-      ],
-      type: "Note",
-      id: parentId.href,
-      contextHistory: {
-        type: "OrderedCollection",
-        id: historyId.href,
-        orderedItems: [{ type: "Note", id: sibling.id!.href }],
-      },
-    };
-    const embedded = await Note.fromJsonLd(document, {
-      verifyPortableObject: () => Promise.resolve({ verified: false }),
-    });
-    const source = (await Note.fromJsonLd(document)).deepClone();
-    let contextLoads = 0;
-    const requests: string[] = [];
-    const results = await collect(
-      {
-        documentLoader: (iri) => {
-          requests.push(iri.href);
-          return Promise.resolve(iri.href === parentId.href ? source : null);
+  for (const anonymous of [false, true]) {
+    test(`failed parses preserve an identical ${anonymous ? "anonymous " : ""}embedded target's verifier`, async () => {
+      const historyId = parseIri("ap+ef61://did:key:z6Mkabc/history");
+      const document = {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/fep/171b",
+        ],
+        type: "Note",
+        ...(anonymous ? {} : { id: parentId.href }),
+        contextHistory: {
+          type: "OrderedCollection",
+          id: historyId.href,
+          orderedItems: [{ type: "Note", id: sibling.id!.href }],
         },
-      },
-      new Note(
-        { replyTargets: [parentId, embedded] },
+      };
+      const embedded = await Note.fromJsonLd(document, {
+        verifyPortableObject: () => Promise.resolve({ verified: false }),
+      });
+      const source = (await Note.fromJsonLd(document)).deepClone();
+      let contextLoads = 0;
+      const requests: string[] = [];
+      const results = await collect(
         {
-          // Only the fetched document needs parsing; the embedded target
-          // is already typed and must retain its own verifier.
-          contextLoader: () => {
-            contextLoads++;
-            throw new Error("Context unavailable");
+          documentLoader: (iri) => {
+            requests.push(iri.href);
+            return Promise.resolve(iri.href === parentId.href ? source : null);
           },
         },
-      ),
-      { contextDiscovery: "ancestors", contextSource: "history-first" },
+        new Note(
+          { replyTargets: [parentId, embedded] },
+          {
+            // Only the fetched document needs parsing; the embedded target
+            // is already typed and must retain its own verifier.
+            contextLoader: () => {
+              contextLoads++;
+              throw new Error("Context unavailable");
+            },
+          },
+        ),
+        { contextDiscovery: "ancestors", contextSource: "history-first" },
+      );
+      ok(contextLoads > 0);
+      deepStrictEqual(requests, [parentId.href, historyId.href]);
+      deepStrictEqual(results, []);
+    });
+  }
+
+  test("uncached portable claims retain their source verifier during discovery", async () => {
+    const portableParent = parseIri("ap://did:key:z6Mkabc/parent");
+    const portableRoot = parseIri("ap://did:key:z6Mkabc/root");
+    let verifications = 0;
+    const parent = new Note(
+      { id: portableParent, replyTarget: portableRoot },
+      {
+        verifyPortableObject: () => {
+          verifications++;
+          return Promise.resolve({ verified: false });
+        },
+      },
     );
-    ok(contextLoads > 0);
-    deepStrictEqual(requests, [parentId.href, historyId.href]);
+    const context = loader([
+      [parentId.href, parent],
+      [portableRoot.href, new Note({ id: portableRoot })],
+    ]);
+    const results = await collect(
+      context,
+      new Note({ replyTarget: parentId }),
+      {
+        contextDiscovery: "ancestors",
+      },
+    );
     deepStrictEqual(results, []);
+    deepStrictEqual(context.requests, [parentId.href, portableRoot.href]);
+    strictEqual(verifications, 1);
+  });
+
+  test("custom fetching accessors retain source defaults without caching targets", async () => {
+    const historyId = parseIri("ap://did:key:z6Mkabc/history");
+    const parent = await Note.fromJsonLd(
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/fep/171b",
+        ],
+        type: "Note",
+        id: parentId.href,
+        contextHistory: {
+          type: "OrderedCollection",
+          id: historyId.href,
+          orderedItems: [{ type: "Note", id: sibling.id!.href }],
+        },
+      },
+      { verifyPortableObject: () => Promise.resolve({ verified: false }) },
+    );
+    class FetchingReply extends Note {
+      override async *getReplyTargets(
+        options: Parameters<Note["getReplyTargets"]>[0] = {},
+      ) {
+        ok(options.documentLoader != null);
+        const document = await options.documentLoader(parentId.href);
+        yield await Note.fromJsonLd(document.document);
+      }
+    }
+    const context = loader([[parentId.href, parent]]);
+    const results = await collect(context, new FetchingReply({}), {
+      contextDiscovery: "ancestors",
+      contextSource: "history-first",
+    });
+    deepStrictEqual(results, []);
+    deepStrictEqual(context.requests, [parentId.href, historyId.href]);
   });
 
   test("loaded ancestor history hydration stays local to each backfill call", async () => {
