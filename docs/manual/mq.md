@@ -521,7 +521,7 @@ const federation = createFederation<void>({
 [deno-announcement]: https://deno.com/blog/cloudflare
 [`WorkersMessageQueue`]: https://jsr.io/@fedify/cfworkers/doc/~/WorkersMessageQueue
 [#1336]: https://github.com/fedify-dev/fedify/issues/1336
-[`DenoKvMessageQueue`]: https://jsr.io/@fedify/denokv/doc/mq/~/DenoKvMessageQueue
+[`DenoKvMessageQueue`]: https://jsr.io/@fedify/denokv/doc/~/DenoKvMessageQueue
 [`Deno.openKv()`]: https://docs.deno.com/api/deno/~/Deno.openKv
 
 ### `WorkersMessageQueue` (Cloudflare Workers only)
