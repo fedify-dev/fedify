@@ -78,8 +78,9 @@ files, and ensuring the code is compatible with both Deno and Node.js/Bun
 environments.
 
 After writing *deno.json* and *package.json* (or whenever you add or
-change dependencies), run `mise deps` to update both *deno.lock*
-and *pnpm-lock.yaml*.  This ensures all lockfiles stay in sync.
+change dependencies), run `mise deps` to update *pnpm-lock.yaml* and
+`mise run deno:cache` to update *deno.lock*.  This keeps both lockfiles
+in sync.
 
 Add additional definitions as appropriate based on context.  Aside from the
 main integration function and the `ContextDataFactory` type, keep module
@@ -247,7 +248,7 @@ At a minimum, test the following scenarios (see
 3.  Write *README.md*
 4.  Write *deno.json* (if publishing to JSR is intended)
 5.  Write *package.json* (if publishing to npm is intended)
-6.  Run `mise deps`
+6.  Run `mise deps` and `mise run deno:cache`
 7.  Write *tsdown.config.ts* (if Node.js and Bun are supported)
 8.  Write *tsconfig.check.json*
 9.  Write tests if possible
