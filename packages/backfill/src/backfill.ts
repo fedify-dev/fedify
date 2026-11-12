@@ -298,6 +298,7 @@ async function discoverConversationCollection(
           options,
           budget,
           visitedObjectIds,
+          { continueAfterBudgetExceeded: true },
         )) {
           budget.signal?.throwIfAborted();
           const target = getDiscoveryReplyTarget(parsedTarget, budget);
@@ -560,6 +561,11 @@ async function* getReplyTargets(
   options: BackfillOptions,
   budget: RequestBudget,
   skipIds?: ReadonlySet<string>,
+  {
+    continueAfterBudgetExceeded = false,
+  }: {
+    continueAfterBudgetExceeded?: boolean;
+  } = {},
 ): AsyncIterable<APObject | Link> {
   let traversalError:
     | MaxRequestsExceeded
@@ -607,6 +613,13 @@ async function* getReplyTargets(
             },
           );
         } catch (error) {
+          if (
+            continueAfterBudgetExceeded &&
+            error instanceof MaxRequestsExceeded
+          ) {
+            // Skip this lookup without preventing embedded or cached targets.
+            throw error;
+          }
           // Retain traversal errors across vocabulary error suppression so
           // invalid configuration cannot continue with an embedded sibling.
           if (isTraversalError(error)) traversalError = error;

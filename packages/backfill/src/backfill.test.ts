@@ -944,7 +944,7 @@ describe("ancestor collection discovery", () => {
     deepStrictEqual(context.requests, [contextId.href]);
   });
 
-  test("request budget exhaustion stops discovery before embedded siblings", async () => {
+  test("request budget exhaustion allows embedded siblings during discovery", async () => {
     const context = loader();
     const results = await collect(
       context,
@@ -962,8 +962,11 @@ describe("ancestor collection discovery", () => {
         maxRequests: 0,
       },
     );
-    deepStrictEqual(results, []);
     deepStrictEqual(context.requests, []);
+    deepStrictEqual(
+      results.map(({ id }) => id),
+      [sibling.id],
+    );
   });
 
   test("cancellation during ancestor discovery propagates", async () => {
