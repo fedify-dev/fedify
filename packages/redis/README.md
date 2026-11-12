@@ -97,7 +97,8 @@ if (available !== undefined && available > 0) {
     { key: keys[0], expectedValue: available, newValue: available - 1 },
     { key: keys[1], expectedValue: reserved, newValue: (reserved ?? 0) + 1 },
   ]);
-  // On false, re-read both values and re-evaluate the reservation rule.
+  // On false, an earlier attempt may have committed. Check a receipt or
+  // version before re-evaluating the reservation rule (see below).
 }
 ~~~~
 
