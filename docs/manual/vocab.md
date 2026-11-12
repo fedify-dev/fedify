@@ -456,9 +456,32 @@ const create = new Create({});
 const jsonLd = await create.toJsonLd();
 ~~~~
 
-By default, the `toJsonLd()` method returns the JSON-LD document which is
-neither compacted nor expanded.  Instead, it processes the JSON-LD document
-without the proper JSON-LD processor for efficiency.
+By default, `toJsonLd()` preserves the cached document of a parsed object and
+uses the default context for a constructed object.  When a constructed object
+embeds a child with its own `@context`, it isolates that child's context on
+ordinary node-valued properties, including collection items.  This preserves
+the child's standalone meaning and cached document even if it defines a term
+the parent's context protects, such as `proof`.
+
+Generated children also carry their own contexts, so isolation applies even
+when the child and parent have identical `@context` values.  The serialized
+parent's context array gains an inline definition with a property-scoped
+`@context: null` for each affected property.  Consumers that process contexts
+need to support JSON-LD 1.1 property-scoped contexts.
+
+Context processing adds work at each nesting level with contextual children;
+default serialization no longer always avoids the JSON-LD processor.  Reuse
+a caching `contextLoader` when serializing repeated or deeply nested objects
+with remote contexts.  Objects without contextual children skip this step.
+
+Isolation can resolve the parent's context through `contextLoader`.  A URL
+reference alongside an isolated child is represented as an object with `id`
+and its own context.  Custom `toJsonLd()` implementations should return
+standalone JSON-LD documents: a partial child context that relies on a previous
+parent does not carry that parent's definitions into a new parent.  Properties
+whose definitions are protected, already scoped, or literal JSON retain their
+existing serialization behavior.  Objects with protected type-scoped
+definitions also retain their existing behavior.
 
 The `toJsonLd()` method takes some options to customize the JSON-LD document.
 For example, you can compact the JSON-LD document with a custom context.

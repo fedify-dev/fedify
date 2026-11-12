@@ -1,5 +1,6 @@
 import { generateDecoder, generateEncoder } from "./codec.ts";
 import { generateCloner, generateConstructor } from "./constructor.ts";
+import { generateContextHelpers } from "./context.ts";
 import { generateFields } from "./field.ts";
 import { generateInspector, generateInspectorPostClass } from "./inspector.ts";
 import { generateProperties } from "./property.ts";
@@ -184,6 +185,7 @@ function isValidLanguageTag(language: string): boolean {
 }
 `;
   yield "\n\n";
+  yield generateContextHelpers();
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {
     for await (const code of generateClass(typeUri, types)) yield code;

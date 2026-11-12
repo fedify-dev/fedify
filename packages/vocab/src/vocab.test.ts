@@ -404,6 +404,13 @@ test("Note.toJsonLd()", async () => {
           "@type": "@id",
         },
       },
+      {
+        tag: {
+          "@id": "https://www.w3.org/ns/activitystreams#tag",
+          "@type": "@id",
+          "@context": null,
+        },
+      },
     ],
     tag: {
       "@context": [
@@ -2479,7 +2486,18 @@ for (const typeUri in types) {
     const jsonLd = await instance.toJsonLd({
       contextLoader: mockDocumentLoader,
     });
-    deepStrictEqual(jsonLd["@context"], type.defaultContext);
+    deepStrictEqual(
+      jsonLd["@context"],
+      type.name === "CryptographicKey"
+        ? [type.defaultContext, {
+          owner: {
+            "@id": "https://w3id.org/security#owner",
+            "@type": "@id",
+            "@context": null,
+          },
+        }]
+        : type.defaultContext,
+    );
     deepStrictEqual(jsonLd.id, "https://example.com/");
     const restored = await cls.fromJsonLd(jsonLd, {
       documentLoader: mockDocumentLoader,
