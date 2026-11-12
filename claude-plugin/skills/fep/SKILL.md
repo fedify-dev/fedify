@@ -49,3 +49,15 @@ Fedify implementation
 Explain which Fedify APIs are relevant to the implementation: vocabulary
 types in `@fedify/vocab`, custom context handling, dispatcher or inbox
 listener patterns.
+
+For draft [FEP-f799], `@fedify/vocab` provides `DeliverySuspension`,
+`Collection.deliveryController`, and `controlledOrigins` on all five actor
+classes.  `DeliverySuspension.suspensionStatus` uses the wire term `status`
+and only the FEP-f799 IRI, independently of unrelated status vocabularies.
+The default document loader resolves the FEP context locally.  These are
+inert vocabulary tools: constructing or parsing them does not authenticate a
+notice, verify controller authority, advertise a capability, or suspend
+delivery. Validate the original JSON-LD before applying protocol decisions;
+generated accessors can skip malformed values and hide multiplicity.
+
+[FEP-f799]: https://w3id.org/fep/f799

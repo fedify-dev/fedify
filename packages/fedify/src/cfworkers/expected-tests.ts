@@ -1,5 +1,11 @@
 // The Workers suite is deliberately bounded to tests validated on workerd.
 export const expectedTestNames = [
+  "FEP-f799 DeliverySuspension compacts and round-trips directly and nested",
+  "FEP-f799 controlledOrigins on all actor classes preserves spelling and context",
+  "FEP-f799 deliveryController is an inherited URL scalar without dereference",
+  "FEP-f799 malformed extensions do not break ordinary actors collections or Create",
+  "FEP-f799 status is independent of schema.org status in either context order",
+  "FEP-f799 modeled raw writes replace remove and validate extension values",
   "MemoryKvStore atomic contract and capability guard",
   "MemoryKvStore validates whole batches before mutation",
   "MemoryKvStore rejects sparse getMany input before mutation",

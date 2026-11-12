@@ -10,6 +10,7 @@ import {
 } from "node:http";
 import { gzipSync } from "node:zlib";
 import preloadedContexts from "./contexts.ts";
+import fepF799Context from "./contexts/fep-f799.json" with { type: "json" };
 import cidV1Context from "./contexts/cid-v1.json" with { type: "json" };
 import {
   createDocumentLoader,
@@ -686,6 +687,69 @@ test("getDocumentLoader()", async (t) => {
           "https://w3id.org/fep/6757#preferredLicense": [
             {
               "@id": "https://creativecommons.org/licenses/by-nc/4.0/",
+            },
+          ],
+        },
+      ],
+    );
+    deepStrictEqual(fetchMock.callHistory.calls(url).length, 0);
+  });
+
+  fetchMock.get("https://w3id.org/fep/f799", { status: 502 });
+  await t.step("preloaded FEP-f799 context", async () => {
+    const url = "https://w3id.org/fep/f799";
+    deepStrictEqual(await fetchDocumentLoader(url), {
+      contextUrl: null,
+      documentUrl: url,
+      document: fepF799Context,
+    });
+    deepStrictEqual(
+      await jsonld.expand(
+        {
+          "@context": ["https://www.w3.org/ns/activitystreams", url],
+          type: "DeliverySuspension",
+          status: "active",
+          targetOrigin: "https://SOCIAL.example:443/",
+          revision: 1,
+          targetInbox: "https://social.example/inbox",
+          announcement: "https://social.example/activities/1",
+          deliveryController: "https://social.example/actor",
+          controlledOrigin: ["https://social.example"],
+        },
+        { documentLoader: fetchDocumentLoader },
+      ),
+      [
+        {
+          "@type": [`${url}#DeliverySuspension`],
+          [`${url}#status`]: [
+            {
+              "@value": "active",
+              "@type": "http://www.w3.org/2001/XMLSchema#string",
+            },
+          ],
+          [`${url}#targetOrigin`]: [
+            {
+              "@value": "https://SOCIAL.example:443/",
+              "@type": "http://www.w3.org/2001/XMLSchema#string",
+            },
+          ],
+          [`${url}#revision`]: [
+            {
+              "@value": 1,
+              "@type": "http://www.w3.org/2001/XMLSchema#integer",
+            },
+          ],
+          [`${url}#targetInbox`]: [{ "@id": "https://social.example/inbox" }],
+          [`${url}#announcement`]: [
+            { "@id": "https://social.example/activities/1" },
+          ],
+          [`${url}#deliveryController`]: [
+            { "@id": "https://social.example/actor" },
+          ],
+          [`${url}#controlledOrigin`]: [
+            {
+              "@value": "https://social.example",
+              "@type": "http://www.w3.org/2001/XMLSchema#string",
             },
           ],
         },

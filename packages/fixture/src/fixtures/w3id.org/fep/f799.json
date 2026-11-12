@@ -1,0 +1,21 @@
+{
+  "@context": {
+    "fep-f799": "https://w3id.org/fep/f799#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "DeliverySuspension": "fep-f799:DeliverySuspension",
+    "deliveryController": {
+      "@id": "fep-f799:deliveryController",
+      "@type": "@id"
+    },
+    "controlledOrigin": {
+      "@id": "fep-f799:controlledOrigin",
+      "@container": "@set",
+      "@type": "xsd:string"
+    },
+    "targetInbox": { "@id": "fep-f799:targetInbox", "@type": "@id" },
+    "targetOrigin": { "@id": "fep-f799:targetOrigin", "@type": "xsd:string" },
+    "announcement": { "@id": "fep-f799:announcement", "@type": "@id" },
+    "status": { "@id": "fep-f799:status", "@type": "xsd:string" },
+    "revision": { "@id": "fep-f799:revision", "@type": "xsd:integer" }
+  }
+}

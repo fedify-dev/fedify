@@ -25,3 +25,13 @@ Walk through:
     is registered.
 
 Reference: <https://fedify.dev/manual/actor>
+
+For draft [FEP-f799] delivery-suspension metadata, the five actor classes
+expose `controlledOrigins` as strings.  Preserve their spelling until the
+application validates them.  An actor's claim alone does not establish
+origin control: verify the reciprocal origin WebFinger relation separately.
+`Collection.deliveryController` is a URL-valued shared-inbox controller claim;
+it does not fetch the actor or grant authority.  These vocabulary properties
+do not enable receiving or suspend outbound delivery.
+
+[FEP-f799]: https://w3id.org/fep/f799

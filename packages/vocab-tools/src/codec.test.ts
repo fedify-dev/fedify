@@ -1,4 +1,10 @@
-import { deepStrictEqual, match, ok, rejects } from "node:assert/strict";
+import {
+  deepStrictEqual,
+  match,
+  ok,
+  rejects,
+  throws,
+} from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -65,6 +71,10 @@ async function withFixture(
     ) {
       term["@type"] = "@id";
     }
+    if (property.range[0] === "fedify:typedString")
+      term["@type"] = `${XSD}string`;
+    if (property.range[0] === "fedify:positiveSafeInteger")
+      term["@type"] = `${XSD}integer`;
     if ("container" in property && property.container != null) {
       term["@container"] = `@${property.container}`;
     }
@@ -568,4 +578,96 @@ test("aliases declared only on a superclass take the subclass's encoder", async 
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("typed strings emit explicit datatypes and skip incompatible incoming values", async () => {
+  await withFixture(
+    { range: ["fedify:typedString"] },
+    async (Fixture, contextLoader) => {
+      const source = new Fixture({
+        values: ["active", "https://SOCIAL.example:443/"],
+      });
+      const expanded = await source.toJsonLd({
+        format: "expand",
+        contextLoader,
+      });
+      deepStrictEqual(
+        (expanded as unknown as Record<string, unknown>[])[0][`${NS}value`],
+        [
+          { "@type": `${XSD}string`, "@value": "active" },
+          { "@type": `${XSD}string`, "@value": "https://SOCIAL.example:443/" },
+        ],
+      );
+      const compact = await source.toJsonLd({
+        format: "compact",
+        contextLoader,
+      });
+      deepStrictEqual(compact.value, ["active", "https://SOCIAL.example:443/"]);
+      const parsed = await Fixture.fromJsonLd(
+        document({
+          [`${NS}value`]: [
+            { "@value": "plain" },
+            { "@value": "typed", "@type": `${XSD}string` },
+            { "@value": "wrong", "@type": `${XSD}integer` },
+            { "@value": "language", "@language": "en" },
+            { "@value": 1 },
+          ],
+        }),
+        { contextLoader },
+      );
+      deepStrictEqual(parsed.values, ["plain", "typed"]);
+    },
+  );
+});
+
+test("positive safe integers emit integer datatypes without string coercion", async () => {
+  await withFixture(
+    { range: ["fedify:positiveSafeInteger"] },
+    async (Fixture, contextLoader) => {
+      const source = new Fixture({ values: [1, Number.MAX_SAFE_INTEGER] });
+      const expanded = await source.toJsonLd({
+        format: "expand",
+        contextLoader,
+      });
+      deepStrictEqual(
+        (expanded as unknown as Record<string, unknown>[])[0][`${NS}value`],
+        [
+          { "@type": `${XSD}integer`, "@value": 1 },
+          { "@type": `${XSD}integer`, "@value": Number.MAX_SAFE_INTEGER },
+        ],
+      );
+      const compact = await source.toJsonLd({
+        format: "compact",
+        contextLoader,
+      });
+      deepStrictEqual(compact.value, [1, Number.MAX_SAFE_INTEGER]);
+      const parsed = await Fixture.fromJsonLd(
+        document({
+          [`${NS}value`]: [
+            { "@value": 1 },
+            { "@value": 2, "@type": `${XSD}integer` },
+            { "@value": "3", "@type": `${XSD}integer` },
+            { "@value": 0 },
+            { "@value": -1 },
+            { "@value": 1.5 },
+            { "@value": Number.MAX_SAFE_INTEGER + 1 },
+            { "@value": 4, "@type": `${XSD}double` },
+          ],
+        }),
+        { contextLoader },
+      );
+      deepStrictEqual(parsed.values, [1, 2]);
+      for (const value of [
+        0,
+        -1,
+        1.5,
+        Number.MAX_SAFE_INTEGER + 1,
+        NaN,
+        Infinity,
+        "1",
+      ]) {
+        throws(() => new Fixture({ values: [value] }), TypeError);
+      }
+    },
+  );
 });
