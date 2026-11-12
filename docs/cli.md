@@ -5,8 +5,6 @@ description: >-
   features of the fedify command.
 ---
 
-<!-- deno-fmt-ignore-file -->
-
 `fedify`: CLI toolchain
 =======================
 

@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 Map-local create(note) vector
 =============================
 

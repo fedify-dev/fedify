@@ -1,7 +1,5 @@
 <!-- hongdown-proper-nouns: Fresh -->
 
-<!-- deno-fmt-ignore-file -->
-
 @fedify/fresh: Integrate Fedify with Fresh 2.x
 ==============================================
 

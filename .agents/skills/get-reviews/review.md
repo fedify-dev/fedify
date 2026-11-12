@@ -17,8 +17,6 @@ commit: The hash of commit after applying the review to add the comment
 #  -  def5678
 ---
 
-<!-- deno-fmt-ignore-file -->
-
 <!--
   From this point forward, there are instructions within comments as well as
   instructions outside of comments.

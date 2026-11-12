@@ -4,8 +4,6 @@ description: >-
   explains how to integrate Fedify with web frameworks.
 ---
 
-<!-- deno-fmt-ignore-file -->
-
 Integration
 ===========
 

@@ -7,8 +7,6 @@ description: >-
 argument-hint: "Provide the name of the web framework to register in @fedify/init."
 ---
 
-<!-- deno-fmt-ignore-file -->
-
 Adding an integration package to `@fedify/init`
 ===============================================
 

@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 Fedify-Nuxt integration example application
 ===========================================
 

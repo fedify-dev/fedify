@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/hono: Integrate Fedify with Hono
 ========================================
 

@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/nuxt: Integrate Fedify with Nuxt
 ========================================
 

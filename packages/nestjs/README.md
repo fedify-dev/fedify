@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/nestjs: Integrate Fedify with NestJS
 ============================================
 

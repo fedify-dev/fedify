@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/uri-template: Round-trip RFC 6570 URI Template library
 ==============================================================
 

@@ -9,8 +9,6 @@ description: >-
 argument-hint: "Provide the name of the web framework you want to integrate with."
 ---
 
-<!-- deno-fmt-ignore-file -->
-
 Adding an integration package to a web framework
 ================================================
 

@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/denokv: Adapt Fedify with Deno KV
 =========================================
 

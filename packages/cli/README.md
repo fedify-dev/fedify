@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 `fedify`: the CLI toolchain for Fedify and debugging ActivityPub
 ================================================================
 

@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/fixture: Cross-runtime test helpers and ActivityPub fixtures
 ====================================================================
 

@@ -1,5 +1,3 @@
-<!-- deno-fmt-ignore-file -->
-
 @fedify/next: Integrate Fedify with Next.js
 ===========================================
 
