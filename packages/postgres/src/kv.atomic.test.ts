@@ -546,6 +546,38 @@ dbTest(
 );
 
 dbTest(
+  "PostgresKvStore batch reads reuse existing tables in read-only transactions",
+  async () => {
+    const f = fixture();
+    try {
+      await f.store.setMany([{ key, value: "existing" }]);
+      await f.sql.begin("read only", async (sql) => {
+        const store = new PostgresKvStore(sql, { tableName: f.tableName });
+        for (let attempt = 0; attempt < 2; attempt++) {
+          assert.deepEqual(await store.getMany([key, ["missing"]]), [
+            "existing",
+            undefined,
+          ]);
+        }
+        assert.equal((await sql`SELECT 1 AS healthy`)[0].healthy, 1);
+      });
+      const reserved = await f.sql.reserve();
+      try {
+        await reserved`BEGIN READ ONLY`;
+        const store = new PostgresKvStore(reserved, { tableName: f.tableName });
+        assert.deepEqual(await store.getMany([key]), ["existing"]);
+        assert.equal((await reserved`SELECT 1 AS healthy`)[0].healthy, 1);
+      } finally {
+        await reserved`ROLLBACK`;
+        reserved.release();
+      }
+    } finally {
+      await f.dispose();
+    }
+  },
+);
+
+dbTest(
   "PostgresKvStore reserved batch initialization refreshes after rollback and failure",
   async () => {
     const f = fixture();

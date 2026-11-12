@@ -697,8 +697,14 @@ export class PostgresKvStore implements AtomicKvStore {
   }
 
   async #initializeTable(): Promise<void> {
+    // Caller rollback can remove a previously created table. Check each time,
+    // but avoid write-class DDL when reads reuse a table in READ ONLY scope.
+    const [existing] = await this.#sql`
+      SELECT to_regclass(${quoteIdentifier(this.#tableName)}) IS NOT NULL AS present
+    `;
     if (this.#unlogged) {
-      await this.#sql`
+      if (!existing.present)
+        await this.#sql`
         CREATE UNLOGGED TABLE IF NOT EXISTS ${this.#sql(this.#tableName)} (
           key text[] PRIMARY KEY,
           value jsonb NOT NULL,
@@ -707,7 +713,8 @@ export class PostgresKvStore implements AtomicKvStore {
         );
       `;
     } else {
-      await this.#sql`
+      if (!existing.present)
+        await this.#sql`
         CREATE TABLE IF NOT EXISTS ${this.#sql(this.#tableName)} (
           key text[] PRIMARY KEY,
           value jsonb NOT NULL,
