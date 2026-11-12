@@ -149,6 +149,7 @@ catalog:
   "@astrojs/compiler-rs": 0.5.2
   svelte: 5.57.3
   postgres: ^3.4.7
+  srvx: ^0.8.7
   temporal-polyfill: ^1.0.1
   tsdown: ^0.22.0
   typescript: ^6.0.3

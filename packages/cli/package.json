@@ -122,7 +122,7 @@
     "pngjs": "^7.0.0",
     "shiki": "^1.6.4",
     "smol-toml": "^1.6.1",
-    "srvx": "^0.8.7",
+    "srvx": "catalog:",
     "temporal-polyfill": "catalog:",
     "valibot": "^1.4.0",
     "yaml": "^2.9.0"

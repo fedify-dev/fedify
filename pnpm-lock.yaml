@@ -213,6 +213,9 @@ catalogs:
     postgres:
       specifier: ^3.4.7
       version: 3.4.7
+    srvx:
+      specifier: ^0.8.7
+      version: 0.8.16
     svelte:
       specifier: 5.57.3
       version: 5.57.3
@@ -1315,7 +1318,7 @@ importers:
         specifier: ^1.6.1
         version: 1.6.1
       srvx:
-        specifier: ^0.8.7
+        specifier: 'catalog:'
         version: 0.8.16
       temporal-polyfill:
         specifier: 'catalog:'
@@ -2357,7 +2360,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/vocab
       srvx:
-        specifier: ^0.8.7
+        specifier: 'catalog:'
         version: 0.8.16
 
 packages:
