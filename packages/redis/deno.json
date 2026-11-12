@@ -25,6 +25,6 @@
   },
   "tasks": {
     "check": "deno check src/*.ts",
-    "test": "deno test --allow-net --allow-env --doc --no-check=leaks"
+    "test": "deno test --allow-net --allow-env --allow-read --allow-write --allow-run --allow-sys --doc --no-check=leaks"
   }
 }
