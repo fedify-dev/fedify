@@ -9,6 +9,7 @@ import {
   OrderedCollectionPage,
 } from "@fedify/vocab";
 import { fromCompatibleEf61Id, parseIri } from "@fedify/vocab-runtime";
+import { copyPortableProvenance } from "@fedify/vocab-runtime/internal/portable-dereference";
 
 import type {
   BackfillContext,
@@ -660,7 +661,10 @@ function getDiscoveryReplyTarget(
 ): APObject | Link {
   if (!(target instanceof APObject)) return target;
   const source = budget.discovery?.sources.get(target);
-  return source == null ? target : copyDiscoveryObject(source, budget);
+  if (source == null) return target;
+  const copy = copyDiscoveryObject(source, budget);
+  copyPortableProvenance(target, copy);
+  return copy;
 }
 
 async function getRepliesCollection(

@@ -568,6 +568,40 @@ describe("ancestor collection discovery", () => {
     deepStrictEqual(context.requests, [parentId.href, contextId.href]);
   });
 
+  test("HTTPS ancestors retain portable ancestry during discovery", async () => {
+    const historyId = parseIri("ap+ef61://did:key:z6Mkabc/history");
+    const parent = await Note.fromJsonLd({
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/fep/171b",
+      ],
+      type: "Note",
+      id: parentId.href,
+      contextHistory: {
+        type: "OrderedCollection",
+        id: "ap+ef61://did:key:z6Mkabc/history",
+        orderedItems: [{ type: "Note", id: sibling.id!.href }],
+      },
+    });
+    const context = loader([
+      [parentId.href, parent],
+      [
+        historyId.href,
+        new OrderedCollection({ id: historyId, items: [sibling] }),
+      ],
+    ]);
+    const results = await collect(
+      context,
+      new Note({
+        id: parseIri("ap://did:key:z6Mkabc/seed"),
+        replyTarget: parentId,
+      }),
+      { contextDiscovery: "ancestors", contextSource: "history-first" },
+    );
+    deepStrictEqual(results, []);
+    deepStrictEqual(context.requests, [parentId.href]);
+  });
+
   test("failed parses preserve an identical embedded target's verifier", async () => {
     const document = {
       "@context": [
