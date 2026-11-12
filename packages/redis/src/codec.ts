@@ -66,6 +66,9 @@ export class JsonCodec implements Codec {
       if (e instanceof TypeError) throw new EncodingError(e.message);
       throw e;
     }
+    if (typeof json !== "string") {
+      throw new EncodingError("The value cannot be represented as JSON.");
+    }
     return Buffer.from(this.#textEncoder.encode(json));
   }
 

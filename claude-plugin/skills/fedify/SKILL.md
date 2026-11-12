@@ -503,18 +503,18 @@ for a shared backend.  Separate calls do not form a transaction; uncertain
 commit results need receipts or version checks, and ABA detection needs a
 non-reused version.
 
-`MemoryKvStore`, `PostgresKvStore`, `SqliteKvStore`, `PgliteKvStore`,
-`MysqlKvStore`, and `WorkersD1KvStore` implement the atomic interface in their
-documented scopes. SQLite covers one configured table/database on a writable,
-normally locking connection.  Nonempty batches and ordinary mutations reject
-caller-owned transactions and use one transaction; snapshots and mismatching
-CAS can reject busy, including under rollback-journal reader contention.
-Configure busy timeout on the connection; the KV store has no retry policy.
-Use decoded JSON expectations, structural comparison, and the documented
-millisecond TTL precision and resource limits.  `SqliteMessageQueue` defaults
-to WAL on shared files; concurrent WAL use needs a patched SQLite engine (Bun
-1.2.22 SQLite 3.50.4 is affected by the WAL-reset bug).  See the adapter
-documentation.
+`MemoryKvStore`, `PostgresKvStore`, `RedisKvStore`, `SqliteKvStore`,
+`PgliteKvStore`, `MysqlKvStore`, and `WorkersD1KvStore` implement the atomic
+interface in their documented scopes. SQLite covers one configured
+table/database on a writable, normally locking connection.  Nonempty batches
+and ordinary mutations reject caller-owned transactions and use one
+transaction; snapshots and mismatching CAS can reject busy, including under
+rollback-journal reader contention. Configure busy timeout on the connection;
+the KV store has no retry policy. Use decoded JSON expectations, structural
+comparison, and the documented millisecond TTL precision and resource limits.
+`SqliteMessageQueue` defaults to WAL on shared files; concurrent WAL use needs
+a patched SQLite engine (Bun 1.2.22 SQLite 3.50.4 is affected by the WAL-reset
+bug).  See the adapter documentation.
 
 For PGlite, share one normal owner and table across wrappers, require standard
 JSONB/text-array codecs, and keep raw/manual transaction control and
@@ -526,7 +526,21 @@ engine insertion failures roll back, while mismatch does not prove proposed
 writes would fit.  Do not infer crash durability, browser persistence, or
 worker-proxy support.  Read the PGlite package README's synchronization policy.
 
-The Redis atomic extension is tracked separately in issue #1365; Deno KV and
+Redis batches currently require official Redis 7.2.17,
+7.4.12, or 8.10.3, with no debugger or module command hooks; other releases
+reject nonempty batches until audited and added in a Fedify update. The version
+guard does not authenticate forks or modified engines. On Cluster, all final
+physical keys must share one slot in database zero, including ioredis's client
+prefix. Choose an explicit hash tag for a new namespace; existing keys are not
+automatically moved. Each batch request is limited to 128 entries and 1 MiB of
+key, encoded value/expectation, and argument data. TTLs round up to seconds
+with a minimum of one second and batch maximum of 2,147,483,647 seconds. With
+`JsonCodec`, CAS compares encoded bytes, so object property order matters.
+Grant read/write key access for `EVAL`, including snapshots. Snapshot reads
+route to primaries, but Cluster `list()` retains its existing `SCAN` coverage
+limitation. Redis persistence/failover and ioredis replays remain separate from
+per-call atomicity; a later CAS mismatch does not prove a prior attempt never
+committed. Deno KV and
 Netlify Blobs have no atomic adapter child issue.  `WorkersKvStore` lacks CAS.
 D1 operations cover one configured table in one database, with JSON
 serialization and millisecond TTLs.  Check the [atomic support matrix] and

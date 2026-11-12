@@ -322,10 +322,21 @@ nodeTest("RedisKvStore.cas() routes one key and rounds TTL", async () => {
     Buffer.from('"value"'),
   ]);
   assert.equal(calls[0].args[4], 1);
-  await store.cas(["key"], "value", undefined, {
+  await store.cas(["key"], "value", "updated", {
     ttl: Temporal.Duration.from({ seconds: -1 }),
   });
   assert.equal(calls[1].args[4], 1);
+  await assert.rejects(
+    store.cas(["key"], "wrong", undefined, {
+      ttl: Temporal.Duration.from({ seconds: -1 }),
+    }),
+    TypeError,
+  );
+  assert.equal(
+    calls.length,
+    2,
+    "invalid deletions must reject before dispatch",
+  );
 });
 
 nodeTest("RedisKvStore.set() rounds a TTL up to whole seconds", async () => {
