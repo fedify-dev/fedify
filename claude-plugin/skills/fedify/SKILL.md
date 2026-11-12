@@ -444,6 +444,7 @@ in development or tests.
 | Package             | `KvStore` | `MessageQueue` |
 | ------------------- | --------- | -------------- |
 | *@fedify/sqlite*    | yes       | yes            |
+| *@fedify/pglite*    | yes       | no             |
 | *@fedify/postgres*  | yes       | yes            |
 | *@fedify/mysql*     | yes       | yes            |
 | *@fedify/redis*     | yes       | yes            |
@@ -481,7 +482,8 @@ for a shared backend.  Separate calls do not form a transaction; uncertain
 commit results need receipts or version checks, and ABA detection needs a
 non-reused version.
 
-`MemoryKvStore` and `SqliteKvStore` implement the full atomic interface.
+`MemoryKvStore`, `SqliteKvStore`, and `PgliteKvStore` implement the full atomic
+interface.
 SQLite covers one configured table/database on a writable, normally locking
 connection.  Nonempty batches and ordinary mutations reject caller-owned
 transactions and use one transaction; snapshots and mismatching CAS can reject
@@ -491,10 +493,21 @@ JSON expectations, structural comparison, and the documented millisecond TTL
 precision and resource limits.  `SqliteMessageQueue` defaults to WAL on shared
 files; concurrent WAL use needs a patched SQLite engine (Bun 1.2.22
 SQLite 3.50.4 is affected by the WAL-reset bug).  See the adapter documentation.
-The persistent PostgreSQL, Redis, PGlite, and MySQL extensions remain tracked
-separately in issues #1364–#1366 and #1368; Deno KV and Netlify Blobs have no
-atomic adapter child issue.  `WorkersKvStore` lacks CAS.  `WorkersD1KvStore`
-supports single-key CAS; its atomic extension is tracked in #1379.  Check the
+
+For PGlite, share one normal owner and table across wrappers, require standard
+JSONB/text-array codecs, and keep raw/manual transaction control and
+caller-owned transaction callbacks outside store calls.  CAS ignores object
+member order and preserves array order.  Keys reject malformed Unicode and
+NUL; negative/overflowing TTLs and deletion TTLs reject.  Calendar expiry uses
+the session time zone and one cutoff per call.  Large batches block the owner;
+engine insertion failures roll back, while mismatch does not prove proposed
+writes would fit.  Do not infer crash durability, browser persistence, or
+worker-proxy support.  Read the PGlite package README's synchronization policy.
+
+The PostgreSQL, Redis, and MySQL atomic extensions are tracked separately in
+issues #1364, #1365, and #1368; Deno KV and Netlify Blobs have no atomic adapter
+child issue.  `WorkersKvStore` lacks CAS.  `WorkersD1KvStore` supports single-key
+CAS; its atomic extension is tracked in #1379.  Check the
 [atomic support matrix] and installed declarations before selecting a
 production adapter.
 

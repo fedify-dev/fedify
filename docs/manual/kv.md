@@ -480,7 +480,29 @@ const federation = createFederation<void>({
 > directory from multiple worker processes.  Use one PGlite instance per data
 > directory and runtime isolate.
 
+Since Fedify 2.5.0, this store also implements `AtomicKvStore`.
+Each snapshot or batch uses one PGlite transaction and one expiry cutoff.
+Wrappers must share one normal PGlite owner and table.  Do not call the store
+inside the owner's transaction callback or bypass its query queue with raw
+protocol or manual transaction control.  Worker proxies and browser
+persistence are outside the documented atomic scope.
+
+CAS compares JSONB values: object member order is ignored, array order
+matters, and stored null differs from absence.  Keys must be nonempty arrays
+of well-formed Unicode strings without U+0000.  Negative TTLs, timestamp
+overflow, and TTLs on CAS deletion reject; zero TTL expires immediately.
+Intervals round to microseconds and calendar units follow the session time
+zone.  There is no fixed batch-entry cap.  Engine key insertion limits depend
+on compression; a mismatch does not prove that unattempted writes would fit.
+Statement failures roll back the batch; commit or post-commit synchronization
+failures can reject after changes have committed.  Long batches occupy the
+shared instance.  Mutations await the owner's `syncToFs()` after commit; atomic
+execution does not establish crash durability.  See the
+[package's atomic-operation guidance] for codecs, legacy-row recovery, and the
+owner's synchronization policy.
+
 [`PgliteKvStore`]: https://jsr.io/@fedify/pglite/doc/kv/~/PgliteKvStore
+[package's atomic-operation guidance]: https://github.com/fedify-dev/fedify/tree/main/packages/pglite#atomic-operations
 
 ### [`MysqlKvStore`]
 
@@ -984,7 +1006,8 @@ check or an operation receipt before repeating effects.
 
 ### Current support
 
-`MemoryKvStore` and `SqliteKvStore` implement the full `AtomicKvStore` contract.
+`MemoryKvStore`, `SqliteKvStore`, and `PgliteKvStore` implement the full
+`AtomicKvStore` contract.
 Existing single-key CAS support does not imply atomic multi-key support.
 The linked issues track separate adapter implementations:
 
@@ -993,7 +1016,7 @@ The linked issues track separate adapter implementations:
 | `MemoryKvStore`       | Yes             | Development and testing only; one instance.                                                       |
 | `PostgresKvStore`     | No              | Planned in [#1364].                                                                               |
 | `RedisKvStore`        | No              | Planned in [#1365].                                                                               |
-| `PgliteKvStore`       | No              | Planned in [#1366].                                                                               |
+| `PgliteKvStore`       | Yes             | Since 2.5.0; one normal PGlite owner and table, JSONB comparison.             |
 | `SqliteKvStore`       | Yes             | One configured table/database; writable handles, JSON values; see [SQLite scope](#sqlitekvstore). |
 | `MysqlKvStore`        | No              | Planned in [#1368].                                                                               |
 | `DenoKvStore`         | No              | No atomic adapter child issue; deprecated since 2.5.0.                                            |
@@ -1004,7 +1027,6 @@ The linked issues track separate adapter implementations:
 [PR #1360]: https://github.com/fedify-dev/fedify/pull/1360
 [#1364]: https://github.com/fedify-dev/fedify/issues/1364
 [#1365]: https://github.com/fedify-dev/fedify/issues/1365
-[#1366]: https://github.com/fedify-dev/fedify/issues/1366
 [#1368]: https://github.com/fedify-dev/fedify/issues/1368
 [#1379]: https://github.com/fedify-dev/fedify/issues/1379
 
@@ -1612,6 +1634,11 @@ Use backend concurrency controls with a documented isolation level and key
 scope.  A process-local mutex cannot coordinate other handles or processes.
 On a deadlock retry, roll back and re-evaluate the complete expected set.
 Return `false` only for a comparison mismatch; propagate backend errors.
+
+For example, `PgliteKvStore` uses the exclusive transaction callback of
+one supported PGlite owner.  Independent store wrappers share that owner, whose
+client queue excludes other normal queries for the callback's entire lifetime,
+including checks for absent keys.
 
 Run the [shared atomic conformance tests](./test.md), using independent
 clients sharing an isolated backend for persistent adapters.  Add
