@@ -922,8 +922,11 @@ Single-key `cas()` follows the same comparison and value rules.
 In conditional operations, `expectedValue: undefined` means the key must be
 absent, and `newValue: undefined` means deletion.  Deletion removes the entry
 from `list()` too.  `set()` and `setMany()` reject `undefined` on an
-`AtomicKvStore`; use deletion methods instead.  These stronger rules do not
-change legacy ordinary stores: for example, MySQL currently treats
+`AtomicKvStore`; skip the write to preserve the former no-op, or use `delete()`
+or `deleteMany()` for unconditional removal.  For conditional removal, use
+`cas()` or `casMany()` with `newValue: undefined` and omit the TTL.
+These stronger rules do not change legacy ordinary stores: for example, MySQL
+currently treats
 `set(key, undefined)` as a no-op.
 
 Each set or conditional entry can supply its own `options.ttl`:

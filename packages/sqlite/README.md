@@ -69,8 +69,11 @@ const committed = await store.casMany(keys.map((key, index) => ({
 
 On `false`, read another snapshot and re-evaluate the application rule.
 `undefined` means absence when expected and deletion when supplied as a new CAS
-value.  `set(key, undefined)` now rejects; use `delete()` or `deleteMany()`
-instead.  A CAS deletion with a non-null TTL also rejects, even on mismatch.
+value.  `set(key, undefined)` now rejects; skip that call to preserve its former
+no-op behavior.  Use `delete()` or `deleteMany()` for unconditional removal.
+A CAS deletion with a non-null TTL also rejects, even on mismatch.  For
+conditional removal, keep using `cas()` or `casMany()` with
+`newValue: undefined` and omit the TTL.
 Mutation batches reject duplicate keys, and all batches reject sparse arrays.
 Empty batches return immediately without accessing the database.
 
