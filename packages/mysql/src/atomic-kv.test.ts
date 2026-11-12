@@ -64,6 +64,11 @@ test("MysqlKvStore AtomicKvStore conformance", live, async () => {
   for (const isolation of [undefined, "READ COMMITTED", "READ UNCOMMITTED"]) {
     await testAtomicKvStore(() => pair(isolation), {
       objectKeyOrder: "ignored",
+      // Seeding and updating TTLs takes several transactions on a shared runner.
+      ttl: {
+        short: Temporal.Duration.from({ seconds: 5 }),
+        wait: Temporal.Duration.from({ seconds: 6 }),
+      },
     });
   }
 });
