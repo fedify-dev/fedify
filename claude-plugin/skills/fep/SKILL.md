@@ -60,4 +60,19 @@ notice, verify controller authority, advertise a capability, or suspend
 delivery. Validate the original JSON-LD before applying protocol decisions;
 generated accessors can skip malformed values and hide multiplicity.
 
+For raw FEP-f799 documents, use the tools in
+`@fedify/fedify/delivery-suspension`:
+`parseDeliverySuspensionDocument()`,
+`parseDeliverySuspensionActivityDocument()`,
+`parseActorControlMetadata()`, and `parseInboxControlMetadata()`.
+These asynchronous parsers retain multiplicity and return detached raw and
+expanded evidence.  Their default context loader resolves only preloaded
+contexts; an explicit `contextLoader` must bound its own I/O.
+Use `parseDeliverySuspensionOrigin()` for root-origin identifiers and
+`getDeliverySuspensionUrlOrigin()` for endpoint origins.  The origin helpers
+apply IDNA2008 with a pinned Unicode 12.0 repertoire.
+Successful parsing establishes shape consistency only.  Authentication,
+controller authority, replay checks, and signed-state equality still require
+separate validation.  An `Undo` result contains an unverified activity claim.
+
 [FEP-f799]: https://w3id.org/fep/f799

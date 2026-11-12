@@ -70,6 +70,17 @@ To be released.
     breaking source compatibility for custom implementations. Update custom
     mocks, decorators, and wrappers to implement this method.
     [[#1316], [#1359] by Jiwon Kwon\]
+ -  Added raw [FEP-f799] shape tools in
+    `@fedify/fedify/delivery-suspension`.  The asynchronous notice, activity,
+    actor metadata, and inbox metadata parsers preserve expanded IRI spelling,
+    literal values, and multiplicity, and return detached evidence and
+    diagnostics.  The default loader resolves preloaded contexts locally;
+    applications can explicitly supply a context loader.
+    Strict HTTPS origin helpers validate origin spelling before URL
+    normalization, including IDNA2008 validation against a pinned Unicode 12.0
+    repertoire. These tools expose unverified claims; they do not authenticate
+    notices, establish controller authority, or suspend delivery.
+    [[#1369], [#1435]]
  -  Added sender payload projection support for the published FEP-171b context,
     preserving blind-recipient redaction.
     [[#1250], [#1396] by Jiwon Kwon\]
@@ -107,6 +118,7 @@ To be released.
     [[#1030], [#1205] by Yujin Jung\]
 
 [FEP-7aa9]: https://w3id.org/fep/7aa9
+[FEP-f799]: https://w3id.org/fep/f799
 [GHSA-4qhx-hhwf-8685]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-4qhx-hhwf-8685
 [#1030]: https://github.com/fedify-dev/fedify/issues/1030
 [#1177]: https://github.com/fedify-dev/fedify/issues/1177
@@ -124,10 +136,12 @@ To be released.
 [#1359]: https://github.com/fedify-dev/fedify/pull/1359
 [#1361]: https://github.com/fedify-dev/fedify/issues/1361
 [#1363]: https://github.com/fedify-dev/fedify/issues/1363
+[#1369]: https://github.com/fedify-dev/fedify/issues/1369
 [#1382]: https://github.com/fedify-dev/fedify/issues/1382
 [#1395]: https://github.com/fedify-dev/fedify/pull/1395
 [#1396]: https://github.com/fedify-dev/fedify/pull/1396
 [#1415]: https://github.com/fedify-dev/fedify/pull/1415
+[#1435]: https://github.com/fedify-dev/fedify/pull/1435
 
 ### @fedify/backfill
 
@@ -537,14 +551,11 @@ To be released.
     anew, such as a clone, encodes such an object from its values rather
     than embedding its received JSON-LD.  [[#1272], [#1356]]
 
-[FEP-f799]: https://w3id.org/fep/f799
 [FEP-6757]: https://w3id.org/fep/6757
 [#1212]: https://github.com/fedify-dev/fedify/issues/1212
 [#1241]: https://github.com/fedify-dev/fedify/pull/1241
 [#1243]: https://github.com/fedify-dev/fedify/issues/1243
 [#1337]: https://github.com/fedify-dev/fedify/pull/1337
-[#1369]: https://github.com/fedify-dev/fedify/issues/1369
-[#1435]: https://github.com/fedify-dev/fedify/pull/1435
 
 ### @fedify/vocab-runtime
 

@@ -34,4 +34,11 @@ origin control: verify the reciprocal origin WebFinger relation separately.
 it does not fetch the actor or grant authority.  These vocabulary properties
 do not enable receiving or suspend outbound delivery.
 
+Inspect actor and inbox control claims with `parseActorControlMetadata()`
+and `parseInboxControlMetadata()` from
+`@fedify/fedify/delivery-suspension`.  Use `expectedId` to require an exact
+expanded representation ID.  The results retain absent, single, multiple,
+and invalid link states, including unresolved endpoint links; they do not
+establish controller authority or fetch linked resources.
+
 [FEP-f799]: https://w3id.org/fep/f799

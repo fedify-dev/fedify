@@ -19,6 +19,7 @@ export default [
     entry: [
       "./src/mod.ts",
       "./src/compat/mod.ts",
+      "./src/delivery-suspension/mod.ts",
       "./src/federation/mod.ts",
       "./src/nodeinfo/mod.ts",
       "./src/otel/mod.ts",
